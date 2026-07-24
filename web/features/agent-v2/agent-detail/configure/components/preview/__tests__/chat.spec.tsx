@@ -464,6 +464,23 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should bind pre-checkout Build voice input to the normal Agent draft', () => {
+    renderPreviewChat({
+      draftType: 'debug_build',
+      speechToTextDraftType: 'draft',
+      renderEmptyState: () => null,
+    })
+
+    expect(screen.getByRole('group', { name: 'voice input' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
+  })
+
   it('should keep answer regeneration available when the chat input is external', () => {
     renderPreviewChat()
 

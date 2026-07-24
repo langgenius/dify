@@ -119,8 +119,10 @@ export function useAgentConfigureSessionController({
       try {
         return await preparation
       } catch (error) {
-        if (markBuildChatStarted && isBuildCallbackCurrent(generation))
+        if (markBuildChatStarted && isBuildCallbackCurrent(generation)) {
           setBuildDraftActionsDisabled(false)
+          setHasStartedBuildChat(false)
+        }
         throw error
       } finally {
         if (pendingBuildDraftPreparationRef.current === preparation)
@@ -214,10 +216,6 @@ export function useAgentConfigureSessionController({
           setIsEnteringBuildMode(true)
           const transition = (async () => {
             try {
-              registerPreviewDraftSave(savePreviewDraft())
-              await waitForPendingPreviewDraftSave()
-              if (modeRef.current !== 'preview') return
-
               const started = await startFreshBuildSession()
               if (!started || modeRef.current !== 'preview') return
 
@@ -265,7 +263,6 @@ export function useAgentConfigureSessionController({
       onModeChange,
       registerPreviewDraftSave,
       rotateBuildCallbackGeneration,
-      waitForPendingPreviewDraftSave,
     ],
   )
 

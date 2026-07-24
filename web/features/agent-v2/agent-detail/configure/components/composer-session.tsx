@@ -409,7 +409,10 @@ function AgentConfigurePageComposerContent({
     buildDraftActions.isApplyingBuildDraft ||
     buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly =
-    isEnteringBuildMode || (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+    isEnteringBuildMode ||
+    buildDraftActionsDisabled ||
+    (isViewingVersion && versionQuery.isPending) ||
+    buildDraft.isActive
   const buildConversationHasAgentResponse =
     !!conversationIds.build &&
     (conversationIds.build === completedBuildConversationId ||
@@ -450,7 +453,12 @@ function AgentConfigurePageComposerContent({
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          readOnly={isViewingVersion || buildDraft.isActive || isEnteringBuildMode}
+          readOnly={
+            isViewingVersion ||
+            buildDraft.isActive ||
+            buildDraftActionsDisabled ||
+            isEnteringBuildMode
+          }
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
@@ -520,6 +528,9 @@ function AgentConfigurePageComposerContent({
                 controllerRef={rightPanelChatControllerRef}
                 conversationIds={conversationIds}
                 mode={rightPanelChatMode}
+                speechToTextDraftType={
+                  rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'
+                }
                 onClearChatListChange={setClearPreviewChat}
                 onConversationComplete={(mode, completedConversationId) => {
                   if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
@@ -539,13 +550,7 @@ function AgentConfigurePageComposerContent({
                   setConversationId({ mode, conversationId })
                 }}
                 onBeforeSpeechToText={
-                  rightPanelChatMode === 'build'
-                    ? () =>
-                        runBuildPreparation({
-                          generation: buildCallbackGeneration,
-                          prepare: buildDraftActions.prepareBuildDraftBeforeRun,
-                        })
-                    : saveDraft
+                  rightPanelChatMode === 'build' ? saveDraftBeforeBuildRun : saveDraft
                 }
                 onSaveDraftBeforeRun={
                   rightPanelChatMode === 'build'

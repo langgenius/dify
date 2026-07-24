@@ -31,6 +31,7 @@ export type AgentChatRuntimeProps = {
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
   draftType?: 'debug_build'
+  speechToTextDraftType?: 'draft' | 'debug_build'
   inputPlaceholder: string
   inputAutoFocus?: boolean
   sendButtonLabel?: string
@@ -57,6 +58,7 @@ export function AgentChatRuntime({
   controllerRef,
   conversationId,
   draftType,
+  speechToTextDraftType,
   inputPlaceholder,
   inputAutoFocus,
   sendButtonLabel,
@@ -135,6 +137,7 @@ export function AgentChatRuntime({
       controllerRef={controllerRef}
       conversationId={conversationId}
       draftType={draftType}
+      speechToTextDraftType={speechToTextDraftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
       inputAutoFocus={inputAutoFocus}

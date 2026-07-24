@@ -35,6 +35,7 @@ export function AgentPreviewChatSession({
   controllerRef,
   conversationId,
   draftType,
+  speechToTextDraftType,
   initialChatTree,
   inputPlaceholder,
   inputAutoFocus,
@@ -61,6 +62,7 @@ export function AgentPreviewChatSession({
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
   draftType?: 'debug_build'
+  speechToTextDraftType?: 'draft' | 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
   inputAutoFocus?: boolean
@@ -133,7 +135,7 @@ export function AgentPreviewChatSession({
   const speechToTextTarget: SpeechToTextTarget = {
     type: 'agent',
     agentId,
-    draftType: draftType ?? 'draft',
+    draftType: speechToTextDraftType ?? draftType ?? 'draft',
   }
   const chatInputNode = (
     <ChatInputArea

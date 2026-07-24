@@ -298,6 +298,7 @@ export function useAgentConfigureBuildDraftActions({
   const queryClient = useQueryClient()
   const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const buildDraftRefreshGenerationRef = useRef(0)
+  const forceCheckoutBeforeNextBuildRunRef = useRef(false)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -343,20 +344,37 @@ export function useAgentConfigureBuildDraftActions({
 
   const prepareBuildDraftRun = useCallback(async () => {
     cancelBuildDraftRefresh()
-    return prepareBuildDraftBeforeRun()
-  }, [cancelBuildDraftRefresh, prepareBuildDraftBeforeRun])
+    if (!forceCheckoutBeforeNextBuildRunRef.current) return prepareBuildDraftBeforeRun()
+
+    await saveDraft()
+    try {
+      const buildDraft = await forceCheckoutBuildDraft()
+      forceCheckoutBeforeNextBuildRunRef.current = false
+      return buildDraft
+    } catch (error) {
+      toast.error(tCommon(($) => $['api.actionFailed']))
+      throw error
+    }
+  }, [
+    cancelBuildDraftRefresh,
+    forceCheckoutBuildDraft,
+    prepareBuildDraftBeforeRun,
+    saveDraft,
+    tCommon,
+  ])
 
   const startFreshBuildSession = useCallback(async () => {
     cancelBuildDraftRefresh()
     try {
       await resetBuildChatSession()
-      await forceCheckoutBuildDraft()
+      forceCheckoutBeforeNextBuildRunRef.current = true
+      setSoulSourceOverride('draft')
       return true
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
       return false
     }
-  }, [cancelBuildDraftRefresh, forceCheckoutBuildDraft, resetBuildChatSession, tCommon])
+  }, [cancelBuildDraftRefresh, resetBuildChatSession, setSoulSourceOverride, tCommon])
 
   const refreshBuildDraftAfterBuildChat = useCallback(
     (onRefreshed?: () => void) => {

@@ -378,7 +378,9 @@ vi.mock('../components/preview/build-chat', async () => {
       controllerRef?: Ref<{ stop: () => void }>
       onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
+      onBeforeSpeechToText?: () => Promise<unknown>
       onSaveDraftBeforeRun?: () => Promise<void>
+      speechToTextDraftType?: 'draft' | 'debug_build'
     }) => {
       const [messageSent, setMessageSent] = useState(false)
       useImperativeHandle(props.controllerRef, () => ({ stop: mocks.stopBuildChat }))
@@ -392,6 +394,7 @@ vi.mock('../components/preview/build-chat', async () => {
           <span>{`build:${props.conversationId ?? 'none'}`}</span>
           <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
           <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
+          <span>{`speech:${props.speechToTextDraftType ?? 'debug_build'}`}</span>
           <button
             type="button"
             onClick={() => props.onConversationIdChange?.('build-conversation-new')}
@@ -411,6 +414,9 @@ vi.mock('../components/preview/build-chat', async () => {
             }}
           >
             send build message
+          </button>
+          <button type="button" onClick={() => void props.onBeforeSpeechToText?.()}>
+            transcribe build message
           </button>
           <button type="button" onClick={mocks.completeBuildConversation}>
             complete build conversation
@@ -1022,7 +1028,7 @@ describe('AgentConfigurePage', () => {
       }
     })
 
-    it('should save Preview, reset the Build conversation, and force checkout before entering Build', async () => {
+    it('should reset Build on mode switch, then save and force checkout when starting chat', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
       const draftSave = createDeferredPromise<{ agent_soul: object }>()
@@ -1094,23 +1100,33 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
       await user.click(screen.getByRole('button', { name: 'build mode' }))
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      })
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledTimes(1)
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'prompt:edited draft prompt',
+        'prompt:draft prompt',
       )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('speech:draft')
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:yes',
       )
-      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
-        'publish:no',
-      )
-      expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
-      expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
-      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
 
       draftSave.resolve({ agent_soul: {} })
 
@@ -1127,18 +1143,19 @@ describe('AgentConfigurePage', () => {
           expect.any(Object),
         )
       })
-      expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.refreshDebugConversation)
+      expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.saveComposerDraft)
+      expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.checkoutBuildDraft)
       expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.checkoutBuildDraft)
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:fresh build prompt',
       )
     })
 
-    it('should stay in Preview when saving the Preview draft fails', async () => {
+    it('should stay in Build without checkout or send when saving before chat fails', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
-      mocks.saveComposerDraft.mockRejectedValueOnce(new Error('save failed'))
+      mocks.saveComposerDraft.mockRejectedValue(new Error('save failed'))
       mocks.queryState.composer = {
         data: {
           agent_soul: {
@@ -1184,17 +1201,24 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
       await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+      })
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
 
       await waitFor(() => {
         expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
       })
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:edited draft prompt',
       )
-      expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
     })
 
@@ -1224,10 +1248,11 @@ describe('AgentConfigurePage', () => {
         expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
       })
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
     })
 
-    it('should stay in Preview when force checkout fails', async () => {
+    it('should stay in Build without sending when force checkout fails at chat start', async () => {
       const user = userEvent.setup()
       mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
       mocks.queryState.composer = {
@@ -1250,9 +1275,16 @@ describe('AgentConfigurePage', () => {
       await user.click(screen.getByRole('button', { name: 'build mode' }))
 
       await waitFor(() => {
-        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+        expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
       })
       expect(mocks.refreshDebugConversation).toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+      })
       expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
         {
           params: {
@@ -1264,7 +1296,14 @@ describe('AgentConfigurePage', () => {
         },
         expect.any(Object),
       )
-      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledTimes(2)
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
     })
 
     it('should run preview with the shared chat API without entering build draft mode outside community edition', async () => {
@@ -1528,7 +1567,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
     })
 
-    it('should show the normal editable draft in preview and confirm before discarding the build draft', async () => {
+    it('should hide the stale build draft until chat starts and leave Build without discarding it', async () => {
       const user = userEvent.setup()
       clearBuildConversation()
       mocks.queryState.composer = {
@@ -1563,29 +1602,6 @@ describe('AgentConfigurePage', () => {
         isSuccess: true,
         refetch: vi.fn(),
       }
-      const freshBuildDraft = {
-        agent_soul: {
-          prompt: {
-            system_prompt: 'draft prompt',
-          },
-        },
-        draft: {},
-        variant: 'agent_app',
-      }
-      mocks.checkoutBuildDraft.mockImplementation(async () => {
-        mocks.queryState.buildDraft = {
-          data: freshBuildDraft,
-          dataUpdatedAt: 2,
-          error: null,
-          isFetching: false,
-          isError: false,
-          isPending: false,
-          isSuccess: true,
-          refetch: vi.fn(),
-        }
-        return freshBuildDraft
-      })
-
       render(
         <QueryClientProvider client={new QueryClient()}>
           <AgentConfigurePage agentId="agent-1" />
@@ -1614,20 +1630,14 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).not.toHaveTextContent(
         'prompt:build prompt',
       )
-      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: 'preview mode' }))
 
-      expect(
-        screen.getByRole('alertdialog', {
-          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
-        }),
-      ).toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
-
-      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1))
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:draft prompt',
       )
