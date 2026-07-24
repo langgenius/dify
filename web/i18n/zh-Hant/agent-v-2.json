@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "完整日誌記錄應用程式執行狀態，包括使用者輸入、Agent 回覆、規劃和工具使用。",
   "agentDetail.logs.empty": "暫無日誌",
+  "agentDetail.logs.executionId": "執行 ID",
   "agentDetail.logs.filters.period.allTime": "全部時間",
   "agentDetail.logs.filters.period.last30days": "最近 30 天",
   "agentDetail.logs.filters.period.last7days": "最近 7 天",

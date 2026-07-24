@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "एजेंट",
   "agentDetail.logs.description": "पूर्ण लॉग एप्लिकेशन की चल रही स्थिति को रिकॉर्ड करते हैं, जिसमें उपयोगकर्ता इनपुट, एजेंट उत्तर, योजना और उपकरण उपयोग शामिल हैं।",
   "agentDetail.logs.empty": "कोई लॉग नहीं मिला",
+  "agentDetail.logs.executionId": "निष्पादन आईडी",
   "agentDetail.logs.filters.period.allTime": "हर समय",
   "agentDetail.logs.filters.period.last30days": "पिछले 30 दिन",
   "agentDetail.logs.filters.period.last7days": "पिछले 7 दिन",

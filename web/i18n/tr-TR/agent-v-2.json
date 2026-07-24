@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Ajan",
   "agentDetail.logs.description": "Tam günlükler, kullanıcı girişleri, ajan yanıtları, planlama ve araç kullanımları dahil olmak üzere uygulamanın çalışma durumunu kaydeder.",
   "agentDetail.logs.empty": "Günlük bulunamadı",
+  "agentDetail.logs.executionId": "Yürütme Kimliği",
   "agentDetail.logs.filters.period.allTime": "Tüm zamanlar",
   "agentDetail.logs.filters.period.last30days": "Son 30 gün",
   "agentDetail.logs.filters.period.last7days": "Son 7 gün",
