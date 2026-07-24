@@ -42,6 +42,7 @@ export type AgentSkillDetail = {
     binary?: boolean
     content?: string
     downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
+    downloadUrl?: string
     fileName?: string
     imageData?: Blob
     isDownloadError?: boolean
@@ -196,6 +197,7 @@ function AgentFilePreviewContent({
   binary,
   content,
   downloadActionLoadingTarget,
+  downloadUrl,
   fileName,
   imageData,
   isDownloadError,
@@ -208,6 +210,7 @@ function AgentFilePreviewContent({
   binary?: boolean
   content?: string
   downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
+  downloadUrl?: string
   fileName?: string
   imageData?: Blob
   isDownloadError?: boolean
@@ -237,8 +240,20 @@ function AgentFilePreviewContent({
     )
   }
 
-  if (isImage && imageData)
-    return <AgentSkillImagePreview fileName={fileName} imageData={imageData} />
+  if (isImage) {
+    if (imageData) return <AgentSkillImagePreview fileName={fileName} imageData={imageData} />
+    if (downloadUrl) {
+      return (
+        <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
+          <img
+            src={downloadUrl}
+            alt={fileName ?? ''}
+            className="max-h-140 max-w-full rounded-lg object-contain"
+          />
+        </div>
+      )
+    }
+  }
 
   if (binary) {
     return (
@@ -246,10 +261,21 @@ function AgentFilePreviewContent({
         <span className="system-sm-regular text-text-tertiary">
           {t(($) => $['agentDetail.configure.files.preview.unsupported'])}
         </span>
-        <button
-          type="button"
-          disabled={isPreviewDownloadLoading}
-          onClick={() => onDownloadFile?.('preview')}
+        <a
+          href={downloadUrl || '#'}
+          aria-disabled={isPreviewDownloadLoading}
+          onClick={(event) => {
+            if (isPreviewDownloadLoading) {
+              event.preventDefault()
+              return
+            }
+            if (!downloadUrl) {
+              event.preventDefault()
+              onDownloadFile?.('preview')
+            }
+          }}
+          target="_blank"
+          rel="noreferrer"
           className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
           <span
@@ -266,7 +292,7 @@ function AgentFilePreviewContent({
               ? tCommon(($) => $['operation.downloading'])
               : tCommon(($) => $['operation.download'])}
           </span>
-        </button>
+        </a>
       </div>
     )
   }
@@ -395,6 +421,7 @@ export function AgentSkillDetailDialog({
               binary={detail.filePreview.binary}
               content={detail.filePreview.content}
               downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
+              downloadUrl={detail.filePreview.downloadUrl}
               fileName={detail.filePreview.fileName}
               imageData={detail.filePreview.imageData}
               isDownloadError={detail.filePreview.isDownloadError}

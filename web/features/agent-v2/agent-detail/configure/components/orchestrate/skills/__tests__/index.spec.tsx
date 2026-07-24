@@ -783,7 +783,7 @@ describe('AgentSkills', () => {
     expect(mocks.downloadBlob).not.toHaveBeenCalled()
   })
 
-  it('should download binary skill members without exposing the protected URL in a link', async () => {
+  it('should download binary skill members without exposing the protected URL', async () => {
     const user = userEvent.setup()
     renderAgentSkills()
 
@@ -791,14 +791,12 @@ describe('AgentSkills', () => {
     await user.click(await screen.findByText('models'))
     await user.click(screen.getByText('model.bin').closest('button')!)
 
-    const downloadButton = await screen.findByRole('button', {
+    const downloadLink = await screen.findByRole('link', {
       name: 'common.operation.download',
     })
-    expect(
-      screen.queryByRole('link', { name: 'common.operation.download' }),
-    ).not.toBeInTheDocument()
+    expect(downloadLink).toHaveAttribute('href', '#')
 
-    await user.click(downloadButton)
+    await user.click(downloadLink)
 
     await waitFor(() => {
       expect(mocks.downloadBlob).toHaveBeenCalledWith({
