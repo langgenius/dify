@@ -101,17 +101,21 @@ const Recipients = ({
   }, [value])
 
   useEffect(() => {
-    const ids = value
-      .filter(
-        (recipient): recipient is Extract<HumanInputV2Recipient, { type: 'contact' }> =>
-          recipient.type === 'contact',
-      )
-      .map((recipient) => recipient.contact_id)
+    const ids = [
+      ...new Set(
+        value
+          .filter(
+            (recipient): recipient is Extract<HumanInputV2Recipient, { type: 'contact' }> =>
+              recipient.type === 'contact',
+          )
+          .map((recipient) => recipient.contact_id),
+      ),
+    ]
     if (!ids.length) return
 
     let active = true
     provider
-      .resolve(ids)
+      .resolve({ contact_ids: ids })
       .then((result) => {
         if (active) setResolvedOptions(result)
       })

@@ -13,7 +13,6 @@ import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui
 import { Form } from '@langgenius/dify-ui/form'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContactsFeatureContext } from './composition-context'
 import { useCreateExternalContact } from './hooks'
 
 type ExternalContactDraft = {
@@ -48,7 +47,6 @@ export function ExternalContactDialog({
   open,
 }: ExternalContactDialogProps) {
   const { t } = useTranslation('contacts')
-  const context = useContactsFeatureContext()
   const createExternalContact = useCreateExternalContact()
   const [draft, setDraft] = useState<ExternalContactDraft>(emptyDraft)
   const [fieldError, setFieldError] = useState<
@@ -93,7 +91,6 @@ export function ExternalContactDialog({
     const result = await createExternalContact.mutateAsync({
       displayName: draft.displayName.trim(),
       email: draft.email.trim(),
-      workspaceId: context.workspaceId,
     })
     if (result.kind === 'created') {
       onOpenChange(false)

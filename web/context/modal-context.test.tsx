@@ -121,6 +121,12 @@ const PreferencesOpener = () => {
   )
 }
 
+const BlockingModalProbe = () => {
+  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
+
+  return <div data-testid="has-blocking-modal-open">{String(hasBlockingModalOpen)}</div>
+}
+
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
     mockConsoleStateReader.mockReset()
@@ -197,13 +203,27 @@ describe('ModalContextProvider trigger events limit modal', () => {
     })
     const user = userEvent.setup()
 
-    renderProvider(<PreferencesOpener />)
+    renderProvider(
+      <>
+        <BlockingModalProbe />
+        <PreferencesOpener />
+      </>,
+    )
+
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
 
     await user.click(screen.getByRole('button', { name: 'open preferences' }))
 
     expect(
       await screen.findByRole('status', { name: 'active account setting tab' }),
     ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
+
+    await user.click(screen.getByRole('button', { name: 'cancel account setting' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
+    })
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

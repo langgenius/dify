@@ -1,39 +1,46 @@
 'use client'
 
 import type {
+  AvailablePlatformContactsQuery,
   ContactsListQuery,
+  ContactView,
   CreateExternalContactCommand,
-  OrganizationCandidateQuery,
+  RemoveContactsCommand,
   RemoveMemberCommand,
 } from './types'
 import {
   infiniteQueryOptions,
   mutationOptions,
-  queryOptions,
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
-import { mergeContactPages } from './mock/repository'
 import { contactsManagementQueryKeys } from './query-keys'
 
-export function useContactsDirectory(query: Omit<ContactsListQuery, 'cursor' | 'deployment'>) {
+function mergeContactPages(pages: ContactView[][]): ContactView[] {
+  const contacts = new Map<string, ContactView>()
+  for (const page of pages) {
+    for (const contact of page) contacts.set(contact.id, contact)
+  }
+  return [...contacts.values()]
+}
+
+export function useContactsDirectory(query: Omit<ContactsListQuery, 'deployment' | 'page'>) {
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
   const result = useInfiniteQuery(
     infiniteQueryOptions({
-      initialPageParam: null as string | null,
-      queryFn: ({ pageParam }: { pageParam: string | null }) =>
-        repository.listContacts({ ...query, cursor: pageParam, deployment: context.deployment }),
+      initialPageParam: 1,
+      queryFn: ({ pageParam }) =>
+        repository.listContacts({ ...query, deployment: context.deployment, page: pageParam }),
       queryKey: [...contactsManagementQueryKeys.directory(context, query), repository] as const,
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     }),
   )
 
   return {
-    contacts: mergeContactPages(result.data?.pages.map((page) => page.items) ?? []),
+    contacts: mergeContactPages(result.data?.pages.map((page) => page.data) ?? []),
     data: result.data,
     error: result.error,
     fetchNextPage: result.fetchNextPage,
@@ -46,23 +53,8 @@ export function useContactsDirectory(query: Omit<ContactsListQuery, 'cursor' | '
   }
 }
 
-export function useContactDetails(contactId: string | null) {
-  const context = useContactsFeatureContext()
-  const repository = useContactsManagementRepository()
-  return useQuery(
-    queryOptions({
-      enabled: Boolean(contactId),
-      queryFn: () => repository.getContact(contactId as string),
-      queryKey: [
-        ...contactsManagementQueryKeys.detail(context.workspaceId, contactId ?? 'none'),
-        repository,
-      ] as const,
-    }),
-  )
-}
-
-export function useOrganizationCandidates(
-  query: Omit<OrganizationCandidateQuery, 'cursor'>,
+export function useAvailablePlatformContacts(
+  query: Omit<AvailablePlatformContactsQuery, 'page'>,
   enabled: boolean,
 ) {
   const context = useContactsFeatureContext()
@@ -70,19 +62,19 @@ export function useOrganizationCandidates(
   const result = useInfiniteQuery(
     infiniteQueryOptions({
       enabled: enabled && context.deployment === 'ee',
-      initialPageParam: null as string | null,
-      queryFn: ({ pageParam }: { pageParam: string | null }) =>
-        repository.searchOrganizationCandidates({ ...query, cursor: pageParam }),
+      initialPageParam: 1,
+      queryFn: ({ pageParam }) =>
+        repository.listAvailablePlatformContacts({ ...query, page: pageParam }),
       queryKey: [
-        ...contactsManagementQueryKeys.organizationCandidates(context.workspaceId, query),
+        ...contactsManagementQueryKeys.availablePlatformContacts(context.workspaceId, query),
         repository,
       ] as const,
-      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     }),
   )
 
   return {
-    candidates: result.data?.pages.flatMap((page) => page.items) ?? [],
+    contacts: result.data?.pages.flatMap((page) => page.data) ?? [],
     error: result.error,
     fetchNextPage: result.fetchNextPage,
     hasNextPage: result.hasNextPage,
@@ -119,7 +111,7 @@ export function useAddPlatformContacts() {
 
   return useMutation(
     mutationOptions({
-      mutationFn: (candidateIds: string[]) => repository.addPlatformContacts({ candidateIds }),
+      mutationFn: (contactIds: string[]) => repository.addPlatformContacts({ contactIds }),
       onSuccess: (result) => {
         if (result.kind !== 'added') return
         void queryClient.invalidateQueries({
@@ -130,19 +122,20 @@ export function useAddPlatformContacts() {
   )
 }
 
-export function useMemberRemovalImpact(memberId: string, enabled: boolean) {
+export function useRemoveContacts() {
   const context = useContactsFeatureContext()
   const repository = useContactsManagementRepository()
-  return useQuery(
-    queryOptions({
-      enabled,
-      queryFn: () => repository.getMemberRemovalImpact(memberId),
-      queryKey: [
-        ...contactsManagementQueryKeys.all(context.workspaceId),
-        'member-removal-impact',
-        memberId,
-        repository,
-      ] as const,
+  const queryClient = useQueryClient()
+
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: RemoveContactsCommand) => repository.removeContacts(command),
+      onSuccess: (result) => {
+        if (result.kind !== 'removed') return
+        void queryClient.invalidateQueries({
+          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
+        })
+      },
     }),
   )
 }

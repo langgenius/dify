@@ -17,11 +17,9 @@ from controllers.common.human_input_v2_contracts import (
     ContactListQuery,
     ContactOption,
     ContactOptionsQuery,
-    CreateHITLMigrationResponse,
     CreateIMBindingRequest,
     CreateIMBindingResponse,
     CreateIMSyncRunResponse,
-    CreateNodeDataMigrationRequest,
     DeleteIMBindingQuery,
     DeleteIMBindingResponse,
     DeleteIMIntegrationQuery,
@@ -46,7 +44,9 @@ from controllers.common.human_input_v2_contracts import (
     ListLatestIMSyncRunResultsQuery,
     ListLatestIMSyncRunResultsResponse,
     ListOrganizationCandidatesResponse,
-    NodeMigrationFailure,
+    NodeDataMigrationFailureResponse,
+    NodeDataMigrationPayload,
+    NodeDataMigrationResponse,
     OrganizationCandidatesQuery,
     RemoveContactsRequest,
     RemoveContactsResponse,
@@ -102,7 +102,7 @@ register_schema_models(
     ListLatestIMSyncRunResultsQuery,
     SetContactIMOverrideRequest,
     CreateIMBindingRequest,
-    CreateNodeDataMigrationRequest,
+    NodeDataMigrationPayload,
     SetEmailProviderRequest,
 )
 register_response_schema_models(
@@ -130,8 +130,8 @@ register_response_schema_models(
     CreateIMBindingResponse,
     DeleteIMBindingResponse,
     BatchGetContactsResponse,
-    CreateHITLMigrationResponse,
-    NodeMigrationFailure,
+    NodeDataMigrationResponse,
+    NodeDataMigrationFailureResponse,
     GetEmailProviderResponse,
     SetEmailProviderResponse,
 )
@@ -503,16 +503,16 @@ class NodeDataMigrationAPI(Resource):
             "It does not update the workflow DSL."
         ),
     )
-    @console_ns.expect(console_ns.models[CreateNodeDataMigrationRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[CreateHITLMigrationResponse.__name__])
-    @console_ns.response(400, "Migration failed", console_ns.models[NodeMigrationFailure.__name__])
+    @console_ns.expect(console_ns.models[NodeDataMigrationPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[NodeDataMigrationResponse.__name__])
+    @console_ns.response(400, "Migration failed", console_ns.models[NodeDataMigrationFailureResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
-        CreateNodeDataMigrationRequest.model_validate(console_ns.payload or {})
+        NodeDataMigrationPayload.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
 

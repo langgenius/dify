@@ -1,37 +1,33 @@
+import type { ContactsManagementRepository } from '../repository'
 import { describe, expect, it } from 'vitest'
-import { createContactsMockRepository, mergeContactPages } from '../mock/repository'
+import { createContactsMockRepository } from '../mock/repository'
 import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 
-describe('contacts mock repository', () => {
-  it('keeps the discriminated contact kinds and list/detail state consistent', async () => {
-    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-    const repository = createContactsMockRepository({ scenario })
+function listContacts(repository: ContactsManagementRepository, page = 1) {
+  return repository.listContacts({
+    deployment: 'ee',
+    kind: 'all',
+    limit: 20,
+    page,
+    search: '',
+  })
+}
 
-    const page = await repository.listContacts({
-      cursor: null,
-      deployment: 'ee',
-      kind: 'all',
-      pageSize: 20,
-      search: '',
+describe('contacts mock repository', () => {
+  it('returns generic contacts with backend pagination and timestamp fields', async () => {
+    const repository = createContactsMockRepository({
+      scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
     })
 
-    expect(page.items.map((contact) => contact.kind)).toEqual(['workspace', 'platform', 'external'])
-    const platformContact = page.items[1]
-    expect(platformContact).toBeDefined()
-    await expect(repository.getContact(platformContact!.id)).resolves.toEqual(platformContact)
-  })
+    const result = await listContacts(repository)
 
-  it('deduplicates contacts when incremental pages overlap', () => {
-    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-    const [first, second, third] = scenario.contacts
-    expect(first && second && third).toBeDefined()
-
-    expect(
-      mergeContactPages([
-        [first!, second!],
-        [second!, third!],
-      ]),
-    ).toEqual([first, second, third])
+    expect(result).toMatchObject({ has_more: false, limit: 20, page: 1, total: 3 })
+    expect(result.data.map((contact) => contact.type)).toEqual([
+      'workspace',
+      'platform',
+      'external',
+    ])
+    expect(result.data.every((contact) => Number.isInteger(contact.created_at))).toBe(true)
   })
 
   it.each([
@@ -47,7 +43,6 @@ describe('contacts mock repository', () => {
       repository.createExternalContact({
         displayName: 'Conflict',
         email: email.toUpperCase(),
-        workspaceId: 'workspace-1',
       }),
     ).resolves.toMatchObject({ kind: resultKind })
   })
@@ -63,7 +58,9 @@ describe('contacts mock repository', () => {
     await expect(
       ceRepository.removeMember({ keepAsPlatformContact: false, memberId: 'member-owner' }),
     ).resolves.toMatchObject({ contactOutcome: 'removed', kind: 'removed' })
-    await expect(ceRepository.getContact('contact-owner')).resolves.toBeNull()
+    expect((await listContacts(ceRepository)).data.map((contact) => contact.id)).not.toContain(
+      'contact-owner',
+    )
 
     await expect(
       eeRepository.removeMember({ keepAsPlatformContact: true, memberId: 'member-owner' }),
@@ -72,51 +69,62 @@ describe('contacts mock repository', () => {
       contactOutcome: 'converted_to_platform',
       kind: 'removed',
     })
-    await expect(eeRepository.getContact('contact-owner')).resolves.toMatchObject({
-      id: 'contact-owner',
-      kind: 'platform',
-    })
+    expect((await listContacts(eeRepository)).data).toContainEqual(
+      expect.objectContaining({ id: 'contact-owner', type: 'platform' }),
+    )
   })
 
-  it('excludes existing identities from organization candidates', async () => {
+  it('excludes existing contacts from available Platform contacts', async () => {
     const repository = createContactsMockRepository({
       scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
     })
 
-    const result = await repository.searchOrganizationCandidates({
-      cursor: null,
-      pageSize: 20,
+    const result = await repository.listAvailablePlatformContacts({
+      limit: 20,
+      page: 1,
       search: '',
     })
 
-    expect(result.items.map((candidate) => candidate.email)).toEqual([
+    expect(result).toMatchObject({ has_more: false, limit: 20, page: 1, total: 2 })
+    expect(result.data.map((contact) => contact.email)).toEqual([
       'ada@example.com',
       'grace@example.com',
     ])
   })
 
-  it('uses stable cursors and fails only the requested next page', async () => {
+  it('removes only Platform and External contacts', async () => {
     const repository = createContactsMockRepository({
-      scenario: createContactsMockScenario(ContactsMockScenario.NextPageFailure),
-    })
-    const firstPage = await repository.listContacts({
-      cursor: null,
-      deployment: 'ee',
-      kind: 'all',
-      pageSize: 20,
-      search: '',
+      scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
     })
 
-    expect(firstPage.items).toHaveLength(20)
-    expect(firstPage.nextCursor).toBe('20')
     await expect(
-      repository.listContacts({
-        cursor: firstPage.nextCursor,
-        deployment: 'ee',
-        kind: 'all',
-        pageSize: 20,
-        search: '',
+      repository.removeContacts({
+        contactIds: ['contact-owner', 'contact-platform', 'contact-external'],
       }),
-    ).rejects.toThrow('contacts_next_page_failed')
+    ).resolves.toEqual({
+      kind: 'removed',
+      removedContactIds: ['contact-platform', 'contact-external'],
+    })
+    expect((await listContacts(repository)).data).toEqual([
+      expect.objectContaining({ id: 'contact-owner', type: 'workspace' }),
+    ])
+  })
+
+  it('uses page metadata and fails only the requested next page', async () => {
+    const paginatedRepository = createContactsMockRepository({
+      scenario: createContactsMockScenario(ContactsMockScenario.Paginated),
+    })
+    const firstPage = await listContacts(paginatedRepository)
+    const secondPage = await listContacts(paginatedRepository, 2)
+
+    expect(firstPage).toMatchObject({ has_more: true, limit: 20, page: 1, total: 23 })
+    expect(firstPage.data).toHaveLength(20)
+    expect(secondPage).toMatchObject({ has_more: false, limit: 20, page: 2, total: 23 })
+    expect(secondPage.data).toHaveLength(3)
+
+    const failingRepository = createContactsMockRepository({
+      scenario: createContactsMockScenario(ContactsMockScenario.NextPageFailure),
+    })
+    await expect(listContacts(failingRepository, 2)).rejects.toThrow('contacts_next_page_failed')
   })
 })

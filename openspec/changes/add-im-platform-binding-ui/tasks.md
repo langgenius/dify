@@ -6,7 +6,7 @@
 
 ## 2. Typed Mock Data Boundary
 
-- [x] 2.1 Write failing unit tests for repository scenario consistency, single-active-provider behavior, deterministic state transitions, summary/detail count agreement, and secret sanitization.
+- [x] 2.1 Write failing unit tests for repository scenario consistency, one active non-Email integration plus Email, explicit IM replacement, deterministic state transitions, summary/detail count agreement, and secret sanitization.
 - [x] 2.2 Add Contacts-owned TypeScript view models, command types, repository interface, query keys, and typed result taxonomy for integration, provider definitions, sync runs, and sync items.
 - [x] 2.3 Implement named deterministic mock scenarios covering loading, load failure, no permission, provider unavailable, all six connection states, mutation failures, active sync, success, partial success, failure, detail failure, and paginated results.
 - [x] 2.4 Implement the in-memory mock repository so mutations update only mock state, queued/running transitions are controllable with fake timers or explicit advancement, and secret input is discarded after recording configuration state.
@@ -34,3 +34,10 @@
 - [x] 5.3 Run the targeted Vitest / Testing Library suites and resolve all failures, including fake-timer cleanup and React Query cache isolation between scenarios.
 - [x] 5.4 Run the repository-prescribed frontend formatting, lint, and type-check commands, then fix issues introduced by this change.
 - [x] 5.5 Audit the final diff to confirm it changes only frontend and OpenSpec files, adds no backend/OpenAPI/generated-client/task-queue code, issues no real IM or backend requests, and leaves the future API repository adapter for a separate change.
+
+## 6. Channels Increment
+
+- [x] 6.1 Update the Contacts setting menu, page title, descriptions, mock view models, repository scenarios, and query behavior from a single IM Platform presentation to a Channels collection that permits Email and one active IM binding to coexist while preserving explicit IM provider replacement.
+- [x] 6.2 Add the Email channel card and dedicated Resend configuration modal with sender email, optional sender name, API-key retention, validation, deterministic test-connection behavior, save feedback, and focused component/repository tests.
+- [x] 6.3 Update configured channel cards to show safe summaries plus accessible Configure and Delete controls, route Configure to the matching provider adapter, and add a destructive delete confirmation with cancellation, failure recovery, focus restoration, and focused tests.
+- [x] 6.4 Add or update only `en-US` and `zh-Hans` translations, verify the four revised Figma nodes, run targeted Vitest plus scoped frontend checks, and audit that the increment remains frontend-only and mock-backed.

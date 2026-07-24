@@ -292,7 +292,9 @@ export const zWorkspacePermissionResponse = z.object({
 /**
  * BinaryFileResponse
  */
-export const zBinaryFileResponse = z.custom<Blob | File>()
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * PluginAutoUpgradeChangeResponse
@@ -3481,7 +3483,7 @@ export const zPluginParameterAutoGenerate = z.object({
 /**
  * ToolParameter
  *
- * Overrides type
+ * Tool-specific parameter declaration and invocation-value normalization.
  */
 export const zToolParameter = z.object({
   auto_generate: zPluginParameterAutoGenerate.nullish(),
@@ -3502,6 +3504,7 @@ export const zToolParameter = z.object({
   llm_description: z.string().nullish(),
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),
+  multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
   placeholder: zI18nObject.nullish(),
@@ -4784,6 +4787,10 @@ export const zPostWorkspacesCurrentPluginUploadGithubBody = zParserGithubUpload
  */
 export const zPostWorkspacesCurrentPluginUploadGithubResponse = zPluginDecodeResponse
 
+export const zPostWorkspacesCurrentPluginUploadPkgBody = z.object({
+  pkg: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -5809,7 +5816,7 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**

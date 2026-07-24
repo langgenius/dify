@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DeliveryMethodType } from '../../../human-input/types'
 import { executeHumanInputV2Migration } from '../executor'
+import { createMockHumanInputMigrationApi } from '../mock-api'
 
 const createLegacyNode = (id: string, valid = true): Node => ({
   id,
@@ -44,9 +45,16 @@ const createHarness = (
     observedGraphs.push(nextGraph)
   })
   const saveHistory = vi.fn()
+  const mockMigrationApi = createMockHumanInputMigrationApi(async () => ({
+    members: [],
+    contacts: [],
+  }))
+  const migrationApi = {
+    migrate: vi.fn(mockMigrationApi.migrate),
+  }
   const dependencies: HumanInputMigrationExecutorDependencies = {
     getGraph: () => graph,
-    getResolverSnapshot: vi.fn().mockResolvedValue({ members: [], contacts: [] }),
+    migrationApi,
     replaceGraph,
     syncDraft,
     saveHistory,
@@ -55,6 +63,7 @@ const createHarness = (
   return {
     dependencies,
     getGraph: () => graph,
+    migrationApi,
     observedGraphs,
     replaceGraph,
     saveHistory,
@@ -83,6 +92,10 @@ describe('Human Input migration executor', () => {
 
     expect(result).toEqual({ status: 'success', migratedNodeIds: ['a', 'b'] })
     expect(harness.replaceGraph).toHaveBeenCalledTimes(1)
+    expect(harness.migrationApi.migrate).toHaveBeenCalledTimes(1)
+    expect(harness.migrationApi.migrate).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ node_id: 'a' }), expect.objectContaining({ node_id: 'b' })],
+    })
     expect(harness.syncDraft).toHaveBeenCalledTimes(1)
     expect(harness.saveHistory).toHaveBeenCalledTimes(1)
     expect(harness.saveHistory).toHaveBeenCalledWith(['a', 'b'])
@@ -108,6 +121,7 @@ describe('Human Input migration executor', () => {
       (result as Extract<HumanInputMigrationExecutionResult, { status: 'blocked' }>).blockers,
     ).toEqual(expect.arrayContaining([expect.objectContaining({ nodeId: 'invalid' })]))
     expect(harness.replaceGraph).not.toHaveBeenCalled()
+    expect(harness.migrationApi.migrate).toHaveBeenCalledTimes(1)
     expect(harness.syncDraft).not.toHaveBeenCalled()
     expect(harness.saveHistory).not.toHaveBeenCalled()
   })
@@ -147,6 +161,19 @@ describe('Human Input migration executor', () => {
     const harness = createHarness({ nodes: [v2Node], edges: [] })
 
     expect(await executeHumanInputV2Migration(harness.dependencies)).toEqual({ status: 'noop' })
+    expect(harness.replaceGraph).not.toHaveBeenCalled()
+    expect(harness.migrationApi.migrate).not.toHaveBeenCalled()
+    expect(harness.syncDraft).not.toHaveBeenCalled()
+    expect(harness.saveHistory).not.toHaveBeenCalled()
+  })
+
+  it('rejects an incomplete batch response before graph mutation', async () => {
+    const harness = createHarness({ nodes: [createLegacyNode('a')], edges: [] })
+    harness.migrationApi.migrate.mockResolvedValueOnce({ status: 'success', data: [] })
+
+    await expect(executeHumanInputV2Migration(harness.dependencies)).rejects.toThrow(
+      'human-input-migration-invalid-response',
+    )
     expect(harness.replaceGraph).not.toHaveBeenCalled()
     expect(harness.syncDraft).not.toHaveBeenCalled()
     expect(harness.saveHistory).not.toHaveBeenCalled()

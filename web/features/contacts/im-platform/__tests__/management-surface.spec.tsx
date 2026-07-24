@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ContactImPlatformRepository } from '../repository'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ContactsImPlatformProvider } from '../composition'
@@ -84,12 +84,12 @@ describe('Contacts IM platform management surface', () => {
   it('shows a load failure with a retry action', async () => {
     const user = userEvent.setup()
     const { repository } = renderSurface({ scenario: ContactImMockScenario.LoadFailure })
-    const getIntegration = vi.spyOn(repository, 'getIntegration')
+    const getIntegrations = vi.spyOn(repository, 'getIntegrations')
 
     expect(await screen.findByText('contacts.imPlatform.loadError.title')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.loadError.retry' }))
 
-    expect(getIntegration).toHaveBeenCalledTimes(1)
+    expect(getIntegrations).toHaveBeenCalledTimes(1)
   })
 
   it('does not downgrade a permission-load failure to not configured', async () => {
@@ -102,7 +102,11 @@ describe('Contacts IM platform management surface', () => {
   it('shows all providers for the empty state', async () => {
     renderSurface()
 
-    expect(await screen.findByText('contacts.imPlatform.status.not_configured')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'contacts.imPlatform.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('contacts.imPlatform.chooseProvider')).toBeInTheDocument()
+    expect(screen.getByText('Email')).toBeInTheDocument()
     expect(screen.getByText('Slack')).toBeInTheDocument()
     expect(screen.getByText('Feishu')).toBeInTheDocument()
     expect(screen.getByText('DingTalk')).toBeInTheDocument()
@@ -128,7 +132,6 @@ describe('Contacts IM platform management surface', () => {
   })
 
   it.each([
-    [ContactImMockScenario.NotConfigured, ContactImConnectionStatus.NotConfigured],
     [ContactImMockScenario.Configured, ContactImConnectionStatus.Configured],
     [ContactImMockScenario.Connected, ContactImConnectionStatus.Connected],
     [ContactImMockScenario.PermissionIssue, ContactImConnectionStatus.PermissionIssue],
@@ -138,6 +141,20 @@ describe('Contacts IM platform management surface', () => {
     renderSurface({ scenario })
 
     expect(await screen.findByText(`contacts.imPlatform.status.${status}`)).toBeInTheDocument()
+  })
+
+  it('shows configured channels before the remaining connect options', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    expect(await screen.findByText(/contacts\.imPlatform\.email\.summary/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Slack' })).toBeInTheDocument()
+    expect(screen.getByText('contacts.imPlatform.connectMore')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('group', { name: 'Feishu' })).getByRole('button', {
+        name: /Feishu.*replace/i,
+      }),
+    ).toBeEnabled()
   })
 })
 
@@ -254,9 +271,9 @@ describe('Contacts IM platform binding flows', () => {
     expect(secret).toHaveValue('')
   })
 
-  it('requires confirmation before replacing the active provider', async () => {
+  it('requires confirmation before replacing the active IM binding', async () => {
     const user = userEvent.setup()
-    renderSurface({ scenario: ContactImMockScenario.Connected })
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.Connected })
     await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
 
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
@@ -268,35 +285,8 @@ describe('Contacts IM platform binding flows', () => {
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.authorize' }))
 
     await waitFor(async () => {
-      const integration = await screen.findByText('contacts.imPlatform.status.connected')
-      expect(integration).toBeInTheDocument()
-    })
-    expect(screen.getByText('Feishu')).toBeInTheDocument()
-  })
-
-  it('disconnects only after destructive confirmation', async () => {
-    const user = userEvent.setup()
-    renderSurface({ scenario: ContactImMockScenario.Connected })
-    await user.click(
-      await screen.findByRole('button', { name: 'contacts.imPlatform.action.disconnect' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.disconnect.confirm' }))
-
-    expect(await screen.findByText('contacts.imPlatform.status.not_configured')).toBeInTheDocument()
-  })
-
-  it('keeps the confirmation open and binding intact when disconnect fails', async () => {
-    const user = userEvent.setup()
-    const { repository } = renderSurface({ scenario: ContactImMockScenario.DisconnectFailure })
-    await user.click(
-      await screen.findByRole('button', { name: 'contacts.imPlatform.action.disconnect' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.disconnect.confirm' }))
-
-    expect(await screen.findByText('contacts.imPlatform.disconnect.failed')).toBeInTheDocument()
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    await expect(repository.getIntegration(organization.organizationId)).resolves.toMatchObject({
-      provider: ContactImProvider.Slack,
+      const integrations = await repository.getIntegrations(organization.organizationId)
+      expect(integrations.map(({ provider }) => provider)).toEqual([ContactImProvider.Feishu])
     })
   })
 
@@ -329,7 +319,13 @@ describe('Contacts IM platform binding flows', () => {
     expect(saveCredentials).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      resolveSave?.(await repository.getIntegration(organization.organizationId))
+      const resolvedRepository = createContactImMockRepository({
+        organization,
+        scenario: ContactImMockScenario.Configured,
+      })
+      const integration = (await resolvedRepository.getIntegrations(organization.organizationId))[0]
+      if (!integration) throw new Error('Pending save test requires a configured integration')
+      resolveSave?.(integration)
     })
   })
 
@@ -337,7 +333,9 @@ describe('Contacts IM platform binding flows', () => {
     const user = userEvent.setup()
     renderSurface({ scenario: ContactImMockScenario.Configured })
     await user.click(
-      await screen.findByRole('button', { name: 'contacts.imPlatform.action.configure' }),
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
     )
 
     expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toHaveValue('')
@@ -346,15 +344,171 @@ describe('Contacts IM platform binding flows', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps the active provider unchanged when replacement is canceled', async () => {
+  it('uses the dedicated Resend form for the Email channel', async () => {
     const user = userEvent.setup()
-    const { repository } = renderSurface({ scenario: ContactImMockScenario.Connected })
-    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    renderSurface()
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+
+    await user.click(within(emailCard).getByRole('button'))
+
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.email.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('contacts.imPlatform.email.provider')).toHaveValue('Resend')
+    expect(screen.getByLabelText('contacts.imPlatform.email.provider')).toBeDisabled()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).not.toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toBeRequired()
+  })
+
+  it('tests a valid Email configuration without closing the dialog or retaining the API key', async () => {
+    const user = userEvent.setup()
+    const { queryClient, repository } = renderSurface()
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    const submittedApiKey = 'resend-test-key'
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+      'approvals@example.com',
+    )
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), submittedApiKey)
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+
+    expect(await screen.findByText('contacts.imPlatform.email.testSucceeded')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(testConnection).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(submittedApiKey)
+  })
+
+  it('saves Email as a configured channel and never exposes the submitted API key', async () => {
+    const user = userEvent.setup()
+    const { container, repository } = renderSurface()
+    const submittedApiKey = 'resend-save-key'
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+      'approvals@example.com',
+    )
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.senderName'), 'Approvals')
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), submittedApiKey)
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    expect(await screen.findByText(/contacts\.imPlatform\.email\.summary/)).toBeInTheDocument()
+    expect(screen.queryByDisplayValue(submittedApiKey)).not.toBeInTheDocument()
+    expect(container.innerHTML).not.toContain(submittedApiKey)
+    expect(
+      JSON.stringify(await repository.getIntegrations(organization.organizationId)),
+    ).not.toContain(submittedApiKey)
+  })
+
+  it('shows separate accessible Configure and Delete actions for every configured channel', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    for (const provider of ['Email', 'Slack']) {
+      const providerCard = await screen.findByRole('group', { name: provider })
+
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.configureChannel/,
+        }),
+      ).toBeEnabled()
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.deleteChannel/,
+        }),
+      ).toBeEnabled()
+      expect(within(providerCard).getAllByRole('button')).toHaveLength(2)
+    }
+  })
+
+  it('opens the matching configuration form from a configured channel action', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+
+    await user.click(
+      within(emailCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.email.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toHaveValue(
+      'approvals@acme.com',
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toHaveValue('')
+  })
+
+  it('cancels channel deletion without mutating and restores focus to Delete', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const disconnect = vi.spyOn(repository, 'disconnect')
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+    const deleteButton = within(emailCard).getByRole('button', {
+      name: /contacts\.imPlatform\.action\.deleteChannel/,
+    })
+
+    await user.click(deleteButton)
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(disconnect).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    await expect(repository.getIntegration(organization.organizationId)).resolves.toMatchObject({
-      provider: ContactImProvider.Slack,
+    expect(disconnect).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+    await waitFor(() => expect(deleteButton).toHaveFocus())
+  })
+
+  it('deletes only the confirmed channel and returns it to the connect list', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    await waitFor(async () => {
+      const integrations = await repository.getIntegrations(organization.organizationId)
+      expect(integrations.some(({ provider }) => provider === ContactImProvider.Slack)).toBe(false)
     })
+    expect(
+      within(screen.getByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /Slack.*contacts\.imPlatform\.action\.connect/,
+      }),
+    ).toBeEnabled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+  })
+
+  it('keeps the channel and confirmation open when deletion fails', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.DisconnectFailure })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    expect(await screen.findByText('contacts.imPlatform.delete.failed')).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(
+      (await repository.getIntegrations(organization.organizationId)).some(
+        ({ provider }) => provider === ContactImProvider.Slack,
+      ),
+    ).toBe(true)
   })
 })
 
@@ -370,7 +524,7 @@ describe('Contacts IM platform manual sync', () => {
 
   it.each([
     [ContactImMockScenario.Configured, 'contacts.imPlatform.sync.notConnected', true],
-    [ContactImMockScenario.NoPermission, 'contacts.imPlatform.sync.noPermission', false],
+    [ContactImMockScenario.Connected, 'contacts.imPlatform.sync.noPermission', false],
   ])('blocks sync for %s and explains why', async (scenario, reason, canManage) => {
     renderSurface({ canManage, scenario })
 
@@ -385,11 +539,13 @@ describe('Contacts IM platform manual sync', () => {
       organization,
       scenario: ContactImMockScenario.Connected,
     })
-    const integration = await repository.getIntegration(organization.organizationId)
-    vi.spyOn(repository, 'getIntegration').mockResolvedValue({
-      ...integration,
-      capabilities: { directorySync: false },
-    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) => ({
+        ...integration,
+        capabilities: { directorySync: false },
+      })),
+    )
     renderSurface({ repository })
 
     expect(await screen.findByText('contacts.imPlatform.sync.unsupported')).toBeInTheDocument()

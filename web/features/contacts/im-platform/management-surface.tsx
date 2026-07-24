@@ -1,7 +1,6 @@
 'use client'
 
-import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
-import type { ContactImProviderDefinition } from './types'
+import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,15 +11,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactImBindingDialog } from './binding-dialog'
+import { useContactsImPlatformOrganization } from './composition-context'
+import { ContactEmailConfigDialog } from './email-config-dialog'
 import {
-  useContactImIntegration,
+  useContactImIntegrations,
   useContactImProviderDefinitions,
   useDisconnectContactImProvider,
-  useTestContactImConnection,
 } from './hooks'
 import { ContactImProviderCard } from './provider-card'
 import { ContactImSyncDetailsDialog } from './sync-details-dialog'
@@ -34,16 +33,8 @@ import {
   ContactImUnavailableReason,
 } from './types'
 
-const statusTones = {
-  [ContactImConnectionStatus.CallbackError]: 'error',
-  [ContactImConnectionStatus.Configured]: 'normal',
-  [ContactImConnectionStatus.Connected]: 'success',
-  [ContactImConnectionStatus.ConnectionError]: 'error',
-  [ContactImConnectionStatus.NotConfigured]: 'disabled',
-  [ContactImConnectionStatus.PermissionIssue]: 'warning',
-} satisfies Record<ContactImConnectionStatus, StatusDotStatus>
-
 type BindingTarget = {
+  integration: ContactImIntegrationView | null
   provider: ContactImProviderDefinition
   replaceActiveProvider: boolean
 }
@@ -51,31 +42,31 @@ type BindingTarget = {
 export function ContactsImPlatformManagementSurface() {
   const { t, i18n } = useTranslation('contacts')
   const { t: tCommon } = useTranslation('common')
-  const integrationQuery = useContactImIntegration()
+  const organization = useContactsImPlatformOrganization()
+  const integrationsQuery = useContactImIntegrations()
   const providersQuery = useContactImProviderDefinitions()
-  const testConnection = useTestContactImConnection()
   const disconnectProvider = useDisconnectContactImProvider()
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)
   const [replacementProvider, setReplacementProvider] =
     useState<ContactImProviderDefinition | null>(null)
-  const [disconnectOpen, setDisconnectOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ContactImProviderDefinition | null>(null)
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
 
-  if (integrationQuery.isPending || providersQuery.isPending) {
+  if (integrationsQuery.isPending || providersQuery.isPending) {
     return (
       <div
         role="status"
         aria-label={t(($) => $['imPlatform.loading'])}
         className="max-w-[760px] space-y-3"
       >
-        <div className="h-5 w-40 animate-pulse rounded-md bg-state-base-active motion-reduce:animate-none" />
-        <div className="h-4 w-3/4 animate-pulse rounded-md bg-state-base-active motion-reduce:animate-none" />
+        <div className="h-4 w-52 animate-pulse rounded-md bg-state-base-active motion-reduce:animate-none" />
+        <div className="h-16 w-full animate-pulse rounded-xl bg-state-base-active motion-reduce:animate-none" />
         <div className="h-16 w-full animate-pulse rounded-xl bg-state-base-active motion-reduce:animate-none" />
       </div>
     )
   }
 
-  if (integrationQuery.isError || providersQuery.isError) {
+  if (integrationsQuery.isError || providersQuery.isError) {
     return (
       <div
         role="alert"
@@ -90,7 +81,7 @@ export function ContactsImPlatformManagementSurface() {
         <Button
           className="mt-4"
           onClick={() => {
-            void integrationQuery.refetch()
+            void integrationsQuery.refetch()
             void providersQuery.refetch()
           }}
         >
@@ -100,9 +91,37 @@ export function ContactsImPlatformManagementSurface() {
     )
   }
 
-  const integration = integrationQuery.data
+  const integrations = integrationsQuery.data
   const providers = providersQuery.data
-  const activeProvider = providers.find((provider) => provider.provider === integration.provider)
+  const integrationsByProvider = new Map(
+    integrations.map((integration) => [integration.provider, integration]),
+  )
+  const configuredProviders = providers.filter((provider) =>
+    integrationsByProvider.has(provider.provider),
+  )
+  const availableProviders = providers.filter(
+    (provider) => !integrationsByProvider.has(provider.provider),
+  )
+  const activeImIntegration = integrations.find(
+    (integration) => integration.provider !== ContactImProvider.Email,
+  )
+  const activeImProvider = providers.find(
+    (provider) => provider.provider === activeImIntegration?.provider,
+  )
+  const syncIntegration =
+    integrations.find(
+      (integration) =>
+        integration.status === ContactImConnectionStatus.Connected &&
+        integration.capabilities.directorySync,
+    ) ??
+    integrations.find((integration) => integration.capabilities.directorySync) ??
+    integrations.find((integration) => integration.provider !== ContactImProvider.Email)
+  const providerDescriptions = {
+    [ContactImProvider.DingTalk]: t(($) => $['imPlatform.provider.dingtalkDescription']),
+    [ContactImProvider.Email]: t(($) => $['imPlatform.provider.emailDescription']),
+    [ContactImProvider.Feishu]: t(($) => $['imPlatform.provider.feishuDescription']),
+    [ContactImProvider.Slack]: t(($) => $['imPlatform.provider.slackDescription']),
+  }
   const statusLabels = {
     [ContactImConnectionStatus.CallbackError]: t(($) => $['imPlatform.status.callback_error']),
     [ContactImConnectionStatus.Configured]: t(($) => $['imPlatform.status.configured']),
@@ -122,11 +141,6 @@ export function ContactsImPlatformManagementSurface() {
       ($) => $['imPlatform.statusReason.provider_request_failed'],
     ),
   }
-  const providerDescriptions = {
-    [ContactImProvider.DingTalk]: t(($) => $['imPlatform.provider.dingtalkDescription']),
-    [ContactImProvider.Feishu]: t(($) => $['imPlatform.provider.feishuDescription']),
-    [ContactImProvider.Slack]: t(($) => $['imPlatform.provider.slackDescription']),
-  }
   const unavailableReasonLabels = {
     [ContactImUnavailableReason.DeploymentUnsupported]: t(
       ($) => $['imPlatform.provider.unavailableReason.deployment_unsupported'],
@@ -135,101 +149,73 @@ export function ContactsImPlatformManagementSurface() {
       ($) => $['imPlatform.provider.unavailableReason.not_released'],
     ),
   }
-  const currentStatusLabel = statusLabels[integration.status]
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat(i18n.language, {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value))
-  const diagnosticsText = integration.statusReason
-    ? statusReasonLabels[integration.statusReason]
-    : integration.status === ContactImConnectionStatus.Connected
-      ? t(($) => $['imPlatform.diagnostics.connected'])
-      : integration.status === ContactImConnectionStatus.Configured
-        ? t(($) => $['imPlatform.diagnostics.configured'])
-        : t(($) => $['imPlatform.diagnostics.notConfigured'])
 
   const openProvider = (provider: ContactImProviderDefinition) => {
     if (
       provider.availability !== ContactImProviderAvailability.Available ||
-      !integration.canManage
+      !organization.canManage
     ) {
       return
     }
 
-    if (integration.provider && integration.provider !== provider.provider) {
+    const integration = integrationsByProvider.get(provider.provider) ?? null
+    if (provider.provider !== ContactImProvider.Email && !integration && activeImIntegration) {
       setReplacementProvider(provider)
       return
     }
 
     setBindingTarget({
+      integration,
       provider,
       replaceActiveProvider: false,
     })
   }
 
-  const renderProviderCard = (
-    provider: ContactImProviderDefinition,
-    action: 'configure' | 'connect' | 'replace',
-  ) => {
-    const unavailable = provider.availability === ContactImProviderAvailability.Unavailable
-    const actionLabel = unavailable
-      ? t(($) => $['imPlatform.provider.unavailable'])
-      : action === 'configure'
-        ? t(($) => $['imPlatform.action.configure'])
-        : action === 'replace'
-          ? t(($) => $['imPlatform.action.replace'])
-          : t(($) => $['imPlatform.action.connect'])
-    const unavailableReason = provider.unavailableReason
-      ? unavailableReasonLabels[provider.unavailableReason]
-      : undefined
+  const openDeleteDialog = (provider: ContactImProviderDefinition) => {
+    if (!organization.canManage) return
 
-    return (
-      <ContactImProviderCard
-        key={provider.provider}
-        actionAriaLabel={
-          action === 'configure' ? actionLabel : `${provider.displayName} — ${actionLabel}`
-        }
-        actionDisabled={unavailable || !integration.canManage}
-        actionLabel={actionLabel}
-        description={providerDescriptions[provider.provider]}
-        provider={provider}
-        unavailableReason={unavailableReason}
-        onAction={() => openProvider(provider)}
-      />
+    disconnectProvider.reset()
+    setDeleteTarget(provider)
+  }
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (open || disconnectProvider.isPending) return
+
+    setDeleteTarget(null)
+  }
+
+  const deleteChannel = () => {
+    if (!deleteTarget || disconnectProvider.isPending) return
+
+    disconnectProvider.mutate(
+      { provider: deleteTarget.provider },
+      { onSuccess: () => setDeleteTarget(null) },
     )
   }
 
-  return (
-    <section className="max-w-[760px] pb-8" aria-labelledby="contacts-im-platform-title">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 id="contacts-im-platform-title" className="title-xl-semi-bold text-text-primary">
-            {t(($) => $['imPlatform.title'])}
-          </h2>
-          <p className="mt-1 max-w-2xl system-sm-regular text-text-tertiary">
-            {t(($) => $['imPlatform.description'])}{' '}
-            <a
-              className="text-text-accent underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              href="https://docs.dify.ai/"
-              rel="noreferrer"
-              target="_blank"
-            >
-              {t(($) => $['imPlatform.learnMore'])}
-            </a>
-          </p>
-        </div>
-        <div
-          aria-live="polite"
-          className="flex shrink-0 items-center gap-2 rounded-full border border-divider-subtle bg-background-default-subtle px-2.5 py-1 system-xs-medium text-text-secondary"
-        >
-          <StatusDot status={statusTones[integration.status]} size="small" />
-          <span>{currentStatusLabel}</span>
-        </div>
-      </div>
+  const getConfiguredDescription = (
+    provider: ContactImProviderDefinition,
+    integration: ContactImIntegrationView,
+  ) => {
+    if (integration.statusReason) return statusReasonLabels[integration.statusReason]
+    if (provider.provider === ContactImProvider.Email && integration.displayIdentifier)
+      return t(($) => $['imPlatform.email.summary'], { email: integration.displayIdentifier })
+    return integration.displayIdentifier ?? statusLabels[integration.status]
+  }
 
-      {!integration.canManage && (
-        <div className="mt-5 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
+  return (
+    <section className="max-w-[760px] pb-8" aria-labelledby="contacts-channels-title">
+      <h2 id="contacts-channels-title" className="sr-only">
+        {t(($) => $['imPlatform.title'])}
+      </h2>
+
+      {!organization.canManage && (
+        <div className="mb-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
           <div className="system-sm-semibold text-text-primary">
             {t(($) => $['imPlatform.permission.title'])}
           </div>
@@ -239,90 +225,112 @@ export function ContactsImPlatformManagementSurface() {
         </div>
       )}
 
-      <div className="mt-6">
-        <div className="mb-2 px-3 system-xs-medium-uppercase text-text-tertiary">
-          {integration.provider
-            ? t(($) => $['imPlatform.connectMore'])
-            : t(($) => $['imPlatform.chooseProvider'])}
-        </div>
-        <div className="divide-y divide-divider-subtle rounded-xl border border-divider-subtle bg-components-panel-bg">
-          {activeProvider && renderProviderCard(activeProvider, 'configure')}
-          {providers
-            .filter((provider) => provider.provider !== integration.provider)
-            .map((provider) =>
-              renderProviderCard(provider, integration.provider ? 'replace' : 'connect'),
-            )}
-        </div>
-      </div>
+      {configuredProviders.length > 0 && (
+        <div className="space-y-2">
+          {configuredProviders.map((provider) => {
+            const integration = integrationsByProvider.get(provider.provider)
+            if (!integration) return null
 
-      <div className="mt-5 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="system-sm-semibold text-text-primary">
-              {t(($) => $['imPlatform.diagnostics.title'])}
-            </div>
-            <div className="mt-1 system-sm-regular text-text-tertiary">{diagnosticsText}</div>
-            <div className="mt-2 system-xs-regular text-text-tertiary">
-              {integration.lastCheckedAt
-                ? t(($) => $['imPlatform.lastChecked'], {
-                    date: formatDate(integration.lastCheckedAt),
-                  })
-                : t(($) => $['imPlatform.notChecked'])}
-            </div>
+            return (
+              <div key={provider.provider}>
+                <span className="sr-only" aria-live="polite">
+                  {statusLabels[integration.status]}
+                </span>
+                <ContactImProviderCard
+                  actionDisabled={!organization.canManage}
+                  configureAriaLabel={t(($) => $['imPlatform.action.configureChannel'], {
+                    provider: provider.displayName,
+                  })}
+                  deleteAriaLabel={t(($) => $['imPlatform.action.deleteChannel'], {
+                    provider: provider.displayName,
+                  })}
+                  description={getConfiguredDescription(provider, integration)}
+                  mode="configured"
+                  provider={provider}
+                  onConfigure={() => openProvider(provider)}
+                  onDelete={() => openDeleteDialog(provider)}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {syncIntegration && (
+        <ContactImDirectorySyncSection
+          formatDate={formatDate}
+          integration={syncIntegration}
+          onViewDetails={setSyncRunId}
+        />
+      )}
+
+      {availableProviders.length > 0 && (
+        <div
+          className={
+            configuredProviders.length > 0 ? 'mt-4 border-t border-divider-subtle pt-4' : ''
+          }
+        >
+          <div className="mb-2 system-xs-medium-uppercase text-text-tertiary">
+            {configuredProviders.length > 0
+              ? t(($) => $['imPlatform.connectMore'])
+              : t(($) => $['imPlatform.chooseProvider'])}
           </div>
-          {integration.provider && (
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <Button
-                disabled={!integration.canManage || testConnection.isPending}
-                loading={testConnection.isPending}
-                onClick={() => testConnection.mutate()}
-              >
-                {testConnection.isPending
-                  ? t(($) => $['imPlatform.action.testing'])
-                  : t(($) => $['imPlatform.action.testConnection'])}
-              </Button>
-              <Button
-                tone="destructive"
-                disabled={!integration.canManage}
-                onClick={() => setDisconnectOpen(true)}
-              >
-                {t(($) => $['imPlatform.action.disconnect'])}
-              </Button>
-            </div>
-          )}
-        </div>
-        {testConnection.isError && (
-          <div role="alert" className="mt-3 system-xs-regular text-text-destructive">
-            {t(($) => $['imPlatform.bindingDialog.testFailed'])}
+          <div className="space-y-2">
+            {availableProviders.map((provider) => {
+              const unavailable =
+                provider.availability === ContactImProviderAvailability.Unavailable
+              const isReplacement =
+                provider.provider !== ContactImProvider.Email && Boolean(activeImIntegration)
+              const actionLabel = isReplacement
+                ? t(($) => $['imPlatform.action.replace'])
+                : t(($) => $['imPlatform.action.connect'])
+              return (
+                <ContactImProviderCard
+                  key={provider.provider}
+                  actionAriaLabel={`${provider.displayName} — ${
+                    unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
+                  }`}
+                  actionDisabled={unavailable || !organization.canManage}
+                  actionLabel={
+                    unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
+                  }
+                  description={providerDescriptions[provider.provider]}
+                  mode="available"
+                  provider={provider}
+                  showAddIcon={!unavailable && !isReplacement}
+                  unavailableReason={
+                    provider.unavailableReason
+                      ? unavailableReasonLabels[provider.unavailableReason]
+                      : undefined
+                  }
+                  onAction={() => openProvider(provider)}
+                />
+              )
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <ContactImDirectorySyncSection
-        formatDate={formatDate}
-        integration={integration}
-        onViewDetails={setSyncRunId}
-      />
-
-      {bindingTarget && (
-        <ContactImBindingDialog
-          key={`${bindingTarget.provider.provider}-${bindingTarget.replaceActiveProvider}`}
-          integration={integration}
+      {bindingTarget?.provider.provider === ContactImProvider.Email && (
+        <ContactEmailConfigDialog
+          integration={bindingTarget.integration}
           open
           provider={bindingTarget.provider}
-          replaceActiveProvider={bindingTarget.replaceActiveProvider}
           onOpenChange={(open) => {
             if (!open) setBindingTarget(null)
           }}
         />
       )}
 
-      {syncRunId && (
-        <ContactImSyncDetailsDialog
+      {bindingTarget && bindingTarget.provider.provider !== ContactImProvider.Email && (
+        <ContactImBindingDialog
+          key={`${bindingTarget.provider.provider}-${bindingTarget.replaceActiveProvider}`}
+          integration={bindingTarget.integration}
           open
-          runId={syncRunId}
+          provider={bindingTarget.provider}
+          replaceActiveProvider={bindingTarget.replaceActiveProvider}
           onOpenChange={(open) => {
-            if (!open) setSyncRunId(null)
+            if (!open) setBindingTarget(null)
           }}
         />
       )}
@@ -334,18 +342,18 @@ export function ContactsImPlatformManagementSurface() {
         }}
       >
         <AlertDialogContent>
-          <div className="px-6 pt-6 pb-3">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <div className="space-y-2 p-6">
+            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
               {t(($) => $['imPlatform.replacement.title'], {
-                current: activeProvider?.displayName ?? '',
+                current: activeImProvider?.displayName ?? '',
                 next: replacementProvider?.displayName ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
               {t(($) => $['imPlatform.replacement.description'])}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogActions className="pt-0">
             <AlertDialogCancelButton>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -354,6 +362,7 @@ export function ContactsImPlatformManagementSurface() {
               onClick={() => {
                 if (!replacementProvider) return
                 setBindingTarget({
+                  integration: null,
                   provider: replacementProvider,
                   replaceActiveProvider: true,
                 })
@@ -366,45 +375,46 @@ export function ContactsImPlatformManagementSurface() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={disconnectOpen}
-        onOpenChange={(open) => {
-          if (!disconnectProvider.isPending) setDisconnectOpen(open)
-        }}
-      >
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={handleDeleteDialogOpenChange}>
         <AlertDialogContent>
-          <div className="px-6 pt-6 pb-3">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['imPlatform.disconnect.title'], {
-                provider: activeProvider?.displayName ?? '',
+          <div className="space-y-2 p-6">
+            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+              {t(($) => $['imPlatform.delete.title'], {
+                provider: deleteTarget?.displayName ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
-              {t(($) => $['imPlatform.disconnect.description'])}
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+              {t(($) => $['imPlatform.delete.description'])}
             </AlertDialogDescription>
             {disconnectProvider.isError && (
-              <div role="alert" className="mt-3 system-xs-regular text-text-destructive">
-                {t(($) => $['imPlatform.disconnect.failed'])}
+              <div role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['imPlatform.delete.failed'])}
               </div>
             )}
           </div>
-          <AlertDialogActions>
+          <AlertDialogActions className="pt-0">
             <AlertDialogCancelButton disabled={disconnectProvider.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={disconnectProvider.isPending}
-              onClick={() => {
-                disconnectProvider.mutate(undefined, {
-                  onSuccess: () => setDisconnectOpen(false),
-                })
-              }}
+              onClick={deleteChannel}
             >
-              {t(($) => $['imPlatform.disconnect.confirm'])}
+              {t(($) => $['imPlatform.delete.confirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
+
+      {syncRunId && (
+        <ContactImSyncDetailsDialog
+          open
+          runId={syncRunId}
+          onOpenChange={(open) => {
+            if (!open) setSyncRunId(null)
+          }}
+        />
+      )}
     </section>
   )
 }

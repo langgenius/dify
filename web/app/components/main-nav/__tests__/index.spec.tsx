@@ -1,5 +1,10 @@
+import type {
+  StepByStepTourStatePatchPayload,
+  StepByStepTourStateResponse,
+} from '@dify/contracts/api/console/onboarding/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
@@ -7,11 +12,16 @@ import type { InstalledApp } from '@/models/explore'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -19,23 +29,129 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
 
+type StepByStepTourTestUiState = StepByStepTourSessionState & { minimized: boolean }
+
 const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
 const activeStackingClassName = 'aria-[current=page]:z-1'
+const mockTrackEvent = vi.hoisted(() => vi.fn())
 
 const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
 }))
+const mockStepByStepTour = vi.hoisted(() => {
+  const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
+  const createState = (
+    overrides: Partial<StepByStepTourStateResponse> = {},
+  ): StepByStepTourStateResponse => ({
+    first_workspace_id: 'workspace-1',
+    skipped: false,
+    completed_task_ids: [],
+    manually_enabled_workspace_ids: [],
+    manually_disabled_workspace_ids: [],
+    updated_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  })
+  const createUiState = (
+    overrides: Partial<StepByStepTourTestUiState> = {},
+  ): StepByStepTourTestUiState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    minimized: false,
+    ...overrides,
+  })
+  let state = createState()
+  let uiState = createUiState()
+  const patchState = vi.fn(
+    async ({
+      body,
+    }: {
+      body: StepByStepTourStatePatchPayload
+    }): Promise<StepByStepTourStateResponse> => {
+      switch (body.action) {
+        case 'enable_current_workspace':
+          state = {
+            ...state,
+            skipped: false,
+            manually_enabled_workspace_ids: Array.from(
+              new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+          }
+          break
+        case 'disable_current_workspace':
+          state = {
+            ...state,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+            manually_disabled_workspace_ids: Array.from(
+              new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1']),
+            ),
+          }
+          break
+        case 'skip':
+          state = {
+            ...state,
+            skipped: true,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(
+              (id) => id !== 'workspace-1',
+            ),
+          }
+          break
+      }
+
+      return state
+    },
+  )
+
+  return {
+    get state() {
+      return state
+    },
+    get uiState() {
+      return uiState
+    },
+    patchState,
+    reset() {
+      state = createState()
+      uiState = createUiState()
+      patchState.mockClear()
+    },
+    setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
+      state = createState(overrides)
+    },
+    setUiState(overrides: Partial<StepByStepTourTestUiState> = {}) {
+      uiState = createUiState(overrides)
+      if (overrides.minimized !== undefined) {
+        localStorage.setItem(
+          STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY,
+          overrides.minimized ? 'collapsed' : 'expanded',
+        )
+      }
+    },
+    stateQueryKey,
+  }
+})
 const mockConsoleState = vi.hoisted(() => ({
   current: undefined as ConsoleStateFixture | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
 }))
 
 vi.mock('@/context/account-state', async () => {
@@ -61,6 +177,10 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: <T,>(selector: (state: { hasBlockingModalOpen: boolean }) => T) =>
+    selector({
+      hasBlockingModalOpen: false,
+    }),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => {
@@ -69,6 +189,39 @@ vi.mock('@/next/navigation', async (importOriginal) => {
     ...actual,
     usePathname: vi.fn(),
     useRouter: vi.fn(),
+  }
+})
+
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'common.stepByStepTour.title': 'Get to know Dify',
+      'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
+      'common.stepByStepTour.skip': 'Skip tour',
+      'common.stepByStepTour.minimize': 'Minimize tour',
+      'common.stepByStepTour.restore': 'Open step-by-step tour',
+      'common.stepByStepTour.learnMore': 'Learn more',
+      'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
+      'common.stepByStepTour.tasks.home.description':
+        'Open a hands-on lesson from Learn Dify to see Dify in action.',
+      'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
+      'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
+      'common.stepByStepTour.tasks.studio.description':
+        'All your apps live in Studio — edit, organize, and publish them here.',
+      'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
+      'common.stepByStepTour.tasks.knowledge.description':
+        'Build a knowledge base so your apps answer from your documents.',
+      'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
+      'common.stepByStepTour.tasks.integration.description':
+        'Models, tools, data sources & more — explore what you can connect.',
+      'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
+    }),
   }
 })
 
@@ -103,6 +256,27 @@ vi.mock('@/service/client', async (importOriginal) => {
               mutationOptions: () => ({
                 mutationFn: (variables: unknown) => mockSwitchWorkspace(variables),
               }),
+            },
+          },
+        }
+      }
+      if (prop === 'onboarding') {
+        return {
+          stepByStepTour: {
+            state: {
+              get: {
+                queryKey: () => mockStepByStepTour.stateQueryKey,
+                queryOptions: () => ({
+                  queryKey: mockStepByStepTour.stateQueryKey,
+                  queryFn: async () => mockStepByStepTour.state,
+                }),
+              },
+              patch: {
+                mutationOptions: (options = {}) => ({
+                  mutationFn: mockStepByStepTour.patchState,
+                  ...options,
+                }),
+              },
             },
           },
         }
@@ -249,11 +423,12 @@ type MainNavSystemFeatures = Exclude<
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   branding: { enabled: false },
   enable_marketplace: true,
+  enable_step_by_step_tour: true,
 }
 
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
-  options: { extra?: ReactNode } = {},
+  options: { store?: ReturnType<typeof createStore>; extra?: ReactNode } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
   const currentConsoleState = mockConsoleState.current ?? consoleState
@@ -273,6 +448,11 @@ const renderMainNav = (
     },
   })
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  const store = options.store ?? createStore()
+  seedRegisteredConsoleStateFixture(store)
+  store.set(queryClientAtom, queryClient)
+  store.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
     ...systemFeatures,
@@ -282,10 +462,10 @@ const renderMainNav = (
     },
   }
   return renderWithConsoleQuery(
-    <>
+    <JotaiProvider store={store}>
       <MainNav />
       {options.extra}
-    </>,
+    </JotaiProvider>,
     { systemFeatures: resolvedSystemFeatures, queryClient },
   )
 }
@@ -316,6 +496,7 @@ describe('MainNav', () => {
         current: false,
       },
     ]
+    mockStepByStepTour.reset()
     mockIsAgentV2Enabled.mockReturnValue(true)
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
@@ -597,6 +778,19 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
+  it('keeps MainNav on primary navigation when it is mounted on a detail route', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+
+    expect(screen.queryByTestId('app-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('app-detail-section')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
+  })
+
   it.each(['/deployments', '/deployments/create'])(
     'keeps global navigation on deployment collection route %s',
     (pathname) => {
@@ -719,6 +913,94 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
+  it('shows Step-by-step Tour switch in help menu and stores the current workspace disable override', async () => {
+    const user = userEvent.setup()
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
+      name: 'common.mainNav.help.stepByStepTour',
+    })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState.mock.calls[0]?.[0]).toEqual({
+        body: { action: 'disable_current_workspace' },
+      })
+    })
+    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_disabled' })
+  })
+
+  it('shows Step-by-step Tour switch off for existing accounts without a default workspace', async () => {
+    const user = userEvent.setup()
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    expect(
+      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('lets existing accounts enable Step-by-step Tour from the help menu', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+    mockStepByStepTour.setState({
+      first_workspace_id: null,
+      manually_enabled_workspace_ids: [],
+      manually_disabled_workspace_ids: [],
+    })
+
+    renderMainNav({ enable_learn_app: true })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', {
+      name: 'common.mainNav.help.stepByStepTour',
+    })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
+
+    await user.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(mockStepByStepTour.patchState.mock.lastCall?.[0]).toEqual({
+        body: { action: 'enable_current_workspace' },
+      })
+      expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    expect(
+      await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('hides Step-by-step Tour switch when the feature is disabled', async () => {
+    const user = userEvent.setup()
+    renderMainNav({
+      enable_learn_app: true,
+      enable_step_by_step_tour: false,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    await screen.findByText('common.mainNav.help.docs')
+    expect(
+      screen.queryByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
     renderMainNav({ enable_learn_app: false })
 
@@ -739,6 +1021,7 @@ describe('MainNav', () => {
       'common.mainNav.help.docs',
       'common.userProfile.roadmap',
       'common.mainNav.help.learnDify',
+      'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
       'common.userProfile.forum',
       'common.userProfile.community',

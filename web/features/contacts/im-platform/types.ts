@@ -2,11 +2,19 @@ type ValueOf<T> = T[keyof T]
 
 export const ContactImProvider = {
   DingTalk: 'dingtalk',
+  Email: 'email',
   Feishu: 'feishu',
   Slack: 'slack',
 } as const
 
 export type ContactImProvider = ValueOf<typeof ContactImProvider>
+
+export const ContactChannelKind = {
+  Email: 'email',
+  Im: 'im',
+} as const
+
+export type ContactChannelKind = ValueOf<typeof ContactChannelKind>
 
 export const ContactImAuthMode = {
   Credentials: 'credentials',
@@ -57,6 +65,8 @@ export type ContactImSyncResult = ValueOf<typeof ContactImSyncResult>
 export const ContactImProviderField = {
   AppId: 'appId',
   ClientId: 'clientId',
+  SenderEmail: 'senderEmail',
+  SenderName: 'senderName',
   Secret: 'secret',
   TenantId: 'tenantId',
 } as const
@@ -138,6 +148,7 @@ export type ContactImProviderDefinition = {
   availability: ContactImProviderAvailability
   callbackUrl: string | null
   capabilities: ContactImProviderCapabilities
+  channelKind: ContactChannelKind
   displayName: string
   provider: ContactImProvider
   requiredFields: ContactImProviderFieldDefinition[]
@@ -160,11 +171,13 @@ export type ContactImSyncRunView = {
 export type ContactImIntegrationView = {
   canManage: boolean
   capabilities: ContactImProviderCapabilities
+  channelKind: ContactChannelKind
+  configuredValues: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
   displayIdentifier: string | null
   lastCheckedAt: string | null
   lastSync: ContactImSyncRunView | null
   organizationId: string
-  provider: ContactImProvider | null
+  provider: ContactImProvider
   secretConfigured: boolean
   status: ContactImConnectionStatus
   statusReason: ContactImStatusReason | null
@@ -212,6 +225,16 @@ export type AuthorizeContactImProviderCommand = {
 
 export type ContactImOrganizationCommand = {
   organizationId: string
+}
+
+export type ContactImProviderCommand = ContactImOrganizationCommand & {
+  provider: ContactImProvider
+}
+
+export type TestContactImConnectionCommand = ContactImProviderCommand & {
+  retainSecret: boolean
+  secret?: string
+  values: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 }
 
 export type ListContactImSyncItemsInput = {

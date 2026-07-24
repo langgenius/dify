@@ -10,16 +10,13 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import { Plan } from '../../../type'
@@ -52,12 +49,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
-  const canManageBillingSubscription = hasPermission(
-    workspacePermissionKeys,
-    BillingPermission.SubscriptionManage,
-  )
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
@@ -90,7 +81,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        if (!canManageBillingSubscription) {
+        if (!canPay) {
           toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
           return
         }
@@ -112,7 +103,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
 
       if (isFreePlan) return
 
-      if (!canManageBilling) {
+      if (!canPay) {
         toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
         return
       }

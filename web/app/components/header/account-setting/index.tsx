@@ -15,12 +15,16 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import {
+  currentWorkspaceAtom,
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
 import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -62,11 +66,11 @@ export default function AccountSetting({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const canViewBilling =
-    enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
   const canViewContactsImPlatform = isContactsImPlatformEnabled(plan.type === Plan.enterprise)
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
@@ -108,8 +112,9 @@ export default function AccountSetting({
     {
       key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
-      icon: <span className={cn('i-ri-contacts-book-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-contacts-book-2-fill', iconClassName)} />,
+      description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
+      icon: <span className={cn('i-ri-base-station-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-base-station-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
@@ -269,13 +274,13 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px]">
+        <div className="relative flex min-h-0 w-[824px] min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
-            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
             slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full pb-4',
+              viewport: 'overscroll-contain overflow-x-hidden',
+              content: 'min-h-full min-w-0 w-full max-w-full pb-4',
             }}
           >
             <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
@@ -300,7 +305,7 @@ export default function AccountSetting({
                 <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
               </div>
             </div>
-            <div className="px-4 pt-6 sm:px-8">
+            <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
               )}

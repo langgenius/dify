@@ -3,7 +3,9 @@
 Request DTOs use normal Pydantic coercion and forbid unknown fields. Migration
 input is the sole compatibility exception: it ignores unknown legacy fields,
 defaults a missing version to ``"1"``, rejects any other explicit version, and
-rejects duplicate node IDs.
+rejects duplicate node IDs. Its transport shape mirrors the frontend migration
+adapter so the generated client can replace the temporary mock without changing
+frontend orchestration.
 Public v2, trusted Service API v2, and legacy v1 submit DTOs stay independent.
 """
 
@@ -769,39 +771,71 @@ class LegacyHITLv1NodeData(HITLv1NodeData):
     )
 
 
-class NodedataWithId[T](_MigrationInputModel):
+class NodeDataMigrationInput(_MigrationInputModel):
+    """One legacy node submitted through the frontend migration adapter boundary."""
+
     node_id: str = Field(
         ..., description="The identifier of node to migrate. Used to associate between request and response"
     )
-    data: T = Field(..., description="The node data before and after migration.")
+    node_data: LegacyHITLv1NodeData = Field(..., description="The legacy Human Input node data to migrate.")
 
 
-class CreateNodeDataMigrationRequest(_MigrationInputModel):
-    node_data: list[NodedataWithId[LegacyHITLv1NodeData]] = Field(min_length=1)
+class NodeDataMigrationPayload(_MigrationInputModel):
+    """Complete legacy-node batch submitted for one migration attempt."""
+
+    nodes: list[NodeDataMigrationInput] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_unique_node_ids(self) -> Self:
-        node_ids = [node.node_id for node in self.node_data]
+        node_ids = [node.node_id for node in self.nodes]
         if len(node_ids) != len(set(node_ids)):
             raise ValueError("node_id must be unique within one migration request")
         return self
 
 
-class CreateHITLMigrationResponse(ResponseModel):
-    node_data: list[NodedataWithId[HITLv2NodeData]]
+class NodeDataMigrationResult(ResponseModel):
+    """One converted node returned with its frontend correlation identifier."""
+
+    node_id: str = Field(description="The identifier of the migrated node.")
+    node_data: HITLv2NodeData = Field(description="The complete converted Human Input v2 node data.")
 
 
-class NodeDataMigrationFailureReason(_RequestModel):
-    node_id: str = Field(..., description="The identifier of the node that failed migration.")
-    reason: str = Field(..., description="The reason for the migration failure.")
+class NodeDataMigrationResponse(ResponseModel):
+    """Successful all-node conversion response."""
+
+    data: list[NodeDataMigrationResult]
 
 
-class NodeMigrationFailure(ResponseModel):
+NodeDataMigrationBlockerCode = Literal[
+    "unsupported-version",
+    "configured-disabled-method",
+    "unsupported-delivery-method",
+    "invalid-email-configuration",
+    "invalid-email",
+    "unresolved-member",
+    "conflicting-email-templates",
+    "missing-recipients",
+]
+
+
+class NodeDataMigrationBlocker(ResponseModel):
+    """Stable node-scoped reason why the backend cannot produce lossless v2 data."""
+
+    node_id: str = Field(description="The identifier of the node that failed migration.")
+    node_title: str = Field(description="The node title used for actionable frontend feedback.")
+    code: NodeDataMigrationBlockerCode = Field(description="Machine-readable migration blocker code.")
+    method_id: str | None = Field(default=None, description="Legacy delivery method related to the blocker.")
+    value: str | None = Field(default=None, description="Safe legacy value related to the blocker.")
+
+
+class NodeDataMigrationFailureResponse(ResponseModel):
+    """Whole-batch failure response without partial converted node data."""
+
     code: Literal["hitl_node_data_migration_failure"] = "hitl_node_data_migration_failure"
     message: str = Field(..., description="overall error messages")
     status: Literal[HTTPStatus.BAD_REQUEST] = HTTPStatus.BAD_REQUEST
-    reasons: list[NodeDataMigrationFailureReason] = Field(
-        ..., description="detailed error reasons for failed node, if any."
+    blockers: list[NodeDataMigrationBlocker] = Field(
+        ..., description="Node-scoped blockers that caused the whole batch to fail."
     )
 
 
@@ -872,7 +906,6 @@ __all__ = [
     "ContactOption",
     "ContactOptionsQuery",
     "CreateIMSyncRunResponse",
-    "CreateNodeDataMigrationRequest",
     "DeleteIMIntegrationQuery",
     "DingTalkIMIntegrationCredentials",
     "EmailProviderConfigResponse",
@@ -916,6 +949,9 @@ __all__ = [
     "MSTeamsIMIntegrationCredentials",
     "MessageTemplateTestRequest",
     "MessageTemplateTestResponse",
+    "NodeDataMigrationFailureResponse",
+    "NodeDataMigrationPayload",
+    "NodeDataMigrationResponse",
     "OrganizationCandidate",
     "OrganizationCandidatesQuery",
     "PreserveOriginalValue",

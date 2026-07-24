@@ -14,10 +14,13 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   const { data } = props
   const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
   const contactIds = useMemo(
-    () =>
-      data.recipients_spec
-        .filter((recipient) => recipient.type === 'contact')
-        .map((recipient) => recipient.contact_id),
+    () => [
+      ...new Set(
+        data.recipients_spec
+          .filter((recipient) => recipient.type === 'contact')
+          .map((recipient) => recipient.contact_id),
+      ),
+    ],
     [data.recipients_spec],
   )
 
@@ -25,7 +28,7 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
     if (!contactIds.length) return
 
     let active = true
-    void mockContactRecipientOptionProvider.resolve(contactIds).then((options) => {
+    void mockContactRecipientOptionProvider.resolve({ contact_ids: contactIds }).then((options) => {
       if (active) {
         setContacts((current) =>
           current.length === options.length &&

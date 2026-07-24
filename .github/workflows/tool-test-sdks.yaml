@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     name: unit test for Node.js SDK
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
 
     defaults:
       run:

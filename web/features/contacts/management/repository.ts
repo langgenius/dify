@@ -1,28 +1,33 @@
 import type {
   AddPlatformContactsCommand,
   AddPlatformContactsResult,
+  AvailablePlatformContact,
+  AvailablePlatformContactsQuery,
   ContactPage,
   ContactsListQuery,
   ContactView,
   CreateExternalContactCommand,
   CreateExternalContactResult,
-  MemberRemovalImpact,
-  OrganizationCandidate,
-  OrganizationCandidateQuery,
+  RemoveContactsCommand,
+  RemoveContactsResult,
   RemoveMemberCommand,
   RemoveMemberResult,
 } from './types'
 
+/**
+ * UI-facing repository boundary. Network-backed implementations map kind to group, search to
+ * keyword, displayName to name, and contactIds to the endpoint-specific candidate_ids or
+ * contact_ids field.
+ */
 export type ContactsManagementRepository = {
   addPlatformContacts: (command: AddPlatformContactsCommand) => Promise<AddPlatformContactsResult>
   createExternalContact: (
     command: CreateExternalContactCommand,
   ) => Promise<CreateExternalContactResult>
-  getContact: (contactId: string) => Promise<ContactView | null>
-  getMemberRemovalImpact: (memberId: string) => Promise<MemberRemovalImpact>
+  listAvailablePlatformContacts: (
+    query: AvailablePlatformContactsQuery,
+  ) => Promise<ContactPage<AvailablePlatformContact>>
   listContacts: (query: ContactsListQuery) => Promise<ContactPage<ContactView>>
+  removeContacts: (command: RemoveContactsCommand) => Promise<RemoveContactsResult>
   removeMember: (command: RemoveMemberCommand) => Promise<RemoveMemberResult>
-  searchOrganizationCandidates: (
-    query: OrganizationCandidateQuery,
-  ) => Promise<ContactPage<OrganizationCandidate>>
 }

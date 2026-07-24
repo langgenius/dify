@@ -24,14 +24,10 @@ import { useAuthorizeContactImProvider, useSaveContactImCredentials } from './ho
 import { resolveContactImProviderFormAdapter } from './provider-form-adapters'
 import { ContactImAuthMode, ContactImProviderField } from './types'
 
-type CredentialValues = {
-  appId?: string
-  clientId?: string
-  tenantId?: string
-}
+type CredentialValues = Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 
 export type ContactImBindingDialogProps = {
-  integration: ContactImIntegrationView
+  integration: ContactImIntegrationView | null
   open: boolean
   provider: ContactImProviderDefinition
   replaceActiveProvider: boolean
@@ -50,10 +46,14 @@ export function ContactImBindingDialog({
   const adapter = resolveContactImProviderFormAdapter(provider)
   const saveCredentials = useSaveContactImCredentials()
   const authorizeProvider = useAuthorizeContactImProvider()
-  const [values, setValues] = useState<CredentialValues>({})
+  const [values, setValues] = useState<CredentialValues>(() => ({
+    appId: integration?.configuredValues.appId,
+    clientId: integration?.configuredValues.clientId,
+    tenantId: integration?.configuredValues.tenantId,
+  }))
   const [secret, setSecret] = useState('')
   const [copied, setCopied] = useState(false)
-  const isCurrentProvider = integration.provider === provider.provider && !replaceActiveProvider
+  const isCurrentProvider = Boolean(integration) && !replaceActiveProvider
   const isPending = saveCredentials.isPending || authorizeProvider.isPending
   const mutationFailed = saveCredentials.isError || authorizeProvider.isError
   const title = isCurrentProvider
@@ -101,7 +101,7 @@ export function ContactImBindingDialog({
       await saveCredentials.saveCredentials({
         provider: provider.provider,
         replaceActiveProvider,
-        retainSecret: isCurrentProvider && integration.secretConfigured && !secret.trim(),
+        retainSecret: Boolean(isCurrentProvider && integration?.secretConfigured && !secret.trim()),
         secret: secret.trim() || undefined,
         values: {
           ...(values.appId?.trim() ? { appId: values.appId.trim() } : {}),
@@ -208,7 +208,9 @@ export function ContactImBindingDialog({
                     <FieldControl
                       autoComplete="off"
                       placeholder={
-                        isCurrentProvider ? (integration.displayIdentifier ?? undefined) : undefined
+                        isCurrentProvider
+                          ? (integration?.displayIdentifier ?? undefined)
+                          : undefined
                       }
                       required={!isCurrentProvider}
                       value={values[field] ?? ''}
@@ -227,12 +229,12 @@ export function ContactImBindingDialog({
                 <FieldControl
                   autoComplete="new-password"
                   placeholder={t(($) => $['imPlatform.bindingDialog.secretPlaceholder'])}
-                  required={!isCurrentProvider || !integration.secretConfigured}
+                  required={!isCurrentProvider || !integration?.secretConfigured}
                   type="password"
                   value={secret}
                   onValueChange={setSecret}
                 />
-                {isCurrentProvider && integration.secretConfigured && (
+                {isCurrentProvider && integration?.secretConfigured && (
                   <FieldDescription>
                     {t(($) => $['imPlatform.bindingDialog.secretConfigured'])}
                   </FieldDescription>

@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Add shared Pydantic request and response models for the owner/admin contact directory, the editor-safe contact option list/batch projection, `workspace contact` / `Platform contact` / `External contact` entities, IM integration, latest-only IM sync detail, IM identity candidates, public runtime OTP submit, authenticated Contact session submit, and trusted Service API submit without OTP fields.
 - [ ] 1.2 Reuse existing enums where semantics already match, including `DebugChannel`, `FormInputConfig`, `UserActionConfig`, and `HumanInputFormStatus`, instead of adding duplicate transport enums.
-- [ ] 1.3 Add Pydantic batch request / response models and a stable node-scoped blocker taxonomy for the side-effect-free Human Input v1 → v2 node-data migration helper; default a missing legacy `version` to the string `"1"` and reject every other explicit version.
+- [x] 1.3 Add Pydantic batch request / response models and a stable node-scoped blocker taxonomy for the side-effect-free Human Input v1 → v2 node-data migration helper; default a missing legacy `version` to the string `"1"` and reject every other explicit version.
 - [ ] 1.4 Document the ownership split so the backend helper stays an all-or-error batch converter / validator and does not take over user confirmation, node-set selection, atomic graph replacement, or draft persistence; explicitly record `whole_workspace: true` as the only sanctioned lossy snapshot conversion.
 
 ## 2. Implement Workspace Console APIs

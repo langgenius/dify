@@ -13,6 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import useAccessControlStore from '../../../../context/access-control-store'
+import { Infotip } from '../../base/infotip'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
@@ -39,6 +40,7 @@ export default function AccessControl(props: AccessControlProps) {
     (systemFeatures.webapp_auth.allow_sso ||
       systemFeatures.webapp_auth.allow_email_password_login ||
       systemFeatures.webapp_auth.allow_email_code_login)
+  const publicAccessDisabled = !systemFeatures.webapp_auth.allow_public_access
 
   useEffect(() => {
     setAppId(appId)
@@ -48,7 +50,9 @@ export default function AccessControl(props: AccessControlProps) {
   const { isPending, mutateAsync: updateAccessMode } = useMutation(
     consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
   )
+  const confirmDisabled = isPending || (currentMenu === AccessMode.PUBLIC && publicAccessDisabled)
   const handleConfirm = useCallback(async () => {
+    if (confirmDisabled) return
     const submitData: {
       appId: string
       accessMode: AccessMode
@@ -70,7 +74,16 @@ export default function AccessControl(props: AccessControlProps) {
     await updateAccessMode({ body: submitData })
     toast.success(t(($) => $['accessControlDialog.updateSuccess'], { ns: 'app' }))
     onConfirm?.()
-  }, [updateAccessMode, appId, specificGroups, specificMembers, t, onConfirm, currentMenu])
+  }, [
+    updateAccessMode,
+    appId,
+    specificGroups,
+    specificMembers,
+    t,
+    onConfirm,
+    currentMenu,
+    confirmDisabled,
+  ])
   return (
     <AccessControlDialog show onClose={onClose}>
       <div className="flex flex-col gap-y-3">
@@ -117,19 +130,29 @@ export default function AccessControl(props: AccessControlProps) {
               {!hideTip && <WebAppSSONotEnabledTip />}
             </div>
           </AccessControlItem>
-          <AccessControlItem type={AccessMode.PUBLIC}>
+          <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
             <div className="flex items-center gap-x-2 p-3">
               <RiGlobalLine className="size-4 text-text-primary" />
               <p className="system-sm-medium text-text-primary">
                 {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
               </p>
+              {publicAccessDisabled && (
+                <Infotip
+                  aria-label={t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], {
+                    ns: 'app',
+                  })}
+                  className="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+                >
+                  {t(($) => $['accessControlDialog.webAppPublicAccessDisabledTip'], { ns: 'app' })}
+                </Infotip>
+              )}
             </div>
           </AccessControlItem>
         </RadioGroup>
         <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button
-            disabled={isPending}
+            disabled={confirmDisabled}
             loading={isPending}
             variant="primary"
             onClick={handleConfirm}

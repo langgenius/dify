@@ -2257,6 +2257,7 @@ export type ToolParameter = {
   llm_description?: string | null
   max?: number | number | null
   min?: number | number | null
+  multiple?: boolean
   name: string
   options?: Array<PluginParameterOption>
   placeholder?: I18nObject | null
@@ -4358,7 +4359,9 @@ export type PostWorkspacesCurrentPluginUploadGithubResponse =
   PostWorkspacesCurrentPluginUploadGithubResponses[keyof PostWorkspacesCurrentPluginUploadGithubResponses]
 
 export type PostWorkspacesCurrentPluginUploadPkgData = {
-  body?: never
+  body: {
+    pkg: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/pkg'

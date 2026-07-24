@@ -40,6 +40,18 @@ describe('useAvailableNodesMetaData', () => {
     )
   })
 
+  it('should expose legacy Agent instead of Agent v2 in chat mode when Agent v2 is enabled', () => {
+    mockUseIsChatMode.mockReturnValue(true)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
+
+    expect(nodeTypes).toContain(BlockEnum.Agent)
+    expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
+    expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeUndefined()
+  })
+
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
     mockUseIsChatMode.mockReturnValue(false)
 

@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { ContactsImPlatformProvider } from '../composition'
 import {
   CONTACT_IM_SYNC_POLL_INTERVAL_MS,
-  useContactImIntegration,
+  useContactImIntegrations,
   useContactImSyncRun,
   useSaveContactImCredentials,
 } from '../hooks'
@@ -45,21 +45,24 @@ describe('Contact IM repository hooks', () => {
       organization,
       scenario: ContactImMockScenario.Connected,
     })
-    const getIntegration = vi.spyOn(repository, 'getIntegration')
+    const getIntegrations = vi.spyOn(repository, 'getIntegrations')
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const { queryClient, wrapper } = createHarness(repository)
-    const { result } = renderHook(() => useContactImIntegration(), { wrapper })
+    const { result } = renderHook(() => useContactImIntegrations(), { wrapper })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(getIntegration).toHaveBeenCalledWith(organization.organizationId)
+    expect(getIntegrations).toHaveBeenCalledWith(organization.organizationId)
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(
       queryClient.getQueryData([
-        ...contactImPlatformQueryKeys.integration(organization.organizationId, repository.queryKey),
+        ...contactImPlatformQueryKeys.integrations(
+          organization.organizationId,
+          repository.queryKey,
+        ),
         repository,
       ]),
-    ).toMatchObject({ provider: ContactImProvider.Slack })
+    ).toEqual([expect.objectContaining({ provider: ContactImProvider.Slack })])
 
     fetchSpy.mockRestore()
     queryClient.clear()
@@ -87,7 +90,7 @@ describe('Contact IM repository hooks', () => {
 
     expect(invalidateQueries).toHaveBeenCalledTimes(2)
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: contactImPlatformQueryKeys.integration(
+      queryKey: contactImPlatformQueryKeys.integrations(
         organization.organizationId,
         repository.queryKey,
       ),

@@ -422,6 +422,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         viewport={viewport}
         onWorkflowDataUpdate={handleWorkflowDataUpdate}
         hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+        isCollaborationEnabled={isCollaborationEnabled}
         cursors={filteredCursors}
         myUserId={myUserId}
         onlineUsers={onlineUsers}

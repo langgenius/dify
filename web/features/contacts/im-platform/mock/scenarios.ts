@@ -9,6 +9,7 @@ import type {
   ContactImSyncStatus,
 } from '../types'
 import {
+  ContactChannelKind,
   ContactImAuthMode,
   ContactImConnectionStatus,
   ContactImProvider,
@@ -27,12 +28,14 @@ export const ContactImMockScenario = {
   ActiveSync: 'active_sync',
   AuthorizationFailure: 'authorization_failure',
   CallbackError: 'callback_error',
+  ChannelsConfigured: 'channels_configured',
   Configured: 'configured',
   Connected: 'connected',
   ConnectionError: 'connection_error',
   ConnectionTestFailure: 'connection_test_failure',
   DetailFailure: 'detail_failure',
   DisconnectFailure: 'disconnect_failure',
+  EmailConnectionTestFailure: 'email_connection_test_failure',
   LoadFailure: 'load_failure',
   Loading: 'loading',
   NoPermission: 'no_permission',
@@ -72,7 +75,7 @@ export type ContactImMockTransitionFinal = {
 
 export type ContactImMockScenarioSeed = {
   failures: ContactImMockFailurePlan
-  integration: ContactImIntegrationView
+  integrations: ContactImIntegrationView[]
   itemsByRun: Record<string, ContactImSyncItemView[]>
   nextSyncNumber: number
   organization: ContactsImPlatformOrganizationContext
@@ -106,8 +109,23 @@ const createProviderDefinitions = (): ContactImProviderDefinition[] => [
   {
     authMode: ContactImAuthMode.Credentials,
     availability: ContactImProviderAvailability.Available,
+    callbackUrl: null,
+    capabilities: { directorySync: false },
+    channelKind: ContactChannelKind.Email,
+    displayName: 'Email',
+    provider: ContactImProvider.Email,
+    requiredFields: [
+      { field: ContactImProviderField.SenderEmail, required: true },
+      { field: ContactImProviderField.Secret, required: true },
+    ],
+    unavailableReason: null,
+  },
+  {
+    authMode: ContactImAuthMode.Credentials,
+    availability: ContactImProviderAvailability.Available,
     callbackUrl: 'https://example.dify.test/contacts/im/slack/callback',
     capabilities: { directorySync: true },
+    channelKind: ContactChannelKind.Im,
     displayName: 'Slack',
     provider: ContactImProvider.Slack,
     requiredFields: [
@@ -121,6 +139,7 @@ const createProviderDefinitions = (): ContactImProviderDefinition[] => [
     availability: ContactImProviderAvailability.Available,
     callbackUrl: 'https://example.dify.test/contacts/im/feishu/callback',
     capabilities: { directorySync: true },
+    channelKind: ContactChannelKind.Im,
     displayName: 'Feishu',
     provider: ContactImProvider.Feishu,
     requiredFields: [],
@@ -131,6 +150,7 @@ const createProviderDefinitions = (): ContactImProviderDefinition[] => [
     availability: ContactImProviderAvailability.Available,
     callbackUrl: 'https://example.dify.test/contacts/im/dingtalk/callback',
     capabilities: { directorySync: false },
+    channelKind: ContactChannelKind.Im,
     displayName: 'DingTalk',
     provider: ContactImProvider.DingTalk,
     requiredFields: [
@@ -141,18 +161,33 @@ const createProviderDefinitions = (): ContactImProviderDefinition[] => [
   },
 ]
 
-const createBaseIntegration = (
+const createIntegration = (
   organization: ContactsImPlatformOrganizationContext,
+  provider: ContactImProviderDefinition,
+  status: Exclude<ContactImIntegrationView['status'], 'not_configured'>,
+  {
+    configuredValues = {},
+    displayIdentifier = null,
+    lastCheckedAt = null,
+    secretConfigured = false,
+  }: {
+    configuredValues?: ContactImIntegrationView['configuredValues']
+    displayIdentifier?: string | null
+    lastCheckedAt?: string | null
+    secretConfigured?: boolean
+  } = {},
 ): ContactImIntegrationView => ({
   canManage: organization.canManage,
-  capabilities: { directorySync: false },
-  displayIdentifier: null,
-  lastCheckedAt: null,
+  capabilities: clone(provider.capabilities),
+  channelKind: provider.channelKind,
+  configuredValues: clone(configuredValues),
+  displayIdentifier,
+  lastCheckedAt,
   lastSync: null,
   organizationId: organization.organizationId,
-  provider: null,
-  secretConfigured: false,
-  status: ContactImConnectionStatus.NotConfigured,
+  provider: provider.provider,
+  secretConfigured,
+  status,
   statusReason: null,
 })
 
@@ -174,7 +209,7 @@ const createBaseSeed = (
   scenario: ContactImMockScenario,
 ): ContactImMockScenarioSeed => ({
   failures: createFailurePlan(),
-  integration: createBaseIntegration(organization),
+  integrations: [],
   itemsByRun: {},
   nextSyncNumber: 1,
   organization: clone(organization),
@@ -193,16 +228,47 @@ const configureSlack = (
 
   if (!slack) throw new Error('Slack provider definition is required')
 
-  seed.integration = {
-    ...seed.integration,
-    capabilities: clone(slack.capabilities),
-    displayIdentifier: 'A012••••89',
-    lastCheckedAt: '2026-07-17T05:42:00.000Z',
-    provider: ContactImProvider.Slack,
-    secretConfigured: true,
-    status,
-    statusReason: null,
-  }
+  seed.integrations = seed.integrations.filter(
+    (integration) => integration.provider !== ContactImProvider.Slack,
+  )
+  seed.integrations.push(
+    createIntegration(seed.organization, slack, status, {
+      configuredValues: { appId: 'A012••••89' },
+      displayIdentifier: 'A012••••89',
+      lastCheckedAt: '2026-07-17T05:42:00.000Z',
+      secretConfigured: true,
+    }),
+  )
+}
+
+const setSlackStatusReason = (seed: ContactImMockScenarioSeed, reason: ContactImStatusReason) => {
+  const slack = seed.integrations.find(
+    (integration) => integration.provider === ContactImProvider.Slack,
+  )
+
+  if (!slack) throw new Error('Configured Slack integration is required')
+  slack.statusReason = reason
+}
+
+const configureEmail = (seed: ContactImMockScenarioSeed) => {
+  const email = seed.providers.find((provider) => provider.provider === ContactImProvider.Email)
+
+  if (!email) throw new Error('Email provider definition is required')
+
+  seed.integrations = seed.integrations.filter(
+    (integration) => integration.provider !== ContactImProvider.Email,
+  )
+  seed.integrations.push(
+    createIntegration(seed.organization, email, ContactImConnectionStatus.Connected, {
+      configuredValues: {
+        senderEmail: 'approvals@acme.com',
+        senderName: 'Acme',
+      },
+      displayIdentifier: 'approvals@acme.com',
+      lastCheckedAt: '2026-07-17T05:40:00.000Z',
+      secretConfigured: true,
+    }),
+  )
 }
 
 const createItem = (
@@ -284,7 +350,10 @@ const addCompletedRun = (
   const run = createRun(id, status, items, safeError)
   seed.itemsByRun[id] = clone(items)
   seed.runs[id] = run
-  seed.integration.lastSync = clone(run)
+  const syncIntegration = seed.integrations.find(
+    (integration) => integration.capabilities.directorySync,
+  )
+  if (syncIntegration) syncIntegration.lastSync = clone(run)
 }
 
 const addActiveRun = (seed: ContactImMockScenarioSeed) => {
@@ -309,11 +378,20 @@ const assertCountAgreement = (run: ContactImSyncRunView, items: ContactImSyncIte
 }
 
 export const validateContactImMockScenarioSeed = (seed: ContactImMockScenarioSeed) => {
-  const hasProvider = seed.integration.provider !== null
-  const isConfigured = seed.integration.status !== ContactImConnectionStatus.NotConfigured
+  const configuredProviders = new Set<ContactImProvider>()
+  let activeImProvider: ContactImProvider | null = null
 
-  if (hasProvider !== isConfigured)
-    throw new Error('Integration provider and connection status are inconsistent')
+  for (const integration of seed.integrations) {
+    if (configuredProviders.has(integration.provider))
+      throw new Error(`Provider ${integration.provider} has more than one active configuration`)
+    if (integration.status === ContactImConnectionStatus.NotConfigured)
+      throw new Error('Configured channel collection cannot contain a not-configured entry')
+    if (integration.provider !== ContactImProvider.Email) {
+      if (activeImProvider) throw new Error('Only one active IM provider configuration is allowed')
+      activeImProvider = integration.provider
+    }
+    configuredProviders.add(integration.provider)
+  }
 
   for (const [runId, run] of Object.entries(seed.runs))
     assertCountAgreement(run, seed.itemsByRun[runId] ?? [])
@@ -323,8 +401,10 @@ export const validateContactImMockScenarioSeed = (seed: ContactImMockScenarioSee
     assertCountAgreement(finalRun, final.items)
   }
 
-  if (seed.integration.lastSync && !seed.runs[seed.integration.lastSync.id])
-    throw new Error('Latest sync must reference a run in the same scenario')
+  for (const integration of seed.integrations) {
+    if (integration.lastSync && !seed.runs[integration.lastSync.id])
+      throw new Error('Latest sync must reference a run in the same scenario')
+  }
 }
 
 export const getContactImMockScenarioSeed = (
@@ -344,7 +424,7 @@ export const getContactImMockScenarioSeed = (
       seed.failures.permissionLoad = true
       break
     case ContactImMockScenario.NoPermission:
-      seed.integration.canManage = false
+      seed.organization.canManage = false
       break
     case ContactImMockScenario.ProviderUnavailable: {
       const provider = seed.providers.find(
@@ -358,6 +438,10 @@ export const getContactImMockScenarioSeed = (
     }
     case ContactImMockScenario.NotConfigured:
       break
+    case ContactImMockScenario.ChannelsConfigured:
+      configureEmail(seed)
+      configureSlack(seed, ContactImConnectionStatus.Connected)
+      break
     case ContactImMockScenario.Configured:
       configureSlack(seed, ContactImConnectionStatus.Configured)
       break
@@ -366,15 +450,15 @@ export const getContactImMockScenarioSeed = (
       break
     case ContactImMockScenario.PermissionIssue:
       configureSlack(seed, ContactImConnectionStatus.PermissionIssue)
-      seed.integration.statusReason = ContactImStatusReason.MissingDirectoryPermission
+      setSlackStatusReason(seed, ContactImStatusReason.MissingDirectoryPermission)
       break
     case ContactImMockScenario.CallbackError:
       configureSlack(seed, ContactImConnectionStatus.CallbackError)
-      seed.integration.statusReason = ContactImStatusReason.CallbackMismatch
+      setSlackStatusReason(seed, ContactImStatusReason.CallbackMismatch)
       break
     case ContactImMockScenario.ConnectionError:
       configureSlack(seed, ContactImConnectionStatus.ConnectionError)
-      seed.integration.statusReason = ContactImStatusReason.ProviderRequestFailed
+      setSlackStatusReason(seed, ContactImStatusReason.ProviderRequestFailed)
       break
     case ContactImMockScenario.SaveFailure:
       seed.failures.save = true
@@ -384,6 +468,10 @@ export const getContactImMockScenarioSeed = (
       break
     case ContactImMockScenario.ConnectionTestFailure:
       configureSlack(seed, ContactImConnectionStatus.Configured)
+      seed.failures.connectionTest = true
+      break
+    case ContactImMockScenario.EmailConnectionTestFailure:
+      configureEmail(seed)
       seed.failures.connectionTest = true
       break
     case ContactImMockScenario.DisconnectFailure:

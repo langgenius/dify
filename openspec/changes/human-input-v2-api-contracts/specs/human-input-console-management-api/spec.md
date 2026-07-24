@@ -166,6 +166,8 @@
 ### Requirement: Workspace console MUST expose a side-effect-free batch Human Input node-data migration helper
 系统 MUST 在 `POST /console/api/workspaces/current/human-input/node-data-migration` 提供 Human Input v1 → v2 batch node-data migration helper。该 endpoint MUST 只执行当前 tenant / Organization 范围内的 recipient resolution、以无损转换为默认的批量节点转换与 blocker 校验，MUST NOT 更新 workflow DSL、draft、published workflow、graph state 或 migration history。调用方 MUST 在用户显式确认后提交待迁移的 legacy node data 集合；节点集合选择、原子 graph replacement、draft sync 与 rollback MUST 继续由调用方的 migration flow 负责。唯一允许的受控有损例外是把 legacy Email `whole_workspace: true` 物化为迁移当下当前 workspace recipient snapshot 的静态列表。
 
+该 endpoint 的 request body MUST 使用 `nodes: [{ node_id, node_data }]`，成功响应 MUST 使用 `data: [{ node_id, node_data }]`，并保持现有的输入顺序保证。整批失败响应 MUST 使用 `blockers` 返回 node-scoped machine-readable blocker，不得混入任何部分成功的 v2 node data。该 transport 对齐只约束 HTTP / generated-client boundary，不改变本 requirement 定义的转换、tenant snapshot、all-or-error、幂等或 ownership 语义。
+
 #### Scenario: Migration input 只接受 v1 node data
 - **WHEN** a submitted node contains an explicit `version`
 - **THEN** the version MUST be the exact string `"1"`; any other explicit version MUST be rejected before conversion
@@ -182,6 +184,10 @@
 - **WHEN** two submitted entries have the same `node_id`
 - **THEN** the entire request MUST be rejected before conversion and MUST NOT return partial node data
 
+#### Scenario: Migration transport 对齐 frontend adapter boundary
+- **WHEN** the generated client is used to replace the frontend's temporary mock migration adapter
+- **THEN** the request MUST expose `nodes[].node_id` and `nodes[].node_data`, the success response MUST expose `data[].node_id` and `data[].node_data`, and a whole-batch failure MUST expose `blockers` without requiring changes to frontend executor, graph application, or UI orchestration
+
 #### Scenario: 用户确认后批量转换 legacy nodes
 - **WHEN** a workflow editor explicitly confirms migration and submits multiple eligible legacy Human Input node data entries to `POST /console/api/workspaces/current/human-input/node-data-migration`
 - **THEN** 系统 MUST 为全部输入节点返回规范化的 Human Input v2 node data，保持 `node_id` 关联和输入顺序，并 MUST NOT 持久化结果或修改任何 workflow
@@ -196,7 +202,7 @@
 
 #### Scenario: 任一节点生成新 schema 失败时整批返回错误
 - **WHEN** any submitted legacy node cannot produce complete Human Input v2 node data because of unsupported delivery methods, conflicting message templates, invalid email configuration, unresolved recipients, or another blocker
-- **THEN** 系统 MUST 为整个 request 返回 `400 Bad Request` 和关联失败 `node_id` 的 machine-readable blocker code and context，MUST NOT 返回 success response，并 MUST NOT 返回其他成功节点的部分 v2 node data
+- **THEN** 系统 MUST 为整个 request 返回 `400 Bad Request` 和 `blockers`，其中包含关联失败 `node_id` 的 machine-readable blocker code and context；系统 MUST NOT 返回 success response，并 MUST NOT 返回其他成功节点的部分 v2 node data
 
 #### Scenario: 重复批量转换无副作用
 - **WHEN** the same ordered legacy node data batch is submitted repeatedly while the tenant-scoped resolution state remains unchanged

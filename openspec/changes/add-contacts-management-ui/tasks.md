@@ -8,17 +8,19 @@
 ## 2. Typed Mock Repository
 
 - [x] 2.1 Write failing unit tests for Contact discriminated unions, scenario consistency, pagination deduplication, External contact conflict classification, and member-removal state transitions.
-- [x] 2.2 Add Contacts-owned TypeScript view models, query types, command types, typed mutation results, repository interface, and query keys for directory, details, Organization candidates, External contacts, and member removal.
-- [x] 2.3 Add deterministic named scenarios covering CE, SaaS, EE, all permission levels, empty and paginated directories, load failures, three Contact types, External contact conflicts, Organization search, and every removal outcome.
+- [x] 2.2 Add Contacts-owned TypeScript view models, query types, command types, typed mutation results, repository interface, and query keys for directory, details, available Platform contacts, External contacts, contact removal, and member removal; do not introduce OrganizationCandidate frontend types.
+- [x] 2.3 Add deterministic named scenarios covering CE, SaaS, EE, all permission levels, empty and paginated directories, load failures, three Contact types, available Platform contact search/add, External contact conflicts, and every removal outcome.
 - [x] 2.4 Implement the in-memory mock repository with controllable delays, stable identifiers, lower-case full-Email matching, consistent list/detail state, and no random behavior.
-- [x] 2.5 Add the feature provider and React Query hooks that inject the repository, preserve precise cache boundaries, and issue no backend, generated-client, or Organization directory requests.
+- [x] 2.5 Add the feature provider and React Query hooks that inject the repository, preserve precise cache boundaries, and issue no backend, generated-client, or Platform-contact data-source requests.
 
-## 3. Contacts Directory and EE Platform Contacts
+## 3. Contacts Directory and Removable Contacts
 
 - [x] 3.1 Write failing component tests for route visibility, view/manage permission variants, loading/error/empty/no-result states, the three Contact types, and CE / SaaS versus EE directory semantics.
 - [x] 3.2 Implement the Figma-aligned Contacts page shell, list rows, type and status presentation, search, filters, pagination or incremental loading, retries, and URL-backed browsing context.
-- [x] 3.3 Write failing tests for EE Organization candidate search, existing-Contact exclusion, multi-select, pending duplicate prevention, success, and recoverable failure.
-- [x] 3.4 Implement the EE-only Organization picker and mock add-Platform-contact flow while keeping enterprise-wide candidates out of the normal Contacts list.
+- [x] 3.3 Write failing tests for available Platform contact search, existing-Contact exclusion, multi-select, pending duplicate prevention, success, and recoverable failure without using OrganizationCandidate frontend models.
+- [x] 3.4 Retain the EE-only Add from Platform picker and mock add flow while keeping the available Platform-contact pool out of the normal Contacts list until explicitly added.
+- [x] 3.5 Implement selectable Platform / External rows, disabled workspace checkboxes, select-all over eligible visible rows, and the selected-count Remove / Cancel action bar.
+- [x] 3.6 Implement typed mock contact removal so only selected Platform / External contacts can be removed and failures preserve selection and rows.
 
 ## 4. Contact Details
 
@@ -45,4 +47,4 @@
 - [x] 7.2 Match the Figma acceptance matrix using dify-ui tokens and primitives, including narrow layouts, empty/error states, keyboard navigation, visible focus, field error associations, live result updates, and overlay focus restoration.
 - [x] 7.3 Run targeted Vitest and Testing Library suites and fix failures, including React Query cache isolation and fake-timer cleanup between mock scenarios.
 - [x] 7.4 Run the repository-prescribed frontend formatting, lint, and type-check commands and resolve all issues introduced by the change.
-- [x] 7.5 Audit the final diff to confirm it contains only frontend and OpenSpec changes, adds no backend/OpenAPI/generated-client code, makes no real Contact or member mutations, and leaves API adapter work to a later change.
+- [x] 7.5 Audit the final diff to confirm it contains only frontend and OpenSpec changes, contains no Organization candidate frontend code, adds no backend/OpenAPI/generated-client code, makes no real Contact or member mutations, and leaves API adapter work to a later change.

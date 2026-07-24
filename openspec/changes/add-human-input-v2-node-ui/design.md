@@ -55,7 +55,7 @@ DebugChannel
 - 以 `version === '2'` 精确识别 v2，确保旧 DSL、旧节点 UI 和旧测试不被静默迁移。
 - 完整编辑 `recipients_spec`、`message_template` 和 `debug_mode`，并保持与 Python entity 的字段和值一致。
 - 复用 v1/v2 共同的 form content、inputs、user actions、timeout、outputs 和 branch behavior。
-- 为 Contact recipient 使用可替换的前端 option-provider 边界，在没有 Contact API 时以 typed mock options 验证 UI。
+- 为 Contact recipient 使用可替换的前端 option-provider 边界；已存 recipient 回显统一通过 `{ contact_ids }` 单次批量解析，当前数据由 mock provider 提供。
 - 覆盖 DSL import、前端编辑、复制粘贴、变量重命名与导出前数据的 round-trip。
 - 遵循 dify-ui、英语与简体中文 i18n、可访问性和 Vitest / Testing Library 规范；本 change 不修改其他 locale。
 
@@ -65,7 +65,7 @@ DebugChannel
 - 不让 v2 单节点运行、workflow debug 或正式运行假装成功；运行时支持属于后续后端 change。
 - 不将 v1 `delivery_methods` 转换成 v2 recipient/message/debug 结构。
 - 不自动升级已有 v1 Human Input，也不在打开旧 workflow 时写入 `version: '2'`。
-- 不实现 Contacts 目录本身、IM platform 绑定或 Contact API。
+- 不实现 Contacts 目录本身、IM platform 绑定或 Contact API 的后端业务逻辑，也不修改 API contract 或 generated client；真实 Contact adapter 属于后续接入。
 - 不重新设计 v1 Human Input UI。
 
 ## Decisions
@@ -166,7 +166,7 @@ timeout_unit: hour
 
 UI 必须阻止新增相同 recipient，并在 imported DSL 已含重复项时展示可修复错误，而不是静默删除。删除或编辑只更新目标 index，不改变其他 recipient 顺序。
 
-### 6. Contact 选项通过 provider interface 注入
+### 6. Contact 选项通过可替换的 typed provider 注入
 
 定义窄接口，例如：
 
@@ -175,9 +175,9 @@ searchContactRecipientOptions(query)
 getContactRecipientOptionsByIds(ids)
 ```
 
-node card 需要按 `contact_id` 解析安全 display summary，recipient picker 需要搜索 options。当前 change 不调用新后端 API；在 Contacts API 未完成时使用 typed mock provider。provider 读取失败时，已存 `contact_id` 必须保留，UI 显示 unresolved 状态，不能删除 DSL 数据。
+node card 与 panel 对已存 `contact_id` 的回显必须调用 provider 的 `{ contact_ids }` 批量查询边界，单次解析当前节点/配置中去重后的全部 Contact ID，不得用列表第一页或逐 ID 请求。provider 读取失败或响应缺少某个 ID 时，已存 `contact_id` 必须保留，UI 显示 unresolved 状态，不能删除 DSL 数据。
 
-该边界让后续 Contacts API adapter 可替换数据源，而无需改写 recipient components。
+当前 provider 使用确定性 mock 数据，并保持与最终 Contact 批量查询相同的 `{ contact_ids }` 入参形状。组件只依赖窄接口；后续真实接口就绪后，用网络 adapter 替换 mock 即可，本 change 不修改后端契约或生成 client。搜索暂时继续由同一 mock provider 提供。
 
 ### 7. Dynamic Email 与 message template 接入 workflow 变量基础设施
 
@@ -256,7 +256,7 @@ Human Input v2 TypeScript model、routing 和 editor MUST NOT 依赖 graphon 已
 - [graphon 尚未支持 v2 runtime] → 使用本地前端类型和 catalog identity 完成创建与编辑，明确本 change 只保证配置和 DSL round-trip，不宣称运行可用。
 - [同一 persisted type 对应两套 UI] → 统一使用 `isHumanInputV2NodeData`，所有 metadata、component、validation 和 utility lookup 走同一 catalog resolver。
 - [字段更名后前后端 contract 可能继续漂移] → 类型、fixtures、round-trip tests 和最终 diff audit 均断言使用 `recipients_spec` 且不再生成 `recpients_spec`。
-- [Contact API 尚未完成] → 注入 option-provider，并以 typed mock provider 验证组件；unresolved ID 不丢数据。
+- [Contact 查询失败或批量响应不完整] → provider 保留 unresolved ID fallback；组件不删除 DSL 数据，并允许用户重试、替换或删除。
 - [共享 v1 组件时带入 delivery-method 假设] → 只抽取共享字段的窄 props 和 hooks，不共享完整 `HumanInputNodeType`。
 - [变量引用工具遗漏 v2 selector/template] → 为提取、重命名、删除、复制和粘贴建立独立回归测试。
 - [Figma 具体状态尚未核对] → 实施首项建立 acceptance matrix，再冻结 node summary、recipient input、debug 和 modal 行为。
@@ -268,7 +268,7 @@ Human Input v2 TypeScript model、routing 和 editor MUST NOT 依赖 graphon 已
 1. 通过授权 Figma 访问建立八个节点的 acceptance matrix。
 2. 增加 v2 types、guard、catalog identity、default、独立 catalog candidate 和 version-aware component / metadata routing。
 3. 抽取 v1/v2 共享的 form、action、timeout、output 最小边界，并保持 v1 tests 通过。
-4. 实现 recipient option provider、recipient editor、node summary、debug mode 和 message template overlay。
+4. 实现 typed mock Contact option provider、recipient editor、node summary、debug mode 和 message template overlay；回显统一走 `{ contact_ids }` 批量查询边界。
 5. 更新变量依赖、复制粘贴、branch layout、validation 与 checklist utilities。
 6. 完成 i18n、可访问性、响应式、DSL round-trip 和 v1 regression tests。
 7. 对创建、导入、编辑、复制粘贴和导出执行前端验收，并记录 graphon/runtime 后续接入点。
@@ -280,6 +280,6 @@ Human Input v2 TypeScript model、routing 和 editor MUST NOT 依赖 graphon 已
 - v2 candidate 在 block catalog 中的最终产品名称、说明和排序需以设计验收为准，但它必须与原 Human Input candidate 同时保留。
 - graphon/runtime 后续接入后，单节点运行、workflow debug、发布前校验和 capability handshake 的正式 contract 由后续 change 定义。
 - Figma 四个 node recipient 状态分别对应空、单项、多项、overflow 还是 validation 状态，需要通过授权设计访问确认。
-- Contact option provider 首阶段是复用 `add-contacts-management-ui` 的 mock repository，还是使用 workflow-scoped fixture adapter，需要按两个 change 的实施顺序确定。
+- Contact provider 的最终回显边界已确定为 `contact_ids` 批量查询；当前使用 mock 数据，真实 adapter 待后端契约与 client 可用后接入。
 - Message template 的 subject/body 字符限制、变量类型范围和关闭未保存草稿策略，以 Figma 与产品验收为准。
 - v2 runtime 未就绪时，single run、workflow run 和 publish checklist 应隐藏、禁用还是展示 unsupported 提示，需要与后端 rollout change 协调。

@@ -140,6 +140,7 @@ from .model import (
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
+from .onboarding import AccountStepByStepTourState
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -195,6 +196,7 @@ __all__ = [
     "AccountIntegrate",
     "AccountSessionAuthorizationProof",
     "AccountStatus",
+    "AccountStepByStepTourState",
     "AccountTrialAppRecord",
     "Agent",
     "AgentConfigDraft",

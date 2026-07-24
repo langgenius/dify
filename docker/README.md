@@ -16,7 +16,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
-1. **Prerequisites**: Ensure Docker and Docker Compose are installed on your system.
+1. **Prerequisites**: Ensure Docker and Docker Compose v2.24.0 or later are installed on your system.
 2. **Environment Setup**:
    - Navigate to the `docker` directory.
    - Copy `.env.example` to `.env`.

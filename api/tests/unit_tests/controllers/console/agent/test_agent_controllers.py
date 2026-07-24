@@ -53,6 +53,7 @@ from controllers.console.app.message import (
     AgentMessageFeedbackApi,
     AgentMessageSuggestedQuestionApi,
 )
+from models.agent import AgentConfigDraftType
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -371,6 +372,7 @@ def test_agent_app_list_and_create_use_agent_route(
         "tenant_id": "tenant-1",
         "agent_id": "agent-created",
         "account_id": account_id,
+        "draft_type": AgentConfigDraftType.DEBUG_BUILD,
         "commit": False,
     }
 
@@ -544,8 +546,19 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
     }
 
 
-def test_agent_debug_conversation_refresh_uses_current_user(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+@pytest.mark.parametrize(
+    ("payload", "expected_draft_type"),
+    [
+        (None, AgentConfigDraftType.DEBUG_BUILD),
+        ({"draft_type": "draft"}, AgentConfigDraftType.DRAFT),
+    ],
+)
+def test_agent_debug_conversation_refresh_uses_current_user_and_draft_type(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    payload: dict[str, str] | None,
+    expected_draft_type: AgentConfigDraftType,
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     captured: dict[str, object] = {}
@@ -557,7 +570,9 @@ def test_agent_debug_conversation_refresh_uses_current_user(
 
     monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda *_args: FakeRosterService())
     with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh", method="POST"
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh",
+        method="POST",
+        json=payload,
     ):
         response = unwrap(AgentDebugConversationRefreshApi.post)(
             AgentDebugConversationRefreshApi(), MagicMock(), "tenant-1", SimpleNamespace(id=account_id), agent_id
@@ -567,7 +582,12 @@ def test_agent_debug_conversation_refresh_uses_current_user(
         "debug_conversation_has_messages": False,
         "debug_conversation_message_count": 0,
     }
-    assert captured == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+        "draft_type": expected_draft_type,
+    }
 
 
 def test_agent_publish_and_build_draft_routes_call_composer_service(
@@ -1456,6 +1476,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         "current_user": SimpleNamespace(id=account_id),
         "app_model": app_model,
         "agent_id": "agent-1",
+        "draft_type": AgentConfigDraftType.DEBUG_BUILD,
     }
     generate_call = cast(dict[str, object], captured["generate"])
     assert generate_call["app_model"] is app_model
@@ -1520,11 +1541,15 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
         captured.update(kwargs)
         return {"answer": "ok"}
 
+    def resolve_debug_conversation(**kwargs: object) -> str:
+        captured["resolve_debug_conversation"] = kwargs
+        return "debug-conversation-1"
+
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
-        lambda **kwargs: "debug-conversation-1",
+        resolve_debug_conversation,
     )
     monkeypatch.setattr(
         completion_controller.helper, "compact_generate_response", lambda response: {"response": response}
@@ -1544,6 +1569,7 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
+    assert cast(dict[str, object], captured["resolve_debug_conversation"])["draft_type"] == AgentConfigDraftType.DRAFT
 
 
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
@@ -1642,6 +1668,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
         current_user=SimpleNamespace(id="account-1"),
         app_model=SimpleNamespace(id="app-1"),
         agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
     )
     fallback_id = completion_controller._resolve_current_user_agent_debug_conversation_id(
         session="session-1",  # type: ignore[arg-type]
@@ -1649,13 +1676,26 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
         current_user=SimpleNamespace(id="account-1"),
         app_model=SimpleNamespace(id="app-1"),
         agent_id=None,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
     assert explicit_id == "debug-agent-1"
     assert fallback_id == "debug-backing-agent"
-    assert calls[1] == {"get_or_create": {"tenant_id": "tenant-1", "agent_id": "agent-1", "account_id": "account-1"}}
+    assert calls[1] == {
+        "get_or_create": {
+            "tenant_id": "tenant-1",
+            "agent_id": "agent-1",
+            "account_id": "account-1",
+            "draft_type": AgentConfigDraftType.DRAFT,
+        }
+    }
     assert calls[3] == {"get_app_backing_agent": {"tenant_id": "tenant-1", "app_id": "app-1"}}
     assert calls[4] == {
-        "get_or_create": {"tenant_id": "tenant-1", "agent_id": "backing-agent", "account_id": "account-1"}
+        "get_or_create": {
+            "tenant_id": "tenant-1",
+            "agent_id": "backing-agent",
+            "account_id": "account-1",
+            "draft_type": AgentConfigDraftType.DEBUG_BUILD,
+        }
     }
 
 

@@ -7,7 +7,6 @@ from controllers.common import human_input_v2_contracts as contracts
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.common.human_input_v2_contracts import (
     BatchGetContactsQuery,
-    CreateNodeDataMigrationRequest,
     ExternalContactCreateRequest,
     FormAccessRequestResponse,
     HumanInputV2ServiceFormSubmitRequest,
@@ -16,6 +15,9 @@ from controllers.common.human_input_v2_contracts import (
     IMSyncRun,
     ListIMIdentitiesQuery,
     MessageTemplateTestRequest,
+    NodeDataMigrationFailureResponse,
+    NodeDataMigrationPayload,
+    NodeDataMigrationResponse,
     UpdateIMIntegrationRequest,
 )
 
@@ -114,13 +116,13 @@ def test_external_contact_avatar_is_optional() -> None:
     assert request_body.avatar is None
 
 
-def test_node_data_migration_requires_version_one_and_unique_node_ids() -> None:
-    request_body = CreateNodeDataMigrationRequest.model_validate(
+def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> None:
+    request_body = NodeDataMigrationPayload.model_validate(
         {
-            "node_data": [
+            "nodes": [
                 {
                     "node_id": "node-1",
-                    "data": {
+                    "node_data": {
                         "version": "1",
                         "future_legacy_field": "ignored",
                     },
@@ -131,27 +133,46 @@ def test_node_data_migration_requires_version_one_and_unique_node_ids() -> None:
         }
     )
 
-    assert request_body.node_data[0].data.version == "1"
-    assert not hasattr(request_body.node_data[0].data, "future_legacy_field")
+    assert request_body.nodes[0].node_data.version == "1"
+    assert not hasattr(request_body.nodes[0].node_data, "future_legacy_field")
+    assert set(NodeDataMigrationResponse.model_json_schema()["properties"]) == {"data"}
+
+    failure = NodeDataMigrationFailureResponse.model_validate(
+        {
+            "message": "Migration failed",
+            "status": 400,
+            "blockers": [
+                {
+                    "node_id": "node-1",
+                    "node_title": "Approval",
+                    "code": "unresolved-member",
+                    "method_id": "email-1",
+                    "value": "member-1",
+                }
+            ],
+        }
+    )
+
+    assert failure.blockers[0].code == "unresolved-member"
 
     with pytest.raises(ValidationError):
-        CreateNodeDataMigrationRequest.model_validate(
+        NodeDataMigrationPayload.model_validate(
             {
-                "node_data": [
+                "nodes": [
                     {
                         "node_id": "node-1",
-                        "data": {"version": "2"},
+                        "node_data": {"version": "2"},
                     }
                 ]
             }
         )
 
     with pytest.raises(ValidationError):
-        CreateNodeDataMigrationRequest.model_validate(
+        NodeDataMigrationPayload.model_validate(
             {
-                "node_data": [
-                    {"node_id": "node-1", "data": {"version": "1"}},
-                    {"node_id": "node-1", "data": {"version": "1"}},
+                "nodes": [
+                    {"node_id": "node-1", "node_data": {"version": "1"}},
+                    {"node_id": "node-1", "node_data": {"version": "1"}},
                 ]
             }
         )
