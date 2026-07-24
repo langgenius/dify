@@ -1,18 +1,41 @@
 import logging
+from collections import defaultdict
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import and_, func, select
 
 if TYPE_CHECKING:
     from models.account import Account
 
+from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.helper.position_helper import is_filtered
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory, create_plugin_provider_manager
+from core.plugin.plugin_service import PluginService
 from core.provider_manager import ProviderManager
+from extensions import ext_hosting_provider
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
-from models.provider import ProviderType
+from models.provider import (
+    Provider,
+    ProviderCredential,
+    ProviderModel,
+    ProviderModelCredential,
+    ProviderType,
+    TenantPreferredModelProvider,
+)
+from models.provider_ids import ModelProviderID
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
     DefaultModelResponse,
+    ModelProviderCustomConfigurationSummaryResponse,
+    ModelProviderPluginSummaryResponse,
+    ModelProviderSummaryResponse,
+    ModelProviderSystemConfigurationSummaryResponse,
     ModelWithProviderEntityResponse,
     ProviderResponse,
     ProviderWithModelsResponse,
@@ -22,6 +45,17 @@ from services.entities.model_provider_entities import (
 from services.errors.app_model_config import ProviderNotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True)
+class _ProviderSummaryState:
+    has_custom_provider: bool = False
+    has_credentials: bool = False
+    has_custom_models: bool = False
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    current_credential_usable: bool = False
+    preferred_provider_type: ProviderType | None = None
 
 
 class ModelProviderService:
@@ -131,6 +165,239 @@ class ModelProviderService:
             provider_responses.append(provider_response)
 
         return provider_responses
+
+    @staticmethod
+    def _load_provider_summary_states(tenant_id: str) -> dict[str, _ProviderSummaryState]:
+        """Load only the workspace columns required by the collapsed provider list."""
+        with session_factory.create_session() as session:
+            custom_provider_rows = session.execute(
+                select(
+                    Provider.provider_name,
+                    Provider.credential_id,
+                    ProviderCredential.provider_name.label("credential_provider_name"),
+                    ProviderCredential.credential_name,
+                )
+                .outerjoin(
+                    ProviderCredential,
+                    and_(
+                        ProviderCredential.id == Provider.credential_id,
+                        ProviderCredential.tenant_id == tenant_id,
+                    ),
+                )
+                .where(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_type == ProviderType.CUSTOM,
+                    Provider.is_valid.is_(True),
+                )
+            ).all()
+            credential_count_rows = session.execute(
+                select(
+                    ProviderCredential.provider_name,
+                    func.count(ProviderCredential.id).label("credential_count"),
+                )
+                .where(ProviderCredential.tenant_id == tenant_id)
+                .group_by(ProviderCredential.provider_name)
+            ).all()
+            custom_model_rows = session.execute(
+                select(ProviderModel.provider_name.label("provider_name"))
+                .where(
+                    ProviderModel.tenant_id == tenant_id,
+                    ProviderModel.is_valid.is_(True),
+                )
+                .union(
+                    select(ProviderModelCredential.provider_name.label("provider_name")).where(
+                        ProviderModelCredential.tenant_id == tenant_id
+                    )
+                )
+            ).all()
+            preferred_provider_rows = session.execute(
+                select(
+                    TenantPreferredModelProvider.provider_name,
+                    TenantPreferredModelProvider.preferred_provider_type,
+                ).where(TenantPreferredModelProvider.tenant_id == tenant_id)
+            ).all()
+
+        states: defaultdict[str, _ProviderSummaryState] = defaultdict(_ProviderSummaryState)
+        credential_counts_by_provider: defaultdict[str, int] = defaultdict(int)
+        for credential_count in credential_count_rows:
+            provider_name = str(ModelProviderID(credential_count.provider_name))
+            credential_counts_by_provider[provider_name] += credential_count.credential_count
+
+        selected_provider_priorities: dict[str, bool] = {}
+        for provider in custom_provider_rows:
+            provider_name = str(ModelProviderID(provider.provider_name))
+            state = states[provider_name]
+            state.has_custom_provider = True
+
+            is_canonical_row = provider.provider_name == provider_name
+            if provider_name in selected_provider_priorities and not is_canonical_row:
+                continue
+            selected_provider_priorities[provider_name] = is_canonical_row
+            state.current_credential_id = provider.credential_id
+            if (
+                provider.credential_provider_name is not None
+                and str(ModelProviderID(provider.credential_provider_name)) == provider_name
+            ):
+                state.current_credential_name = provider.credential_name
+                state.current_credential_usable = True
+            else:
+                state.current_credential_name = None
+                state.current_credential_usable = False
+
+        for provider_name, state in states.items():
+            state.has_credentials = state.has_custom_provider and credential_counts_by_provider[provider_name] > 0
+
+        for model in custom_model_rows:
+            states[str(ModelProviderID(model.provider_name))].has_custom_models = True
+
+        preferred_provider_priorities: dict[str, bool] = {}
+        for preferred_provider in preferred_provider_rows:
+            provider_name = str(ModelProviderID(preferred_provider.provider_name))
+            is_canonical_row = preferred_provider.provider_name == provider_name
+            if provider_name in preferred_provider_priorities and not is_canonical_row:
+                continue
+            preferred_provider_priorities[provider_name] = is_canonical_row
+            states[provider_name].preferred_provider_type = preferred_provider.preferred_provider_type
+
+        return dict(states)
+
+    @staticmethod
+    def _is_system_provider_enabled(provider: str) -> bool:
+        configuration = ext_hosting_provider.hosting_configuration.provider_map.get(provider)
+        return bool(configuration and configuration.enabled and configuration.quotas)
+
+    @staticmethod
+    def _select_binding(
+        current_binding: PluginModelProviderBinding | None,
+        candidate_binding: PluginModelProviderBinding,
+    ) -> PluginModelProviderBinding:
+        """Prefer a remote-debug runtime when one shadows an installed plugin."""
+        if current_binding is None:
+            return candidate_binding
+        if (
+            candidate_binding.source == PluginInstallationSource.Remote
+            and current_binding.source != PluginInstallationSource.Remote
+        ):
+            return candidate_binding
+        return current_binding
+
+    @staticmethod
+    def _get_preferred_provider_type(
+        state: _ProviderSummaryState,
+        *,
+        custom_present: bool,
+        system_enabled: bool,
+    ) -> ProviderType:
+        if state.preferred_provider_type is not None:
+            return state.preferred_provider_type
+        if dify_config.EDITION == "CLOUD" and system_enabled:
+            return ProviderType.SYSTEM
+        if custom_present:
+            return ProviderType.CUSTOM
+        if system_enabled:
+            return ProviderType.SYSTEM
+        return ProviderType.CUSTOM
+
+    def get_provider_summary_list(
+        self, tenant_id: str, model_type: ModelType | str | None = None
+    ) -> tuple[list[ModelProviderSummaryResponse], dict[str, ModelProviderPluginSummaryResponse]]:
+        """Build the first-screen provider projection without assembling provider configurations."""
+        model_type_entity = ModelType(model_type) if model_type else None
+
+        # Read bindings first: remote-debug identity changes invalidate provider metadata
+        # before the provider cache is consulted.
+        bindings = PluginService.list_model_provider_bindings(tenant_id)
+        provider_entities = PluginService.fetch_plugin_model_providers(tenant_id=tenant_id)
+        states = self._load_provider_summary_states(tenant_id)
+
+        bindings_by_provider: dict[str, PluginModelProviderBinding] = {}
+        for binding in bindings:
+            provider_name = (
+                str(ModelProviderID(binding.provider))
+                if binding.provider.count("/") == 2
+                else str(ModelProviderID(f"{binding.plugin_id}/{binding.provider}"))
+            )
+            bindings_by_provider[provider_name] = self._select_binding(
+                bindings_by_provider.get(provider_name),
+                binding,
+            )
+
+        provider_summaries: list[ModelProviderSummaryResponse] = []
+        emitted_provider_names: set[str] = set()
+        for provider_entity in provider_entities:
+            if model_type_entity and model_type_entity not in provider_entity.supported_model_types:
+                continue
+            if is_filtered(
+                include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
+                exclude_set=dify_config.POSITION_PROVIDER_EXCLUDES_SET,
+                data=provider_entity,
+                name_func=lambda provider: provider.provider,
+            ):
+                continue
+
+            provider_id = ModelProviderID(provider_entity.provider)
+            provider_name = str(provider_id)
+            if provider_name in emitted_provider_names:
+                continue
+            emitted_provider_names.add(provider_name)
+
+            state = states.get(provider_name, _ProviderSummaryState())
+            custom_configured = (state.has_custom_provider and state.has_credentials) or state.has_custom_models
+            custom_present = state.has_custom_provider or state.has_custom_models
+            system_enabled = self._is_system_provider_enabled(provider_name)
+            preferred_provider_type = self._get_preferred_provider_type(
+                state,
+                custom_present=custom_present,
+                system_enabled=system_enabled,
+            )
+
+            provider_summaries.append(
+                ModelProviderSummaryResponse(
+                    tenant_id=tenant_id,
+                    provider=provider_name,
+                    plugin_id=provider_id.plugin_id,
+                    label=provider_entity.label,
+                    description=provider_entity.description,
+                    icon_small=provider_entity.icon_small,
+                    icon_small_dark=provider_entity.icon_small_dark,
+                    supported_model_types=provider_entity.supported_model_types,
+                    configurate_methods=provider_entity.configurate_methods,
+                    preferred_provider_type=preferred_provider_type,
+                    is_configured=custom_configured or system_enabled,
+                    custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
+                        status=CustomConfigurationStatus.ACTIVE
+                        if custom_configured
+                        else CustomConfigurationStatus.NO_CONFIGURE,
+                        has_credentials=state.has_credentials,
+                        current_credential_id=state.current_credential_id,
+                        current_credential_name=state.current_credential_name,
+                        current_credential_usable=state.current_credential_usable,
+                    ),
+                    system_configuration=ModelProviderSystemConfigurationSummaryResponse(
+                        enabled=system_enabled,
+                    ),
+                )
+            )
+
+        plugin_bindings: dict[str, PluginModelProviderBinding] = {}
+        for binding in bindings_by_provider.values():
+            plugin_bindings[binding.plugin_id] = self._select_binding(
+                plugin_bindings.get(binding.plugin_id),
+                binding,
+            )
+
+        plugin_summaries = {
+            plugin_id: ModelProviderPluginSummaryResponse(
+                installation_id=binding.installation_id,
+                plugin_id=binding.plugin_id,
+                plugin_unique_identifier=binding.plugin_unique_identifier,
+                runtime_type=binding.runtime_type,
+                source=binding.source,
+                version=binding.version,
+            )
+            for plugin_id, binding in plugin_bindings.items()
+        }
+        return provider_summaries, plugin_summaries
 
     def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
         """

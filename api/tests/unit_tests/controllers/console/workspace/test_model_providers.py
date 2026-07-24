@@ -15,6 +15,7 @@ from controllers.console.workspace.model_providers import (
     ModelProviderIconApi,
     ModelProviderListApi,
     ModelProviderPaymentCheckoutUrlApi,
+    ModelProviderSummaryListApi,
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
@@ -27,6 +28,10 @@ from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
+    ModelProviderCustomConfigurationSummaryResponse,
+    ModelProviderPluginSummaryResponse,
+    ModelProviderSummaryResponse,
+    ModelProviderSystemConfigurationSummaryResponse,
     ProviderResponse,
     SystemConfigurationResponse,
 )
@@ -138,6 +143,62 @@ class TestModelProviderListApi:
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=None)
         assert result == {"data": []}
+
+
+class TestModelProviderSummaryListApi:
+    def test_get_success(self, app: Flask):
+        api = ModelProviderSummaryListApi()
+        method = unwrap(api.get)
+        provider = ModelProviderSummaryResponse(
+            tenant_id="tenant1",
+            provider="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=I18nObject(en_US="OpenAI models"),
+            icon_small=I18nObject(en_US="icon.svg"),
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            preferred_provider_type=ProviderType.CUSTOM,
+            is_configured=True,
+            custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
+                status=CustomConfigurationStatus.ACTIVE,
+                has_credentials=True,
+                current_credential_id=VALID_UUID,
+                current_credential_name="production",
+                current_credential_usable=True,
+            ),
+            system_configuration=ModelProviderSystemConfigurationSummaryResponse(enabled=False),
+        )
+        plugin = ModelProviderPluginSummaryResponse(
+            installation_id="installation-1",
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+            runtime_type="local",
+            source="marketplace",
+            version="1.0.0",
+        )
+
+        with (
+            app.test_request_context("/?model_type=llm"),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_summary_list",
+                return_value=([provider], {"langgenius/openai": plugin}),
+            ) as get_provider_summary_list,
+        ):
+            result = method(api, "tenant1")
+
+        get_provider_summary_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.LLM)
+        assert result["data"][0]["provider"] == "langgenius/openai/openai"
+        assert "tenant_id" not in result["data"][0]
+        assert result["data"][0]["custom_configuration"] == {
+            "status": "active",
+            "has_credentials": True,
+            "current_credential_id": VALID_UUID,
+            "current_credential_name": "production",
+            "current_credential_usable": True,
+        }
+        assert result["plugins"]["langgenius/openai"]["installation_id"] == "installation-1"
 
 
 class TestModelProviderCredentialApi:

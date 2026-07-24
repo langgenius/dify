@@ -227,6 +227,13 @@ export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
 }
 
+export type ModelProviderSummaryListResponse = {
+  data: Array<ModelProviderSummaryResponse>
+  plugins: {
+    [key: string]: ModelProviderPluginSummaryResponse
+  }
+}
+
 export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
@@ -415,6 +422,10 @@ export type PluginInstallTaskStartResponse = {
 
 export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
+}
+
+export type PluginInstalledIdsResponse = {
+  plugin_ids: Array<string>
 }
 
 export type PluginListResponse = {
@@ -1191,6 +1202,30 @@ export type ProviderResponse = {
   tenant_id: string
 }
 
+export type ModelProviderSummaryResponse = {
+  configurate_methods: Array<ConfigurateMethod>
+  custom_configuration: ModelProviderCustomConfigurationSummaryResponse
+  description?: I18nObject | null
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  is_configured: boolean
+  label: I18nObject
+  plugin_id: string
+  preferred_provider_type: ProviderType
+  provider: string
+  supported_model_types: Array<ModelType>
+  system_configuration: ModelProviderSystemConfigurationSummaryResponse
+}
+
+export type ModelProviderPluginSummaryResponse = {
+  installation_id: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  version: string
+}
+
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type ModelWithProviderEntityResponse = {
@@ -1729,6 +1764,20 @@ export type SystemConfigurationResponse = {
   quota_configurations?: Array<QuotaConfiguration>
 }
 
+export type ModelProviderCustomConfigurationSummaryResponse = {
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  current_credential_usable: boolean
+  has_credentials: boolean
+  status: CustomConfigurationStatus
+}
+
+export type ModelProviderSystemConfigurationSummaryResponse = {
+  enabled: boolean
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
 export type ModelFeature =
   | 'agent-thought'
   | 'audio'
@@ -1898,8 +1947,6 @@ export type PluginInstallTaskPluginStatus = {
 }
 
 export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
-
-export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
 
 export type PluginDeclarationResponse = {
   agent_strategy?: {
@@ -3028,6 +3075,22 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
 
+export type GetWorkspacesCurrentModelProvidersSummaryData = {
+  body?: never
+  path?: never
+  query?: {
+    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+  }
+  url: '/workspaces/current/model-providers/summary'
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
+  200: ModelProviderSummaryListResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponse =
+  GetWorkspacesCurrentModelProvidersSummaryResponses[keyof GetWorkspacesCurrentModelProvidersSummaryResponses]
+
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never
   path: {
@@ -3574,6 +3637,22 @@ export type PostWorkspacesCurrentPluginInstallPkgResponses = {
 export type PostWorkspacesCurrentPluginInstallPkgResponse =
   PostWorkspacesCurrentPluginInstallPkgResponses[keyof PostWorkspacesCurrentPluginInstallPkgResponses]
 
+export type GetWorkspacesCurrentPluginInstalledIdsData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/installed-ids'
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
+  200: PluginInstalledIdsResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponse =
+  GetWorkspacesCurrentPluginInstalledIdsResponses[keyof GetWorkspacesCurrentPluginInstalledIdsResponses]
+
 export type GetWorkspacesCurrentPluginListData = {
   body?: never
   path?: never
@@ -3887,8 +3966,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }

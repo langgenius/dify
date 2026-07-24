@@ -1,5 +1,5 @@
 import io
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Literal, TypedDict
 
@@ -43,6 +43,7 @@ from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInsta
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
+from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
@@ -93,6 +94,15 @@ class ParserList(BaseModel):
 class PluginCategoryListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
+    query: str = Field(default="", max_length=256, description="Case-insensitive search query")
+    tags: list[str] = Field(default_factory=list, max_length=128, description="Match any plugin tag")
+    language: Literal["en_US", "zh_Hans", "ja_JP", "pt_BR"] = Field(
+        default="en_US", description="Language used for localized label and description search"
+    )
+
+
+class PluginInstalledIdsQuery(BaseModel):
+    category: PluginCategory = Field(description="Plugin category to include")
 
 
 class ParserLatest(BaseModel):
@@ -325,6 +335,10 @@ class PluginListResponse(ResponseModel):
     total: int
 
 
+class PluginInstalledIdsResponse(ResponseModel):
+    plugin_ids: list[str]
+
+
 class PluginVersionsResponse(ResponseModel):
     versions: Mapping[str, PluginService.LatestPluginCache | None]
 
@@ -384,6 +398,7 @@ register_schema_models(
     console_ns,
     ParserList,
     PluginCategoryListQuery,
+    PluginInstalledIdsQuery,
     PluginAutoUpgradeSettingsPayload,
     PluginPermissionSettingsPayload,
     ParserLatest,
@@ -420,6 +435,7 @@ register_response_schema_models(
     PluginDebuggingKeyResponse,
     PluginDynamicOptionsResponse,
     PluginInstallationsResponse,
+    PluginInstalledIdsResponse,
     PluginInstallTaskStartResponse,
     PluginListResponse,
     PluginManifestResponse,
@@ -479,7 +495,39 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
     return content
 
 
-def _list_hardcoded_builtin_tool_providers(tenant_id: str) -> list[dict[str, Any]]:
+def _localized_builtin_tool_text(value: I18nObject, language: str) -> str:
+    return getattr(value, language, None) or value.en_US
+
+
+def _builtin_tool_provider_matches_filters(
+    provider: ToolProviderApiEntity,
+    *,
+    query: str,
+    tags: Sequence[str],
+    language: str,
+) -> bool:
+    if tags and not any(tag in provider.labels for tag in tags):
+        return False
+    if not query:
+        return True
+
+    lower_query = query.lower()
+    candidates = (
+        provider.name,
+        _localized_builtin_tool_text(provider.label, language),
+        _localized_builtin_tool_text(provider.description, language),
+    )
+    return any(lower_query in candidate.lower() for candidate in candidates)
+
+
+def _list_hardcoded_builtin_tool_providers(
+    tenant_id: str,
+    *,
+    query: str = "",
+    tags: Sequence[str] = (),
+    language: str = "en_US",
+) -> list[dict[str, Any]]:
+    """List builtin providers using the same search and tag semantics as category plugins."""
     db_builtin_providers = {
         str(ToolProviderID(provider.provider)): provider
         for provider in ToolManager.list_default_builtin_providers(tenant_id)
@@ -500,6 +548,13 @@ def _list_hardcoded_builtin_tool_providers(tenant_id: str) -> list[dict[str, Any
             db_provider=db_builtin_providers.get(provider.entity.identity.name),
             decrypt_credentials=False,
         )
+        if not _builtin_tool_provider_matches_filters(
+            user_provider,
+            query=query,
+            tags=tags,
+            language=language,
+        ):
+            continue
         ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
         builtin_providers.append(user_provider)
 
@@ -554,7 +609,9 @@ class PluginCategoryListApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, category: str):
-        args = PluginCategoryListQuery.model_validate(request.args.to_dict(flat=True))
+        args = PluginCategoryListQuery.model_validate(
+            {**request.args.to_dict(flat=True), "tags": request.args.getlist("tags")}
+        )
 
         try:
             plugin_category = PluginCategory(category)
@@ -562,13 +619,26 @@ class PluginCategoryListApi(Resource):
             return {"code": "invalid_param", "message": "invalid plugin category"}, 400
 
         try:
-            plugins = PluginService.list_by_category(tenant_id, plugin_category, args.page, args.page_size)
+            plugins = PluginService.list_by_category(
+                tenant_id,
+                plugin_category,
+                args.page,
+                args.page_size,
+                query=args.query,
+                tags=args.tags,
+                language=args.language,
+            )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
         builtin_tools = []
         if plugin_category == PluginCategory.Tool:
-            builtin_tools = _list_hardcoded_builtin_tool_providers(tenant_id)
+            builtin_tools = _list_hardcoded_builtin_tool_providers(
+                tenant_id,
+                query=args.query,
+                tags=args.tags,
+                language=args.language,
+            )
 
         return dump_response(
             PluginCategoryListResponse,
@@ -578,6 +648,24 @@ class PluginCategoryListApi(Resource):
                 "has_more": plugins.has_more,
             },
         )
+
+
+@console_ns.route("/workspaces/current/plugin/installed-ids")
+class PluginInstalledIdsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(PluginInstalledIdsQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginInstalledIdsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = PluginInstalledIdsQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            plugin_ids = PluginService.list_installed_plugin_ids(tenant_id, args.category)
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return dump_response(PluginInstalledIdsResponse, {"plugin_ids": plugin_ids})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")

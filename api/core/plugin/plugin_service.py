@@ -48,6 +48,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTaskStatus,
     PluginListResponse,
     PluginListWithoutTotalResponse,
+    PluginModelProviderBinding,
     PluginModelProviderEntity,
     PluginVerification,
 )
@@ -76,6 +77,12 @@ class _RedisLock(Protocol):
     def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool: ...
 
     def release(self) -> None: ...
+
+
+class _ModelPluginIdentity(Protocol):
+    plugin_id: str
+    plugin_unique_identifier: str
+    source: PluginInstallationSource
 
 
 class PluginService:
@@ -265,7 +272,7 @@ class PluginService:
             logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)
 
     @classmethod
-    def _get_remote_model_plugin_cache_marker(cls, plugins: Sequence[PluginEntity]) -> str | None:
+    def _get_remote_model_plugin_cache_marker(cls, plugins: Sequence[_ModelPluginIdentity]) -> str | None:
         remote_model_plugins = sorted(
             f"{plugin.plugin_id}:{plugin.plugin_unique_identifier}"
             for plugin in plugins
@@ -350,7 +357,7 @@ class PluginService:
     def _should_invalidate_model_provider_cache_for_remote_model_plugins(
         cls,
         tenant_id: str,
-        plugins: Sequence[PluginEntity],
+        plugins: Sequence[_ModelPluginIdentity],
     ) -> bool:
         remote_model_plugin_marker = cls._get_remote_model_plugin_cache_marker(plugins)
         cached_remote_model_plugin_marker = cls._load_cached_remote_model_plugin_marker(tenant_id)
@@ -657,6 +664,26 @@ class PluginService:
         return plugins
 
     @staticmethod
+    def list_installed_plugin_ids(tenant_id: str, category: PluginCategory) -> Sequence[str]:
+        """List all currently installed plugin IDs in one category through the daemon's lightweight query."""
+        manager = PluginInstaller()
+        return manager.list_installed_plugin_ids(tenant_id, category)
+
+    @staticmethod
+    def list_model_provider_bindings(
+        tenant_id: str, *, client: PluginModelClient | None = None
+    ) -> Sequence[PluginModelProviderBinding]:
+        """Return fresh model bindings and reconcile remote-debug provider metadata before it is read."""
+        model_client = client or PluginModelClient()
+        bindings = model_client.fetch_model_provider_bindings(tenant_id)
+        if PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(tenant_id, bindings):
+            PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+
+        marker = PluginService._get_remote_model_plugin_cache_marker(bindings)
+        PluginService._store_cached_remote_model_plugin_marker(tenant_id, marker)
+        return bindings
+
+    @staticmethod
     def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
         """List tenant plugins with endpoint counts reconciled from live records.
 
@@ -672,17 +699,33 @@ class PluginService:
 
     @staticmethod
     def list_by_category(
-        tenant_id: str, category: PluginCategory, page: int, page_size: int
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+        *,
+        query: str = "",
+        tags: Sequence[str] = (),
+        language: str = "en_US",
     ) -> PluginListWithoutTotalResponse:
         """
         List plugins in one category with a has-more cursor signal and without calculating total.
 
-        The daemon scans tenant installations in the existing list order and stops once it finds one extra match.
-        This keeps pagination usable before category is persisted on installation rows.
+        The daemon applies category, search, and tag filters before pagination, then stops once it finds one extra
+        match. Only a complete, unfiltered first page may reconcile the model-provider cache; the unpaginated model
+        binding read is the authoritative marker source for larger result sets.
         """
         manager = PluginInstaller()
-        plugins = manager.list_plugins_by_category(tenant_id, category, page, page_size)
-        if category == PluginCategory.Model:
+        plugins = manager.list_plugins_by_category(
+            tenant_id,
+            category,
+            page,
+            page_size,
+            query=query,
+            tags=tags,
+            language=language,
+        )
+        if category == PluginCategory.Model and page == 1 and not plugins.has_more and not query and not tags:
             should_invalidate_model_provider_cache = (
                 PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(
                     tenant_id,
