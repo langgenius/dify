@@ -163,7 +163,7 @@ def test_get_app_model_with_trial_prefers_injected_session(monkeypatch: pytest.M
         "session",
         SimpleNamespace(scalar=lambda *_args, **_kwargs: pytest.fail("db.session should not be used")),
     )
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: nullcontext(session))
+    monkeypatch.setattr(session_module.session_factory, "create_readonly_session", lambda: nullcontext(session))
 
     class Handler:
         @with_session(write=False)

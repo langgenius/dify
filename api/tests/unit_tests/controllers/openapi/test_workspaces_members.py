@@ -97,7 +97,11 @@ def database_session(sqlite_engine: Engine):
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    factory = SimpleNamespace(get_session_maker=lambda: session_maker, create_session=session_maker)
+    factory = SimpleNamespace(
+        get_session_maker=lambda: session_maker,
+        create_session=session_maker,
+        create_readonly_session=session_maker,
+    )
     with patch("controllers.common.session.session_factory", factory), session_maker() as session:
         yield session
 
