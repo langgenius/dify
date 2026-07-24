@@ -511,6 +511,27 @@ describe('CreateKnowledgePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
   })
 
+  it('asks before discarding a preserved source draft after switching source types', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Release notes',
+    )
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardDraftTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+  })
+
   it('protects an unsaved draft from browser unload', async () => {
     const user = userEvent.setup()
     renderPage()

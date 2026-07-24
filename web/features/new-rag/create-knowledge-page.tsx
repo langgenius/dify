@@ -101,8 +101,13 @@ export function CreateKnowledgePage() {
     (sourceDraft.sourceType === 'websiteCrawl'
       ? !isValidWebsiteSourceDraft(sourceDraft)
       : !sourceDraft.sourceName.trim())
-  const sourceDraftChanged =
-    JSON.stringify(sourceDraft) !== JSON.stringify(createNewKnowledgeSourceDraft('websiteCrawl'))
+  const sourceDraftChanged = Object.values({
+    ...sourceDraftsRef.current,
+    [sourceDraft.sourceType]: sourceDraft,
+  }).some(
+    (draft) =>
+      JSON.stringify(draft) !== JSON.stringify(createNewKnowledgeSourceDraft(draft.sourceType)),
+  )
   const hasUnsavedChanges = Boolean(
     name ||
     description ||
@@ -188,7 +193,7 @@ export function CreateKnowledgePage() {
       setExitReason('partial')
       return
     }
-    if (name || description || visibility !== defaultVisibility) {
+    if (hasUnsavedChanges) {
       setExitReason('discard')
       return
     }
@@ -296,7 +301,7 @@ export function CreateKnowledgePage() {
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
             <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
-              className="flex w-full max-w-[760px] shrink-0 flex-col [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:flex-1"
+              className="flex max-h-full min-h-0 w-full max-w-[760px] flex-col"
               onFormSubmit={handleSubmit}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -305,7 +310,7 @@ export function CreateKnowledgePage() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 flex-col gap-4 px-6 sm:px-10 [@media(max-height:850px)]:flex-1 [@media(max-height:850px)]:overflow-y-auto">
+              <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-6 sm:px-10">
                 <div className="space-y-4">
                   <Field
                     name="name"

@@ -490,6 +490,7 @@ function ReadyCrawlSelectionForm({
             {t(($) => $['newKnowledge.syncPolicy'])}
           </span>
           <select
+            name="syncMode"
             value={syncMode}
             onChange={(event) => {
               setSyncMode(event.target.value as SyncMode)
@@ -510,6 +511,7 @@ function ReadyCrawlSelectionForm({
             </span>
             <input
               type="number"
+              name="customIntervalHours"
               min={MIN_CUSTOM_INTERVAL_HOURS}
               max={MAX_CUSTOM_INTERVAL_HOURS}
               step={1}

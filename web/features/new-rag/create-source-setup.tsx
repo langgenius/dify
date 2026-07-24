@@ -61,6 +61,7 @@ function ConnectedSourceConfiguration({
         <input
           type="text"
           autoComplete="off"
+          name="sourceName"
           disabled={disabled}
           maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
           value={draft.sourceName}
@@ -75,6 +76,7 @@ function ConnectedSourceConfiguration({
       <label className="block system-xs-medium text-text-secondary">
         {t(($) => $['newKnowledge.syncPolicy'])}
         <select
+          name="syncPolicy"
           disabled={disabled}
           value={draft.syncPolicy}
           className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
@@ -218,6 +220,7 @@ export function CreateSourceSetup({
                 type="url"
                 inputMode="url"
                 autoComplete="off"
+                name="rootUrl"
                 disabled={disabled}
                 maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
                 value={draft.rootUrl}
@@ -236,6 +239,7 @@ export function CreateSourceSetup({
               <input
                 type="text"
                 autoComplete="off"
+                name="sourceName"
                 disabled={disabled}
                 maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                 value={draft.sourceName}
@@ -281,6 +285,7 @@ export function CreateSourceSetup({
                 <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
                   <input
                     type="checkbox"
+                    name="includeSubpages"
                     checked={draft.includeSubpages}
                     onChange={(event) =>
                       updateDraft({ ...draft, includeSubpages: event.target.checked })
@@ -292,6 +297,7 @@ export function CreateSourceSetup({
                   {t(($) => $['newKnowledge.maxPages'])}
                   <input
                     type="number"
+                    name="maxPages"
                     min={1}
                     max={200}
                     value={draft.maxPages}
