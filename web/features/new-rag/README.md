@@ -13,9 +13,11 @@ tasks.
 - `components/new-knowledge-list-states`
 - `crawl-selection-form`
 - `create-knowledge-page`
+- `create-upload-queue`
 - `create-knowledge-workflow`
 - `document-list`
 - `document-model`
+- `document-upload-policy`
 - `documents-page`
 - `knowledge-route-guard`
 - `knowledge-space-shell`

@@ -3,25 +3,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  DOCUMENT_UPLOAD_ACCEPT,
+  documentUploadFileExtension,
+  documentUploadIssue,
+} from './document-upload-policy'
+import { createRequestId } from './request-id'
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024
-const ALLOWED_EXTENSIONS = new Set([
-  'csv',
-  'doc',
-  'docx',
-  'htm',
-  'html',
-  'jsonl',
-  'markdown',
-  'md',
-  'pdf',
-  'txt',
-  'xls',
-  'xlsx',
-])
 const PREVIEWABLE_EXTENSIONS = new Set(['doc', 'docx', 'html', 'markdown', 'md', 'pdf', 'txt'])
-
-const CREATE_UPLOAD_ACCEPT = [...ALLOWED_EXTENSIONS].map((extension) => `.${extension}`).join(',')
 
 export type QueuedUpload = {
   file: File
@@ -29,22 +18,11 @@ export type QueuedUpload = {
   issue?: 'fileSize' | 'fileType'
 }
 
-function fileExtension(name: string) {
-  const extension = name.split('.').pop()?.toLocaleLowerCase()
-  return extension && extension !== name.toLocaleLowerCase() ? extension : ''
-}
-
 function createQueuedUpload(file: File): QueuedUpload {
-  const extension = fileExtension(file.name)
   return {
     file,
-    id: `${file.name}:${file.size}:${file.lastModified}:${globalThis.crypto.randomUUID()}`,
-    issue:
-      file.size > MAX_FILE_SIZE
-        ? 'fileSize'
-        : !ALLOWED_EXTENSIONS.has(extension)
-          ? 'fileType'
-          : undefined,
+    id: `${file.name}:${file.size}:${file.lastModified}:${createRequestId()}`,
+    issue: documentUploadIssue(file),
   }
 }
 
@@ -55,7 +33,7 @@ function formatFileSize(bytes: number) {
 }
 
 function fileBadge(file: File) {
-  return fileExtension(file.name).toLocaleUpperCase() || 'FILE'
+  return documentUploadFileExtension(file.name).toLocaleUpperCase() || 'FILE'
 }
 
 function mergeFiles(current: QueuedUpload[], files: File[]) {
@@ -90,7 +68,9 @@ export function CreateUploadQueue({
   const [dragging, setDragging] = useState(false)
   const previewUnavailable = uploads.some(
     (upload) =>
-      !upload.issue && !uploading && PREVIEWABLE_EXTENSIONS.has(fileExtension(upload.file.name)),
+      !upload.issue &&
+      !uploading &&
+      PREVIEWABLE_EXTENSIONS.has(documentUploadFileExtension(upload.file.name)),
   )
 
   const addFiles = (files: File[]) => {
@@ -104,7 +84,7 @@ export function CreateUploadQueue({
         className="peer sr-only"
         multiple
         type="file"
-        accept={CREATE_UPLOAD_ACCEPT}
+        accept={DOCUMENT_UPLOAD_ACCEPT}
         aria-label={t(($) => $['newKnowledge.uploadFiles'])}
         disabled={disabled}
         onChange={(event) => {
@@ -200,7 +180,7 @@ export function CreateUploadQueue({
               </span>
               {!uploading &&
                 !upload.issue &&
-                PREVIEWABLE_EXTENSIONS.has(fileExtension(upload.file.name)) && (
+                PREVIEWABLE_EXTENSIONS.has(documentUploadFileExtension(upload.file.name)) && (
                   <button
                     type="button"
                     disabled

@@ -487,6 +487,32 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('queues uploads when native random UUID generation is unavailable', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    vi.restoreAllMocks()
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis.crypto, 'randomUUID')
+    Object.defineProperty(globalThis.crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      renderPage()
+      await user.upload(
+        screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+          selector: 'input[type="file"]',
+        }),
+        new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+      )
+
+      expect(screen.getByText('handbook.md')).toBeInTheDocument()
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis.crypto, 'randomUUID', descriptor)
+      else Reflect.deleteProperty(globalThis.crypto, 'randomUUID')
+    }
+  })
+
   it('hands the configured website draft to the real add-source workflow', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'

@@ -35,6 +35,7 @@ import {
   taskNeedsAttention,
   taskVersionIsAfter,
 } from './document-model'
+import { DOCUMENT_UPLOAD_ACCEPT, documentUploadIssue } from './document-upload-policy'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
@@ -48,7 +49,6 @@ const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
 const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
-const DOCUMENT_ACCEPT = '.pdf,.doc,.docx,.md,.markdown,.html,.htm,.xls,.xlsx,.txt'
 const documentFilterParser = parseAsStringLiteral([
   'all',
   'ready',
@@ -75,6 +75,9 @@ const uploadExclusionReasonKey = {
   revision_conflict: 'target',
   unsupported_mime_type: 'fileType',
 } as const
+
+type UploadExclusionReasonKey =
+  (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
 
 type TerminalTaskPin = {
   observedAt: string
@@ -592,6 +595,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskQueryWarning = Boolean(
     (tasksQuery.error && tasksQuery.data) || tasksQuery.isFetchNextPageError,
   )
+  const documentQueryWarning = Boolean(documentsQuery.error && documentsQuery.data)
   const dependencyRetryFetching = Boolean(
     (taskQueryWarning && tasksQuery.isFetching) || (sourceQueryWarning && sourcesQuery.isFetching),
   )
@@ -617,6 +621,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const selectionDisabled =
     !canWrite ||
     dependencyResultsIncomplete ||
+    documentQueryWarning ||
     taskQueryWarning ||
     (sourceQueryWarning && unresolvedDocumentSourceIds.size > 0) ||
     filteredResultsIncomplete
@@ -626,7 +631,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       : (sourcesQuery.error || sourcesQuery.isFetchNextPageError) &&
           unresolvedDocumentSourceIds.size > 0
         ? t(($) => $['newKnowledge.sourcesErrorDescription'])
-        : documentsQuery.isFetchNextPageError
+        : documentsQuery.error || documentsQuery.isFetchNextPageError
           ? t(($) => $['newKnowledge.documentsErrorDescription'])
           : dependencyResultsIncomplete
             ? tCommon(($) => $.loading)
@@ -1339,55 +1344,83 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
       if (!canWrite || !files.length || uploadPendingRef.current) return
+      const uploadableFiles: File[] = []
+      const localExclusions: Array<{
+        filename: string
+        reasonKey: UploadExclusionReasonKey
+      }> = []
+      for (const file of files) {
+        const issue = documentUploadIssue(file)
+        if (issue) localExclusions.push({ filename: file.name, reasonKey: issue })
+        else uploadableFiles.push(file)
+      }
+      const formatExclusionDetails = (
+        exclusions: Array<{ filename: string; reasonKey: UploadExclusionReasonKey }>,
+      ) => {
+        const detailItems = exclusions
+          .slice(0, 3)
+          .map(
+            ({ filename, reasonKey }) =>
+              `${filename} (${t(($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`])})`,
+          )
+        if (exclusions.length > detailItems.length)
+          detailItems.push(
+            t(($) => $['newKnowledge.documentUploadExclusion.more'], {
+              count: exclusions.length - detailItems.length,
+            }),
+          )
+        return detailItems.join('; ')
+      }
+      if (!uploadableFiles.length) {
+        toast.error(
+          t(($) => $['newKnowledge.documentUploadRejected'], {
+            details: formatExclusionDetails(localExclusions),
+          }),
+        )
+        return
+      }
       let writePermissionDenied = false
       uploadPendingRef.current = true
       setUploading(true)
       try {
-        if (files.length === 1) {
+        let acceptedCount = 0
+        const exclusions = [...localExclusions]
+        if (uploadableFiles.length === 1) {
           await uploadDocument({
-            body: { file: files[0]! },
+            body: { file: uploadableFiles[0]! },
             params: { id: knowledgeSpaceId },
           })
+          acceptedCount = 1
         } else {
           const result = await bulkUploadDocuments({
-            body: { files },
+            body: { files: uploadableFiles },
             params: { id: knowledgeSpaceId },
           })
-          const excludedItems = result.items.filter((item) => 'reason' in item)
-          const detailItems = excludedItems.slice(0, 3).map((item) => {
+          acceptedCount = result.accepted
+          for (const item of result.items) {
+            if (!('reason' in item)) continue
             const reasonKey = uploadExclusionReasonKey[item.reason]
-            return `${item.filename} (${t(
-              ($) => $[`newKnowledge.documentUploadExclusion.${reasonKey}`],
-            )})`
-          })
-          if (excludedItems.length > detailItems.length)
-            detailItems.push(
-              t(($) => $['newKnowledge.documentUploadExclusion.more'], {
-                count: excludedItems.length - detailItems.length,
-              }),
-            )
-          const exclusionDetails = detailItems.join('; ')
-          if (!result.accepted) {
-            toast.error(
-              t(($) => $['newKnowledge.documentUploadRejected'], {
-                details: exclusionDetails,
-              }),
-            )
-            return
+            exclusions.push({ filename: item.filename, reasonKey })
           }
-          if (result.excluded)
-            toast.warning(
-              t(($) => $['newKnowledge.documentUploadPartial'], {
-                accepted: result.accepted,
-                details: exclusionDetails,
-                excluded: result.excluded,
-              }),
-            )
-          else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
-          refreshDocumentsAndTasks()
+        }
+        const exclusionDetails = formatExclusionDetails(exclusions)
+        if (!acceptedCount) {
+          toast.error(
+            t(($) => $['newKnowledge.documentUploadRejected'], {
+              details: exclusionDetails,
+            }),
+          )
           return
         }
-        toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
+        if (exclusions.length)
+          toast.warning(
+            t(($) => $['newKnowledge.documentUploadPartial'], {
+              accepted: acceptedCount,
+              details: exclusionDetails,
+              excluded: exclusions.length,
+            }),
+          )
+        else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
         refreshDocumentsAndTasks()
       } catch (error) {
         if (responseStatus(error) === 403) {
@@ -1822,7 +1855,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           ref={uploadInputRef}
           multiple
           hidden
-          accept={DOCUMENT_ACCEPT}
+          accept={DOCUMENT_UPLOAD_ACCEPT}
           aria-label={t(($) => $['newKnowledge.uploadDocuments'])}
           tabIndex={-1}
           type="file"

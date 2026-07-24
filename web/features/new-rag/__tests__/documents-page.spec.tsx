@@ -732,6 +732,10 @@ describe('DocumentsPage', () => {
     const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
     expect(input).toHaveAttribute('hidden')
     expect(input).toHaveAttribute('tabindex', '-1')
+    expect(input).toHaveAttribute(
+      'accept',
+      '.csv,.doc,.docx,.epub,.htm,.html,.json,.jsonl,.md,.pdf,.ppt,.pptx,.rtf,.text,.txt,.xls,.xlsx',
+    )
 
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
@@ -767,6 +771,45 @@ describe('DocumentsPage', () => {
         ],
       }),
     ).toBe(false)
+  })
+
+  it('excludes unsupported files locally while uploading valid files', async () => {
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const validFile = new File(['one'], 'one.md', { type: 'text/markdown' })
+    const unsupportedFile = new File(['two'], 'two.exe', {
+      type: 'application/octet-stream',
+    })
+
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [validFile, unsupportedFile] },
+    })
+
+    await waitFor(() =>
+      expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
+        body: { file: validFile },
+        params: { id: 'space-1' },
+      }),
+    )
+    expect(bulkUploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(toastMock.warning).toHaveBeenCalledWith(
+      'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"details":"two.exe (dataset.newKnowledge.documentUploadExclusion.fileType)","excluded":1}',
+    )
+  })
+
+  it('rejects oversized files before invoking an upload contract', async () => {
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const oversizedFile = new File(['one'], 'oversized.pdf', { type: 'application/pdf' })
+    Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
+
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [oversizedFile] },
+    })
+
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(bulkUploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'dataset.newKnowledge.documentUploadRejected:{"details":"oversized.pdf (dataset.newKnowledge.documentUploadExclusion.fileSize)"}',
+    )
   })
 
   it('reports partial and fully excluded bulk uploads from the contract result', async () => {
@@ -858,14 +901,33 @@ describe('DocumentsPage', () => {
   it('reports a failed background document refresh while preserving cached rows', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
-    documentsQuery.error = new Error('background refresh failed')
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
 
-    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    documentsQuery.error = new Error('background refresh failed')
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentsErrorDescription',
     )
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', {
+        name: 'dataset.newKnowledge.reindexDocuments',
+      }),
+    ).toHaveAttribute('aria-describedby', 'document-reindex-unavailable')
+    expect(
+      within(actions).getByText(
+        'dataset.newKnowledge.reindexDocuments · dataset.newKnowledge.documentsErrorDescription',
+      ),
+    ).toBeVisible()
     await user.click(
       screen.getByRole('button', {
         name: 'common.operation.retry · dataset.newKnowledge.documentsErrorDescription',
