@@ -33,6 +33,7 @@ dependencies = [
     "flask-restx>=1.3.2,<2.0.0",
     "google-cloud-aiplatform>=1.160.0,<2.0.0",
     "httpx[socks]==0.28.1",
+    "ldap3>=2.9.1,<3.0.0",
     "opentelemetry-distro==0.62b1",
     "opentelemetry-instrumentation-celery==0.62b1",
     "opentelemetry-instrumentation-flask==0.62b1",
