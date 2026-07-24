@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 from sqlalchemy import Engine, Integer, String, create_engine, event, select, text, update
@@ -10,6 +10,7 @@ from core.db import session_factory as session_factory_module
 from core.db.session_factory import (
     READONLY_CONNECTION_FLAG,
     GuardedSession,
+    ReadonlySession,
     ReadonlySessionCommitError,
     ReadonlySessionWriteError,
     configure_session_factory,
@@ -63,6 +64,29 @@ def test_readonly_session_allows_reads(sqlite_session_factory: Engine) -> None:
     with create_readonly_session() as session:
         assert session.scalar(select(Widget.name).where(Widget.id == 1)) == "one"
         assert session.execute(text("SELECT name FROM widgets WHERE id = 1")).scalar_one() == "one"
+
+
+def _rollback_session(session: ReadonlySession) -> None:
+    session.rollback()
+
+
+def _reset_session(session: ReadonlySession) -> None:
+    session.reset()
+
+
+@pytest.mark.parametrize("restart_session", [_rollback_session, _reset_session])
+def test_readonly_session_allows_restart_and_preserves_guards(
+    sqlite_session_factory: Engine,
+    restart_session: Callable[[ReadonlySession], None],
+) -> None:
+    del sqlite_session_factory
+
+    with create_readonly_session() as session:
+        restart_session(session)
+
+        assert session.scalar(select(Widget.name).where(Widget.id == 1)) == "one"
+        with pytest.raises(ReadonlySessionWriteError, match="write SQL"):
+            session.connection().exec_driver_sql("INSERT INTO widgets (id, name) VALUES (2, 'two')")
 
 
 def test_readonly_session_blocks_orm_write_apis(sqlite_session_factory: Engine) -> None:

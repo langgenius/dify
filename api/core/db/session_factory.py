@@ -13,6 +13,7 @@ _T = TypeVar("_T")
 
 READONLY_SESSION_FLAG = "dify_readonly_session"
 READONLY_CONNECTION_FLAG = "dify_readonly_connection"
+_READONLY_ACTIVE_CONNECTION_KEY = "dify_readonly_active_connection"
 
 _LEADING_WRITE_SQL_RE = re.compile(
     r"^\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/\s*)*"
@@ -25,8 +26,9 @@ class ReadonlySession(Protocol):
     """Structural read-only SQLAlchemy session capability for gradual typing.
 
     A normal ``Session`` satisfies this protocol, so existing write sessions can
-    be passed to read-only helpers. The protocol intentionally omits mutation
-    methods such as ``add()``, ``delete()``, ``flush()``, and ``commit()``.
+    be passed to read-only helpers. Transaction rollback and session reset are
+    safe lifecycle operations; mutation methods such as ``add()``, ``delete()``,
+    ``flush()``, and ``commit()`` are intentionally omitted.
     """
 
     info: dict[Any, Any]
@@ -38,6 +40,10 @@ class ReadonlySession(Protocol):
     def scalars(self, statement: Any, **kwargs: Any) -> Any: ...
 
     def execute(self, statement: Any, params: Any | None = None, **kwargs: Any) -> Any: ...
+
+    def rollback(self) -> None: ...
+
+    def reset(self) -> None: ...
 
 
 class ReadonlySessionError(RuntimeError):
@@ -65,7 +71,8 @@ class GuardedSession(Session):
 
     Only sessions created by ``create_readonly_session()`` use this subclass and
     set ``READONLY_SESSION_FLAG``. Normal write sessions use SQLAlchemy's
-    standard ``Session`` class.
+    standard ``Session`` class. Rollback and reset replace the DB-native
+    read-only transaction so the reusable session remains guarded.
     """
 
     @override
@@ -103,6 +110,26 @@ class GuardedSession(Session):
         if _is_readonly_session(self):
             raise ReadonlySessionCommitError("Cannot commit a read-only session.")
         super().commit()
+
+    @override
+    def rollback(self) -> None:
+        if not _is_readonly_session(self):
+            super().rollback()
+            return
+
+        _reset_readonly_connection(self)
+        super().rollback()
+        _start_native_readonly_transaction(self)
+
+    @override
+    def reset(self) -> None:
+        if not _is_readonly_session(self):
+            super().reset()
+            return
+
+        _reset_readonly_connection(self)
+        super().reset()
+        _start_native_readonly_transaction(self)
 
 
 @event.listens_for(GuardedSession, "before_flush")
@@ -153,10 +180,12 @@ def _start_native_readonly_transaction(session: Session) -> Connection:
         connection.info.pop(READONLY_CONNECTION_FLAG, None)
         raise
 
+    session.info[_READONLY_ACTIVE_CONNECTION_KEY] = connection
     return connection
 
 
-def _reset_readonly_connection(connection: Connection | None) -> None:
+def _reset_readonly_connection(session: Session) -> None:
+    connection = session.info.pop(_READONLY_ACTIVE_CONNECTION_KEY, None)
     if connection is None:
         return
     try:
@@ -205,16 +234,17 @@ def create_readonly_session() -> Generator[GuardedSession, None, None]:
     old_autoflush = session.autoflush
     session.autoflush = False
     session.info[READONLY_SESSION_FLAG] = True
-    connection: Connection | None = None
     try:
-        connection = _start_native_readonly_transaction(session)
+        _start_native_readonly_transaction(session)
         yield session
         _assert_readonly_session_clean(session)
     finally:
-        _reset_readonly_connection(connection)
-        session.rollback()
-        session.autoflush = old_autoflush
-        session.close()
+        try:
+            _reset_readonly_connection(session)
+        finally:
+            Session.rollback(session)
+            session.autoflush = old_autoflush
+            session.close()
 
 
 # Class wrapper for convenience
