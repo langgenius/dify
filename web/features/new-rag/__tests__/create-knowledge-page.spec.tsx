@@ -9,6 +9,8 @@ const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
   getPolicy: vi.fn(),
   patchPolicy: vi.fn(),
+  upload: vi.fn(),
+  uploadBulk: vi.fn(),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
 }))
 
@@ -54,6 +56,8 @@ vi.mock('@/service/client', () => ({
       createKnowledgeSpace: serviceMock.create,
       getKnowledgeSpacesByIdAccessPolicy: serviceMock.getPolicy,
       patchKnowledgeSpacesByIdAccessPolicy: serviceMock.patchPolicy,
+      postKnowledgeSpacesByIdDocuments: serviceMock.upload,
+      postKnowledgeSpacesByIdDocumentsBulk: serviceMock.uploadBulk,
     },
   },
   consoleQuery: {
@@ -120,6 +124,14 @@ describe('CreateKnowledgePage', () => {
       revision: 5,
       visibility: 'all_members',
     })
+    serviceMock.upload.mockResolvedValue({
+      id: 'document-1',
+    })
+    serviceMock.uploadBulk.mockResolvedValue({
+      accepted: 2,
+      excluded: 0,
+      items: [],
+    })
     permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
     navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
@@ -129,6 +141,7 @@ describe('CreateKnowledgePage', () => {
 
   afterEach(() => {
     globalThis.sessionStorage.clear()
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -373,24 +386,138 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
   })
 
-  it('integrates source setup while keeping the later upload flow disabled', async () => {
+  it('keeps every start mode interactive without simulating backend success', async () => {
     const user = userEvent.setup()
-    navigationMock.startMode = 'source'
     renderPage()
 
     const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
-    expect(startEmpty).not.toBeChecked()
+    expect(startEmpty).toBeChecked()
     expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
     const connectSource = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.connectSource',
     })
     const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
     expect(connectSource).toBeEnabled()
+    expect(uploadFiles).toBeEnabled()
+
+    await user.click(connectSource)
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl']) {
+      await user.click(screen.getByRole('radio', { name: unavailableProvider }))
+      expect(screen.getByRole('radio', { name: unavailableProvider })).toBeChecked()
+    }
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
+    expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.usingDefaults')).toBeInTheDocument()
+    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    expect(rootUrl).toBeEnabled()
+    expect(sourceName).toBeEnabled()
+    await user.type(rootUrl, 'https://docs.dify.ai')
+    await user.type(sourceName, 'Dify docs')
+    const crawlAndPreview = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlAndPreview',
+    })
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+    expect(screen.queryByText(/^dataset\.newKnowledge\.crawlingPages/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^dataset\.newKnowledge\.pagesCrawled/)).not.toBeInTheDocument()
+    const onlineDocuments = screen.getByRole('radio', {
+      name: 'dataset.newKnowledge.onlineDocuments',
+    })
+    await user.click(onlineDocuments)
+    expect(onlineDocuments).toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Notion')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
+    await user.click(uploadFiles)
+    expect(uploadFiles).toBeChecked()
+    const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    expect(uploadInput).toBeInTheDocument()
+    expect(uploadInput).not.toHaveAttribute('hidden')
+    expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
+    uploadInput.focus()
+    expect(uploadInput).toHaveFocus()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+  })
 
+  it('continues from the upload mode after real creation succeeds', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    renderPage()
+
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeChecked()
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    await fillRequiredFields(user)
+    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
+      ),
+    )
+    expect(serviceMock.upload).toHaveBeenCalledWith({
+      body: { file: expect.objectContaining({ name: 'handbook.md' }) },
+      params: { id: createdKnowledge.id },
+    })
+  })
+
+  it('queues uploads when native random UUID generation is unavailable', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    vi.restoreAllMocks()
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis.crypto, 'randomUUID')
+    Object.defineProperty(globalThis.crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      renderPage()
+      await user.upload(
+        screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+          selector: 'input[type="file"]',
+        }),
+        new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+      )
+
+      expect(screen.getByText('handbook.md')).toBeInTheDocument()
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis.crypto, 'randomUUID', descriptor)
+      else Reflect.deleteProperty(globalThis.crypto, 'randomUUID')
+    }
+  })
+
+  it('hands the configured website draft to the real add-source workflow', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
     await user.type(
       screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
       'https://docs.dify.ai',
@@ -399,11 +526,192 @@ describe('CreateKnowledgePage', () => {
       screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
       'Dify docs',
     )
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
-    expect(uploadFiles).toBeDisabled()
-    expect(uploadFiles).toHaveAccessibleDescription(
-      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+    await user.keyboard('{Enter}')
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.clear(maxPages)
+    await user.type(maxPages, '25')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+      ),
     )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      includeSubpages: false,
+      maxPages: 25,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'provider',
+    })
+  })
+
+  it('preserves online document configuration across the real navigation boundary', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Shared product docs',
+    )
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+      'daily',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=onlineDocuments&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+      ),
+    )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      provider: 'Google Docs',
+      sourceName: 'Shared product docs',
+      sourceType: 'onlineDocuments',
+      syncPolicy: 'daily',
+    })
+  })
+
+  it('keeps each source type draft when the user switches between them', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Website docs',
+    )
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Notion docs',
+    )
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')).toHaveValue(
+      'Website docs',
+    )
+  })
+
+  it('uses the same website validation as the add-source workflow', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    expect(rootUrl).toHaveAttribute('maxlength', '2048')
+    expect(sourceName).toHaveAttribute('maxlength', '200')
+
+    await user.type(rootUrl, 'https://user:secret@docs.dify.ai')
+    await user.type(sourceName, 'Dify docs')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://docs.dify.ai')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
+  })
+
+  it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    renderPage()
+    await fillRequiredFields(user)
+    const oversizedFile = new File(['content'], 'oversized.pdf', { type: 'application/pdf' })
+    Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      oversizedFile,
+    )
+
+    expect(screen.getByText('oversized.pdf')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('shows the real uploading state on each valid file row', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.upload.mockImplementation(() => new Promise(() => {}))
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    const queue = screen.getByRole('list', { name: 'dataset.newKnowledge.uploadFiles' })
+    const preview = within(queue).getByRole('button', { name: 'dataset.newKnowledge.preview' })
+    expect(preview).toBeDisabled()
+    expect(preview).toHaveAccessibleDescription('dataset.newKnowledge.previewUnavailable')
+    expect(screen.getByText('dataset.newKnowledge.previewUnavailable')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(await within(queue).findByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+    expect(within(queue).queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+  })
+
+  it('retries upload without creating a duplicate knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.upload.mockRejectedValueOnce(new Error('KnowledgeFS unavailable'))
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.documentUploadFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.upload).toHaveBeenCalledTimes(2)
   })
 
   it('hands the configured source draft to the add-source workflow after creation', async () => {
