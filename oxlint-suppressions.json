@@ -3245,14 +3245,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/marketplace/plugin-type-switch.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
     "no-restricted-imports": {
       "count": 1

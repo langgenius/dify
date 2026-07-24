@@ -1,6 +1,7 @@
 import type { BannerRecommend } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
 import ListWrapper from '../list/list-wrapper'
+import HomeCatalogNavigation from './home-catalog-navigation'
 import HomeHeader from './home-header'
 import HomeHero from './home-hero'
 import HomeSearch from './home-search'
@@ -37,10 +38,8 @@ const MarketplaceHome = ({
           aria-hidden="true"
           className={cn('shrink-0', isMarketplacePlatform ? 'h-6' : 'h-12')}
         />
-        <HomeTrending
-          banners={banners}
-          isMarketplacePlatform={isMarketplacePlatform}
-        />
+        <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
+        <HomeCatalogNavigation isMarketplacePlatform={isMarketplacePlatform} />
         <div className="contents [&>div]:bg-background-default!">
           <ListWrapper
             showInstallButton={showInstallButton}

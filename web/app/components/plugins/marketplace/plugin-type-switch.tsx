@@ -1,31 +1,24 @@
 'use client'
 import type { ActivePluginType } from './constants'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiArchive2Line,
-  RiBrain2Line,
-  RiDatabase2Line,
-  RiHammerLine,
-  RiPuzzle2Line,
-  RiSpeakAiLine,
-} from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
 
 type PluginTypeSwitchProps = {
   className?: string
-  variant?: 'default' | 'hero'
+  variant?: 'default' | 'hero' | 'home'
 }
-const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
+
+function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchProps) {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
+  const isHome = variant === 'home'
   const iconClassName = 'mr-1.5 size-4'
 
   const options: Array<{
@@ -38,42 +31,44 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       text: isHero
         ? t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })
         : t(($) => $['category.all'], { ns: 'plugin' }),
-      icon: isHero ? <PluginIcon className={iconClassName} /> : null,
+      icon: isHero || isHome ? <PluginIcon className={iconClassName} /> : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t(($) => $['category.models'], { ns: 'plugin' }),
-      icon: <RiBrain2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-brain-2-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t(($) => $['category.tools'], { ns: 'plugin' }),
-      icon: <RiHammerLine className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-hammer-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t(($) => $['category.datasources'], { ns: 'plugin' }),
-      icon: <RiDatabase2Line className={iconClassName} />,
+      text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
+        ns: 'plugin',
+      }),
+      icon: <span aria-hidden className={cn('i-ri-database-2-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t(($) => $['category.agents'], { ns: 'plugin' }),
-      icon: <RiSpeakAiLine className={iconClassName} />,
+      text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
+      icon: <span aria-hidden className={cn('i-ri-speak-ai-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: <TriggerIcon className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-custom-vender-plugin-trigger', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
-      icon: <RiPuzzle2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-puzzle-2-line', iconClassName)} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
       text: t(($) => $['category.bundles'], { ns: 'plugin' }),
-      icon: <RiArchive2Line className={iconClassName} />,
+      icon: <span aria-hidden className={cn('i-ri-archive-2-line', iconClassName)} />,
     },
   ]
 
@@ -82,19 +77,29 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       className={cn(
         isHero
           ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
-          : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+          : isHome
+            ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
+            : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
         className,
       )}
+      role="group"
+      aria-label={t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })}
     >
       {options.map((option, index) => {
         const isActive = activePluginType === option.value
 
         return (
           <Fragment key={option.value}>
-            <div
+            <button
+              type="button"
+              aria-pressed={isActive}
               className={cn(
-                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap',
-                isHero ? 'text-text-primary-on-surface' : 'text-text-tertiary',
+                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                isHero
+                  ? 'text-text-primary-on-surface'
+                  : isHome
+                    ? 'min-w-12 justify-center text-text-tertiary'
+                    : 'text-text-tertiary',
                 !isActive &&
                   (isHero
                     ? 'hover:bg-white/20'
@@ -102,7 +107,9 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
                 isActive &&
                   (isHero
                     ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
-                    : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+                    : isHome
+                      ? 'bg-background-interaction-from-bg-2 text-saas-dify-blue-inverted'
+                      : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
               )}
               onClick={() => {
                 handleActivePluginTypeChange(option.value)
@@ -113,7 +120,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
             >
               {option.icon}
               {option.text}
-            </div>
+            </button>
             {isHero && index === 0 && (
               <div
                 aria-hidden
