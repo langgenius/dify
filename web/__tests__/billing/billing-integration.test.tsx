@@ -1,7 +1,7 @@
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
@@ -200,20 +200,22 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/plansCommon\.apiRateLimit/i)).toBeInTheDocument()
     })
 
-    it('should display usage values as "usage / total" format', () => {
+    it('should expose each quota card and its value through stable semantics', () => {
       setupProviderContext({
         type: Plan.sandbox,
-        usage: { buildApps: 3, teamMembers: 1 },
-        total: { buildApps: 5, teamMembers: 1 },
+        usage: { teamMembers: 3 },
+        total: { teamMembers: 5 },
       })
 
       render(<PlanComp loc="test" />)
 
-      // Check that the buildApps usage fraction "3 / 5" is rendered
-      const usageContainers = screen.getAllByText('3')
-      expect(usageContainers.length).toBeGreaterThan(0)
-      const totalContainers = screen.getAllByText('5')
-      expect(totalContainers.length).toBeGreaterThan(0)
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
+      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+
+      expect(quotaLabel.tagName).toBe('DT')
+      expect(quotaValue.tagName).toBe('DD')
+      expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {

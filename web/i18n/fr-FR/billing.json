@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Exécution du flux de travail standard",
   "plansCommon.workflowExecution.tooltip": "Priorité et vitesse de la file d'exécution des flux de travail.",
   "plansCommon.year": "année",
+  "plansCommon.yearlyBilling": "Facturation annuelle",
   "plansCommon.yearlyTip": "Obtenez 2 mois gratuitement en vous abonnant annuellement !",
   "teamMembers": "Membres de l'équipe",
   "triggerLimitModal.description": "Vous avez atteint la limite des déclencheurs d'événements de flux de travail pour ce plan.",

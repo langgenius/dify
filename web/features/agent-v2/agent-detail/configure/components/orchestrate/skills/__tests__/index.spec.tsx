@@ -219,6 +219,7 @@ describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('fetch', mocks.fetch)
+    document.cookie = 'csrf_token=csrf-token; path=/'
     mocks.fetch.mockResolvedValue(
       new Response('downloaded skill file', {
         headers: { 'Content-Type': 'application/octet-stream' },
@@ -295,6 +296,7 @@ describe('AgentSkills', () => {
   })
 
   afterEach(() => {
+    document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
     vi.unstubAllGlobals()
   })
 
@@ -752,6 +754,9 @@ describe('AgentSkills', () => {
       'http://localhost:5001/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=references%2Fguide.md',
       {
         credentials: 'include',
+        headers: {
+          'X-CSRF-Token': 'csrf-token',
+        },
       },
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({

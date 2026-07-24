@@ -142,7 +142,7 @@ export const getEmbeddedIframeSnippet = (iframeUrl: string) =>
  src="${iframeUrl}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
- allow="microphone">
+ allow="microphone;clipboard-write">
 </iframe>`
 
 const getScriptInputsContent = (values: Record<string, WorkflowLaunchInputValue>) => {
