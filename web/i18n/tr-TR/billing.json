@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Standart İş Akışı Yürütme",
   "plansCommon.workflowExecution.tooltip": "İş akışı yürütme kuyruğu önceliği ve hızı.",
   "plansCommon.year": "yıl",
+  "plansCommon.yearlyBilling": "Yıllık faturalandırma",
   "plansCommon.yearlyTip": "Yıllık abonelikle 2 ay ücretsiz!",
   "teamMembers": "Ekip Üyeleri",
   "triggerLimitModal.description": "Bu plan için iş akışı etkinliği tetikleyici sınırına ulaştınız.",

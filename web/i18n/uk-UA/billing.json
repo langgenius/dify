@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Виконання стандартного робочого процесу",
   "plansCommon.workflowExecution.tooltip": "Пріоритет і швидкість виконання черги робочого процесу.",
   "plansCommon.year": "рік",
+  "plansCommon.yearlyBilling": "Щорічна оплата",
   "plansCommon.yearlyTip": "Отримайте 2 місяці безкоштовно, оформивши річну підписку!",
   "teamMembers": "Члени команди",
   "triggerLimitModal.description": "Ви досягли ліміту тригерів подій робочого процесу для цього плану.",
