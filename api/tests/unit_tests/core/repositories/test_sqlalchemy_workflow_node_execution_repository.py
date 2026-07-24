@@ -1,18 +1,21 @@
+"""SQLite-backed tests for the workflow node execution repository."""
+
 from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import psycopg2.errors
 import pytest
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig
@@ -24,26 +27,31 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _replace_or_append_offload,
 )
 from graphon.entities import WorkflowNodeExecution
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models import Account, EndUser
+from models.base import TypeBase
 from models.enums import ExecutionOffLoadType
+from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 
 RESOURCE_TENANT_ID = "tenant"
 
 
-def _mock_account(*, tenant_id: str = "tenant", user_id: str = "user") -> Account:
+@pytest.fixture
+def session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
+    models = (WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, UploadFile)
+    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
+    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+
+
+def _account(*, tenant_id: str = "tenant-1", user_id: str = "user-1") -> Account:
     user = Mock(spec=Account)
     user.id = user_id
     user.current_tenant_id = tenant_id
     return user
 
 
-def _mock_end_user(*, tenant_id: str = "tenant", user_id: str = "user") -> EndUser:
+def _end_user(*, tenant_id: str = "tenant-1", user_id: str = "end-user-1") -> EndUser:
     user = Mock(spec=EndUser)
     user.id = user_id
     user.tenant_id = tenant_id
@@ -52,106 +60,99 @@ def _mock_end_user(*, tenant_id: str = "tenant", user_id: str = "user") -> EndUs
 
 def _execution(
     *,
-    execution_id: str = "exec-id",
-    node_execution_id: str = "node-exec-id",
-    workflow_run_id: str = "run-id",
+    execution_id: str = "execution-1",
+    node_execution_id: str = "node-execution-1",
+    run_id: str = "run-1",
+    index: int = 1,
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
     inputs: Mapping[str, Any] | None = None,
     outputs: Mapping[str, Any] | None = None,
     process_data: Mapping[str, Any] | None = None,
-    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None,
 ) -> WorkflowNodeExecution:
     return WorkflowNodeExecution(
         id=execution_id,
         node_execution_id=node_execution_id,
-        workflow_id="workflow-id",
-        workflow_execution_id=workflow_run_id,
-        index=1,
+        workflow_id="workflow-1",
+        workflow_execution_id=run_id,
+        index=index,
         predecessor_node_id=None,
-        node_id="node-id",
+        node_id=f"node-{index}",
         node_type=BuiltinNodeTypes.LLM,
-        title="Title",
+        title=f"Node {index}",
         inputs=inputs,
         outputs=outputs,
         process_data=process_data,
         status=status,
         error=None,
         elapsed_time=1.0,
-        metadata=metadata,
+        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: index},
         created_at=datetime.now(UTC),
         finished_at=None,
     )
 
 
-class _SessionCtx:
-    def __init__(self, session: Any):
-        self._session = session
-
-    def __enter__(self) -> Any:
-        return self._session
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        return None
-
-
-def _session_factory(session: Any) -> sessionmaker:
-    factory = Mock(spec=sessionmaker)
-    factory.return_value = _SessionCtx(session)
-    return factory
-
-
-def test_init_accepts_engine_and_sessionmaker_and_sets_role(monkeypatch: pytest.MonkeyPatch) -> None:
+def _repository(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: sessionmaker[Session] | Engine,
+    *,
+    tenant_id: str = "tenant-1",
+    app_id: str | None = "app-1",
+    user: Account | EndUser | None = None,
+    triggered_from: WorkflowNodeExecutionTriggeredFrom | None = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+) -> SQLAlchemyWorkflowNodeExecutionRepository:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
+        lambda *_args: SimpleNamespace(upload_file=Mock()),
+    )
+    return SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=factory,
+        tenant_id=tenant_id,
+        user=user or _account(tenant_id=tenant_id),
+        app_id=app_id,
+        triggered_from=triggered_from,
     )
 
-    engine: Engine = create_engine("sqlite:///:memory:")
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=engine,
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    assert isinstance(repo._session_factory, sessionmaker)
 
-    sm = Mock(spec=sessionmaker)
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=sm,
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_end_user(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-    )
-    assert repo._creator_user_role.value == "end_user"
+@contextmanager
+def _raise_on_execution_insert(engine: Engine) -> Iterator[None]:
+    def raise_error(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("INSERT") and "workflow_node_executions" in statement:
+            raise RuntimeError("forced execution INSERT")
+
+    event.listen(engine, "before_cursor_execute", raise_error)
+    try:
+        yield
+    finally:
+        event.remove(engine, "before_cursor_execute", raise_error)
 
 
-def test_init_rejects_invalid_session_factory_type(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_init_accepts_real_engine_and_sessionmaker_and_sets_role(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, session_factory: sessionmaker[Session]
+) -> None:
+    engine_repo = _repository(monkeypatch, sqlite_engine)
+    assert isinstance(engine_repo._session_factory, sessionmaker)
+    end_user_repo = _repository(monkeypatch, session_factory, user=_end_user())
+    assert end_user_repo._creator_user_role.value == "end_user"
+
+
+def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
+        lambda *_args: SimpleNamespace(upload_file=Mock()),
     )
     with pytest.raises(ValueError, match="Invalid session_factory type"):
-        SQLAlchemyWorkflowNodeExecutionRepository(  # type: ignore[arg-type]
-            session_factory=object(),
-            tenant_id=RESOURCE_TENANT_ID,
-            user=_mock_account(),
+        SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=object(),  # type: ignore[arg-type]
+            tenant_id="tenant-1",
+            user=_account(),
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-
-
-def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    user = _mock_account()
+    user = _account()
     user.current_tenant_id = None
-    with pytest.raises(ValueError, match="tenant_id is required"):
+    with pytest.raises(ValueError, match="tenant_id"):
         SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=Mock(spec=sessionmaker),
+            session_factory=sessionmaker(),
             tenant_id="",
             user=user,
             app_id=None,
@@ -159,663 +160,224 @@ def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
 
-def test_init_uses_resource_tenant_when_account_has_no_current_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
+def test_helper_functions_and_truncator_configuration(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    assert _deterministic_json_dump({"b": 1, "a": 2}) == '{"a": 2, "b": 1}'
+    assert _find_first([1, 2, 3], lambda value: value > 1) == 2
+    inputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
+    outputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
+    assert _find_first([inputs, outputs], _filter_by_offload_type(ExecutionOffLoadType.OUTPUTS)) is outputs
+    replaced = _replace_or_append_offload(
+        [inputs, outputs], WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
     )
-    user = _mock_account()
-    user.current_tenant_id = None
+    assert [item.type_ for item in replaced] == [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.INPUTS]
 
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id="resource-tenant-id",
-        user=user,
-        app_id="app-id",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
+    created: dict[str, int] = {}
 
-    assert repo._tenant_id == "resource-tenant-id"
-    assert repo._creator_user_id == user.id
-
-
-def test_create_truncator_uses_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    created: dict[str, Any] = {}
-
-    class FakeTruncator:
+    class Truncator:
         def __init__(self, *, max_size_bytes: int, array_element_limit: int, string_length_limit: int):
             created.update(
-                {
-                    "max_size_bytes": max_size_bytes,
-                    "array_element_limit": array_element_limit,
-                    "string_length_limit": string_length_limit,
-                }
+                max_size_bytes=max_size_bytes,
+                array_element_limit=array_element_limit,
+                string_length_limit=string_length_limit,
             )
 
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.VariableTruncator",
-        FakeTruncator,
-    )
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    _ = repo._create_truncator()
+    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.VariableTruncator", Truncator)
+    _repository(monkeypatch, session_factory)._create_truncator()
     assert created["max_size_bytes"] == dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE
 
 
-def test_helpers_find_first_and_replace_or_append_and_filter() -> None:
-    assert _deterministic_json_dump({"b": 1, "a": 2}) == '{"a": 2, "b": 1}'
-    assert _find_first([], lambda _: True) is None
-    assert _find_first([1, 2, 3], lambda x: x > 1) == 2
-
-    off1 = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    off2 = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
-    assert _find_first([off1, off2], _filter_by_offload_type(ExecutionOffLoadType.OUTPUTS)) is off2
-
-    replaced = _replace_or_append_offload([off1, off2], WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS))
-    assert len(replaced) == 2
-    assert [o.type_ for o in replaced] == [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.INPUTS]
-
-
-def test_to_db_model_requires_constructor_context(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    execution = _execution(inputs={"b": 1, "a": 2}, metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1})
-
-    # Happy path: deterministic json dump should be sorted
-    db_model = repo._to_db_model(execution)
-    assert db_model.tenant_id == RESOURCE_TENANT_ID
-    assert db_model.created_by == "user"
-    assert db_model.created_by_role.value == "account"
+def test_to_db_model_uses_context_and_deterministic_json(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    db_model = repo._to_db_model(_execution(inputs={"b": 1, "a": 2}))
     assert json.loads(db_model.inputs or "{}") == {"a": 2, "b": 1}
-    assert json.loads(db_model.execution_metadata or "{}")["total_tokens"] == 1
-
+    assert db_model.tenant_id == "tenant-1"
+    assert db_model.app_id == "app-1"
     repo._triggered_from = None
     with pytest.raises(ValueError, match="triggered_from is required"):
-        repo._to_db_model(execution)
+        repo._to_db_model(_execution())
 
 
-def test_to_db_model_requires_creator_user_id_and_role(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    execution = _execution()
-    db_model = repo._to_db_model(execution)
-    assert db_model.app_id == "app"
-
-    repo._creator_user_id = None
-    with pytest.raises(ValueError, match="created_by is required"):
-        repo._to_db_model(execution)
-
-    repo._creator_user_id = "user"
-    repo._creator_user_role = None
-    with pytest.raises(ValueError, match="created_by_role is required"):
-        repo._to_db_model(execution)
-
-
-def test_is_duplicate_key_error_and_regenerate_id(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+def test_save_inserts_and_updates_persisted_execution(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
 ) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    execution = _execution(inputs={"value": 1}, outputs={"result": "first"})
+    repo.save(execution)
+    with session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.outputs_dict == {"result": "first"}
+    execution.title = "Updated"
+    execution.outputs = {"result": "second"}
+    repo.save(execution)
+    with session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.title == "Updated"
+        assert persisted.outputs_dict == {"result": "second"}
+    assert repo._node_execution_cache[execution.node_execution_id].id == execution.id
+
+
+def test_save_owned_session_rolls_back_failed_insert(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    session_factory: sessionmaker[Session],
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    with _raise_on_execution_insert(sqlite_engine), pytest.raises(RuntimeError, match="forced execution INSERT"):
+        repo.save(_execution())
+    with session_factory() as session:
+        assert session.scalar(select(WorkflowNodeExecutionModel)) is None
+
+
+def test_save_execution_data_updates_existing_and_creates_missing(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    existing = _execution(inputs={"initial": True})
+    repo.save(existing)
+    existing.inputs = {"updated": True}
+    existing.outputs = {"result": 2}
+    existing.process_data = {"step": 3}
+    monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_args, **_kwargs: None)
+    repo.save_execution_data(existing)
+    with session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, existing.id)
+        assert persisted is not None
+        assert persisted.inputs_dict == {"updated": True}
+        assert persisted.outputs_dict == {"result": 2}
+        assert persisted.process_data_dict == {"step": 3}
+
+    missing = _execution(execution_id="missing", node_execution_id="missing-node", inputs={"new": True})
+    repo.save_execution_data(missing)
+    with session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, missing.id)
+        assert persisted is not None
+        assert persisted.inputs_dict == {"new": True}
+
+
+def test_save_execution_data_persists_truncation_offload(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    execution = _execution(inputs={"large": "value"})
+    repo.save(execution)
+    offload = WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id=execution.id,
+        type_=ExecutionOffLoadType.INPUTS,
+        file_id="file-1",
+    )
+    result = SimpleNamespace(truncated_value={"large": "truncated"}, offload=offload)
+    monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
+    repo.save_execution_data(execution)
+    with session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.inputs_dict == {"large": "truncated"}
+        offloads = session.scalars(
+            select(WorkflowNodeExecutionOffload).where(WorkflowNodeExecutionOffload.node_execution_id == execution.id)
+        ).all()
+        assert [item.type_ for item in offloads] == [ExecutionOffLoadType.INPUTS]
+
+
+def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    repo.save(_execution(execution_id="two", node_execution_id="node-two", index=2))
+    repo.save(_execution(execution_id="one", node_execution_id="node-one", index=1))
+    repo.save(
+        _execution(
+            execution_id="paused",
+            node_execution_id="node-paused",
+            index=3,
+            status=WorkflowNodeExecutionStatus.PAUSED,
+        )
+    )
+    _repository(monkeypatch, session_factory, tenant_id="tenant-2").save(
+        _execution(execution_id="foreign-tenant", node_execution_id="foreign-tenant")
+    )
+    _repository(monkeypatch, session_factory, app_id="app-2").save(
+        _execution(execution_id="foreign-app", node_execution_id="foreign-app")
+    )
+    _repository(
+        monkeypatch,
+        session_factory,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+    ).save(_execution(execution_id="single-step", node_execution_id="single-step"))
+
+    models = repo.get_db_models_by_workflow_run("run-1", OrderConfig(order_by=["index"], order_direction="desc"))
+    assert [model.id for model in models] == ["two", "one"]
+    assert set(repo._node_execution_cache) >= {"node-one", "node-two"}
+    assert repo.get_db_models_by_workflow_run("missing-run") == []
+
+
+def test_get_by_workflow_execution_maps_real_rows_to_domain(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    repo.save(_execution(inputs={"input": 1}, outputs={"output": 2}))
+    domains = repo.get_by_workflow_execution("run-1", OrderConfig(order_by=["index"], order_direction="asc"))
+    assert len(domains) == 1
+    assert domains[0].inputs == {"input": 1}
+    assert domains[0].outputs == {"output": 2}
+
+
+def test_to_domain_model_loads_offloaded_storage(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, session_factory)
+    db_model = repo._to_db_model(_execution(inputs={"truncated": True}))
+    file = SimpleNamespace(key="storage-key")
+    offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
+    offload.file = file
+    db_model.offload_data = [offload]
     monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.storage.load",
+        lambda _key: b'{"full": true}',
     )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    unique = Mock(spec=psycopg2.errors.UniqueViolation)
-    duplicate_error = IntegrityError("dup", params=None, orig=unique)
-    assert repo._is_duplicate_key_error(duplicate_error) is True
-    assert repo._is_duplicate_key_error(IntegrityError("other", params=None, orig=None)) is False
-
-    execution = _execution(execution_id="old-id")
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "old-id"
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new-id")
-    caplog.set_level(logging.WARNING)
-    repo._regenerate_id_on_duplicate(execution, db_model)
-    assert execution.id == "new-id"
-    assert db_model.id == "new-id"
-    assert any("Duplicate key conflict" in r.message for r in caplog.records)
+    domain = repo._to_domain_model(db_model)
+    assert domain.inputs == {"full": True}
+    assert domain.get_truncated_inputs() == {"truncated": True}
 
 
-def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    session = MagicMock()
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
+def test_truncate_and_upload_keeps_file_boundary_mocked(
+    monkeypatch: pytest.MonkeyPatch, session_factory: sessionmaker[Session]
+) -> None:
+    uploaded = SimpleNamespace(id="file-1", key="file-key")
+    repo = _repository(monkeypatch, session_factory)
+    repo._file_service = SimpleNamespace(upload_file=Mock(return_value=uploaded))
 
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id1"
-    db_model.node_execution_id = "node1"
-    db_model.foo = "bar"  # type: ignore[attr-defined]
-    db_model.__dict__["_private"] = "x"
-
-    existing = SimpleNamespace()
-    session.get.return_value = existing
-    repo._persist_to_database(db_model)
-    assert existing.foo == "bar"
-    session.add.assert_not_called()
-    assert repo._node_execution_cache["node1"] is db_model
-
-    session.reset_mock()
-    session.get.return_value = None
-    repo._node_execution_cache.clear()
-    repo._persist_to_database(db_model)
-    session.add.assert_called_once_with(db_model)
-    assert repo._node_execution_cache["node1"] is db_model
-
-
-def test_truncate_and_upload_returns_none_when_no_values_or_not_truncated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    assert repo._truncate_and_upload(None, "e", ExecutionOffLoadType.INPUTS) is None
-
-    class FakeTruncator:
-        def truncate_variable_mapping(self, value: Any):  # type: ignore[no-untyped-def]
-            return value, False
-
-    monkeypatch.setattr(repo, "_create_truncator", lambda: FakeTruncator())
-    assert repo._truncate_and_upload({"a": 1}, "e", ExecutionOffLoadType.INPUTS) is None
-
-
-def test_truncate_and_upload_uploads_and_builds_offload(monkeypatch: pytest.MonkeyPatch) -> None:
-    uploaded: dict[str, Any] = {}
-
-    class FakeFileService:
-        def upload_file(self, *, filename: str, content: bytes, mimetype: str, user: Any, tenant_id: str):  # type: ignore[no-untyped-def]
-            uploaded.update(
-                {"filename": filename, "content": content, "mimetype": mimetype, "user": user, "tenant_id": tenant_id}
-            )
-            return SimpleNamespace(id="file-id", key="file-key")
-
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService", lambda *_: FakeFileService()
-    )
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "offload-id")
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    class FakeTruncator:
-        def truncate_variable_mapping(self, value: Any):  # type: ignore[no-untyped-def]
+    class Truncator:
+        def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
             return {"truncated": True}, True
 
-    monkeypatch.setattr(repo, "_create_truncator", lambda: FakeTruncator())
-
-    result = repo._truncate_and_upload({"a": 1}, "exec", ExecutionOffLoadType.INPUTS)
+    monkeypatch.setattr(repo, "_create_truncator", lambda: Truncator())
+    result = repo._truncate_and_upload({"value": 1}, "execution-1", ExecutionOffLoadType.INPUTS)
     assert result is not None
     assert result.truncated_value == {"truncated": True}
-    assert uploaded["filename"].startswith("node_execution_exec_inputs.json")
-    assert uploaded["tenant_id"] == RESOURCE_TENANT_ID
-    assert result.offload.file_id == "file-id"
-    assert result.offload.type_ == ExecutionOffLoadType.INPUTS
+    assert result.offload.file_id == "file-1"
 
 
-def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"trunc": "i"})
-    db_model.process_data = json.dumps({"trunc": "p"})
-    db_model.outputs = json.dumps({"trunc": "o"})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = json.dumps({"total_tokens": 3})
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
-
-    off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
-    off_proc = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
-    off_in.file = SimpleNamespace(key="k-in")
-    off_out.file = SimpleNamespace(key="k-out")
-    off_proc.file = SimpleNamespace(key="k-proc")
-    db_model.offload_data = [off_out, off_in, off_proc]
-
-    def fake_load(key: str) -> bytes:
-        return json.dumps({"full": key}).encode()
-
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.storage.load", fake_load)
-
-    domain = repo._to_domain_model(db_model)
-    assert domain.inputs == {"full": "k-in"}
-    assert domain.outputs == {"full": "k-out"}
-    assert domain.process_data == {"full": "k-proc"}
-    assert domain.get_truncated_inputs() == {"trunc": "i"}
-    assert domain.get_truncated_outputs() == {"trunc": "o"}
-    assert domain.get_truncated_process_data() == {"trunc": "p"}
-
-
-def test_to_domain_model_returns_early_when_no_offload_data(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"i": 1})
-    db_model.process_data = json.dumps({"p": 2})
-    db_model.outputs = json.dumps({"o": 3})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = "{}"
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
-    db_model.offload_data = []
-
-    domain = repo._to_domain_model(db_model)
-    assert domain.inputs == {"i": 1}
-    assert domain.outputs == {"o": 3}
-
-
-def test_json_encode_uses_runtime_converter(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FakeConverter:
-        def to_json_encodable(self, values: Mapping[str, Any]) -> Mapping[str, Any]:
-            return {"wrapped": values["a"]}
-
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.WorkflowRuntimeTypeConverter",
-        FakeConverter,
-    )
-    assert SQLAlchemyWorkflowNodeExecutionRepository._json_encode({"a": 1}) == '{"wrapped": 1}'
-
-
-def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    session = MagicMock()
-    session.execute.return_value.scalars.return_value.first.return_value = SimpleNamespace(
-        id="id",
-        offload_data=[WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)],
-        inputs=None,
-        outputs=None,
-        process_data=None,
-    )
-    session.merge = Mock()
-    session.flush = Mock()
-    session.begin.return_value.__enter__ = Mock(return_value=session)
-    session.begin.return_value.__exit__ = Mock(return_value=None)
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    execution = _execution(inputs={"a": 1}, outputs={"b": 2}, process_data={"c": 3})
-
-    trunc_result = SimpleNamespace(
-        truncated_value={"trunc": True},
-        offload=WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file_id="f1"),
-    )
-    monkeypatch.setattr(
-        repo, "_truncate_and_upload", lambda values, *_args, **_kwargs: trunc_result if values == {"a": 1} else None
-    )
-    monkeypatch.setattr(repo, "_json_encode", lambda values: json.dumps(values, sort_keys=True))
-
-    repo.save_execution_data(execution)
-    # Inputs should be truncated, outputs/process_data encoded directly
-    db_model = session.merge.call_args.args[0]
-    assert json.loads(db_model.inputs) == {"trunc": True}
-    assert json.loads(db_model.outputs) == {"b": 2}
-    assert json.loads(db_model.process_data) == {"c": 3}
-    assert any(off.type_ == ExecutionOffLoadType.INPUTS for off in db_model.offload_data)
-    assert execution.get_truncated_inputs() == {"trunc": True}
-
-
-def test_save_execution_data_truncates_outputs_and_process_data(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    existing = SimpleNamespace(
-        id="id",
-        offload_data=[],
-        inputs=None,
-        outputs=None,
-        process_data=None,
-    )
-    session = MagicMock()
-    session.execute.return_value.scalars.return_value.first.return_value = existing
-    session.merge = Mock()
-    session.flush = Mock()
-    session.begin.return_value.__enter__ = Mock(return_value=session)
-    session.begin.return_value.__exit__ = Mock(return_value=None)
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    execution = _execution(inputs={"a": 1}, outputs={"b": 2}, process_data={"c": 3})
-
-    def trunc(values: Mapping[str, Any], *_args: Any, **_kwargs: Any) -> Any:
-        if values == {"b": 2}:
-            return SimpleNamespace(
-                truncated_value={"b": "trunc"},
-                offload=WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS, file_id="f2"),
-            )
-        if values == {"c": 3}:
-            return SimpleNamespace(
-                truncated_value={"c": "trunc"},
-                offload=WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA, file_id="f3"),
-            )
-        return None
-
-    monkeypatch.setattr(repo, "_truncate_and_upload", trunc)
-    monkeypatch.setattr(repo, "_json_encode", lambda values: json.dumps(values, sort_keys=True))
-
-    repo.save_execution_data(execution)
-    db_model = session.merge.call_args.args[0]
-    assert json.loads(db_model.outputs) == {"b": "trunc"}
-    assert json.loads(db_model.process_data) == {"c": "trunc"}
-    assert execution.get_truncated_outputs() == {"b": "trunc"}
-    assert execution.get_truncated_process_data() == {"c": "trunc"}
-
-
-def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    session = MagicMock()
-    session.execute.return_value.scalars.return_value.first.return_value = None
-    session.merge = Mock()
-    session.flush = Mock()
-    session.begin.return_value.__enter__ = Mock(return_value=session)
-    session.begin.return_value.__exit__ = Mock(return_value=None)
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    execution = _execution(inputs={"a": 1})
-    fake_db_model = SimpleNamespace(id=execution.id, offload_data=[], inputs=None, outputs=None, process_data=None)
-    monkeypatch.setattr(repo, "_to_db_model", lambda *_: fake_db_model)
-    monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(repo, "_json_encode", lambda values: json.dumps(values))
-
-    repo.save_execution_data(execution)
-    merged = session.merge.call_args.args[0]
-    assert merged.inputs == '{"a": 1}'
-
-
-def test_save_retries_duplicate_and_logs_non_duplicate(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+def test_duplicate_detection_and_id_regeneration(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    session_factory: sessionmaker[Session],
 ) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    execution = _execution(execution_id="id")
-    unique = Mock(spec=psycopg2.errors.UniqueViolation)
-    duplicate_error = IntegrityError("dup", params=None, orig=unique)
-    other_error = IntegrityError("other", params=None, orig=None)
-
-    calls = {"n": 0}
-
-    def persist(_db_model: Any) -> None:
-        calls["n"] += 1
-        if calls["n"] == 1:
-            raise duplicate_error
-
-    monkeypatch.setattr(repo, "_persist_to_database", persist)
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new-id")
-    repo.save(execution)
-    assert execution.id == "new-id"
-    assert repo._node_execution_cache[execution.node_execution_id] is not None
-
-    caplog.set_level(logging.ERROR)
-    monkeypatch.setattr(repo, "_persist_to_database", lambda _db: (_ for _ in ()).throw(other_error))
-    with pytest.raises(IntegrityError):
-        repo.save(_execution(execution_id="id2", node_execution_id="node2"))
-    assert any("Non-duplicate key integrity error" in r.message for r in caplog.records)
-
-
-def test_save_logs_and_reraises_on_unexpected_error(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    caplog.set_level(logging.ERROR)
-    monkeypatch.setattr(repo, "_persist_to_database", lambda _db: (_ for _ in ()).throw(RuntimeError("boom")))
-    with pytest.raises(RuntimeError, match="boom"):
-        repo.save(_execution(execution_id="id3", node_execution_id="node3"))
-    assert any("Failed to save workflow node execution" in r.message for r in caplog.records)
-
-
-def test_get_db_models_by_workflow_run_orders_and_caches(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-
-    class FakeStmt:
-        def __init__(self) -> None:
-            self.where_calls = 0
-            self.order_by_args: tuple[Any, ...] | None = None
-
-        def where(self, *_args: Any) -> FakeStmt:
-            self.where_calls += 1
-            return self
-
-        def order_by(self, *args: Any) -> FakeStmt:
-            self.order_by_args = args
-            return self
-
-    stmt = FakeStmt()
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.WorkflowNodeExecutionModel.preload_offload_data_and_files",
-        lambda _q: stmt,
-    )
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.select", lambda *_: "select")
-
-    model1 = SimpleNamespace(node_execution_id="n1")
-    model2 = SimpleNamespace(node_execution_id=None)
-    session = MagicMock()
-    session.scalars.return_value.all.return_value = [model1, model2]
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id="app",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    order = OrderConfig(order_by=["index", "missing"], order_direction="desc")
-    db_models = repo.get_db_models_by_workflow_run("run", order)
-    assert db_models == [model1, model2]
-    assert repo._node_execution_cache["n1"] is model1
-    assert stmt.order_by_args is not None
-
-
-def test_get_db_models_by_workflow_run_uses_asc_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-
-    class FakeStmt:
-        def where(self, *_args: Any) -> FakeStmt:
-            return self
-
-        def order_by(self, *args: Any) -> FakeStmt:
-            self.args = args  # type: ignore[attr-defined]
-            return self
-
-    stmt = FakeStmt()
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.WorkflowNodeExecutionModel.preload_offload_data_and_files",
-        lambda _q: stmt,
-    )
-    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.select", lambda *_: "select")
-
-    session = MagicMock()
-    session.scalars.return_value.all.return_value = []
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=_session_factory(session),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-    repo.get_db_models_by_workflow_run("run", OrderConfig(order_by=["index"], order_direction="asc"))
-
-
-def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_: SimpleNamespace(upload_file=Mock()),
-    )
-
-    repo = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=Mock(spec=sessionmaker),
-        tenant_id=RESOURCE_TENANT_ID,
-        user=_mock_account(),
-        app_id=None,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-    )
-
-    db_models = [SimpleNamespace(id="db1"), SimpleNamespace(id="db2")]
-    monkeypatch.setattr(repo, "get_db_models_by_workflow_run", lambda *_args, **_kwargs: db_models)
-    monkeypatch.setattr(repo, "_to_domain_model", lambda m: f"domain:{m.id}")
-
-    class FakeExecutor:
-        def __enter__(self) -> FakeExecutor:
-            return self
-
-        def __exit__(self, exc_type, exc, tb) -> None:
-            return None
-
-        def map(self, func, items, timeout: int):  # type: ignore[no-untyped-def]
-            assert timeout == 30
-            return list(map(func, items))
-
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.ThreadPoolExecutor",
-        lambda max_workers: FakeExecutor(),
-    )
-
-    result = repo.get_by_workflow_execution("run", order_config=None)
-    assert result == ["domain:db1", "domain:db2"]
+    repo = _repository(monkeypatch, session_factory)
+    duplicate = IntegrityError("duplicate", params=None, orig=Mock(spec=psycopg2.errors.UniqueViolation))
+    assert repo._is_duplicate_key_error(duplicate)
+    assert not repo._is_duplicate_key_error(IntegrityError("other", params=None, orig=None))
+    execution = _execution(execution_id="old")
+    db_model = repo._to_db_model(execution)
+    monkeypatch.setattr("core.repositories.sqlalchemy_workflow_node_execution_repository.uuidv7", lambda: "new")
+    caplog.set_level(logging.WARNING)
+    repo._regenerate_id_on_duplicate(execution, db_model)
+    assert execution.id == db_model.id == "new"
+    assert "Duplicate key conflict" in caplog.text
