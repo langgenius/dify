@@ -9,7 +9,12 @@ import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
 import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
@@ -474,6 +479,7 @@ describe('AddSourcePage', () => {
 
   it('clears the stored draft when source setup is canceled', async () => {
     const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     const storageKey = newKnowledgeSourceDraftStorageKey('cancel-draft')
     globalThis.sessionStorage.setItem(
       storageKey,
@@ -490,10 +496,21 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
     await user.click(
-      await screen.findByRole('link', { name: 'dataset.newKnowledge.cancelAddSource' }),
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
     )
 
     expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
+    expect(historyBack).toHaveBeenCalledOnce()
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+    expect(confirmation).not.toBeInTheDocument()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
@@ -501,7 +518,9 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
@@ -615,7 +634,9 @@ describe('AddSourcePage', () => {
     queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
@@ -633,7 +654,9 @@ describe('AddSourcePage', () => {
     })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
@@ -646,7 +669,9 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-return')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.api-key' }))
@@ -659,7 +684,9 @@ describe('AddSourcePage', () => {
     clientMock.createConnection.mockResolvedValue({ ...connection('active'), authKind: 'endpoint' })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
@@ -702,7 +729,9 @@ describe('AddSourcePage', () => {
     queryState.providers.data = { items: [booleanProvider] }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
 
     expect(screen.getByLabelText(/Api Key/)).toHaveAccessibleDescription('Firecrawl API key')
     expect(screen.getByLabelText('Stealth')).toHaveAccessibleDescription('Use stealth mode')
@@ -866,7 +895,7 @@ describe('AddSourcePage', () => {
       'dataset.newKnowledge.connectionRefreshFailed',
     )
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.configureProvider' }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -937,7 +966,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('Disabled by admin')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.configureProvider' }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -956,7 +985,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.configureProvider' }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 })

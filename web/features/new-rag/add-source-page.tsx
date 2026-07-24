@@ -15,9 +15,10 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
+import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import {
   createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
@@ -267,11 +268,13 @@ function ProviderFieldControl({
 function ConnectionForm({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -288,6 +291,15 @@ function ConnectionForm({
   const visibleFields = configurableFields.filter(
     (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
   )
+  const hasDraftChanges =
+    authKind !== (supportedAuthKinds[0] ?? 'api-key') ||
+    Object.values(configuration).some((value) => Boolean(value.trim())) ||
+    Object.values(credentials).some((value) => Boolean(value.trim()))
+
+  useEffect(() => {
+    onDraftChange(hasDraftChanges)
+    return () => onDraftChange(false)
+  }, [hasDraftChanges, onDraftChange])
 
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
@@ -340,6 +352,7 @@ function ConnectionForm({
           params: { id: knowledgeSpaceId },
         })
       setCredentials({})
+      onDraftChange(false)
       onConnected(createdConnection)
     } catch {
       setCredentials({})
@@ -408,11 +421,13 @@ function ConnectionForm({
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -424,6 +439,7 @@ function UnconfiguredProvider({
       <ConnectionForm
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
+        onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
       />
@@ -445,7 +461,9 @@ function UnconfiguredProvider({
         })}
       </p>
       <Button variant="primary" className="mt-4" onClick={() => setConfiguring(true)}>
-        {t(($) => $['newKnowledge.configureProvider'])}
+        {t(($) => $['newKnowledge.configureProvider'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </Button>
     </div>
   )
@@ -567,20 +585,33 @@ export function AddSourcePage({
   sourceDraftKey?: string
 }) {
   const { t } = useTranslation('dataset')
+  const router = useRouter()
   const queryClient = useQueryClient()
-  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(
-    () =>
-      initialSourceDraft ??
+  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
+    initialSourceDraft ??
       createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
+  )
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
+  const sourceDraftBaselineRef = useRef(
+    JSON.stringify(createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType)),
   )
   const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
   const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
+  const [connectionDraftDirty, setConnectionDraftDirty] = useState(false)
+  const [exitOpen, setExitOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
+  const historyGuardArmedRef = useRef(false)
+  const browserBackExitRef = useRef(false)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const exitDestinationRef = useRef(newKnowledgeDetailPath(knowledgeSpaceId))
   const sourceDraftsRef = useRef<
     Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
   >({ [sourceDraft.sourceType]: sourceDraft })
   const sourceType = sourceDraft.sourceType
   const websiteSourceSelected =
     sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
+  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const updateSourceDraft = (draft: NewKnowledgeSourceDraft) => {
     sourceDraftsRef.current[draft.sourceType] = draft
     setSourceDraft(draft)
@@ -724,6 +755,157 @@ export function AddSourcePage({
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
+  const queryError =
+    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
+  const websiteReady = Boolean(
+    websiteSourceSelected &&
+    !queryError &&
+    provider?.available &&
+    supportsDirectConnection &&
+    connection?.status === 'active',
+  )
+  const hasUnsavedChanges =
+    sourceDraftResolved &&
+    !websiteReady &&
+    (connectionDraftDirty || JSON.stringify(sourceDraft) !== sourceDraftBaselineRef.current)
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+  const replaceAfterHistoryGuard = useCallback(
+    (path: string) => {
+      if (!historyGuardArmedRef.current) {
+        router.replace(path)
+        return
+      }
+      pendingNavigationRef.current = path
+      globalThis.history.back()
+    },
+    [router],
+  )
+  const requestNavigation = useCallback(
+    (path: string) => {
+      if (discarding) return
+      if (hasUnsavedChanges) {
+        exitDestinationRef.current = path
+        browserBackExitRef.current = false
+        setDiscardError(false)
+        setExitOpen(true)
+        return
+      }
+      clearStoredSourceDraft()
+      replaceAfterHistoryGuard(path)
+    },
+    [clearStoredSourceDraft, discarding, hasUnsavedChanges, replaceAfterHistoryGuard],
+  )
+
+  useEffect(() => {
+    if (
+      !hasUnsavedChanges ||
+      historyGuardArmedRef.current ||
+      browserBackExitRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+    armHistoryGuard()
+  }, [armHistoryGuard, hasUnsavedChanges])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) return
+      historyGuardArmedRef.current = false
+      const pendingNavigation = pendingNavigationRef.current
+      if (pendingNavigation) {
+        pendingNavigationRef.current = undefined
+        router.replace(pendingNavigation)
+        return
+      }
+      if (!hasUnsavedChanges) {
+        clearStoredSourceDraft()
+        router.replace(detailPath)
+        return
+      }
+      browserBackExitRef.current = true
+      exitDestinationRef.current = detailPath
+      setDiscardError(false)
+      setExitOpen(true)
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [clearStoredSourceDraft, detailPath, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+      const anchor = event
+        .composedPath()
+        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
+      if (
+        !anchor ||
+        anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')
+      )
+        return
+      const destination = new URL(anchor.href, globalThis.location.href)
+      if (destination.origin !== globalThis.location.origin) return
+      const current = new URL(globalThis.location.href)
+      if (destination.pathname === current.pathname && destination.search === current.search) return
+      event.preventDefault()
+      requestNavigation(`${destination.pathname}${destination.search}${destination.hash}`)
+    }
+
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => document.removeEventListener('click', handleDocumentClick, true)
+  }, [hasUnsavedChanges, requestNavigation])
+
+  const requestExit = () => requestNavigation(detailPath)
+  const cancelExit = () => {
+    setExitOpen(false)
+    setDiscardError(false)
+    if (!browserBackExitRef.current) return
+    browserBackExitRef.current = false
+    armHistoryGuard()
+  }
+  const confirmExit = () => {
+    if (discarding) return
+    setDiscarding(true)
+    setDiscardError(false)
+    try {
+      clearStoredSourceDraft()
+      sourceDraftBaselineRef.current = JSON.stringify(sourceDraft)
+      setConnectionDraftDirty(false)
+      setExitOpen(false)
+      browserBackExitRef.current = false
+      const destination = exitDestinationRef.current
+      exitDestinationRef.current = detailPath
+      replaceAfterHistoryGuard(destination)
+    } catch {
+      setDiscardError(true)
+    } finally {
+      setDiscarding(false)
+    }
+  }
+
   if (
     !sourceDraftResolved ||
     (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
@@ -734,163 +916,161 @@ export function AddSourcePage({
       </div>
     )
 
-  const queryError =
-    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
-  const websiteReady = Boolean(
-    websiteSourceSelected &&
-    !queryError &&
-    provider?.available &&
-    supportsDirectConnection &&
-    connection?.status === 'active',
-  )
-
   return (
-    <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
-      <header>
-        <h2 className="title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.addSource'])}
-        </h2>
-        <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.addSourceDescription'])}
-        </p>
-      </header>
-      <div className="mt-5 w-full max-w-2xl space-y-4">
-        <SourceTypeSelector
-          value={sourceType}
-          onChange={(value) => {
-            sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
-            updateSourceDraft(
-              sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
-            )
-            setConnectedSourceBoundaryVisible(false)
-          }}
-        />
-        {sourceDraft.sourceType === 'websiteCrawl' ? (
-          <>
-            <ProviderSelector
-              provider={sourceDraft.provider}
-              onChange={(provider) => {
-                updateSourceDraft({ ...sourceDraft, provider })
-                setConnectedSourceBoundaryVisible(false)
-              }}
-            />
-            {!websiteSourceSelected ? (
-              <div className="rounded-xl bg-background-section p-4">
-                <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.providerUnavailable'])}
-                </p>
-              </div>
-            ) : queryError ? (
-              <div className="rounded-xl bg-background-section p-4">
-                <p className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.providerLoadFailed'])}
-                </p>
-                <Button
-                  className="mt-3"
-                  onClick={() =>
-                    void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
-                  }
-                >
-                  {t(($) => $['newKnowledge.retryProviderLoad'])}
-                </Button>
-              </div>
-            ) : !provider ? (
-              <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.firecrawlUnavailable'])}
-              </div>
-            ) : !provider.available || !supportsDirectConnection ? (
-              <div className="rounded-xl bg-background-section p-4">
-                <p className="system-sm-semibold text-text-primary">{FIRECRAWL_CONNECTION_NAME}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
-                </p>
-              </div>
-            ) : connection?.status === 'active' ? (
-              <WebsiteCrawlPreview
-                connection={connection}
-                initialDraft={sourceDraft}
-                knowledgeSpaceId={knowledgeSpaceId}
-                onDraftFinished={clearStoredSourceDraft}
-              />
-            ) : connection?.status === 'provisioning' ? (
-              <ProvisioningConnection onReconcile={reconcileConnection} />
-            ) : connection ? (
-              <ConnectionProblem
-                connection={connection}
-                knowledgeSpaceId={knowledgeSpaceId}
-                onConnected={rememberConnection}
-                onReconcile={reconcileConnection}
-              />
-            ) : (
-              <UnconfiguredProvider
-                knowledgeSpaceId={knowledgeSpaceId}
-                onConnected={rememberConnection}
-                onReconcile={reconcileConnection}
-                provider={provider}
-              />
-            )}
-            {!websiteReady && (
-              <PendingWebsiteSetup
-                key={sourceDraft.provider}
-                draft={sourceDraft}
-                onDraftChange={updateSourceDraft}
-              />
-            )}
-          </>
-        ) : (
-          <UnavailableConnectedSourceSetup
-            draft={sourceDraft}
-            onDraftChange={(draft) => {
-              updateSourceDraft(draft)
+    <>
+      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
+        <header>
+          <h2 className="title-xl-semi-bold text-text-primary">
+            {t(($) => $['newKnowledge.addSource'])}
+          </h2>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.addSourceDescription'])}
+          </p>
+        </header>
+        <div className="mt-5 w-full max-w-2xl space-y-4">
+          <SourceTypeSelector
+            value={sourceType}
+            onChange={(value) => {
+              sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+              updateSourceDraft(
+                sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
+              )
               setConnectedSourceBoundaryVisible(false)
             }}
           />
-        )}
-        {sourceType === 'websiteCrawl' && !websiteReady && (
-          <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-            <Link
-              href={newKnowledgeDetailPath(knowledgeSpaceId)}
-              onClick={clearStoredSourceDraft}
-              className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          {sourceDraft.sourceType === 'websiteCrawl' ? (
+            <>
+              <ProviderSelector
+                provider={sourceDraft.provider}
+                onChange={(provider) => {
+                  updateSourceDraft({ ...sourceDraft, provider })
+                  setConnectedSourceBoundaryVisible(false)
+                }}
+              />
+              {!websiteSourceSelected ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.providerUnavailable'])}
+                  </p>
+                </div>
+              ) : queryError ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">
+                    {t(($) => $['newKnowledge.providerLoadFailed'])}
+                  </p>
+                  <Button
+                    className="mt-3"
+                    onClick={() =>
+                      void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
+                    }
+                  >
+                    {t(($) => $['newKnowledge.retryProviderLoad'])}
+                  </Button>
+                </div>
+              ) : !provider ? (
+                <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.firecrawlUnavailable'])}
+                </div>
+              ) : !provider.available || !supportsDirectConnection ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">
+                    {FIRECRAWL_CONNECTION_NAME}
+                  </p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
+                  </p>
+                </div>
+              ) : connection?.status === 'active' ? (
+                <WebsiteCrawlPreview
+                  connection={connection}
+                  initialDraft={sourceDraft}
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onDraftFinished={clearStoredSourceDraft}
+                />
+              ) : connection?.status === 'provisioning' ? (
+                <ProvisioningConnection onReconcile={reconcileConnection} />
+              ) : connection ? (
+                <ConnectionProblem
+                  connection={connection}
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onConnected={rememberConnection}
+                  onReconcile={reconcileConnection}
+                />
+              ) : (
+                <UnconfiguredProvider
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onConnected={rememberConnection}
+                  onDraftChange={setConnectionDraftDirty}
+                  onReconcile={reconcileConnection}
+                  provider={provider}
+                />
+              )}
+              {!websiteReady && (
+                <PendingWebsiteSetup
+                  key={sourceDraft.provider}
+                  draft={sourceDraft}
+                  onDraftChange={updateSourceDraft}
+                />
+              )}
+            </>
+          ) : (
+            <UnavailableConnectedSourceSetup
+              draft={sourceDraft}
+              onDraftChange={(draft) => {
+                updateSourceDraft(draft)
+                setConnectedSourceBoundaryVisible(false)
+              }}
+            />
+          )}
+          {sourceType === 'websiteCrawl' && !websiteReady && (
+            <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+              <Button type="button" onClick={requestExit}>
+                {t(($) => $['newKnowledge.cancelAddSource'])}
+              </Button>
+              <span id="add-source-selection-requirement" className="sr-only">
+                {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+              </span>
+              <Button
+                variant="primary"
+                disabled
+                aria-describedby="add-source-selection-requirement"
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </div>
+          )}
+          {sourceType !== 'websiteCrawl' && (
+            <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+              <Button type="button" onClick={requestExit}>
+                {t(($) => $['newKnowledge.cancelAddSource'])}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!sourceDraft.sourceName.trim()}
+                onClick={() => setConnectedSourceBoundaryVisible(true)}
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </div>
+          )}
+          {connectedSourceBoundaryVisible && (
+            <p
+              role="alert"
+              className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
             >
-              {t(($) => $['newKnowledge.cancelAddSource'])}
-            </Link>
-            <span id="add-source-selection-requirement" className="sr-only">
-              {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
-            </span>
-            <Button variant="primary" disabled aria-describedby="add-source-selection-requirement">
-              {t(($) => $['newKnowledge.addSource'])}
-            </Button>
-          </div>
-        )}
-        {sourceType !== 'websiteCrawl' && (
-          <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-            <Link
-              href={newKnowledgeDetailPath(knowledgeSpaceId)}
-              onClick={clearStoredSourceDraft}
-              className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {t(($) => $['newKnowledge.cancelAddSource'])}
-            </Link>
-            <Button
-              variant="primary"
-              disabled={!sourceDraft.sourceName.trim()}
-              onClick={() => setConnectedSourceBoundaryVisible(true)}
-            >
-              {t(($) => $['newKnowledge.addSource'])}
-            </Button>
-          </div>
-        )}
-        {connectedSourceBoundaryVisible && (
-          <p
-            role="alert"
-            className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
-          >
-            {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
-          </p>
-        )}
-      </div>
-    </main>
+              {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+            </p>
+          )}
+        </div>
+      </main>
+      <AddSourceExitDialog
+        discarding={discarding}
+        error={discardError}
+        onCancel={cancelExit}
+        onConfirm={confirmExit}
+        open={exitOpen}
+      />
+    </>
   )
 }

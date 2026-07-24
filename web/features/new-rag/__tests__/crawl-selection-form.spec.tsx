@@ -145,6 +145,7 @@ function renderSelectionForm(
   workflowUncertain = false,
   discardRequested = () => false,
   previewPages = pages,
+  initialSyncMode?: 'custom' | 'interval' | 'manual' | 'provider',
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
@@ -157,6 +158,7 @@ function renderSelectionForm(
     <QueryClientProvider client={queryClient}>
       <CrawlSelectionForm
         discardRequested={discardRequested}
+        initialSyncMode={initialSyncMode}
         knowledgeSpaceId="space-1"
         onCancel={onCancel}
         onRecrawl={onRecrawl}
@@ -215,6 +217,14 @@ describe('CrawlSelectionForm', () => {
     expect(policyQueryOptionsMock).toHaveBeenCalledWith(
       expect.objectContaining({ context: { silent: true } }),
     )
+  })
+
+  it('preserves the sync policy selected in the creation flow', async () => {
+    renderSelectionForm(vi.fn(), false, () => false, pages, 'manual')
+
+    expect(
+      await screen.findByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).toHaveValue('manual')
   })
 
   it('selects only valid same-domain pages and exposes an indeterminate select-all state', async () => {

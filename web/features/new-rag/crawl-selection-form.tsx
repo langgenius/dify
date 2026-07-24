@@ -154,6 +154,7 @@ function PolicyLoading() {
 function ReadyCrawlSelectionForm({
   busy,
   discardRequested,
+  initialSyncMode,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -170,6 +171,7 @@ function ReadyCrawlSelectionForm({
 }: {
   busy: boolean
   discardRequested: () => boolean
+  initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -203,7 +205,9 @@ function ReadyCrawlSelectionForm({
   )
   const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
-  const [syncMode, setSyncMode] = useState<SyncMode>(policy.enabled ? policy.mode : 'manual')
+  const [syncMode, setSyncMode] = useState<SyncMode>(
+    initialSyncMode ?? (policy.enabled ? policy.mode : 'manual'),
+  )
   const [customIntervalHours, setCustomIntervalHours] = useState<number | ''>(
     policy.customIntervalSeconds ? policy.customIntervalSeconds / 3600 : MIN_CUSTOM_INTERVAL_HOURS,
   )
@@ -563,6 +567,7 @@ function ReadyCrawlSelectionForm({
 export function CrawlSelectionForm({
   busy = false,
   discardRequested,
+  initialSyncMode,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -578,6 +583,7 @@ export function CrawlSelectionForm({
 }: {
   busy?: boolean
   discardRequested: () => boolean
+  initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -632,6 +638,7 @@ export function CrawlSelectionForm({
       key={`${run.id}:${policy.revision}`}
       busy={busy}
       discardRequested={discardRequested}
+      initialSyncMode={initialSyncMode}
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}
       onRecrawl={onRecrawl}

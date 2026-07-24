@@ -1222,6 +1222,9 @@ export function WebsiteCrawlPreview({
           <CrawlSelectionForm
             busy={starting}
             discardRequested={() => discardRequestedRef.current}
+            initialSyncMode={
+              initialDraft?.syncPolicy === 'daily' ? 'interval' : initialDraft?.syncPolicy
+            }
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
