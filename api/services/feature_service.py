@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -73,12 +74,6 @@ class LicenseStatus(StrEnum):
     EXPIRING = "expiring"
     EXPIRED = "expired"
     LOST = "lost"
-
-
-class DeploymentEdition(StrEnum):
-    COMMUNITY = "COMMUNITY"
-    ENTERPRISE = "ENTERPRISE"
-    CLOUD = "CLOUD"
 
 
 class LicenseModel(FeatureResponseModel):
@@ -259,7 +254,7 @@ class FeatureService:
 
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
-        system_features = SystemFeatureModel(deployment_edition=cls._resolve_deployment_edition())
+        system_features = SystemFeatureModel(deployment_edition=dify_config.DEPLOYMENT_EDITION)
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
@@ -278,14 +273,6 @@ class FeatureService:
             system_features.enable_creators_platform = True
 
         return system_features
-
-    @classmethod
-    def _resolve_deployment_edition(cls) -> DeploymentEdition:
-        if dify_config.EDITION == "CLOUD":
-            return DeploymentEdition.CLOUD
-        if dify_config.ENTERPRISE_ENABLED:
-            return DeploymentEdition.ENTERPRISE
-        return DeploymentEdition.COMMUNITY
 
     @classmethod
     def get_app_dsl_version(cls) -> str:
