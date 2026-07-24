@@ -1,8 +1,17 @@
 import os
 from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
+from urllib.parse import urlparse as _urlparse
 
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
+from pydantic import (
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    computed_field,
+    model_validator,
+)
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
@@ -408,4 +417,22 @@ class MiddlewareConfig(
     DatasetQueueMonitorConfig,
     MatrixoneConfig,
 ):
-    pass
+    @model_validator(mode="after")
+    def _validate_redis_urls_db_for_azure(self):
+        """Azure Managed Redis only supports db 0; reject non-zero db in Redis URLs."""
+        if not self.REDIS_USE_AZURE_MANAGED_IDENTITY:
+            return self
+
+        for url, name in (
+            (self.CELERY_BROKER_URL, "CELERY_BROKER_URL"),
+            (self.PUBSUB_REDIS_URL, "PUBSUB_REDIS_URL"),
+        ):
+            if not url:
+                continue
+            db: str = _urlparse(url).path.lstrip("/") or "0"
+            if db != "0":
+                raise ValueError(
+                    f"Azure Managed Redis only supports db 0, but {name} uses db {db}. "
+                    "Please set the db index to 0 in your URL."
+                )
+        return self

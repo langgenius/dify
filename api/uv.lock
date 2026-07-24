@@ -1371,6 +1371,7 @@ dependencies = [
     { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
+    { name = "redis-entraid" },
     { name = "resend" },
     { name = "sendgrid" },
     { name = "sseclient-py" },
@@ -1655,6 +1656,7 @@ requires-dist = [
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
     { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
+    { name = "redis-entraid", specifier = ">=1.2.0,<2.0.0" },
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
@@ -5817,6 +5819,22 @@ wheels = [
 [package.optional-dependencies]
 hiredis = [
     { name = "hiredis" },
+]
+
+[[package]]
+name = "redis-entraid"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-identity" },
+    { name = "msal" },
+    { name = "pyjwt" },
+    { name = "redis" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/a7/0ddaeb27b33c76709e05a12b3bbeefce893c82a3a830146608d6fe620000/redis_entraid-1.2.1.tar.gz", hash = "sha256:a7c479ce46e6edb35bce9dd804d1cad7be99a3330815cfe028a648b486a10b41", size = 9792, upload-time = "2026-06-03T11:38:55.613Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/ca/01b8607102de756b270d3f6befeee700bd82dace4303d6f47ce0f53c11b0/redis_entraid-1.2.1-py3-none-any.whl", hash = "sha256:9de7e4a716b156d966a2d6bb5b5ccd64a692db30ae21fe3987f57d233793d558", size = 7967, upload-time = "2026-06-03T11:38:54.497Z" },
 ]
 
 [[package]]
