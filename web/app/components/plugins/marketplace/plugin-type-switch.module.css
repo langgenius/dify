@@ -1,0 +1,25 @@
+.homeItem {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.homeItem:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-state-base-hover);
+}
+
+.homeItemActive {
+  color: var(--color-saas-dify-blue-inverted);
+  background-color: var(--color-background-interaction-from-bg-2);
+}
+
+.homeItemActive:hover {
+  background-color: var(--color-state-base-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .homeItem {
+    transition: none;
+  }
+}
