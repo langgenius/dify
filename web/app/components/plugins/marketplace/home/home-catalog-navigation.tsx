@@ -1,6 +1,5 @@
 'use client'
 
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -17,14 +16,9 @@ function HomeCatalogNavigation({ isMarketplacePlatform }: HomeCatalogNavigationP
   return (
     <section
       aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
-      className="w-full shrink-0 bg-background-default px-8 pt-6 pb-4"
+      className="w-full shrink-0 bg-background-default px-9 pt-6 pb-4"
     >
-      <div
-        className={cn(
-          'mx-auto w-full',
-          isMarketplacePlatform ? 'max-w-[1200px]' : 'max-w-[1188px]',
-        )}
-      >
+      <div className="w-full">
         <nav
           aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
           className="-ml-2 flex h-8 items-center gap-1"
