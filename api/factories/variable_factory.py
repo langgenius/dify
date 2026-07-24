@@ -91,7 +91,15 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = StringVariable.model_validate(mapping)
         case SegmentType.SECRET:
             result = SecretVariable.model_validate(mapping)
-        case SegmentType.NUMBER | SegmentType.INTEGER if isinstance(value, int):
+        case SegmentType.NUMBER if isinstance(value, int):
+            # Preserve float type for NUMBER variables even when the Python value is an int
+            # (e.g. 0 instead of 0.0). This prevents "not supported value type integer"
+            # errors on subsequent conversation turns when the variable was declared as NUMBER.
+            mapping = dict(mapping)
+            mapping["value"] = float(value)
+            mapping["value_type"] = SegmentType.FLOAT
+            result = FloatVariable.model_validate(mapping)
+        case SegmentType.INTEGER if isinstance(value, int):
             mapping = dict(mapping)
             mapping["value_type"] = SegmentType.INTEGER
             result = IntegerVariable.model_validate(mapping)
