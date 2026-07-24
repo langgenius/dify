@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
-from typing import cast
+from typing import Literal, cast
 from unittest.mock import MagicMock, PropertyMock, patch
-from uuid import uuid4
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source as module
 from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi
 from models import Account, DataSourceOauthBinding
+from models.engine import db
 
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
@@ -22,10 +26,15 @@ def unwrap(func: object) -> ControllerMethod:
 
 
 @pytest.fixture
-def flask_app() -> Flask:
+def flask_app() -> Iterator[Flask]:
     app = Flask(__name__)
     app.config["TESTING"] = True
-    return app
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        DataSourceOauthBinding.__table__.create(db.engine)
+        yield app
 
 
 @pytest.fixture
@@ -35,9 +44,13 @@ def current_user() -> Account:
     return account
 
 
-def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> None:
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+BINDING_ID = "22222222-2222-2222-2222-222222222222"
+
+
+def _add_binding(session: Session, *, disabled: bool) -> DataSourceOauthBinding:
     binding = DataSourceOauthBinding(
-        tenant_id="tenant-1",
+        tenant_id=TENANT_ID,
         access_token="token",
         provider="notion",
         source_info={
@@ -55,24 +68,31 @@ def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> 
                 }
             ],
         },
+        disabled=disabled,
     )
-    binding.id = "binding-1"
+    binding.id = BINDING_ID
     binding.created_at = datetime(2026, 5, 25, 1, 2, 3, tzinfo=UTC)
-    binding.disabled = False
+    session.add(binding)
+    session.commit()
+    return binding
 
-    with (
-        flask_app.test_request_context("/"),
-        patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [binding])),
-    ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
+
+def test_get_data_source_integrates_serializes_orm_binding(
+    flask_app: Flask,
+) -> None:
+    binding = _add_binding(db.session, disabled=False)
+    expected_created_at = int(binding.created_at.timestamp())
+
+    with flask_app.test_request_context("/"):
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), TENANT_ID)
 
     assert status == 200
     assert response == {
         "data": [
             {
-                "id": "binding-1",
+                "id": BINDING_ID,
                 "provider": "notion",
-                "created_at": 1779670923,
+                "created_at": expected_created_at,
                 "is_bound": True,
                 "disabled": False,
                 "source_info": {
@@ -96,34 +116,75 @@ def test_get_data_source_integrates_serializes_orm_binding(flask_app: Flask) -> 
     }
 
 
-def test_get_data_source_integrates_preserves_empty_list_when_no_binding(flask_app: Flask) -> None:
-    with (
-        flask_app.test_request_context("/"),
-        patch.object(module.db.session, "scalars", return_value=MagicMock(all=lambda: [])),
-    ):
-        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), "tenant-1")
+def test_get_data_source_integrates_preserves_empty_list_when_no_binding(
+    flask_app: Flask,
+) -> None:
+    with flask_app.test_request_context("/"):
+        response, status = unwrap(DataSourceApi().get)(DataSourceApi(), TENANT_ID)
 
     assert status == 200
     assert response == {"data": []}
 
 
-def test_patch_data_source_binding_uses_injected_session(flask_app: Flask) -> None:
-    binding = MagicMock(disabled=True)
-    session = MagicMock()
-    session.scalar.return_value = binding
+@pytest.mark.parametrize(
+    ("disabled", "action", "expected_disabled"),
+    [(True, "enable", False), (False, "disable", True)],
+)
+@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
+def test_patch_data_source_binding_updates_state(
+    flask_app: Flask,
+    sqlite_session: Session,
+    disabled: bool,
+    action: Literal["enable", "disable"],
+    expected_disabled: bool,
+) -> None:
+    _add_binding(sqlite_session, disabled=disabled)
+    sqlite_session.expunge_all()
 
     with flask_app.test_request_context("/"):
-        response, status = unwrap(DataSourceApi().patch)(DataSourceApi(), session, "tenant-1", uuid4(), "enable")
+        response, status = unwrap(DataSourceApi().patch)(
+            DataSourceApi(), sqlite_session, TENANT_ID, UUID(BINDING_ID), action
+        )
 
+    sqlite_session.flush()
+    sqlite_session.expire_all()
+    binding = sqlite_session.scalar(select(DataSourceOauthBinding).where(DataSourceOauthBinding.id == BINDING_ID))
     assert status == 200
     assert response == {"result": "success"}
-    assert binding.disabled is False
-    session.scalar.assert_called_once()
-    session.add.assert_not_called()
-    session.commit.assert_not_called()
+    assert binding is not None
+    assert binding.disabled is expected_disabled
 
 
-def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask, current_user: Account) -> None:
+@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
+def test_patch_data_source_binding_rejects_unknown_binding(
+    flask_app: Flask,
+    sqlite_session: Session,
+) -> None:
+    with flask_app.test_request_context("/"), pytest.raises(NotFound, match="Data source binding not found"):
+        unwrap(DataSourceApi().patch)(DataSourceApi(), sqlite_session, TENANT_ID, UUID(BINDING_ID), "enable")
+
+
+@pytest.mark.parametrize(("disabled", "action"), [(False, "enable"), (True, "disable")])
+@pytest.mark.parametrize("sqlite_session", [(DataSourceOauthBinding,)], indirect=True)
+def test_patch_data_source_binding_rejects_current_state(
+    flask_app: Flask,
+    sqlite_session: Session,
+    disabled: bool,
+    action: Literal["enable", "disable"],
+) -> None:
+    _add_binding(sqlite_session, disabled=disabled)
+    sqlite_session.expunge_all()
+
+    with flask_app.test_request_context("/"), pytest.raises(ValueError):
+        unwrap(DataSourceApi().patch)(DataSourceApi(), sqlite_session, TENANT_ID, UUID(BINDING_ID), action)
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_notion_pre_import_pages_serializes_frontend_list_shape(
+    flask_app: Flask,
+    current_user: Account,
+    sqlite_session: Session,
+) -> None:
     page = MagicMock(
         page_id="page-1",
         page_name="Page",
@@ -145,8 +206,6 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
         get_online_document_pages=MagicMock(return_value=iter([online_document_message])),
         datasource_provider_type=MagicMock(return_value="online_document"),
     )
-    session = MagicMock()
-
     with (
         flask_app.test_request_context("/?credential_id=credential-1"),
         patch.object(
@@ -158,7 +217,7 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
         patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
     ):
         response, status = unwrap(DataSourceNotionListApi().get)(
-            DataSourceNotionListApi(), session, "tenant-1", current_user
+            DataSourceNotionListApi(), sqlite_session, "tenant-1", current_user
         )
 
     assert status == 200
@@ -183,3 +242,38 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
     }
     runtime.get_online_document_pages.assert_called_once()
     assert runtime.get_online_document_pages.call_args.kwargs["datasource_parameters"] == {}
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_notion_pre_import_pages_rejects_missing_credential(
+    flask_app: Flask,
+    current_user: Account,
+    sqlite_session: Session,
+) -> None:
+    with (
+        flask_app.test_request_context("/?credential_id=credential-1"),
+        patch.object(module.DatasourceProviderService, "get_datasource_credentials", return_value=None),
+        pytest.raises(NotFound, match="Credential not found"),
+    ):
+        unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), sqlite_session, TENANT_ID, current_user)
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_notion_pre_import_pages_rejects_non_notion_dataset(
+    flask_app: Flask,
+    current_user: Account,
+    sqlite_session: Session,
+) -> None:
+    dataset = MagicMock(data_source_type="other_type")
+
+    with (
+        flask_app.test_request_context("/?credential_id=credential-1&dataset_id=dataset-1"),
+        patch.object(
+            module.DatasourceProviderService,
+            "get_datasource_credentials",
+            return_value={"token": "token"},
+        ),
+        patch.object(module.DatasetService, "get_dataset", return_value=dataset),
+        pytest.raises(ValueError, match="Dataset is not notion type"),
+    ):
+        unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), sqlite_session, TENANT_ID, current_user)
