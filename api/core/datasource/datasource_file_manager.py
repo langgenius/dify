@@ -10,6 +10,7 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from core.file import remote_fetcher
@@ -53,7 +54,10 @@ class DatasourceFileManager:
         file_binary: bytes,
         mimetype: str,
         filename: str | None = None,
+        session: Session | scoped_session | None = None,
     ) -> UploadFile:
+        """Persist an uploaded datasource file and its storage payload."""
+        session = session or db.session
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         unique_filename = f"{unique_name}{extension}"
@@ -82,9 +86,9 @@ class DatasourceFileManager:
             created_at=datetime.now(),
         )
 
-        db.session.add(upload_file)
-        db.session.commit()
-        db.session.refresh(upload_file)
+        session.add(upload_file)
+        session.commit()
+        session.refresh(upload_file)
 
         return upload_file
 
@@ -94,7 +98,11 @@ class DatasourceFileManager:
         tenant_id: str,
         file_url: str,
         conversation_id: str | None = None,
+        *,
+        session: Session | scoped_session | None = None,
     ) -> ToolFile:
+        """Download a remote file and persist its tool-file metadata."""
+        session = session or db.session
         # try to download image
         try:
             response = remote_fetcher.make_request("GET", file_url)
@@ -125,13 +133,13 @@ class DatasourceFileManager:
             size=len(blob),
         )
 
-        db.session.add(tool_file)
-        db.session.commit()
+        session.add(tool_file)
+        session.commit()
 
         return tool_file
 
     @staticmethod
-    def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary(id: str, *, session: Session | scoped_session | None = None) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -139,7 +147,8 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = db.session.get(UploadFile, id)
+        session = session or db.session
+        upload_file: UploadFile | None = session.get(UploadFile, id)
 
         if not upload_file:
             return None
@@ -149,7 +158,9 @@ class DatasourceFileManager:
         return blob, upload_file.mime_type
 
     @staticmethod
-    def get_file_binary_by_message_file_id(id: str) -> Union[tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(
+        id: str, *, session: Session | scoped_session | None = None
+    ) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -157,7 +168,8 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile | None = db.session.get(MessageFile, id)
+        session = session or db.session
+        message_file: MessageFile | None = session.get(MessageFile, id)
 
         # Check if message_file is not None
         if message_file is not None:
@@ -171,7 +183,9 @@ class DatasourceFileManager:
         else:
             tool_file_id = None
 
-        tool_file: ToolFile | None = db.session.get(ToolFile, tool_file_id)
+        if not tool_file_id:
+            return None
+        tool_file: ToolFile | None = session.get(ToolFile, tool_file_id)
 
         if not tool_file:
             return None
@@ -181,7 +195,7 @@ class DatasourceFileManager:
         return blob, tool_file.mimetype
 
     @staticmethod
-    def get_file_generator_by_upload_file_id(upload_file_id: str):
+    def get_file_generator_by_upload_file_id(upload_file_id: str, *, session: Session | scoped_session | None = None):
         """
         get file binary
 
@@ -189,7 +203,8 @@ class DatasourceFileManager:
 
         :return: the binary of the file, mime type
         """
-        upload_file: UploadFile | None = db.session.get(UploadFile, upload_file_id)
+        session = session or db.session
+        upload_file: UploadFile | None = session.get(UploadFile, upload_file_id)
 
         if not upload_file:
             return None, None
