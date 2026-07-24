@@ -324,6 +324,25 @@ class TestFirecrawlApp:
 
         assert sleep_mock.call_count == 4
 
+    def test_post_and_get_request_pass_bounded_timeout(self, mocker: MockerFixture):
+        """Both request helpers must send a bounded httpx timeout so a stalled Firecrawl
+        endpoint cannot hang the extractor thread (once per retry, three times over)."""
+        app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
+
+        post_mock = mocker.patch("httpx.post", return_value=_response(200))
+        app._post_request("u", {"x": 1}, {"h": 1})
+        post_timeout = post_mock.call_args.kwargs["timeout"]
+        assert post_timeout is firecrawl_module.FIRECRAWL_REQUEST_TIMEOUT
+        assert post_timeout.read is not None
+        assert post_timeout.connect is not None
+
+        get_mock = mocker.patch("httpx.get", return_value=_response(200))
+        app._get_request("u", {"h": 1})
+        get_timeout = get_mock.call_args.kwargs["timeout"]
+        assert get_timeout is firecrawl_module.FIRECRAWL_REQUEST_TIMEOUT
+        assert get_timeout.read is not None
+        assert get_timeout.connect is not None
+
     def test_handle_error_with_json_and_plain_text(self):
         app = FirecrawlApp(api_key="fc-key", base_url="https://custom.firecrawl.dev")
 
