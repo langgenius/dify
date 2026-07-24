@@ -39,3 +39,9 @@
 .spin-animation path:nth-child(4) {
   animation-delay: 1.5s;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-animation path {
+    animation: none;
+  }
+}

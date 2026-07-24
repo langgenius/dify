@@ -4,8 +4,16 @@ from dataclasses import dataclass
 
 from sqlalchemy import select
 
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.db.session_factory import session_factory
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 
 
 class WorkflowAgentBindingError(Exception):
@@ -24,7 +32,7 @@ class WorkflowAgentBindingBundle:
 
 
 class WorkflowAgentBindingResolver:
-    """Resolve the Agent binding owned by the current workflow id and node id."""
+    """Resolve an owned binding without allowing unpublished roster snapshots to run."""
 
     def resolve(
         self,
@@ -53,18 +61,20 @@ class WorkflowAgentBindingResolver:
             if binding.agent_id is None:
                 raise WorkflowAgentBindingError("agent_not_available", "Workflow Agent binding has no agent.")
 
-            agent = session.scalar(
-                select(Agent)
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.id == binding.agent_id,
-                )
-                .limit(1)
+            agent_stmt = select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == binding.agent_id,
             )
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
+                agent_stmt = agent_stmt.where(
+                    Agent.scope == AgentScope.ROSTER,
+                    workflow_callable_active_snapshot_filter(),
+                )
+            agent = session.scalar(agent_stmt.limit(1))
             if agent is None or agent.status == AgentStatus.ARCHIVED:
                 raise WorkflowAgentBindingError(
                     "agent_not_available",
-                    f"Agent {binding.agent_id} is not available.",
+                    f"Agent {binding.agent_id} is not available or has not been published.",
                 )
 
             snapshot_id = (

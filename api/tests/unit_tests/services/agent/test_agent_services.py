@@ -592,6 +592,7 @@ def test_save_agent_app_composer_rejects_version_save_strategy():
 def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
     agent = SimpleNamespace(
         id="agent-1",
+        tenant_id="tenant-1",
         source=AgentSource.AGENT_APP,
         active_config_snapshot_id="version-1",
         active_config_is_published=True,
@@ -639,13 +640,14 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     agent_soul = _agent_soul_with_model()
     agent = SimpleNamespace(
         id="agent-1",
+        tenant_id="tenant-1",
         source=AgentSource.AGENT_APP,
         active_config_snapshot_id="version-1",
         active_config_is_published=False,
         updated_by=None,
     )
     active_version = SimpleNamespace(config_snapshot_dict=agent_soul.model_dump(mode="json"))
-    fake_session = FakeSession(scalar=[agent], scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]])
+    fake_session = FakeSession(scalar=[agent, "publish-revision-1"])
 
     session = fake_session
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
@@ -822,8 +824,7 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
 
     active_version = SimpleNamespace(config_snapshot_dict=build_draft.config_snapshot_dict)
     fake_session = FakeSession(
-        scalar=[agent, build_draft, normal_draft, active_version],
-        scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]],
+        scalar=[agent, build_draft, normal_draft, active_version, "publish-revision-1"],
     )
     session = fake_session
 
@@ -1612,7 +1613,7 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypat
 def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_node_job(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    fake_session = FakeSession()
+    fake_session = FakeSession(scalar=["publish-revision-1"])
     session = fake_session
     workflow = SimpleNamespace(id="workflow-1")
     node_job = WorkflowNodeJobConfig(workflow_prompt="keep this node task")
@@ -1710,7 +1711,7 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
 
 
 def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(monkeypatch: pytest.MonkeyPatch):
-    session = FakeSession()
+    session = FakeSession(scalar=["publish-revision-1"])
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(
         AgentComposerService,
@@ -1756,6 +1757,49 @@ def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(monkey
             source_agent_id="roster-agent-1",
             source_snapshot_id="roster-version-1",
         )
+
+
+def test_copy_workflow_composer_from_roster_rejects_unpublished_source(monkeypatch: pytest.MonkeyPatch):
+    session = FakeSession()
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    source_agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Unpublished import",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.IMPORTED,
+        app_id="agent-app-1",
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="roster-version-1",
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
+    require_version = MagicMock(side_effect=AssertionError("unpublished source must fail before loading snapshot"))
+    monkeypatch.setattr(AgentComposerService, "_require_version", require_version)
+
+    with pytest.raises(InvalidComposerConfigError, match="published config snapshot"):
+        AgentComposerService.copy_workflow_composer_from_roster(
+            session=session,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            node_id="node-1",
+            account_id="account-1",
+            source_agent_id="roster-agent-1",
+        )
+
+    require_version.assert_not_called()
+    assert session.flushes == 0
 
 
 def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(monkeypatch: pytest.MonkeyPatch):
@@ -2203,7 +2247,7 @@ def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeyp
         active_config_snapshot_id="snapshot-1",
     )
     snapshot = SimpleNamespace(config_snapshot_dict=agent_soul)
-    fake_session = FakeSession(scalars=[[AgentConfigRevisionOperation.CREATE_VERSION]])
+    fake_session = FakeSession()
     session = fake_session
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
@@ -2227,7 +2271,7 @@ def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monke
         active_config_snapshot_id="snapshot-1",
     )
     snapshot = SimpleNamespace(config_snapshot_dict=agent_soul)
-    fake_session = FakeSession(scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]])
+    fake_session = FakeSession(scalar=["publish-revision-1"])
     session = fake_session
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
@@ -5095,6 +5139,7 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(monkey
 def test_save_agent_composer_allows_incomplete_knowledge_draft(monkeypatch: pytest.MonkeyPatch):
     agent = SimpleNamespace(
         id="agent-1",
+        tenant_id="tenant-1",
         source=AgentSource.AGENT_APP,
         active_config_snapshot_id="version-1",
         active_config_is_published=True,
