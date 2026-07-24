@@ -1,0 +1,303 @@
+"""SQLAlchemy Contact Directory adapter with aggregate-scoped transactions.
+
+Every consuming query includes the complete deployment/workspace owner
+predicate. EE Organization writes lock the stable ``DifySetup`` row before
+checking nullable-owner uniqueness. ORM instances never cross this boundary.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import sqlalchemy as sa
+from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session, selectinload, sessionmaker
+
+from core.human_input_v2.contact_directory import (
+    Contact,
+    ContactDirectoryError,
+    ContactDirectoryPolicy,
+    ContactDirectorySnapshot,
+    ContactRejectionCode,
+    OrganizationAccountOwner,
+    PlatformWorkspaceEntry,
+)
+from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
+from libs.uuid_utils import uuidv7
+from models.account import Account, AccountStatus, TenantAccountJoin
+from models.human_input_v2 import (
+    HumanInputContact,
+    HumanInputContactIdentitySource,
+    HumanInputPlatformContactWorkspaceEntry,
+)
+from models.model import DifySetup
+
+from .mappers import contact_from_record, contact_to_record, platform_entry_to_record
+
+
+class SQLAlchemyContactDirectoryRepository:
+    """Transactional adapter for coherent Contact Directory operations."""
+
+    _session_maker: sessionmaker[Session]
+
+    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+        self._session_maker = session_maker
+
+    def load_snapshot(self, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
+        """Load contacts, membership, allow-list, and Account availability in one transaction."""
+
+        try:
+            with self._session_maker() as session, session.begin():
+                return self._load_snapshot(session, workspace_id)
+        except ContactDirectoryError:
+            raise
+        except SQLAlchemyError as error:
+            raise self._persistence_error() from error
+
+    def save_contact(self, contact: Contact) -> Contact:
+        """Persist one Contact while serializing deployment-wide uniqueness."""
+
+        try:
+            with self._session_maker() as session, session.begin():
+                if isinstance(contact.owner, OrganizationAccountOwner):
+                    self._lock_deployment_owner(session)
+                self._ensure_account_available(session, contact)
+                self._ensure_identity_available(session, contact)
+                record = self._find_owned_record(session, contact)
+                if record is None:
+                    record = contact_to_record(contact)
+                    session.add(record)
+                else:
+                    if not self._record_has_same_identity(record, contact):
+                        raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
+                    self._copy_mutable_values(record, contact)
+                session.flush()
+                return contact_from_record(record)
+        except ContactDirectoryError:
+            raise
+        except IntegrityError as error:
+            raise self._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY) from error
+        except SQLAlchemyError as error:
+            raise self._persistence_error() from error
+
+    def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
+        """Atomically validate and create a new External Contact."""
+
+        try:
+            with self._session_maker() as session, session.begin():
+                snapshot = self._load_snapshot(session, workspace_id)
+                contact = ContactDirectoryPolicy.admit_external(
+                    snapshot,
+                    contact_id=ContactId(str(uuidv7())),
+                    name=name,
+                    email=email,
+                    now=UtcTimestamp(datetime.now(UTC)),
+                )
+                self._ensure_identity_available(session, contact)
+                record = contact_to_record(contact)
+                session.add(record)
+                session.flush()
+                return contact_from_record(record)
+        except ContactDirectoryError:
+            raise
+        except IntegrityError as error:
+            raise self._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY) from error
+        except SQLAlchemyError as error:
+            raise self._persistence_error() from error
+
+    def set_platform_availability(
+        self,
+        workspace_id: WorkspaceId,
+        contact_id: ContactId,
+        *,
+        added_by_account_id: AccountId,
+        enabled: bool,
+    ) -> None:
+        """Idempotently mutate one workspace allow-list entry in a transaction."""
+
+        try:
+            with self._session_maker() as session, session.begin():
+                contact_record = session.scalar(
+                    select(HumanInputContact).where(
+                        HumanInputContact.id == str(contact_id),
+                        or_(
+                            HumanInputContact.tenant_id.is_(None),
+                            HumanInputContact.tenant_id == str(workspace_id),
+                        ),
+                    )
+                )
+                if contact_record is None:
+                    raise self._domain_error(ContactRejectionCode.CONTACT_NOT_FOUND)
+                if (
+                    contact_record.identity_source is not HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT
+                    or contact_record.tenant_id is not None
+                ):
+                    raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
+
+                entry = session.scalar(
+                    select(HumanInputPlatformContactWorkspaceEntry).where(
+                        HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id),
+                        HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
+                    )
+                )
+                if enabled and entry is None:
+                    now = UtcTimestamp(datetime.now(UTC))
+                    session.add(
+                        platform_entry_to_record(
+                            PlatformWorkspaceEntry(
+                                id=PlatformEntryId(str(uuidv7())),
+                                workspace_id=workspace_id,
+                                contact_id=contact_id,
+                                added_by_account_id=added_by_account_id,
+                                created_at=now,
+                                updated_at=now,
+                            )
+                        )
+                    )
+                elif not enabled and entry is not None:
+                    session.delete(entry)
+                session.flush()
+        except ContactDirectoryError:
+            raise
+        except IntegrityError as error:
+            raise self._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY) from error
+        except SQLAlchemyError as error:
+            raise self._persistence_error() from error
+
+    def hard_delete_external(self, workspace_id: WorkspaceId, contact_id: ContactId) -> None:
+        """Hard-delete an External Contact only within its owning workspace."""
+
+        try:
+            with self._session_maker() as session, session.begin():
+                record = session.scalar(
+                    select(HumanInputContact).where(
+                        HumanInputContact.id == str(contact_id),
+                        HumanInputContact.tenant_id == str(workspace_id),
+                        HumanInputContact.identity_source == HumanInputContactIdentitySource.EXTERNAL,
+                    )
+                )
+                if record is None:
+                    raise self._domain_error(ContactRejectionCode.CONTACT_NOT_FOUND)
+                session.delete(record)
+        except ContactDirectoryError:
+            raise
+        except SQLAlchemyError as error:
+            raise self._persistence_error() from error
+
+    def _load_snapshot(self, session: Session, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
+        contact_records = session.scalars(
+            select(HumanInputContact)
+            .options(selectinload(HumanInputContact.platform_workspace_entries))
+            .where(
+                or_(
+                    HumanInputContact.tenant_id.is_(None),
+                    HumanInputContact.tenant_id == str(workspace_id),
+                )
+            )
+            .order_by(HumanInputContact.id)
+        ).all()
+        contacts = tuple(contact_from_record(record) for record in contact_records)
+        member_account_ids = frozenset(
+            AccountId(account_id)
+            for account_id in session.scalars(
+                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == str(workspace_id))
+            ).all()
+        )
+        contact_account_ids = {contact.account_id for contact in contacts if contact.account_id is not None}
+        active_account_ids = frozenset(
+            AccountId(account_id)
+            for account_id in session.scalars(
+                select(Account.id).where(
+                    Account.id.in_([str(account_id) for account_id in contact_account_ids]),
+                    Account.status == AccountStatus.ACTIVE,
+                )
+            ).all()
+        )
+        platform_contact_ids = frozenset(
+            ContactId(record.id)
+            for record in contact_records
+            if any(entry.tenant_id == str(workspace_id) for entry in record.platform_workspace_entries)
+        )
+        return ContactDirectorySnapshot(
+            workspace_id=workspace_id,
+            contacts=contacts,
+            member_account_ids=member_account_ids,
+            platform_contact_ids=platform_contact_ids,
+            unavailable_account_ids=frozenset(contact_account_ids - active_account_ids),
+        )
+
+    @staticmethod
+    def _lock_deployment_owner(session: Session) -> None:
+        setup_version = session.scalars(select(DifySetup.version).with_for_update()).one_or_none()
+        if setup_version is None:
+            raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.SETUP_ROW_MISSING)
+
+    @staticmethod
+    def _ensure_account_available(session: Session, contact: Contact) -> None:
+        account_id = contact.account_id
+        if account_id is None:
+            return
+        status = session.scalar(select(Account.status).where(Account.id == str(account_id)))
+        if status is not AccountStatus.ACTIVE:
+            raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.ACCOUNT_UNAVAILABLE)
+
+    @staticmethod
+    def _ensure_identity_available(session: Session, contact: Contact) -> None:
+        owner_predicate = SQLAlchemyContactDirectoryRepository._owner_predicate(contact)
+        identity_predicates: list[sa.ColumnElement[bool]] = []
+        if contact.account_id is not None:
+            identity_predicates.append(HumanInputContact.account_id == str(contact.account_id))
+        if contact.normalized_email is not None:
+            identity_predicates.append(HumanInputContact.normalized_email == str(contact.normalized_email))
+        if not identity_predicates:
+            return
+        conflict_id = session.scalar(
+            select(HumanInputContact.id).where(
+                owner_predicate,
+                HumanInputContact.id != str(contact.id),
+                or_(*identity_predicates),
+            )
+        )
+        if conflict_id is not None:
+            raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY)
+
+    @staticmethod
+    def _find_owned_record(session: Session, contact: Contact) -> HumanInputContact | None:
+        return session.scalar(
+            select(HumanInputContact).where(
+                HumanInputContact.id == str(contact.id),
+                SQLAlchemyContactDirectoryRepository._owner_predicate(contact),
+            )
+        )
+
+    @staticmethod
+    def _owner_predicate(contact: Contact) -> sa.ColumnElement[bool]:
+        if isinstance(contact.owner, OrganizationAccountOwner):
+            return HumanInputContact.tenant_id.is_(None)
+        return HumanInputContact.tenant_id == str(contact.owner.workspace_id)
+
+    @staticmethod
+    def _record_has_same_identity(record: HumanInputContact, contact: Contact) -> bool:
+        expected_source = HumanInputContactIdentitySource(contact.identity_source.value)
+        expected_account_id = str(contact.account_id) if contact.account_id is not None else None
+        return record.identity_source is expected_source and record.account_id == expected_account_id
+
+    @staticmethod
+    def _copy_mutable_values(record: HumanInputContact, contact: Contact) -> None:
+        record.name = contact.name
+        record.normalized_name = contact.normalized_name
+        record.email = contact.email
+        record.normalized_email = str(contact.normalized_email) if contact.normalized_email is not None else None
+        record.avatar_file_id = contact.avatar_file_id
+        record.updated_at = contact.updated_at.value
+
+    @staticmethod
+    def _domain_error(code: ContactRejectionCode) -> ContactDirectoryError:
+        from core.human_input_v2.contact_directory import ContactRejection
+
+        return ContactDirectoryError(ContactRejection(code))
+
+    @staticmethod
+    def _persistence_error() -> ContactDirectoryError:
+        return SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.PERSISTENCE_FAILURE)

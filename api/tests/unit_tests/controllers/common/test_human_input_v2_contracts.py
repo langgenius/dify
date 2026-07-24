@@ -232,6 +232,12 @@ def test_access_request_response_exposes_resend_cooldown() -> None:
 
 
 def test_batch_get_contacts_query_forbids_extra_fields() -> None:
+    query = BatchGetContactsQuery.model_validate({"contact_ids": ["contact-1"]})
+
+    assert query.contact_ids == ["contact-1"]
+    assert query.model_dump(mode="json") == {"contact_ids": ["contact-1"]}
+    assert BatchGetContactsQuery.model_json_schema()["properties"]["contact_ids"]["items"]["type"] == "string"
+
     with pytest.raises(ValidationError):
         BatchGetContactsQuery.model_validate({"contact_ids": ["contact-1"], "unexpected": True})
 

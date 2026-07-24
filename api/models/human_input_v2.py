@@ -371,7 +371,7 @@ class HumanInputContact(DefaultFieldsDCMixin, TypeBase):
     external facts and never mutate this source. Because both supported
     databases allow duplicate nulls in unique constraints, EE Organization
     contact uniqueness must also be protected by a contact write transaction
-    that locks a stable owner such as the IM integration.
+    that locks the deployment's stable ``DifySetup`` row before conflict checks.
     """
 
     __tablename__ = "human_input_contacts"
@@ -396,8 +396,12 @@ class HumanInputContact(DefaultFieldsDCMixin, TypeBase):
             "identity_source <> 'external' OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
             name="external_email",
         ),
-        sa.Index(None, "tenant_id", "normalized_email"),
-        sa.Index(None, "tenant_id", "normalized_name"),
+        sa.CheckConstraint(
+            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
+            name="email_normalization_pair",
+        ),
+        sa.Index("human_input_contacts_tenant_normalized_email_idx", "tenant_id", "normalized_email"),
+        sa.Index("human_input_contacts_tenant_normalized_name_idx", "tenant_id", "normalized_name"),
         {
             "comment": (
                 "Canonical Human Input contact identities. EE Organization Account contacts have tenant_id IS NULL; "
@@ -480,8 +484,8 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
             "contact_id",
             name="hipcwe_tenant_contact_uq",
         ),
-        sa.Index(None, "tenant_id", "created_at", "id"),
-        sa.Index(None, "contact_id"),
+        sa.Index("hipcwe_tenant_created_at_id_idx", "tenant_id", "created_at", "id"),
+        sa.Index("hipcwe_contact_id_idx", "contact_id"),
         {
             "comment": (
                 "EE-only workspace allow-list for Organization Account contacts. Workspace membership and External "

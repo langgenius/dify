@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import NewType
 
+from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, UtcTimestamp, WorkspaceId
+
 
 class HumanInputContactType(StrEnum):
     """Concrete contact classification resolved in one workspace."""
@@ -150,9 +152,6 @@ class EmailProviderType(StrEnum):
 # Identifiers for organization candidates and contacts.
 OrganizationCandidateId = NewType("OrganizationCandidateId", str)
 
-# Identifiers for contacts.
-ContactId = NewType("ContactId", str)
-
 # Identifiers for synced IM identiies. This is not the same as user_id or account_id
 # on the IM provier side. It is the identifier for the synced IM user record in Dify.
 IMIdentityId = NewType("IMIdentityId", str)
@@ -165,6 +164,7 @@ IMBindingId = NewType("IMBindingId", str)
 
 
 __all__ = [
+    "AccountId",
     "ContactId",
     "EmailProviderType",
     "HumanInputApproverGrantSubjectType",
@@ -186,5 +186,8 @@ __all__ = [
     "IMSyncResultType",
     "IMSyncRunId",
     "IMSyncRunStatus",
+    "NormalizedEmail",
     "OrganizationCandidateId",
+    "UtcTimestamp",
+    "WorkspaceId",
 ]
