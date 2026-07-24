@@ -75,10 +75,7 @@ def test_upgrade_matches_contact_model_metadata_and_constraints() -> None:
     contact_uniques = {constraint["name"] for constraint in inspector.get_unique_constraints("human_input_contacts")}
     assert contact_uniques == {"human_input_contacts_tenant_account_uq", "human_input_contacts_tenant_email_uq"}
     contact_indexes = {index["name"] for index in inspector.get_indexes("human_input_contacts")}
-    assert contact_indexes == {
-        "human_input_contacts_tenant_normalized_email_idx",
-        "human_input_contacts_tenant_normalized_name_idx",
-    }
+    assert contact_indexes == {"human_input_contacts_tenant_normalized_name_idx"}
 
 
 def test_upgrade_enforces_structured_identity_source_owner_values() -> None:

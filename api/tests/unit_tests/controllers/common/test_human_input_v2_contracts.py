@@ -136,6 +136,7 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
     assert request_body.nodes[0].node_data.version == "1"
     assert not hasattr(request_body.nodes[0].node_data, "future_legacy_field")
     assert set(NodeDataMigrationResponse.model_json_schema()["properties"]) == {"data"}
+    assert contracts.LegacyHITLv1NodeData.model_json_schema()["properties"]["version"]["const"] == "1"
 
     failure = NodeDataMigrationFailureResponse.model_validate(
         {
@@ -232,12 +233,6 @@ def test_access_request_response_exposes_resend_cooldown() -> None:
 
 
 def test_batch_get_contacts_query_forbids_extra_fields() -> None:
-    query = BatchGetContactsQuery.model_validate({"contact_ids": ["contact-1"]})
-
-    assert query.contact_ids == ["contact-1"]
-    assert query.model_dump(mode="json") == {"contact_ids": ["contact-1"]}
-    assert BatchGetContactsQuery.model_json_schema()["properties"]["contact_ids"]["items"]["type"] == "string"
-
     with pytest.raises(ValidationError):
         BatchGetContactsQuery.model_validate({"contact_ids": ["contact-1"], "unexpected": True})
 

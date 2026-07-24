@@ -94,11 +94,6 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
-        "human_input_contacts_tenant_normalized_email_idx",
-        "human_input_contacts",
-        ["tenant_id", "normalized_email"],
-    )
-    op.create_index(
         "human_input_contacts_tenant_normalized_name_idx",
         "human_input_contacts",
         ["tenant_id", "normalized_name"],

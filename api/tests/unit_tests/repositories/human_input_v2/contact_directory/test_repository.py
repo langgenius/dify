@@ -77,16 +77,32 @@ def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(reposit
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("account-2"), _account("account-3")])
-        session.add(
-            TenantAccountJoin(
-                tenant_id=str(_WORKSPACE_ID),
-                account_id="account-1",
-                role=TenantAccountRole.NORMAL,
-            )
+        session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=str(_WORKSPACE_ID),
+                    account_id="account-1",
+                    role=TenantAccountRole.NORMAL,
+                ),
+                TenantAccountJoin(
+                    tenant_id=str(_WORKSPACE_ID),
+                    account_id="account-2",
+                    role=TenantAccountRole.NORMAL,
+                ),
+                TenantAccountJoin(
+                    tenant_id=str(_OTHER_WORKSPACE_ID),
+                    account_id="account-3",
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
         )
-    organization = repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
-    member = repository.save_contact(_workspace_member_contact("member", _WORKSPACE_ID, "account-2"))
-    repository.save_contact(_workspace_member_contact("other-member", _OTHER_WORKSPACE_ID, "account-3"))
+    organization = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
+    member = repository.save_workspace_member_contact(_workspace_member_contact("member", _WORKSPACE_ID, "account-2"))
+    repository.save_workspace_member_contact(
+        _workspace_member_contact("other-member", _OTHER_WORKSPACE_ID, "account-3")
+    )
     repository.set_platform_availability(
         _WORKSPACE_ID,
         organization.id,
@@ -97,9 +113,49 @@ def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(reposit
     snapshot = repository.load_snapshot(_WORKSPACE_ID)
 
     assert {contact.id for contact in snapshot.contacts} == {organization.id, member.id}
-    assert snapshot.member_account_ids == frozenset({AccountId("account-1")})
+    assert snapshot.member_account_ids == frozenset({AccountId("account-1"), AccountId("account-2")})
     assert snapshot.platform_contact_ids == frozenset({organization.id})
     assert ContactDirectoryPolicy.resolve_for_workspace(snapshot, organization.id) is ContactResolution.WORKSPACE
+
+
+def test_snapshot_scopes_eager_platform_entries_in_sql(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add_all([_account("account-1"), _account("admin")])
+    organization = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
+    repository.set_platform_availability(
+        _WORKSPACE_ID,
+        organization.id,
+        added_by_account_id=AccountId("admin"),
+        enabled=True,
+    )
+    repository.set_platform_availability(
+        _OTHER_WORKSPACE_ID,
+        organization.id,
+        added_by_account_id=AccountId("admin"),
+        enabled=True,
+    )
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(session_maker.kw["bind"], "before_cursor_execute", record_statement)
+    try:
+        snapshot = repository.load_snapshot(_WORKSPACE_ID)
+    finally:
+        event.remove(session_maker.kw["bind"], "before_cursor_execute", record_statement)
+
+    entry_statements = [
+        " ".join(statement.lower().split())
+        for statement in statements
+        if "from human_input_platform_contact_workspace_entries" in statement.lower()
+    ]
+    assert len(entry_statements) == 1
+    assert "human_input_platform_contact_workspace_entries.tenant_id = ?" in entry_statements[0]
+    assert snapshot.platform_contact_ids == frozenset({organization.id})
 
 
 def test_disabled_account_is_unavailable_without_deleting_contact(repository_context) -> None:
@@ -113,7 +169,9 @@ def test_disabled_account_is_unavailable_without_deleting_contact(repository_con
                 role=TenantAccountRole.NORMAL,
             )
         )
-    contact = repository.save_contact(_organization_contact("contact-1", "disabled", "disabled@example.com"))
+    contact = repository.save_organization_contact(
+        _organization_contact("contact-1", "disabled", "disabled@example.com")
+    )
     with session_maker.begin() as session:
         account = session.get_one(Account, "disabled")
         account.status = AccountStatus.BANNED
@@ -140,6 +198,45 @@ def test_external_admission_rolls_back_normalized_email_collision(repository_con
     assert [record.id for record in records] == [str(first.id)]
 
 
+def test_external_admission_rejects_visible_organization_contact_email(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add_all([_account("account-1"), _account("admin")])
+    organization = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "reviewer@example.com")
+    )
+    repository.set_platform_availability(
+        _WORKSPACE_ID,
+        organization.id,
+        added_by_account_id=AccountId("admin"),
+        enabled=True,
+    )
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.admit_external(_WORKSPACE_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
+
+    assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
+
+
+def test_source_specific_contact_writes_reject_external_bypass(repository_context) -> None:
+    repository, _ = repository_context
+    external = Contact.external(
+        contact_id=ContactId("external-contact"),
+        workspace_id=_WORKSPACE_ID,
+        name="Reviewer",
+        email="reviewer@example.com",
+        now=_NOW,
+    )
+
+    with pytest.raises(ContactDirectoryError) as organization_error:
+        repository.save_organization_contact(external)
+    assert organization_error.value.code is ContactRejectionCode.INVALID_OWNER
+
+    with pytest.raises(ContactDirectoryError) as workspace_error:
+        repository.save_workspace_member_contact(external)
+    assert workspace_error.value.code is ContactRejectionCode.INVALID_OWNER
+
+
 def test_external_hard_delete_allows_same_email_recreation_with_new_id(repository_context) -> None:
     repository, _ = repository_context
     original = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
@@ -163,7 +260,9 @@ def test_platform_mutation_is_idempotent_and_restricted_to_organization_contacts
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("admin")])
-    organization = repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+    organization = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
     external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
 
     repository.set_platform_availability(
@@ -210,7 +309,9 @@ def test_snapshot_uses_explicit_bounded_queries_and_returns_only_domain_values(r
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    organization = repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+    organization = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
     repository.set_platform_availability(
         _WORKSPACE_ID,
         organization.id,
@@ -244,7 +345,7 @@ def test_organization_write_requires_and_queries_stable_setup_row(repository_con
 
     event.listen(session_maker.kw["bind"], "before_cursor_execute", record_statement)
     try:
-        repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+        repository.save_organization_contact(_organization_contact("organization", "account-1", "ada@example.com"))
     finally:
         event.remove(session_maker.kw["bind"], "before_cursor_execute", record_statement)
 
@@ -257,7 +358,7 @@ def test_organization_write_fails_closed_when_setup_row_is_missing(repository_co
         session.execute(sa.delete(DifySetup))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+        repository.save_organization_contact(_organization_contact("organization", "account-1", "ada@example.com"))
     assert error.value.code is ContactRejectionCode.SETUP_ROW_MISSING
 
 
@@ -265,7 +366,9 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    original = repository.save_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+    original = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
     updated = Contact.create(
         contact_id=original.id,
         identity_source=ContactIdentitySource.ORGANIZATION_ACCOUNT,
@@ -276,7 +379,7 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
         now=UtcTimestamp(datetime(2026, 7, 26, tzinfo=UTC)),
     )
 
-    restored = repository.save_contact(updated)
+    restored = repository.save_organization_contact(updated)
 
     assert restored.name == "Ada Lovelace"
     assert restored.identity_source is ContactIdentitySource.ORGANIZATION_ACCOUNT
@@ -289,18 +392,31 @@ def test_account_backed_admission_rejects_unavailable_account(repository_context
         session.add(_account("disabled", status=AccountStatus.BANNED))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_contact(_organization_contact("organization", "disabled", "disabled@example.com"))
+        repository.save_organization_contact(_organization_contact("organization", "disabled", "disabled@example.com"))
     assert error.value.code is ContactRejectionCode.ACCOUNT_UNAVAILABLE
 
 
-def test_save_contact_rejects_owner_scoped_identity_collision(repository_context) -> None:
+def test_workspace_member_write_requires_current_membership(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add(_account("account-1"))
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.save_workspace_member_contact(
+            _workspace_member_contact("workspace-contact", _WORKSPACE_ID, "account-1")
+        )
+
+    assert error.value.code is ContactRejectionCode.INVALID_OWNER
+
+
+def test_organization_contact_write_rejects_owner_scoped_identity_collision(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("account-2")])
-    repository.save_contact(_organization_contact("first", "account-1", "ada@example.com"))
+    repository.save_organization_contact(_organization_contact("first", "account-1", "ada@example.com"))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_contact(_organization_contact("second", "account-2", "ADA@example.com"))
+        repository.save_organization_contact(_organization_contact("second", "account-2", "ADA@example.com"))
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
 

@@ -400,7 +400,6 @@ class HumanInputContact(DefaultFieldsDCMixin, TypeBase):
             "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
             name="email_normalization_pair",
         ),
-        sa.Index("human_input_contacts_tenant_normalized_email_idx", "tenant_id", "normalized_email"),
         sa.Index("human_input_contacts_tenant_normalized_name_idx", "tenant_id", "normalized_name"),
         {
             "comment": (

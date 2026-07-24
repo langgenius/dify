@@ -19,8 +19,12 @@ class ContactDirectoryRepository(Protocol):
         """Load one immutable workspace-scoped directory view."""
         ...
 
-    def save_contact(self, contact: Contact) -> Contact:
-        """Create or update one Contact while preserving owner uniqueness."""
+    def save_organization_contact(self, contact: Contact) -> Contact:
+        """Create or update one deployment-owned Organization Contact."""
+        ...
+
+    def save_workspace_member_contact(self, contact: Contact) -> Contact:
+        """Create or update one Contact backed by current workspace membership."""
         ...
 
     def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:

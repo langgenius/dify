@@ -11,6 +11,9 @@ from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from sqlalchemy import or_, select
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
@@ -22,6 +25,7 @@ from core.human_input_v2.contact_directory import (
     ContactRejectionCode,
     OrganizationAccountOwner,
     PlatformWorkspaceEntry,
+    WorkspaceMemberOwner,
 )
 from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
 from libs.uuid_utils import uuidv7
@@ -45,23 +49,45 @@ class SQLAlchemyContactDirectoryRepository:
         self._session_maker = session_maker
 
     def load_snapshot(self, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
-        """Load contacts, membership, allow-list, and Account availability in one transaction."""
+        """Load one coherent contacts, membership, allow-list, and Account view."""
 
         try:
             with self._session_maker() as session, session.begin():
+                self._configure_snapshot_transaction(session)
                 return self._load_snapshot(session, workspace_id)
         except ContactDirectoryError:
             raise
         except SQLAlchemyError as error:
             raise self._persistence_error() from error
 
-    def save_contact(self, contact: Contact) -> Contact:
-        """Persist one Contact while serializing deployment-wide uniqueness."""
+    def save_organization_contact(self, contact: Contact) -> Contact:
+        """Persist one deployment-owned Organization Contact."""
+
+        if not isinstance(contact.owner, OrganizationAccountOwner):
+            raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
+        return self._save_account_backed_contact(contact, workspace_owner=None)
+
+    def save_workspace_member_contact(self, contact: Contact) -> Contact:
+        """Persist one Contact only while its owning workspace membership exists."""
+
+        if not isinstance(contact.owner, WorkspaceMemberOwner):
+            raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
+        return self._save_account_backed_contact(contact, workspace_owner=contact.owner)
+
+    def _save_account_backed_contact(
+        self,
+        contact: Contact,
+        *,
+        workspace_owner: WorkspaceMemberOwner | None,
+    ) -> Contact:
+        """Persist an already source-validated Account-backed Contact."""
 
         try:
             with self._session_maker() as session, session.begin():
-                if isinstance(contact.owner, OrganizationAccountOwner):
+                if workspace_owner is None:
                     self._lock_deployment_owner(session)
+                else:
+                    self._ensure_workspace_membership(session, workspace_owner)
                 self._ensure_account_available(session, contact)
                 self._ensure_identity_available(session, contact)
                 record = self._find_owned_record(session, contact)
@@ -86,6 +112,7 @@ class SQLAlchemyContactDirectoryRepository:
 
         try:
             with self._session_maker() as session, session.begin():
+                self._configure_snapshot_transaction(session)
                 snapshot = self._load_snapshot(session, workspace_id)
                 contact = ContactDirectoryPolicy.admit_external(
                     snapshot,
@@ -135,28 +162,26 @@ class SQLAlchemyContactDirectoryRepository:
                 ):
                     raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
 
-                entry = session.scalar(
-                    select(HumanInputPlatformContactWorkspaceEntry).where(
-                        HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id),
-                        HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
-                    )
-                )
-                if enabled and entry is None:
+                if enabled:
                     now = UtcTimestamp(datetime.now(UTC))
-                    session.add(
-                        platform_entry_to_record(
-                            PlatformWorkspaceEntry(
-                                id=PlatformEntryId(str(uuidv7())),
-                                workspace_id=workspace_id,
-                                contact_id=contact_id,
-                                added_by_account_id=added_by_account_id,
-                                created_at=now,
-                                updated_at=now,
-                            )
+                    self._insert_platform_entry_idempotently(
+                        session,
+                        PlatformWorkspaceEntry(
+                            id=PlatformEntryId(str(uuidv7())),
+                            workspace_id=workspace_id,
+                            contact_id=contact_id,
+                            added_by_account_id=added_by_account_id,
+                            created_at=now,
+                            updated_at=now,
+                        ),
+                    )
+                else:
+                    session.execute(
+                        sa.delete(HumanInputPlatformContactWorkspaceEntry).where(
+                            HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id),
+                            HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
                         )
                     )
-                elif not enabled and entry is not None:
-                    session.delete(entry)
                 session.flush()
         except ContactDirectoryError:
             raise
@@ -188,7 +213,13 @@ class SQLAlchemyContactDirectoryRepository:
     def _load_snapshot(self, session: Session, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
         contact_records = session.scalars(
             select(HumanInputContact)
-            .options(selectinload(HumanInputContact.platform_workspace_entries))
+            .options(
+                selectinload(
+                    HumanInputContact.platform_workspace_entries.and_(
+                        HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id)
+                    )
+                )
+            )
             .where(
                 or_(
                     HumanInputContact.tenant_id.is_(None),
@@ -215,9 +246,7 @@ class SQLAlchemyContactDirectoryRepository:
             ).all()
         )
         platform_contact_ids = frozenset(
-            ContactId(record.id)
-            for record in contact_records
-            if any(entry.tenant_id == str(workspace_id) for entry in record.platform_workspace_entries)
+            ContactId(record.id) for record in contact_records if record.platform_workspace_entries
         )
         return ContactDirectorySnapshot(
             workspace_id=workspace_id,
@@ -232,6 +261,26 @@ class SQLAlchemyContactDirectoryRepository:
         setup_version = session.scalars(select(DifySetup.version).with_for_update()).one_or_none()
         if setup_version is None:
             raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.SETUP_ROW_MISSING)
+
+    @staticmethod
+    def _configure_snapshot_transaction(session: Session) -> None:
+        """Use one MVCC snapshot for all facts loaded by the directory query."""
+
+        if session.get_bind().dialect.name in {"mysql", "postgresql"}:
+            session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+
+    @staticmethod
+    def _ensure_workspace_membership(session: Session, owner: WorkspaceMemberOwner) -> None:
+        membership_id = session.scalar(
+            select(TenantAccountJoin.id)
+            .where(
+                TenantAccountJoin.tenant_id == str(owner.workspace_id),
+                TenantAccountJoin.account_id == str(owner.account_id),
+            )
+            .with_for_update()
+        )
+        if membership_id is None:
+            raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.INVALID_OWNER)
 
     @staticmethod
     def _ensure_account_available(session: Session, contact: Contact) -> None:
@@ -261,6 +310,32 @@ class SQLAlchemyContactDirectoryRepository:
         )
         if conflict_id is not None:
             raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY)
+
+    @staticmethod
+    def _insert_platform_entry_idempotently(session: Session, entry: PlatformWorkspaceEntry) -> None:
+        record = platform_entry_to_record(entry)
+        values = {
+            "id": record.id,
+            "tenant_id": record.tenant_id,
+            "contact_id": record.contact_id,
+            "added_by_account_id": record.added_by_account_id,
+            "created_at": record.created_at,
+            "updated_at": record.updated_at,
+        }
+        dialect_name = session.get_bind().dialect.name
+        if dialect_name == "postgresql":
+            postgresql_statement = postgresql_insert(HumanInputPlatformContactWorkspaceEntry).values(**values)
+            session.execute(postgresql_statement.on_conflict_do_nothing(constraint="hipcwe_tenant_contact_uq"))
+            return
+        if dialect_name == "mysql":
+            mysql_statement = mysql_insert(HumanInputPlatformContactWorkspaceEntry).values(**values)
+            session.execute(mysql_statement.on_duplicate_key_update(contact_id=mysql_statement.inserted.contact_id))
+            return
+        if dialect_name == "sqlite":
+            sqlite_statement = sqlite_insert(HumanInputPlatformContactWorkspaceEntry).values(**values)
+            session.execute(sqlite_statement.on_conflict_do_nothing(index_elements=["tenant_id", "contact_id"]))
+            return
+        raise SQLAlchemyContactDirectoryRepository._persistence_error()
 
     @staticmethod
     def _find_owned_record(session: Session, contact: Contact) -> HumanInputContact | None:

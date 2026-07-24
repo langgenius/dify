@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import NewType
 
-from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, NormalizedEmail, UtcTimestamp, WorkspaceId
 
 
 class HumanInputContactType(StrEnum):
@@ -151,6 +151,10 @@ class EmailProviderType(StrEnum):
 
 # Identifiers for organization candidates and contacts.
 OrganizationCandidateId = NewType("OrganizationCandidateId", str)
+
+# Legacy transport identifier. Contact Directory code uses the richer value
+# object from ``core.human_input_v2.shared`` at its domain boundary.
+ContactId = NewType("ContactId", str)
 
 # Identifiers for synced IM identiies. This is not the same as user_id or account_id
 # on the IM provier side. It is the identifier for the synced IM user record in Dify.

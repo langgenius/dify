@@ -12,11 +12,12 @@ Public v2, trusted Service API v2, and legacy v1 submit DTOs stay independent.
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Annotated, Literal, NewType, Self, Union
+from typing import Annotated, Literal, Self, Union
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, field_validator, model_validator
 
 from core.human_input_v2.entities import (
+    ContactId,
     EmailProviderType,
     HumanInputContactType,
     IMBindingId,
@@ -39,10 +40,6 @@ from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
 from libs.helper import EmailStr
-
-# Transport IDs stay string-shaped even though the Contact Directory domain uses
-# nominal value objects. This prevents domain serialization from leaking into API schemas.
-TransportContactId = NewType("TransportContactId", str)
 
 
 class _NoExtraModel(BaseModel):
@@ -136,7 +133,7 @@ class IMBinding(BaseModel):
 class HumanInputContactSummary(BaseModel):
     """A trimmed version of `HumanInputContact` that only includes the fields needed for workflow orchestration."""
 
-    id: TransportContactId = Field(description="Unique contact identifier.")
+    id: ContactId = Field(description="Unique contact identifier.")
     name: str = Field(description="Display name shown in the contact directory.")
     avatar_url: str = Field(default="", description="URL of the contact's avatar.")
     created_at: Timestamp = Field(description="Timestamp when the contact was created.")
@@ -145,7 +142,7 @@ class HumanInputContactSummary(BaseModel):
 class HumanInputContact(BaseModel):
     """One contact entity returned by contact-related APIs."""
 
-    id: TransportContactId = Field(description="Unique contact identifier.")
+    id: ContactId = Field(description="Unique contact identifier.")
     type: HumanInputContactType = Field(description="Resolved contact type in the current workspace scope.")
     name: str = Field(description="Display name shown in the contact directory.")
     email: str | None = Field(default=None, description="Primary contact email if one exists.")
@@ -166,9 +163,7 @@ class HumanInputContact(BaseModel):
 class ContactOption(ResponseModel):
     """Least-privilege contact projection returned to workflow editors."""
 
-    id: TransportContactId = Field(
-        description="Unique contact identifier persisted in workflow recipient configuration."
-    )
+    id: ContactId = Field(description="Unique contact identifier persisted in workflow recipient configuration.")
     type: HumanInputContactType = Field(description="Resolved contact type in the current workspace scope.")
     name: str = Field(description="Display name shown in the contact picker.")
     avatar_url: str | None = Field(default=None, description="Signed avatar URL if one is available.")
@@ -236,7 +231,7 @@ class AddPlatformContactsResponse(ResponseModel):
 class RemoveContactsRequest(_RequestModel):
     """Request body for batch-removing platform or external contacts."""
 
-    contact_ids: list[TransportContactId] = Field(
+    contact_ids: list[ContactId] = Field(
         ...,
         min_length=1,
         description="Contact identifiers selected for removal from the contact directory surface.",
@@ -246,9 +241,7 @@ class RemoveContactsRequest(_RequestModel):
 class RemoveContactsResponse(ResponseModel):
     """Response body returned after batch-removing contacts."""
 
-    removed_contact_ids: list[TransportContactId] = Field(
-        description="Contact identifiers removed by the current operation."
-    )
+    removed_contact_ids: list[ContactId] = Field(description="Contact identifiers removed by the current operation.")
 
 
 class _FeishuLarkIMIntegrationCredentialsBase(_RequestModel):
@@ -700,7 +693,7 @@ class ServiceFormQuery(_NoExtraModel):
 
 
 class BatchGetContactsQuery(_NoExtraModel):
-    contact_ids: list[TransportContactId] = Field(..., description="List of contact IDs to retrieve.")
+    contact_ids: list[ContactId] = Field(..., description="List of contact IDs to retrieve.")
 
 
 class BatchGetContactsResponse(ResponseModel):
@@ -708,9 +701,7 @@ class BatchGetContactsResponse(ResponseModel):
 
 
 class BatchGetContactOptionsQuery(_NoExtraModel):
-    contact_ids: list[TransportContactId] = Field(
-        ..., description="Contact IDs persisted in workflow recipient configuration."
-    )
+    contact_ids: list[ContactId] = Field(..., description="Contact IDs persisted in workflow recipient configuration.")
 
 
 class BatchGetContactOptionsResponse(ResponseModel):
@@ -771,12 +762,15 @@ class LegacyHITLv1NodeData(HITLv1NodeData):
 
     model_config = ConfigDict(extra="ignore")
 
+    # Keep the mutable parent field type for static substitutability while
+    # preserving the literal transport schema and runtime validation.
     version: str = Field(
         default="1",
         description=(
             'Legacy Human Input node version. Missing values default to "1"; '
             'any explicit value other than the string "1" is rejected.'
         ),
+        json_schema_extra={"const": "1"},
     )
 
     @field_validator("version")
