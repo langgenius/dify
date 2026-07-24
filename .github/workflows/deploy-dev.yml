@@ -2,19 +2,66 @@ name: Deploy Dev
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ["KnowledgeFS CI"]
     branches:
       - "deploy/konwledge"
     types:
       - completed
 
+permissions: {}
+
 jobs:
   deploy:
     runs-on: depot-ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
     if: |
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'deploy/konwledge'
     steps:
+      - name: Wait for API and Web image build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        timeout-minutes: 35
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const workflowId = "build-push.yml";
+            const headBranch = context.payload.workflow_run.head_branch;
+            const headSha = context.payload.workflow_run.head_sha;
+            const deadline = Date.now() + 30 * 60 * 1000;
+            const pollIntervalMs = 15 * 1000;
+
+            while (Date.now() < deadline) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                branch: headBranch,
+                event: "push",
+                head_sha: headSha,
+                per_page: 10,
+              });
+              const run = data.workflow_runs[0];
+
+              if (!run) {
+                core.info(`Waiting for ${workflowId} to start for ${headSha}.`);
+              } else if (run.status !== "completed") {
+                core.info(`Waiting for ${run.html_url}; current status is ${run.status}.`);
+              } else if (run.conclusion !== "success") {
+                throw new Error(
+                  `${workflowId} did not succeed for ${headSha}: ${run.conclusion} (${run.html_url})`,
+                );
+              } else {
+                core.info(`Both image workflows succeeded for ${headSha}: ${run.html_url}`);
+                return;
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            }
+
+            throw new Error(`Timed out waiting for ${workflowId} to succeed for ${headSha}.`);
+
       - name: Deploy to server
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
