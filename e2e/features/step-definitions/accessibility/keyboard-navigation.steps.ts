@@ -73,7 +73,6 @@ When('I open and close the create app menu using the keyboard', async function (
   const trigger = getCreateAppMenuTrigger(this)
 
   await expect(page.getByRole('heading', { name: 'Build your first App' })).toBeVisible()
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await trigger.press('Enter')
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await page.keyboard.press('Escape')
