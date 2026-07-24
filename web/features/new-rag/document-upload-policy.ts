@@ -1,6 +1,6 @@
-export const DOCUMENT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
+const DOCUMENT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
 
-export const DOCUMENT_UPLOAD_EXTENSIONS = [
+const DOCUMENT_UPLOAD_EXTENSIONS = [
   'csv',
   'doc',
   'docx',
