@@ -22,7 +22,7 @@
 - [x] 3.2 Add red-first mapper tests for Contact values, identity source, owner references, normalized Email, and Platform entries.
 - [x] 3.3 Implement explicit Contact domain-to-record and record-to-domain mappers under `api/repositories/human_input_v2/contact_directory/`.
 - [x] 3.4 Add repository contract tests for owner-scoped snapshots, admission, Platform mutations, hard deletion, rollback, eager loading, and hidden-query prevention.
-- [x] 3.5 Implement the SQLAlchemy Contact Directory adapter with complete owner predicates and shared `DifySetup` row locking for EE Organization/External Email claims.
+- [x] 3.5 Implement the SQLAlchemy Contact Directory adapter with complete owner predicates, required EE Organization locking, and shared `DifySetup` locking for External claims when the deployment owner exists.
 - [x] 3.6 Add the Contact/Platform Alembic revision plus metadata, structured-value, upgrade, and scoped downgrade tests.
 - [x] 3.7 Add CI-only PostgreSQL coverage for concurrent EE Organization writes and Organization/External Email claims using the stable setup-row lock.
 

@@ -18,6 +18,7 @@ from core.human_input_v2.contact_directory import (
     ContactIdentitySource,
     ContactRejectionCode,
     ContactResolution,
+    ExternalContactOwner,
     PlatformWorkspaceEntry,
 )
 from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
@@ -208,6 +209,34 @@ def test_external_admission_preserves_cross_workspace_email_isolation(repository
     second = repository.admit_external(_OTHER_WORKSPACE_ID, name="Second Reviewer", email=" REVIEWER@EXAMPLE.COM ")
 
     assert first.id != second.id
+
+
+def test_external_admission_succeeds_without_deployment_setup_row(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.execute(sa.delete(DifySetup))
+
+    contact = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+
+    assert isinstance(contact.owner, ExternalContactOwner)
+    assert contact.owner.workspace_id == _WORKSPACE_ID
+    with session_maker() as session:
+        stored_contact = session.get_one(HumanInputContact, str(contact.id))
+    assert stored_contact.tenant_id == str(_WORKSPACE_ID)
+
+
+def test_external_admission_without_setup_still_rejects_existing_organization_email(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add(_account("account-1"))
+    repository.save_organization_contact(_organization_contact("organization", "account-1", "reviewer@example.com"))
+    with session_maker.begin() as session:
+        session.execute(sa.delete(DifySetup))
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.admit_external(_WORKSPACE_ID, name="Reviewer", email=" REVIEWER@EXAMPLE.COM ")
+
+    assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
 
 def test_external_admission_rejects_visible_organization_contact_email(repository_context) -> None:

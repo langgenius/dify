@@ -1,8 +1,9 @@
 """SQLAlchemy Contact Directory adapter with aggregate-scoped transactions.
 
 Every consuming query includes the complete deployment/workspace owner
-predicate. EE Organization and External writes lock the stable ``DifySetup``
-row before claiming a normalized Email. ORM instances never cross this boundary.
+predicate. EE Organization writes require the stable ``DifySetup`` row;
+External writes share that lock when the deployment owner exists. ORM instances
+never cross this boundary.
 """
 
 from __future__ import annotations
@@ -86,7 +87,7 @@ class SQLAlchemyContactDirectoryRepository:
         try:
             with self._session_maker() as session, session.begin():
                 if workspace_owner is None:
-                    self._lock_deployment_owner(session)
+                    self._lock_deployment_owner(session, require_setup_row=True)
                 else:
                     self._ensure_workspace_membership(session, workspace_owner)
                 self._ensure_account_available(session, contact)
@@ -111,14 +112,16 @@ class SQLAlchemyContactDirectoryRepository:
     def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
         """Atomically validate and create a new External Contact.
 
-        External and Organization Email claims share the deployment lock. The
-        lock is acquired before the first Contact read so a waiter observes the
-        transaction that won the claim instead of retaining an older snapshot.
+        External and Organization Email claims share the deployment lock when
+        deployment-wide Organization semantics exist. The lock is acquired
+        before the first Contact read so a waiter observes the transaction that
+        won the claim instead of retaining an older snapshot. SaaS deployments
+        without a setup row retain tenant-scoped External identity semantics.
         """
 
         try:
             with self._session_maker() as session, session.begin():
-                self._lock_deployment_owner(session)
+                self._lock_deployment_owner(session, require_setup_row=False)
                 snapshot = self._load_snapshot(session, workspace_id)
                 contact = ContactDirectoryPolicy.admit_external(
                     snapshot,
@@ -263,11 +266,16 @@ class SQLAlchemyContactDirectoryRepository:
         )
 
     @staticmethod
-    def _lock_deployment_owner(session: Session) -> None:
-        """Serialize deployment-wide Organization and External identity claims."""
+    def _lock_deployment_owner(session: Session, *, require_setup_row: bool) -> None:
+        """Lock the deployment identity owner when its semantics apply.
+
+        Organization writes require this owner. External writes use it when
+        present, while SaaS deployments without a deployment Organization keep
+        their existing tenant-local admission boundary.
+        """
 
         setup_version = session.scalars(select(DifySetup.version).with_for_update()).one_or_none()
-        if setup_version is None:
+        if setup_version is None and require_setup_row:
             raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.SETUP_ROW_MISSING)
 
     @staticmethod

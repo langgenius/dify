@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Event, get_ident
+from time import monotonic, sleep
 
 import pytest
 import sqlalchemy as sa
@@ -96,44 +97,102 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
         )
         organization_account.id = organization_account_id
         session.add(organization_account)
-    barrier = Barrier(2)
+    first_lock_acquired = Event()
+    external_connection_ready = Event()
+    release_first_lock = Event()
+    organization_thread_id: list[int] = []
+    organization_backend_pid: list[int] = []
+    external_backend_pid: list[int] = []
+
+    def is_deployment_lock_statement(statement: str) -> bool:
+        normalized_statement = " ".join(statement.lower().split())
+        return (
+            normalized_statement.startswith("select")
+            and "from dify_setups" in normalized_statement
+            and "for update" in normalized_statement
+        )
+
+    def pause_after_first_lock(
+        _connection,
+        _cursor,
+        statement,
+        _parameters,
+        _context,
+        _executemany,
+    ) -> None:
+        if (
+            organization_thread_id
+            and get_ident() == organization_thread_id[0]
+            and is_deployment_lock_statement(statement)
+        ):
+            first_lock_acquired.set()
+            assert release_first_lock.wait(timeout=10)
 
     def save_organization_contact() -> Contact | ContactRejectionCode:
-        repository = SQLAlchemyContactDirectoryRepository(session_maker)
-        barrier.wait()
-        try:
-            return repository.save_organization_contact(
-                Contact.organization_account(
-                    contact_id=organization_contact_id,
-                    account_id=AccountId(organization_account_id),
-                    name="Concurrent Organization Account",
-                    email=normalized_email,
-                    now=UtcTimestamp.now(),
+        with db.engine.connect() as connection:
+            backend_pid = connection.scalar(sa.select(sa.func.pg_backend_pid()))
+            assert backend_pid is not None
+            organization_backend_pid.append(backend_pid)
+            connection.commit()
+            repository = SQLAlchemyContactDirectoryRepository(sessionmaker(bind=connection, expire_on_commit=False))
+            organization_thread_id.append(get_ident())
+            try:
+                return repository.save_organization_contact(
+                    Contact.organization_account(
+                        contact_id=organization_contact_id,
+                        account_id=AccountId(organization_account_id),
+                        name="Concurrent Organization Account",
+                        email=normalized_email,
+                        now=UtcTimestamp.now(),
+                    )
                 )
-            )
-        except ContactDirectoryError as error:
-            return error.code
+            except ContactDirectoryError as error:
+                return error.code
 
     def admit_external() -> Contact | ContactRejectionCode:
-        repository = SQLAlchemyContactDirectoryRepository(session_maker)
-        barrier.wait()
-        try:
-            return repository.admit_external(
-                WorkspaceId(workspace_id),
-                name="Concurrent External",
-                email=normalized_email,
-            )
-        except ContactDirectoryError as error:
-            return error.code
+        with db.engine.connect() as connection:
+            backend_pid = connection.scalar(sa.select(sa.func.pg_backend_pid()))
+            assert backend_pid is not None
+            external_backend_pid.append(backend_pid)
+            connection.commit()
+            external_connection_ready.set()
+            repository = SQLAlchemyContactDirectoryRepository(sessionmaker(bind=connection, expire_on_commit=False))
+            try:
+                return repository.admit_external(
+                    WorkspaceId(workspace_id),
+                    name="Concurrent External",
+                    email=normalized_email,
+                )
+            except ContactDirectoryError as error:
+                return error.code
 
+    def wait_until_external_is_blocked() -> None:
+        deadline = monotonic() + 10
+        with session_maker() as observer:
+            while monotonic() < deadline:
+                blocking_pids = observer.scalar(sa.select(sa.func.pg_blocking_pids(external_backend_pid[0])))
+                if blocking_pids is not None and organization_backend_pid[0] in blocking_pids:
+                    return
+                sleep(0.01)
+        raise AssertionError("External admission did not block on the Organization deployment lock")
+
+    executor = ThreadPoolExecutor(max_workers=2)
+    event.listen(db.engine, "after_cursor_execute", pause_after_first_lock)
     try:
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            organization_future = executor.submit(save_organization_contact)
-            external_future = executor.submit(admit_external)
-            results = [organization_future.result(timeout=10), external_future.result(timeout=10)]
+        organization_future = executor.submit(save_organization_contact)
+        assert first_lock_acquired.wait(timeout=10)
+        external_future = executor.submit(admit_external)
+        assert external_connection_ready.wait(timeout=10)
+        wait_until_external_is_blocked()
+        assert not external_future.done()
+
+        release_first_lock.set()
+        results = [organization_future.result(timeout=10), external_future.result(timeout=10)]
 
         assert sum(isinstance(result, Contact) for result in results) == 1
         assert results.count(ContactRejectionCode.CONFLICTING_IDENTITY) == 1
+        assert isinstance(results[0], Contact)
+        assert results[1] is ContactRejectionCode.CONFLICTING_IDENTITY
         with session_maker() as session:
             contact_count = session.scalar(
                 sa.select(sa.func.count(HumanInputContact.id)).where(
@@ -142,6 +201,9 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
             )
         assert contact_count == 1
     finally:
+        release_first_lock.set()
+        event.remove(db.engine, "after_cursor_execute", pause_after_first_lock)
+        executor.shutdown(wait=True, cancel_futures=True)
         with session_maker.begin() as session:
             session.execute(sa.delete(HumanInputContact).where(HumanInputContact.normalized_email == normalized_email))
             session.execute(sa.delete(Account).where(Account.id == organization_account_id))

@@ -28,7 +28,7 @@ class ContactDirectoryRepository(Protocol):
         ...
 
     def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
-        """Atomically admit one new External Contact against workspace and Organization identities."""
+        """Atomically admit one External Contact against tenant and configured Organization identities."""
         ...
 
     def set_platform_availability(

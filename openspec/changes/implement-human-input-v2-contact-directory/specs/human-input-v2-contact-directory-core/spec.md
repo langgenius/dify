@@ -79,8 +79,12 @@ Contact persistence ports MUST be organized around snapshot load and lifecycle m
 - **THEN** the adapter MUST lock the deployment `DifySetup` row before conflict detection and mutation
 
 #### Scenario: Organization and External Email admissions race
-- **WHEN** EE Organization and workspace External admissions concurrently claim the same normalized Email
+- **WHEN** a deployment `DifySetup` owner exists and EE Organization and workspace External admissions concurrently claim the same normalized Email
 - **THEN** they MUST share one serialization boundary so exactly one commits and the other returns a stable conflicting-identity rejection
+
+#### Scenario: SaaS External Contact is admitted without a deployment owner
+- **WHEN** no deployment `DifySetup` owner exists and a workspace admits an External Contact
+- **THEN** admission MUST use the tenant-scoped identity boundary and MUST NOT return `SETUP_ROW_MISSING`
 
 #### Scenario: Lifecycle mutation fails
 - **WHEN** a Contact or Platform allow-list write violates an invariant or a dependent write fails
