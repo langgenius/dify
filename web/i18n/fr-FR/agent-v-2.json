@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "Les journaux complets enregistrent l’état d’exécution de l’application, y compris les entrées des utilisateurs, les réponses de l’agent, la planification et l’utilisation des outils.",
   "agentDetail.logs.empty": "Aucun journal trouvé",
+  "agentDetail.logs.executionId": "ID d’exécution",
   "agentDetail.logs.filters.period.allTime": "Toute la période",
   "agentDetail.logs.filters.period.last30days": "30 derniers jours",
   "agentDetail.logs.filters.period.last7days": "7 derniers jours",

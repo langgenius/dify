@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "エージェント",
   "agentDetail.logs.description": "完全なログには、ユーザー入力、エージェントの応答、計画、ツールの使用など、アプリケーションの実行状況が記録されます。",
   "agentDetail.logs.empty": "ログが見つかりません",
+  "agentDetail.logs.executionId": "実行 ID",
   "agentDetail.logs.filters.period.allTime": "全期間",
   "agentDetail.logs.filters.period.last30days": "過去 30 日間",
   "agentDetail.logs.filters.period.last7days": "過去 7 日間",

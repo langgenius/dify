@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Tác nhân",
   "agentDetail.logs.description": "Nhật ký đầy đủ ghi lại trạng thái chạy của ứng dụng, bao gồm đầu vào của người dùng, phản hồi của tác nhân, lập kế hoạch và sử dụng công cụ.",
   "agentDetail.logs.empty": "Không tìm thấy nhật ký",
+  "agentDetail.logs.executionId": "ID thực thi",
   "agentDetail.logs.filters.period.allTime": "Mọi lúc",
   "agentDetail.logs.filters.period.last30days": "30 ngày qua",
   "agentDetail.logs.filters.period.last7days": "7 ngày qua",

@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "Polni dnevniki beležijo stanje izvajanja aplikacije, vključno z uporabniškimi vnosi, odgovori agenta, načrtovanjem in uporabo orodij.",
   "agentDetail.logs.empty": "Dnevnikov ni",
+  "agentDetail.logs.executionId": "ID izvedbe",
   "agentDetail.logs.filters.period.allTime": "Ves čas",
   "agentDetail.logs.filters.period.last30days": "Zadnjih 30 dni",
   "agentDetail.logs.filters.period.last7days": "Zadnjih 7 dni",

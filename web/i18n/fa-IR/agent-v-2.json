@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "عامل",
   "agentDetail.logs.description": "گزارش‌های کامل وضعیت اجرای برنامه را ثبت می‌کنند، از جمله ورودی‌های کاربر، پاسخ‌های عامل، برنامه‌ریزی و استفاده از ابزار.",
   "agentDetail.logs.empty": "هیچ گزارشی یافت نشد",
+  "agentDetail.logs.executionId": "شناسه اجرا",
   "agentDetail.logs.filters.period.allTime": "همه زمان‌ها",
   "agentDetail.logs.filters.period.last30days": "۳۰ روز گذشته",
   "agentDetail.logs.filters.period.last7days": "۷ روز گذشته",

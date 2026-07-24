@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Агент",
   "agentDetail.logs.description": "Полные журналы записывают статус работы приложения, включая ввод пользователя, ответы агента, планирование и использование инструментов.",
   "agentDetail.logs.empty": "Журналы не найдены",
+  "agentDetail.logs.executionId": "ID выполнения",
   "agentDetail.logs.filters.period.allTime": "За всё время",
   "agentDetail.logs.filters.period.last30days": "Последние 30 дней",
   "agentDetail.logs.filters.period.last7days": "Последние 7 дней",
