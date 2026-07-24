@@ -135,13 +135,8 @@ class SystemFeatureApi(Resource):
     def get(self):
         """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
-        This endpoint is unauthenticated by design because its data is required to initialize
-        authentication flows for Console and Web clients.
-
-        Authentication would create circular dependency (can't login without dashboard loading).
-
-        This is not a general feature registry. Authenticated license detail is served separately
-        by SystemFeatureLicenseApi.
+        Authentication configuration must be available before the authentication flow can be selected.
+        Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
         return dump_response(SystemFeatureModel, FeatureService.get_system_features())
 

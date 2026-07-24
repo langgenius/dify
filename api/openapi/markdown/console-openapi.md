@@ -9478,13 +9478,8 @@ Used for frontend component type mapping
 **Get the non-sensitive bootstrap snapshot exposed before authentication**
 
 Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
-This endpoint is unauthenticated by design because its data is required to initialize
-authentication flows for Console and Web clients.
-
-Authentication would create circular dependency (can't login without dashboard loading).
-
-This is not a general feature registry. Authenticated license detail is served separately
-by SystemFeatureLicenseApi.
+Authentication configuration must be available before the authentication flow can be selected.
+Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
 #### Responses
 

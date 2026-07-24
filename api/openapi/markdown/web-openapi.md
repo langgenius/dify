@@ -780,12 +780,7 @@ Get the non-sensitive bootstrap snapshot exposed before Console or Web authentic
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-This endpoint is unauthenticated by design because its data is required to initialize
-authentication flows for Console and Web clients.
-
-Authentication would create circular dependency (can't authenticate without webapp loading).
-
-This is not a general feature registry.
+Authentication configuration must be available before the authentication flow can be selected.
 
 #### Responses
 
