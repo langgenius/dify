@@ -155,7 +155,7 @@
     // Function to create the iframe for the chatbot
     function createIframe() {
       const iframe = document.createElement('iframe')
-      iframe.allow = 'fullscreen;microphone'
+      iframe.allow = 'fullscreen;microphone;clipboard-write'
       iframe.title = 'dify chatbot bubble window'
       iframe.id = iframeId
       iframe.src = iframeUrl
