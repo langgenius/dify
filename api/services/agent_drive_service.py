@@ -41,6 +41,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
+from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from factories import file_factory
 from libs.uuid_utils import uuidv7
@@ -53,6 +54,8 @@ logger = logging.getLogger(__name__)
 _MAX_KEY_LENGTH = 512
 _DRIVE_REF_PREFIX = "agent-"
 _SKILL_MD_SUFFIX = "/SKILL.md"
+_SIGNATURE_CLOCK_SKEW_SECONDS = 30
+_NONCE_KEY_PREFIX = "agent_drive_archive_nonce:"
 _SKILL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 _ARCHIVE_MEMBER_DOWNLOAD_PURPOSE = "agent-drive-archive-member"
 
@@ -1203,10 +1206,32 @@ class AgentDriveService:
             timestamp=timestamp,
             nonce=nonce,
         )
-        if sign != cls._sign_archive_member_payload(payload):
+        # Use a constant-time comparison to avoid leaking signature bytes
+        # via timing.
+        if not hmac.compare_digest(sign, cls._sign_archive_member_payload(payload)):
             return False
+        # Reject far-future timestamps in addition to checking the upper
+        # bound, so a captured URL cannot be made replayable forever by
+        # forging a timestamp far in the future.
         current_time = int(time.time())
-        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+        ts = int(timestamp)
+        if ts > current_time + _SIGNATURE_CLOCK_SKEW_SECONDS:
+            return False
+        if current_time - ts > dify_config.FILES_ACCESS_TIMEOUT:
+            return False
+        # Record the nonce in Redis with the same TTL as the access window
+        # so a captured URL cannot be replayed. setnx gives us atomic
+        # "first-use" semantics: a repeat attempt finds the key already
+        # present and is rejected.
+        nonce_key = f"{_NONCE_KEY_PREFIX}{tenant_id}:{agent_id}:{nonce}"
+        if not redis_client.set(
+            nonce_key,
+            "1",
+            ex=dify_config.FILES_ACCESS_TIMEOUT + _SIGNATURE_CLOCK_SKEW_SECONDS,
+            nx=True,
+        ):
+            return False
+        return True
 
     def load_archive_member_for_signed_request(
         self,
