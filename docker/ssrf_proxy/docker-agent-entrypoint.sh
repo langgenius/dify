@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Simplified entrypoint for the dedicated agent_ssrf_proxy container.
-# The squid-agent.conf.template is a self-contained static config — no dynamic
-# include files are needed. We only forward logs to stdout and expand
-# environment variables in the templates.
-
 tail -F /var/log/squid/access.log 2>/dev/null &
 tail -F /var/log/squid/error.log 2>/dev/null &
 tail -F /var/log/squid/store.log 2>/dev/null &
