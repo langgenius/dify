@@ -36,15 +36,12 @@ const HomeSearch = ({ isMarketplacePlatform }: HomeSearchProps) => {
       <div ref={searchRef} className="relative w-full max-w-[480px]">
         <SearchBoxWrapper
           wrapperClassName="w-full max-w-none"
-          inputClassName="h-9 w-full rounded-[10px] border-divider-subtle bg-components-input-bg-normal shadow-xs"
-          inputElementClassName="pr-12"
+          inputClassName="h-9 w-full rounded-[10px] border-divider-subtle bg-components-input-bg-destructive shadow-xs backdrop-blur-[5px] [&>div]:px-2.5"
+          inputElementClassName="text-[14px] leading-5"
           placeholder={t(($) => $['marketplace.home.searchPlaceholder'])}
           showTags={false}
           usedInMarketplace={false}
         />
-        <kbd className="pointer-events-none absolute top-1/2 right-2 flex h-5 -translate-y-1/2 items-center rounded-md border border-divider-subtle bg-components-kbd-bg-gray px-1.5 font-sans text-[10px] leading-3 font-medium text-text-tertiary shadow-xs">
-          ⌘ K
-        </kbd>
       </div>
     </div>
   )

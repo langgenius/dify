@@ -9,6 +9,7 @@ import HomeTrending from './home-trending'
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
   banners: BannerRecommend[]
+  brandName?: React.ReactNode
   isMarketplacePlatform: boolean
   linkToMarketplaceDetail: boolean
   showInstallButton: boolean
@@ -17,6 +18,7 @@ type MarketplaceHomeProps = {
 const MarketplaceHome = ({
   actions,
   banners,
+  brandName,
   isMarketplacePlatform,
   linkToMarketplaceDetail,
   showInstallButton,
@@ -25,6 +27,7 @@ const MarketplaceHome = ({
     <div className="flex min-h-full w-full flex-col bg-background-default">
       <HomeHeader
         actions={actions}
+        brandName={brandName}
         isMarketplacePlatform={isMarketplacePlatform}
       />
       <div className="relative flex w-full flex-col">
