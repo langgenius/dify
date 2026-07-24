@@ -98,14 +98,15 @@ class WorkflowAgentWorkspaceStore:
             else:
                 if stored_workflow_binding_id is None:
                     raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
-                binding = AgentWorkspaceService.get_active_binding(
+                resolved_binding = AgentWorkspaceService.get_active_binding(
                     session=session,
                     tenant_id=scope.tenant_id,
                     binding_id=binding_id,
                     expected_owner_scope=scope.workspace_owner,
                 )
-                if binding is None or binding.agent_id != scope.agent_id:
+                if resolved_binding is None or resolved_binding.agent_id != scope.agent_id:
                     raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
+                binding = resolved_binding
                 AgentWorkspaceService.validate_binding_generation(
                     binding,
                     base_home_snapshot_id=home_snapshot_id,

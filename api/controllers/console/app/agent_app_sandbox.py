@@ -153,7 +153,7 @@ class AgentAppSandboxInfoResource(Resource):
     @with_current_tenant_id
     @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
@@ -182,7 +182,7 @@ class AgentAppSandboxListResource(Resource):
     @with_current_tenant_id
     @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
@@ -212,7 +212,7 @@ class AgentAppSandboxReadResource(Resource):
     @with_current_tenant_id
     @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+    def get(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
@@ -242,7 +242,7 @@ class AgentAppSandboxUploadResource(Resource):
     @with_current_tenant_id
     @with_current_user
     @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
+    def post(self, session: Session, current_user: Account, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:

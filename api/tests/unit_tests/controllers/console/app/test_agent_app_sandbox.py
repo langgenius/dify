@@ -183,10 +183,10 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         ),
     )
 
-    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, "tenant-1", account, "agent-1")
-    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, "tenant-1", account, "agent-1")
-    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, "tenant-1", account, "agent-1")
-    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), session, "tenant-1", account, "agent-1")
+    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1")
+    listing = unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1")
+    preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), session, account, "tenant-1", "agent-1")
+    upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), session, account, "tenant-1", "agent-1")
 
     assert info == {"workspace_cwd": "."}
     assert listing["path"] == "sub/report.txt"
@@ -219,11 +219,11 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
         lambda model: SimpleNamespace(caller_type="conversation", caller_id="conv-1", path="."),
     )
 
-    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, "tenant-1", account, "agent-1") == (
+    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), session, account, "tenant-1", "agent-1") == (
         {"code": "no_active_binding", "message": "no active binding"},
         404,
     )
-    assert unwrap(module.AgentAppSandboxListResource.get)(object(), session, "tenant-1", account, "agent-1") == (
+    assert unwrap(module.AgentAppSandboxListResource.get)(object(), session, account, "tenant-1", "agent-1") == (
         {"code": "no_active_binding", "message": "no active binding"},
         404,
     )

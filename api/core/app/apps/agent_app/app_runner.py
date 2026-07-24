@@ -739,7 +739,7 @@ class AgentAppRunner:
         home_snapshot_id: str,
         conversation_id: str,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
+        agent_config_version_kind: AgentConfigVersionKind,
         build_draft_id: str | None = None,
     ) -> AgentAppSessionScope:
         if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):

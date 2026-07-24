@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import urllib.parse
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from dify_agent.client import Client
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextAgentConfigVersionKind,
+    DifyExecutionContextLayerConfig,
+)
 from dify_agent.protocol import WorkspaceListResponse, WorkspaceReadResponse, WorkspaceUploadRequest
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -149,7 +152,10 @@ class AgentAppSandboxService:
                         conversation_id=caller_id if caller_type == "conversation" else None,
                         agent_id=agent_id,
                         agent_config_version_id=binding.agent_config_version_id,
-                        agent_config_version_kind=binding.agent_config_version_kind.value,
+                        agent_config_version_kind=cast(
+                            DifyExecutionContextAgentConfigVersionKind,
+                            binding.agent_config_version_kind.value,
+                        ),
                         agent_mode="agent_app",
                         invoke_from="debugger",
                     ),
@@ -168,6 +174,7 @@ class AgentAppSandboxService:
         account_id: str,
     ) -> AgentWorkspaceBinding:
         with session_factory.create_session() as session:
+            caller: AgentConfigDraft | Conversation | None
             if caller_type == "build_draft":
                 agent = session.scalar(
                     select(Agent).where(
@@ -312,7 +319,10 @@ class WorkflowAgentSandboxService:
                         node_id=node_id,
                         agent_id=binding.agent_id,
                         agent_config_version_id=binding.agent_config_version_id,
-                        agent_config_version_kind=binding.agent_config_version_kind.value,
+                        agent_config_version_kind=cast(
+                            DifyExecutionContextAgentConfigVersionKind,
+                            binding.agent_config_version_kind.value,
+                        ),
                         agent_mode="workflow_run",
                         invoke_from="debugger",
                     ),
