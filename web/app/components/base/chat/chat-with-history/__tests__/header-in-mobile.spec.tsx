@@ -64,6 +64,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 
 const mockAppData: AppData = {
   app_id: 'test-app',
+  mode: 'chat',
   custom_config: null,
   site: {
     title: 'Test Chat',
@@ -462,6 +463,7 @@ describe('HeaderInMobile', () => {
   it('should render app icon and title correctly', () => {
     const appDataWithIcon: AppData = {
       app_id: 'test-app',
+      mode: 'chat',
       custom_config: null,
       site: {
         title: 'My App',

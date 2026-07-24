@@ -43,6 +43,16 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppPermissionQuery = {
   appId: string
 }
@@ -583,6 +593,7 @@ export type WebAppSiteResponse = {
   custom_config?: WebAppCustomConfigResponse | null
   enable_site: boolean
   end_user_id?: string | null
+  mode: AppMode
   model_config?: WebModelConfigResponse | null
   plan: string
   site: WebSiteResponse

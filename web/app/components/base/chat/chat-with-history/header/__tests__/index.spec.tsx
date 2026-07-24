@@ -35,6 +35,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 
 const mockAppData: AppData = {
   app_id: 'app-1',
+  mode: 'chat',
   site: {
     title: 'Test App',
     icon_type: 'emoji',

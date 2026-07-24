@@ -40,6 +40,20 @@ export const zAppMetaResponse = z.object({
 })
 
 /**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
  * AppPermissionQuery
  */
 export const zAppPermissionQuery = z.object({
@@ -893,6 +907,7 @@ export const zWebAppSiteResponse = z.object({
   custom_config: zWebAppCustomConfigResponse.nullish(),
   enable_site: z.boolean(),
   end_user_id: z.string().nullish(),
+  mode: zAppMode,
   model_config: zWebModelConfigResponse.nullish(),
   plan: z.string(),
   site: zWebSiteResponse,

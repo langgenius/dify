@@ -29,6 +29,7 @@ const mockWebAppState = {
 const appInfoQueryState: QueryState<AppData> = {
   data: {
     app_id: 'app-id',
+    mode: 'workflow',
     custom_config: null,
     site: {
       title: 'Workflow App',
@@ -96,6 +97,7 @@ vi.mock('@/service/webapp-auth', () => ({
 const resetQueryStates = () => {
   appInfoQueryState.data = {
     app_id: 'app-id',
+    mode: 'workflow',
     custom_config: null,
     site: {
       title: 'Workflow App',
