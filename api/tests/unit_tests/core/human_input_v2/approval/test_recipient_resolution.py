@@ -51,10 +51,25 @@ def _workspace_contact(
     contact_id: str = "contact-1",
     account_id: str = "account-1",
     email: str | None = "reviewer@example.com",
+    workspace_id: WorkspaceId = _WORKSPACE_ID,
 ) -> Contact:
     return Contact.workspace_member(
         contact_id=ContactId(contact_id),
-        workspace_id=_WORKSPACE_ID,
+        workspace_id=workspace_id,
+        account_id=AccountId(account_id),
+        name=f"Reviewer {contact_id}",
+        email=email,
+        now=_NOW,
+    )
+
+
+def _organization_contact(
+    contact_id: str = "contact-1",
+    account_id: str = "account-1",
+    email: str | None = "reviewer@example.com",
+) -> Contact:
+    return Contact.organization_account(
+        contact_id=ContactId(contact_id),
         account_id=AccountId(account_id),
         name=f"Reviewer {contact_id}",
         email=email,
@@ -146,6 +161,72 @@ def test_unmatched_email_is_upgraded_to_email_subject_and_normalized_duplicates_
         RecipientSourceKind.DYNAMIC_EMAIL,
     ]
     assert approver.endpoints == (EmailEndpointPlan(NormalizedEmail("person@example.com")),)
+
+
+def test_email_matching_contact_with_unavailable_account_does_not_bypass_contact_governance() -> None:
+    contact = _workspace_contact()
+    directory = ContactDirectorySnapshot(
+        workspace_id=_WORKSPACE_ID,
+        contacts=(contact,),
+        member_account_ids=frozenset({AccountId("account-1")}),
+        unavailable_account_ids=frozenset({AccountId("account-1")}),
+    )
+
+    plan = RecipientResolver.resolve(
+        specifications=(OneTimeEmailRecipientSpecification("reviewer@example.com"),),
+        directory=directory,
+        dynamic_values=(),
+        initiator=None,
+        capabilities=DeliveryCapabilitySnapshot(),
+    )
+
+    assert plan.approvers == ()
+    assert [(rejection.reason, rejection.rejected_value) for rejection in plan.rejected_recipients] == [
+        (RecipientRejectionReason.CONTACT_UNAVAILABLE, "reviewer@example.com")
+    ]
+    assert plan.failure_reason is RecipientResolutionFailureReason.NO_VALID_RECIPIENTS
+
+
+def test_email_matching_organization_contact_outside_workspace_visibility_does_not_fallback() -> None:
+    contact = _organization_contact()
+    directory = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID, contacts=(contact,))
+
+    plan = RecipientResolver.resolve(
+        specifications=(OneTimeEmailRecipientSpecification("reviewer@example.com"),),
+        directory=directory,
+        dynamic_values=(),
+        initiator=None,
+        capabilities=DeliveryCapabilitySnapshot(),
+    )
+
+    assert plan.approvers == ()
+    assert [(rejection.reason, rejection.rejected_value) for rejection in plan.rejected_recipients] == [
+        (RecipientRejectionReason.CONTACT_UNAVAILABLE, "reviewer@example.com")
+    ]
+    assert plan.failure_reason is RecipientResolutionFailureReason.NO_VALID_RECIPIENTS
+
+
+def test_email_matching_cross_workspace_contact_does_not_fallback() -> None:
+    contact = _workspace_contact(workspace_id=WorkspaceId("workspace-2"))
+    directory = ContactDirectorySnapshot(
+        workspace_id=_WORKSPACE_ID,
+        contacts=(contact,),
+        member_account_ids=frozenset({AccountId("account-1")}),
+    )
+
+    plan = RecipientResolver.resolve(
+        specifications=(OneTimeEmailRecipientSpecification("reviewer@example.com"),),
+        directory=directory,
+        dynamic_values=(),
+        initiator=None,
+        capabilities=DeliveryCapabilitySnapshot(),
+    )
+
+    assert plan.approvers == ()
+    assert [(rejection.reason, rejection.rejected_value) for rejection in plan.rejected_recipients] == [
+        (RecipientRejectionReason.CONTACT_UNAVAILABLE, "reviewer@example.com")
+    ]
+    assert plan.failure_reason is RecipientResolutionFailureReason.NO_VALID_RECIPIENTS
 
 
 def test_invalid_and_unsupported_recipients_are_retained_without_dropping_valid_approvers() -> None:
@@ -424,6 +505,17 @@ def test_resolver_rejects_mutable_top_level_inputs() -> None:
             directory=_directory(),
             dynamic_values=(),
             initiator=None,
+            capabilities=DeliveryCapabilitySnapshot(),
+        )
+
+
+def test_unknown_recipient_specification_fails_closed_instead_of_resolving_current_initiator() -> None:
+    with pytest.raises(AssertionError):
+        RecipientResolver.resolve(
+            specifications=(object(),),
+            directory=_directory(),
+            dynamic_values=(),
+            initiator=ContactInitiatorSnapshot(ContactId("contact-1")),
             capabilities=DeliveryCapabilitySnapshot(),
         )
 

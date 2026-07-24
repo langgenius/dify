@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from hashlib import sha256
+from typing import assert_never
 
 from core.human_input_v2.contact_directory import (
     Contact,
@@ -32,6 +33,7 @@ from core.human_input_v2.shared import (
 
 from .recipient_specifications import (
     ContactRecipientSpecification,
+    CurrentInitiatorRecipientSpecification,
     DynamicEmailRecipientSpecification,
     DynamicRecipientValue,
     OneTimeEmailRecipientSpecification,
@@ -539,18 +541,24 @@ class RecipientResolver:
             )
             return
 
-        source = MatchedRecipientSource(RecipientSourceKind.CURRENT_INITIATOR, position, None)
-        if initiator is None:
-            rejected_recipients.append(RejectedRecipient(source, RecipientRejectionReason.INITIATOR_UNAVAILABLE, None))
+        if isinstance(specification, CurrentInitiatorRecipientSpecification):
+            source = MatchedRecipientSource(RecipientSourceKind.CURRENT_INITIATOR, position, None)
+            if initiator is None:
+                rejected_recipients.append(
+                    RejectedRecipient(source, RecipientRejectionReason.INITIATOR_UNAVAILABLE, None)
+                )
+                return
+            RecipientResolver._resolve_initiator(
+                initiator,
+                source,
+                directory,
+                capabilities,
+                pending_approvers,
+                rejected_recipients,
+            )
             return
-        RecipientResolver._resolve_initiator(
-            initiator,
-            source,
-            directory,
-            capabilities,
-            pending_approvers,
-            rejected_recipients,
-        )
+
+        assert_never(specification)
 
     @staticmethod
     def _resolve_initiator(
@@ -622,6 +630,12 @@ class RecipientResolver:
         pending_approvers: dict[CanonicalSubjectKey, _PendingApprover],
         rejected_recipients: list[RejectedRecipient],
     ) -> None:
+        """Resolve Email input without bypassing an existing Contact's policy.
+
+        EmailAddress authority is valid only when the directory contains no
+        matching Contact. A matching but unavailable Contact fails closed so
+        callers cannot bypass Account availability or workspace visibility.
+        """
         try:
             normalized_email = NormalizedEmail(email)
         except ValueError:
@@ -640,6 +654,16 @@ class RecipientResolver:
             if resolution is not ContactResolution.ABSENT:
                 RecipientResolver._add_contact_approver(contact, source, capabilities, pending_approvers)
                 return
+
+        if matching_contacts:
+            rejected_recipients.append(
+                RejectedRecipient(
+                    source,
+                    RecipientRejectionReason.CONTACT_UNAVAILABLE,
+                    normalized_email.value,
+                )
+            )
+            return
 
         subject = EmailAddressApprovalSubject(normalized_email)
         endpoints: list[DeliveryEndpointPlan] = [EmailEndpointPlan(normalized_email)]
