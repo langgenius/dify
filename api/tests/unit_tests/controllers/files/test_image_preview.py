@@ -79,7 +79,7 @@ class TestImagePreviewApi:
 class TestFilePreviewApi:
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
-    def test_basic_stream(self, mock_file_service, mock_enforce):
+    def test_inline_preview_uses_upload_file_mimetype(self, mock_file_service, mock_enforce):
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -90,7 +90,12 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"data"])
-        upload_file = DummyUploadFile(size=100)
+        upload_file = DummyUploadFile(
+            mime_type="application/pdf",
+            size=100,
+            name="doc.pdf",
+            extension="pdf",
+        )
 
         mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
             generator,
@@ -102,10 +107,44 @@ class TestFilePreviewApi:
 
         response = get_fn("file-id")
 
-        assert response.mimetype == "application/octet-stream"
+        assert response.mimetype == "application/pdf"
+        assert response.headers["Content-Type"] == "application/pdf"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()
+
+    @patch.object(module, "FileService")
+    def test_html_preview_still_forces_download(self, mock_file_service):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        generator = iter([b"<script>alert(1)</script>"])
+        upload_file = DummyUploadFile(
+            mime_type="text/html",
+            size=25,
+            name="unsafe.html",
+            extension="html",
+        )
+
+        mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            generator,
+            upload_file,
+        )
+
+        api = module.FilePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
