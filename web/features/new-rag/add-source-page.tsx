@@ -3,16 +3,20 @@
 import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
+  Source,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import { newKnowledgeDetailPath } from './routes'
+import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
@@ -23,6 +27,7 @@ type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 const CONNECTION_PAGE_SIZE = 200
 const CONNECTION_RECONCILIATION_RETRY_DELAYS = [0, 100, 300]
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
+const SOURCE_MARKETPLACE_PATH = '/marketplace?category=datasource'
 const FIRECRAWL_CONFIGURATION = {
   datasource: 'crawl',
   pluginId: 'langgenius/firecrawl_datasource',
@@ -79,6 +84,15 @@ function findConnectionById(connections: Connection[], connectionId: string) {
       right.updatedAt.localeCompare(left.updatedAt) ||
       CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
   )[0]
+}
+
+function responseStatus(error: unknown) {
+  if (error instanceof Response) return error.status
+  if (!error || typeof error !== 'object') return undefined
+  if ('status' in error && typeof error.status === 'number') return error.status
+  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data) {
+    return typeof error.data.status === 'number' ? error.data.status : undefined
+  }
 }
 
 function getAuthFields(provider: Provider, authKind: ConnectionAuthKind) {
@@ -153,10 +167,12 @@ function SourceTypeSelector({
 }
 
 function ProviderSelector({
+  onNavigate,
   onChange,
   providers,
   value,
 }: {
+  onNavigate: (path: string) => void
   onChange: (providerId: string) => void
   providers: Provider[]
   value?: string
@@ -171,8 +187,21 @@ function ProviderSelector({
           {t(($) => $['newKnowledge.providerLabel'])}
         </span>
         <Link
-          href="/marketplace?category=datasource"
+          href={SOURCE_MARKETPLACE_PATH}
           className="inline-flex items-center gap-0.5 rounded-sm system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={(event) => {
+            if (
+              event.defaultPrevented ||
+              event.button !== 0 ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return
+            event.preventDefault()
+            onNavigate(SOURCE_MARKETPLACE_PATH)
+          }}
         >
           {t(($) => $['newKnowledge.moreProviders'])}
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
@@ -270,48 +299,43 @@ function ProviderFieldControl({
   )
 }
 
-function ProviderConnected({ provider }: { provider: Provider }) {
-  const { t } = useTranslation('dataset')
-
-  return (
-    <div role="status" className="rounded-xl bg-background-section p-4">
-      <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span
-          aria-hidden
-          className={cn(providerIconClass(provider), 'size-[18px] text-text-tertiary')}
-        />
-      </span>
-      <h3 className="mt-3 system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.providerConnected'], {
-          provider: provider.displayName,
-        })}
-      </h3>
-      <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
-      </p>
-    </div>
-  )
-}
-
 function ConnectionForm({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange?: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
   const { t } = useTranslation('dataset')
   const supportedAuthKinds = getSupportedAuthKinds(provider)
-  const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
+  const defaultAuthKind = supportedAuthKinds[0] ?? 'api-key'
+  const [authKind, setAuthKind] = useState<ConnectionAuthKind>(defaultAuthKind)
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
   const visibleFields = getAuthFields(provider, authKind)
+  const hasDraftChanges =
+    authKind !== defaultAuthKind ||
+    Object.values(configuration).some((value) => Boolean(value.trim())) ||
+    Object.values(credentials).some((value) => Boolean(value.trim()))
+
+  useEffect(() => {
+    onDraftChange?.(hasDraftChanges)
+  }, [hasDraftChanges, onDraftChange])
+
+  useEffect(
+    () => () => {
+      onDraftChange?.(false)
+    },
+    [onDraftChange],
+  )
 
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
@@ -437,11 +461,13 @@ function ConnectionForm({
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange?: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -453,6 +479,7 @@ function UnconfiguredProvider({
       <ConnectionForm
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
+        onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
       />
@@ -626,10 +653,30 @@ function ProvisioningConnection({
 
 export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
   const [selectedProviderId, setSelectedProviderId] = useState<string>()
   const [ignoredConnectionIds, setIgnoredConnectionIds] = useState<Set<string>>(() => new Set())
+  const [crawlDraftDirty, setCrawlDraftDirty] = useState(false)
+  const [provisionalSourceCount, setProvisionalSourceCount] = useState(0)
+  const [exitOpen, setExitOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
+  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const provisionalSourcesRef = useRef(new Map<string, Source>())
+  const pendingPreviewOperationsRef = useRef(new Set<Promise<void>>())
+  const deletionKeysRef = useRef(new Map<string, string>())
+  const historyGuardArmedRef = useRef(false)
+  const browserBackExitRef = useRef(false)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const exitDestinationRef = useRef(detailPath)
+  const hasUnsavedChanges = Boolean(
+    crawlDraftDirty ||
+    provisionalSourceCount ||
+    sourceType !== 'websiteCrawl' ||
+    selectedProviderId,
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
@@ -698,6 +745,229 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     isFetchingNextPage: isFetchingNextConnectionPage,
     refetch: refetchConnections,
   } = connectionsQuery
+
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+
+  const replaceAfterHistoryGuard = useCallback(
+    (path: string) => {
+      if (!historyGuardArmedRef.current) {
+        router.replace(path)
+        return
+      }
+
+      pendingNavigationRef.current = path
+      globalThis.history.back()
+    },
+    [router],
+  )
+
+  const requestNavigation = useCallback(
+    (path: string) => {
+      if (discarding) return
+      if (hasUnsavedChanges) {
+        exitDestinationRef.current = path
+        browserBackExitRef.current = false
+        setDiscardError(false)
+        setExitOpen(true)
+        return
+      }
+      replaceAfterHistoryGuard(path)
+    },
+    [discarding, hasUnsavedChanges, replaceAfterHistoryGuard],
+  )
+
+  useEffect(() => {
+    if (
+      !hasUnsavedChanges ||
+      historyGuardArmedRef.current ||
+      browserBackExitRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+
+    armHistoryGuard()
+  }, [armHistoryGuard, hasUnsavedChanges])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) return
+
+      historyGuardArmedRef.current = false
+      const pendingNavigation = pendingNavigationRef.current
+      if (pendingNavigation) {
+        pendingNavigationRef.current = undefined
+        router.replace(pendingNavigation)
+        return
+      }
+      if (!hasUnsavedChanges) {
+        router.replace(detailPath)
+        return
+      }
+
+      browserBackExitRef.current = true
+      exitDestinationRef.current = detailPath
+      setDiscardError(false)
+      setExitOpen(true)
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [detailPath, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+
+      const anchor = event
+        .composedPath()
+        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
+      if (
+        !anchor ||
+        anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')
+      )
+        return
+
+      const destination = new URL(anchor.href, globalThis.location.href)
+      if (destination.origin !== globalThis.location.origin) return
+
+      const current = new URL(globalThis.location.href)
+      if (destination.pathname === current.pathname && destination.search === current.search) return
+
+      event.preventDefault()
+      requestNavigation(`${destination.pathname}${destination.search}${destination.hash}`)
+    }
+
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => document.removeEventListener('click', handleDocumentClick, true)
+  }, [hasUnsavedChanges, requestNavigation])
+
+  const rememberProvisionalSource = useCallback((source: Source) => {
+    provisionalSourcesRef.current.set(source.id, source)
+    setProvisionalSourceCount(provisionalSourcesRef.current.size)
+  }, [])
+
+  const getDeletionKey = useCallback((sourceId: string) => {
+    let idempotencyKey = deletionKeysRef.current.get(sourceId)
+    if (!idempotencyKey) {
+      idempotencyKey = globalThis.crypto.randomUUID()
+      deletionKeysRef.current.set(sourceId, idempotencyKey)
+    }
+    return idempotencyKey
+  }, [])
+
+  const rememberPendingPreviewOperation = useCallback((operation: Promise<void>) => {
+    pendingPreviewOperationsRef.current.add(operation)
+    void operation.then(
+      () => pendingPreviewOperationsRef.current.delete(operation),
+      () => pendingPreviewOperationsRef.current.delete(operation),
+    )
+  }, [])
+
+  const requestExit = () => requestNavigation(detailPath)
+
+  const cancelExit = () => {
+    setExitOpen(false)
+    setDiscardError(false)
+    exitDestinationRef.current = detailPath
+    if (!browserBackExitRef.current) return
+
+    browserBackExitRef.current = false
+    armHistoryGuard()
+  }
+
+  const confirmExit = async () => {
+    if (discarding) return
+    setDiscarding(true)
+    setDiscardError(false)
+    try {
+      await Promise.allSettled([...pendingPreviewOperationsRef.current])
+      for (const source of provisionalSourcesRef.current.values()) {
+        try {
+          await consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
+            body: { expectedRevision: source.version ?? 1 },
+            headers: { 'idempotency-key': getDeletionKey(source.id) },
+            params: { id: knowledgeSpaceId, sourceId: source.id },
+            query: { documents: 'cascade' },
+          })
+        } catch (deletionError) {
+          let deletionConfirmed = false
+          try {
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceId({
+              params: { id: knowledgeSpaceId, sourceId: source.id },
+            })
+          } catch (reconciliationError) {
+            deletionConfirmed = responseStatus(reconciliationError) === 404
+          }
+          if (!deletionConfirmed) throw deletionError
+        }
+        provisionalSourcesRef.current.delete(source.id)
+        deletionKeysRef.current.delete(source.id)
+        setProvisionalSourceCount(provisionalSourcesRef.current.size)
+      }
+      setCrawlDraftDirty(false)
+      setExitOpen(false)
+      browserBackExitRef.current = false
+      const exitDestination = exitDestinationRef.current
+      exitDestinationRef.current = detailPath
+      replaceAfterHistoryGuard(exitDestination)
+    } catch {
+      setDiscardError(true)
+    } finally {
+      setDiscarding(false)
+    }
+  }
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      for (const source of provisionalSourcesRef.current.values()) {
+        void consoleClient.knowledgeFs
+          .deleteKnowledgeSpacesByIdSourcesBySourceId(
+            {
+              body: { expectedRevision: source.version ?? 1 },
+              headers: { 'idempotency-key': getDeletionKey(source.id) },
+              params: { id: knowledgeSpaceId, sourceId: source.id },
+              query: { documents: 'cascade' },
+            },
+            {
+              context: {
+                keepalive: true,
+                silent: true,
+              },
+            },
+          )
+          .catch(() => {})
+      }
+    }
+
+    globalThis.addEventListener('pagehide', handlePageHide)
+    return () => globalThis.removeEventListener('pagehide', handlePageHide)
+  }, [getDeletionKey, knowledgeSpaceId])
 
   useEffect(() => {
     if (
@@ -814,6 +1084,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         {sourceType === 'websiteCrawl' ? (
           <>
             <ProviderSelector
+              onNavigate={requestNavigation}
               providers={providers}
               value={provider?.id}
               onChange={setSelectedProviderId}
@@ -844,7 +1115,15 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 </p>
               </div>
             ) : connection?.status === 'active' ? (
-              <ProviderConnected key={provider.id} provider={provider} />
+              <WebsiteCrawlPreview
+                key={connection.id}
+                connection={connection}
+                knowledgeSpaceId={knowledgeSpaceId}
+                onDraftChange={setCrawlDraftDirty}
+                onPendingOperation={rememberPendingPreviewOperation}
+                onProvisionalSource={rememberProvisionalSource}
+                providerName={provider.displayName}
+              />
             ) : connection?.status === 'provisioning' ? (
               <ProvisioningConnection
                 key={provider.id}
@@ -866,6 +1145,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 key={provider.id}
                 knowledgeSpaceId={knowledgeSpaceId}
                 onConnected={rememberConnection}
+                onDraftChange={setCrawlDraftDirty}
                 onReconcile={reconcileConnection}
                 provider={provider}
               />
@@ -882,17 +1162,36 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </div>
         )}
         <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Link
-            href={newKnowledgeDetailPath(knowledgeSpaceId)}
-            className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
+          <Button type="button" onClick={requestExit}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Link>
-          <Button variant="primary" disabled>
-            {t(($) => $['newKnowledge.addSource'])}
           </Button>
+          {sourceType === 'websiteCrawl' ? (
+            <>
+              <span id="add-source-selection-requirement" className="sr-only">
+                {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+              </span>
+              <Button
+                variant="primary"
+                disabled
+                aria-describedby="add-source-selection-requirement"
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </>
+          ) : (
+            <Button variant="primary" disabled>
+              {t(($) => $['newKnowledge.addSource'])}
+            </Button>
+          )}
         </div>
       </div>
+      <AddSourceExitDialog
+        discarding={discarding}
+        error={discardError}
+        onCancel={cancelExit}
+        onConfirm={() => void confirmExit()}
+        open={exitOpen}
+      />
     </main>
   )
 }
