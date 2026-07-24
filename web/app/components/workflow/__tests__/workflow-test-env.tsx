@@ -60,16 +60,23 @@
  * })
  * ```
  */
-import type { RenderHookOptions, RenderHookResult, RenderOptions, RenderResult } from '@testing-library/react'
+import type {
+  RenderHookOptions,
+  RenderHookResult,
+  RenderOptions,
+  RenderResult,
+} from '@testing-library/react'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
-import { seedAppDslVersion, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
+import { render, renderHook } from '@/test/console/render'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -106,15 +113,13 @@ type HooksStore = ReturnType<typeof createHooksStore>
 
 export function createTestWorkflowStore(initialState?: Partial<Shape>): WorkflowStore {
   const store = createWorkflowStore({})
-  if (initialState)
-    store.setState(initialState)
+  if (initialState) store.setState(initialState)
   return store
 }
 
 function createTestHooksStore(props?: Partial<HooksStoreShape>): HooksStore {
   const store = createHooksStore(props ?? {})
-  if (props)
-    store.setState(props)
+  if (props) store.setState(props)
   return store
 }
 
@@ -157,37 +162,36 @@ function createWorkflowWrapper(
     stores.store.temporal.getState().resume()
   }
 
-  const queryClient = externalQueryClient ?? new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
+  const queryClient =
+    externalQueryClient ??
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          gcTime: Infinity,
+          staleTime: Infinity,
+        },
       },
-    },
-  })
-  if (!externalQueryClient)
-    seedSystemFeatures(queryClient)
-  if (!externalQueryClient)
-    seedAppDslVersion(queryClient)
+    })
+  if (!externalQueryClient) seedSystemFeatures(queryClient)
+  if (!externalQueryClient) seedAppDslVersion(queryClient)
+  if (!externalQueryClient) seedAccountProfileQuery(queryClient)
+  const QueryClientWrapper = externalQueryClient
+    ? ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client: queryClient }, children)
+    : createQueryClientWrapper(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
 
     if (stores.hooksStore) {
-      inner = React.createElement(
-        HooksStoreContext.Provider,
-        { value: stores.hooksStore },
-        inner,
-      )
+      inner = React.createElement(HooksStoreContext.Provider, { value: stores.hooksStore }, inner)
     }
 
     return React.createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      React.createElement(
-        WorkflowContext.Provider,
-        { value: stores.store },
-        inner,
-      ),
+      QueryClientWrapper,
+      null,
+      React.createElement(WorkflowContext.Provider, { value: stores.store }, inner),
     )
   }
 }
@@ -212,7 +216,13 @@ export function renderWorkflowHook<R, P = undefined>(
   hook: (props: P) => R,
   options?: WorkflowHookTestOptions<P>,
 ): WorkflowHookTestResult<R, P> {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...rest } = options ?? {}
+  const {
+    initialStoreState,
+    hooksStoreProps,
+    historyStore: historyConfig,
+    queryClient,
+    ...rest
+  } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
   const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
@@ -241,7 +251,13 @@ export function renderWorkflowComponent(
   ui: React.ReactElement,
   options?: WorkflowComponentTestOptions,
 ): WorkflowComponentTestResult {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...renderOptions } = options ?? {}
+  const {
+    initialStoreState,
+    hooksStoreProps,
+    historyStore: historyConfig,
+    queryClient,
+    ...renderOptions
+  } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
   const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
@@ -276,20 +292,21 @@ function createWorkflowFlowWrapper(
 ) {
   const workflowWrapper = createWorkflowWrapper(stores, historyConfig)
 
-  return ({ children }: { children: React.ReactNode }) => React.createElement(
-    workflowWrapper,
-    null,
+  return ({ children }: { children: React.ReactNode }) =>
     React.createElement(
-      'div',
-      { style: { width: 800, height: 600, ...canvasStyle } },
+      workflowWrapper,
+      null,
       React.createElement(
-        ReactFlowProvider,
-        null,
-        React.createElement(ReactFlow, { fitView: true, ...reactFlowProps, nodes, edges }),
-        children,
+        'div',
+        { style: { width: 800, height: 600, ...canvasStyle } },
+        React.createElement(
+          ReactFlowProvider,
+          null,
+          React.createElement(ReactFlow, { fitView: true, ...reactFlowProps, nodes, edges }),
+          children,
+        ),
       ),
-    ),
-  )
+    )
 }
 
 export function renderWorkflowFlowComponent(

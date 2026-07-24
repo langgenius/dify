@@ -60,9 +60,7 @@ describe('useDocToc', () => {
         vi.runAllTimers()
       })
 
-      expect(result.current.toc).toEqual([
-        { href: '#section-1', text: 'Section 1' },
-      ])
+      expect(result.current.toc).toEqual([{ href: '#section-1', text: 'Section 1' }])
       expect(result.current.activeSection).toBe('section-1')
 
       document.body.removeChild(article)
@@ -116,10 +114,9 @@ describe('useDocToc', () => {
       const article = document.createElement('article')
       document.body.appendChild(article)
 
-      const { result, rerender } = renderHook(
-        props => useDocToc(props),
-        { initialProps: defaultOptions },
-      )
+      const { result, rerender } = renderHook((props) => useDocToc(props), {
+        initialProps: defaultOptions,
+      })
 
       await act(async () => {
         vi.runAllTimers()
@@ -158,10 +155,9 @@ describe('useDocToc', () => {
       article.appendChild(h2)
       document.body.appendChild(article)
 
-      const { result, rerender } = renderHook(
-        props => useDocToc(props),
-        { initialProps: defaultOptions },
-      )
+      const { result, rerender } = renderHook((props) => useDocToc(props), {
+        initialProps: defaultOptions,
+      })
 
       await act(async () => {
         vi.runAllTimers()
@@ -219,7 +215,9 @@ describe('useDocToc', () => {
 
       const { result } = renderHook(() => useDocToc(defaultOptions))
 
-      const mockEvent = { preventDefault: vi.fn() } as unknown as React.MouseEvent<HTMLAnchorElement>
+      const mockEvent = {
+        preventDefault: vi.fn(),
+      } as unknown as React.MouseEvent<HTMLAnchorElement>
       act(() => {
         result.current.handleTocClick(mockEvent, { href: '#target-section', text: 'Target' })
       })
@@ -236,7 +234,9 @@ describe('useDocToc', () => {
     it('should do nothing when target element does not exist', () => {
       const { result } = renderHook(() => useDocToc(defaultOptions))
 
-      const mockEvent = { preventDefault: vi.fn() } as unknown as React.MouseEvent<HTMLAnchorElement>
+      const mockEvent = {
+        preventDefault: vi.fn(),
+      } as unknown as React.MouseEvent<HTMLAnchorElement>
       act(() => {
         result.current.handleTocClick(mockEvent, { href: '#nonexistent', text: 'Missing' })
       })
@@ -248,7 +248,7 @@ describe('useDocToc', () => {
   // Covers scroll-based active section tracking
   describe('scroll tracking', () => {
     // Helper: set up DOM with scroll container, article headings, and matching target elements
-    const setupScrollDOM = (sections: Array<{ id: string, text: string, top: number }>) => {
+    const setupScrollDOM = (sections: Array<{ id: string; text: string; top: number }>) => {
       const scrollContainer = document.createElement('div')
       scrollContainer.className = 'overflow-auto'
       document.body.appendChild(scrollContainer)

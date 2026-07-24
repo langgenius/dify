@@ -1,15 +1,8 @@
-import type {
-  Credential,
-  CustomModelCredential,
-  ModelProvider,
-} from '../../declarations'
+import type { Credential, CustomModelCredential, ModelProvider } from '../../declarations'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
-} from '../../utils'
+import { genModelNameFormSchema, genModelTypeFormSchema } from '../../utils'
 
 export const useModelFormSchemas = (
   provider: ModelProvider,
@@ -19,11 +12,7 @@ export const useModelFormSchemas = (
   model?: CustomModelCredential,
 ) => {
   const { t } = useTranslation()
-  const {
-    provider_credential_schema,
-    supported_model_types,
-    model_credential_schema,
-  } = provider
+  const { provider_credential_schema, supported_model_types, model_credential_schema } = provider
   const formSchemas = useMemo(() => {
     const schemas = providerFormSchemaPredefined
       ? provider_credential_schema?.credential_form_schemas
@@ -42,14 +31,11 @@ export const useModelFormSchemas = (
     const authorizationNameSchema = {
       type: FormTypeEnum.textInput,
       variable: '__authorization_name__',
-      label: t($ => $['auth.authorizationName'], { ns: 'plugin' }),
+      label: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
       required: false,
     }
 
-    return [
-      authorizationNameSchema,
-      ...formSchemas,
-    ]
+    return [authorizationNameSchema, ...formSchemas]
   }, [formSchemas, t])
 
   const formValues = useMemo(() => {
@@ -59,33 +45,25 @@ export const useModelFormSchemas = (
     })
     if (credential) {
       result = { ...result, __authorization_name__: credential?.credential_name }
-      if (credentials)
-        result = { ...result, ...credentials }
+      if (credentials) result = { ...result, ...credentials }
     }
-    if (model)
-      result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
+    if (model) result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
     return result
   }, [credentials, credential, model, formSchemas])
 
   const modelNameAndTypeFormSchemas = useMemo(() => {
-    if (providerFormSchemaPredefined)
-      return []
+    if (providerFormSchemaPredefined) return []
 
     const modelNameSchema = genModelNameFormSchema(model_credential_schema?.model)
     const modelTypeSchema = genModelTypeFormSchema(supported_model_types)
-    return [
-      modelNameSchema,
-      modelTypeSchema,
-    ]
+    return [modelNameSchema, modelTypeSchema]
   }, [supported_model_types, model_credential_schema?.model, providerFormSchemaPredefined])
 
   const modelNameAndTypeFormValues = useMemo(() => {
     let result = {}
-    if (providerFormSchemaPredefined)
-      return result
+    if (providerFormSchemaPredefined) return result
 
-    if (model)
-      result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
+    if (model) result = { ...result, __model_name: model?.model, __model_type: model?.model_type }
 
     return result
   }, [model, providerFormSchemaPredefined])

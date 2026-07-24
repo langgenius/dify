@@ -48,8 +48,8 @@ describe('runLogout', () => {
 
   it('throws NotLoggedIn when no active context', async () => {
     await Registry.empty('file').save()
-    await expect(runLogout({ io: bufferStreams(), reg: await Registry.load(), store: new MemStore() }))
-      .rejects
-      .toThrow(/not logged in/i)
+    await expect(
+      runLogout({ io: bufferStreams(), reg: await Registry.load(), store: new MemStore() }),
+    ).rejects.toThrow(/not logged in/i)
   })
 })

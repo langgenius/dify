@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
+import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -43,26 +41,44 @@ const VarItem: FC<Props> = ({
 
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const [isShowEditVarModal, {
-    setTrue: showEditVarModal,
-    setFalse: hideEditVarModal,
-  }] = useBoolean(false)
+  const [isShowEditVarModal, { setTrue: showEditVarModal, setFalse: hideEditVarModal }] =
+    useBoolean(false)
 
-  const handlePayloadChange = useCallback((payload: InputVar, moreInfo?: MoreInfo) => {
-    const isValid = onChange(payload, moreInfo)
-    if (!isValid)
-      return
-    hideEditVarModal()
-  }, [onChange, hideEditVarModal])
+  const handlePayloadChange = useCallback(
+    (payload: InputVar, moreInfo?: MoreInfo) => {
+      const isValid = onChange(payload, moreInfo)
+      if (!isValid) return
+      hideEditVarModal()
+    },
+    [onChange, hideEditVarModal],
+  )
   return (
-    <div ref={ref} className={cn('flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md', className)}>
+    <div
+      ref={ref}
+      className={cn(
+        'flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md',
+        className,
+      )}
+    >
       <div className="flex w-0 grow items-center space-x-1">
-        <Variable02 className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')} />
-        <div title={payload.variable} className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary">{payload.variable}</div>
+        <Variable02
+          className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
+        />
+        <div
+          title={payload.variable}
+          className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
+        >
+          {payload.variable}
+        </div>
         {payload.label && (
           <>
             <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
-            <div title={payload.label as string} className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary">{payload.label as string}</div>
+            <div
+              title={payload.label as string}
+              className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
+            >
+              {payload.label as string}
+            </div>
           </>
         )}
         {showLegacyBadge && (
@@ -75,51 +91,53 @@ const VarItem: FC<Props> = ({
       <div className="ml-2 flex shrink-0 items-center">
         {rightContent || (
           <>
-            {(!isHovering || readonly)
-              ? (
-                  <>
-                    {payload.required && (
-                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t($ => $['nodes.start.required'], { ns: 'workflow' })}</div>
-                    )}
-                    <InputVarTypeIcon type={payload.type} className="size-3.5 text-text-tertiary" />
-                  </>
-                )
-              : (!readonly && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label={t($ => $['operation.edit'], { ns: 'common' })}
-                      className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={showEditVarModal}
-                    >
-                      <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={t($ => $['operation.remove'], { ns: 'common' })}
-                      className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
-                      onClick={onRemove}
-                    >
-                      <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />
-                    </button>
-                  </>
-                ))}
+            {!isHovering || readonly ? (
+              <>
+                {payload.required && (
+                  <div className="mr-2 text-xs font-normal text-text-tertiary">
+                    {t(($) => $['nodes.start.required'], { ns: 'workflow' })}
+                  </div>
+                )}
+                <InputVarTypeIcon type={payload.type} className="size-3.5 text-text-tertiary" />
+              </>
+            ) : (
+              !readonly && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+                    className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    onClick={showEditVarModal}
+                  >
+                    <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+                    className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+                    onClick={onRemove}
+                  >
+                    <RiDeleteBinLine
+                      className="size-4 text-text-tertiary group-hover:text-text-destructive"
+                      aria-hidden="true"
+                    />
+                  </button>
+                </>
+              )
+            )}
           </>
         )}
-
       </div>
-      {
-        isShowEditVarModal && (
-          <ConfigVarModal
-            isShow
-            supportFile
-            payload={payload}
-            onClose={hideEditVarModal}
-            onConfirm={handlePayloadChange}
-            varKeys={varKeys}
-          />
-        )
-      }
+      {isShowEditVarModal && (
+        <ConfigVarModal
+          isShow
+          supportFile
+          payload={payload}
+          onClose={hideEditVarModal}
+          onConfirm={handlePayloadChange}
+          varKeys={varKeys}
+        />
+      )}
     </div>
   )
 }

@@ -1,10 +1,15 @@
-import type { AccessPolicy, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
+import type {
+  AccessPolicy,
+  Environment,
+  EnvironmentAccessPolicy,
+} from '@dify/contracts/enterprise/types.gen'
+import type { Atom, WritableAtom } from 'jotai'
 import type { ReactNode } from 'react'
 import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
+import { setNextRouteStateAtom } from '@/app/components/next-route-state/atoms'
 import {
   accessSettingsAtom,
   accessSettingsIsErrorAtom,
@@ -14,13 +19,14 @@ import { EnvironmentPermissionRow } from '../environment-permission-row'
 import { AccessPermissionsSection } from '../section'
 
 const mockMutate = vi.hoisted(() => vi.fn())
-const mockUseAtomValue = vi.hoisted(() => vi.fn())
 
-vi.mock('jotai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai')>()
+vi.mock('../../state', async () => {
+  const { atom } = await import('jotai')
+
   return {
-    ...actual,
-    useAtomValue: mockUseAtomValue,
+    accessSettingsAtom: atom<unknown>(undefined),
+    accessSettingsIsLoadingAtom: atom(false),
+    accessSettingsIsErrorAtom: atom(false),
   }
 })
 
@@ -39,6 +45,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       isPending: false,
       mutate: mockMutate,
     }),
+    useSuspenseQuery: () => ({
+      data: {
+        webapp_auth: { allow_public_access: true },
+      },
+    }),
   }
 })
 
@@ -51,15 +62,42 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures'],
+          ...options,
+        }),
+      },
+    },
   },
 }))
 
-function renderWithAtomStore(children: ReactNode) {
-  return render(
-    <JotaiProvider store={createStore()}>
-      {children}
-    </JotaiProvider>,
-  )
+function setTestAtom<Value>(
+  store: ReturnType<typeof createStore>,
+  target: Atom<Value>,
+  value: Value,
+) {
+  store.set(target as WritableAtom<Value, [Value], void>, value)
+}
+
+function renderWithAtomStore(
+  children: ReactNode,
+  accessSettings?: {
+    environmentPolicies: EnvironmentAccessPolicy[]
+  },
+) {
+  const store = createStore()
+  store.set(setNextRouteStateAtom, {
+    pathname: '/deployments/app-instance-1/access',
+    params: { appInstanceId: 'app-instance-1' },
+  })
+  setTestAtom(store, accessSettingsAtom, accessSettings)
+  setTestAtom(store, accessSettingsIsLoadingAtom, false)
+  setTestAtom(store, accessSettingsIsErrorAtom, false)
+
+  return render(<JotaiProvider store={store}>{children}</JotaiProvider>)
 }
 
 function createEnvironment(overrides: Partial<Environment> = {}): Environment {
@@ -110,11 +148,6 @@ function createEnvironmentAccessPolicy(): EnvironmentAccessPolicy {
 describe('EnvironmentPermissionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
-      return undefined
-    })
     mockMutate.mockImplementation((_variables: unknown, options?: { onError?: () => void }) => {
       options?.onError?.()
     })
@@ -128,8 +161,12 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
-    fireEvent.click(screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalled()
@@ -148,8 +185,12 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
-    fireEvent.click(screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalledWith(
@@ -185,7 +226,9 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockMutate).toHaveBeenCalledWith(
@@ -225,7 +268,9 @@ describe('EnvironmentPermissionRow', () => {
       />,
     )
 
-    const editButton = screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ })
+    const editButton = screen.getByRole('button', {
+      name: /deployments\.access\.permissions\.editAriaLabel/,
+    })
 
     expect(editButton).toHaveTextContent('deployments.access.permission.specific')
     expect(editButton).toHaveTextContent('deployments.access.members.groupCount:{"count":1}')
@@ -237,27 +282,19 @@ describe('EnvironmentPermissionRow', () => {
 describe('AccessPermissionsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
-      if (atom === accessSettingsAtom) {
-        return {
-          environmentPolicies: [createEnvironmentAccessPolicy()],
-        }
-      }
-      if (atom === accessSettingsIsLoadingAtom)
-        return false
-      if (atom === accessSettingsIsErrorAtom)
-        return false
-      return undefined
-    })
   })
 
   it('should render permission rows without column headers', () => {
-    renderWithAtomStore(<AccessPermissionsSection />)
+    renderWithAtomStore(<AccessPermissionsSection />, {
+      environmentPolicies: [createEnvironmentAccessPolicy()],
+    })
 
     expect(screen.getByText('Production')).toBeInTheDocument()
-    expect(screen.queryByText('deployments.access.permissions.col.environment')).not.toBeInTheDocument()
-    expect(screen.queryByText('deployments.access.permissions.col.permission')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.access.permissions.col.environment'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('deployments.access.permissions.col.permission'),
+    ).not.toBeInTheDocument()
   })
 })

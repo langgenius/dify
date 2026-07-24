@@ -199,6 +199,7 @@ def test_provider_all_tools_mention_resolves_against_provider_level_entry():
                         {
                             "plugin_id": "langgenius/duckduckgo",
                             "provider": "duckduckgo",
+                            "provider_type": "plugin",
                             "credential_type": "unauthorized",
                         }
                     ]

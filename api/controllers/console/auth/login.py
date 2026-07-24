@@ -4,6 +4,7 @@ import flask_login
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -16,6 +17,7 @@ from controllers.common.fields import (
     SimpleResultResponse,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -30,6 +32,7 @@ from controllers.console.error import (
     AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
+    SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import (
@@ -39,7 +42,6 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -56,7 +58,12 @@ from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
-from services.errors.account import AccountRegisterError, RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
+from services.errors.account import (
+    AccountRegisterError,
+    RefreshTokenAccountNotFoundError,
+    RefreshTokenNotFoundError,
+    SeatsLimitExceededError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
@@ -155,9 +162,10 @@ class LoginApi(Resource):
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
-            system_features = FeatureService.get_system_features()
-
-            if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
+            if (
+                FeatureService.get_system_features().is_allow_create_workspace
+                and not FeatureService.get_license().workspaces.is_available()
+            ):
                 raise WorkspacesLimitExceeded()
             else:
                 return SimpleResultOptionalDataResponse(
@@ -303,16 +311,13 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
-                workspaces = FeatureService.get_system_features().license.workspaces
+                workspaces = FeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
-                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
-                    TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
-                    account.current_tenant = new_tenant
-                    tenant_was_created.send(new_tenant)
+                    TenantService.create_owner_tenant(account, session=db.session())
 
         if account is None:
             try:
@@ -325,6 +330,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
+            except SeatsLimitExceededError:
+                raise SeatsLimitExceeded()
             except AccountRegisterError:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError()
@@ -348,7 +355,8 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
-    def post(self):
+    @with_session(write=False)
+    def post(self, session: Session):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)
 
@@ -358,7 +366,7 @@ class RefreshTokenApi(Resource):
             ), 401
 
         try:
-            new_token_pair = AccountService.refresh_token(refresh_token, session=db.session())
+            new_token_pair = AccountService.refresh_token(refresh_token, session=session)
         except Unauthorized as exc:
             return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
                 mode="json"

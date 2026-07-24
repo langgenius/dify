@@ -29,55 +29,75 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Start update document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    with session_factory.create_session() as session, session.begin():
-        document = session.scalar(
-            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-        )
-
-        if not document:
-            logger.info(click.style(f"Document not found: {document_id}", fg="red"))
-            return
-
-        document.indexing_status = IndexingStatus.PARSING
-        document.processing_started_at = naive_utc_now()
-
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-        if not dataset:
-            return
-
-        index_type = document.doc_form
-        segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
-
-    clean_success = False
-    try:
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        if index_node_ids:
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-            end_at = time.perf_counter()
-            logger.info(
-                click.style(
-                    "Cleaned document when document update data source or process rule: {} latency: {}".format(
-                        document_id, end_at - start_at
-                    ),
-                    fg="green",
-                )
-            )
-            clean_success = True
-    except Exception:
-        logger.exception("Failed to clean document index during update, document_id: %s", document_id)
-
-    if clean_success:
-        with session_factory.create_session() as session, session.begin():
-            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-            session.execute(segment_delete_stmt)
-
     has_error = False
     try:
-        indexing_runner = IndexingRunner()
-        indexing_runner.run([document])
-        end_at = time.perf_counter()
-        logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
+        with session_factory.create_session() as session:
+            document = session.scalar(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            )
+
+            if not document:
+                logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+                return
+
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            if not dataset:
+                return
+
+            index_type = document.doc_form
+            segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+            # Persist the parsing status before vector cleanup and extraction.
+            session.commit()
+
+            clean_success = False
+            try:
+                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                if index_node_ids:
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        session=session,
+                    )
+                    end_at = time.perf_counter()
+                    logger.info(
+                        click.style(
+                            "Cleaned document when document update data source or process rule: {} latency: {}".format(
+                                document_id, end_at - start_at
+                            ),
+                            fg="green",
+                        )
+                    )
+                    clean_success = True
+            except Exception:
+                logger.exception("Failed to clean document index during update, document_id: %s", document_id)
+                session.rollback()
+                document = session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                )
+                if not document:
+                    logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+                    return
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+                session.commit()
+
+            if clean_success:
+                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                session.execute(segment_delete_stmt)
+                session.commit()
+
+            indexing_runner = IndexingRunner()
+            indexing_runner.run([document], session)
+            session.commit()
+
+            end_at = time.perf_counter()
+            logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
         has_error = True
@@ -91,6 +111,9 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     # Trigger summary index generation for the updated document if enabled.
     # Only generate for high_quality indexing technique and when summary_index_setting is enabled.
     with session_factory.create_session() as session:
+        document = session.scalar(
+            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+        )
         dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.warning("Dataset %s not found after update indexing", dataset_id)
@@ -99,10 +122,6 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             summary_index_setting = dataset.summary_index_setting
             if summary_index_setting and summary_index_setting.get("enable"):
-                session.expire_all()
-                document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                )
                 if (
                     document
                     and document.indexing_status == IndexingStatus.COMPLETED

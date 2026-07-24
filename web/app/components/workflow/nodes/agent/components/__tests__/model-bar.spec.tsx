@@ -20,12 +20,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
     defaultModel,
     modelList,
   }: {
-    defaultModel?: { provider: string, model: string }
+    defaultModel?: { provider: string; model: string }
     modelList: ModelProviderItem[]
   }) => (
     <div>
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
-      :
+      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}:
       {modelList.length}
     </div>
   ),
@@ -39,7 +38,9 @@ describe('agent/model-bar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelLists.clear()
-    mockModelLists.set('llm' as ModelTypeEnum, [{ provider: 'openai', models: [{ model: 'gpt-4o' }] }])
+    mockModelLists.set('llm' as ModelTypeEnum, [
+      { provider: 'openai', models: [{ model: 'gpt-4o' }] },
+    ])
     mockModelLists.set('moderation' as ModelTypeEnum, [])
     mockModelLists.set('rerank' as ModelTypeEnum, [])
     mockModelLists.set('speech2text' as ModelTypeEnum, [])

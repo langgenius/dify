@@ -29,7 +29,10 @@ describe('renderHitlHint — non-resumable form (form_token null)', () => {
     [['email'], 'form delivered via email — resume only from that channel'],
     [['console'], 'form delivered via the console — resume only from that channel'],
     [['web_app'], 'form delivered via the web app — resume only from that channel'],
-    [['console', 'email'], 'form delivered via the console or email — resume only from those channels'],
+    [
+      ['console', 'email'],
+      'form delivered via the console or email — resume only from those channels',
+    ],
     [[], 'form delivered via another channel — resume only from that channel'],
   ])('renders %j as the channel note', (channels, expected) => {
     const out = renderHitlHint('app-1', payload({ approval_channels: channels }), false)
@@ -47,7 +50,11 @@ describe('renderHitlHint — non-resumable form (form_token null)', () => {
 
 describe('renderHitlHint — resumable form (form_token present)', () => {
   it('renders the resume command and ignores approval_channels', () => {
-    const out = renderHitlHint('app-1', payload({ form_token: 'tok-123', approval_channels: [] }), false)
+    const out = renderHitlHint(
+      'app-1',
+      payload({ form_token: 'tok-123', approval_channels: [] }),
+      false,
+    )
     expect(out).toContain('difyctl resume app app-1 tok-123 --workflow-run-id run-1')
     expect(out).not.toContain('delivered via')
   })

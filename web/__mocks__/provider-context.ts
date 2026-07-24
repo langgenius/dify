@@ -40,7 +40,9 @@ export const baseProviderContextValue: ProviderContextState = {
   humanInputEmailDeliveryEnabled: false,
 }
 
-export const createMockProviderContextValue = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => {
+export const createMockProviderContextValue = (
+  overrides: Partial<ProviderContextState> = {},
+): ProviderContextState => {
   const merged = merge({}, baseProviderContextValue, overrides)
 
   return {
@@ -58,7 +60,10 @@ export const createMockPlan = (plan: Plan): ProviderContextState =>
     }),
   })
 
-export const createMockPlanUsage = (usage: UsagePlanInfo, ctx: Partial<ProviderContextState>): ProviderContextState =>
+export const createMockPlanUsage = (
+  usage: UsagePlanInfo,
+  ctx: Partial<ProviderContextState>,
+): ProviderContextState =>
   createMockProviderContextValue({
     ...ctx,
     plan: merge(ctx.plan, {
@@ -66,7 +71,10 @@ export const createMockPlanUsage = (usage: UsagePlanInfo, ctx: Partial<ProviderC
     }),
   })
 
-export const createMockPlanTotal = (total: UsagePlanInfo, ctx: Partial<ProviderContextState>): ProviderContextState =>
+export const createMockPlanTotal = (
+  total: UsagePlanInfo,
+  ctx: Partial<ProviderContextState>,
+): ProviderContextState =>
   createMockProviderContextValue({
     ...ctx,
     plan: merge(ctx.plan, {
@@ -74,7 +82,10 @@ export const createMockPlanTotal = (total: UsagePlanInfo, ctx: Partial<ProviderC
     }),
   })
 
-export const createMockPlanReset = (reset: Partial<ProviderContextState['plan']['reset']>, ctx: Partial<ProviderContextState>): ProviderContextState =>
+export const createMockPlanReset = (
+  reset: Partial<ProviderContextState['plan']['reset']>,
+  ctx: Partial<ProviderContextState>,
+): ProviderContextState =>
   createMockProviderContextValue({
     ...ctx,
     plan: merge(ctx?.plan, {

@@ -17,7 +17,9 @@ APP_RBAC_QUEUE = "app_rbac"
 
 
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
-def initialize_created_app_rbac_access_task(self, tenant_id: str, account_id: str, app_id: str) -> None:
+def initialize_created_app_rbac_access_task(
+    self, tenant_id: str, account_id: str, app_id: str | None = None, dataset_id: str | None = None
+) -> None:
     """Grant the default app policy to current workspace members.
 
     App scope is persisted synchronously before this task is queued. Replacing
@@ -33,16 +35,28 @@ def initialize_created_app_rbac_access_task(self, tenant_id: str, account_id: st
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
             session=db.session(),
         ):
-            enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                app_id=app_id,
-                target_account_id=None,
-                payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                    access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                    account_ids=account_ids,
-                ),
-            )
+            if app_id is not None:
+                enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    app_id=app_id,
+                    target_account_id=None,
+                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
+                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
+                        account_ids=account_ids,
+                    ),
+                )
+            elif dataset_id is not None:
+                enterprise_rbac_service.RBACService.DatasetAccess.replace_user_access_policies(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    dataset_id=dataset_id,
+                    target_account_id=None,
+                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
+                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
+                        account_ids=account_ids,
+                    ),
+                )
     except Exception as exc:
         logger.exception(
             "Failed to initialize app RBAC access; retrying: tenant_id=%s app_id=%s attempt=%s",

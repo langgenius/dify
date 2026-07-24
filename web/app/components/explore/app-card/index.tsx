@@ -2,11 +2,12 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppModeEnum } from '@/types/app'
 import { AppTypeIcon } from '../../app/type-selector'
 
@@ -18,18 +19,16 @@ export type AppCardProps = {
   isExplore?: boolean
 }
 
-const AppCard = ({
-  app,
-  canCreate,
-  onCreate,
-  onTry,
-  isExplore = true,
-}: AppCardProps) => {
+const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const nameId = useId()
   const descriptionId = useId()
   const { app: appBasicInfo } = app
-  const canViewApp = IS_CLOUD_EDITION
+  const canViewApp = deploymentEdition === 'CLOUD'
   const isClickable = isExplore && (canViewApp || canCreate)
   const handleTryApp = () => {
     trackEvent('preview_template', {
@@ -42,13 +41,12 @@ const AppCard = ({
     onTry({ appId: app.app_id, app })
   }
   const handleCardClick = () => {
-    if (IS_CLOUD_EDITION) {
+    if (canViewApp) {
       handleTryApp()
       return
     }
 
-    if (canCreate)
-      onCreate()
+    if (canCreate) onCreate()
   }
 
   return (
@@ -84,19 +82,44 @@ const AppCard = ({
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div id={nameId} className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
+            <div id={nameId} className="truncate" title={appBasicInfo.name}>
+              {appBasicInfo.name}
+            </div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t($ => $['types.advanced'], { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.CHAT && <div className="truncate">{t($ => $['types.chatbot'], { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className="truncate">{t($ => $['types.agent'], { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.WORKFLOW && <div className="truncate">{t($ => $['types.workflow'], { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.COMPLETION && <div className="truncate">{t($ => $['types.completion'], { ns: 'app' }).toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && (
+              <div className="truncate">
+                {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.WORKFLOW && (
+              <div className="truncate">
+                {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.COMPLETION && (
+              <div className="truncate">
+                {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
       </div>
       <div className="flex shrink-0 items-start px-4 py-1">
-        <div id={descriptionId} className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary">
+        <div
+          id={descriptionId}
+          className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary"
+        >
           {app.description}
         </div>
       </div>

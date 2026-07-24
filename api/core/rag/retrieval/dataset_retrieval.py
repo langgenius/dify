@@ -65,6 +65,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.otel import propagate_context, trace_span
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
@@ -116,6 +117,7 @@ class DatasetRetrieval:
         else:
             self._llm_usage = self._llm_usage.plus(usage)
 
+    @trace_span()
     def knowledge_retrieval(self, session: Session, request: KnowledgeRetrievalRequest) -> list[Source]:
         self._check_knowledge_rate_limit(request.tenant_id)
         available_datasets = self._get_available_datasets(request.tenant_id, request.dataset_ids)
@@ -274,7 +276,8 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            records = RetrievalService.format_retrieval_documents(dify_documents)
+            with Session(bind=session.get_bind()) as format_session:
+                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             dataset_ids = [i.segment.dataset_id for i in records]
             document_ids = [i.segment.document_id for i in records]
 
@@ -491,7 +494,8 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            records = RetrievalService.format_retrieval_documents(dify_documents)
+            with Session(bind=session.get_bind()) as format_session:
+                records = RetrievalService.format_retrieval_documents(format_session, dify_documents)
             if records:
                 for record in records:
                     segment = record.segment
@@ -597,6 +601,7 @@ class DatasetRetrieval:
             return "\n".join([document_context.content for document_context in document_context_list]), context_files
         return "", context_files
 
+    @trace_span()
     def single_retrieve(
         self,
         session: Session,
@@ -722,7 +727,7 @@ class DatasetRetrieval:
 
                 if results:
                     thread = threading.Thread(
-                        target=self._on_retrieval_end,
+                        target=propagate_context(self._on_retrieval_end),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "documents": results,
@@ -735,6 +740,7 @@ class DatasetRetrieval:
                 return results
         return []
 
+    @trace_span()
     def multiple_retrieve(
         self,
         app_id: str,
@@ -796,7 +802,7 @@ class DatasetRetrieval:
 
             if query:
                 query_thread = threading.Thread(
-                    target=self._multiple_retrieve_thread,
+                    target=propagate_context(self._multiple_retrieve_thread_safely),
                     kwargs={
                         "flask_app": current_app._get_current_object(),  # type: ignore
                         "available_datasets": available_datasets,
@@ -822,7 +828,7 @@ class DatasetRetrieval:
             if attachment_ids:
                 for attachment_id in attachment_ids:
                     attachment_thread = threading.Thread(
-                        target=self._multiple_retrieve_thread,
+                        target=propagate_context(self._multiple_retrieve_thread_safely),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "available_datasets": available_datasets,
@@ -863,7 +869,7 @@ class DatasetRetrieval:
         if all_documents:
             # add thread to call _on_retrieval_end
             retrieval_end_thread = threading.Thread(
-                target=self._on_retrieval_end,
+                target=propagate_context(self._on_retrieval_end),
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "documents": all_documents,
@@ -1159,7 +1165,33 @@ class DatasetRetrieval:
 
                         all_documents.extend(documents)
 
+    @trace_span()
     def _run_retriever_thread(
+        self,
+        *,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str | None,
+        top_k: int,
+        all_documents: list[Document],
+        document_ids_filter: list[str] | None,
+        metadata_condition: MetadataFilteringCondition | None,
+        attachment_ids: list[str] | None,
+    ) -> None:
+        with session_factory.create_session() as session:
+            self._retriever(
+                flask_app=flask_app,
+                session=session,
+                dataset_id=dataset_id,
+                query=query or "",
+                top_k=top_k,
+                all_documents=all_documents,
+                document_ids_filter=document_ids_filter,
+                metadata_condition=metadata_condition,
+                attachment_ids=attachment_ids,
+            )
+
+    def _run_retriever_thread_safely(
         self,
         *,
         flask_app: Flask,
@@ -1173,24 +1205,23 @@ class DatasetRetrieval:
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
     ) -> None:
+        """Collect errors only after they pass through the traced retrieval method."""
         try:
-            with session_factory.create_session() as session:
-                self._retriever(
-                    flask_app=flask_app,
-                    session=session,
-                    dataset_id=dataset_id,
-                    query=query or "",
-                    top_k=top_k,
-                    all_documents=all_documents,
-                    document_ids_filter=document_ids_filter,
-                    metadata_condition=metadata_condition,
-                    attachment_ids=attachment_ids,
-                )
-        except Exception as e:
+            self._run_retriever_thread(
+                flask_app=flask_app,
+                dataset_id=dataset_id,
+                query=query,
+                top_k=top_k,
+                all_documents=all_documents,
+                document_ids_filter=document_ids_filter,
+                metadata_condition=metadata_condition,
+                attachment_ids=attachment_ids,
+            )
+        except Exception as exc:
             if cancel_event:
                 cancel_event.set()
             if thread_exceptions is not None:
-                thread_exceptions.append(e)
+                thread_exceptions.append(exc)
 
     def to_dataset_retriever_tool(
         self,
@@ -1225,7 +1256,11 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.provider != "external" and dataset.available_document_count == 0:
+            if (
+                dataset
+                and dataset.provider != "external"
+                and dataset.get_total_available_documents(session=session) == 0
+            ):
                 continue
 
             available_datasets.append(dataset)
@@ -1789,6 +1824,7 @@ class DatasetRetrieval:
 
         return full_text, usage
 
+    @trace_span()
     def _multiple_retrieve_thread(
         self,
         flask_app: Flask,
@@ -1807,11 +1843,11 @@ class DatasetRetrieval:
         attachment_id: str | None,
         dataset_count: int,
         cancel_event: threading.Event | None = None,
-        thread_exceptions: list[Exception] | None = None,
-    ):
+    ) -> None:
         try:
             with flask_app.app_context():
                 threads = []
+                retrieval_thread_exceptions: list[Exception] = []
                 all_documents_item: list[Document] = []
                 index_type = None
                 for dataset in available_datasets:
@@ -1830,7 +1866,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=self._run_retriever_thread,
+                        target=propagate_context(self._run_retriever_thread_safely),
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,
@@ -1841,7 +1877,7 @@ class DatasetRetrieval:
                             "metadata_condition": metadata_condition,
                             "attachment_ids": [attachment_id] if attachment_id else None,
                             "cancel_event": cancel_event,
-                            "thread_exceptions": thread_exceptions,
+                            "thread_exceptions": retrieval_thread_exceptions,
                         },
                     )
                     threads.append(retrieval_thread)
@@ -1856,26 +1892,37 @@ class DatasetRetrieval:
                     if cancel_event and cancel_event.is_set():
                         break
 
+                if retrieval_thread_exceptions:
+                    raise retrieval_thread_exceptions[0]
+
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
-                    data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
-                    if query:
-                        all_documents_item = data_post_processor.invoke(
-                            query=query,
-                            documents=all_documents_item,
-                            score_threshold=score_threshold,
-                            top_n=top_k,
-                            query_type=QueryType.TEXT_QUERY,
+                    with session_factory.create_session() as session:
+                        data_post_processor = DataPostProcessor(
+                            tenant_id,
+                            reranking_mode,
+                            reranking_model,
+                            weights,
+                            False,
+                            session=session,
                         )
-                    if attachment_id:
-                        all_documents_item = data_post_processor.invoke(
-                            documents=all_documents_item,
-                            score_threshold=score_threshold,
-                            top_n=top_k,
-                            query_type=QueryType.IMAGE_QUERY,
-                            query=attachment_id,
-                        )
+                        if query:
+                            all_documents_item = data_post_processor.invoke(
+                                query=query,
+                                documents=all_documents_item,
+                                score_threshold=score_threshold,
+                                top_n=top_k,
+                                query_type=QueryType.TEXT_QUERY,
+                            )
+                        if attachment_id:
+                            all_documents_item = data_post_processor.invoke(
+                                documents=all_documents_item,
+                                score_threshold=score_threshold,
+                                top_n=top_k,
+                                query_type=QueryType.IMAGE_QUERY,
+                                query=attachment_id,
+                            )
                 else:
                     if index_type == IndexTechniqueType.ECONOMY:
                         if not query:
@@ -1888,11 +1935,55 @@ class DatasetRetrieval:
                         all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
                 if all_documents_item:
                     all_documents.extend(all_documents_item)
-        except Exception as e:
+        except Exception:
+            raise
+
+    def _multiple_retrieve_thread_safely(
+        self,
+        *,
+        flask_app: Flask,
+        available_datasets: list[Dataset],
+        metadata_condition: MetadataFilteringCondition | None,
+        metadata_filter_document_ids: dict[str, list[str]] | None,
+        all_documents: list[Document],
+        tenant_id: str,
+        reranking_enable: bool,
+        reranking_mode: str,
+        reranking_model: RerankingModelDict | None,
+        weights: WeightsDict | None,
+        top_k: int,
+        score_threshold: float,
+        query: str | None,
+        attachment_id: str | None,
+        dataset_count: int,
+        cancel_event: threading.Event | None = None,
+        thread_exceptions: list[Exception] | None = None,
+    ) -> None:
+        """Collect errors only after they pass through the traced multi-retrieval method."""
+        try:
+            self._multiple_retrieve_thread(
+                flask_app=flask_app,
+                available_datasets=available_datasets,
+                metadata_condition=metadata_condition,
+                metadata_filter_document_ids=metadata_filter_document_ids,
+                all_documents=all_documents,
+                tenant_id=tenant_id,
+                reranking_enable=reranking_enable,
+                reranking_mode=reranking_mode,
+                reranking_model=reranking_model,
+                weights=weights,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                query=query,
+                attachment_id=attachment_id,
+                dataset_count=dataset_count,
+                cancel_event=cancel_event,
+            )
+        except Exception as exc:
             if cancel_event:
                 cancel_event.set()
             if thread_exceptions is not None:
-                thread_exceptions.append(e)
+                thread_exceptions.append(exc)
 
     def _get_available_datasets(self, tenant_id: str, dataset_ids: list[str]) -> list[Dataset]:
         with session_factory.create_session() as session:

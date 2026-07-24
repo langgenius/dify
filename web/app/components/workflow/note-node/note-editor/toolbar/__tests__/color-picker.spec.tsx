@@ -7,9 +7,7 @@ vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover
 describe('NoteEditor ColorPicker', () => {
   it('should open the palette and apply the selected theme', async () => {
     const onThemeChange = vi.fn()
-    render(
-      <ColorPicker theme={NoteTheme.blue} onThemeChange={onThemeChange} />,
-    )
+    render(<ColorPicker theme={NoteTheme.blue} onThemeChange={onThemeChange} />)
 
     fireEvent.click(screen.getByTestId('popover-trigger'))
 

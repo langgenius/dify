@@ -1,23 +1,31 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { PreProcessingRule } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ParentChildOptions } from '../parent-child-options'
 
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
-  default: ({ onSummaryIndexSettingChange }: { onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void }) => (
+  default: ({
+    onSummaryIndexSettingChange,
+  }: {
+    onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void
+  }) => (
     <div data-testid="summary-index-setting">
-      <button data-testid="summary-toggle" onClick={() => onSummaryIndexSettingChange?.({ enable: true })}>Toggle</button>
+      <button
+        data-testid="summary-toggle"
+        onClick={() => onSummaryIndexSettingChange?.({ enable: true })}
+      >
+        Toggle
+      </button>
     </div>
   ),
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: true,
-}))
-
 const ns = 'datasetCreation'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },
@@ -114,7 +122,9 @@ describe('ParentChildOptions', () => {
 
     it('should call onDocFormChange with parentChild when card switched', () => {
       const onDocFormChange = vi.fn()
-      render(<ParentChildOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />)
+      render(
+        <ParentChildOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />,
+      )
       const titleEl = screen.getByText(`${ns}.stepTwo.parentChild`)
       fireEvent.click(titleEl.closest('[class*="rounded-xl"]')!)
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.parentChild)
@@ -122,7 +132,9 @@ describe('ParentChildOptions', () => {
 
     it('should call onChunkForContextChange when full-doc chosen', () => {
       const onChunkForContextChange = vi.fn()
-      render(<ParentChildOptions {...defaultProps} onChunkForContextChange={onChunkForContextChange} />)
+      render(
+        <ParentChildOptions {...defaultProps} onChunkForContextChange={onChunkForContextChange} />,
+      )
       fireEvent.click(screen.getByText(`${ns}.stepTwo.fullDoc`))
       expect(onChunkForContextChange).toHaveBeenCalledWith('full-doc')
     })
@@ -130,7 +142,13 @@ describe('ParentChildOptions', () => {
     it('should call onChunkForContextChange when paragraph chosen', () => {
       const onChunkForContextChange = vi.fn()
       const config = createParentChildConfig({ chunkForContext: 'full-doc' })
-      render(<ParentChildOptions {...defaultProps} parentChildConfig={config} onChunkForContextChange={onChunkForContextChange} />)
+      render(
+        <ParentChildOptions
+          {...defaultProps}
+          parentChildConfig={config}
+          onChunkForContextChange={onChunkForContextChange}
+        />,
+      )
       fireEvent.click(screen.getByText(`${ns}.stepTwo.paragraph`))
       expect(onChunkForContextChange).toHaveBeenCalledWith('paragraph')
     })

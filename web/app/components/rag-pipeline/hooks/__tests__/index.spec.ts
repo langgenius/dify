@@ -1,11 +1,10 @@
 import type { RAGPipelineVariables, VAR_TYPE_MAP } from '@/models/pipeline'
-import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { Resolution, TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
-
 import {
   useAvailableNodesMetaData,
   useGetRunAndTraceUrl,
@@ -43,10 +42,6 @@ vi.mock('@/context/event-emitter', () => ({
       emit: mockEventEmit,
     },
   }),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({
@@ -90,10 +85,18 @@ vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
-    generateNewNode: ({ id, data, position }: { id: string, data: object, position: { x: number, y: number } }) => ({
+    generateNewNode: ({
+      id,
+      data,
+      position,
+    }: {
+      id: string
+      data: object
+      position: { x: number; y: number }
+    }) => ({
       newNode: { id, data, position, type: 'custom' },
     }),
   }

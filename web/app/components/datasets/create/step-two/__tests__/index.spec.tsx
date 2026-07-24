@@ -10,10 +10,15 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
-import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { act, cleanup, fireEvent, renderHook, screen } from '@testing-library/react'
+import {
+  ConfigurationMethodEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -53,32 +58,43 @@ let mockCurrentDataset: typeof mockDataset | null = null
 const mockMutateDatasetRes = vi.fn()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: typeof mockDataset | null, mutateDatasetRes: () => void }) => unknown) =>
-    selector({ dataset: mockCurrentDataset, mutateDatasetRes: mockMutateDatasetRes }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: {
+      dataset: typeof mockDataset | null
+      mutateDatasetRes: () => void
+    }) => unknown,
+  ) => selector({ dataset: mockCurrentDataset, mutateDatasetRes: mockMutateDatasetRes }),
 }))
 
 const mockEmbeddingModelList = [
   { provider: 'openai', model: 'text-embedding-ada-002' },
   { provider: 'cohere', model: 'embed-english-v3.0' },
 ]
-const mockDefaultEmbeddingModel = { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' }
+const mockDefaultEmbeddingModel = {
+  provider: { provider: 'openai' },
+  model: 'text-embedding-ada-002',
+}
 // Model[] type structure for rerank model list (simplified mock)
-const mockRerankModelList: Model[] = [{
-  provider: 'cohere',
-  icon_small: { en_US: 'cohere-icon', zh_Hans: 'cohere-icon' },
-  label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-  models: [{
-    model: 'rerank-english-v3.0',
-    label: { en_US: 'Rerank English v3.0', zh_Hans: 'Rerank English v3.0' },
-    model_type: ModelTypeEnum.rerank,
-    features: [],
-    fetch_from: ConfigurationMethodEnum.predefinedModel,
+const mockRerankModelList: Model[] = [
+  {
+    provider: 'cohere',
+    icon_small: { en_US: 'cohere-icon', zh_Hans: 'cohere-icon' },
+    label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+    models: [
+      {
+        model: 'rerank-english-v3.0',
+        label: { en_US: 'Rerank English v3.0', zh_Hans: 'Rerank English v3.0' },
+        model_type: ModelTypeEnum.rerank,
+        features: [],
+        fetch_from: ConfigurationMethodEnum.predefinedModel,
+        status: ModelStatusEnum.active,
+        model_properties: {},
+        load_balancing_enabled: false,
+      },
+    ],
     status: ModelStatusEnum.active,
-    model_properties: {},
-    load_balancing_enabled: false,
-  }],
-  status: ModelStatusEnum.active,
-}]
+  },
+]
 const mockRerankDefaultModel = { provider: { provider: 'cohere' }, model: 'rerank-english-v3.0' }
 let mockIsRerankDefaultModelValid = true
 
@@ -94,7 +110,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useFetchDefaultProcessRule: ({ onSuccess }: { onSuccess: (data: { rules: Rules, limits: { indexing_max_segmentation_tokens_length: number } }) => void }) => ({
+  useFetchDefaultProcessRule: ({
+    onSuccess,
+  }: {
+    onSuccess: (data: {
+      rules: Rules
+      limits: { indexing_max_segmentation_tokens_length: number }
+    }) => void
+  }) => ({
     mutate: (url: string) => {
       mockFetchDefaultProcessRuleMutate(url)
       onSuccess({
@@ -134,23 +157,35 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
     reset: vi.fn(),
   }),
   useCreateFirstDocument: () => ({
-    mutateAsync: vi.fn().mockImplementation(async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-      const data = { dataset: { id: 'new-dataset-id' } }
-      options?.onSuccess?.(data)
-      return data
-    }),
+    mutateAsync: vi
+      .fn()
+      .mockImplementation(
+        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
+          const data = { dataset: { id: 'new-dataset-id' } }
+          options?.onSuccess?.(data)
+          return data
+        },
+      ),
     isPending: false,
   }),
   useCreateDocument: () => ({
-    mutateAsync: vi.fn().mockImplementation(async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-      const data = { document: { id: 'new-doc-id' } }
-      options?.onSuccess?.(data)
-      return data
-    }),
+    mutateAsync: vi
+      .fn()
+      .mockImplementation(
+        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
+          const data = { document: { id: 'new-doc-id' } }
+          options?.onSuccess?.(data)
+          return data
+        },
+      ),
     isPending: false,
   }),
-  getNotionInfo: vi.fn().mockReturnValue([{ workspace_id: 'ws-1', pages: [{ page_id: 'page-1' }] }]),
-  getWebsiteInfo: vi.fn().mockReturnValue({ provider: 'jinaReader', job_id: 'job-123', urls: ['https://test.com'] }),
+  getNotionInfo: vi
+    .fn()
+    .mockReturnValue([{ workspace_id: 'ws-1', pages: [{ page_id: 'page-1' }] }]),
+  getWebsiteInfo: vi
+    .fn()
+    .mockReturnValue({ provider: 'jinaReader', job_id: 'job-123', urls: ['https://test.com'] }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -162,25 +197,28 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-// Enable IS_CE_EDITION to show QA checkbox in tests
-vi.mock('@/config', async () => {
-  const actual = await vi.importActual('@/config')
-  return { ...actual, IS_CE_EDITION: true }
-})
-
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
-  // eslint-disable-next-line ts/no-explicit-any
-  default: ({ onChange, value, files }: { onChange: (item: any) => void, value: any, files: any[] }) => (
+  /* oxlint-disable typescript/no-explicit-any */
+  default: ({
+    onChange,
+    value,
+    files,
+  }: {
+    onChange: (item: any) => void
+    value: any
+    files: any[]
+  }) => (
     <div data-testid="preview-picker">
       <span>{value?.name}</span>
-      {files?.map((f: { id: string, name: string }) => (
+      {files?.map((f: { id: string; name: string }) => (
         <button key={f.id} data-testid={`picker-${f.id}`} onClick={() => onChange(f)}>
           {f.name}
         </button>
       ))}
     </div>
   ),
+  /* oxlint-enable typescript/no-explicit-any */
 }))
 
 vi.mock('@/app/components/datasets/settings/utils', () => ({
@@ -189,9 +227,17 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 
 // Mock complex child components to avoid deep dependency chains when rendering StepTwo
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ onSelect, readonly }: { onSelect?: (val: Record<string, string>) => void, readonly?: boolean }) => (
+  default: ({
+    onSelect,
+    readonly,
+  }: {
+    onSelect?: (val: Record<string, string>) => void
+    readonly?: boolean
+  }) => (
     <div data-testid="model-selector" data-readonly={readonly}>
-      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>Select Model</button>
+      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>
+        Select Model
+      </button>
     </div>
   ),
 }))
@@ -212,48 +258,52 @@ vi.mock('@/app/components/datasets/common/economical-retrieval-method-config', (
   ),
 }))
 
-const createMockFile = (overrides?: Partial<CustomFile>): CustomFile => ({
-  id: 'file-1',
-  name: 'test-file.pdf',
-  extension: 'pdf',
-  size: 1024,
-  type: 'application/pdf',
-  lastModified: Date.now(),
-  ...overrides,
-} as CustomFile)
+const createMockFile = (overrides?: Partial<CustomFile>): CustomFile =>
+  ({
+    id: 'file-1',
+    name: 'test-file.pdf',
+    extension: 'pdf',
+    size: 1024,
+    type: 'application/pdf',
+    lastModified: Date.now(),
+    ...overrides,
+  }) as CustomFile
 
-const createMockNotionPage = (overrides?: Partial<NotionPage>): NotionPage => ({
-  page_id: 'notion-page-1',
-  page_name: 'Test Notion Page',
-  page_icon: null,
-  type: 'page',
-  ...overrides,
-} as NotionPage)
+const createMockNotionPage = (overrides?: Partial<NotionPage>): NotionPage =>
+  ({
+    page_id: 'notion-page-1',
+    page_name: 'Test Notion Page',
+    page_icon: null,
+    type: 'page',
+    ...overrides,
+  }) as NotionPage
 
-const createMockWebsitePage = (overrides?: Partial<CrawlResultItem>): CrawlResultItem => ({
-  source_url: 'https://example.com/page1',
-  title: 'Test Website Page',
-  description: 'Test description',
-  markdown: '# Test Content',
-  ...overrides,
-} as CrawlResultItem)
+const createMockWebsitePage = (overrides?: Partial<CrawlResultItem>): CrawlResultItem =>
+  ({
+    source_url: 'https://example.com/page1',
+    title: 'Test Website Page',
+    description: 'Test description',
+    markdown: '# Test Content',
+    ...overrides,
+  }) as CrawlResultItem
 
-const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): FullDocumentDetail => ({
-  id: 'doc-1',
-  doc_form: ChunkingMode.text,
-  doc_language: 'English',
-  file: { id: 'file-1', name: 'test.pdf', extension: 'pdf' },
-  notion_page: createMockNotionPage(),
-  website_page: createMockWebsitePage(),
-  dataset_process_rule: {
-    mode: ProcessMode.general,
-    rules: {
-      segmentation: { separator: '\\n\\n', max_tokens: 1024, chunk_overlap: 50 },
-      pre_processing_rules: [{ id: 'remove_extra_spaces', enabled: true }],
+const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): FullDocumentDetail =>
+  ({
+    id: 'doc-1',
+    doc_form: ChunkingMode.text,
+    doc_language: 'English',
+    file: { id: 'file-1', name: 'test.pdf', extension: 'pdf' },
+    notion_page: createMockNotionPage(),
+    website_page: createMockWebsitePage(),
+    dataset_process_rule: {
+      mode: ProcessMode.general,
+      rules: {
+        segmentation: { separator: '\\n\\n', max_tokens: 1024, chunk_overlap: 50 },
+        pre_processing_rules: [{ id: 'remove_extra_spaces', enabled: true }],
+      },
     },
-  },
-  ...overrides,
-} as FullDocumentDetail)
+    ...overrides,
+  }) as FullDocumentDetail
 
 const createMockRules = (overrides?: Partial<Rules>): Rules => ({
   segmentation: { separator: '\\n\\n', max_tokens: 1024, chunk_overlap: 50 },
@@ -266,7 +316,9 @@ const createMockRules = (overrides?: Partial<Rules>): Rules => ({
   ...overrides,
 })
 
-const createMockEstimate = (overrides?: Partial<FileIndexingEstimateResponse>): FileIndexingEstimateResponse => ({
+const createMockEstimate = (
+  overrides?: Partial<FileIndexingEstimateResponse>,
+): FileIndexingEstimateResponse => ({
   total_segments: 10,
   total_nodes: 10,
   tokens: 5000,
@@ -310,7 +362,7 @@ describe('escape utility', () => {
     })
 
     it('should escape single quotes', () => {
-      expect(escape('\'')).toBe('\\\'')
+      expect(escape("'")).toBe("\\'")
     })
 
     it('should handle mixed content', () => {
@@ -353,7 +405,7 @@ describe('unescape utility', () => {
     })
 
     it('should unescape single and double quotes', () => {
-      expect(unescape('\\\'')).toBe('\'')
+      expect(unescape("\\'")).toBe("'")
       expect(unescape('\\"')).toBe('"')
     })
 
@@ -518,8 +570,8 @@ describe('useSegmentationState', () => {
         result.current.toggleRule('rule1')
       })
 
-      expect(result.current.rules.find(r => r.id === 'rule1')?.enabled).toBe(false)
-      expect(result.current.rules.find(r => r.id === 'rule2')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(false)
     })
 
     it('should not affect other rules', () => {
@@ -536,8 +588,8 @@ describe('useSegmentationState', () => {
         result.current.toggleRule('rule2')
       })
 
-      expect(result.current.rules.find(r => r.id === 'rule1')?.enabled).toBe(true)
-      expect(result.current.rules.find(r => r.id === 'rule2')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(true)
     })
   })
 
@@ -883,7 +935,10 @@ describe('useIndexingConfig', () => {
       const customRetrievalConfig: RetrievalConfig = {
         search_method: RETRIEVE_METHOD.hybrid,
         reranking_enable: true,
-        reranking_model: { reranking_provider_name: 'custom', reranking_model_name: 'custom-model' },
+        reranking_model: {
+          reranking_provider_name: 'custom',
+          reranking_model_name: 'custom-model',
+        },
         top_k: 10,
         score_threshold_enabled: true,
         score_threshold: 0.8,
@@ -1025,7 +1080,10 @@ describe('usePreviewState', () => {
     })
 
     it('should return mapped website page value for WEB data source', () => {
-      const websitePage = createMockWebsitePage({ source_url: 'https://test.com', title: 'Test Title' })
+      const websitePage = createMockWebsitePage({
+        source_url: 'https://test.com',
+        title: 'Test Title',
+      })
       const { result } = renderHook(() =>
         usePreviewState({
           ...defaultOptions,
@@ -1090,9 +1148,7 @@ describe('usePreviewState', () => {
   describe('handlePreviewChange', () => {
     it('should update preview file for FILE data source', () => {
       const files = [createMockFile(), createMockFile({ id: 'file-2', name: 'second.pdf' })]
-      const { result } = renderHook(() =>
-        usePreviewState({ ...defaultOptions, files }),
-      )
+      const { result } = renderHook(() => usePreviewState({ ...defaultOptions, files }))
 
       act(() => {
         result.current.handlePreviewChange({ id: 'file-2', name: 'second.pdf' })
@@ -1589,18 +1645,6 @@ describe('useIndexingEstimate', () => {
 
   // Tests for fetchEstimate
   describe('fetchEstimate', () => {
-    it('should have fetchEstimate function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.fetchEstimate).toBe('function')
-    })
-
-    it('should have reset function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-
-      expect(typeof result.current.reset).toBe('function')
-    })
-
     it('should call fetchEstimate for FILE data source', () => {
       const { result } = renderHook(() =>
         useIndexingEstimate({
@@ -1714,15 +1758,6 @@ describe('StepTwoFooter', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepTwoFooter {...defaultProps} />)
-
-      // Should render Previous and Next buttons with correct text
-      // Should render Previous and Next buttons with correct text
-      expect(screen.getByText(/previousStep/i))!.toBeInTheDocument()
-      expect(screen.getByText(/nextStep/i))!.toBeInTheDocument()
-    })
-
     it('should render Previous and Next buttons when not in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} />)
 
@@ -1809,14 +1844,6 @@ describe('PreviewPanel', () => {
 
   // Tests for rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<PreviewPanel {...defaultProps} />)
-
-      // Check for the preview header title text
-      // Check for the preview header title text
-      expect(screen.getByText('datasetCreation.stepTwo.preview'))!.toBeInTheDocument()
-    })
-
     it('should render idle state when isIdle is true', () => {
       render(<PreviewPanel {...defaultProps} isIdle={true} />)
 
@@ -2289,11 +2316,6 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepTwo {...defaultStepTwoProps} />)
-      expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
-    })
-
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section
@@ -2370,12 +2392,7 @@ describe('StepTwo Component', () => {
   describe('Conditional Rendering', () => {
     it('should show options based on currentDataset doc_form', () => {
       mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.parentChild }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // When currentDataset has parentChild doc_form, should show parent-child option
       // When currentDataset has parentChild doc_form, should show parent-child option
       expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
@@ -2440,12 +2457,7 @@ describe('StepTwo Component', () => {
 
     it('should only show parent-child option when dataset has parentChild doc_form', () => {
       mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.parentChild }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // showGeneralOption should be false (parentChild not in [text, qa])
       // showParentChildOption should be true
       // showGeneralOption should be false (parentChild not in [text, qa])
@@ -2455,12 +2467,7 @@ describe('StepTwo Component', () => {
 
     it('should show general option only when dataset has text doc_form', () => {
       mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.text }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // showGeneralOption should be true (text is in [text, qa])
       // showGeneralOption should be true (text is in [text, qa])
       expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
@@ -2470,36 +2477,21 @@ describe('StepTwo Component', () => {
   describe('Upload in Dataset', () => {
     it('should show general option when in upload with text doc_form', () => {
       mockCurrentDataset = { ...mockDataset, doc_form: ChunkingMode.text }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show general option for empty dataset (no doc_form)', () => {
-      // eslint-disable-next-line ts/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       expect(screen.getByText(/stepTwo\.segmentation/i))!.toBeInTheDocument()
     })
 
     it('should show both options in empty dataset upload', () => {
-      // eslint-disable-next-line ts/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any
       mockCurrentDataset = { ...mockDataset, doc_form: undefined as any }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isUploadInEmptyDataset=true shows both options
       // isUploadInEmptyDataset=true shows both options
       expect(screen.getByText('datasetCreation.stepTwo.general'))!.toBeInTheDocument()
@@ -2531,12 +2523,7 @@ describe('StepTwo Component', () => {
 
     it('should disable model and retrieval config when datasetId has existing data source', () => {
       mockCurrentDataset = { ...mockDataset, data_source_type: DataSourceType.FILE }
-      render(
-        <StepTwo
-          {...defaultStepTwoProps}
-          datasetId="test-id"
-        />,
-      )
+      render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isModelAndRetrievalConfigDisabled should be true
       const modelSelector = screen.getByTestId('model-selector')
       expect(modelSelector)!.toHaveAttribute('data-readonly', 'true')

@@ -61,13 +61,14 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: MockWorkflowStoreState) => T) => selector({
-    setShowChatVariablePanel: mockSetShowChatVariablePanel,
-    appId: 'app-1',
-    conversationVariables: mockConversationVariables,
-    setConversationVariables: mockSetConversationVariables,
-    setControlPromptEditorRerenderKey: mockSetControlPromptEditorRerenderKey,
-  }),
+  useStore: <T,>(selector: (state: MockWorkflowStoreState) => T) =>
+    selector({
+      setShowChatVariablePanel: mockSetShowChatVariablePanel,
+      appId: 'app-1',
+      conversationVariables: mockConversationVariables,
+      setConversationVariables: mockSetConversationVariables,
+      setControlPromptEditorRerenderKey: mockSetControlPromptEditorRerenderKey,
+    }),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -81,7 +82,8 @@ vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  findUsedVarNodes: (...args: Parameters<typeof mockFindUsedVarNodes>) => mockFindUsedVarNodes(...args),
+  findUsedVarNodes: (...args: Parameters<typeof mockFindUsedVarNodes>) =>
+    mockFindUsedVarNodes(...args),
   updateNodeVars: (...args: Parameters<typeof mockUpdateNodeVars>) => mockUpdateNodeVars(...args),
 }))
 
@@ -103,51 +105,60 @@ vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/variable
   ),
 }))
 
-vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger', () => ({
-  default: ({
-    open,
-    showTip,
-    chatVar,
-    onSave,
-    onClose,
-  }: {
-    open: boolean
-    showTip: boolean
-    chatVar?: ConversationVariable
-    onSave: (chatVar: ConversationVariable) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="variable-modal-trigger">
-      <span>{open ? 'open' : 'closed'}</span>
-      <span>{showTip ? 'tip-on' : 'tip-off'}</span>
-      <span>{chatVar?.name || 'new-variable'}</span>
-      <button
-        type="button"
-        onClick={() => onSave({
-          id: 'var-added',
-          name: 'fresh_var',
-          value_type: ChatVarType.String,
-          value: '',
-          description: 'Added variable',
-        })}
-      >
-        save-add
-      </button>
-      {chatVar && (
+vi.mock(
+  '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger',
+  () => ({
+    default: ({
+      open,
+      showTip,
+      chatVar,
+      onSave,
+      onClose,
+    }: {
+      open: boolean
+      showTip: boolean
+      chatVar?: ConversationVariable
+      onSave: (chatVar: ConversationVariable) => void
+      onClose: () => void
+    }) => (
+      <div data-testid="variable-modal-trigger">
+        <span>{open ? 'open' : 'closed'}</span>
+        <span>{showTip ? 'tip-on' : 'tip-off'}</span>
+        <span>{chatVar?.name || 'new-variable'}</span>
         <button
           type="button"
-          onClick={() => onSave({
-            ...chatVar,
-            name: `${chatVar.name}_next`,
-          })}
+          onClick={() =>
+            onSave({
+              id: 'var-added',
+              name: 'fresh_var',
+              value_type: ChatVarType.String,
+              value: '',
+              description: 'Added variable',
+            })
+          }
         >
-          save-edit
+          save-add
         </button>
-      )}
-      <button type="button" onClick={onClose}>close-trigger</button>
-    </div>
-  ),
-}))
+        {chatVar && (
+          <button
+            type="button"
+            onClick={() =>
+              onSave({
+                ...chatVar,
+                name: `${chatVar.name}_next`,
+              })
+            }
+          >
+            save-edit
+          </button>
+        )}
+        <button type="button" onClick={onClose}>
+          close-trigger
+        </button>
+      </div>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
   default: ({
@@ -159,13 +170,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-conf
     onConfirm: () => void
     onCancel: () => void
   }) => {
-    if (!isShow)
-      return null
+    if (!isShow) return null
 
     return (
       <div data-testid="remove-effect-var-confirm">
-        <button type="button" onClick={onConfirm}>confirm-remove</button>
-        <button type="button" onClick={onCancel}>cancel-remove</button>
+        <button type="button" onClick={onConfirm}>
+          confirm-remove
+        </button>
+        <button type="button" onClick={onCancel}>
+          cancel-remove
+        </button>
       </div>
     )
   },
@@ -191,7 +205,9 @@ describe('ChatVariablePanel', () => {
     await user.click(toggleTipButton)
     expect(screen.queryByText('workflow.chatVariable.panelDescription')).not.toBeInTheDocument()
 
-    const closeButton = container.querySelector('.flex.size-6.cursor-pointer.items-center.justify-center') as HTMLElement
+    const closeButton = container.querySelector(
+      '.flex.size-6.cursor-pointer.items-center.justify-center',
+    ) as HTMLElement
     await user.click(closeButton)
 
     expect(mockSetShowChatVariablePanel).toHaveBeenCalledWith(false)

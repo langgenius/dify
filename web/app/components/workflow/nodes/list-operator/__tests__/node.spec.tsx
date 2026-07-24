@@ -36,11 +36,13 @@ const createData = (overrides: Partial<ListFilterNodeType> = {}): ListFilterNode
   item_var_type: VarType.string,
   filter_by: {
     enabled: true,
-    conditions: [{
-      key: 'name',
-      comparison_operator: 'contains' as never,
-      value: '',
-    }],
+    conditions: [
+      {
+        key: 'name',
+        comparison_operator: 'contains' as never,
+        value: '',
+      },
+    ],
   },
   extract_by: {
     enabled: false,
@@ -81,12 +83,7 @@ describe('list-operator/node', () => {
   })
 
   it('renders the referenced node variable label', () => {
-    render(
-      <Node
-        id="list-node"
-        data={createData()}
-      />,
-    )
+    render(<Node id="list-node" data={createData()} />)
 
     expect(screen.getByText('workflow.nodes.listFilter.inputVar')).toBeInTheDocument()
     expect(screen.getByText('Answer:answer:answer-node.items')).toBeInTheDocument()
