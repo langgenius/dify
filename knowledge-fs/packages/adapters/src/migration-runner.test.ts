@@ -35,6 +35,7 @@ const capabilityJobProvenanceMigrationId = "0026_capability_job_provenance";
 const uploadSessionsMigrationId = "0027_upload_sessions";
 const difyIntegrationStatesMigrationId = "0028_dify_integration_states";
 const difyIntegrationFreezesMigrationId = "0029_dify_integration_freezes";
+const bulkOperationsMigrationId = "0030_bulk_operations";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -48,6 +49,7 @@ const migrationsAfterDurableDeletion = [
   uploadSessionsMigrationId,
   difyIntegrationStatesMigrationId,
   difyIntegrationFreezesMigrationId,
+  bulkOperationsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
