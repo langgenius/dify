@@ -198,6 +198,7 @@ vi.mock('react-i18next', async () => {
 })
 
 type OperationProps = {
+  answerActionPosition?: 'auto' | 'below'
   item: ChatItem
   question: string
   index: number
@@ -850,6 +851,12 @@ describe('Operation', () => {
 
     it('should position bottom when operationWidth >= maxSize', () => {
       renderOperation({ ...baseProps, maxSize: 1 })
+      const bar = screen.getByTestId('operation-bar')
+      expect(bar.style.left).toBeFalsy()
+    })
+
+    it('should position below when requested even if there is room on the right', () => {
+      renderOperation({ ...baseProps, answerActionPosition: 'below', maxSize: 500 })
       const bar = screen.getByTestId('operation-bar')
       expect(bar.style.left).toBeFalsy()
     })

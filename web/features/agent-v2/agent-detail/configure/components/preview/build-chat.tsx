@@ -3,6 +3,7 @@
 import type { AgentChatRuntimeProps } from './chat-runtime'
 import { useTranslation } from 'react-i18next'
 import { CommunityEditionTip } from '../community-edition-tip'
+import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
 
 const buildIconGridCellOpacities = [
@@ -23,7 +24,7 @@ const buildIconGridCells = buildIconGridCellOpacities.map((opacity, index) => ({
 
 type AgentBuildChatProps = Omit<
   AgentChatRuntimeProps,
-  'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel'
+  'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
 >
 
 function AgentBuildChatEmptyState() {
@@ -72,9 +73,11 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
   return (
     <AgentChatRuntime
       {...props}
+      draftType="debug_build"
       inputPlaceholder={t(($) => $['agentDetail.configure.build.inputPlaceholder'])}
       inputAutoFocus={false}
       sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
+      sendMessage={sendBuildChatMessage}
       renderEmptyState={() => <AgentBuildChatEmptyState />}
     />
   )
