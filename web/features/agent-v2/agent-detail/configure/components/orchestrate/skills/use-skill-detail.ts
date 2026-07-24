@@ -6,9 +6,10 @@ import type { AgentSkillDetail, AgentSkillDetailDownloadAction } from './detail-
 import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
+import Cookies from 'js-cookie'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
@@ -27,6 +28,9 @@ const resolveSkillFileContentUrl = (url: string) => {
 const fetchSkillFileContent = async (url: string) => {
   const response = await globalThis.fetch(resolveSkillFileContentUrl(url), {
     credentials: 'include',
+    headers: {
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    },
   })
   if (!response.ok) throw new Error(`Failed to download skill file: ${response.status}`)
 
