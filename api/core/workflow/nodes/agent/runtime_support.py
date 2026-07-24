@@ -180,6 +180,14 @@ class AgentRuntimeSupport:
                         user_id=user_id,
                         value=value,
                     )
+                    # Merge completion_params into model_parameters so the plugin
+                    # daemon receives temperature, max_tokens, etc. as top-level
+                    # keys rather than nested under completion_params. Some model
+                    # providers (e.g. Tongyi Qwen) validate required fields from
+                    # model_parameters and fail with 'required' when they are
+                    # missing or nested.
+                    completion_params = value.pop("completion_params", None) or {}
+                    value["model_parameters"] = completion_params
                     history_prompt_messages = []
                     if node_data.memory:
                         memory = self.fetch_memory(
