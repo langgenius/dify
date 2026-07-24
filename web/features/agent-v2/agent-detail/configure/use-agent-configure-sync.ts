@@ -52,6 +52,7 @@ export function useAgentConfigureSync({
   const enabledRef = useRef(enabled)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const pageCloseSavingDraftKeyRef = useRef<string | undefined>(undefined)
+  const explicitlySavingDraftKeysRef = useRef(new Set<string>())
   const publishInFlightRef = useRef(false)
 
   baseConfigRef.current = baseConfig
@@ -153,11 +154,17 @@ export function useAgentConfigureSync({
     debouncedSaveDraft.cancel?.()
     if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange) return
 
-    await saveComposer({
-      configSnapshot,
-      draftBaseline: draft,
-      silent: false,
-    })
+    const draftKey = JSON.stringify(configSnapshot)
+    explicitlySavingDraftKeysRef.current.add(draftKey)
+    try {
+      await saveComposer({
+        configSnapshot,
+        draftBaseline: draft,
+        silent: false,
+      })
+    } finally {
+      explicitlySavingDraftKeysRef.current.delete(draftKey)
+    }
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
 
   const saveDirtyDraftOnPageClose = useCallback(() => {
@@ -174,7 +181,8 @@ export function useAgentConfigureSync({
     const draftKey = JSON.stringify(configSnapshot)
     if (
       lastAutosavedDraftKeyRef.current === draftKey ||
-      pageCloseSavingDraftKeyRef.current === draftKey
+      pageCloseSavingDraftKeyRef.current === draftKey ||
+      explicitlySavingDraftKeysRef.current.has(draftKey)
     ) {
       return
     }
