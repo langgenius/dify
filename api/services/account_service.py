@@ -1258,11 +1258,7 @@ class TenantService:
         session: Session,
     ) -> Tenant:
         """Create tenant"""
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -1325,11 +1321,7 @@ class TenantService:
         owner. It persists the legacy membership before creating the matching
         RBAC role binding, then makes the workspace current for the account.
         """
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             raise WorkSpaceNotAllowedCreateError()
 
         workspaces = FeatureService.get_license().workspaces
@@ -2010,7 +2002,7 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
-                FeatureService.get_system_features().is_allow_create_workspace
+                FeatureService.is_workspace_creation_allowed()
                 and create_workspace_required
                 and FeatureService.get_license().workspaces.is_available()
             ):

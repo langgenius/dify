@@ -112,8 +112,8 @@ def test_publish_blocks_start_and_trigger_coexistence(
 
     monkeypatch.setattr(
         feature_service_module.FeatureService,
-        "get_system_features",
-        classmethod(lambda _cls: SimpleNamespace(plugin_manager=SimpleNamespace(enabled=False))),
+        "is_plugin_manager_enabled",
+        classmethod(lambda _cls: False),
     )
     monkeypatch.setattr("services.workflow_service.dify_config", SimpleNamespace(BILLING_ENABLED=False))
 

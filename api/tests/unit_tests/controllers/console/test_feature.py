@@ -102,6 +102,7 @@ class TestSystemFeatureApi:
         result = api.get()
 
         assert result == system_features.model_dump()
+        assert result["is_allow_register"] is True
         assert result["enable_learn_app"] is True
         assert result["license"] == {"status": LicenseStatus.NONE}
         get_system_features.assert_called_once_with()
