@@ -22,6 +22,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from graphon.nodes.tool.exc import ToolParameterError
 
 
 class _SimpleContextVar:
@@ -924,6 +925,80 @@ def test_convert_tool_parameters_type_agent_and_workflow_branches():
         typ="workflow",
     )
     assert variable == {"text": "from-variable"}
+
+
+@pytest.mark.parametrize(
+    "parameter_type",
+    [ToolParameter.ToolParameterType.FILE, ToolParameter.ToolParameterType.FILES],
+)
+@pytest.mark.parametrize("selector_value", ["", []])
+def test_convert_tool_parameters_type_ignores_empty_optional_variable_selector(parameter_type, selector_value):
+    parameter = ToolParameter.get_simple_instance(
+        name="files",
+        llm_description="files",
+        typ=parameter_type,
+        required=False,
+    )
+    parameter.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    runtime_parameters = ToolManager._convert_tool_parameters_type(
+        parameters=[parameter],
+        variable_pool=variable_pool,
+        tool_configurations={"files": {"type": "variable", "value": selector_value}},
+        typ="workflow",
+    )
+
+    assert runtime_parameters == {}
+    variable_pool.get.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("selector_value", "error_type", "error_match"),
+    [
+        ("", ValueError, "value must be a list"),
+        ([], ToolParameterError, r"Variable \[\] does not exist"),
+    ],
+)
+def test_convert_tool_parameters_type_does_not_ignore_empty_required_variable_selector(
+    selector_value, error_type, error_match
+):
+    parameter = ToolParameter.get_simple_instance(
+        name="file",
+        llm_description="file",
+        typ=ToolParameter.ToolParameterType.FILE,
+        required=True,
+    )
+    parameter.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+    variable_pool.get.return_value = None
+
+    with pytest.raises(error_type, match=error_match):
+        ToolManager._convert_tool_parameters_type(
+            parameters=[parameter],
+            variable_pool=variable_pool,
+            tool_configurations={"file": {"type": "variable", "value": selector_value}},
+            typ="workflow",
+        )
+
+
+def test_convert_tool_parameters_type_rejects_nonempty_malformed_optional_variable_selector():
+    parameter = ToolParameter.get_simple_instance(
+        name="file",
+        llm_description="file",
+        typ=ToolParameter.ToolParameterType.FILE,
+        required=False,
+    )
+    parameter.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    with pytest.raises(ValueError, match="value must be a list"):
+        ToolManager._convert_tool_parameters_type(
+            parameters=[parameter],
+            variable_pool=variable_pool,
+            tool_configurations={"file": {"type": "variable", "value": "not-a-selector"}},
+            typ="workflow",
+        )
 
 
 def test_convert_tool_parameters_type_constant_branch():
