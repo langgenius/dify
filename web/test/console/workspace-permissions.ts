@@ -1,7 +1,7 @@
 import type { MyPermissionsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 
-export const currentWorkspacePermissionsQueryKey = [
+const currentWorkspacePermissionsQueryKey = [
   ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
   { type: 'query' },
 ] as const
