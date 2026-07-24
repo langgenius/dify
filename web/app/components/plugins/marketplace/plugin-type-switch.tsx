@@ -54,12 +54,19 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-speak-ai-line', iconClassName)} />,
+      icon: (
+        <span
+          aria-hidden
+          className={cn('i-custom-vender-integrations-agent-strategy', iconClassName)}
+        />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-custom-vender-plugin-trigger', iconClassName)} />,
+      icon: (
+        <span aria-hidden className={cn('i-custom-vender-integrations-trigger', iconClassName)} />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
