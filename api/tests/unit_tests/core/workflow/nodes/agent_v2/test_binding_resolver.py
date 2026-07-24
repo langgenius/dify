@@ -1,10 +1,21 @@
 import pytest
+from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
 )
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 
 
@@ -51,6 +62,7 @@ def _snapshot() -> AgentConfigSnapshot:
         tenant_id="tenant-1",
         agent_id="agent-1",
         version=1,
+        home_snapshot_id="home-1",
         config_snapshot=AgentSoulConfig(
             model=AgentSoulModelConfig(
                 plugin_id="langgenius/openai",
@@ -102,6 +114,89 @@ def test_binding_resolver_uses_active_snapshot_for_roster_agent(monkeypatch: pyt
     bundle = WorkflowAgentBindingResolver().resolve(**_resolve())
 
     assert bundle.snapshot.id == "active-snapshot"
+
+
+def test_binding_resolver_rejects_unpublished_roster_agent(monkeypatch: pytest.MonkeyPatch):
+    binding = _binding()
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.binding_resolver.session_factory.create_session",
+        lambda: FakeSession([binding, None]),
+    )
+
+    with pytest.raises(WorkflowAgentBindingError) as exc_info:
+        WorkflowAgentBindingResolver().resolve(**_resolve())
+
+    assert exc_info.value.error_code == "agent_not_available"
+    assert "not been published" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(Agent, AgentConfigSnapshot, AgentConfigRevision, WorkflowAgentNodeBinding)],
+    indirect=True,
+)
+def test_binding_resolver_requires_publish_provenance_for_active_roster_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    binding = _binding()
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    binding.workflow_version = "draft"
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Imported Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.IMPORTED,
+        app_id="agent-app-1",
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="snapshot-1",
+        active_config_has_model=True,
+        # Dirty draft state must not hide a snapshot after it has publish provenance.
+        active_config_is_published=False,
+    )
+    sqlite_session.add_all(
+        [
+            binding,
+            agent,
+            _snapshot(),
+            AgentConfigRevision(
+                id="revision-import",
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                current_snapshot_id="snapshot-1",
+                revision=1,
+                operation=AgentConfigRevisionOperation.IMPORT_PACKAGE,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.binding_resolver.session_factory.create_session",
+        lambda: sqlite_session,
+    )
+
+    with pytest.raises(WorkflowAgentBindingError) as exc_info:
+        WorkflowAgentBindingResolver().resolve(**_resolve())
+    assert exc_info.value.error_code == "agent_not_available"
+
+    sqlite_session.add(
+        AgentConfigRevision(
+            id="revision-publish",
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            revision=2,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+        )
+    )
+    sqlite_session.commit()
+
+    bundle = WorkflowAgentBindingResolver().resolve(**_resolve())
+
+    assert bundle.agent.id == agent.id
+    assert bundle.snapshot.id == "snapshot-1"
 
 
 def test_binding_resolver_raises_when_binding_missing(monkeypatch: pytest.MonkeyPatch):

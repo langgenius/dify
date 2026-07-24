@@ -302,6 +302,19 @@ def test_resolve_existing_inline_binding_agent_returns_valid_agent_or_none(monke
     )
 
 
+def test_resolve_roster_binding_rejects_unpublished_agent() -> None:
+    session = Mock()
+    session.scalar.return_value = None
+
+    with pytest.raises(ValueError, match="unavailable or unpublished roster agent"):
+        WorkflowAgentPublishService._resolve_roster_agent_graph_binding(
+            session=session,
+            draft_workflow=_workflow(),
+            node_id="agent-node",
+            agent_id="agent-1",
+        )
+
+
 def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch) -> None:
     session = Mock()
     source_agent = SimpleNamespace(id="source-agent")

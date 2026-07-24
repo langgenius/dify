@@ -5,6 +5,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
@@ -229,8 +230,11 @@ class AgentRosterService:
     def list_invite_options(
         self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
     ) -> dict[str, Any]:
+        """List active roster Agents whose published snapshot can be called by Workflow."""
+
         stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
-            Agent.active_config_has_model.is_(True)
+            Agent.active_config_has_model.is_(True),
+            workflow_callable_active_snapshot_filter(),
         )
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())

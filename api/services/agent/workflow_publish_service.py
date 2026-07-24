@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from models.agent import (
     Agent,
@@ -469,6 +470,8 @@ class WorkflowAgentPublishService:
         node_id: str,
         agent_id: str,
     ) -> tuple[Agent, str]:
+        """Resolve an active roster Agent whose published snapshot is callable."""
+
         agent = session.scalar(
             select(Agent)
             .where(
@@ -476,11 +479,12 @@ class WorkflowAgentPublishService:
                 Agent.id == agent_id,
                 Agent.scope == AgentScope.ROSTER,
                 Agent.status == AgentStatus.ACTIVE,
+                workflow_callable_active_snapshot_filter(),
             )
             .limit(1)
         )
         if agent is None:
-            raise ValueError(f"Workflow Agent node {node_id} references an unavailable roster agent.")
+            raise ValueError(f"Workflow Agent node {node_id} references an unavailable or unpublished roster agent.")
         if agent.scope != AgentScope.ROSTER:
             raise ValueError(f"Workflow Agent node {node_id} roster_agent binding must reference a roster agent.")
         if not agent.active_config_snapshot_id:

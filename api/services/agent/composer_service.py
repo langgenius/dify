@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
@@ -308,6 +309,8 @@ class AgentComposerService:
         source_snapshot_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        """Copy a callable roster Agent snapshot into a workflow-owned inline Agent."""
+
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._require_binding(
             cls._get_workflow_binding(session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
@@ -333,6 +336,8 @@ class AgentComposerService:
         source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=source_agent_id)
         if source_agent.scope != AgentScope.ROSTER or source_agent.status != AgentStatus.ACTIVE:
             raise InvalidComposerConfigError("Source agent must be an active roster agent.")
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=source_agent):
+            raise InvalidComposerConfigError("Source agent must have a published config snapshot.")
         source_version = cls._require_version(
             session=session,
             tenant_id=tenant_id,
@@ -607,40 +612,12 @@ class AgentComposerService:
         )
         if not active_version:
             return False
-        if agent.source in APP_BACKED_AGENT_SOURCES and not cls._has_publish_visible_revision(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
-        ):
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             return False
 
         return home_snapshot_id == active_version.home_snapshot_id and _agent_soul_config_json(
             agent_soul
         ) == _agent_soul_config_json(active_version.config_snapshot_dict)
-
-    @classmethod
-    def _has_publish_visible_revision(
-        cls, *, session: Session, tenant_id: str, agent_id: str, snapshot_id: str
-    ) -> bool:
-        revisions = session.scalars(
-            select(AgentConfigRevision.operation).where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.current_snapshot_id == snapshot_id,
-            )
-        ).all()
-
-        return any(
-            operation
-            in {
-                AgentConfigRevisionOperation.PUBLISH_DRAFT,
-                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-                AgentConfigRevisionOperation.RESTORE_VERSION,
-            }
-            for operation in revisions
-        )
 
     @classmethod
     def publish_agent_app_draft(
