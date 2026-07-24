@@ -542,7 +542,7 @@ class WorkflowService:
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
 
-        if FeatureService.get_system_features().plugin_manager.enabled:
+        if FeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure

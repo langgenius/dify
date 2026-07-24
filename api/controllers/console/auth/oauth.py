@@ -292,7 +292,7 @@ def _generate_account(
     if account:
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if not tenants:
-            if not FeatureService.get_system_features().is_allow_create_workspace:
+            if not FeatureService.is_workspace_creation_allowed():
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 TenantService.create_owner_tenant(account, session=db.session())

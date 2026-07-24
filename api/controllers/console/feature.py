@@ -140,7 +140,7 @@ class SystemFeatureApi(Resource):
         Only non-sensitive configuration data should be returned by this endpoint. Authenticated
         license detail is served separately by SystemFeatureLicenseApi.
         """
-        return FeatureService.get_system_features().model_dump()
+        return dump_response(SystemFeatureModel, FeatureService.get_system_features())
 
 
 @console_ns.route("/system-features/license")

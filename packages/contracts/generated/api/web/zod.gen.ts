@@ -455,13 +455,6 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
- * PluginManagerModel
- */
-export const zPluginManagerModel = z.object({
-  enabled: z.boolean().default(false),
-})
-
-/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
@@ -778,17 +771,14 @@ export const zSystemFeatureModel = z.object({
   enable_social_oauth_login: z.boolean().default(false),
   enable_step_by_step_tour: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
-  is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
-  max_plugin_package_size: z.int().default(15728640),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
     restrict_to_marketplace_only: false,
   }),
-  plugin_manager: zPluginManagerModel.default({ enabled: false }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),

@@ -2,6 +2,7 @@ from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
+from libs.helper import dump_response
 from services.feature_service import FeatureService, SystemFeatureModel
 
 register_response_schema_models(web_ns, SystemFeatureModel)
@@ -36,4 +37,4 @@ class SystemFeatureApi(Resource):
 
         Only non-sensitive configuration data should be returned by this endpoint.
         """
-        return FeatureService.get_system_features().model_dump()
+        return dump_response(SystemFeatureModel, FeatureService.get_system_features())

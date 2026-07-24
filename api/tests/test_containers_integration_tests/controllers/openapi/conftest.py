@@ -61,7 +61,7 @@ def add_tenant_for_account(
 ) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
     with patch("services.account_service.FeatureService") as mock_feature_service:
-        mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
+        mock_feature_service.is_workspace_creation_allowed.return_value = True
         tenant = TenantService.create_tenant(name=name, session=session)
     TenantService.create_tenant_member(tenant, account, session, role=role)
     return tenant
