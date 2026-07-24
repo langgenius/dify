@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -23,6 +24,9 @@ from services.agent.workspace_service import (
     AgentWorkspaceService,
     WorkspaceOwnerScope,
 )
+
+_CALLER_VISIBILITY_ATTEMPTS = 60
+_CALLER_VISIBILITY_INTERVAL_SECONDS = 0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,19 +247,24 @@ class WorkflowAgentWorkspaceStore:
         node_id: str,
         node_execution_id: str,
     ) -> WorkflowNodeExecutionModel:
-        execution = session.scalar(
-            select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.id == node_execution_id,
-                WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                WorkflowNodeExecutionModel.app_id == app_id,
-                WorkflowNodeExecutionModel.workflow_id == workflow_id,
-                WorkflowNodeExecutionModel.node_id == node_id,
-                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-            )
+        """Wait briefly for the already-emitted node-start event to persist its caller row."""
+
+        stmt = select(WorkflowNodeExecutionModel).where(
+            WorkflowNodeExecutionModel.id == node_execution_id,
+            WorkflowNodeExecutionModel.tenant_id == tenant_id,
+            WorkflowNodeExecutionModel.app_id == app_id,
+            WorkflowNodeExecutionModel.workflow_id == workflow_id,
+            WorkflowNodeExecutionModel.node_id == node_id,
+            WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
         )
-        if execution is None:
-            raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
-        return execution
+        for attempt in range(_CALLER_VISIBILITY_ATTEMPTS):
+            execution = session.scalar(stmt)
+            if execution is not None:
+                return execution
+            if attempt < _CALLER_VISIBILITY_ATTEMPTS - 1:
+                time.sleep(_CALLER_VISIBILITY_INTERVAL_SECONDS)
+
+        raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
 
     @staticmethod
     def _stored(scope: WorkflowAgentSessionScope, binding: AgentWorkspaceBinding) -> StoredWorkflowAgentSession:
