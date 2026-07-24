@@ -32,9 +32,13 @@ describe('HomeCatalogNavigation', () => {
     expect(navigationSection).toHaveClass('px-9')
     expect(navigationSection.firstElementChild).toHaveClass('w-full')
     expect(navigationSection.firstElementChild).not.toHaveClass('mx-auto', 'max-w-[1200px]')
-    expect(screen.getByText('plugin.marketplace.home.plugins')).toHaveAttribute(
-      'aria-current',
-      'page',
+    const activeTab = screen.getByText('plugin.marketplace.home.plugins')
+    expect(activeTab).toHaveAttribute('aria-current', 'page')
+    expect(activeTab.querySelector('[aria-hidden="true"]')).toHaveClass(
+      'absolute',
+      'h-0.5',
+      'w-[21px]',
+      'bg-text-accent',
     )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),

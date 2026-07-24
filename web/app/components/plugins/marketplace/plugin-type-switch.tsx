@@ -7,6 +7,7 @@ import { useTranslation } from '#i18n'
 import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import styles from './plugin-type-switch.module.css'
 
 type PluginTypeSwitchProps = {
   className?: string
@@ -98,17 +99,17 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
                 isHero
                   ? 'text-text-primary-on-surface'
                   : isHome
-                    ? 'min-w-12 justify-center text-text-tertiary'
+                    ? cn('min-w-12 justify-center text-text-tertiary', styles.homeItem)
                     : 'text-text-tertiary',
                 !isActive &&
                   (isHero
                     ? 'hover:bg-white/20'
-                    : 'hover:bg-state-base-hover hover:text-text-secondary'),
+                    : !isHome && 'hover:bg-state-base-hover hover:text-text-secondary'),
                 isActive &&
                   (isHero
                     ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
                     : isHome
-                      ? 'bg-background-interaction-from-bg-2 text-saas-dify-blue-inverted'
+                      ? styles.homeItemActive
                       : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
               )}
               onClick={() => {
