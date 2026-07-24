@@ -22,14 +22,14 @@ export type TagUpdateRequestPayload = {
   name: string
 }
 
-export type TagType = 'app' | 'knowledge' | 'snippet'
+export type TagType = 'app' | 'knowledge' | 'skill' | 'snippet'
 
 export type GetTagsData = {
   body?: never
   path?: never
   query?: {
     keyword?: string
-    type?: '' | 'app' | 'knowledge' | 'snippet'
+    type?: string
   }
   url: '/tags'
 }

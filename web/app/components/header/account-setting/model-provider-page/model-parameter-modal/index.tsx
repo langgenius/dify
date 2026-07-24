@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from 'react'
-import type { DefaultModel, FormValue, ModelParameterRule } from '../declarations'
+import type { DefaultModel, FormValue, Model, ModelParameterRule } from '../declarations'
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
@@ -7,8 +7,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
@@ -34,8 +35,10 @@ export type ModelParameterModalProps = {
   debugWithMultipleModel?: boolean
   onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
+  triggerContainerClassName?: string
   readonly?: boolean
   isInWorkflow?: boolean
+  modelList?: Model[]
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -53,17 +56,25 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
   renderTrigger,
+  triggerContainerClassName,
   readonly,
   isInWorkflow,
+  modelList,
   nodesOutputVars,
   availableNodes,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const availableTextGenerationModelList = modelList ?? activeTextGenerationModelList
+  const selectedProvider =
+    modelList?.find((modelItem) => modelItem.provider === provider) ?? currentProvider
+  const selectedModel =
+    selectedProvider?.models?.find((modelItem) => modelItem.model === modelId) ?? currentModel
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -71,6 +82,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const supportedPresetParameterNames = useMemo(() => {
     return parameterRules.map((parameterRule) => parameterRule.name)
   }, [parameterRules])
+  const hasSelectedModel = !!provider && !!modelId
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -80,16 +92,25 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
-    const targetProvider = activeTextGenerationModelList.find(
+    const targetProvider = availableTextGenerationModelList.find(
       (modelItem) => modelItem.provider === provider,
     )
-    const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
+    const targetModelItem = targetProvider?.models?.find((modelItem) => modelItem.model === model)
     setModel({
       modelId: model,
       provider,
       mode: targetModelItem?.model_properties.mode as string,
       features: targetModelItem?.features || [],
     })
+  }
+  const handleOpenModelSettings = () => {
+    if (readonly || !hasSelectedModel) return
+    setOpen(true)
+  }
+  const handleConfigureEmptyState = () => {
+    if (readonly) return
+
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
   }
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
@@ -114,8 +135,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const hasSelectedModel = !!provider && !!modelId
-
   return (
     <Popover
       open={open}
@@ -133,8 +152,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             >
               {renderTrigger({
                 open,
-                currentProvider,
-                currentModel,
+                currentProvider: selectedProvider,
+                currentModel: selectedModel,
                 providerName: provider,
                 modelId,
               })}
@@ -142,11 +161,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           }
         />
       ) : (
-        <div className="flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg">
+        <div
+          className={cn(
+            'flex h-8 min-w-[296px] items-center gap-px overflow-hidden rounded-lg',
+            triggerContainerClassName,
+          )}
+        >
           <div className="min-w-0 flex-1">
             <ModelSelector
               defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
-              modelList={activeTextGenerationModelList}
+              modelList={availableTextGenerationModelList}
               readonly={readonly}
               triggerClassName={cn(
                 'h-8! w-full rounded-r-none!',
@@ -154,6 +178,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
               )}
               onSelect={handleChangeModel}
+              onConfigureEmptyState={handleConfigureEmptyState}
+              onOpenProviderSettings={handleOpenModelSettings}
             />
           </div>
           <PopoverTrigger
@@ -187,8 +213,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <div className="px-4 pt-2 pb-4">
               <ModelSelector
                 defaultModel={hasSelectedModel ? { provider, model: modelId } : undefined}
-                modelList={activeTextGenerationModelList}
+                modelList={availableTextGenerationModelList}
                 onSelect={handleChangeModel}
+                onOpenProviderSettings={handleOpenModelSettings}
                 onHide={() => setOpen(false)}
               />
             </div>
@@ -249,7 +276,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             {debugWithMultipleModel
               ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <ArrowNarrowLeft className="size-3 rotate-180" />
+            <span
+              aria-hidden
+              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+            />
           </div>
         )}
       </PopoverContent>

@@ -13,6 +13,13 @@ export const zAgentProviderResponse = z.record(z.string(), z.unknown())
 export const zAgentProviderListResponse = z.array(z.record(z.string(), z.unknown()))
 
 /**
+ * AgentSkillBindingsPayload
+ */
+export const zAgentSkillBindingsPayload = z.object({
+  skill_ids: z.array(z.string()).optional(),
+})
+
+/**
  * SnippetImportPayload
  *
  * Payload for importing snippet from DSL.
@@ -437,6 +444,155 @@ export const zReplaceBindingsRequest = z.object({
 })
 
 /**
+ * SkillCreatePayload
+ */
+export const zSkillCreatePayload = z.object({
+  description: z.string().optional().default(''),
+  display_name: z.string().nullish(),
+  icon: z.string().optional().default('📄'),
+  name: z.string().nullish(),
+  tags: z.array(z.string()).optional(),
+})
+
+/**
+ * SkillFileUploadResponse
+ */
+export const zSkillFileUploadResponse = z.object({
+  hash: z.string(),
+  id: z.string(),
+  mime_type: z.string(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * SkillDeletePayload
+ */
+export const zSkillDeletePayload = z.object({
+  confirmation_name: z.string().nullish(),
+})
+
+/**
+ * SkillDeleteResponse
+ */
+export const zSkillDeleteResponse = z.object({
+  deleted: z.boolean(),
+  id: z.string(),
+})
+
+/**
+ * SkillMetadataPayload
+ */
+export const zSkillMetadataPayload = z.object({
+  display_name: z.string().nullish(),
+  expected_updated_at: z.int().nullish(),
+  icon: z.string().nullish(),
+  tags: z.array(z.string()).nullish(),
+})
+
+/**
+ * SkillResponse
+ */
+export const zSkillResponse = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullish(),
+  created_by_name: z.string().nullish(),
+  description: z.string(),
+  display_name: z.string(),
+  icon: z.string(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullish(),
+  name: z.string(),
+  name_manually_edited: z.boolean().optional().default(false),
+  reference_count: z.int().optional().default(0),
+  tags: z.array(z.string()).optional(),
+  updated_at: z.int(),
+  updated_by: z.string().nullish(),
+  updated_by_name: z.string().nullish(),
+  visibility: z.string(),
+})
+
+/**
+ * SkillListResponse
+ */
+export const zSkillListResponse = z.object({
+  data: z.array(zSkillResponse).optional(),
+  has_more: z.boolean().optional().default(false),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  total: z.int().optional().default(0),
+})
+
+/**
+ * SkillFilePreviewResponse
+ */
+export const zSkillFilePreviewResponse = z.object({
+  content: z.string(),
+  hash: z.string(),
+  mime_type: z.string(),
+  path: z.string(),
+  size: z.int(),
+})
+
+/**
+ * SkillPublishPayload
+ */
+export const zSkillPublishPayload = z.object({
+  publish_note: z.string().max(1024).optional().default(''),
+  version_name: z.string().max(128).nullish(),
+})
+
+/**
+ * SkillVersionResponse
+ */
+export const zSkillVersionResponse = z.object({
+  archive_size: z.int(),
+  created_at: z.int(),
+  hash_code: z.string(),
+  id: z.string(),
+  is_latest: z.boolean().optional().default(false),
+  publish_note: z.string(),
+  published_by: z.string().nullish(),
+  published_by_name: z.string().nullish(),
+  skill_id: z.string(),
+  version_name: z.string(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillRestorePayload
+ */
+export const zSkillRestorePayload = z.object({
+  publish_note: z.string().max(1024).optional().default(''),
+  version_id: z.string(),
+  version_name: z.string().max(128).nullish(),
+})
+
+/**
+ * SkillVersionListResponse
+ */
+export const zSkillVersionListResponse = z.object({
+  data: z.array(zSkillVersionResponse).optional(),
+})
+
+/**
+ * SkillVersionDeleteResponse
+ */
+export const zSkillVersionDeleteResponse = z.object({
+  deleted: z.boolean(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullish(),
+})
+
+/**
+ * SkillVersionUpdatePayload
+ */
+export const zSkillVersionUpdatePayload = z.object({
+  publish_note: z.string().max(1024).optional().default(''),
+  version_name: z.string().max(128).nullish(),
+})
+
+/**
  * ApiToolProviderDeletePayload
  */
 export const zApiToolProviderDeletePayload = z.object({
@@ -654,6 +810,33 @@ export const zWorkspaceTenantResultResponse = z.object({
 export const zSwitchWorkspaceResponse = z.object({
   new_tenant: zTenantInfoResponse,
   result: z.string(),
+})
+
+/**
+ * AgentSkillBindingItemResponse
+ */
+export const zAgentSkillBindingItemResponse = z.object({
+  description: z.string(),
+  display_name: z.string(),
+  file_count: z.int(),
+  icon: z.string(),
+  id: z.string(),
+  latest_published_at: z.int().nullish(),
+  latest_published_version_id: z.string().nullish(),
+  name: z.string(),
+  priority: z.int(),
+  status: z.string(),
+  tags: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * AgentSkillBindingsResponse
+ */
+export const zAgentSkillBindingsResponse = z.object({
+  agent_id: z.string(),
+  data: z.array(zAgentSkillBindingItemResponse).optional(),
+  skill_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -1242,6 +1425,163 @@ export const zDatasetAccessMatrix = z.object({
 export const zWorkspaceAccessMatrix = z.object({
   items: z.array(zAccessMatrixItem).optional(),
   pagination: zPagination.nullish(),
+})
+
+/**
+ * SkillFileResponse
+ */
+export const zSkillFileResponse = z.object({
+  content: z.string().nullish(),
+  hash: z.string().nullish(),
+  id: z.string().nullish(),
+  kind: z.string(),
+  mime_type: z.string().nullish(),
+  path: z.string(),
+  size: z.int().nullish(),
+  storage: z.string().nullish(),
+  tool_file_id: z.string().nullish(),
+})
+
+/**
+ * SkillDetailResponse
+ */
+export const zSkillDetailResponse = z.object({
+  created_at: z.int(),
+  created_by: z.string().nullish(),
+  created_by_name: z.string().nullish(),
+  description: z.string(),
+  display_name: z.string(),
+  files: z.array(zSkillFileResponse).optional(),
+  icon: z.string(),
+  id: z.string(),
+  latest_published_version_id: z.string().nullish(),
+  name: z.string(),
+  name_manually_edited: z.boolean().optional().default(false),
+  reference_count: z.int().optional().default(0),
+  tags: z.array(z.string()).optional(),
+  updated_at: z.int(),
+  updated_by: z.string().nullish(),
+  updated_by_name: z.string().nullish(),
+  visibility: z.string(),
+})
+
+/**
+ * SkillVersionDetailResponse
+ */
+export const zSkillVersionDetailResponse = z.object({
+  archive_size: z.int(),
+  created_at: z.int(),
+  files: z.array(zSkillFileResponse).optional(),
+  hash_code: z.string(),
+  id: z.string(),
+  is_latest: z.boolean().optional().default(false),
+  publish_note: z.string(),
+  published_by: z.string().nullish(),
+  published_by_name: z.string().nullish(),
+  skill_id: z.string(),
+  version_name: z.string(),
+  version_number: z.int(),
+})
+
+/**
+ * SkillTagResponse
+ */
+export const zSkillTagResponse = z.object({
+  count: z.int(),
+  tag: z.string(),
+})
+
+/**
+ * SkillTagListResponse
+ */
+export const zSkillTagListResponse = z.object({
+  data: z.array(zSkillTagResponse).optional(),
+})
+
+/**
+ * SkillAssistAttachmentPayload
+ */
+export const zSkillAssistAttachmentPayload = z.object({
+  mime_type: z.string().min(1).max(255).nullish(),
+  name: z.string().min(1).max(255),
+  size: z.int().gte(0).nullish(),
+  tool_file_id: z.string().min(1),
+})
+
+/**
+ * SkillAssistModelPayload
+ */
+export const zSkillAssistModelPayload = z.object({
+  model: z.string().min(1).max(255),
+  model_settings: z.record(z.string(), z.unknown()).nullish(),
+  plugin_id: z.string().min(1).max(255).nullish(),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * SkillAssistMessagePayload
+ *
+ * One user message and optional uploaded context for the read-only Skill Authoring assistant.
+ */
+export const zSkillAssistMessagePayload = z.object({
+  attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
+  message: z.string().min(1).max(8000),
+  model: zSkillAssistModelPayload.nullish(),
+})
+
+/**
+ * SkillDraftFileOperation
+ */
+export const zSkillDraftFileOperation = z.enum([
+  'delete',
+  'mkdir',
+  'rename',
+  'upsert_text',
+  'upsert_tool_file',
+])
+
+/**
+ * SkillDraftFileOperationPayload
+ */
+export const zSkillDraftFileOperationPayload = z.object({
+  content: z.string().nullish(),
+  expected_updated_at: z.int().nullish(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  operation: zSkillDraftFileOperation,
+  path: z.string(),
+  size: z.int().gte(0).nullish(),
+  target_path: z.string().nullish(),
+  tool_file_id: z.string().nullish(),
+})
+
+/**
+ * SkillReferenceResponse
+ */
+export const zSkillReferenceResponse = z.object({
+  agent_icon: z.string().nullish(),
+  agent_icon_background: z.string().nullish(),
+  agent_icon_type: z.string().nullish(),
+  agent_id: z.string(),
+  app_id: z.string().nullish(),
+  display_name: z.string(),
+  name: z.string(),
+  node_id: z.string().nullish(),
+  node_name: z.string().nullish(),
+  type: z.string(),
+  workflow_icon: z.string().nullish(),
+  workflow_icon_background: z.string().nullish(),
+  workflow_icon_type: z.string().nullish(),
+  workflow_id: z.string().nullish(),
+  workflow_name: z.string().nullish(),
+  workflow_version: z.string().nullish(),
+})
+
+/**
+ * SkillReferenceListResponse
+ */
+export const zSkillReferenceListResponse = z.object({
+  data: z.array(zSkillReferenceResponse).optional(),
 })
 
 /**
@@ -2094,6 +2434,42 @@ export const zPermissionCatalogGroup = z.object({
  */
 export const zPermissionCatalogResponse = z.object({
   groups: z.array(zPermissionCatalogGroup).optional(),
+})
+
+/**
+ * SkillFileKind
+ *
+ * Draft file entry kind.
+ */
+export const zSkillFileKind = z.enum(['directory', 'file'])
+
+/**
+ * SkillFileStorage
+ *
+ * How a draft file's content is stored.
+ */
+export const zSkillFileStorage = z.enum(['text', 'tool_file'])
+
+/**
+ * SkillDraftTreeItemPayload
+ */
+export const zSkillDraftTreeItemPayload = z.object({
+  content: z.string().nullish(),
+  hash: z.string().nullish(),
+  kind: zSkillFileKind.optional().default('file'),
+  mime_type: z.string().nullish(),
+  path: z.string(),
+  size: z.int().gte(0).nullish(),
+  storage: zSkillFileStorage.nullish(),
+  tool_file_id: z.string().nullish(),
+})
+
+/**
+ * SkillDraftTreePayload
+ */
+export const zSkillDraftTreePayload = z.object({
+  expected_updated_at: z.int().nullish(),
+  files: z.array(zSkillDraftTreeItemPayload).optional(),
 })
 
 /**
@@ -3421,6 +3797,26 @@ export const zGetWorkspacesCurrentAgentProviderByProviderNameResponse = zAgentPr
  */
 export const zGetWorkspacesCurrentAgentProvidersResponse = zAgentProviderListResponse
 
+export const zGetWorkspacesCurrentAgentsByAgentIdSkillsPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent Skill bindings
+ */
+export const zGetWorkspacesCurrentAgentsByAgentIdSkillsResponse = zAgentSkillBindingsResponse
+
+export const zPutWorkspacesCurrentAgentsByAgentIdSkillsBody = zAgentSkillBindingsPayload
+
+export const zPutWorkspacesCurrentAgentsByAgentIdSkillsPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent Skill bindings replaced
+ */
+export const zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse = zAgentSkillBindingsResponse
+
 export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
   creators: z.array(z.string()).optional(),
   is_published: z.boolean().optional(),
@@ -4693,6 +5089,234 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdR
  * Success
  */
 export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = zWorkspaceAccessMatrix
+
+export const zGetWorkspacesCurrentSkillsQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  tag: z.array(z.string()).optional(),
+})
+
+/**
+ * Workspace skills
+ */
+export const zGetWorkspacesCurrentSkillsResponse = zSkillListResponse
+
+export const zPostWorkspacesCurrentSkillsBody = zSkillCreatePayload
+
+/**
+ * Skill created
+ */
+export const zPostWorkspacesCurrentSkillsResponse = zSkillDetailResponse
+
+export const zPostWorkspacesCurrentSkillsFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
+/**
+ * Skill draft file uploaded
+ */
+export const zPostWorkspacesCurrentSkillsFilesUploadResponse = zSkillFileUploadResponse
+
+/**
+ * Skill imported
+ */
+export const zPostWorkspacesCurrentSkillsImportResponse = zSkillDetailResponse
+
+/**
+ * Workspace Skill tags
+ */
+export const zGetWorkspacesCurrentSkillsTagsResponse = zSkillTagListResponse
+
+export const zDeleteWorkspacesCurrentSkillsBySkillIdBody = zSkillDeletePayload
+
+export const zDeleteWorkspacesCurrentSkillsBySkillIdPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill deleted
+ */
+export const zDeleteWorkspacesCurrentSkillsBySkillIdResponse = zSkillDeleteResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill detail
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdResponse = zSkillDetailResponse
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdBody = zSkillMetadataPayload
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill updated
+ */
+export const zPatchWorkspacesCurrentSkillsBySkillIdResponse = zSkillResponse
+
+export const zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesBody = zSkillAssistMessagePayload
+
+export const zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill Authoring assistant event stream
+ */
+export const zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPostWorkspacesCurrentSkillsBySkillIdDuplicatePath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill duplicated
+ */
+export const zPostWorkspacesCurrentSkillsBySkillIdDuplicateResponse = zSkillDetailResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdExportPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Published Skill zip archive
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = z.record(z.string(), z.unknown())
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdFilesBody = zSkillDraftFileOperationPayload
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdFilesPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Draft file operation applied
+ */
+export const zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse = zSkillDetailResponse
+
+export const zPutWorkspacesCurrentSkillsBySkillIdFilesBody = zSkillDraftTreePayload
+
+export const zPutWorkspacesCurrentSkillsBySkillIdFilesPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Draft files replaced
+ */
+export const zPutWorkspacesCurrentSkillsBySkillIdFilesResponse = zSkillDetailResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentPath = z.object({
+  skill_id: z.string(),
+})
+
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentQuery = z.object({
+  download: z.string().optional(),
+  path: z.string(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Skill file content
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse = zBinaryFileResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewPath = z.object({
+  skill_id: z.string(),
+})
+
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewQuery = z.object({
+  path: z.string(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Skill file text preview
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse = zSkillFilePreviewResponse
+
+export const zPostWorkspacesCurrentSkillsBySkillIdPublishBody = zSkillPublishPayload
+
+export const zPostWorkspacesCurrentSkillsBySkillIdPublishPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill published
+ */
+export const zPostWorkspacesCurrentSkillsBySkillIdPublishResponse = zSkillVersionResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdReferencesPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill references
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdReferencesResponse = zSkillReferenceListResponse
+
+export const zPostWorkspacesCurrentSkillsBySkillIdRestoreBody = zSkillRestorePayload
+
+export const zPostWorkspacesCurrentSkillsBySkillIdRestorePath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill version restored
+ */
+export const zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse = zSkillVersionResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdVersionsPath = z.object({
+  skill_id: z.string(),
+})
+
+/**
+ * Skill versions
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdVersionsResponse = zSkillVersionListResponse
+
+export const zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath = z.object({
+  skill_id: z.string(),
+  version_id: z.string(),
+})
+
+/**
+ * Skill version deleted
+ */
+export const zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  zSkillVersionDeleteResponse
+
+export const zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath = z.object({
+  skill_id: z.string(),
+  version_id: z.string(),
+})
+
+/**
+ * Skill version detail
+ */
+export const zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  zSkillVersionDetailResponse
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdBody =
+  zSkillVersionUpdatePayload
+
+export const zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath = z.object({
+  skill_id: z.string(),
+  version_id: z.string(),
+})
+
+/**
+ * Skill version updated
+ */
+export const zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  zSkillVersionResponse
 
 /**
  * Tool labels retrieved successfully

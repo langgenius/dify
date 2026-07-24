@@ -32,6 +32,16 @@ export type AgentProviderListResponse = Array<{
   [key: string]: unknown
 }>
 
+export type AgentSkillBindingsResponse = {
+  agent_id: string
+  data?: Array<AgentSkillBindingItemResponse>
+  skill_ids?: Array<string>
+}
+
+export type AgentSkillBindingsPayload = {
+  skill_ids?: Array<string>
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -635,6 +645,179 @@ export type WorkspaceAccessMatrix = {
   pagination?: Pagination | null
 }
 
+export type SkillListResponse = {
+  data?: Array<SkillResponse>
+  has_more?: boolean
+  limit?: number
+  page?: number
+  total?: number
+}
+
+export type SkillCreatePayload = {
+  description?: string
+  display_name?: string | null
+  icon?: string
+  name?: string | null
+  tags?: Array<string>
+}
+
+export type SkillDetailResponse = {
+  created_at: number
+  created_by?: string | null
+  created_by_name?: string | null
+  description: string
+  display_name: string
+  files?: Array<SkillFileResponse>
+  icon: string
+  id: string
+  latest_published_version_id?: string | null
+  name: string
+  name_manually_edited?: boolean
+  reference_count?: number
+  tags?: Array<string>
+  updated_at: number
+  updated_by?: string | null
+  updated_by_name?: string | null
+  visibility: string
+}
+
+export type SkillFileUploadResponse = {
+  hash: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+}
+
+export type SkillTagListResponse = {
+  data?: Array<SkillTagResponse>
+}
+
+export type SkillDeletePayload = {
+  confirmation_name?: string | null
+}
+
+export type SkillDeleteResponse = {
+  deleted: boolean
+  id: string
+}
+
+export type SkillMetadataPayload = {
+  display_name?: string | null
+  expected_updated_at?: number | null
+  icon?: string | null
+  tags?: Array<string> | null
+}
+
+export type SkillResponse = {
+  created_at: number
+  created_by?: string | null
+  created_by_name?: string | null
+  description: string
+  display_name: string
+  icon: string
+  id: string
+  latest_published_version_id?: string | null
+  name: string
+  name_manually_edited?: boolean
+  reference_count?: number
+  tags?: Array<string>
+  updated_at: number
+  updated_by?: string | null
+  updated_by_name?: string | null
+  visibility: string
+}
+
+export type SkillAssistMessagePayload = {
+  attachments?: Array<SkillAssistAttachmentPayload>
+  message: string
+  model?: SkillAssistModelPayload | null
+}
+
+export type SkillDraftFileOperationPayload = {
+  content?: string | null
+  expected_updated_at?: number | null
+  hash?: string | null
+  mime_type?: string | null
+  operation: SkillDraftFileOperation
+  path: string
+  size?: number | null
+  target_path?: string | null
+  tool_file_id?: string | null
+}
+
+export type SkillDraftTreePayload = {
+  expected_updated_at?: number | null
+  files?: Array<SkillDraftTreeItemPayload>
+}
+
+export type SkillFilePreviewResponse = {
+  content: string
+  hash: string
+  mime_type: string
+  path: string
+  size: number
+}
+
+export type SkillPublishPayload = {
+  publish_note?: string
+  version_name?: string | null
+}
+
+export type SkillVersionResponse = {
+  archive_size: number
+  created_at: number
+  hash_code: string
+  id: string
+  is_latest?: boolean
+  publish_note: string
+  published_by?: string | null
+  published_by_name?: string | null
+  skill_id: string
+  version_name: string
+  version_number: number
+}
+
+export type SkillReferenceListResponse = {
+  data?: Array<SkillReferenceResponse>
+}
+
+export type SkillRestorePayload = {
+  publish_note?: string
+  version_id: string
+  version_name?: string | null
+}
+
+export type SkillVersionListResponse = {
+  data?: Array<SkillVersionResponse>
+}
+
+export type SkillVersionDeleteResponse = {
+  deleted: boolean
+  id: string
+  latest_published_version_id?: string | null
+}
+
+export type SkillVersionDetailResponse = {
+  archive_size: number
+  created_at: number
+  files?: Array<SkillFileResponse>
+  hash_code: string
+  id: string
+  is_latest?: boolean
+  publish_note: string
+  published_by?: string | null
+  published_by_name?: string | null
+  skill_id: string
+  version_name: string
+  version_number: number
+}
+
+export type SkillVersionUpdatePayload = {
+  publish_note?: string
+  version_name?: string | null
+}
+
 export type ToolLabelListResponse = Array<ToolLabel>
 
 export type ApiToolProviderAddPayload = {
@@ -1040,6 +1223,21 @@ export type TenantListItemResponse = {
 export type WorkspaceCustomConfigResponse = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
+}
+
+export type AgentSkillBindingItemResponse = {
+  description: string
+  display_name: string
+  file_count: number
+  icon: string
+  id: string
+  latest_published_at?: number | null
+  latest_published_version_id?: string | null
+  name: string
+  priority: number
+  status: string
+  tags?: Array<string>
+  updated_at: number
 }
 
 export type SnippetListItemResponse = {
@@ -1500,6 +1698,76 @@ export type AccessPolicyRole = {
   role_id: string
   role_name: string
   role_tag?: string
+}
+
+export type SkillFileResponse = {
+  content?: string | null
+  hash?: string | null
+  id?: string | null
+  kind: string
+  mime_type?: string | null
+  path: string
+  size?: number | null
+  storage?: string | null
+  tool_file_id?: string | null
+}
+
+export type SkillTagResponse = {
+  count: number
+  tag: string
+}
+
+export type SkillAssistAttachmentPayload = {
+  mime_type?: string | null
+  name: string
+  size?: number | null
+  tool_file_id: string
+}
+
+export type SkillAssistModelPayload = {
+  model: string
+  model_settings?: {
+    [key: string]: unknown
+  } | null
+  plugin_id?: string | null
+  provider: string
+}
+
+export type SkillDraftFileOperation =
+  | 'delete'
+  | 'mkdir'
+  | 'rename'
+  | 'upsert_text'
+  | 'upsert_tool_file'
+
+export type SkillDraftTreeItemPayload = {
+  content?: string | null
+  hash?: string | null
+  kind?: SkillFileKind
+  mime_type?: string | null
+  path: string
+  size?: number | null
+  storage?: SkillFileStorage | null
+  tool_file_id?: string | null
+}
+
+export type SkillReferenceResponse = {
+  agent_icon?: string | null
+  agent_icon_background?: string | null
+  agent_icon_type?: string | null
+  agent_id: string
+  app_id?: string | null
+  display_name: string
+  name: string
+  node_id?: string | null
+  node_name?: string | null
+  type: string
+  workflow_icon?: string | null
+  workflow_icon_background?: string | null
+  workflow_icon_type?: string | null
+  workflow_id?: string | null
+  workflow_name?: string | null
+  workflow_version?: string | null
 }
 
 export type ToolLabel = {
@@ -1977,6 +2245,10 @@ export type PermissionCatalogItem = {
   key: string
   name: string
 }
+
+export type SkillFileKind = 'directory' | 'file'
+
+export type SkillFileStorage = 'text' | 'tool_file'
 
 export type ToolParameter = {
   auto_generate?: PluginParameterAutoGenerate | null
@@ -2472,6 +2744,38 @@ export type GetWorkspacesCurrentAgentProvidersResponses = {
 
 export type GetWorkspacesCurrentAgentProvidersResponse =
   GetWorkspacesCurrentAgentProvidersResponses[keyof GetWorkspacesCurrentAgentProvidersResponses]
+
+export type GetWorkspacesCurrentAgentsByAgentIdSkillsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/workspaces/current/agents/{agent_id}/skills'
+}
+
+export type GetWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
+  200: AgentSkillBindingsResponse
+}
+
+export type GetWorkspacesCurrentAgentsByAgentIdSkillsResponse =
+  GetWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof GetWorkspacesCurrentAgentsByAgentIdSkillsResponses]
+
+export type PutWorkspacesCurrentAgentsByAgentIdSkillsData = {
+  body: AgentSkillBindingsPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/workspaces/current/agents/{agent_id}/skills'
+}
+
+export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
+  200: AgentSkillBindingsResponse
+}
+
+export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponse =
+  PutWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsResponses]
 
 export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
@@ -4624,6 +4928,369 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse =
   GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
+
+export type GetWorkspacesCurrentSkillsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+    tag?: Array<string>
+  }
+  url: '/workspaces/current/skills'
+}
+
+export type GetWorkspacesCurrentSkillsResponses = {
+  200: SkillListResponse
+}
+
+export type GetWorkspacesCurrentSkillsResponse =
+  GetWorkspacesCurrentSkillsResponses[keyof GetWorkspacesCurrentSkillsResponses]
+
+export type PostWorkspacesCurrentSkillsData = {
+  body: SkillCreatePayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/skills'
+}
+
+export type PostWorkspacesCurrentSkillsResponses = {
+  201: SkillDetailResponse
+}
+
+export type PostWorkspacesCurrentSkillsResponse =
+  PostWorkspacesCurrentSkillsResponses[keyof PostWorkspacesCurrentSkillsResponses]
+
+export type PostWorkspacesCurrentSkillsFilesUploadData = {
+  body: {
+    file: Blob | File
+  }
+  path?: never
+  query?: never
+  url: '/workspaces/current/skills/files/upload'
+}
+
+export type PostWorkspacesCurrentSkillsFilesUploadResponses = {
+  201: SkillFileUploadResponse
+}
+
+export type PostWorkspacesCurrentSkillsFilesUploadResponse =
+  PostWorkspacesCurrentSkillsFilesUploadResponses[keyof PostWorkspacesCurrentSkillsFilesUploadResponses]
+
+export type PostWorkspacesCurrentSkillsImportData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/skills/import'
+}
+
+export type PostWorkspacesCurrentSkillsImportResponses = {
+  201: SkillDetailResponse
+}
+
+export type PostWorkspacesCurrentSkillsImportResponse =
+  PostWorkspacesCurrentSkillsImportResponses[keyof PostWorkspacesCurrentSkillsImportResponses]
+
+export type GetWorkspacesCurrentSkillsTagsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/skills/tags'
+}
+
+export type GetWorkspacesCurrentSkillsTagsResponses = {
+  200: SkillTagListResponse
+}
+
+export type GetWorkspacesCurrentSkillsTagsResponse =
+  GetWorkspacesCurrentSkillsTagsResponses[keyof GetWorkspacesCurrentSkillsTagsResponses]
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdData = {
+  body: SkillDeletePayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}'
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdResponses = {
+  200: SkillDeleteResponse
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdResponse =
+  DeleteWorkspacesCurrentSkillsBySkillIdResponses[keyof DeleteWorkspacesCurrentSkillsBySkillIdResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdResponses = {
+  200: SkillDetailResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdResponse =
+  GetWorkspacesCurrentSkillsBySkillIdResponses[keyof GetWorkspacesCurrentSkillsBySkillIdResponses]
+
+export type PatchWorkspacesCurrentSkillsBySkillIdData = {
+  body: SkillMetadataPayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}'
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdResponses = {
+  200: SkillResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdResponse =
+  PatchWorkspacesCurrentSkillsBySkillIdResponses[keyof PatchWorkspacesCurrentSkillsBySkillIdResponses]
+
+export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesData = {
+  body: SkillAssistMessagePayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/assist/messages'
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse =
+  PostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponses[keyof PostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponses]
+
+export type PostWorkspacesCurrentSkillsBySkillIdDuplicateData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/duplicate'
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdDuplicateResponses = {
+  201: SkillDetailResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdDuplicateResponse =
+  PostWorkspacesCurrentSkillsBySkillIdDuplicateResponses[keyof PostWorkspacesCurrentSkillsBySkillIdDuplicateResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdExportData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/export'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdExportResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdExportResponse =
+  GetWorkspacesCurrentSkillsBySkillIdExportResponses[keyof GetWorkspacesCurrentSkillsBySkillIdExportResponses]
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesData = {
+  body: SkillDraftFileOperationPayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/files'
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesResponses = {
+  200: SkillDetailResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesResponse =
+  PatchWorkspacesCurrentSkillsBySkillIdFilesResponses[keyof PatchWorkspacesCurrentSkillsBySkillIdFilesResponses]
+
+export type PutWorkspacesCurrentSkillsBySkillIdFilesData = {
+  body: SkillDraftTreePayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/files'
+}
+
+export type PutWorkspacesCurrentSkillsBySkillIdFilesResponses = {
+  200: SkillDetailResponse
+}
+
+export type PutWorkspacesCurrentSkillsBySkillIdFilesResponse =
+  PutWorkspacesCurrentSkillsBySkillIdFilesResponses[keyof PutWorkspacesCurrentSkillsBySkillIdFilesResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesContentData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query: {
+    download?: string
+    path: string
+    version_id?: string
+  }
+  url: '/workspaces/current/skills/{skill_id}/files/content'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponse =
+  GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query: {
+    path: string
+    version_id?: string
+  }
+  url: '/workspaces/current/skills/{skill_id}/files/preview'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponses = {
+  200: SkillFilePreviewResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse =
+  GetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponses[keyof GetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponses]
+
+export type PostWorkspacesCurrentSkillsBySkillIdPublishData = {
+  body: SkillPublishPayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/publish'
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdPublishResponses = {
+  200: SkillVersionResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdPublishResponse =
+  PostWorkspacesCurrentSkillsBySkillIdPublishResponses[keyof PostWorkspacesCurrentSkillsBySkillIdPublishResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdReferencesData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/references'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdReferencesResponses = {
+  200: SkillReferenceListResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdReferencesResponse =
+  GetWorkspacesCurrentSkillsBySkillIdReferencesResponses[keyof GetWorkspacesCurrentSkillsBySkillIdReferencesResponses]
+
+export type PostWorkspacesCurrentSkillsBySkillIdRestoreData = {
+  body: SkillRestorePayload
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/restore'
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdRestoreResponses = {
+  200: SkillVersionResponse
+}
+
+export type PostWorkspacesCurrentSkillsBySkillIdRestoreResponse =
+  PostWorkspacesCurrentSkillsBySkillIdRestoreResponses[keyof PostWorkspacesCurrentSkillsBySkillIdRestoreResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsData = {
+  body?: never
+  path: {
+    skill_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/versions'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsResponses = {
+  200: SkillVersionListResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsResponse =
+  GetWorkspacesCurrentSkillsBySkillIdVersionsResponses[keyof GetWorkspacesCurrentSkillsBySkillIdVersionsResponses]
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
+  body?: never
+  path: {
+    skill_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
+  200: SkillVersionDeleteResponse
+}
+
+export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses[keyof DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses]
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
+  body?: never
+  path: {
+    skill_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
+  200: SkillVersionDetailResponse
+}
+
+export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses[keyof GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses]
+
+export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
+  body: SkillVersionUpdatePayload
+  path: {
+    skill_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/workspaces/current/skills/{skill_id}/versions/{version_id}'
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses = {
+  200: SkillVersionResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse =
+  PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses[keyof PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never

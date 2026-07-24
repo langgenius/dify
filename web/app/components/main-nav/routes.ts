@@ -32,6 +32,8 @@ export type DetailSidebarVisibilityOptions = Pick<
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
 const CAN_USE_APP_DEPLOY: MainNavRouteVisibility = (options) => options.canUseAppDeploy
+const NOT_DATASET_OPERATOR: MainNavRouteVisibility = (options) =>
+  !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -68,6 +70,15 @@ export const MAIN_NAV_ROUTES = [
     activeIcon: 'i-custom-vender-main-nav-roster-active',
     visibility: CAN_MANAGE_AGENTS,
     feature: 'agentV2',
+  },
+  {
+    key: 'skills',
+    href: '/skills',
+    labelKey: 'mainNav.skills',
+    active: (path: string) => isPathUnderRoute(path, '/skills'),
+    icon: 'i-ri-box-3-line',
+    activeIcon: 'i-ri-box-3-fill',
+    visibility: NOT_DATASET_OPERATOR,
   },
   {
     key: 'datasets',

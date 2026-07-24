@@ -16,7 +16,10 @@ import {
   agentComposerPublishedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
@@ -342,7 +345,13 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   }
 }
 
-function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+function renderReadonlyAgentTools({
+  initialDraft = agentToolsDraft,
+  viewingVersion = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  viewingVersion?: boolean
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -354,9 +363,11 @@ function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agent
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentOrchestrateReadOnlyContext value>
-          <AgentTools />
-        </AgentOrchestrateReadOnlyContext>
+        <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+          <AgentOrchestrateReadOnlyContext value>
+            <AgentTools />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -443,9 +454,9 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
     })
 
-    it('should hide add, edit, and remove actions when readonly', async () => {
+    it('should hide add, edit, and remove actions when viewing a version', async () => {
       const user = userEvent.setup()
-      renderReadonlyAgentTools()
+      renderReadonlyAgentTools({ viewingVersion: true })
 
       expect(
         screen.queryByRole('button', {
@@ -484,6 +495,16 @@ describe('AgentTools', () => {
           name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
         }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should keep add action available for build drafts', () => {
+      renderReadonlyAgentTools()
+
+      expect(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should hide CLI tool rows while CLI tools are disabled', () => {
