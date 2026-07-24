@@ -16,6 +16,7 @@ from __future__ import annotations
 import io
 import urllib.parse
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from operator import itemgetter
@@ -28,7 +29,7 @@ from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.db.session_factory import session_factory
+from core.db.session_factory import session_factory as default_session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
 from factories import file_factory
@@ -114,18 +115,29 @@ class ConfigDownload:
 
 
 class AgentConfigService:
-    """Read and update Agent Soul-backed config assets for one version target."""
+    """Read and update Agent Soul-backed config assets for one version target.
+
+    The service owns the lifecycle of its database sessions. Callers may inject
+    a session creator for an alternate engine; production defaults to the
+    application-wide session factory.
+    """
 
     PREVIEW_MAX_BYTES = 64 * 1024
+
+    _session_factory: Callable[[], Session]
 
     def __init__(
         self,
         *,
         tool_file_manager: ToolFileManager | None = None,
         skill_normalize_service: ConfigSkillNormalizeService | None = None,
+        session_factory: Callable[[], Session] | None = None,
     ) -> None:
+        """Initialize external collaborators and the service-owned session creator."""
+
         self._tool_files = tool_file_manager or ToolFileManager()
         self._skill_normalizer = skill_normalize_service or ConfigSkillNormalizeService()
+        self._session_factory = session_factory or default_session_factory.create_session
 
     def resolve_target(
         self,
@@ -136,7 +148,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> AgentConfigTarget:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -494,7 +506,7 @@ class AgentConfigService:
         filename: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -579,7 +591,7 @@ class AgentConfigService:
         config_version_kind: AgentConfigVersionKind,
         upload_file_id: str,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -615,7 +627,7 @@ class AgentConfigService:
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -709,7 +721,7 @@ class AgentConfigService:
         env_text: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -756,7 +768,7 @@ class AgentConfigService:
         note: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             target = self._resolve_target_in_session(
                 session,
                 tenant_id=tenant_id,
@@ -1339,7 +1351,7 @@ class AgentConfigService:
         return file_ref.file_id
 
     def _load_tool_file_bytes(self, *, tenant_id: str, file_id: str) -> tuple[bytes, str | None]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id))
         if tool_file is None:
             raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
@@ -1352,7 +1364,7 @@ class AgentConfigService:
         file_kind: Literal["upload_file", "tool_file"],
         file_id: str,
     ) -> tuple[bytes, str | None, str | None]:
-        with session_factory.create_session() as session:
+        with self._session_factory() as session:
             if file_kind == "tool_file":
                 tool_file = session.scalar(
                     select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
