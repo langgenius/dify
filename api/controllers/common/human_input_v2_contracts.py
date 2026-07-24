@@ -14,7 +14,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Annotated, Literal, NewType, Self, Union
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, field_validator, model_validator
 
 from core.human_input_v2.entities import (
     EmailProviderType,
@@ -771,13 +771,20 @@ class LegacyHITLv1NodeData(HITLv1NodeData):
 
     model_config = ConfigDict(extra="ignore")
 
-    version: Literal["1"] = Field(
+    version: str = Field(
         default="1",
         description=(
             'Legacy Human Input node version. Missing values default to "1"; '
             'any explicit value other than the string "1" is rejected.'
         ),
     )
+
+    @field_validator("version")
+    @classmethod
+    def validate_version(cls, value: str) -> str:
+        if value != "1":
+            raise ValueError('version must be "1"')
+        return value
 
 
 class NodeDataMigrationInput(_MigrationInputModel):
