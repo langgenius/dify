@@ -1292,32 +1292,17 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
-#### LicenseLimitationModel
-
-- enabled: whether this limit is enforced
-- size: current usage count
-- limit: maximum allowed count; 0 means unlimited
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | Yes |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
-| size | integer | Number of resources already consumed | Yes |
-
-#### LicenseModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| expired_at | string |  | Yes |
-| seats | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-| status | [LicenseStatus](#licensestatus) |  | Yes |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-
 #### LicenseStatus
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
+
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
 
 #### LoginPayload
 
@@ -1592,7 +1577,7 @@ Default configuration for form inputs.
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |

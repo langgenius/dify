@@ -9483,13 +9483,27 @@ data required for dashboard initialization.
 
 Authentication would create circular dependency (can't login without dashboard loading).
 
-Only non-sensitive configuration data should be returned by this endpoint.
+Only non-sensitive configuration data should be returned by this endpoint. Authenticated
+license detail is served separately by SystemFeatureLicenseApi.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+
+### [GET] /system-features/license
+**Get full license detail (status, expiry, workspace/seat usage)**
+
+Get license status and usage detail
+Authenticated counterpart to the license *status* exposed on the public
+system-features endpoint.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [LicenseModel](#licensemodel)<br> |
 
 ### [POST] /tag-bindings
 #### Request Body
@@ -18823,6 +18837,12 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
 
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
+
 #### LimitationModel
 
 | Name | Type | Description | Required |
@@ -22052,7 +22072,7 @@ Model class for provider system configuration response.
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
