@@ -1,12 +1,10 @@
-from typing import Any
-
 from flask import Flask
 from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
-from graphon.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 
 
 class HostingQuota(BaseModel):
@@ -30,7 +28,7 @@ class FreeHostingQuota(HostingQuota):
 
 class HostingProvider(BaseModel):
     enabled: bool = False
-    credentials: dict[str, Any] | None = None
+    credentials: dict | None = None
     quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 
@@ -240,8 +238,7 @@ class HostingConfiguration:
         if len(quotas) > 0:
             credentials = {
                 "dashscope_api_key": dify_config.HOSTED_TONGYI_API_KEY,
-                # SNP-494: keep temporary compatibility with tongyi plugin string credential checks.
-                "use_international_endpoint": str(dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT).lower(),
+                "use_international_endpoint": dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT,
             }
 
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)

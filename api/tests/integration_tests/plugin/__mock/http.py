@@ -4,28 +4,23 @@ from typing import Literal
 import httpx
 import pytest
 
-from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.entities.tool_entities import ToolProviderEntity, ToolProviderIdentity
 
 
 class MockedHttp:
     @classmethod
-    def list_tools(cls) -> list[PluginToolProviderEntity]:
+    def list_tools(cls) -> list[ToolProviderEntity]:
         return [
-            PluginToolProviderEntity(
-                provider="Yeuoly",
-                plugin_unique_identifier="langgenius/yeuoly:0.0.1@mock",
-                plugin_id="mock-plugin",
-                declaration=ToolProviderEntityWithPlugin(
-                    identity=ToolProviderIdentity(
-                        author="Yeuoly",
-                        name="Yeuoly",
-                        description=I18nObject(en_US="Yeuoly"),
-                        icon="ssss.svg",
-                        label=I18nObject(en_US="Yeuoly"),
-                    )
-                ),
+            ToolProviderEntity(
+                identity=ToolProviderIdentity(
+                    author="Yeuoly",
+                    name="Yeuoly",
+                    description=I18nObject(en_US="Yeuoly"),
+                    icon="ssss.svg",
+                    label=I18nObject(en_US="Yeuoly"),
+                )
             )
         ]
 
@@ -38,7 +33,7 @@ class MockedHttp:
         """
         request = httpx.Request(method, url)
         if url.endswith("/tools"):
-            content = PluginDaemonBasicResponse[list[PluginToolProviderEntity]](
+            content = PluginDaemonBasicResponse[list[ToolProviderEntity]](
                 code=0, message="success", data=cls.list_tools()
             ).model_dump_json()
         else:

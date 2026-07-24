@@ -1,27 +1,16 @@
-import inspect
 import logging
 import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Protocol, cast, overload
+from typing import Concatenate, ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
-from flask_restx.utils import merge
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-from configs import dify_config
-from controllers.service_api.schema import (
-    USER_FETCH_FROM_ATTR,
-    USER_FORM_PARAM,
-    USER_QUERY_PARAM,
-    USER_REQUIRED_ATTR,
-)
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -33,13 +22,11 @@ from services.api_token_service import ApiTokenCache, fetch_token_with_single_fl
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
+
 logger = logging.getLogger(__name__)
-
-
-class _RestxDocumentedView(Protocol):
-    """Callable view object carrying Flask-RESTX documentation metadata."""
-
-    __apidoc__: dict[str, object]
 
 
 class WhereisUserArg(StrEnum):
@@ -57,54 +44,13 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
-APP_TOKEN_FORBIDDEN_RESPONSE = {
-    403: "Forbidden - token scope, app, dataset, or workspace access denied",
-}
-
-DATASET_TOKEN_AUTH_RESPONSES = {
-    401: "Unauthorized - invalid API token",
-    403: "Forbidden - dataset API access or workspace access denied",
-}
-
-
-def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
-    doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
-    if fetch_user_arg is not None:
-        setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
-        setattr(view_func, USER_REQUIRED_ATTR, fetch_user_arg.required)
-        match fetch_user_arg.fetch_from:
-            case WhereisUserArg.QUERY:
-                doc["params"] = {"user": {**USER_QUERY_PARAM, "required": fetch_user_arg.required}}
-            case WhereisUserArg.FORM:
-                doc["params"] = {"user": {**USER_FORM_PARAM, "required": fetch_user_arg.required}}
-            case WhereisUserArg.JSON:
-                pass
-
-    cast(_RestxDocumentedView, view_func).__apidoc__ = cast(
-        dict[str, object],
-        merge(getattr(view_func, "__apidoc__", {}), doc),
-    )
-
-
-@overload
-def validate_app_token[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
-
-
-@overload
-def validate_app_token[**P, R](
-    view: None = None, *, fetch_user_arg: FetchUserArg | None = None
-) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
-
-
-def validate_app_token[**P, R](
-    view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token("app")
 
-            app_model = db.session.get(App, api_token.app_id)
+            app_model = db.session.query(App).where(App.id == api_token.app_id).first()
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -114,7 +60,7 @@ def validate_app_token[**P, R](
             if not app_model.enable_api:
                 raise Forbidden("The app's API service has been disabled.")
 
-            tenant = db.session.get(Tenant, app_model.tenant_id)
+            tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
@@ -148,8 +94,8 @@ def validate_app_token[**P, R](
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
-                tenant_owner_info = db.session.execute(
-                    select(Tenant, Account)
+                tenant_owner_info = (
+                    db.session.query(Tenant, Account)
                     .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
                     .join(Account, TenantAccountJoin.account_id == Account.id)
                     .where(
@@ -157,11 +103,12 @@ def validate_app_token[**P, R](
                         TenantAccountJoin.role == "owner",
                         Tenant.status == TenantStatus.NORMAL,
                     )
-                ).one_or_none()
+                    .one_or_none()
+                )
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
-                    account.set_current_tenant_with_session(tenant_model, session=db.session())
+                    account.current_tenant = tenant_model
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
@@ -169,7 +116,6 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
-        _document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
@@ -178,33 +124,24 @@ def validate_app_token[**P, R](
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check[**P, R](
-    resource: str,
-    api_token_type: str,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
-                    return view(*args, **kwargs)
-
-                vector_space = FeatureService.get_vector_space(api_token.tenant_id)
-                if 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
-                return view(*args, **kwargs)
-
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            features = FeatureService.get_features(api_token.tenant_id)
 
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
+                vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
                     raise Forbidden("The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     raise Forbidden("The number of apps has reached the limit of your subscription.")
+                elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
+                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
@@ -217,15 +154,12 @@ def cloud_edition_billing_resource_check[**P, R](
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check[**P, R](
-    resource: str,
-    api_token_type: str,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
-            features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+            features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == CloudPlan.SANDBOX:
@@ -242,10 +176,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check[**P, R](
-    resource: str,
-    api_token_type: str,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -270,8 +201,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
-                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                            session.add(rate_limit_log)
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
@@ -282,73 +213,90 @@ def cloud_edition_billing_rate_limit_check[**P, R](
     return interceptor
 
 
-def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
-    positional_parameters = [
-        parameter
-        for parameter in inspect.signature(view).parameters.values()
-        if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-    ]
-    expects_bound_instance = bool(positional_parameters and positional_parameters[0].name in {"self", "cls"})
+def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[T, P], R]):
+        @wraps(view)
+        def decorated(*args: P.args, **kwargs: P.kwargs):
+            api_token = validate_and_get_api_token("dataset")
 
-    @wraps(view)
-    def decorated(*args: object, **kwargs: object) -> R:
-        api_token = validate_and_get_api_token("dataset")
+            # get url path dataset_id from positional args or kwargs
+            # Flask passes URL path parameters as positional arguments
+            dataset_id = None
 
-        # Flask may pass URL path parameters positionally, so inspect both kwargs and args.
-        dataset_id = kwargs.get("dataset_id")
+            # First try to get from kwargs (explicit parameter)
+            dataset_id = kwargs.get("dataset_id")
 
-        if not dataset_id and args:
-            potential_id = args[0]
-            try:
-                str_id = str(potential_id)
-                if len(str_id) == 36 and str_id.count("-") == 4:
-                    dataset_id = str_id
-            except Exception:
-                logger.exception("Failed to parse dataset_id from positional args")
+            # If not in kwargs, try to extract from positional args
+            if not dataset_id and args:
+                # For class methods: args[0] is self, args[1] is dataset_id (if exists)
+                # Check if first arg is likely a class instance (has __dict__ or __class__)
+                if len(args) > 1 and hasattr(args[0], "__dict__"):
+                    # This is a class method, dataset_id should be in args[1]
+                    potential_id = args[1]
+                    # Validate it's a string-like UUID, not another object
+                    try:
+                        # Try to convert to string and check if it's a valid UUID format
+                        str_id = str(potential_id)
+                        # Basic check: UUIDs are 36 chars with hyphens
+                        if len(str_id) == 36 and str_id.count("-") == 4:
+                            dataset_id = str_id
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from class method args")
+                elif len(args) > 0:
+                    # Not a class method, check if args[0] looks like a UUID
+                    potential_id = args[0]
+                    try:
+                        str_id = str(potential_id)
+                        if len(str_id) == 36 and str_id.count("-") == 4:
+                            dataset_id = str_id
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from positional args")
 
-        if dataset_id:
-            dataset_id = str(dataset_id)
-            dataset = db.session.scalar(
-                select(Dataset)
-                .where(
-                    Dataset.id == dataset_id,
-                    Dataset.tenant_id == api_token.tenant_id,
+            # Validate dataset if dataset_id is provided
+            if dataset_id:
+                dataset_id = str(dataset_id)
+                dataset = (
+                    db.session.query(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .first()
                 )
-                .limit(1)
-            )
-            if not dataset:
-                raise NotFound("Dataset not found.")
-            if not dataset.enable_api:
-                raise Forbidden("Dataset api access is not enabled.")
-
-        tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
-        ).one_or_none()  # TODO: only owner information is required, so only one is returned.
-        if tenant_account_join:
-            tenant, ta = tenant_account_join
-            account = db.session.get(Account, ta.account_id)
-            # Login admin
-            if account:
-                account.set_current_tenant_with_session(tenant, session=db.session())
-                current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                if not dataset:
+                    raise NotFound("Dataset not found.")
+                if not dataset.enable_api:
+                    raise Forbidden("Dataset api access is not enabled.")
+            tenant_account_join = (
+                db.session.query(Tenant, TenantAccountJoin)
+                .where(Tenant.id == api_token.tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.role.in_(["owner"]))
+                .where(Tenant.status == TenantStatus.NORMAL)
+                .one_or_none()
+            )  # TODO: only owner information is required, so only one is returned.
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                # Login admin
+                if account:
+                    account.current_tenant = tenant
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account does not exist.")
             else:
-                raise Unauthorized("Tenant owner account does not exist.")
-        else:
-            raise Unauthorized("Tenant does not exist.")
+                raise Unauthorized("Tenant does not exist.")
+            return view(api_token.tenant_id, *args, **kwargs)
 
-        if expects_bound_instance:
-            if not args:
-                raise TypeError("validate_dataset_token expected a bound resource instance.")
-            return view(args[0], api_token.tenant_id, *args[1:], **kwargs)
+        return decorated
 
-        return view(api_token.tenant_id, *args, **kwargs)
+    if view:
+        return decorator(view)
 
-    return decorated
+    # if view is None, it means that the decorator is used without parentheses
+    # use the decorator as a function for method_decorators
+    return decorator
 
 
 def validate_and_get_api_token(scope: str | None = None):
@@ -387,14 +335,10 @@ def validate_and_get_api_token(scope: str | None = None):
 
 
 class DatasetApiResource(Resource):
-    __apidoc__ = {"responses": DATASET_TOKEN_AUTH_RESPONSES}
-
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
-        dataset = db.session.scalar(
-            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
-        )
+        dataset = db.session.query(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).first()
 
         if not dataset:
             raise NotFound("Dataset not found.")

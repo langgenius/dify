@@ -1,15 +1,15 @@
 'use client'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
 import { downloadUrl } from '@/utils/download'
 
-type Props = Readonly<{
+type Props = {
   content: string
-}>
+}
 
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 
@@ -20,16 +20,17 @@ const ShareQRCode = ({ content }: Props) => {
 
   const toggleQRCode = (event: React.MouseEvent) => {
     event.stopPropagation()
-    setIsShow((prev) => !prev)
+    setIsShow(prev => !prev)
   }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      /* v8 ignore next 2 -- this handler can fire during open/close transitions where the panel ref is temporarily null; guard is defensive. @preserve */
-      if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node)) setIsShow(false)
+      if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node))
+        setIsShow(false)
     }
 
-    if (isShow) document.addEventListener('click', handleClickOutside)
+    if (isShow)
+      document.addEventListener('click', handleClickOutside)
 
     return () => {
       document.removeEventListener('click', handleClickOutside)
@@ -38,7 +39,8 @@ const ShareQRCode = ({ content }: Props) => {
 
   const downloadQR = () => {
     const canvas = qrCodeRef.current?.querySelector('canvas')
-    if (!(canvas instanceof HTMLCanvasElement)) return
+    if (!(canvas instanceof HTMLCanvasElement))
+      return
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
@@ -46,45 +48,29 @@ const ShareQRCode = ({ content }: Props) => {
     event.stopPropagation()
   }
 
-  const tooltipText = t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
-  /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
-  const safeTooltipText = tooltipText || ''
-  const downloadText = t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
-
   return (
-    <Tooltip>
-      <div className="relative size-6">
-        <TooltipTrigger
-          render={
-            <ActionButton aria-label={safeTooltipText} onClick={toggleQRCode}>
-              <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
-            </ActionButton>
-          }
-        />
+    <Tooltip
+      popupContent={t(`${prefixEmbedded}`, { ns: 'appOverview' }) || ''}
+    >
+      <div className="relative h-6 w-6" onClick={toggleQRCode} data-testid="qrcode-container">
+        <ActionButton>
+          <span className="i-ri-qr-code-line h-4 w-4" />
+        </ActionButton>
         {isShow && (
           <div
             ref={qrCodeRef}
-            className="absolute top-8 -right-8 z-10 flex w-[232px] flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
+            className="absolute -right-8 top-8 z-10 flex w-[232px] flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
             onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">
-              <div className="text-text-tertiary">
-                {t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })}
-              </div>
+              <div className="text-text-tertiary">{t('overview.appInfo.qrcode.scan', { ns: 'appOverview' })}</div>
               <div className="text-text-tertiary">·</div>
-              <button
-                type="button"
-                className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                onClick={downloadQR}
-              >
-                {downloadText}
-              </button>
+              <div className="cursor-pointer text-text-accent-secondary" onClick={downloadQR}>{t('overview.appInfo.qrcode.download', { ns: 'appOverview' })}</div>
             </div>
           </div>
         )}
       </div>
-      <TooltipContent>{safeTooltipText}</TooltipContent>
     </Tooltip>
   )
 }

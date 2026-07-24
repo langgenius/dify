@@ -1,5 +1,7 @@
-// import { Button } from '@langgenius/dify-ui/button'
-// import { StatusDot } from '@langgenius/dify-ui/status-dot'
+// import { useAppContext } from '@/context/app-context'
+// import Button from '@/app/components/base/button'
+// import Toast from '@/app/components/base/toast'
+// import Indicator from '@/app/components/header/indicator'
 // import ToolItem from '@/app/components/tools/provider/tool-item'
 // import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import type { PluginDetail } from '@/app/components/plugins/types'
@@ -9,19 +11,23 @@ import { useTranslation } from 'react-i18next'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import { useDataSourceList } from '@/service/use-pipeline'
 
-type Props = Readonly<{
+type Props = {
   detail: PluginDetail
-}>
+}
 
-const ActionList = ({ detail }: Props) => {
+const ActionList = ({
+  detail,
+}: Props) => {
   const { t } = useTranslation()
+  // const { isCurrentWorkspaceManager } = useAppContext()
   // const providerBriefInfo = detail.declaration.datasource?.identity
   // const providerKey = `${detail.plugin_id}/${providerBriefInfo?.name}`
   const { data: dataSourceList } = useDataSourceList(true)
   const provider = useMemo(() => {
-    const result = dataSourceList?.find((collection) => collection.plugin_id === detail.plugin_id)
+    const result = dataSourceList?.find(collection => collection.plugin_id === detail.plugin_id)
 
-    if (result) return transformDataSourceToTool(result)
+    if (result)
+      return transformDataSourceToTool(result)
   }, [detail.plugin_id, dataSourceList])
   const data: any = []
   // const { data } = useBuiltinTools(providerKey)
@@ -29,6 +35,10 @@ const ActionList = ({ detail }: Props) => {
   // const [showSettingAuth, setShowSettingAuth] = useState(false)
 
   // const handleCredentialSettingUpdate = () => {
+  //   Toast.notify({
+  //     type: 'success',
+  //     message: t('common.api.actionSuccess'),
+  //   })
   //   setShowSettingAuth(false)
   // }
 
@@ -40,17 +50,14 @@ const ActionList = ({ detail }: Props) => {
   //   onSuccess: handleCredentialSettingUpdate,
   // })
 
-  if (!data || !provider) return null
+  if (!data || !provider)
+    return null
 
   return (
-    <div className="px-4 pt-2 pb-4">
+    <div className="px-4 pb-4 pt-2">
       <div className="mb-1 py-1">
-        <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
-          {t(($) => $['detailPanel.actionNum'], {
-            ns: 'plugin',
-            num: data.length,
-            action: data.length > 1 ? 'actions' : 'action',
-          })}
+        <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+          {t('detailPanel.actionNum', { ns: 'plugin', num: data.length, action: data.length > 1 ? 'actions' : 'action' })}
           {/* {provider.is_team_authorization && provider.allow_delete && (
             <Button
               variant='secondary'
@@ -58,7 +65,7 @@ const ActionList = ({ detail }: Props) => {
               onClick={() => setShowSettingAuth(true)}
               disabled={!isCurrentWorkspaceManager}
             >
-              <StatusDot className='mr-2' status={'success'} />
+              <Indicator className='mr-2' color={'green'} />
               {t('tools.auth.authorized')}
             </Button>
           )} */}

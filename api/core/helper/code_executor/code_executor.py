@@ -13,7 +13,7 @@ from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTr
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
 from core.helper.http_client_pooling import get_pooled_http_client
-from graphon.nodes.code.entities import CodeLanguage as CodeLanguage  # noqa: PLC0414
+from dify_graph.nodes.code.entities import CodeLanguage
 
 logger = logging.getLogger(__name__)
 code_execution_endpoint_url = URL(str(dify_config.CODE_EXECUTION_ENDPOINT))
@@ -74,16 +74,12 @@ class CodeExecutor:
         :param code: code
         :return:
         """
-        running_language = cls.code_language_to_running_language.get(language)
-        if running_language is None:
-            raise CodeExecutionError(f"Unsupported language {language}")
-
         url = code_execution_endpoint_url / "v1" / "sandbox" / "run"
 
         headers = {"X-Api-Key": dify_config.CODE_EXECUTION_API_KEY}
 
         data = {
-            "language": running_language,
+            "language": cls.code_language_to_running_language.get(language),
             "code": code,
             "preload": preload,
             "enable_network": True,
@@ -137,9 +133,7 @@ class CodeExecutor:
         return response_code.data.stdout or ""
 
     @classmethod
-    def execute_workflow_code_template(
-        cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]
-    ) -> dict[str, Any]:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]):
         """
         Execute code
         :param language: code language

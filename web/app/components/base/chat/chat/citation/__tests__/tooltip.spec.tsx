@@ -3,11 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import Tooltip from '../tooltip'
 
-const renderTooltip = (
-  data: number | string = 42,
-  text = 'Characters',
-  icon = <span data-testid="mock-icon">icon</span>,
-) => render(<Tooltip data={data} text={text} icon={icon} />)
+const renderTooltip = (data: number | string = 42, text = 'Characters', icon = <span data-testid="mock-icon">icon</span>) =>
+  render(<Tooltip data={data} text={text} icon={icon} />)
 
 describe('Tooltip', () => {
   describe('Rendering', () => {
@@ -44,7 +41,7 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      expect(await screen.findByTestId('tooltip-popup')).toHaveTextContent('Word Count')
+      expect(screen.getByTestId('tooltip-popup')).toHaveTextContent('Word Count')
     })
 
     it('should render the data value inside the tooltip popup', async () => {
@@ -53,7 +50,7 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      expect(await screen.findByTestId('tooltip-popup')).toHaveTextContent('99')
+      expect(screen.getByTestId('tooltip-popup')).toHaveTextContent('99')
     })
 
     it('should render a string data value inside the tooltip popup', async () => {
@@ -62,7 +59,7 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      expect(await screen.findByTestId('tooltip-popup')).toHaveTextContent('abc1234')
+      expect(screen.getByTestId('tooltip-popup')).toHaveTextContent('abc1234')
     })
 
     it('should render both text and data together inside the tooltip popup', async () => {
@@ -71,7 +68,7 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      const popup = await screen.findByTestId('tooltip-popup')
+      const popup = screen.getByTestId('tooltip-popup')
       expect(popup).toHaveTextContent('Characters')
       expect(popup).toHaveTextContent('55')
     })
@@ -93,10 +90,10 @@ describe('Tooltip', () => {
       const user = userEvent.setup()
       const { rerender } = render(<Tooltip data={10} text="Original" icon={<span />} />)
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
-      expect(await screen.findByTestId('tooltip-popup')).toHaveTextContent('Original')
+      expect(screen.getByTestId('tooltip-popup')).toHaveTextContent('Original')
 
       rerender(<Tooltip data={10} text="Updated" icon={<span />} />)
-      expect(await screen.findByTestId('tooltip-popup')).toHaveTextContent('Updated')
+      expect(screen.getByTestId('tooltip-popup')).toHaveTextContent('Updated')
     })
   })
 
@@ -107,7 +104,7 @@ describe('Tooltip', () => {
 
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      expect(await screen.findByTestId('tooltip-popup')).toBeInTheDocument()
+      expect(screen.getByTestId('tooltip-popup')).toBeInTheDocument()
     })
 
     it('should hide the tooltip popup on mouse leave', async () => {
@@ -128,11 +125,23 @@ describe('Tooltip', () => {
       await user.unhover(screen.getByTestId('tooltip-trigger-content'))
       await user.hover(screen.getByTestId('tooltip-trigger-content'))
 
-      expect(await screen.findByTestId('tooltip-popup')).toBeInTheDocument()
+      expect(screen.getByTestId('tooltip-popup')).toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
+    it('should render without crashing when data is 0', () => {
+      expect(() => render(<Tooltip data={0} text="score" icon={<span />} />)).not.toThrow()
+    })
+
+    it('should render without crashing when data is an empty string', () => {
+      expect(() => render(<Tooltip data="" text="label" icon={<span />} />)).not.toThrow()
+    })
+
+    it('should render without crashing when text is an empty string', () => {
+      expect(() => render(<Tooltip data={1} text="" icon={<span />} />)).not.toThrow()
+    })
+
     it('should keep tooltip closed without any interaction', () => {
       renderTooltip(0.5)
       expect(screen.queryByTestId('tooltip-popup')).not.toBeInTheDocument()

@@ -1,12 +1,24 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from fields.base import ResponseModel
-from libs.helper import to_timestamp
+
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
 
 class Annotation(ResponseModel):
@@ -19,7 +31,7 @@ class Annotation(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        return _to_timestamp(value)
 
 
 class AnnotationList(ResponseModel):
@@ -28,15 +40,6 @@ class AnnotationList(ResponseModel):
     limit: int
     total: int
     page: int
-
-
-class AnnotationJobStatusResponse(ResponseModel):
-    job_id: str
-    job_status: Literal["waiting", "processing", "completed", "error"] | str
-
-
-class AnnotationJobStatusDetailResponse(AnnotationJobStatusResponse):
-    error_msg: str = ""
 
 
 class AnnotationExportList(ResponseModel):
@@ -55,7 +58,7 @@ class AnnotationHitHistory(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        return _to_timestamp(value)
 
 
 class AnnotationHitHistoryList(ResponseModel):

@@ -1,10 +1,7 @@
 'use client'
 
 import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import type {
-  Model,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
@@ -12,7 +9,6 @@ import { defaultPlan } from '@/app/components/billing/config'
 
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
-  isLoadingModelProviders: boolean
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
@@ -24,7 +20,6 @@ export type ProviderContextState = {
     reset: UsageResetInfo
   }
   isFetchedPlan: boolean
-  isFetchedPlanInfo: boolean
   enableBilling: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
@@ -52,14 +47,12 @@ export type ProviderContextState = {
 
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
-  isLoadingModelProviders: false,
   refreshModelProviders: noop,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
-  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -93,3 +86,5 @@ export const useProviderContext = () => useContext(ProviderContext)
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useProviderContextSelector = <T>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
+
+export default ProviderContext

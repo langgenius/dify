@@ -1,4 +1,3 @@
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -12,7 +11,7 @@ NON_EXISTING_YAML_FILE = "non_existing_file.yaml"
 
 
 @pytest.fixture
-def prepare_example_yaml_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+def prepare_example_yaml_file(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     file_path = tmp_path.joinpath(EXAMPLE_YAML_FILE)
     file_path.write_text(
@@ -35,7 +34,7 @@ def prepare_example_yaml_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture
-def prepare_invalid_yaml_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     file_path = tmp_path.joinpath(INVALID_YAML_FILE)
     file_path.write_text(

@@ -1,13 +1,11 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Literal, overload
+from typing import Union
 from urllib.parse import unquote
 
-from sqlalchemy.orm import Session
-
 from configs import dify_config
-from core.file import remote_fetcher
+from core.helper import ssrf_proxy
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -42,22 +40,10 @@ USER_AGENT = (
 
 
 class ExtractProcessor:
-    @overload
-    @classmethod
-    def load_from_upload_file(
-        cls, upload_file: UploadFile, return_text: Literal[True], is_automatic: bool = False
-    ) -> str: ...
-
-    @overload
-    @classmethod
-    def load_from_upload_file(
-        cls, upload_file: UploadFile, return_text: Literal[False] = False, is_automatic: bool = False
-    ) -> list[Document]: ...
-
     @classmethod
     def load_from_upload_file(
         cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
-    ) -> list[Document] | str:
+    ) -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
             datasource_type=DatasourceType.FILE, upload_file=upload_file, document_model="text_model"
         )
@@ -67,17 +53,9 @@ class ExtractProcessor:
         else:
             return cls.extract(extract_setting, is_automatic)
 
-    @overload
     @classmethod
-    def load_from_url(cls, url: str, return_text: Literal[True]) -> str: ...
-
-    @overload
-    @classmethod
-    def load_from_url(cls, url: str, return_text: Literal[False] = False) -> list[Document]: ...
-
-    @classmethod
-    def load_from_url(cls, url: str, return_text: bool = False) -> list[Document] | str:
-        response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
+    def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
+        response = ssrf_proxy.get(url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
@@ -113,26 +91,19 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls,
-        extract_setting: ExtractSetting,
-        is_automatic: bool = False,
-        file_path: str | None = None,
-        *,
-        session: Session | None = None,
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
-            upload_file = extract_setting.upload_file
             with tempfile.TemporaryDirectory() as temp_dir:
-                upload_file = extract_setting.upload_file
                 if not file_path:
-                    assert upload_file is not None, "upload_file is required"
+                    assert extract_setting.upload_file is not None, "upload_file is required"
+                    upload_file: UploadFile = extract_setting.upload_file
                     suffix = Path(upload_file.key).suffix
                     # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
                     file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
-                assert upload_file is not None, "upload_file is required"
                 etl_type = dify_config.ETL_TYPE
                 extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":
@@ -140,17 +111,9 @@ class ExtractProcessor:
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
-                        extractor = ExcelExtractor(
-                            file_path,
-                            upload_file.tenant_id,
-                            upload_file.created_by,
-                            upload_file.id,
-                        )
+                        extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
-                        extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
-                        )
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
@@ -160,10 +123,7 @@ class ExtractProcessor:
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        assert upload_file is not None
-                        extractor = WordExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
-                        )
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".doc":
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".csv":
@@ -187,26 +147,15 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
-                        extractor = ExcelExtractor(
-                            file_path,
-                            upload_file.tenant_id,
-                            upload_file.created_by,
-                            upload_file.id,
-                        )
+                        extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        assert upload_file is not None
-                        extractor = PdfExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
-                        )
+                        extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
-                        assert upload_file is not None
-                        extractor = WordExtractor(
-                            file_path, upload_file.tenant_id, upload_file.created_by, session=session
-                        )
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".epub":
@@ -228,35 +177,34 @@ class ExtractProcessor:
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE:
             assert extract_setting.website_info is not None, "website_info is required"
-            match extract_setting.website_info.provider:
-                case "firecrawl":
-                    extractor = FirecrawlWebExtractor(
-                        url=extract_setting.website_info.url,
-                        job_id=extract_setting.website_info.job_id,
-                        tenant_id=extract_setting.website_info.tenant_id,
-                        mode=extract_setting.website_info.mode,
-                        only_main_content=extract_setting.website_info.only_main_content,
-                    )
-                    return extractor.extract()
-                case "watercrawl":
-                    extractor = WaterCrawlWebExtractor(
-                        url=extract_setting.website_info.url,
-                        job_id=extract_setting.website_info.job_id,
-                        tenant_id=extract_setting.website_info.tenant_id,
-                        mode=extract_setting.website_info.mode,
-                        only_main_content=extract_setting.website_info.only_main_content,
-                    )
-                    return extractor.extract()
-                case "jinareader":
-                    extractor = JinaReaderWebExtractor(
-                        url=extract_setting.website_info.url,
-                        job_id=extract_setting.website_info.job_id,
-                        tenant_id=extract_setting.website_info.tenant_id,
-                        mode=extract_setting.website_info.mode,
-                        only_main_content=extract_setting.website_info.only_main_content,
-                    )
-                    return extractor.extract()
-                case _:
-                    raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
+            if extract_setting.website_info.provider == "firecrawl":
+                extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "watercrawl":
+                extractor = WaterCrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "jinareader":
+                extractor = JinaReaderWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            else:
+                raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")

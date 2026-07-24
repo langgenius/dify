@@ -1,24 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { importSchemaFromURL } from '@/service/tools'
+import Toast from '../../../base/toast'
 import examples from '../examples'
 import GetSchema from '../get-schema'
 
 vi.mock('@/service/tools', () => ({
   importSchemaFromURL: vi.fn(),
 }))
-const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: mockToastError,
-  },
-}))
 const importSchemaFromURLMock = vi.mocked(importSchemaFromURL)
 
 describe('GetSchema', () => {
+  const notifySpy = vi.spyOn(Toast, 'notify')
   const mockOnChange = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    notifySpy.mockClear()
     importSchemaFromURLMock.mockReset()
     render(<GetSchema onChange={mockOnChange} />)
   })
@@ -30,7 +27,10 @@ describe('GetSchema', () => {
     fireEvent.change(input, { target: { value: 'ftp://invalid' } })
     fireEvent.click(screen.getByText('common.operation.ok'))
 
-    expect(mockToastError).toHaveBeenCalledWith('tools.createTool.urlError')
+    expect(notifySpy).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'tools.createTool.urlError',
+    })
   })
 
   it('imports schema from url when valid', async () => {

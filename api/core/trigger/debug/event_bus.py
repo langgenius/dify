@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from typing import TypeVar
 
 from redis import RedisError
 
@@ -9,6 +10,8 @@ from extensions.ext_redis import redis_client
 logger = logging.getLogger(__name__)
 
 TRIGGER_DEBUG_EVENT_TTL = 300
+
+TTriggerDebugEvent = TypeVar("TTriggerDebugEvent", bound="BaseDebugEvent")
 
 
 class TriggerDebugEventBus:
@@ -78,15 +81,15 @@ class TriggerDebugEventBus:
             return 0
 
     @classmethod
-    def poll[T: BaseDebugEvent](
+    def poll(
         cls,
-        event_type: type[T],
+        event_type: type[TTriggerDebugEvent],
         pool_key: str,
         tenant_id: str,
         user_id: str,
         app_id: str,
         node_id: str,
-    ) -> T | None:
+    ) -> TTriggerDebugEvent | None:
         """
         Poll for an event or register to the waiting pool.
 

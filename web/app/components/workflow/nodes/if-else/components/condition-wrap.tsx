@@ -1,39 +1,27 @@
 'use client'
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
-import type {
-  CaseItem,
-  HandleAddCondition,
-  HandleAddSubVariableCondition,
-  HandleRemoveCondition,
-  handleRemoveSubVariableCondition,
-  HandleToggleConditionLogicalOperator,
-  HandleToggleSubVariableConditionLogicalOperator,
-  HandleUpdateCondition,
-  HandleUpdateSubVariableCondition,
-} from '../types'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../types'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemText,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
-import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
+  RiAddLine,
+  RiDeleteBinLine,
+  RiDraggable,
+} from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import Button from '@/app/components/base/button'
+import { PortalSelect as Select } from '@/app/components/base/select'
+import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import ConditionAdd from './condition-add'
 import ConditionList from './condition-list'
 
-type Props = Readonly<{
+type Props = {
   isSubVariable?: boolean
   caseId?: string
   conditionId?: string
@@ -54,7 +42,7 @@ type Props = Readonly<{
   availableNodes: Node[]
   varsIsVarFileAttribute?: Record<string, boolean>
   filterVar: (varPayload: Var) => boolean
-}>
+}
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
@@ -89,7 +77,7 @@ const ConditionWrap: FC<Props> = ({
     return varPayload.type === VarType.number
   }, [])
 
-  const subVarOptions = SUB_VARIABLES.map((item) => ({
+  const subVarOptions = SUB_VARIABLES.map(item => ({
     name: item,
     value: item,
   }))
@@ -97,146 +85,146 @@ const ConditionWrap: FC<Props> = ({
   return (
     <>
       <ReactSortable
-        list={cases.map((caseItem) => ({ ...caseItem, id: caseItem.case_id }))}
+        list={cases.map(caseItem => ({ ...caseItem, id: caseItem.case_id }))}
         setList={handleSortCase}
         handle=".handle"
         ghostClass="bg-components-panel-bg"
         animation={150}
         disabled={readOnly || isSubVariable}
       >
-        {cases.map((item, index) => (
-          <div key={item.case_id}>
-            <div
-              className={cn(
-                'group relative rounded-[10px] bg-components-panel-bg',
-                willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                !isSubVariable && 'min-h-[40px] px-3 py-1',
-                isSubVariable && 'px-1 py-2',
-              )}
-            >
-              {!isSubVariable && (
-                <>
-                  <RiDraggable
-                    className={cn(
-                      'handle absolute top-2 left-1 hidden size-3 cursor-pointer text-text-quaternary',
-                      casesLength > 1 && 'group-hover:block',
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      'absolute left-4 text-[13px] leading-4 font-semibold text-text-secondary',
-                      casesLength === 1 ? 'top-2.5' : 'top-1',
-                    )}
-                  >
-                    {index === 0 ? 'IF' : 'ELIF'}
-                    {casesLength > 1 && (
-                      <div className="text-[10px] font-medium text-text-tertiary">
-                        CASE
-                        {index + 1}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {!!item.conditions.length && (
-                <div className="mb-2">
-                  <ConditionList
-                    disabled={readOnly}
-                    caseItem={item}
-                    caseId={isSubVariable ? caseId! : item.case_id}
-                    conditionId={conditionId}
-                    onUpdateCondition={handleUpdateCondition}
-                    onRemoveCondition={handleRemoveCondition}
-                    onToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
-                    nodeId={id}
-                    nodesOutputVars={nodesOutputVars}
-                    availableNodes={availableNodes}
-                    filterVar={filterVar}
-                    numberVariables={getAvailableVars(id, '', filterNumberVar)}
-                    varsIsVarFileAttribute={varsIsVarFileAttribute}
-                    onAddSubVariableCondition={handleAddSubVariableCondition}
-                    onRemoveSubVariableCondition={handleRemoveSubVariableCondition}
-                    onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
-                    onToggleSubVariableConditionLogicalOperator={
-                      handleToggleSubVariableConditionLogicalOperator
-                    }
-                    isSubVariable={isSubVariable}
-                  />
-                </div>
-              )}
-
+        {
+          cases.map((item, index) => (
+            <div key={item.case_id}>
               <div
                 className={cn(
+                  'group relative rounded-[10px] bg-components-panel-bg',
+                  willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
+                  !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+                  isSubVariable && 'px-1 py-2',
+                )}
+              >
+                {!isSubVariable && (
+                  <>
+                    <RiDraggable className={cn(
+                      'handle absolute left-1 top-2 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                      casesLength > 1 && 'group-hover:block',
+                    )}
+                    />
+                    <div className={cn(
+                      'absolute left-4 text-[13px] font-semibold leading-4 text-text-secondary',
+                      casesLength === 1 ? 'top-2.5' : 'top-1',
+                    )}
+                    >
+                      {
+                        index === 0 ? 'IF' : 'ELIF'
+                      }
+                      {
+                        casesLength > 1 && (
+                          <div className="text-[10px] font-medium text-text-tertiary">
+                            CASE
+                            {index + 1}
+                          </div>
+                        )
+                      }
+                    </div>
+                  </>
+                )}
+
+                {
+                  !!item.conditions.length && (
+                    <div className="mb-2">
+                      <ConditionList
+                        disabled={readOnly}
+                        caseItem={item}
+                        caseId={isSubVariable ? caseId! : item.case_id}
+                        conditionId={conditionId}
+                        onUpdateCondition={handleUpdateCondition}
+                        onRemoveCondition={handleRemoveCondition}
+                        onToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+                        nodeId={id}
+                        nodesOutputVars={nodesOutputVars}
+                        availableNodes={availableNodes}
+                        filterVar={filterVar}
+                        numberVariables={getAvailableVars(id, '', filterNumberVar)}
+                        varsIsVarFileAttribute={varsIsVarFileAttribute}
+                        onAddSubVariableCondition={handleAddSubVariableCondition}
+                        onRemoveSubVariableCondition={handleRemoveSubVariableCondition}
+                        onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
+                        onToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
+                        isSubVariable={isSubVariable}
+                      />
+                    </div>
+                  )
+                }
+
+                <div className={cn(
                   'flex items-center justify-between pr-[30px]',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && 'pl-[60px]',
+                  !isSubVariable && ' pl-[60px]',
                 )}
-              >
-                {isSubVariable ? (
-                  <Select
-                    value={null}
-                    disabled={readOnly}
-                    onValueChange={(value) =>
-                      value && handleAddSubVariableCondition?.(caseId!, conditionId!, value)
-                    }
-                  >
-                    <SelectTrigger
-                      render={<div />}
-                      nativeButton={false}
-                      className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
-                    >
-                      <Button size="small" disabled={readOnly}>
-                        <RiAddLine className="mr-1 size-3.5" />
-                        {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
-                      </Button>
-                    </SelectTrigger>
-                    <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
-                      {subVarOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <SelectItemText>{option.name}</SelectItemText>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <ConditionAdd
-                    disabled={readOnly}
-                    caseId={item.case_id}
-                    variables={getAvailableVars(id, '', filterVar)}
-                    onSelectVariable={handleAddCondition!}
-                  />
-                )}
+                >
+                  {isSubVariable
+                    ? (
+                        <Select
+                          popupInnerClassName="w-[165px] max-h-none"
+                          onSelect={value => handleAddSubVariableCondition?.(caseId!, conditionId!, value.value as string)}
+                          items={subVarOptions}
+                          value=""
+                          renderTrigger={() => (
+                            <Button
+                              size="small"
+                              disabled={readOnly}
+                            >
+                              <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                              {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+                            </Button>
+                          )}
+                          hideChecked
+                        />
+                      )
+                    : (
+                        <ConditionAdd
+                          disabled={readOnly}
+                          caseId={item.case_id}
+                          variables={getAvailableVars(id, '', filterVar)}
+                          onSelectVariable={handleAddCondition!}
+                        />
+                      )}
 
-                {((index === 0 && casesLength > 1) || index > 0) && (
-                  <Button
-                    className="hover:bg-components-button-destructive-ghost-bg-hover hover:text-components-button-destructive-ghost-text"
-                    size="small"
-                    variant="ghost"
-                    disabled={readOnly}
-                    onClick={() => handleRemoveCase?.(item.case_id)}
-                    onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
-                    onMouseLeave={() => setWillDeleteCaseId('')}
-                  >
-                    <RiDeleteBinLine className="mr-1 size-3.5" />
-                    {t(($) => $['operation.remove'], { ns: 'common' })}
-                  </Button>
-                )}
+                  {
+                    ((index === 0 && casesLength > 1) || (index > 0)) && (
+                      <Button
+                        className="hover:bg-components-button-destructive-ghost-bg-hover hover:text-components-button-destructive-ghost-text"
+                        size="small"
+                        variant="ghost"
+                        disabled={readOnly}
+                        onClick={() => handleRemoveCase?.(item.case_id)}
+                        onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
+                        onMouseLeave={() => setWillDeleteCaseId('')}
+                      >
+                        <RiDeleteBinLine className="mr-1 h-3.5 w-3.5" />
+                        {t('operation.remove', { ns: 'common' })}
+                      </Button>
+                    )
+                  }
+                </div>
               </div>
+              {!isSubVariable && (
+                <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
+              )}
             </div>
-            {!isSubVariable && <div className="mx-3 my-2 h-px bg-divider-subtle"></div>}
-          </div>
-        ))}
+          ))
+        }
       </ReactSortable>
-      {cases.length === 0 && (
+      {(cases.length === 0) && (
         <Button
           size="small"
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 size-3.5" />
-          {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
+          <RiAddLine className="mr-1 h-3.5 w-3.5" />
+          {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
         </Button>
       )}
     </>

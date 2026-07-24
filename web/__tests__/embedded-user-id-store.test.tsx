@@ -1,36 +1,65 @@
-import { screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { renderToString } from 'react-dom/server'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
+
 import { AccessMode } from '@/models/access-control'
-import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 
-const navigationMocks = vi.hoisted(() => ({
+vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/chatbot/sample-app'),
-  useSearchParams: vi.fn(() => new URLSearchParams()),
-}))
-
-const useGetWebAppAccessModeByCodeMock = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: navigationMocks.usePathname,
-  useSearchParams: navigationMocks.useSearchParams,
+  useSearchParams: vi.fn(() => {
+    const params = new URLSearchParams()
+    return params
+  }),
 }))
 
 vi.mock('@/service/use-share', () => ({
-  useGetWebAppAccessModeByCode: (...args: unknown[]) => useGetWebAppAccessModeByCodeMock(...args),
+  useGetWebAppAccessModeByCode: vi.fn(() => ({
+    isLoading: false,
+    data: { accessMode: AccessMode.PUBLIC },
+  })),
 }))
 
+// Store the mock implementation in a way that survives hoisting
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: (...args: any[]) =>
-    mockGetProcessedSystemVariablesFromUrlParams(...args),
+  getProcessedSystemVariablesFromUrlParams: (...args: any[]) => mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 
+// Use vi.hoisted to define mock state before vi.mock hoisting
+const { mockGlobalStoreState } = vi.hoisted(() => ({
+  mockGlobalStoreState: {
+    isGlobalPending: false,
+    setIsGlobalPending: vi.fn(),
+    systemFeatures: {},
+    setSystemFeatures: vi.fn(),
+  },
+}))
+
+vi.mock('@/context/global-public-context', () => {
+  const useGlobalPublicStore = Object.assign(
+    (selector?: (state: typeof mockGlobalStoreState) => any) =>
+      selector ? selector(mockGlobalStoreState) : mockGlobalStoreState,
+    {
+      setState: (updater: any) => {
+        if (typeof updater === 'function')
+          Object.assign(mockGlobalStoreState, updater(mockGlobalStoreState) ?? {})
+
+        else
+          Object.assign(mockGlobalStoreState, updater)
+      },
+      __mockState: mockGlobalStoreState,
+    },
+  )
+  return {
+    useGlobalPublicStore,
+    useIsSystemFeaturesPending: () => false,
+  }
+})
+
 const TestConsumer = () => {
-  const embeddedUserId = useWebAppStore((state) => state.embeddedUserId)
-  const embeddedConversationId = useWebAppStore((state) => state.embeddedConversationId)
+  const embeddedUserId = useWebAppStore(state => state.embeddedUserId)
+  const embeddedConversationId = useWebAppStore(state => state.embeddedConversationId)
   return (
     <>
       <div data-testid="embedded-user-id">{embeddedUserId ?? 'null'}</div>
@@ -62,91 +91,19 @@ const initialWebAppStore = (() => {
 })()
 
 beforeEach(() => {
+  mockGlobalStoreState.isGlobalPending = false
   mockGetProcessedSystemVariablesFromUrlParams.mockReset()
-  navigationMocks.usePathname.mockReset()
-  navigationMocks.usePathname.mockReturnValue('/chatbot/sample-app')
-  navigationMocks.useSearchParams.mockReset()
-  navigationMocks.useSearchParams.mockReturnValue(new URLSearchParams())
-  useGetWebAppAccessModeByCodeMock.mockReset()
-  useGetWebAppAccessModeByCodeMock.mockReturnValue({
-    isLoading: false,
-    data: { accessMode: AccessMode.PUBLIC },
-  })
   useWebAppStore.setState(initialWebAppStore, true)
 })
 
 describe('WebAppStoreProvider embedded user id handling', () => {
-  it('parses share code from redirect_url during server render without window', () => {
-    const params = new URLSearchParams()
-    params.set('redirect_url', encodeURIComponent('/chatbot/redirected-app'))
-    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
-    navigationMocks.useSearchParams.mockReturnValue(params)
-    const originalWindow = globalThis.window
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      value: undefined,
-    })
-    const { wrapper: Wrapper } = createConsoleQueryWrapper()
-
-    try {
-      expect(() =>
-        renderToString(
-          <Wrapper>
-            <WebAppStoreProvider>
-              <div />
-            </WebAppStoreProvider>
-          </Wrapper>,
-        ),
-      ).not.toThrow()
-    } finally {
-      Object.defineProperty(globalThis, 'window', {
-        configurable: true,
-        value: originalWindow,
-      })
-    }
-
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
-  })
-
-  it('does not derive a share code from an external redirect target', () => {
-    const params = new URLSearchParams()
-    params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
-    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
-    navigationMocks.useSearchParams.mockReturnValue(params)
-    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
-
-    renderWithConsoleQuery(
-      <WebAppStoreProvider>
-        <TestConsumer />
-      </WebAppStoreProvider>,
-    )
-
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
-  })
-
-  it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
-    'does not derive a share code from the sign-in route %s',
-    (pathname) => {
-      navigationMocks.usePathname.mockReturnValue(pathname)
-      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
-
-      renderWithConsoleQuery(
-        <WebAppStoreProvider>
-          <TestConsumer />
-        </WebAppStoreProvider>,
-      )
-
-      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
-    },
-  )
-
   it('hydrates embedded user and conversation ids from system variables', async () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
       user_id: 'iframe-user-123',
       conversation_id: 'conversation-456',
     })
 
-    renderWithConsoleQuery(
+    render(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,
@@ -161,14 +118,14 @@ describe('WebAppStoreProvider embedded user id handling', () => {
   })
 
   it('clears embedded user id when system variable is absent', async () => {
-    useWebAppStore.setState((state) => ({
+    useWebAppStore.setState(state => ({
       ...state,
       embeddedUserId: 'previous-user',
       embeddedConversationId: 'existing-conversation',
     }))
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
-    renderWithConsoleQuery(
+    render(
       <WebAppStoreProvider>
         <TestConsumer />
       </WebAppStoreProvider>,

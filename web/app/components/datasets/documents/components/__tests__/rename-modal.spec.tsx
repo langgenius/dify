@@ -2,23 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
-import RenameModal from '../rename-modal'
 
-const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+import RenameModal from '../rename-modal'
 
 // Mock the service
 vi.mock('@/service/datasets', () => ({
   renameDocumentName: vi.fn(),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    success: mockToastSuccess,
-    error: mockToastError,
-  },
 }))
 
 const mockRenameDocumentName = vi.mocked(renameDocumentName)
@@ -37,6 +26,11 @@ describe('RenameModal', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<RenameModal {...defaultProps} />)
+      expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
+    })
+
     it('should render modal title', () => {
       render(<RenameModal {...defaultProps} />)
       expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
@@ -124,7 +118,6 @@ describe('RenameModal', () => {
       await waitFor(() => {
         expect(handleSaved).toHaveBeenCalledTimes(1)
         expect(handleClose).toHaveBeenCalledTimes(1)
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -145,7 +138,7 @@ describe('RenameModal', () => {
       // The button should be in loading state
       await waitFor(() => {
         const buttons = screen.getAllByRole('button')
-        const saveBtn = buttons.find((btn) => btn.textContent?.includes('operation.save'))
+        const saveBtn = buttons.find(btn => btn.textContent?.includes('operation.save'))
         expect(saveBtn).toBeInTheDocument()
       })
 
@@ -170,7 +163,6 @@ describe('RenameModal', () => {
         // onSaved and onClose should not be called on error
         expect(handleSaved).not.toHaveBeenCalled()
         expect(handleClose).not.toHaveBeenCalled()
-        expect(mockToastError).toHaveBeenCalledWith('Error: API Error')
       })
     })
   })
@@ -185,7 +177,7 @@ describe('RenameModal', () => {
     it('should handle name with special characters', () => {
       render(<RenameModal {...defaultProps} name="Document <with> 'special' chars" />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue("Document <with> 'special' chars")
+      expect(input).toHaveValue('Document <with> \'special\' chars')
     })
   })
 })

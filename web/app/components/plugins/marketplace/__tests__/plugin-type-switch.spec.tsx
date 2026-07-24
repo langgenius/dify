@@ -1,50 +1,123 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({ t: withSelectorKey((key: string) => key) }),
-  }
-})
+vi.mock('#i18n', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const map: Record<string, string> = {
+        'category.all': 'All',
+        'category.models': 'Models',
+        'category.tools': 'Tools',
+        'category.datasources': 'Data Sources',
+        'category.triggers': 'Triggers',
+        'category.agents': 'Agents',
+        'category.extensions': 'Extensions',
+        'category.bundles': 'Bundles',
+      }
+      return map[key] || key
+    },
+  }),
+}))
 
-const renderSwitch = (searchParams = '') => {
-  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+const createWrapper = (searchParams = '') => {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
-      <NuqsWrapper>{children}</NuqsWrapper>
+      <NuqsWrapper>
+        {children}
+      </NuqsWrapper>
     </JotaiProvider>
   )
-
-  return { ...render(<PluginTypeSwitch />, { wrapper: Wrapper }), onUrlUpdate }
+  return { Wrapper }
 }
 
 describe('PluginTypeSwitch', () => {
-  it('renders every supported plugin category', () => {
-    renderSwitch()
-
-    expect(screen.getByText('category.all')).toBeInTheDocument()
-    expect(screen.getByText('category.models')).toBeInTheDocument()
-    expect(screen.getByText('category.tools')).toBeInTheDocument()
-    expect(screen.getByText('category.datasources')).toBeInTheDocument()
-    expect(screen.getByText('category.agents')).toBeInTheDocument()
-    expect(screen.getByText('category.triggers')).toBeInTheDocument()
-    expect(screen.getByText('category.extensions')).toBeInTheDocument()
-    expect(screen.getByText('category.bundles')).toBeInTheDocument()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('updates the category in the URL when selected', async () => {
-    const user = userEvent.setup()
-    const { onUrlUpdate } = renderSwitch('?category=all')
+  it('should render all category options', () => {
+    const { Wrapper } = createWrapper()
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
 
-    await user.click(screen.getByText('category.models'))
+    expect(screen.getByText('All')).toBeInTheDocument()
+    expect(screen.getByText('Models')).toBeInTheDocument()
+    expect(screen.getByText('Tools')).toBeInTheDocument()
+    expect(screen.getByText('Data Sources')).toBeInTheDocument()
+    expect(screen.getByText('Triggers')).toBeInTheDocument()
+    expect(screen.getByText('Agents')).toBeInTheDocument()
+    expect(screen.getByText('Extensions')).toBeInTheDocument()
+    expect(screen.getByText('Bundles')).toBeInTheDocument()
+  })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe('model')
+  it('should apply active styling to current category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    const allButton = screen.getByText('All').closest('div')
+    expect(allButton?.className).toContain('!bg-components-main-nav-nav-button-bg-active')
+  })
+
+  it('should apply custom className', () => {
+    const { Wrapper } = createWrapper()
+    const { container } = render(<PluginTypeSwitch className="custom-class" />, { wrapper: Wrapper })
+
+    const outerDiv = container.firstChild as HTMLElement
+    expect(outerDiv.className).toContain('custom-class')
+  })
+
+  it('should update category when option is clicked', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    // Click on Models option — should not throw
+    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+  })
+
+  it('should handle clicking on category with collections (Tools)', () => {
+    const { Wrapper } = createWrapper('?category=model')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    // Click on "Tools" which has collections → setSearchMode(null)
+    expect(() => fireEvent.click(screen.getByText('Tools'))).not.toThrow()
+  })
+
+  it('should handle clicking on category without collections (Models)', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    // Click on "Models" which does NOT have collections → no setSearchMode call
+    expect(() => fireEvent.click(screen.getByText('Models'))).not.toThrow()
+  })
+
+  it('should handle clicking on bundles', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    expect(() => fireEvent.click(screen.getByText('Bundles'))).not.toThrow()
+  })
+
+  it('should handle clicking on each category', () => {
+    const { Wrapper } = createWrapper('?category=all')
+    render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    const categories = ['All', 'Models', 'Tools', 'Data Sources', 'Triggers', 'Agents', 'Extensions', 'Bundles']
+    categories.forEach((category) => {
+      expect(() => fireEvent.click(screen.getByText(category))).not.toThrow()
+    })
+  })
+
+  it('should render icons for categories that have them', () => {
+    const { Wrapper } = createWrapper()
+    const { container } = render(<PluginTypeSwitch />, { wrapper: Wrapper })
+
+    // "All" has no icon (icon: null), others should have SVG icons
+    const svgs = container.querySelectorAll('svg')
+    // 7 categories with icons (all categories except "All")
+    expect(svgs.length).toBeGreaterThanOrEqual(7)
   })
 })

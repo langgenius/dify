@@ -1,8 +1,11 @@
 from collections.abc import Generator
 from dataclasses import dataclass, field
+from typing import TypeVar, Union
 
 from core.agent.entities import AgentInvokeMessage
 from core.tools.entities.tool_entities import ToolInvokeMessage
+
+MessageType = TypeVar("MessageType", bound=Union[ToolInvokeMessage, AgentInvokeMessage])
 
 
 @dataclass
@@ -19,11 +22,11 @@ class FileChunk:
         self.data = bytearray(self.total_length)
 
 
-def merge_blob_chunks[T: ToolInvokeMessage | AgentInvokeMessage](
-    response: Generator[T, None, None],
+def merge_blob_chunks(
+    response: Generator[MessageType, None, None],
     max_file_size: int = 30 * 1024 * 1024,
     max_chunk_size: int = 8192,
-) -> Generator[T, None, None]:
+) -> Generator[MessageType, None, None]:
     """
     Merge streaming blob chunks into complete blob messages.
 

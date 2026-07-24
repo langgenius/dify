@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -10,15 +9,16 @@ import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/con
 import { ActionButton } from '@/app/components/base/action-button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { useHooksStore } from '../../../hooks-store'
 
-type Props = Readonly<{
+type Props = {
   nodeId: string
   currentCode?: string
   className?: string
   onGenerated?: (prompt: string) => void
   codeLanguages: CodeLanguage
-}>
+}
 
 const CodeGenerateBtn: FC<Props> = ({
   nodeId,
@@ -27,21 +27,20 @@ const CodeGenerateBtn: FC<Props> = ({
   codeLanguages,
   onGenerated,
 }) => {
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] =
-    useBoolean(false)
-  const handleAutomaticRes = useCallback(
-    (res: GenRes) => {
-      onGenerated?.(res.modified)
-      showAutomaticFalse()
-    },
-    [onGenerated, showAutomaticFalse],
-  )
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
+  const handleAutomaticRes = useCallback((res: GenRes) => {
+    onGenerated?.(res.modified)
+    showAutomaticFalse()
+  }, [onGenerated, showAutomaticFalse])
+  const configsMap = useHooksStore(s => s.configsMap)
 
   return (
     <div className={cn(className)}>
-      <ActionButton className="hover:bg-[#155EFF]/8" onClick={showAutomaticTrue}>
-        <Generator className="size-4 text-primary-600" />
+      <ActionButton
+        className="hover:bg-[#155EFF]/8"
+        onClick={showAutomaticTrue}
+      >
+        <Generator className="h-4 w-4 text-primary-600" />
       </ActionButton>
       {showAutomatic && (
         <GetCodeGeneratorResModal

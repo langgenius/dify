@@ -6,7 +6,7 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
@@ -31,7 +31,6 @@ class TestAppGenerateHandler:
         handler = AppGenerateHandler()
 
         kwargs = {
-            "session": MagicMock(),
             "app_model": mock_app_model,
             "user": mock_account_user,
             "args": {"workflow_id": "test-wf-123"},
@@ -40,7 +39,7 @@ class TestAppGenerateHandler:
             "root_node_id": None,
         }
 
-        arguments = handler._extract_arguments(AppGenerateService.generate, **kwargs)
+        arguments = handler._extract_arguments(AppGenerateService.generate, (), kwargs)
 
         assert arguments is not None, "Failed to extract arguments from AppGenerateService.generate"
         assert "app_model" in arguments, "Handler uses app_model but parameter is missing"
@@ -71,11 +70,14 @@ class TestAppGenerateHandler:
         handler.wrapper(
             tracer,
             dummy_func,
-            app_model=mock_app_model,
-            user=mock_account_user,
-            args={"workflow_id": test_workflow_id},
-            invoke_from=InvokeFrom.DEBUGGER,
-            streaming=False,
+            (),
+            {
+                "app_model": mock_app_model,
+                "user": mock_account_user,
+                "args": {"workflow_id": test_workflow_id},
+                "invoke_from": InvokeFrom.DEBUGGER,
+                "streaming": False,
+            },
         )
 
         spans = memory_span_exporter.get_finished_spans()

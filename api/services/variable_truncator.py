@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import dataclasses
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, Protocol, overload, override
+from typing import Any, Generic, TypeAlias, TypeVar, overload
 
 from configs import dify_config
-from graphon.file import File
-from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
-from graphon.variables.segments import (
+from dify_graph.file.models import File
+from dify_graph.nodes.variable_assigner.common.helpers import UpdatedVariable
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     ArraySegment,
     BooleanSegment,
@@ -19,7 +20,7 @@ from graphon.variables.segments import (
     Segment,
     StringSegment,
 )
-from graphon.variables.utils import dumps_with_segments
+from dify_graph.variables.utils import dumps_with_segments
 
 _MAX_DEPTH = 100
 
@@ -41,9 +42,12 @@ class _PCKeys:
     CHILD_CONTENTS = "child_contents"
 
 
+_T = TypeVar("_T")
+
+
 @dataclasses.dataclass(frozen=True)
-class _PartResult[T]:
-    value: T
+class _PartResult(Generic[_T]):
+    value: _T
     value_size: int
     truncated: bool
 
@@ -56,7 +60,7 @@ class UnknownTypeError(Exception):
     pass
 
 
-type JSONTypes = int | float | str | list[object] | dict[str, object] | None | bool
+JSONTypes: TypeAlias = int | float | str | list[object] | dict[str, object] | None | bool
 
 
 @dataclasses.dataclass(frozen=True)
@@ -65,12 +69,14 @@ class TruncationResult:
     truncated: bool
 
 
-class BaseTruncator(Protocol):
-    """Protocol for variable truncation strategies."""
+class BaseTruncator(ABC):
+    @abstractmethod
+    def truncate(self, segment: Segment) -> TruncationResult:
+        pass
 
-    def truncate(self, segment: Segment) -> TruncationResult: ...
-
-    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]: ...
+    @abstractmethod
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        pass
 
 
 class VariableTruncator(BaseTruncator):
@@ -109,7 +115,6 @@ class VariableTruncator(BaseTruncator):
             string_length_limit=dify_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH,
         )
 
-    @override
     def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
         """
         `truncate_variable_mapping` is responsible for truncating variable mappings
@@ -126,7 +131,6 @@ class VariableTruncator(BaseTruncator):
             used_size += self.calculate_json_size(key)
             if used_size > budget:
                 truncated_mapping[key] = "..."
-                is_truncated = True
                 continue
             value_budget = (budget - used_size) // (length - len(truncated_mapping))
             if isinstance(value, Segment):
@@ -155,7 +159,6 @@ class VariableTruncator(BaseTruncator):
             return False
         return True
 
-    @override
     def truncate(self, segment: Segment) -> TruncationResult:
         if isinstance(segment, StringSegment):
             result = self._truncate_segment(segment, self._string_length_limit)
@@ -163,12 +166,12 @@ class VariableTruncator(BaseTruncator):
             result = self._truncate_segment(segment, self._max_size_bytes)
 
         if result.value_size > self._max_size_bytes:
-            if isinstance(result.value, StringSegment):
-                fallback_result = self._truncate_string(result.value.value, self._max_size_bytes)
-                return TruncationResult(StringSegment(value=fallback_result.value), True)
+            if isinstance(result.value, str):
+                result = self._truncate_string(result.value, self._max_size_bytes)
+                return TruncationResult(StringSegment(value=result.value), True)
 
             # Apply final fallback - convert to JSON string and truncate
-            json_str = dumps_with_segments(result.value)
+            json_str = dumps_with_segments(result.value, ensure_ascii=False)
             if len(json_str) > self._max_size_bytes:
                 json_str = json_str[: self._max_size_bytes] + "..."
             return TruncationResult(result=StringSegment(value=json_str), truncated=True)
@@ -193,15 +196,14 @@ class VariableTruncator(BaseTruncator):
 
         result: _PartResult[Any]
         # Apply type-specific truncation with target size
-        match segment:
-            case ArraySegment():
-                result = self._truncate_array(segment.value, target_size)
-            case StringSegment():
-                result = self._truncate_string(segment.value, target_size)
-            case ObjectSegment():
-                result = self._truncate_object(segment.value, target_size)
-            case _:
-                raise AssertionError("this should be unreachable.")
+        if isinstance(segment, ArraySegment):
+            result = self._truncate_array(segment.value, target_size)
+        elif isinstance(segment, StringSegment):
+            result = self._truncate_string(segment.value, target_size)
+        elif isinstance(segment, ObjectSegment):
+            result = self._truncate_object(segment.value, target_size)
+        else:
+            raise AssertionError("this should be unreachable.")
 
         return _PartResult(
             value=segment.model_copy(update={"value": result.value}),
@@ -219,41 +221,40 @@ class VariableTruncator(BaseTruncator):
             return VariableTruncator.calculate_json_size(value.model_dump(), depth=depth + 1)
         if depth > _MAX_DEPTH:
             raise MaxDepthExceededError()
-        match value:
-            case str():
-                # Ideally, the size of strings should be calculated based on their utf-8 encoded length.
-                # However, this adds complexity as we would need to compute encoded sizes consistently
-                # throughout the code. Therefore, we approximate the size using the string's length.
-                # Rough estimate: number of characters, plus 2 for quotes
-                return len(value) + 2
-            case bool():
-                return 4 if value else 5  # "true" or "false"
-            case int() | float():
-                return len(str(value))
-            case None:
-                return 4  # "null"
-            case list():
-                # Size = sum of elements + separators + brackets
-                total = 2  # "[]"
-                for i, item in enumerate(value):
-                    if i > 0:
-                        total += 1  # ","
-                    total += VariableTruncator.calculate_json_size(item, depth=depth + 1)
-                return total
-            case dict():
-                # Size = sum of keys + values + separators + brackets
-                total = 2  # "{}"
-                for index, key in enumerate(value.keys()):
-                    if index > 0:
-                        total += 1  # ","
-                    total += VariableTruncator.calculate_json_size(str(key), depth=depth + 1)  # Key as string
-                    total += 1  # ":"
-                    total += VariableTruncator.calculate_json_size(value[key], depth=depth + 1)
-                return total
-            case File():
-                return VariableTruncator.calculate_json_size(value.model_dump(), depth=depth + 1)
-            case _:
-                raise UnknownTypeError(f"got unknown type {type(value)}")
+        if isinstance(value, str):
+            # Ideally, the size of strings should be calculated based on their utf-8 encoded length.
+            # However, this adds complexity as we would need to compute encoded sizes consistently
+            # throughout the code. Therefore, we approximate the size using the string's length.
+            # Rough estimate: number of characters, plus 2 for quotes
+            return len(value) + 2
+        elif isinstance(value, (int, float)):
+            return len(str(value))
+        elif isinstance(value, bool):
+            return 4 if value else 5  # "true" or "false"
+        elif value is None:
+            return 4  # "null"
+        elif isinstance(value, list):
+            # Size = sum of elements + separators + brackets
+            total = 2  # "[]"
+            for i, item in enumerate(value):
+                if i > 0:
+                    total += 1  # ","
+                total += VariableTruncator.calculate_json_size(item, depth=depth + 1)
+            return total
+        elif isinstance(value, dict):
+            # Size = sum of keys + values + separators + brackets
+            total = 2  # "{}"
+            for index, key in enumerate(value.keys()):
+                if index > 0:
+                    total += 1  # ","
+                total += VariableTruncator.calculate_json_size(str(key), depth=depth + 1)  # Key as string
+                total += 1  # ":"
+                total += VariableTruncator.calculate_json_size(value[key], depth=depth + 1)
+            return total
+        elif isinstance(value, File):
+            return VariableTruncator.calculate_json_size(value.model_dump(), depth=depth + 1)
+        else:
+            raise UnknownTypeError(f"got unknown type {type(value)}")
 
     def _truncate_string(self, value: str, target_size: int) -> _PartResult[str]:
         if (size := self.calculate_json_size(value)) < target_size:
@@ -420,23 +421,22 @@ class VariableTruncator(BaseTruncator):
         target_size: int,
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
-        match val:
-            case UpdatedVariable():
-                # TODO(Workflow): push UpdatedVariable normalization closer to its producer.
-                return self._truncate_object(val.model_dump(), target_size)
-            case str():
-                return self._truncate_string(val, target_size)
-            case list():
-                return self._truncate_array(val, target_size)
-            case dict():
-                return self._truncate_object(val, target_size)
-            case File():
-                # File objects should not be truncated, return as-is
-                return _PartResult(val, self.calculate_json_size(val), False)
-            case None | bool() | int() | float():
-                return _PartResult(val, self.calculate_json_size(val), False)
-            case _:
-                raise AssertionError("this statement should be unreachable.")
+        if isinstance(val, UpdatedVariable):
+            # TODO(Workflow): push UpdatedVariable normalization closer to its producer.
+            return self._truncate_object(val.model_dump(), target_size)
+        elif isinstance(val, str):
+            return self._truncate_string(val, target_size)
+        elif isinstance(val, list):
+            return self._truncate_array(val, target_size)
+        elif isinstance(val, dict):
+            return self._truncate_object(val, target_size)
+        elif isinstance(val, File):
+            # File objects should not be truncated, return as-is
+            return _PartResult(val, self.calculate_json_size(val), False)
+        elif val is None or isinstance(val, (bool, int, float)):
+            return _PartResult(val, self.calculate_json_size(val), False)
+        else:
+            raise AssertionError("this statement should be unreachable.")
 
 
 class DummyVariableTruncator(BaseTruncator):
@@ -447,7 +447,6 @@ class DummyVariableTruncator(BaseTruncator):
     to maintain backward compatibility and provide complete data.
     """
 
-    @override
     def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
         """
         Return original mapping without truncation.
@@ -460,7 +459,6 @@ class DummyVariableTruncator(BaseTruncator):
         """
         return v, False
 
-    @override
     def truncate(self, segment: Segment) -> TruncationResult:
         """
         Return original segment without truncation.

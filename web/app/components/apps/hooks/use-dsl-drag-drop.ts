@@ -6,17 +6,14 @@ type DSLDragDropHookProps = {
   enabled?: boolean
 }
 
-export const useDSLDragDrop = ({
-  onDSLFileDropped,
-  containerRef,
-  enabled = true,
-}: DSLDragDropHookProps) => {
+export const useDSLDragDrop = ({ onDSLFileDropped, containerRef, enabled = true }: DSLDragDropHookProps) => {
   const [dragging, setDragging] = useState(false)
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.dataTransfer?.types.includes('Files')) setDragging(true)
+    if (e.dataTransfer?.types.includes('Files'))
+      setDragging(true)
   }
 
   const handleDragOver = (e: DragEvent) => {
@@ -36,18 +33,21 @@ export const useDSLDragDrop = ({
     e.stopPropagation()
     setDragging(false)
 
-    if (!e.dataTransfer) return
+    if (!e.dataTransfer)
+      return
 
     const files = Array.from(e.dataTransfer.files)
-    if (files.length === 0) return
+    if (files.length === 0)
+      return
 
     const file = files[0]
-    if (file!.name.toLowerCase().endsWith('.yaml') || file!.name.toLowerCase().endsWith('.yml'))
-      onDSLFileDropped(file!)
+    if (file.name.toLowerCase().endsWith('.yaml') || file.name.toLowerCase().endsWith('.yml'))
+      onDSLFileDropped(file)
   }
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled)
+      return
 
     const current = containerRef.current
     if (current) {

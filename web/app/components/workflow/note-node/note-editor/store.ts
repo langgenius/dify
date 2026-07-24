@@ -1,11 +1,13 @@
-import { use } from 'react'
-import { useStore as useZustandStore } from 'zustand'
+import { useContext } from 'react'
+import {
+  useStore as useZustandStore,
+} from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
-  setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
+  setLinkAnchorElement: (open?: boolean) => void
   linkOperatorShow: boolean
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
   selectedIsBold: boolean
@@ -23,14 +25,9 @@ type Shape = {
 }
 
 export const createNoteEditorStore = () => {
-  return createStore<Shape>((set) => ({
+  return createStore<Shape>(set => ({
     linkAnchorElement: null,
     setLinkAnchorElement: (open) => {
-      if (open instanceof HTMLElement) {
-        set(() => ({ linkAnchorElement: open }))
-        return
-      }
-
       if (open) {
         setTimeout(() => {
           const nativeSelection = window.getSelection()
@@ -40,35 +37,36 @@ export const createNoteEditorStore = () => {
             set(() => ({ linkAnchorElement: parent }))
           }
         })
-      } else {
+      }
+      else {
         set(() => ({ linkAnchorElement: null }))
       }
     },
     linkOperatorShow: false,
-    setLinkOperatorShow: (linkOperatorShow) => set(() => ({ linkOperatorShow })),
+    setLinkOperatorShow: linkOperatorShow => set(() => ({ linkOperatorShow })),
     selectedIsBold: false,
-    setSelectedIsBold: (selectedIsBold) => set(() => ({ selectedIsBold })),
+    setSelectedIsBold: selectedIsBold => set(() => ({ selectedIsBold })),
     selectedIsItalic: false,
-    setSelectedIsItalic: (selectedIsItalic) => set(() => ({ selectedIsItalic })),
+    setSelectedIsItalic: selectedIsItalic => set(() => ({ selectedIsItalic })),
     selectedIsStrikeThrough: false,
-    setSelectedIsStrikeThrough: (selectedIsStrikeThrough) =>
-      set(() => ({ selectedIsStrikeThrough })),
+    setSelectedIsStrikeThrough: selectedIsStrikeThrough => set(() => ({ selectedIsStrikeThrough })),
     selectedLinkUrl: '',
-    setSelectedLinkUrl: (selectedLinkUrl) => set(() => ({ selectedLinkUrl })),
+    setSelectedLinkUrl: selectedLinkUrl => set(() => ({ selectedLinkUrl })),
     selectedIsLink: false,
-    setSelectedIsLink: (selectedIsLink) => set(() => ({ selectedIsLink })),
+    setSelectedIsLink: selectedIsLink => set(() => ({ selectedIsLink })),
     selectedIsBullet: false,
-    setSelectedIsBullet: (selectedIsBullet) => set(() => ({ selectedIsBullet })),
+    setSelectedIsBullet: selectedIsBullet => set(() => ({ selectedIsBullet })),
   }))
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = use(NoteEditorContext)
-  if (!store) throw new Error('Missing NoteEditorContext.Provider in the tree')
+  const store = useContext(NoteEditorContext)
+  if (!store)
+    throw new Error('Missing NoteEditorContext.Provider in the tree')
 
   return useZustandStore(store, selector)
 }
 
 export const useNoteEditorStore = () => {
-  return use(NoteEditorContext)!
+  return useContext(NoteEditorContext)!
 }

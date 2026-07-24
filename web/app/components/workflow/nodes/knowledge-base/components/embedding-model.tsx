@@ -1,5 +1,9 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { memo, useCallback, useMemo } from 'react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -13,20 +17,21 @@ type EmbeddingModelProps = {
     embeddingModel: string
     embeddingModelProvider: string
   }) => void
-  warningDot?: boolean
   readonly?: boolean
 }
 const EmbeddingModel = ({
   embeddingModel,
   embeddingModelProvider,
   onEmbeddingModelChange,
-  warningDot = false,
   readonly = false,
 }: EmbeddingModelProps) => {
   const { t } = useTranslation()
-  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const {
+    data: embeddingModelList,
+  } = useModelList(ModelTypeEnum.textEmbedding)
   const embeddingModelConfig = useMemo(() => {
-    if (!embeddingModel || !embeddingModelProvider) return undefined
+    if (!embeddingModel || !embeddingModelProvider)
+      return undefined
 
     return {
       providerName: embeddingModelProvider,
@@ -34,30 +39,21 @@ const EmbeddingModel = ({
     }
   }, [embeddingModel, embeddingModelProvider])
 
-  const handleEmbeddingModelChange = useCallback(
-    (model: DefaultModel) => {
-      onEmbeddingModelChange?.({
-        embeddingModelProvider: model.provider,
-        embeddingModel: model.model,
-      })
-    },
-    [onEmbeddingModelChange],
-  )
+  const handleEmbeddingModelChange = useCallback((model: DefaultModel) => {
+    onEmbeddingModelChange?.({
+      embeddingModelProvider: model.provider,
+      embeddingModel: model.model,
+    })
+  }, [onEmbeddingModelChange])
 
   return (
     <Field
       fieldTitleProps={{
-        title: t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' }),
-        warningDot,
+        title: t('form.embeddingModel', { ns: 'datasetSettings' }),
       }}
     >
       <ModelSelector
-        defaultModel={
-          embeddingModelConfig && {
-            provider: embeddingModelConfig.providerName,
-            model: embeddingModelConfig.modelName,
-          }
-        }
+        defaultModel={embeddingModelConfig && { provider: embeddingModelConfig.providerName, model: embeddingModelConfig.modelName }}
         modelList={embeddingModelList}
         onSelect={handleEmbeddingModelChange}
         readonly={readonly}

@@ -1,4 +1,4 @@
-import type { PluginsSort, SearchParamsFromCollection } from '@dify/contracts/marketplace'
+import type { PluginsSort, SearchParamsFromCollection } from './types'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
@@ -12,6 +12,10 @@ export function useMarketplaceSort() {
 export function useMarketplaceSortValue() {
   return useAtomValue(marketplaceSortAtom)
 }
+export function useSetMarketplaceSort() {
+  return useSetAtom(marketplaceSortAtom)
+}
+
 export function useSearchPluginText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }
@@ -34,28 +38,25 @@ export function useMarketplaceSearchMode() {
   const [activePluginType] = useActivePluginType()
 
   const searchMode = useAtomValue(searchModeAtom)
-  const isSearchMode =
-    !!searchPluginText ||
-    filterPluginTags.length > 0 ||
-    (searchMode ?? !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType))
+  const isSearchMode = !!searchPluginText
+    || filterPluginTags.length > 0
+    || (searchMode ?? (!PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType)))
   return isSearchMode
 }
 
 export function useMarketplaceMoreClick() {
-  const [, setQ] = useSearchPluginText()
+  const [,setQ] = useSearchPluginText()
   const setSort = useSetAtom(marketplaceSortAtom)
   const setSearchMode = useSetAtom(searchModeAtom)
 
-  return useCallback(
-    (searchParams?: SearchParamsFromCollection) => {
-      if (!searchParams) return
-      setQ(searchParams?.query || '')
-      setSort({
-        sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
-        sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
-      })
-      setSearchMode(true)
-    },
-    [setQ, setSort, setSearchMode],
-  )
+  return useCallback((searchParams?: SearchParamsFromCollection) => {
+    if (!searchParams)
+      return
+    setQ(searchParams?.query || '')
+    setSort({
+      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
+      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
+    })
+    setSearchMode(true)
+  }, [setQ, setSort, setSearchMode])
 }

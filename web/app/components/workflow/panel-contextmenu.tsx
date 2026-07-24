@@ -1,180 +1,130 @@
-import { cn } from '@langgenius/dify-ui/cn'
+import { useClickAway } from 'ahooks'
 import {
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@langgenius/dify-ui/context-menu'
-import { useCallback } from 'react'
+  memo,
+  useEffect,
+  useRef,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { FlowType } from '@/types/common'
+import { cn } from '@/utils/classnames'
+import Divider from '../base/divider'
 import {
   useDSL,
-  useIsChatMode,
   useNodesInteractions,
-  useWorkflowMoveMode,
+  usePanelInteractions,
   useWorkflowStartRun,
 } from './hooks'
-import { useHooksStore } from './hooks-store'
-import { TEST_RUN_MENU_HOTKEY } from './hotkeys'
-import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import { ShortcutKbd } from './shortcuts/shortcut-kbd'
+import ShortcutsName from './shortcuts-name'
 import { useStore } from './store'
-import { WorkflowRunningStatus } from './types'
 
-export function PanelContextmenu({ onClose }: { onClose: () => void }) {
+const PanelContextmenu = () => {
   const { t } = useTranslation()
-  const isPanelContextMenu = useStore((s) => s.contextMenuTarget?.type === 'panel')
-  const clipboardElements = useStore((s) => s.clipboardElements)
-  const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
-  const pendingComment = useStore((s) => s.pendingComment)
-  const setCommentPlacing = useStore((s) => s.setCommentPlacing)
-  const setCommentQuickAdd = useStore((s) => s.setCommentQuickAdd)
-  const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const historyWorkflowData = useStore((s) => s.historyWorkflowData)
-  const isRestoring = useStore((s) => s.isRestoring)
+  const ref = useRef(null)
+  const panelMenu = useStore(s => s.panelMenu)
+  const clipboardElements = useStore(s => s.clipboardElements)
+  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handleStartWorkflowRun, handleWorkflowStartRunInChatflow } = useWorkflowStartRun()
+  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
+  const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
-  const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
-  const accessControl = useHooksStore((s) => s.accessControl)
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const isChatMode = useIsChatMode()
-  const workflowOperationReadOnly = !!(
-    workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
-    workflowRunningData?.result.status === WorkflowRunningStatus.Paused ||
-    historyWorkflowData ||
-    isRestoring
-  )
-  const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
-  const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
-  const renderAddBlockTrigger = useCallback(() => {
+  useEffect(() => {
+    if (panelMenu)
+      handleNodeContextmenuCancel()
+  }, [panelMenu, handleNodeContextmenuCancel])
+
+  useClickAway(() => {
+    handlePaneContextmenuCancel()
+  }, ref)
+
+  const renderTrigger = () => {
     return (
-      <ContextMenuItem
-        nativeButton
-        closeOnClick={false}
-        render={<button type="button" />}
-        className={cn(
-          'w-[calc(100%-8px)]',
-          'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
-        )}
+      <div
+        className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
       >
-        {t(($) => $['common.addBlock'], { ns: 'workflow' })}
-      </ContextMenuItem>
+        {t('common.addBlock', { ns: 'workflow' })}
+      </div>
     )
-  }, [t])
+  }
 
-  const handleRunAction = useCallback(() => {
-    if (isChatMode) handleWorkflowStartRunInChatflow()
-    else handleStartWorkflowRun()
-
-    onClose()
-  }, [isChatMode, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, onClose])
-
-  if (!isPanelContextMenu) return null
+  if (!panelMenu)
+    return null
 
   return (
-    <ContextMenuContent popupClassName="w-[200px] rounded-lg" sideOffset={4}>
-      <ContextMenuGroup>
-        {canEditWorkflow && (
-          <AddBlock
-            renderTrigger={renderAddBlockTrigger}
-            onClose={onClose}
-            isolateKeyboardEvents
-            sideOffset={-36}
-            alignOffset={-4}
-          />
-        )}
-        {canEditWorkflow && (
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleAddNote()
-              onClose()
-            }}
-          >
-            {t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
-          </ContextMenuItem>
-        )}
-        {!workflowOperationReadOnly && isCommentModeAvailable && (
-          <ContextMenuItem
-            disabled={!!pendingComment}
-            className={cn(
-              'justify-between gap-4 px-3 text-text-secondary',
-              pendingComment && 'cursor-not-allowed opacity-50',
-            )}
-            onClick={(e) => {
-              e.stopPropagation()
-              if (pendingComment) return
-              setCommentQuickAdd(true)
-              setCommentPlacing(true)
-              onClose()
-            }}
-          >
-            {t(($) => $['comments.actions.addComment'], { ns: 'workflow' })}
-          </ContextMenuItem>
-        )}
-        {accessControl.canRun && (
-          <ContextMenuItem
-            className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={handleRunAction}
-          >
-            {isChatMode
-              ? t(($) => $['common.debugAndPreview'], { ns: 'workflow' })
-              : t(($) => $['common.run'], { ns: 'workflow' })}
-            {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
-          </ContextMenuItem>
-        )}
-      </ContextMenuGroup>
-      {canEditWorkflow && (
-        <>
-          <ContextMenuSeparator />
-          <ContextMenuGroup>
-            <ContextMenuItem
-              disabled={!clipboardElements.length}
-              className={cn(
-                'justify-between gap-4 px-3 text-text-secondary',
-                !clipboardElements.length && 'cursor-not-allowed opacity-50',
-              )}
-              onClick={() => {
-                if (clipboardElements.length) {
-                  handleNodesPaste()
-                  onClose()
-                }
-              }}
-            >
-              {t(($) => $['common.pasteHere'], { ns: 'workflow' })}
-              <ShortcutKbd shortcut="workflow.paste" />
-            </ContextMenuItem>
-          </ContextMenuGroup>
-        </>
-      )}
-      {accessControl.canImportExportDSL && (
-        <>
-          <ContextMenuSeparator />
-          <ContextMenuGroup>
-            <ContextMenuItem
-              className="justify-between gap-4 px-3 text-text-secondary"
-              onClick={() => exportCheck?.()}
-            >
-              {t(($) => $.export, { ns: 'app' })}
-            </ContextMenuItem>
-            {!shouldHideImportApp && (
-              <ContextMenuItem
-                className="justify-between gap-4 px-3 text-text-secondary"
-                onClick={() => setShowImportDSLModal(true)}
-              >
-                {t(($) => $.importApp, { ns: 'app' })}
-              </ContextMenuItem>
-            )}
-          </ContextMenuGroup>
-        </>
-      )}
-    </ContextMenuContent>
+    <div
+      className="absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
+      style={{
+        left: panelMenu.left,
+        top: panelMenu.top,
+      }}
+      ref={ref}
+    >
+      <div className="p-1">
+        <AddBlock
+          renderTrigger={renderTrigger}
+          offset={{
+            mainAxis: -36,
+            crossAxis: -4,
+          }}
+        />
+        <div
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleAddNote()
+            handlePaneContextmenuCancel()
+          }}
+        >
+          {t('nodes.note.addNote', { ns: 'workflow' })}
+        </div>
+        <div
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+          onClick={() => {
+            handleStartWorkflowRun()
+            handlePaneContextmenuCancel()
+          }}
+        >
+          {t('common.run', { ns: 'workflow' })}
+          <ShortcutsName keys={['alt', 'r']} />
+        </div>
+      </div>
+      <Divider className="m-0" />
+      <div className="p-1">
+        <div
+          className={cn(
+            'flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
+            !clipboardElements.length ? 'cursor-not-allowed opacity-50' : 'hover:bg-state-base-hover',
+          )}
+          onClick={() => {
+            if (clipboardElements.length) {
+              handleNodesPaste()
+              handlePaneContextmenuCancel()
+            }
+          }}
+        >
+          {t('common.pasteHere', { ns: 'workflow' })}
+          <ShortcutsName keys={['ctrl', 'v']} />
+        </div>
+      </div>
+      <Divider className="m-0" />
+      <div className="p-1">
+        <div
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+          onClick={() => exportCheck?.()}
+        >
+          {t('export', { ns: 'app' })}
+        </div>
+        <div
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+          onClick={() => setShowImportDSLModal(true)}
+        >
+          {t('common.importDSL', { ns: 'workflow' })}
+        </div>
+      </div>
+    </div>
   )
 }
+
+export default memo(PanelContextmenu)

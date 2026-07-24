@@ -3,10 +3,7 @@ import type { NodeRunResult } from '@/types/workflow'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
-import {
-  useDataSourceStore,
-  useDataSourceStoreWithSelector,
-} from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidLastRun } from '@/service/use-workflow'
@@ -36,32 +33,31 @@ const useBeforeRunForm = ({
   const datasourceType = payload.provider_type as DatasourceType
   const datasourceNodeData = payload as DataSourceNodeType
 
-  const { localFileList, onlineDocuments, websitePages, selectedFileIds } =
-    useDataSourceStoreWithSelector(
-      useShallow((state) => ({
-        localFileList: state.localFileList,
-        onlineDocuments: state.onlineDocuments,
-        websitePages: state.websitePages,
-        selectedFileIds: state.selectedFileIds,
-      })),
-    )
+  const {
+    localFileList,
+    onlineDocuments,
+    websitePages,
+    selectedFileIds,
+  } = useDataSourceStoreWithSelector(useShallow(state => ({
+    localFileList: state.localFileList,
+    onlineDocuments: state.onlineDocuments,
+    websitePages: state.websitePages,
+    selectedFileIds: state.selectedFileIds,
+  })))
 
   const startRunBtnDisabled = useMemo(() => {
-    if (!datasourceNodeData) return false
+    if (!datasourceNodeData)
+      return false
     if (datasourceType === DatasourceType.localFile)
-      return !localFileList.length || localFileList.some((file) => !file.file.id)
-    if (datasourceType === DatasourceType.onlineDocument) return !onlineDocuments.length
-    if (datasourceType === DatasourceType.websiteCrawl) return !websitePages.length
-    if (datasourceType === DatasourceType.onlineDrive) return !selectedFileIds.length
+      return !localFileList.length || localFileList.some(file => !file.file.id)
+    if (datasourceType === DatasourceType.onlineDocument)
+      return !onlineDocuments.length
+    if (datasourceType === DatasourceType.websiteCrawl)
+      return !websitePages.length
+    if (datasourceType === DatasourceType.onlineDrive)
+      return !selectedFileIds.length
     return false
-  }, [
-    datasourceNodeData,
-    datasourceType,
-    localFileList,
-    onlineDocuments.length,
-    selectedFileIds.length,
-    websitePages.length,
-  ])
+  }, [datasourceNodeData, datasourceType, localFileList, onlineDocuments.length, selectedFileIds.length, websitePages.length])
 
   useEffect(() => {
     isPausedRef.current = isPaused
@@ -85,7 +81,8 @@ const useBeforeRunForm = ({
     const isPaused = isPausedRef.current
 
     // The backend don't support pause the single run, so the frontend handle the pause state.
-    if (isPaused) return
+    if (isPaused)
+      return
 
     const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
     if (!canRunLastRun) {
@@ -98,7 +95,8 @@ const useBeforeRunForm = ({
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)
-    if (data?.status === NodeRunningStatus.Succeeded) onSuccess()
+    if (data?.status === NodeRunningStatus.Succeeded)
+      onSuccess()
   }
 
   const { mutateAsync: handleDatasourceSingleRun, isPending } = useDatasourceSingleRun()
@@ -108,7 +106,7 @@ const useBeforeRunForm = ({
     const { currentCredentialId: credentialId } = dataSourceStore.getState()
     if (datasourceType === DatasourceType.localFile) {
       const { localFileList } = dataSourceStore.getState()
-      const { id, name, type, size, extension, mime_type } = localFileList[0]!.file
+      const { id, name, type, size, extension, mime_type } = localFileList[0].file
       const documentInfo = {
         related_id: id,
         name,
@@ -123,7 +121,7 @@ const useBeforeRunForm = ({
     }
     if (datasourceType === DatasourceType.onlineDocument) {
       const { onlineDocuments } = dataSourceStore.getState()
-      const { workspace_id, ...rest } = onlineDocuments[0]!
+      const { workspace_id, ...rest } = onlineDocuments[0]
       const documentInfo = {
         workspace_id,
         page: rest,
@@ -140,7 +138,7 @@ const useBeforeRunForm = ({
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const { bucket, onlineDriveFileList, selectedFileIds } = dataSourceStore.getState()
-      const file = onlineDriveFileList.find((file) => file.id === selectedFileIds[0])
+      const file = onlineDriveFileList.find(file => file.id === selectedFileIds[0])
       datasourceInfo = {
         bucket,
         id: file?.id,
@@ -149,43 +147,41 @@ const useBeforeRunForm = ({
       }
     }
     let hasError = false
-    handleDatasourceSingleRun(
-      {
-        pipeline_id: flowId,
-        start_node_id: nodeId,
-        start_node_title: datasourceNodeData.title,
-        datasource_type: datasourceType,
-        datasource_info: datasourceInfo,
+    handleDatasourceSingleRun({
+      pipeline_id: flowId,
+      start_node_id: nodeId,
+      start_node_title: datasourceNodeData.title,
+      datasource_type: datasourceType,
+      datasource_info: datasourceInfo,
+    }, {
+      onError: () => {
+        hasError = true
+        invalidLastRun()
+        if (isPausedRef.current)
+          return
+        handleNodeDataUpdate({
+          id: nodeId,
+          data: {
+            ...payload,
+            _isSingleRun: false,
+            _singleRunningStatus: NodeRunningStatus.Failed,
+          },
+        })
       },
-      {
-        onError: () => {
-          hasError = true
-          invalidLastRun()
-          if (isPausedRef.current) return
+      onSettled: (data) => {
+        updateRunResult(data!)
+        if (!hasError && !isPausedRef.current) {
           handleNodeDataUpdate({
             id: nodeId,
             data: {
               ...payload,
               _isSingleRun: false,
-              _singleRunningStatus: NodeRunningStatus.Failed,
+              _singleRunningStatus: NodeRunningStatus.Succeeded,
             },
           })
-        },
-        onSettled: (data) => {
-          updateRunResult(data!)
-          if (!hasError && !isPausedRef.current) {
-            handleNodeDataUpdate({
-              id: nodeId,
-              data: {
-                ...payload,
-                _isSingleRun: false,
-                _singleRunningStatus: NodeRunningStatus.Succeeded,
-              },
-            })
-          }
-        },
+        }
       },
-    )
+    })
   }
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()

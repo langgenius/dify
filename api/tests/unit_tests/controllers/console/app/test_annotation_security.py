@@ -194,7 +194,8 @@ class TestAnnotationImportServiceValidation:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        return MagicMock()
+        with patch("services.annotation_service.db.session") as mock:
+            yield mock
 
     def test_max_records_limit_enforced(self, mock_app, mock_db_session):
         """Test that files with too many records are rejected."""
@@ -207,13 +208,15 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
             with patch("services.annotation_service.FeatureService") as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
-                result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+                result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
                 # Should return error about too many records
                 assert "error_msg" in result
@@ -227,10 +230,12 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
             # Should return error about insufficient records
             assert "error_msg" in result
@@ -243,13 +248,15 @@ class TestAnnotationImportServiceValidation:
         csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+
         with (
             patch("services.annotation_service.current_account_with_tenant") as mock_auth,
             patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV")),
         ):
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
             assert "error_msg" in result
             assert "malformed" in result["error_msg"].lower()
@@ -262,6 +269,8 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
+
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
@@ -270,7 +279,7 @@ class TestAnnotationImportServiceValidation:
 
                 with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
                     with patch("services.annotation_service.redis_client"):
-                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+                        result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
                         # Should return success response
                         assert "job_id" in result

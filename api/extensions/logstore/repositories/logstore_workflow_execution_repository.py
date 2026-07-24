@@ -2,16 +2,17 @@ import json
 import logging
 import os
 import time
-from typing import override
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import WorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from dify_graph.entities import WorkflowExecution
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
-from graphon.entities import WorkflowExecution
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.helper import extract_tenant_id
 from models import (
     Account,
     CreatorUserRole,
@@ -26,8 +27,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        tenant_id: str,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):
@@ -36,8 +36,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            tenant_id: Tenant that owns the workflow execution
-            user: Account or EndUser used for creator attribution
+            user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
@@ -48,8 +47,10 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Note: Project/logstore/index initialization is done at app startup via ext_logstore
         self.logstore_client = AliyunLogStore()
 
+        # Extract tenant_id from user
+        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("tenant_id is required")
+            raise ValueError("User must have a tenant_id or current_tenant_id")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -63,13 +64,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # Initialize SQL repository for dual-write support
-        self.sql_repository = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=session_factory,
-            tenant_id=tenant_id,
-            user=user,
-            app_id=app_id,
-            triggered_from=triggered_from,
-        )
+        self.sql_repository = SQLAlchemyWorkflowExecutionRepository(session_factory, user, app_id, triggered_from)
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only
@@ -158,7 +153,6 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return logstore_model
 
-    @override
     def save(self, execution: WorkflowExecution) -> None:
         """
         Save or update a WorkflowExecution domain entity to the logstore.

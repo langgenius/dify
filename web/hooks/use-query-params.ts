@@ -13,7 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { SettingsTab } from '@/app/components/header/account-setting/constants'
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
   createParser,
   parseAsStringEnum,
@@ -24,8 +24,9 @@ import {
 import { useCallback } from 'react'
 import {
   ACCOUNT_SETTING_MODAL_ACTION,
-  SETTINGS_TAB_VALUES,
+  ACCOUNT_SETTING_TAB,
 } from '@/app/components/header/account-setting/constants'
+import { isServer } from '@/utils/client'
 
 /**
  * Modal State Query Parameters
@@ -34,8 +35,8 @@ import {
 export const PRICING_MODAL_QUERY_PARAM = 'pricing'
 export const PRICING_MODAL_QUERY_VALUE = 'open'
 const parseAsPricingModal = createParser<boolean>({
-  parse: (value) => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
-  serialize: (value) => (value ? PRICING_MODAL_QUERY_VALUE : ''),
+  parse: value => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
+  serialize: value => (value ? PRICING_MODAL_QUERY_VALUE : ''),
 })
   .withDefault(false)
   .withOptions({ history: 'push' })
@@ -50,12 +51,15 @@ const parseAsPricingModal = createParser<boolean>({
  * setIsOpen(false) // Removes ?pricing
  */
 export function usePricingModal() {
-  return useQueryState(PRICING_MODAL_QUERY_PARAM, parseAsPricingModal)
+  return useQueryState(
+    PRICING_MODAL_QUERY_PARAM,
+    parseAsPricingModal,
+  )
 }
 
-const settingsTabValues = [...SETTINGS_TAB_VALUES] as SettingsTab[]
+const accountSettingTabValues = Object.values(ACCOUNT_SETTING_TAB) as AccountSettingTab[]
 const parseAsAccountSettingAction = parseAsStringLiteral([ACCOUNT_SETTING_MODAL_ACTION] as const)
-const parseAsSettingsTab = parseAsStringEnum<SettingsTab>(settingsTabValues)
+const parseAsAccountSettingTab = parseAsStringEnum<AccountSettingTab>(accountSettingTabValues)
 
 /**
  * Hook to manage account setting modal state via URL
@@ -70,7 +74,7 @@ export function useAccountSettingModal() {
   const [accountState, setAccountState] = useQueryStates(
     {
       action: parseAsAccountSettingAction,
-      tab: parseAsSettingsTab,
+      tab: parseAsAccountSettingTab,
     },
     {
       history: 'replace',
@@ -78,7 +82,7 @@ export function useAccountSettingModal() {
   )
 
   const setState = useCallback(
-    (state: { payload: SettingsTab } | null) => {
+    (state: { payload: AccountSettingTab } | null) => {
       if (!state) {
         setAccountState({ action: null, tab: null }, { history: 'replace' })
         return
@@ -118,31 +122,31 @@ const parseAsPackageId = createParser<string>({
         return typeof first === 'string' ? first : null
       }
       return value
-    } catch {
+    }
+    catch {
       return value
     }
   },
-  serialize: (value) => JSON.stringify([value]),
+  serialize: value => JSON.stringify([value]),
 })
 
 const parseAsBundleInfo = createParser<BundleInfoQuery>({
   parse: (value) => {
     try {
       const parsed = JSON.parse(value) as Partial<BundleInfoQuery>
-      if (
-        parsed &&
-        typeof parsed.org === 'string' &&
-        typeof parsed.name === 'string' &&
-        typeof parsed.version === 'string'
-      ) {
+      if (parsed
+        && typeof parsed.org === 'string'
+        && typeof parsed.name === 'string'
+        && typeof parsed.version === 'string') {
         return { org: parsed.org, name: parsed.name, version: parsed.version }
       }
-    } catch {
+    }
+    catch {
       return null
     }
     return null
   },
-  serialize: (value) => JSON.stringify(value),
+  serialize: value => JSON.stringify(value),
 })
 
 /**
@@ -168,4 +172,27 @@ export function usePluginInstallation() {
       },
     },
   )
+}
+
+/**
+ * Utility to clear specific query parameters from URL
+ * This is a client-side utility that should be called from client components
+ *
+ * @param keys - Single key or array of keys to remove from URL
+ *
+ * @example
+ * // In a client component
+ * clearQueryParams('param1')
+ * clearQueryParams(['param1', 'param2'])
+ */
+export function clearQueryParams(keys: string | string[]) {
+  if (isServer)
+    return
+
+  const url = new URL(window.location.href)
+  const keysArray = Array.isArray(keys) ? keys : [keys]
+
+  keysArray.forEach(key => url.searchParams.delete(key))
+
+  window.history.replaceState(null, '', url.toString())
 }

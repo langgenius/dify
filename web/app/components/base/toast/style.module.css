@@ -1,0 +1,44 @@
+.toast {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  z-index: 99999999;
+  width: 1.84rem;
+  height: 1.80rem;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  background: #000000;
+  box-shadow: 0 -.04rem .1rem 1px rgba(255, 255, 255, 0.1);
+  border-radius: .1rem .1rem .1rem .1rem;
+}
+
+.main {
+  width: 2rem;
+}
+
+.icon {
+  margin-bottom: .2rem;
+  height: .4rem;
+  background: center center no-repeat;
+  background-size: contain;
+}
+
+/* .success {
+  background-image: url('./icons/success.svg');
+}
+
+.warning {
+  background-image: url('./icons/warning.svg');
+}
+
+.error {
+  background-image: url('./icons/error.svg');
+} */
+
+.text {
+  text-align: center;
+  font-size: .2rem;
+  color: rgba(255, 255, 255, 0.86);
+}

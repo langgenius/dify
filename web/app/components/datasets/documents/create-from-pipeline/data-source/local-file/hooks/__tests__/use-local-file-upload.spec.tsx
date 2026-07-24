@@ -2,25 +2,21 @@ import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PROGRESS_ERROR } from '../../constants'
+import { PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 
-const { mockNotify, mockToast } = vi.hoisted(() => {
-  const mockNotify = vi.fn()
-  const mockToast = Object.assign(mockNotify, {
-    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
-    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
-    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
-    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockNotify, mockToast }
+// Mock notify function - defined before mocks
+const mockNotify = vi.fn()
+const mockClose = vi.fn()
+
+// Mock ToastContext with factory function
+vi.mock('@/app/components/base/toast/context', async () => {
+  const { createContext, useContext } = await import('use-context-selector')
+  const context = createContext({ notify: mockNotify, close: mockClose })
+  return {
+    ToastContext: context,
+    useToastContext: () => useContext(context),
+  }
 })
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
-}))
 
 // Mock file uploader utils
 vi.mock('@/app/components/base/file-uploader/utils', () => ({
@@ -34,6 +30,13 @@ vi.mock('@/utils/format', () => ({
     return parts[parts.length - 1] || ''
   },
 }))
+
+// Mock react-i18next
+// Mock locale context
+vi.mock('@/context/i18n', () => ({
+  useLocale: () => 'en-US',
+}))
+
 // Mock i18n config
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
@@ -53,9 +56,8 @@ const mockGetState = vi.fn(() => ({
 const mockStore = { getState: mockGetState }
 
 vi.mock('../../../store', () => ({
-  useDataSourceStoreWithSelector: vi.fn(
-    (selector: (state: { localFileList: FileItem[] }) => FileItem[]) =>
-      selector({ localFileList: [] }),
+  useDataSourceStoreWithSelector: vi.fn((selector: (state: { localFileList: FileItem[] }) => FileItem[]) =>
+    selector({ localFileList: [] }),
   ),
   useDataSourceStore: vi.fn(() => mockStore),
 }))
@@ -85,9 +87,14 @@ vi.mock('@/service/base', () => ({
 
 // Import after all mocks are set up
 const { useLocalFileUpload } = await import('../use-local-file-upload')
+const { ToastContext } = await import('@/app/components/base/toast/context')
 
 const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
+  return ({ children }: { children: ReactNode }) => (
+    <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+      {children}
+    </ToastContext.Provider>
+  )
 }
 
 describe('useLocalFileUpload', () => {
@@ -109,9 +116,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should create refs for dropzone, drag area, and file uploader', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.dropRef).toBeDefined()
       expect(result.current.dragRef).toBeDefined()
@@ -139,9 +147,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should provide file upload config with defaults', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.fileUploadConfig.file_size_limit).toBe(15)
       expect(result.current.fileUploadConfig.batch_count_limit).toBe(5)
@@ -173,9 +182,10 @@ describe('useLocalFileUpload', () => {
 
   describe('selectHandle', () => {
     it('should trigger file input click', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockClick = vi.fn()
       const mockInput = { click: mockClick } as unknown as HTMLInputElement
@@ -192,9 +202,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should handle null fileUploaderRef gracefully', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       expect(() => {
         act(() => {
@@ -206,9 +217,10 @@ describe('useLocalFileUpload', () => {
 
   describe('removeFile', () => {
     it('should remove file from list', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       act(() => {
         result.current.removeFile('file-id-123')
@@ -218,9 +230,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should clear file input value when removing', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockInput = { value: 'some-file.pdf' } as HTMLInputElement
       Object.defineProperty(result.current.fileUploaderRef, 'current', {
@@ -238,9 +251,10 @@ describe('useLocalFileUpload', () => {
 
   describe('handlePreview', () => {
     it('should set current local file when file has id', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = { id: 'file-123', name: 'test.pdf', size: 1024 }
 
@@ -252,9 +266,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should not set current file when file has no id', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = { name: 'test.pdf', size: 1024 }
 
@@ -270,9 +285,10 @@ describe('useLocalFileUpload', () => {
     it('should handle valid files', async () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id' })
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -291,9 +307,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should handle empty file list', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const event = {
         target: {
@@ -309,9 +326,10 @@ describe('useLocalFileUpload', () => {
     })
 
     it('should reject files with invalid type', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.exe', { type: 'application/exe' })
       const event = {
@@ -324,13 +342,16 @@ describe('useLocalFileUpload', () => {
         result.current.fileChangeHandle(event)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
 
     it('should reject files exceeding size limit', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       // Create a mock file larger than 15MB
       const largeSize = 20 * 1024 * 1024
@@ -347,21 +368,22 @@ describe('useLocalFileUpload', () => {
         result.current.fileChangeHandle(event)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
 
     it('should limit files to batch count limit', async () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id' })
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       // Create 10 files but batch limit is 5
-      const files = Array.from(
-        { length: 10 },
-        (_, i) => new File(['content'], `file${i}.pdf`, { type: 'application/pdf' }),
-      )
+      const files = Array.from({ length: 10 }, (_, i) =>
+        new File(['content'], `file${i}.pdf`, { type: 'application/pdf' }))
 
       const event = {
         target: {
@@ -379,7 +401,7 @@ describe('useLocalFileUpload', () => {
 
       // Should only process first 5 files (batch_count_limit)
       const firstCall = mockSetLocalFileList.mock.calls[0]
-      expect(firstCall![0].length).toBeLessThanOrEqual(5)
+      expect(firstCall[0].length).toBeLessThanOrEqual(5)
     })
   })
 
@@ -388,9 +410,10 @@ describe('useLocalFileUpload', () => {
       const uploadedResponse = { id: 'server-file-id' }
       mockUpload.mockResolvedValue(uploadedResponse)
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -411,9 +434,10 @@ describe('useLocalFileUpload', () => {
     it('should handle upload error', async () => {
       mockUpload.mockRejectedValue(new Error('Upload failed'))
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -427,16 +451,19 @@ describe('useLocalFileUpload', () => {
       })
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' }),
+        )
       })
     })
 
     it('should call upload with correct parameters', async () => {
       mockUpload.mockResolvedValue({ id: 'file-id' })
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -465,17 +492,19 @@ describe('useLocalFileUpload', () => {
 
   describe('extension mapping', () => {
     it('should map md to markdown', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['md'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['md'] }),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.supportTypesShowNames).toContain('MARKDOWN')
     })
 
     it('should map htm to html', () => {
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['htm'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['htm'] }),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.supportTypesShowNames).toContain('HTML')
     })
@@ -503,17 +532,15 @@ describe('useLocalFileUpload', () => {
 
   describe('drag and drop handlers', () => {
     // Helper component that renders with the hook and connects refs
-    const TestDropzone = ({
-      allowedExtensions,
-      supportBatchUpload = true,
-    }: {
+    const TestDropzone = ({ allowedExtensions, supportBatchUpload = true }: {
       allowedExtensions: string[]
       supportBatchUpload?: boolean
     }) => {
-      const { dropRef, dragRef, dragging } = useLocalFileUpload({
-        allowedExtensions,
-        supportBatchUpload,
-      })
+      const {
+        dropRef,
+        dragRef,
+        dragging,
+      } = useLocalFileUpload({ allowedExtensions, supportBatchUpload })
 
       return (
         <div>
@@ -528,9 +555,9 @@ describe('useLocalFileUpload', () => {
     it('should set dragging true on dragenter', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -547,9 +574,9 @@ describe('useLocalFileUpload', () => {
     it('should handle dragover event', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -561,16 +588,15 @@ describe('useLocalFileUpload', () => {
       })
 
       // dragover should not throw
-      // dragover should not throw
-      expect(dropzone)!.toBeInTheDocument()
+      expect(dropzone).toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {
       const { getByTestId, queryByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -600,9 +626,9 @@ describe('useLocalFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -611,16 +637,14 @@ describe('useLocalFileUpload', () => {
 
       await act(async () => {
         const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: { items: DataTransferItem[]; files: File[] } | null
+          dataTransfer: { items: DataTransferItem[], files: File[] } | null
         }
         // Mock dataTransfer with items array (used by the shared hook for directory traversal)
         dropEvent.dataTransfer = {
-          items: [
-            {
-              kind: 'file',
-              getAsFile: () => mockFile,
-            },
-          ] as unknown as DataTransferItem[],
+          items: [{
+            kind: 'file',
+            getAsFile: () => mockFile,
+          }] as unknown as DataTransferItem[],
           files: [mockFile],
         }
         dropzone.dispatchEvent(dropEvent)
@@ -634,9 +658,9 @@ describe('useLocalFileUpload', () => {
     it('should handle drop without dataTransfer', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -644,9 +668,7 @@ describe('useLocalFileUpload', () => {
       mockSetLocalFileList.mockClear()
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: { files: File[] } | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: { files: File[] } | null }
         dropEvent.dataTransfer = null
         dropzone.dispatchEvent(dropEvent)
       })
@@ -660,9 +682,9 @@ describe('useLocalFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone allowedExtensions={['pdf']} supportBatchUpload={false} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -674,11 +696,11 @@ describe('useLocalFileUpload', () => {
 
       await act(async () => {
         const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: { items: DataTransferItem[]; files: File[] } | null
+          dataTransfer: { items: DataTransferItem[], files: File[] } | null
         }
         // Mock dataTransfer with items array (used by the shared hook for directory traversal)
         dropEvent.dataTransfer = {
-          items: files.map((f) => ({
+          items: files.map(f => ({
             kind: 'file',
             getAsFile: () => f,
           })) as unknown as DataTransferItem[],
@@ -690,7 +712,7 @@ describe('useLocalFileUpload', () => {
       await waitFor(() => {
         expect(mockSetLocalFileList).toHaveBeenCalled()
         // Should only have 1 file (limited by supportBatchUpload: false)
-        const callArgs = mockSetLocalFileList.mock.calls[0]![0]
+        const callArgs = mockSetLocalFileList.mock.calls[0][0]
         expect(callArgs.length).toBe(1)
       })
     })
@@ -705,19 +727,18 @@ describe('useLocalFileUpload', () => {
         file: { name: `existing-${i}.pdf`, size: 1024 } as CustomFile,
         progress: 100,
       }))
-      vi.mocked(useDataSourceStoreWithSelector).mockImplementation((selector) =>
+      vi.mocked(useDataSourceStoreWithSelector).mockImplementation(selector =>
         selector({ localFileList: existingFiles } as Parameters<typeof selector>[0]),
       )
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       // Try to add 5 more files when limit is 10 and we already have 8
-      const files = Array.from(
-        { length: 5 },
-        (_, i) => new File(['content'], `new-${i}.pdf`, { type: 'application/pdf' }),
-      )
+      const files = Array.from({ length: 5 }, (_, i) =>
+        new File(['content'], `new-${i}.pdf`, { type: 'application/pdf' }))
 
       const event = {
         target: { files },
@@ -728,10 +749,12 @@ describe('useLocalFileUpload', () => {
       })
 
       // Should show error about files number limit
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
 
       // Reset mock for other tests
-      vi.mocked(useDataSourceStoreWithSelector).mockImplementation((selector) =>
+      vi.mocked(useDataSourceStoreWithSelector).mockImplementation(selector =>
         selector({ localFileList: [] as FileItem[] } as Parameters<typeof selector>[0]),
       )
     })
@@ -746,9 +769,10 @@ describe('useLocalFileUpload', () => {
         return { id: 'uploaded-id' }
       })
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -787,9 +811,10 @@ describe('useLocalFileUpload', () => {
         return { id: 'uploaded-id' }
       })
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -825,12 +850,38 @@ describe('useLocalFileUpload', () => {
   })
 
   describe('file progress constants', () => {
+    it('should use PROGRESS_NOT_STARTED for new files', async () => {
+      mockUpload.mockResolvedValue({ id: 'file-id' })
+
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
+
+      const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
+      const event = {
+        target: {
+          files: [mockFile],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>
+
+      act(() => {
+        result.current.fileChangeHandle(event)
+      })
+
+      await waitFor(() => {
+        const callArgs = mockSetLocalFileList.mock.calls[0][0]
+        expect(callArgs[0].progress).toBe(PROGRESS_NOT_STARTED)
+      })
+    })
+
     it('should set PROGRESS_ERROR on upload failure', async () => {
       mockUpload.mockRejectedValue(new Error('Upload failed'))
 
-      const { result } = renderHook(() => useLocalFileUpload({ allowedExtensions: ['pdf'] }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useLocalFileUpload({ allowedExtensions: ['pdf'] }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -845,7 +896,7 @@ describe('useLocalFileUpload', () => {
 
       await waitFor(() => {
         const calls = mockSetLocalFileList.mock.calls
-        const lastCall = calls[calls.length - 1]![0]
+        const lastCall = calls[calls.length - 1][0]
         expect(lastCall.some((f: FileItem) => f.progress === PROGRESS_ERROR)).toBe(true)
       })
     })

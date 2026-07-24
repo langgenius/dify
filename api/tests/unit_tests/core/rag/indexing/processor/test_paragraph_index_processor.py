@@ -1,18 +1,14 @@
-import logging
-from contextlib import nullcontext
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelFeature
+from dify_graph.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from dify_graph.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from dify_graph.model_runtime.entities.model_entities import ModelFeature
 
 
 class TestParagraphIndexProcessor:
@@ -25,7 +21,7 @@ class TestParagraphIndexProcessor:
         dataset = Mock()
         dataset.id = "dataset-1"
         dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        dataset.indexing_technique = "high_quality"
         dataset.is_multimodal = True
         return dataset
 
@@ -56,33 +52,26 @@ class TestParagraphIndexProcessor:
 
     def test_extract_forwards_automatic_flag(self, processor: ParagraphIndexProcessor) -> None:
         extract_setting = Mock()
-        session = Mock()
         expected_docs = [Document(page_content="chunk", metadata={})]
 
         with patch(
             "core.rag.index_processor.processor.paragraph_index_processor.ExtractProcessor.extract"
         ) as mock_extract:
             mock_extract.return_value = expected_docs
-            docs = processor.extract(extract_setting, process_rule_mode="hierarchical", session=session)
+            docs = processor.extract(extract_setting, process_rule_mode="hierarchical")
 
         assert docs == expected_docs
-        mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
+        mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True)
 
     def test_transform_validates_process_rule(self, processor: ParagraphIndexProcessor) -> None:
-        session = Mock()
         with pytest.raises(ValueError, match="No process rule found"):
-            processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
+            processor.transform([Document(page_content="text", metadata={})], process_rule=None)
 
         with pytest.raises(ValueError, match="No rules found in process rule"):
-            processor.transform(
-                [Document(page_content="text", metadata={})], process_rule={"mode": "custom"}, session=session
-            )
+            processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "custom"})
 
-    def test_transform_validates_segmentation(
-        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
-    ) -> None:
+    def test_transform_validates_segmentation(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
         rules_without_segmentation = SimpleNamespace(segmentation=None)
-        session = Mock()
 
         with patch(
             "core.rag.index_processor.processor.paragraph_index_processor.Rule.model_validate",
@@ -92,14 +81,10 @@ class TestParagraphIndexProcessor:
                 processor.transform(
                     [Document(page_content="text", metadata={})],
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
-                    session=session,
                 )
 
-    def test_transform_builds_split_documents(
-        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
-    ) -> None:
+    def test_transform_builds_split_documents(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
         source_document = Document(page_content="source", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
-        session = Mock()
         splitter = Mock()
         splitter.split_documents.return_value = [
             Document(page_content=".first", metadata={}),
@@ -128,7 +113,7 @@ class TestParagraphIndexProcessor:
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
             ),
         ):
-            documents = processor.transform([source_document], process_rule=process_rule, session=session)
+            documents = processor.transform([source_document], process_rule=process_rule)
 
         assert len(documents) == 1
         assert documents[0].page_content == "first"
@@ -138,7 +123,6 @@ class TestParagraphIndexProcessor:
     def test_transform_automatic_mode_uses_default_rules(self, processor: ParagraphIndexProcessor) -> None:
         splitter = Mock()
         splitter.split_documents.return_value = [Document(page_content="text", metadata={})]
-        session = Mock()
 
         with (
             patch(
@@ -160,11 +144,7 @@ class TestParagraphIndexProcessor:
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
         ):
-            processor.transform(
-                [Document(page_content="text", metadata={})],
-                process_rule={"mode": "automatic"},
-                session=session,
-            )
+            processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "automatic"})
 
         assert mock_validate.call_count == 1
 
@@ -173,14 +153,12 @@ class TestParagraphIndexProcessor:
     ) -> None:
         docs = [Document(page_content="chunk", metadata={})]
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
-        session = Mock()
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
-            processor.load(dataset, docs, multimodal_documents=multimodal_docs, session=session)
-        mock_vector_cls.assert_called_once_with(dataset, session=session)
+            processor.load(dataset, docs, multimodal_documents=multimodal_docs)
         vector = mock_vector_cls.return_value
         vector.create.assert_called_once_with(docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
@@ -189,51 +167,48 @@ class TestParagraphIndexProcessor:
     def test_load_uses_keyword_add_texts_with_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        dataset.indexing_technique = "economy"
         docs = [Document(page_content="chunk", metadata={})]
-        session = Mock()
-        keywords_list = [["k1"], ["k2"]]
 
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
-            processor.load(dataset, docs, keywords_list=keywords_list, session=session)
+            processor.load(dataset, docs, keywords_list=["k1", "k2"])
 
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, session, keywords_list=keywords_list)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, keywords_list=["k1", "k2"])
 
     def test_load_uses_keyword_add_texts_without_keywords_when_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        dataset.indexing_technique = "economy"
         docs = [Document(page_content="chunk", metadata={})]
-        session = Mock()
 
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
-            processor.load(dataset, docs, session=session)
+            processor.load(dataset, docs)
 
-        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, session)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
 
     def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        scalars_result = Mock()
-        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
+        segment_query = Mock()
+        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.scalars.return_value = scalars_result
+        session.query.return_value = segment_query
 
         with (
+            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
         ):
             vector = mock_vector_cls.return_value
-            processor.clean(dataset, ["node-1"], delete_summaries=True, session=session)
+            processor.clean(dataset, ["node-1"], delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=session)
+        mock_summary.assert_called_once_with(dataset, ["seg-1"])
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
     def test_clean_economy_deletes_summaries_and_keywords(
         self, processor: ParagraphIndexProcessor, dataset: Mock
     ) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        session = Mock()
+        dataset.indexing_technique = "economy"
 
         with (
             patch(
@@ -241,25 +216,34 @@ class TestParagraphIndexProcessor:
             ) as mock_summary,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
-            processor.clean(dataset, None, delete_summaries=True, session=session)
+            processor.clean(dataset, None, delete_summaries=True)
 
-        mock_summary.assert_called_once_with(dataset, None, session=session)
+        mock_summary.assert_called_once_with(dataset, None)
         mock_keyword_cls.return_value.delete.assert_called_once()
 
     def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        session = Mock()
+        dataset.indexing_technique = "economy"
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
-            processor.clean(dataset, ["node-2"], with_keywords=True, session=session)
+            processor.clean(dataset, ["node-2"], with_keywords=True)
 
-        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"], session)
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"])
+
+    def test_retrieve_filters_by_threshold(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
+        accepted = SimpleNamespace(page_content="keep", metadata={"source": "a"}, score=0.9)
+        rejected = SimpleNamespace(page_content="drop", metadata={"source": "b"}, score=0.1)
+
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.RetrievalService.retrieve"
+        ) as mock_retrieve:
+            mock_retrieve.return_value = [accepted, rejected]
+            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, {})
+
+        assert len(docs) == 1
+        assert docs[0].metadata["score"] == 0.9
 
     def test_index_list_chunks_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
-        session = Mock()
-        phase_events: list[str] = []
-        session.commit.side_effect = lambda: phase_events.append("commit")
         with (
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
@@ -271,58 +255,29 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
             ) as mock_store_cls,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts"
-            ) as mock_token_counter,
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector") as mock_vector_cls,
         ):
-            mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [11, 22]
-            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
-            mock_vector_cls.return_value.create.side_effect = lambda _documents: phase_events.append("vector")
-            processor.index(dataset, dataset_document, ["chunk-1", "chunk-2"], session)
+            processor.index(dataset, dataset_document, ["chunk-1", "chunk-2"])
 
-        assert phase_events == ["count", "store", "commit", "vector"]
-        documents = mock_token_counter.call_args.kwargs["documents"]
-        assert [document.page_content for document in documents] == ["chunk-1", "chunk-2"]
-        mock_token_counter.assert_called_once_with(dataset=dataset, documents=documents)
-        mock_store_cls.return_value.add_documents.assert_called_once_with(
-            session=session,
-            docs=documents,
-            token_counts=[11, 22],
-            save_child=False,
-        )
-        mock_vector_cls.assert_called_once_with(dataset, session=session)
+        mock_store_cls.return_value.add_documents.assert_called_once()
         mock_vector_cls.return_value.create.assert_called_once()
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
 
     def test_index_list_chunks_economy(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
-        dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        session = Mock()
-        phase_events: list[str] = []
-        session.commit.side_effect = lambda: phase_events.append("commit")
+        dataset.indexing_technique = "economy"
         with (
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.helper.generate_text_hash",
                 return_value="hash",
             ),
             patch.object(processor, "_get_content_files", return_value=[]),
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"
-            ) as mock_store_cls,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts"
-            ) as mock_token_counter,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"),
             patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls,
         ):
-            mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [0]
-            mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
-            mock_keyword_cls.return_value.add_texts.side_effect = lambda *_args: phase_events.append("keyword")
-            processor.index(dataset, dataset_document, ["chunk-3"], session)
+            processor.index(dataset, dataset_document, ["chunk-3"])
 
-        assert phase_events == ["count", "store", "commit", "keyword"]
-        mock_token_counter.assert_called_once()
         mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_multimodal_structure_handles_files_and_account_lookup(
@@ -334,8 +289,6 @@ class TestParagraphIndexProcessor:
         )
         chunk_without_files = SimpleNamespace(content="content-2", files=None)
         structure = SimpleNamespace(general_chunks=[chunk_with_files, chunk_without_files])
-        session = Mock()
-        account_session = Mock()
 
         with (
             patch(
@@ -349,32 +302,21 @@ class TestParagraphIndexProcessor:
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.AccountService.load_user",
                 return_value=SimpleNamespace(id="user-1"),
-            ) as load_user,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
-                return_value=nullcontext(account_session),
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="img", metadata={})]
             ) as mock_files,
             patch("core.rag.index_processor.processor.paragraph_index_processor.DatasetDocumentStore"),
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.calculate_segment_token_counts",
-                return_value=[11, 22],
-            ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.Vector"),
         ):
-            processor.index(dataset, dataset_document, {"general_chunks": []}, session)
+            processor.index(dataset, dataset_document, {"general_chunks": []})
 
         assert mock_files.call_count == 1
-        load_user.assert_called_once_with(dataset_document.created_by, account_session)
-        assert account_session is not session
 
     def test_index_multimodal_structure_requires_valid_account(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
         structure = SimpleNamespace(general_chunks=[SimpleNamespace(content="content", files=None)])
-        session = Mock()
 
         with (
             patch(
@@ -391,7 +333,7 @@ class TestParagraphIndexProcessor:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid account"):
-                processor.index(dataset, dataset_document, {"general_chunks": []}, session)
+                processor.index(dataset, dataset_document, {"general_chunks": []})
 
     def test_format_preview_validates_chunk_shape(self, processor: ParagraphIndexProcessor) -> None:
         preview = processor.format_preview(["chunk-1", "chunk-2"])
@@ -403,34 +345,16 @@ class TestParagraphIndexProcessor:
 
     def test_generate_summary_preview_success_and_failure(self, processor: ParagraphIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="chunk-1"), PreviewDetail(content="chunk-2")]
-        session = Mock()
-        worker_sessions = [Mock(), Mock()]
 
-        with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.session_factory.create_session",
-                side_effect=[nullcontext(worker_session) for worker_session in worker_sessions],
-            ) as create_session,
-            patch.object(
-                processor, "generate_summary", return_value=("summary", LLMUsage.empty_usage())
-            ) as mock_generate_summary,
-        ):
+        with patch.object(processor, "generate_summary", return_value=("summary", LLMUsage.empty_usage())):
             result = processor.generate_summary_preview(
-                "tenant-1", preview_items, {"enable": True}, doc_language="English", session=session
+                "tenant-1", preview_items, {"enable": True}, doc_language="English"
             )
         assert all(item.summary == "summary" for item in result)
-        call_sessions = [call.kwargs["session"] for call in mock_generate_summary.call_args_list]
-        assert create_session.call_count == len(preview_items)
-        assert all(call_session is not session for call_session in call_sessions)
-        assert {id(call_session) for call_session in call_sessions} == {
-            id(worker_session) for worker_session in worker_sessions
-        }
 
         with patch.object(processor, "generate_summary", side_effect=RuntimeError("summary failed")):
             with pytest.raises(ValueError, match="Failed to generate summaries"):
-                processor.generate_summary_preview(
-                    "tenant-1", [PreviewDetail(content="chunk-1")], {"enable": True}, session=session
-                )
+                processor.generate_summary_preview("tenant-1", [PreviewDetail(content="chunk-1")], {"enable": True})
 
     def test_generate_summary_preview_fallback_without_flask_context(self, processor: ParagraphIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="chunk-1")]
@@ -440,7 +364,7 @@ class TestParagraphIndexProcessor:
             patch("flask.current_app", fake_current_app),
             patch.object(processor, "generate_summary", return_value=("summary", LLMUsage.empty_usage())),
         ):
-            result = processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=Mock())
+            result = processor.generate_summary_preview("tenant-1", preview_items, {"enable": True})
 
         assert result[0].summary == "summary"
 
@@ -456,27 +380,25 @@ class TestParagraphIndexProcessor:
             patch("concurrent.futures.wait", side_effect=[(set(), {future}), (set(), set())]),
         ):
             with pytest.raises(ValueError, match="timeout"):
-                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True}, session=Mock())
+                processor.generate_summary_preview("tenant-1", preview_items, {"enable": True})
 
         future.cancel.assert_called_once()
 
     def test_generate_summary_validates_input(self) -> None:
         with pytest.raises(ValueError, match="must be enabled"):
-            ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": False}, session=Mock())
+            ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": False})
 
         with pytest.raises(ValueError, match="model_name and model_provider_name"):
-            ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": True}, session=Mock())
+            ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": True})
 
-    def test_generate_summary_text_only_flow(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_generate_summary_text_only_flow(self) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}
         model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
         model_instance.invoke_llm.return_value = self._llm_result("text summary")
 
         with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -485,23 +407,19 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota",
                 side_effect=RuntimeError("quota"),
             ),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
-            with caplog.at_level(
-                logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
-            ):
-                summary, usage = ParagraphIndexProcessor.generate_summary(
-                    "tenant-1",
-                    "text content",
-                    {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
-                    document_language="English",
-                    session=Mock(),
-                )
+            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
+            summary, usage = ParagraphIndexProcessor.generate_summary(
+                "tenant-1",
+                "text content",
+                {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                document_language="English",
+            )
 
         assert summary == "text summary"
         assert isinstance(usage, LLMUsage)
-        assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
-        assert any("Failed to deduct quota for summary generation" in record.message for record in caplog.records)
+        mock_logger.warning.assert_called_with("Failed to deduct quota for summary generation: %s", "quota")
 
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()
@@ -514,9 +432,7 @@ class TestParagraphIndexProcessor:
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png", url="http://example.com/a.png")
 
         with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -531,19 +447,18 @@ class TestParagraphIndexProcessor:
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota"),
         ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
             summary, _ = ParagraphIndexProcessor.generate_summary(
                 "tenant-1",
                 "text content",
                 {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
                 segment_id="seg-1",
-                session=Mock(),
             )
 
         assert summary == "vision summary"
         mock_extract_text.assert_not_called()
 
-    def test_generate_summary_fallbacks_for_prompt_and_result_types(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_generate_summary_fallbacks_for_prompt_and_result_types(self) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}
         model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
@@ -553,9 +468,7 @@ class TestParagraphIndexProcessor:
         image_file = SimpleNamespace()
 
         with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
+            patch("core.rag.index_processor.processor.paragraph_index_processor.ProviderManager") as mock_pm_cls,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
                 return_value=model_instance,
@@ -570,25 +483,21 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.file_manager.to_prompt_message_content",
                 side_effect=RuntimeError("bad image"),
             ),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_pm_cls.return_value.get_provider_model_bundle.return_value = Mock()
             with pytest.raises(ValueError, match="Expected LLMResult"):
-                with caplog.at_level(
-                    logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
-                ):
-                    ParagraphIndexProcessor.generate_summary(
-                        "tenant-1",
-                        "text content",
-                        {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
-                        session=Mock(),
-                    )
+                ParagraphIndexProcessor.generate_summary(
+                    "tenant-1",
+                    "text content",
+                    {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                )
 
-        assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
-        assert any(
-            "Failed to convert image file to prompt message content" in record.message for record in caplog.records
+        mock_logger.warning.assert_called_with(
+            "Failed to convert image file to prompt message content: %s", "bad image"
         )
 
-    def test_extract_images_from_text_handles_patterns_and_build_errors(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_extract_images_from_text_handles_patterns_and_build_errors(self) -> None:
         text = (
             "![img](/files/11111111-1111-1111-1111-111111111111/image-preview) "
             "![img2](/files/22222222-2222-2222-2222-222222222222/file-preview) "
@@ -614,32 +523,29 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        scalars_result = Mock()
-        scalars_result.all.return_value = [image_upload, non_image_upload]
+        query = Mock()
+        query.where.return_value.all.return_value = [image_upload, non_image_upload]
         session = Mock()
-        session.scalars.return_value = scalars_result
+        session.query.return_value = query
 
         with (
+            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
                 return_value=SimpleNamespace(id="file-1"),
             ) as mock_builder,
-            caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
+            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text)
 
         assert len(files) == 1
         assert mock_builder.call_count == 1
-        assert not any(record.levelno == logging.WARNING for record in caplog.records)
+        mock_logger.warning.assert_not_called()
 
     def test_extract_images_from_text_returns_empty_when_no_matches(self) -> None:
-        scalars_result = Mock()
-        scalars_result.all.return_value = []
-        session = Mock()
-        session.scalars.return_value = scalars_result
-        assert ParagraphIndexProcessor._extract_images_from_text("tenant-1", "no images here", session) == []
+        assert ParagraphIndexProcessor._extract_images_from_text("tenant-1", "no images here") == []
 
-    def test_extract_images_from_text_logs_when_build_fails(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_extract_images_from_text_logs_when_build_fails(self) -> None:
         text = "![img](/files/11111111-1111-1111-1111-111111111111/image-preview)"
         image_upload = SimpleNamespace(
             id="11111111-1111-1111-1111-111111111111",
@@ -651,24 +557,25 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        scalars_result = Mock()
-        scalars_result.all.return_value = [image_upload]
+        query = Mock()
+        query.where.return_value.all.return_value = [image_upload]
         session = Mock()
-        session.scalars.return_value = scalars_result
+        session.query.return_value = query
 
         with (
+            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
                 side_effect=RuntimeError("build failed"),
             ),
-            caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
+            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text)
 
         assert files == []
-        assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
+        mock_logger.warning.assert_called_once()
 
-    def test_extract_images_from_segment_attachments(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_extract_images_from_segment_attachments(self) -> None:
         image_upload = SimpleNamespace(
             id="file-1",
             name="image",
@@ -701,11 +608,14 @@ class TestParagraphIndexProcessor:
         session = Mock()
         session.execute.return_value = execute_result
 
-        with caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"):
-            files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
+        with (
+            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
+        ):
+            files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
 
         assert len(files) == 1
-        assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
+        mock_logger.warning.assert_called_once()
 
     def test_extract_images_from_segment_attachments_empty(self) -> None:
         execute_result = Mock()
@@ -713,6 +623,7 @@ class TestParagraphIndexProcessor:
         session = Mock()
         session.execute.return_value = execute_result
 
-        empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
+        with patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session):
+            empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
 
         assert empty_files == []

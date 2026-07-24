@@ -1,8 +1,8 @@
 import logging
-from collections.abc import Callable
-from typing import override
+from collections.abc import Callable, Mapping
+from typing import Any
 
-from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
 from extensions.otel.decorators.handler import SpanHandler
@@ -14,16 +14,15 @@ logger = logging.getLogger(__name__)
 class WorkflowAppRunnerHandler(SpanHandler):
     """Span handler for ``WorkflowAppRunner.run``."""
 
-    @override
-    def wrapper[**P, R](
+    def wrapper(
         self,
-        tracer: Tracer,
-        wrapped: Callable[P, R],
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> R:
+        tracer: Any,
+        wrapped: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+    ) -> Any:
         try:
-            arguments = self._extract_arguments(wrapped, *args, **kwargs)
+            arguments = self._extract_arguments(wrapped, args, kwargs)
             if not arguments:
                 return wrapped(*args, **kwargs)
 

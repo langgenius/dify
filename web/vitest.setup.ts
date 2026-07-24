@@ -1,40 +1,115 @@
 import { act, cleanup } from '@testing-library/react'
+import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
 import * as React from 'react'
-import { afterEach, beforeEach, vi } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 import 'vitest-canvas-mock'
 
-;(
-  globalThis as typeof globalThis & {
-    BASE_UI_ANIMATIONS_DISABLED: boolean
+mockResizeObserver()
+
+// Mock Web Animations API for Headless UI
+mockAnimationsApi()
+
+// Suppress act() warnings from @headlessui/react internal Transition component
+// These warnings are caused by Headless UI's internal async state updates, not our code
+const originalConsoleError = console.error
+console.error = (...args: unknown[]) => {
+  // Check all arguments for the Headless UI TransitionRootFn act warning
+  const fullMessage = args.map(arg => (typeof arg === 'string' ? arg : '')).join(' ')
+  if (fullMessage.includes('TransitionRootFn') && fullMessage.includes('not wrapped in act'))
+    return
+  originalConsoleError.apply(console, args)
+}
+
+// Fix for @headlessui/react compatibility with happy-dom
+// headlessui tries to override focus properties which may be read-only in happy-dom
+if (typeof window !== 'undefined') {
+  // Provide a minimal animations API polyfill before @headlessui/react boots
+  if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
+    Element.prototype.getAnimations = () => []
+
+  if (!document.getAnimations)
+    document.getAnimations = () => []
+
+  const ensureWritable = (target: object, prop: string) => {
+    const descriptor = Object.getOwnPropertyDescriptor(target, prop)
+    if (descriptor && !descriptor.writable) {
+      const original = descriptor.value ?? descriptor.get?.call(target)
+      Object.defineProperty(target, prop, {
+        value: typeof original === 'function' ? original : vi.fn(),
+        writable: true,
+        configurable: true,
+      })
+    }
   }
-).BASE_UI_ANIMATIONS_DISABLED = true
 
-if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
-  Element.prototype.getAnimations = () => []
+  ensureWritable(window, 'focus')
+  ensureWritable(HTMLElement.prototype, 'focus')
+}
 
-const unexpectedFetchCalls: Parameters<typeof fetch>[] = []
-const unexpectedFetchMock = vi.fn((...args: Parameters<typeof fetch>) => {
-  unexpectedFetchCalls.push(args)
-  return new Promise<Response>(() => {})
-}) as typeof fetch
-globalThis.fetch = unexpectedFetchMock
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {
+      return undefined
+    }
+
+    unobserve() {
+      return undefined
+    }
+
+    disconnect() {
+      return undefined
+    }
+  }
+}
+
+// Mock IntersectionObserver for tests
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  globalThis.IntersectionObserver = class {
+    readonly root: Element | Document | null = null
+    readonly rootMargin: string = ''
+    readonly scrollMargin: string = ''
+    readonly thresholds: ReadonlyArray<number> = []
+    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
+    observe(_target: Element) { /* noop */ }
+    unobserve(_target: Element) { /* noop */ }
+    disconnect() { /* noop */ }
+    takeRecords(): IntersectionObserverEntry[] { return [] }
+  }
+}
+
+// Mock Element.scrollIntoView for tests (not available in happy-dom/jsdom)
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
+  Element.prototype.scrollIntoView = function () { /* noop */ }
+
+// Mock DOMRect.fromRect for tests (not available in jsdom)
+if (typeof DOMRect !== 'undefined' && typeof (DOMRect as typeof DOMRect & { fromRect?: unknown }).fromRect !== 'function') {
+  (DOMRect as typeof DOMRect & { fromRect: (rect?: DOMRectInit) => DOMRect }).fromRect = (rect = {}) => new DOMRect(
+    rect.x ?? 0,
+    rect.y ?? 0,
+    rect.width ?? 0,
+    rect.height ?? 0,
+  )
+}
 
 afterEach(async () => {
   // Wrap cleanup in act() to flush pending React scheduler work
   // This prevents "window is not defined" errors from React 19's scheduler
-  // which uses setImmediate/MessageChannel that can fire after DOM cleanup
+  // which uses setImmediate/MessageChannel that can fire after jsdom cleanup
   await act(async () => {
     cleanup()
   })
-
-  if (unexpectedFetchCalls.length) {
-    const requests = unexpectedFetchCalls.map(([input]) =>
-      input instanceof Request ? input.url : String(input),
-    )
-    throw new Error(`Unexpected fetch request(s): ${requests.join(', ')}`)
-  }
 })
+
+// mock next/image to avoid width/height requirements for data URLs
+vi.mock('next/image')
+
+// mock foxact/use-clipboard - not available in test environment
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copy: vi.fn(),
+    copied: false,
+  }),
+}))
 
 // mock zustand - auto-resets all stores after each test
 // Based on official Zustand testing guide: https://zustand.docs.pmnd.rs/guides/testing
@@ -50,101 +125,56 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@monaco-editor/react', () => {
-  const createEditorMock = () => {
-    const focusListeners: Array<() => void> = []
-    const blurListeners: Array<() => void> = []
-
-    return {
-      getContentHeight: vi.fn(() => 56),
-      onDidFocusEditorText: vi.fn((listener: () => void) => {
-        focusListeners.push(listener)
-        return { dispose: vi.fn() }
-      }),
-      onDidBlurEditorText: vi.fn((listener: () => void) => {
-        blurListeners.push(listener)
-        return { dispose: vi.fn() }
-      }),
-      layout: vi.fn(),
-      getAction: vi.fn(() => ({ run: vi.fn() })),
-      getModel: vi.fn(() => ({
-        getLineContent: vi.fn(() => ''),
-      })),
-      getPosition: vi.fn(() => ({ lineNumber: 1, column: 1 })),
-      focus: vi.fn(() => {
-        focusListeners.forEach((listener) => listener())
-      }),
-      __blur: () => {
-        blurListeners.forEach((listener) => listener())
-      },
-    }
-  }
-
-  const monacoMock = {
-    editor: {
-      setTheme: vi.fn(),
-      defineTheme: vi.fn(),
-    },
-    Range: class {
-      startLineNumber: number
-      startColumn: number
-      endLineNumber: number
-      endColumn: number
-      constructor(
-        startLineNumber: number,
-        startColumn: number,
-        endLineNumber: number,
-        endColumn: number,
-      ) {
-        this.startLineNumber = startLineNumber
-        this.startColumn = startColumn
-        this.endLineNumber = endLineNumber
-        this.endColumn = endColumn
-      }
-    },
-  }
-
-  const MonacoEditor = ({
-    value = '',
-    onChange,
-    onMount,
-    options,
-  }: {
-    value?: string
-    onChange?: (value: string | undefined) => void
-    onMount?: (editor: ReturnType<typeof createEditorMock>, monaco: typeof monacoMock) => void
-    options?: { readOnly?: boolean }
-  }) => {
-    const editorRef = React.useRef<ReturnType<typeof createEditorMock> | null>(null)
-    if (!editorRef.current) editorRef.current = createEditorMock()
-
-    React.useEffect(() => {
-      onMount?.(editorRef.current!, monacoMock)
-    }, [onMount])
-
-    return React.createElement('textarea', {
-      'data-testid': 'monaco-editor',
-      readOnly: options?.readOnly,
-      value,
-      onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
-      onFocus: () => editorRef.current?.focus(),
-      onBlur: () => editorRef.current?.__blur(),
-    })
-  }
-
+// Mock FloatingPortal to render children in the normal DOM flow
+vi.mock('@floating-ui/react', async () => {
+  const actual = await vi.importActual('@floating-ui/react')
   return {
-    __esModule: true,
-    default: MonacoEditor,
-    Editor: MonacoEditor,
-    loader: {
-      config: vi.fn(),
-    },
+    ...actual,
+    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 
+// mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // deprecated
+    removeListener: vi.fn(), // deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
+
+// Mock localStorage for testing
+const createMockLocalStorage = () => {
+  const storage: Record<string, string> = {}
+  return {
+    getItem: vi.fn((key: string) => storage[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      storage[key] = value
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete storage[key]
+    }),
+    clear: vi.fn(() => {
+      Object.keys(storage).forEach(key => delete storage[key])
+    }),
+    get storage() { return { ...storage } },
+  }
+}
+
+let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
+
 beforeEach(() => {
-  unexpectedFetchCalls.length = 0
-  vi.mocked(unexpectedFetchMock).mockClear()
-  globalThis.fetch = unexpectedFetchMock
-  if (typeof localStorage !== 'undefined') localStorage.clear()
+  vi.clearAllMocks()
+  mockLocalStorage = createMockLocalStorage()
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: mockLocalStorage,
+    writable: true,
+    configurable: true,
+  })
 })

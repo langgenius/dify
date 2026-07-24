@@ -12,10 +12,8 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 from services.dataset_service import SegmentService
 
 
@@ -35,13 +33,13 @@ class SegmentServiceTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
+            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
             db_session_with_containers.add(tenant)
             db_session_with_containers.commit()
 
@@ -64,8 +62,8 @@ class SegmentServiceTestDataFactory:
             tenant_id=tenant_id,
             name=f"Test Dataset {uuid4()}",
             description="Test description",
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
             created_by=created_by,
             permission=DatasetPermissionEnum.ONLY_ME,
             provider="vendor",
@@ -84,10 +82,10 @@ class SegmentServiceTestDataFactory:
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch=f"batch-{uuid4()}",
             name=f"test-doc-{uuid4()}.txt",
-            created_from=DocumentCreatedFrom.API,
+            created_from="api",
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -103,7 +101,7 @@ class SegmentServiceTestDataFactory:
         created_by: str,
         position: int = 1,
         content: str = "Test content",
-        status: SegmentStatus = SegmentStatus.COMPLETED,
+        status: str = "completed",
         word_count: int = 10,
         tokens: int = 15,
     ) -> DocumentSegment:
@@ -173,9 +171,7 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(
-            document_id=document.id, tenant_id=tenant.id, page=1, limit=20, session=db_session_with_containers
-        )
+        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, page=1, limit=20)
 
         # Assert
         assert len(items) == 2
@@ -205,7 +201,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=1,
-            status=SegmentStatus.COMPLETED,
+            status="completed",
         )
         SegmentServiceTestDataFactory.create_segment(
             db_session_with_containers,
@@ -214,7 +210,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=2,
-            status=SegmentStatus.INDEXING,
+            status="indexing",
         )
         SegmentServiceTestDataFactory.create_segment(
             db_session_with_containers,
@@ -223,15 +219,12 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=3,
-            status=SegmentStatus.WAITING,
+            status="waiting",
         )
 
         # Act
         items, total = SegmentService.get_segments(
-            document_id=document.id,
-            tenant_id=tenant.id,
-            status_list=["completed", "indexing"],
-            session=db_session_with_containers,
+            document_id=document.id, tenant_id=tenant.id, status_list=["completed", "indexing"]
         )
 
         # Assert
@@ -262,7 +255,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=1,
-            status=SegmentStatus.COMPLETED,
+            status="completed",
         )
         SegmentServiceTestDataFactory.create_segment(
             db_session_with_containers,
@@ -271,13 +264,11 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=2,
-            status=SegmentStatus.INDEXING,
+            status="indexing",
         )
 
         # Act
-        items, total = SegmentService.get_segments(
-            document_id=document.id, tenant_id=tenant.id, status_list=[], session=db_session_with_containers
-        )
+        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, status_list=[])
 
         # Assert — empty status_list should return all segments (no status filter applied)
         assert len(items) == 2
@@ -318,9 +309,7 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(
-            document_id=document.id, tenant_id=tenant.id, keyword="search term", session=db_session_with_containers
-        )
+        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id, keyword="search term")
 
         # Assert
         assert len(items) == 1
@@ -373,9 +362,7 @@ class TestSegmentServiceGetSegments:
         )
 
         # Act
-        items, total = SegmentService.get_segments(
-            document_id=document.id, tenant_id=tenant.id, session=db_session_with_containers
-        )
+        items, total = SegmentService.get_segments(document_id=document.id, tenant_id=tenant.id)
 
         # Assert — segments should be ordered by position ASC
         assert len(items) == 3
@@ -397,9 +384,7 @@ class TestSegmentServiceGetSegments:
         non_existent_doc_id = str(uuid4())
 
         # Act
-        items, total = SegmentService.get_segments(
-            document_id=non_existent_doc_id, tenant_id=tenant.id, session=db_session_with_containers
-        )
+        items, total = SegmentService.get_segments(document_id=non_existent_doc_id, tenant_id=tenant.id)
 
         # Assert
         assert items == []
@@ -428,7 +413,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=1,
-            status=SegmentStatus.COMPLETED,
+            status="completed",
             content="This is important information",
         )
         SegmentServiceTestDataFactory.create_segment(
@@ -438,7 +423,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=2,
-            status=SegmentStatus.INDEXING,
+            status="indexing",
             content="This is also important",
         )
         SegmentServiceTestDataFactory.create_segment(
@@ -448,7 +433,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=3,
-            status=SegmentStatus.COMPLETED,
+            status="completed",
             content="This is irrelevant",
         )
 
@@ -460,7 +445,6 @@ class TestSegmentServiceGetSegments:
             keyword="important",
             page=1,
             limit=10,
-            session=db_session_with_containers,
         )
 
         # Assert — only the first segment matches both filters
@@ -491,7 +475,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=1,
-            status=SegmentStatus.COMPLETED,
+            status="completed",
         )
         SegmentServiceTestDataFactory.create_segment(
             db_session_with_containers,
@@ -500,7 +484,7 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             created_by=owner.id,
             position=2,
-            status=SegmentStatus.WAITING,
+            status="waiting",
         )
 
         # Act
@@ -508,7 +492,6 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             tenant_id=tenant.id,
             status_list=None,
-            session=db_session_with_containers,
         )
 
         # Assert — None status_list should return all segments
@@ -547,7 +530,6 @@ class TestSegmentServiceGetSegments:
             document_id=document.id,
             tenant_id=tenant.id,
             limit=200,
-            session=db_session_with_containers,
         )
 
         # Assert — total is 105, but items per page capped at 100

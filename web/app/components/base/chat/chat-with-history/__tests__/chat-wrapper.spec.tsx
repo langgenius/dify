@@ -6,13 +6,13 @@ import type { HumanInputFormData } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
-  fetchChatList,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { useChat } from '../../chat/hooks'
+
 import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
@@ -25,7 +25,7 @@ vi.mock('../context', () => ({
   useChatWithHistoryContext: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -42,7 +42,6 @@ vi.mock('../../utils', () => ({
 }))
 
 vi.mock('@/service/share', () => ({
-  fetchChatList: vi.fn(),
   fetchSuggestedQuestions: vi.fn(),
   getUrl: vi.fn(() => 'mock-url'),
   stopChatMessageResponding: vi.fn(),
@@ -63,13 +62,6 @@ vi.mock('@/app/components/base/markdown', () => ({
 
 vi.mock('@/utils/model-config', () => ({
   formatBooleanInputs: vi.fn((forms, inputs) => inputs),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (timestamp: number) => `formatted-${timestamp}`,
-    formatDate: (value: string) => `formatted-${value}`,
-  }),
 }))
 
 type ChatHookReturn = ReturnType<typeof useChat>
@@ -97,14 +89,10 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
   appPrevChatTree: [],
   newConversationInputs: {},
-  newConversationInputsRef: {
-    current: {},
-  } as ChatWithHistoryContextValue['newConversationInputsRef'],
+  newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
   inputsForms: [],
   isInstalledApp: false,
-  currentChatInstanceRef: {
-    current: { handleStop: vi.fn() },
-  } as ChatWithHistoryContextValue['currentChatInstanceRef'],
+  currentChatInstanceRef: { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
   appChatListDataLoading: false,
@@ -141,9 +129,6 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   suggestedQuestions: [],
 }
 
-const getChatInputDisabledSurface = (element: HTMLElement) =>
-  element.closest('.pointer-events-none.opacity-50')
-
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -159,17 +144,15 @@ describe('ChatWrapper', () => {
     })
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [
-        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1', 'Q2'] },
-      ],
+      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1', 'Q2'] }],
       handleSend,
       suggestedQuestions: ['Q1', 'Q2'],
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
 
-    expect(await screen.findByText('Welcome'))!.toBeInTheDocument()
-    expect(await screen.findByText('Q1'))!.toBeInTheDocument()
+    expect(await screen.findByText('Welcome')).toBeInTheDocument()
+    expect(await screen.findByText('Q1')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Q1'))
     expect(handleSend).toHaveBeenCalled()
@@ -187,7 +170,7 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(screen.getByText('Default opening statement'))!.toBeInTheDocument()
+    expect(screen.getByText('Default opening statement')).toBeInTheDocument()
   })
 
   it('should render welcome screen without suggested questions', async () => {
@@ -203,7 +186,7 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(await screen.findByText('Welcome message'))!.toBeInTheDocument()
+    expect(await screen.findByText('Welcome message')).toBeInTheDocument()
   })
 
   it('should show responding state', async () => {
@@ -214,7 +197,7 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(await screen.findByText('Bot thinking...'))!.toBeInTheDocument()
+    expect(await screen.findByText('Bot thinking...')).toBeInTheDocument()
   })
 
   it('should handle manual message input and stop responding', async () => {
@@ -247,9 +230,7 @@ describe('ChatWrapper', () => {
 
     rerender(<ChatWrapper />)
 
-    const stopButton = await screen.findByRole('button', {
-      name: /appDebug.operation.stopResponding/i,
-    })
+    const stopButton = await screen.findByRole('button', { name: /appDebug.operation.stopResponding/i })
     fireEvent.click(stopButton)
     expect(handleStop).toHaveBeenCalled()
   })
@@ -261,15 +242,7 @@ describe('ChatWrapper', () => {
       ...defaultChatHookReturn,
       chatList: [
         { id: 'q1', content: 'Q1' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          parentMessageId: 'q1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
       ],
       handleSend,
       handleSwitchSibling,
@@ -278,9 +251,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       expect(handleSend).toHaveBeenCalled()
@@ -310,9 +281,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       expect(handleSend).toHaveBeenCalled()
@@ -344,18 +313,16 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const disabledContainer = getChatInputDisabledSurface(chatInput!)
-    expect(disabledContainer)!.toBeInTheDocument()
-    expect(disabledContainer)!.toHaveClass('opacity-50')
+    const disabledContainer = chatInput.closest('.pointer-events-none')
+    expect(disabledContainer).toBeInTheDocument()
+    expect(disabledContainer).toHaveClass('opacity-50')
   })
 
   it('should not disable input when required field has value', () => {
@@ -363,30 +330,26 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: { req: 'value' },
-      newConversationInputsRef: {
-        current: { req: 'value' },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: { req: 'value' } } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
+    const container = chatInput.closest('.pointer-events-none')
     expect(container).not.toBeInTheDocument()
   })
 
   it('should disable input when file is uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'file',
-          label: 'File',
-          type: InputVarType.singleFile,
-          required: true,
-        },
-      ],
+      inputsForms: [{
+        variable: 'file',
+        label: 'File',
+        type: InputVarType.singleFile,
+        required: true,
+      }],
       newConversationInputsRef: {
         current: {
           file: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
@@ -398,21 +361,19 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
+    const container = chatInput.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should not disable input when file is fully uploaded', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'file',
-          label: 'File',
-          type: InputVarType.singleFile,
-          required: true,
-        },
-      ],
+      inputsForms: [{
+        variable: 'file',
+        label: 'File',
+        type: InputVarType.singleFile,
+        required: true,
+      }],
       newConversationInputsRef: {
         current: {
           file: { transferMethod: TransferMethod.local_file, uploadedId: '123' },
@@ -423,21 +384,19 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
+    const container = textarea.closest('.pointer-events-none')
     expect(container).not.toBeInTheDocument()
   })
 
   it('should disable input when multiple files are uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'files',
-          label: 'Files',
-          type: InputVarType.multiFiles,
-          required: true,
-        },
-      ],
+      inputsForms: [{
+        variable: 'files',
+        label: 'Files',
+        type: InputVarType.multiFiles,
+        required: true,
+      }],
       newConversationInputsRef: {
         current: {
           files: [
@@ -452,21 +411,19 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
+    const container = chatInput.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should not disable when all files are uploaded', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [
-        {
-          variable: 'files',
-          label: 'Files',
-          type: InputVarType.multiFiles,
-          required: true,
-        },
-      ],
+      inputsForms: [{
+        variable: 'files',
+        label: 'Files',
+        type: InputVarType.multiFiles,
+        required: true,
+      }],
       newConversationInputsRef: {
         current: {
           files: [
@@ -480,7 +437,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
+    const container = textarea.closest('.pointer-events-none')
     expect(container).not.toBeInTheDocument()
   })
 
@@ -499,8 +456,8 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
-    expect(container)!.toBeInTheDocument()
+    const container = textarea.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should not disable input when allInputsHidden is true', () => {
@@ -508,16 +465,14 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
       allInputsHidden: true,
     })
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = getChatInputDisabledSurface(textarea)
+    const container = textarea.closest('.pointer-events-none')
     expect(container).not.toBeInTheDocument()
   })
 
@@ -531,16 +486,14 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'Answer',
-          isAnswer: true,
-          workflow_run_id: 'w1',
-          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-          children: [],
-        },
-      ],
+      appPrevChatTree: [{
+        id: '1',
+        content: 'Answer',
+        isAnswer: true,
+        workflow_run_id: 'w1',
+        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+        children: [],
+      }],
     })
 
     render(<ChatWrapper />)
@@ -557,28 +510,22 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [
-        {
-          id: 'resume-node',
-          content: 'Paused answer',
-          isAnswer: true,
-          workflow_run_id: 'workflow-1',
-          humanInputFormDataList: [{ label: 'resume' }] as unknown as HumanInputFormData[],
-          children: [],
-        },
-      ],
+      appPrevChatTree: [{
+        id: 'resume-node',
+        content: 'Paused answer',
+        isAnswer: true,
+        workflow_run_id: 'workflow-1',
+        humanInputFormDataList: [{ label: 'resume' }] as unknown as HumanInputFormData[],
+        children: [],
+      }],
     })
 
     render(<ChatWrapper />)
 
     expect(handleSwitchSibling).toHaveBeenCalledWith('resume-node', expect.any(Object))
-    const resumeOptions = handleSwitchSibling.mock.calls[0]![1]
+    const resumeOptions = handleSwitchSibling.mock.calls[0][1]
     resumeOptions.onGetSuggestedQuestions('response-from-resume')
-    expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
-      'response-from-resume',
-      'webApp',
-      'test-app-id',
-    )
+    expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-from-resume', 'webApp', 'test-app-id')
   })
 
   it('should handle workflow resumption with nested children (DFS)', () => {
@@ -591,30 +538,28 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'First',
-          isAnswer: true,
-          children: [
-            {
-              id: '2',
-              content: 'Second',
-              isAnswer: false,
-              children: [
-                {
-                  id: '3',
-                  content: 'Third',
-                  isAnswer: true,
-                  workflow_run_id: 'w2',
-                  humanInputFormDataList: [{ label: 'third' }] as unknown as HumanInputFormData[],
-                  children: [],
-                },
-              ],
-            },
-          ],
-        },
-      ],
+      appPrevChatTree: [{
+        id: '1',
+        content: 'First',
+        isAnswer: true,
+        children: [
+          {
+            id: '2',
+            content: 'Second',
+            isAnswer: false,
+            children: [
+              {
+                id: '3',
+                content: 'Third',
+                isAnswer: true,
+                workflow_run_id: 'w2',
+                humanInputFormDataList: [{ label: 'third' }] as unknown as HumanInputFormData[],
+                children: [],
+              },
+            ],
+          },
+        ],
+      }],
     })
 
     render(<ChatWrapper />)
@@ -631,14 +576,12 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'Answer',
-          isAnswer: true,
-          children: [],
-        },
-      ],
+      appPrevChatTree: [{
+        id: '1',
+        content: 'Answer',
+        isAnswer: true,
+        children: [],
+      }],
     })
 
     render(<ChatWrapper />)
@@ -676,14 +619,9 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    const onStopCallback = vi.mocked(useChat).mock.calls[0]![3] as (taskId: string) => void
+    const onStopCallback = vi.mocked(useChat).mock.calls[0][3] as (taskId: string) => void
     onStopCallback('taskId-123')
-    expect(stopChatMessageResponding).toHaveBeenCalledWith(
-      '',
-      'taskId-123',
-      'webApp',
-      'test-app-id',
-    )
+    expect(stopChatMessageResponding).toHaveBeenCalledWith('', 'taskId-123', 'webApp', 'test-app-id')
   })
 
   it('should call fetchSuggestedQuestions in doSend options', async () => {
@@ -691,9 +629,7 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       handleSend,
-      chatList: [
-        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
-      ],
+      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] }],
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
 
@@ -709,65 +645,12 @@ describe('ChatWrapper', () => {
     expect(handleSend).toHaveBeenCalled()
 
     // Get the options passed to handleSend
-    const options = handleSend.mock.calls[0]![2]
+    const options = handleSend.mock.calls[0][2]
     expect(options.isPublicAPI).toBe(true)
 
     // Call onGetSuggestedQuestions
     options.onGetSuggestedQuestions('response-id')
     expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
-  })
-
-  it('should fetch current conversation messages after new agent send completes', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
-      ],
-      suggestedQuestions: ['Q1'],
-    } as unknown as ChatHookReturn)
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      isNewAgent: true,
-    })
-
-    render(<ChatWrapper />)
-
-    fireEvent.click(await screen.findByText('Q1'))
-
-    const options = handleSend.mock.calls[0]![2]
-    await options.onGetConversationMessages('conversation-1')
-
-    expect(fetchChatList).toHaveBeenCalledWith('conversation-1', 'webApp', 'test-app-id')
-  })
-
-  it('should not fetch current conversation messages for non-new-agent chat', async () => {
-    const handleSend = vi.fn()
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      handleSend,
-      chatList: [
-        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
-      ],
-      suggestedQuestions: ['Q1'],
-    } as unknown as ChatHookReturn)
-
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '',
-      isNewAgent: false,
-    })
-
-    render(<ChatWrapper />)
-
-    fireEvent.click(await screen.findByText('Q1'))
-
-    const options = handleSend.mock.calls[0]![2]
-    expect(options.onGetConversationMessages).toBeUndefined()
   })
 
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {
@@ -777,15 +660,7 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
       chatList: [
         { id: 'q1', content: 'Q1' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          parentMessageId: 'q1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
       ],
     } as unknown as ChatHookReturn)
 
@@ -804,7 +679,7 @@ describe('ChatWrapper', () => {
       fireEvent.click(nextButton)
       expect(handleSwitchSibling).toHaveBeenCalled()
 
-      const options = handleSwitchSibling.mock.calls[0]![1]
+      const options = handleSwitchSibling.mock.calls[0][1]
       options.onGetSuggestedQuestions('response-id')
       expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
     }
@@ -824,9 +699,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
 
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
@@ -835,8 +708,8 @@ describe('ChatWrapper', () => {
       expect(handleSend).toHaveBeenCalled()
       const args = handleSend.mock.calls[0]
       // args[1] is data
-      expect(args![1].query).toBe('Q1')
-      expect(args![1].parent_message_id).toBeNull()
+      expect(args[1].query).toBe('Q1')
+      expect(args[1].parent_message_id).toBeNull()
     }
   })
 
@@ -858,15 +731,13 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
 
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       expect(handleSend).toHaveBeenCalled()
       const args = handleSend.mock.calls[0]
-      expect(args![1].parent_message_id).toBe('a0')
+      expect(args[1].parent_message_id).toBe('a0')
     }
   })
 
@@ -887,39 +758,26 @@ describe('ChatWrapper', () => {
           id: 'a1',
           isAnswer: true,
           content: '',
-          humanInputFormDataList: [
-            {
-              id: 'node1',
-              form_id: 'form1',
-              form_token: 'token1',
-              node_id: 'node1',
-              node_title: 'Node 1',
-              display_in_ui: true,
-              form_content: '{{#$output.test#}}',
-              inputs: [
-                {
-                  variable: 'test',
-                  label: 'Test',
-                  type: 'paragraph',
-                  required: true,
-                  output_variable_name: 'test',
-                  default: { type: 'text', value: '' },
-                },
-              ],
-              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-            },
-          ] as unknown as HumanInputFormData[],
+          humanInputFormDataList: [{
+            id: 'node1',
+            form_id: 'form1',
+            form_token: 'token1',
+            node_id: 'node1',
+            node_title: 'Node 1',
+            display_in_ui: true,
+            form_content: '{{#$output.test#}}',
+            inputs: [{ variable: 'test', label: 'Test', type: 'paragraph', required: true, output_variable_name: 'test', default: { type: 'text', value: '' } }],
+            actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+          }] as unknown as HumanInputFormData[],
         },
       ],
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(await screen.findByText('Node 1'))!.toBeInTheDocument()
+    expect(await screen.findByText('Node 1')).toBeInTheDocument()
 
-    const input =
-      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-      screen.getAllByRole('textbox')[0]
-    fireEvent.change(input!, { target: { value: 'test' } })
+    const input = screen.getAllByRole('textbox').find(el => el.closest('.chat-answer-container')) || screen.getAllByRole('textbox')[0]
+    fireEvent.change(input, { target: { value: 'test' } })
 
     const runButton = screen.getByText('Run')
     fireEvent.click(runButton)
@@ -943,39 +801,26 @@ describe('ChatWrapper', () => {
           id: 'a1',
           isAnswer: true,
           content: '',
-          humanInputFormDataList: [
-            {
-              id: 'node1',
-              form_id: 'form1',
-              form_token: 'token-web-1',
-              node_id: 'node1',
-              node_title: 'Node Web 1',
-              display_in_ui: true,
-              form_content: '{{#$output.test#}}',
-              inputs: [
-                {
-                  variable: 'test',
-                  label: 'Test',
-                  type: 'paragraph',
-                  required: true,
-                  output_variable_name: 'test',
-                  default: { type: 'text', value: '' },
-                },
-              ],
-              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-            },
-          ] as unknown as HumanInputFormData[],
+          humanInputFormDataList: [{
+            id: 'node1',
+            form_id: 'form1',
+            form_token: 'token-web-1',
+            node_id: 'node1',
+            node_title: 'Node Web 1',
+            display_in_ui: true,
+            form_content: '{{#$output.test#}}',
+            inputs: [{ variable: 'test', label: 'Test', type: 'paragraph', required: true, output_variable_name: 'test', default: { type: 'text', value: '' } }],
+            actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+          }] as unknown as HumanInputFormData[],
         },
       ],
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
+    expect(await screen.findByText('Node Web 1')).toBeInTheDocument()
 
-    const input =
-      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-      screen.getAllByRole('textbox')[0]
-    fireEvent.change(input!, { target: { value: 'web-test' } })
+    const input = screen.getAllByRole('textbox').find(el => el.closest('.chat-answer-container')) || screen.getAllByRole('textbox')[0]
+    fireEvent.change(input, { target: { value: 'web-test' } })
     fireEvent.click(screen.getByText('Run'))
 
     await waitFor(() => {
@@ -996,7 +841,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     expect(document.querySelector('.chat-answer-container')).not.toBeInTheDocument()
-    expect(screen.getByText('Welcome'))!.toBeInTheDocument()
+    expect(screen.getByText('Welcome')).toBeInTheDocument()
   })
 
   it('should show all messages including opening statement when there are multiple messages', () => {
@@ -1016,7 +861,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const welcomeElements = screen.getAllByText('Welcome')
     expect(welcomeElements.length).toBeGreaterThan(0)
-    expect(screen.getByText('User message'))!.toBeInTheDocument()
+    expect(screen.getByText('User message')).toBeInTheDocument()
   })
 
   it('should show chatNode and inputs form on desktop for new conversation', () => {
@@ -1028,7 +873,7 @@ describe('ChatWrapper', () => {
     })
 
     render(<ChatWrapper />)
-    expect(screen.getByText('Test'))!.toBeInTheDocument()
+    expect(screen.getByText('Test')).toBeInTheDocument()
   })
 
   it('should show chatNode on mobile for new conversation only', () => {
@@ -1040,7 +885,7 @@ describe('ChatWrapper', () => {
     })
 
     const { rerender } = render(<ChatWrapper />)
-    expect(screen.getByText('Test'))!.toBeInTheDocument()
+    expect(screen.getByText('Test')).toBeInTheDocument()
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -1070,7 +915,8 @@ describe('ChatWrapper', () => {
     if (welcomeElement) {
       const welcomeContainer = welcomeElement.closest('.min-h-\\[50vh\\]')
       expect(welcomeContainer).toBeNull()
-    } else {
+    }
+    else {
       expect(welcomeElement).toBeNull()
     }
   })
@@ -1128,11 +974,11 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(screen.getByText('Answer'))!.toBeInTheDocument()
-    expect(screen.getByAltText('answer icon'))!.toBeInTheDocument()
+    expect(screen.getByText('Answer')).toBeInTheDocument()
+    expect(screen.getByAltText('answer icon')).toBeInTheDocument()
   })
 
-  it('should render question icon fallback when user avatar is available', () => {
+  it('should render question icon when user avatar is available', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       initUserVariables: {
@@ -1146,11 +992,12 @@ describe('ChatWrapper', () => {
       chatList: [{ id: 'q1', content: 'Question' }],
     } as unknown as ChatHookReturn)
 
-    render(<ChatWrapper />)
-    expect(screen.getByText('J'))!.toBeInTheDocument()
+    const { container } = render(<ChatWrapper />)
+    const avatar = container.querySelector('img[alt="John Doe"]')
+    expect(avatar).toBeInTheDocument()
   })
 
-  it('should use fallback values for nullable appData, appMeta and avatar name', () => {
+  it('should use fallback values for nullable appData, appMeta and user name', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
       appData: null as unknown as AppData,
@@ -1166,15 +1013,13 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(screen.getByText('Question with fallback avatar name'))!.toBeInTheDocument()
-    expect(screen.getByText('U'))!.toBeInTheDocument()
+    expect(screen.getByText('Question with fallback avatar name')).toBeInTheDocument()
+    expect(screen.getByAltText('user')).toBeInTheDocument()
   })
 
   it('should set handleStop on currentChatInstanceRef', () => {
     const handleStop = vi.fn()
-    const currentChatInstanceRef = {
-      current: { handleStop: vi.fn() },
-    } as ChatWithHistoryContextValue['currentChatInstanceRef']
+    const currentChatInstanceRef = { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef']
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -1250,17 +1095,15 @@ describe('ChatWrapper', () => {
         { variable: 'check', label: 'Checkbox', type: InputVarType.checkbox, required: true },
       ],
       newConversationInputs: { check: true },
-      newConversationInputsRef: {
-        current: { check: true },
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: { check: true } } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
+    const container = chatInput.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should call formatBooleanInputs when sending message', async () => {
@@ -1314,14 +1157,7 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1383,19 +1219,12 @@ describe('ChatWrapper', () => {
     })
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [
-        {
-          id: '1',
-          isOpeningStatement: true,
-          content: 'Custom introduction from conversation item',
-        },
-      ],
+      chatList: [{ id: '1', isOpeningStatement: true, content: 'Custom introduction from conversation item' }],
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
     // This tests line 91 - using currentConversationItem.introduction
-    // This tests line 91 - using currentConversationItem.introduction
-    expect(screen.getByText('Custom introduction from conversation item'))!.toBeInTheDocument()
+    expect(screen.getByText('Custom introduction from conversation item')).toBeInTheDocument()
   })
 
   it('should handle early return when hasEmptyInput is already set', () => {
@@ -1406,9 +1235,7 @@ describe('ChatWrapper', () => {
         { variable: 'field2', label: 'Field 2', type: 'text-input', required: true },
       ],
       newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -1416,8 +1243,8 @@ describe('ChatWrapper', () => {
     // This tests line 106 - early return when hasEmptyInput is set
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
+    const container = chatInput.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should handle early return when fileIsUploading is already set', () => {
@@ -1444,8 +1271,8 @@ describe('ChatWrapper', () => {
     // This tests line 109 - early return when fileIsUploading is set
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    expect(container)!.toBeInTheDocument()
+    const container = chatInput.closest('.pointer-events-none')
+    expect(container).toBeInTheDocument()
   })
 
   it('should handle doSend with no parent message id', async () => {
@@ -1506,10 +1333,10 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+    fireEvent.click(await screen.findByTestId('edit-btn'))
     const editedTextarea = await screen.findByDisplayValue('Original question')
     fireEvent.change(editedTextarea, { target: { value: 'Edited question text' } })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    fireEvent.click(screen.getByTestId('save-edit-btn'))
 
     await waitFor(() => {
       expect(handleSend).toHaveBeenCalledWith(
@@ -1537,9 +1364,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 198-200 when parentAnswer is not valid
@@ -1558,14 +1383,7 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1579,12 +1397,9 @@ describe('ChatWrapper', () => {
       if (nextButton) {
         fireEvent.click(nextButton)
         // This tests line 205 with existing conversation
-        expect(handleSwitchSibling).toHaveBeenCalledWith(
-          'a2',
-          expect.objectContaining({
-            onConversationComplete: undefined,
-          }),
-        )
+        expect(handleSwitchSibling).toHaveBeenCalledWith('a2', expect.objectContaining({
+          onConversationComplete: undefined,
+        }))
       }
     }
   })
@@ -1662,16 +1477,14 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       currentConversationId: '',
       handleNewConversationCompleted,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'Answer',
-          isAnswer: true,
-          workflow_run_id: 'w1',
-          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-          children: [],
-        },
-      ],
+      appPrevChatTree: [{
+        id: '1',
+        content: 'Answer',
+        isAnswer: true,
+        workflow_run_id: 'w1',
+        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+        children: [],
+      }],
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1681,12 +1494,9 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    expect(handleSwitchSibling).toHaveBeenCalledWith(
-      '1',
-      expect.objectContaining({
-        onConversationComplete: handleNewConversationCompleted,
-      }),
-    )
+    expect(handleSwitchSibling).toHaveBeenCalledWith('1', expect.objectContaining({
+      onConversationComplete: handleNewConversationCompleted,
+    }))
   })
 
   it('should handle workflow resumption in existing conversation', () => {
@@ -1697,16 +1507,14 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       currentConversationId: '123',
       handleNewConversationCompleted,
-      appPrevChatTree: [
-        {
-          id: '1',
-          content: 'Answer',
-          isAnswer: true,
-          workflow_run_id: 'w1',
-          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-          children: [],
-        },
-      ],
+      appPrevChatTree: [{
+        id: '1',
+        content: 'Answer',
+        isAnswer: true,
+        workflow_run_id: 'w1',
+        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+        children: [],
+      }],
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1716,12 +1524,9 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    expect(handleSwitchSibling).toHaveBeenCalledWith(
-      '1',
-      expect.objectContaining({
-        onConversationComplete: undefined,
-      }),
-    )
+    expect(handleSwitchSibling).toHaveBeenCalledWith('1', expect.objectContaining({
+      onConversationComplete: undefined,
+    }))
   })
 
   it('should handle null appPrevChatTree', () => {
@@ -1757,7 +1562,7 @@ describe('ChatWrapper', () => {
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
-    expect(screen.getByText('Default opening statement'))!.toBeInTheDocument()
+    expect(screen.getByText('Default opening statement')).toBeInTheDocument()
   })
 
   it('should handle doSend when regenerating with null parentAnswer', async () => {
@@ -1770,17 +1575,16 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [{ id: 'q1', content: 'Question' }],
+      chatList: [
+        { id: 'q1', content: 'Question' },
+      ],
       handleSend,
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
 
     // Simulate regenerate with no parent - this tests line 190 with null
-    const regenerateBtn = screen
-      .getByText('Question')
-      .closest('.chat-answer-container')
-      ?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = screen.getByText('Question').closest('.chat-answer-container')?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
     }
@@ -1806,9 +1610,7 @@ describe('ChatWrapper', () => {
 
     // Just verify the component renders - the actual editedQuestion flow
     // is tested through the doRegenerate callback that's passed to Chat
-    // Just verify the component renders - the actual editedQuestion flow
-    // is tested through the doRegenerate callback that's passed to Chat
-    expect(screen.getByText('Answer'))!.toBeInTheDocument()
+    expect(screen.getByText('Answer')).toBeInTheDocument()
     expect(handleSend).toBeDefined()
   })
 
@@ -1828,9 +1630,7 @@ describe('ChatWrapper', () => {
 
     // The doRegenerate is passed to Chat component and would be called
     // This ensures lines 198-200 are covered
-    // The doRegenerate is passed to Chat component and would be called
-    // This ensures lines 198-200 are covered
-    expect(screen.getByText('A1'))!.toBeInTheDocument()
+    expect(screen.getByText('A1')).toBeInTheDocument()
   })
 
   it('should handle doRegenerate when question has message_files', async () => {
@@ -1861,9 +1661,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 - question.message_files branch
@@ -1884,14 +1682,7 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: 'A1',
-          siblingCount: 2,
-          siblingIndex: 0,
-          nextSibling: 'a2',
-        },
+        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1931,9 +1722,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 when isValidGeneratedAnswer returns false
@@ -1959,9 +1748,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 when isValidGeneratedAnswer returns true
@@ -1992,9 +1779,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector(
-      'button .ri-reset-left-line',
-    )?.parentElement
+    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 190 - the isRegenerate ? parentAnswer?.id branch
@@ -2018,47 +1803,14 @@ describe('ChatWrapper', () => {
         { variable: 'optional', label: 'Optional', type: 'text-input', required: false },
       ],
       newConversationInputs: {},
-      newConversationInputsRef: {
-        current: {},
-      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = getChatInputDisabledSurface(chatInput!)
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
-    // Should not be disabled because it's not required
+    const container = chatInput.closest('.pointer-events-none')
     // Should not be disabled because it's not required
     expect(container).not.toBeInTheDocument()
   })
@@ -2071,9 +1823,7 @@ describe('ChatWrapper', () => {
       appParams: undefined as unknown as ChatConfig,
       appId: '',
       currentConversationId: '',
-      currentChatInstanceRef: {
-        current: null,
-      } as unknown as ChatWithHistoryContextValue['currentChatInstanceRef'],
+      currentChatInstanceRef: { current: null } as unknown as ChatWithHistoryContextValue['currentChatInstanceRef'],
     })
 
     vi.mocked(useChat).mockReturnValue({

@@ -1,8 +1,6 @@
 import uuid
 from typing import Any, Literal, cast
 
-from sqlalchemy.orm import Session
-
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -10,7 +8,6 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.entities.agent_entities import PlanningStrategy
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from models.model import AppMode, AppModelConfigDict
 from services.dataset_service import DatasetService
 
@@ -120,10 +117,8 @@ class DatasetConfigManager:
                     score_threshold=float(score_threshold_val)
                     if dataset_configs.get("score_threshold_enabled", False) and score_threshold_val is not None
                     else None,
-                    reranking_model=cast(RerankingModelDict, reranking_model_val)
-                    if isinstance(reranking_model_val, dict)
-                    else None,
-                    weights=cast(WeightsDict, weights_val) if isinstance(weights_val, dict) else None,
+                    reranking_model=reranking_model_val if isinstance(reranking_model_val, dict) else None,
+                    weights=weights_val if isinstance(weights_val, dict) else None,
                     reranking_enabled=bool(dataset_configs.get("reranking_enabled", True)),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
                     metadata_filtering_mode=cast(
@@ -140,9 +135,7 @@ class DatasetConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(
-        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
-    ) -> tuple[dict[str, Any], list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for dataset feature
 
@@ -151,7 +144,7 @@ class DatasetConfigManager:
         :param config: app model config args
         """
         # Extract dataset config for legacy compatibility
-        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config, session)
+        config = cls.extract_dataset_config_for_legacy_compatibility(tenant_id, app_mode, config)
 
         # dataset_configs
         if "dataset_configs" not in config or not config.get("dataset_configs"):
@@ -176,9 +169,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(
-        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any], session: Session
-    ):
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
         """
         Extract dataset config for legacy compatibility
 
@@ -217,11 +208,6 @@ class DatasetConfigManager:
             PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
-                if not tool:
-                    # Skip malformed empty tool entries; list(tool.keys())[0]
-                    # would otherwise raise IndexError. The sibling convert()
-                    # already guards this with `if len(tool) == 1`.
-                    continue
                 key = list(tool.keys())[0]
                 if key == "dataset":
                     # old style, use tool name as key
@@ -241,7 +227,7 @@ class DatasetConfigManager:
                     except ValueError:
                         raise ValueError("id in dataset must be of UUID type")
 
-                    if not cls.is_dataset_exists(tenant_id, tool_item["id"], session):
+                    if not cls.is_dataset_exists(tenant_id, tool_item["id"]):
                         raise ValueError("Dataset ID does not exist, please check your permission.")
 
                     has_datasets = True
@@ -258,9 +244,9 @@ class DatasetConfigManager:
         return config
 
     @classmethod
-    def is_dataset_exists(cls, tenant_id: str, dataset_id: str, session: Session) -> bool:
+    def is_dataset_exists(cls, tenant_id: str, dataset_id: str) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id, session)
+        dataset = DatasetService.get_dataset(dataset_id)
 
         if not dataset:
             return False

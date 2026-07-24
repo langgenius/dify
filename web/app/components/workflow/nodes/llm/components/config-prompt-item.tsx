@@ -1,24 +1,19 @@
 'use client'
-import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
-import type { ModelConfig, Node, NodeOutPutVar, PromptItem, Variable } from '../../../types'
+import type { ModelConfig, PromptItem, Variable } from '../../../types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
-const roleDescriptionSelectors: Record<PromptRole, SelectorParam<'workflow'>> = {
-  [PromptRole.system]: ($) => $['nodes.llm.roleDescription.system'],
-  [PromptRole.user]: ($) => $['nodes.llm.roleDescription.user'],
-  [PromptRole.assistant]: ($) => $['nodes.llm.roleDescription.assistant'],
-}
+const i18nPrefix = 'nodes.llm'
 
-type Props = Readonly<{
+type Props = {
   instanceId: string
   className?: string
   headerClassName?: string
@@ -40,12 +35,12 @@ type Props = Readonly<{
     history: boolean
     query: boolean
   }
-  availableVars: NodeOutPutVar[]
-  availableNodes: Node[]
+  availableVars: any
+  availableNodes: any
   varList: Variable[]
-  handleAddVariable: (payload: Variable) => void
+  handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
-}>
+}
 
 const roleOptions = [
   {
@@ -62,7 +57,7 @@ const roleOptions = [
   },
 ]
 
-const roleOptionsWithoutSystemRole = roleOptions.filter((item) => item.value !== PromptRole.system)
+const roleOptionsWithoutSystemRole = roleOptions.filter(item => item.value !== PromptRole.system)
 
 const ConfigPromptItem: FC<Props> = ({
   instanceId,
@@ -89,19 +84,15 @@ const ConfigPromptItem: FC<Props> = ({
   modelConfig,
 }) => {
   const { t } = useTranslation()
-  const roleDescription = payload.role
-    ? t(roleDescriptionSelectors[payload.role], { ns: 'workflow' })
-    : undefined
   const workflowStore = useWorkflowStore()
-  const { setControlPromptEditorRerenderKey } = workflowStore.getState()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
 
-  const handleGenerated = useCallback(
-    (prompt: string) => {
-      onPromptChange(prompt)
-      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
-    },
-    [onPromptChange, setControlPromptEditorRerenderKey],
-  )
+  const handleGenerated = useCallback((prompt: string) => {
+    onPromptChange(prompt)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+  }, [onPromptChange, setControlPromptEditorRerenderKey])
 
   return (
     <Editor
@@ -109,31 +100,34 @@ const ConfigPromptItem: FC<Props> = ({
       headerClassName={headerClassName}
       instanceId={instanceId}
       key={instanceId}
-      title={
+      title={(
         <div className="relative left-1 flex items-center">
-          {payload.role === PromptRole.system ? (
-            <div className="relative left-[-4px] text-xs font-semibold text-text-secondary uppercase">
-              SYSTEM
-            </div>
-          ) : (
-            <TypeSelector
-              value={payload.role as string}
-              allOptions={roleOptions}
-              options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
-              onChange={handleChatModeMessageRoleChange}
-              triggerClassName="text-xs font-semibold text-text-secondary uppercase"
-              itemClassName="text-[13px] font-medium text-text-secondary"
-            />
-          )}
+          {payload.role === PromptRole.system
+            ? (
+                <div className="relative left-[-4px] text-xs font-semibold uppercase text-text-secondary">
+                  SYSTEM
+                </div>
+              )
+            : (
+                <TypeSelector
+                  value={payload.role as string}
+                  allOptions={roleOptions}
+                  options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
+                  onChange={handleChatModeMessageRoleChange}
+                  triggerClassName="text-xs font-semibold text-text-secondary uppercase"
+                  itemClassName="text-[13px] font-medium text-text-secondary"
+                />
+              )}
 
-          {roleDescription && (
-            <Infotip aria-label={roleDescription} popupClassName="w-[180px]">
-              {roleDescription}
-            </Infotip>
-          )}
+          <Tooltip
+            popupContent={
+              <div className="max-w-[180px]">{!!payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
+            }
+            triggerClassName="w-4 h-4"
+          />
         </div>
-      }
-      value={payload.edition_type === EditionType.jinja2 ? payload.jinja2_text || '' : payload.text}
+      )}
+      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}

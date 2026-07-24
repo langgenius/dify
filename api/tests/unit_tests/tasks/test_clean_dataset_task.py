@@ -16,8 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
 # ============================================================================
@@ -59,6 +57,12 @@ def mock_db_session():
         cm.__enter__.return_value = mock_session
         cm.__exit__.return_value = None
         mock_sf.create_session.return_value = cm
+
+        # Setup query chain
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.delete.return_value = 0
 
         # Setup scalars for select queries
         mock_session.scalars.return_value.all.return_value = []
@@ -112,7 +116,7 @@ def mock_document():
     doc.id = str(uuid.uuid4())
     doc.tenant_id = str(uuid.uuid4())
     doc.dataset_id = str(uuid.uuid4())
-    doc.data_source_type = DataSourceType.UPLOAD_FILE
+    doc.data_source_type = "upload_file"
     doc.data_source_info = '{"upload_file_id": "test-file-id"}'
     doc.data_source_info_dict = {"upload_file_id": "test-file-id"}
     return doc
@@ -151,9 +155,9 @@ class TestErrorHandling:
 
     def test_clean_dataset_task_rollback_failure_still_closes_session(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -178,10 +182,10 @@ class TestErrorHandling:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
         )
 
         # Assert
@@ -198,9 +202,9 @@ class TestPipelineAndWorkflowDeletion:
 
     def test_clean_dataset_task_with_pipeline_id(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         pipeline_id,
         mock_db_session,
         mock_storage,
@@ -214,26 +218,31 @@ class TestPipelineAndWorkflowDeletion:
         - Pipeline record is deleted
         - Related workflow record is deleted
         """
+        # Arrange
+        mock_query = mock_db_session.session.query.return_value
+        mock_query.where.return_value = mock_query
+        mock_query.delete.return_value = 1
+
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
             pipeline_id=pipeline_id,
         )
 
-        # Assert - verify execute was called for delete operations
-        # 1 attachment JOIN query + 5 base deletes + 2 pipeline/workflow deletes = 8
-        assert mock_db_session.session.execute.call_count >= 8
+        # Assert - verify delete was called for pipeline-related queries
+        # The actual count depends on total queries, but pipeline deletion should add 2 more
+        assert mock_query.delete.call_count >= 7  # 5 base + 2 pipeline/workflow
 
     def test_clean_dataset_task_without_pipeline_id(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -245,20 +254,24 @@ class TestPipelineAndWorkflowDeletion:
         Expected behavior:
         - Pipeline and workflow deletion queries are not executed
         """
+        # Arrange
+        mock_query = mock_db_session.session.query.return_value
+        mock_query.where.return_value = mock_query
+        mock_query.delete.return_value = 1
+
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
             pipeline_id=None,
         )
 
-        # Assert - verify execute was called for delete operations
-        # 1 attachment JOIN query + 5 base deletes = 6
-        assert mock_db_session.session.execute.call_count == 6
+        # Assert - verify delete was called only for base queries (5 times)
+        assert mock_query.delete.call_count == 5
 
 
 # ============================================================================
@@ -271,9 +284,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_with_attachments(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -306,10 +319,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
         )
 
         # Assert
@@ -321,9 +334,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_attachment_storage_failure(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -351,10 +364,10 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
         )
 
         # Assert - storage delete was attempted
@@ -375,9 +388,9 @@ class TestEdgeCases:
 
     def test_clean_dataset_task_session_always_closed(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -393,10 +406,10 @@ class TestEdgeCases:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="paragraph_index",
         )
 
         # Assert
@@ -413,9 +426,9 @@ class TestIndexProcessorParameters:
 
     def test_clean_dataset_task_passes_correct_parameters_to_index_processor(
         self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
+        dataset_id,
+        tenant_id,
+        collection_binding_id,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -430,19 +443,18 @@ class TestIndexProcessorParameters:
         - Dataset object with correct attributes is passed
         """
         # Arrange
-        indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        indexing_technique = "high_quality"
         index_struct = '{"type": "paragraph"}'
 
         # Act
-        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
-            clean_dataset_task(
-                dataset_id=dataset_id,
-                tenant_id=tenant_id,
-                indexing_technique=indexing_technique,
-                index_struct=index_struct,
-                collection_binding_id=collection_binding_id,
-                doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            )
+        clean_dataset_task(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=indexing_technique,
+            index_struct=index_struct,
+            collection_binding_id=collection_binding_id,
+            doc_form="paragraph_index",
+        )
 
         # Assert
         mock_index_processor_factory["processor"].clean.assert_called_once()
@@ -460,31 +472,5 @@ class TestIndexProcessorParameters:
         assert call_args[0][1] is None
 
         # Verify keyword arguments
-        assert call_args[1]["session"] is mock_db_session.session
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
-        schedule_refresh.assert_called_once_with(tenant_id)
-
-    def test_vector_cleanup_failure_does_not_schedule_billing_refresh(
-        self,
-        dataset_id: str,
-        tenant_id: str,
-        collection_binding_id: str,
-        mock_db_session,
-        mock_storage,
-        mock_index_processor_factory,
-        mock_get_image_upload_file_ids,
-    ):
-        mock_index_processor_factory["processor"].clean.side_effect = RuntimeError("vector cleanup failed")
-
-        with patch("tasks.clean_dataset_task.schedule_billing_vector_space_refresh") as schedule_refresh:
-            clean_dataset_task(
-                dataset_id=dataset_id,
-                tenant_id=tenant_id,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-                index_struct='{"type": "paragraph"}',
-                collection_binding_id=collection_binding_id,
-                doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            )
-
-        schedule_refresh.assert_not_called()

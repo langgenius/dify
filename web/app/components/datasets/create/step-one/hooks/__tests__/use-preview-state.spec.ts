@@ -45,10 +45,7 @@ describe('usePreviewState', () => {
 
   it('should show and hide website preview', () => {
     const { result } = renderHook(() => usePreviewState())
-    const website = {
-      title: 'Example',
-      source_url: 'https://example.com',
-    } as unknown as CrawlResultItem
+    const website = { title: 'Example', source_url: 'https://example.com' } as unknown as CrawlResultItem
 
     act(() => {
       result.current.showWebsitePreview(website)

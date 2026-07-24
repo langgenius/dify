@@ -3,11 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { useEffect, useMemo, useState } from 'react'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 export enum IndexingType {
@@ -27,7 +23,7 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   score_threshold: 0.5,
 }
 
-type UseIndexingConfigOptions = {
+export type UseIndexingConfigOptions = {
   initialIndexType?: IndexingType
   initialEmbeddingModel?: DefaultModel
   initialRetrievalConfig?: RetrievalConfig
@@ -57,7 +53,8 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
 
   // Index type state
   const [indexType, setIndexType] = useState<IndexingType>(() => {
-    if (initialIndexType) return initialIndexType
+    if (initialIndexType)
+      return initialIndexType
     return isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL
   })
 
@@ -76,16 +73,15 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
 
   // Sync retrieval config with rerank model when available
   useEffect(() => {
-    if (initialRetrievalConfig) return
+    if (initialRetrievalConfig)
+      return
 
     setRetrievalConfig({
       search_method: RETRIEVE_METHOD.semantic,
       reranking_enable: !!isRerankDefaultModelValid,
       reranking_model: {
-        reranking_provider_name: isRerankDefaultModelValid
-          ? (rerankDefaultModel?.provider.provider ?? '')
-          : '',
-        reranking_model_name: isRerankDefaultModelValid ? (rerankDefaultModel?.model ?? '') : '',
+        reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider.provider ?? '' : '',
+        reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
       },
       top_k: 3,
       score_threshold_enabled: false,
@@ -95,8 +91,10 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
 
   // Sync index type with props
   useEffect(() => {
-    if (initialIndexType) setIndexType(initialIndexType)
-    else setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
+    if (initialIndexType)
+      setIndexType(initialIndexType)
+    else
+      setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, initialIndexType])
 
   // Show multimodal tip
@@ -141,3 +139,5 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
     showMultiModalTip,
   }
 }
+
+export type IndexingConfig = ReturnType<typeof useIndexingConfig>

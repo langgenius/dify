@@ -1,10 +1,10 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
-import { Button } from '@langgenius/dify-ui/button'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import type { FC } from 'react'
+import { useKeyPress } from 'ahooks'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
-
-const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
+import Button from '@/app/components/base/button'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean
@@ -12,24 +12,25 @@ type AdvancedActionsProps = {
   onConfirm: () => void
 }
 
-export function AdvancedActions({ isConfirmDisabled, onCancel, onConfirm }: AdvancedActionsProps) {
+const AdvancedActions: FC<AdvancedActionsProps> = ({
+  isConfirmDisabled,
+  onCancel,
+  onConfirm,
+}) => {
   const { t } = useTranslation()
 
-  useHotkey(
-    JSON_SCHEMA_CONFIRM_HOTKEY,
-    () => {
-      onConfirm()
-    },
-    {
-      enabled: !isConfirmDisabled,
-      ignoreInputs: false,
-    },
-  )
+  useKeyPress([`${getKeyboardKeyCodeBySystem('ctrl')}.enter`], (e) => {
+    e.preventDefault()
+    onConfirm()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
 
   return (
     <div className="flex items-center gap-x-1">
       <Button size="small" variant="secondary" onClick={onCancel}>
-        {t(($) => $['operation.cancel'], { ns: 'common' })}
+        {t('operation.cancel', { ns: 'common' })}
       </Button>
       <Button
         className="flex items-center gap-x-1"
@@ -38,9 +39,11 @@ export function AdvancedActions({ isConfirmDisabled, onCancel, onConfirm }: Adva
         variant="primary"
         onClick={onConfirm}
       >
-        <span>{t(($) => $['operation.confirm'], { ns: 'common' })}</span>
-        <ShortcutKbd hotkey={JSON_SCHEMA_CONFIRM_HOTKEY} bgColor="white" />
+        <span>{t('operation.confirm', { ns: 'common' })}</span>
+        <ShortcutsName keys={['ctrl', '⏎']} bgColor="white" />
       </Button>
     </div>
   )
 }
+
+export default React.memo(AdvancedActions)

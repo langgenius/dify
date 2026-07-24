@@ -1,35 +1,28 @@
 import base64
-from typing import override
-
-from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.rerank_entities import RerankResult
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from extensions.otel import trace_span
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
 
 
 class RerankModelRunner(BaseRerankRunner):
-    _session: Session
-
-    def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
+    def __init__(self, rerank_model_instance: ModelInstance):
         self.rerank_model_instance = rerank_model_instance
-        self._session = session
 
-    @override
-    @trace_span()
     def run(
         self,
         query: str,
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -38,11 +31,10 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
+        :param user: unique user id if needed
         :return:
         """
-        model_manager = ModelManager.for_tenant(
-            tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id
-        )
+        model_manager = ModelManager()
         is_support_vision = model_manager.check_model_support_vision(
             tenant_id=self.rerank_model_instance.provider_model_bundle.configuration.tenant_id,
             provider=self.rerank_model_instance.provider,
@@ -51,12 +43,12 @@ class RerankModelRunner(BaseRerankRunner):
         )
         if not is_support_vision:
             if query_type == QueryType.TEXT_QUERY:
-                rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
+                rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n, user)
             else:
                 return documents
         else:
             rerank_result, unique_documents = self.fetch_multimodal_rerank(
-                query, documents, score_threshold, top_n, query_type
+                query, documents, score_threshold, top_n, user, query_type
             )
 
         rerank_documents = []
@@ -81,6 +73,7 @@ class RerankModelRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        user: str | None = None,
     ) -> tuple[RerankResult, list[Document]]:
         """
         Fetch text rerank
@@ -88,6 +81,7 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
+        :param user: unique user id if needed
         :return:
         """
         docs = []
@@ -109,7 +103,7 @@ class RerankModelRunner(BaseRerankRunner):
                     unique_documents.append(document)
 
         rerank_result = self.rerank_model_instance.invoke_rerank(
-            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n
+            query=query, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
         )
         return rerank_result, unique_documents
 
@@ -119,6 +113,7 @@ class RerankModelRunner(BaseRerankRunner):
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
+        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> tuple[RerankResult, list[Document]]:
         """
@@ -127,10 +122,11 @@ class RerankModelRunner(BaseRerankRunner):
         :param documents: documents for reranking
         :param score_threshold: score threshold
         :param top_n: top n
+        :param user: unique user id if needed
         :param query_type: query type
         :return: rerank result
         """
-        docs: list[MultimodalRerankInput] = []
+        docs = []
         doc_ids = set()
         unique_documents = []
         for document in documents:
@@ -140,50 +136,52 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata["doc_id"] not in doc_ids
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
-                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
+                    # Query file info within db.session context to ensure thread-safe access
+                    upload_file = (
+                        db.session.query(UploadFile).where(UploadFile.id == document.metadata["doc_id"]).first()
+                    )
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
-                        docs.append(
-                            MultimodalRerankInput(
-                                content=document_file_base64,
-                                content_type=document.metadata["doc_type"],
-                            )
-                        )
+                        document_file_dict = {
+                            "content": document_file_base64,
+                            "content_type": document.metadata["doc_type"],
+                        }
+                        docs.append(document_file_dict)
                 else:
-                    docs.append(
-                        MultimodalRerankInput(
-                            content=document.page_content,
-                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                        )
-                    )
+                    document_text_dict = {
+                        "content": document.page_content,
+                        "content_type": document.metadata.get("doc_type") or DocType.TEXT,
+                    }
+                    docs.append(document_text_dict)
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
                     docs.append(
-                        MultimodalRerankInput(
-                            content=document.page_content,
-                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
-                        )
+                        {
+                            "content": document.page_content,
+                            "content_type": document.metadata.get("doc_type") or DocType.TEXT,
+                        }
                     )
                     unique_documents.append(document)
 
         documents = unique_documents
         if query_type == QueryType.TEXT_QUERY:
-            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
+            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n, user)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
-            upload_file = self._session.get(UploadFile, query)
+            # Query file info within db.session context to ensure thread-safe access
+            upload_file = db.session.query(UploadFile).where(UploadFile.id == query).first()
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()
-                file_query_input = MultimodalRerankInput(
-                    content=file_query,
-                    content_type=DocType.IMAGE,
-                )
+                file_query_dict = {
+                    "content": file_query,
+                    "content_type": DocType.IMAGE,
+                }
                 rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
+                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n, user=user
                 )
                 return rerank_result, unique_documents
             else:

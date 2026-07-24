@@ -2,25 +2,8 @@ import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import EndpointModal from '../endpoint-modal'
-
-const mockToastNotify = vi.fn()
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
-}))
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string> | string) =>
@@ -28,11 +11,7 @@ vi.mock('@/hooks/use-i18n', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({
-    value,
-    onChange,
-    fieldMoreInfo,
-  }: {
+  default: ({ value, onChange, fieldMoreInfo }: {
     value: Record<string, unknown>
     onChange: (v: Record<string, unknown>) => void
     fieldMoreInfo?: (item: { url?: string }) => React.ReactNode
@@ -41,8 +20,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
       <div data-testid="form">
         <input
           data-testid="form-input"
-          value={(value.name as string) || ''}
-          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          value={value.name as string || ''}
+          onChange={e => onChange({ ...value, name: e.target.value })}
         />
         {/* Render fieldMoreInfo to test url link */}
         {fieldMoreInfo && (
@@ -62,13 +41,7 @@ vi.mock('../../readme-panel/entrance', () => ({
 
 const mockFormSchemas = [
   { name: 'name', label: { en_US: 'Name' }, type: 'text-input', required: true, default: '' },
-  {
-    name: 'apiKey',
-    label: { en_US: 'API Key' },
-    type: 'secret-input',
-    required: false,
-    default: '',
-  },
+  { name: 'apiKey', label: { en_US: 'API Key' }, type: 'secret-input', required: false, default: '' },
 ] as unknown as FormSchema[]
 
 const mockPluginDetail: PluginDetail = {
@@ -96,9 +69,11 @@ const mockPluginDetail: PluginDetail = {
 describe('EndpointModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSaved = vi.fn()
+  let mockToastNotify: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockToastNotify = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   describe('Rendering', () => {
@@ -112,16 +87,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      const dialog = screen.getByRole('dialog')
-
-      expect(dialog)!.toBeInTheDocument()
-      expect(dialog).toHaveClass(
-        'data-[swipe-direction=right]:top-2',
-        'data-[swipe-direction=right]:bottom-2',
-        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
-        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
-      )
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should render title and description', () => {
@@ -134,8 +100,8 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByText('plugin.detailPanel.endpointModalTitle'))!.toBeInTheDocument()
-      expect(screen.getByText('plugin.detailPanel.endpointModalDesc'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointModalTitle')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointModalDesc')).toBeInTheDocument()
     })
 
     it('should render form with fieldMoreInfo url link', () => {
@@ -148,8 +114,8 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('field-more-info'))!.toBeInTheDocument()
-      expect(screen.getByText('tools.howToGet'))!.toBeInTheDocument()
+      expect(screen.getByTestId('field-more-info')).toBeInTheDocument()
+      expect(screen.getByText('tools.howToGet')).toBeInTheDocument()
     })
 
     it('should render readme entrance', () => {
@@ -162,7 +128,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('readme-entrance'))!.toBeInTheDocument()
+      expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
     })
   })
 
@@ -193,7 +159,7 @@ describe('EndpointModal', () => {
       )
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
+      fireEvent.click(allButtons[0])
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -211,7 +177,7 @@ describe('EndpointModal', () => {
       const input = screen.getByTestId('form-input')
       fireEvent.change(input, { target: { value: 'Test Name' } })
 
-      expect(input)!.toHaveValue('Test Name')
+      expect(input).toHaveValue('Test Name')
     })
   })
 
@@ -227,18 +193,12 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form-input'))!.toHaveValue('Default Name')
+      expect(screen.getByTestId('form-input')).toHaveValue('Default Name')
     })
 
     it('should extract default values from schemas when no defaultValues', () => {
       const schemasWithDefaults = [
-        {
-          name: 'name',
-          label: 'Name',
-          type: 'text-input',
-          required: true,
-          default: 'Schema Default',
-        },
+        { name: 'name', label: 'Name', type: 'text-input', required: true, default: 'Schema Default' },
       ] as unknown as FormSchema[]
 
       render(
@@ -250,7 +210,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form-input'))!.toHaveValue('Schema Default')
+      expect(screen.getByTestId('form-input')).toHaveValue('Schema Default')
     })
 
     it('should handle schemas without default values', () => {
@@ -267,20 +227,14 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form'))!.toBeInTheDocument()
+      expect(screen.getByTestId('form')).toBeInTheDocument()
     })
   })
 
   describe('Validation - handleSave', () => {
     it('should show toast error when required field is empty', () => {
       const schemasWithRequired = [
-        {
-          name: 'name',
-          label: { en_US: 'Name Field' },
-          type: 'text-input',
-          required: true,
-          default: '',
-        },
+        { name: 'name', label: { en_US: 'Name Field' }, type: 'text-input', required: true, default: '' },
       ] as unknown as FormSchema[]
 
       render(
@@ -408,6 +362,13 @@ describe('EndpointModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(mockOnSaved).toHaveBeenCalledWith({ text: 'hello' })
+    })
+  })
+
+  describe('Memoization', () => {
+    it('should be wrapped with React.memo', () => {
+      expect(EndpointModal).toBeDefined()
+      expect((EndpointModal as { $$typeof?: symbol }).$$typeof).toBeDefined()
     })
   })
 })

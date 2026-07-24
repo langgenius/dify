@@ -3,7 +3,7 @@ import * as React from 'react'
 import ResultPanel from '../result'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
@@ -12,17 +12,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
+  default: ({ status, time, tokens, error }: { status: string, time?: number, tokens?: number, error?: string }) => (
     <div data-testid="status-panel">
       <span>{status}</span>
       <span>{time}</span>
@@ -91,10 +81,5 @@ describe('ResultPanel', () => {
   it('should display ReACT mode correctly', () => {
     render(<ResultPanel {...mockProps} agentMode="react" />)
     expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
-  })
-
-  it('should fallback to zero tokens when total_tokens is undefined', () => {
-    render(<ResultPanel {...mockProps} total_tokens={undefined} />)
-    expect(screen.getByText('0 Tokens')).toBeInTheDocument()
   })
 })

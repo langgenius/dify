@@ -40,15 +40,9 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: vi.fn(),
-  },
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
   },
 }))
 
@@ -297,9 +291,10 @@ describe('useEditDatasetMetadata', () => {
 
   describe('Edge Cases', () => {
     it('should handle different datasetIds', () => {
-      const { result, rerender } = renderHook((props) => useEditDatasetMetadata(props), {
-        initialProps: defaultProps,
-      })
+      const { result, rerender } = renderHook(
+        props => useEditDatasetMetadata(props),
+        { initialProps: defaultProps },
+      )
 
       expect(result.current).toBeDefined()
 

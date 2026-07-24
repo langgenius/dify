@@ -8,14 +8,18 @@ associates with the node span.
 """
 
 import logging
-from contextvars import Token
 from dataclasses import dataclass
-from typing import cast, final, override
+from typing import cast, final
 
 from opentelemetry import context as context_api
-from opentelemetry.trace import Span, SpanKind, Tracer, get_current_span, get_tracer, set_span_in_context
+from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
+from typing_extensions import override
 
 from configs import dify_config
+from dify_graph.enums import NodeType
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events import GraphNodeEventBase
+from dify_graph.nodes.base.node import Node
 from extensions.otel.parser import (
     DefaultNodeOTelParser,
     LLMNodeOTelParser,
@@ -24,11 +28,6 @@ from extensions.otel.parser import (
     ToolNodeOTelParser,
 )
 from extensions.otel.runtime import is_instrument_flag_enabled
-from extensions.otel.semconv import DifySpanAttributes
-from graphon.enums import BuiltinNodeTypes, NodeType
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunAbortedEvent
-from graphon.nodes.base.node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _NodeSpanContext:
     span: "Span"
-    token: Token[context_api.Context]
+    token: object
 
 
 @final
@@ -75,13 +74,16 @@ class ObservabilityLayer(GraphEngineLayer):
     def _build_parser_registry(self) -> None:
         """Initialize parser registry for node types."""
         self._parsers = {
-            BuiltinNodeTypes.TOOL: ToolNodeOTelParser(),
-            BuiltinNodeTypes.LLM: LLMNodeOTelParser(),
-            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: RetrievalNodeOTelParser(),
+            NodeType.TOOL: ToolNodeOTelParser(),
+            NodeType.LLM: LLMNodeOTelParser(),
+            NodeType.KNOWLEDGE_RETRIEVAL: RetrievalNodeOTelParser(),
         }
 
     def _get_parser(self, node: Node) -> NodeOTelParser:
-        return self._parsers.get(node.node_type, self._default_parser)
+        node_type = getattr(node, "node_type", None)
+        if isinstance(node_type, NodeType):
+            return self._parsers.get(node_type, self._default_parser)
+        return self._default_parser
 
     @override
     def on_graph_start(self) -> None:
@@ -159,13 +161,9 @@ class ObservabilityLayer(GraphEngineLayer):
             logger.warning("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
-        """Record graph-level observability events."""
-        if self._is_disabled:
-            return
-
-        if isinstance(event, GraphRunAbortedEvent):
-            self._record_abort_reason(reason=event.reason or "Workflow execution aborted")
+    def on_event(self, event) -> None:
+        """Not used in this layer."""
+        pass
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
@@ -176,16 +174,3 @@ class ObservabilityLayer(GraphEngineLayer):
                 len(self._node_contexts),
             )
             self._node_contexts.clear()
-
-    def _record_abort_reason(self, *, reason: str) -> None:
-        span = get_current_span()
-        if not span.is_recording():
-            return
-
-        span.set_attribute(DifySpanAttributes.WORKFLOW_ABORT_REASON, reason)
-        span.add_event(
-            "dify.workflow.aborted",
-            attributes={
-                DifySpanAttributes.WORKFLOW_ABORT_REASON: reason,
-            },
-        )

@@ -2,20 +2,20 @@
 import type { FC } from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useRef } from 'react'
+import { cn } from '@/utils/classnames'
 import Field from './field'
 
-type Props = Readonly<{
+type Props = {
   className?: string
-  root: { nodeId?: string; nodeName?: string; attrName: string; attrAlias?: string }
+  root: { nodeId?: string, nodeName?: string, attrName: string, attrAlias?: string }
   payload: StructuredOutput
   readonly?: boolean
   onSelect?: (valueSelector: ValueSelector) => void
   onHovering?: (value: boolean) => void
-}>
+}
 
 export const PickerPanelMain: FC<Props> = ({
   className,
@@ -30,7 +30,8 @@ export const PickerPanelMain: FC<Props> = ({
     onChange: (hovering) => {
       if (hovering) {
         onHovering?.(true)
-      } else {
+      }
+      else {
         setTimeout(() => {
           onHovering?.(false)
         }, 100)
@@ -46,26 +47,19 @@ export const PickerPanelMain: FC<Props> = ({
         <div className="flex">
           {root.nodeName && (
             <>
-              <div className="max-w-[100px] truncate system-sm-medium text-text-tertiary">
-                {root.nodeName}
-              </div>
+              <div className="system-sm-medium max-w-[100px] truncate text-text-tertiary">{root.nodeName}</div>
               <div className="system-sm-medium text-text-tertiary">.</div>
             </>
           )}
           <div className="system-sm-medium text-text-secondary">{root.attrName}</div>
         </div>
-        <div
-          className="ml-2 truncate system-xs-regular text-text-tertiary"
-          title={root.attrAlias || 'object'}
-        >
-          {root.attrAlias || 'object'}
-        </div>
+        <div className="system-xs-regular ml-2 truncate text-text-tertiary" title={root.attrAlias || 'object'}>{root.attrAlias || 'object'}</div>
       </div>
-      {fieldNames.map((name) => (
+      {fieldNames.map(name => (
         <Field
           key={name}
           name={name}
-          payload={schema.properties[name]!}
+          payload={schema.properties[name]}
           readonly={readonly}
           valueSelector={[root.nodeId!, root.attrName]}
           onSelect={onSelect}
@@ -75,14 +69,12 @@ export const PickerPanelMain: FC<Props> = ({
   )
 }
 
-const PickerPanel: FC<Props> = ({ className, ...props }) => {
+const PickerPanel: FC<Props> = ({
+  className,
+  ...props
+}) => {
   return (
-    <div
-      className={cn(
-        'w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]',
-        className,
-      )}
-    >
+    <div className={cn('w-[296px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]', className)}>
       <PickerPanelMain {...props} />
     </div>
   )

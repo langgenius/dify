@@ -1,13 +1,12 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/account-state'
-import { useRouter } from '@/next/navigation'
+import Button from '@/app/components/base/button'
+import CustomDialog from '@/app/components/base/dialog'
+import Textarea from '@/app/components/base/textarea'
+import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
 
@@ -18,7 +17,7 @@ type DeleteAccountProps = {
 
 export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { userProfile } = useAppContext()
   const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
@@ -29,61 +28,45 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      toast.info(t(($) => $['account.deleteSuccessTip'], { ns: 'common' }))
-    } catch (error) {
-      console.error(error)
+      Toast.notify({ type: 'info', message: t('account.deleteSuccessTip', { ns: 'common' }) })
     }
+    catch (error) { console.error(error) }
   }, [router, t])
 
   const handleSubmit = useCallback(async () => {
     try {
-      await sendFeedback({ feedback: userFeedback, email: userProfileEmail })
+      await sendFeedback({ feedback: userFeedback, email: userProfile.email })
       props.onConfirm()
       await handleSuccess()
-    } catch (error) {
-      console.error(error)
     }
-  }, [handleSuccess, userFeedback, sendFeedback, userProfileEmail, props])
+    catch (error) { console.error(error) }
+  }, [handleSuccess, userFeedback, sendFeedback, userProfile, props])
 
   const handleSkip = useCallback(() => {
     props.onCancel()
     handleSuccess()
   }, [handleSuccess, props])
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) props.onCancel()
-      }}
+    <CustomDialog
+      show={true}
+      onClose={props.onCancel}
+      title={t('account.feedbackTitle', { ns: 'common' })}
+      className="max-w-[480px]"
+      footer={false}
     >
-      <DialogContent
-        className="max-w-[480px] overflow-hidden!"
-        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
-      >
-        <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['account.feedbackTitle'], { ns: 'common' })}
-        </DialogTitle>
-        <label className="mt-3 mb-1 flex items-center system-sm-semibold text-text-secondary">
-          {t(($) => $['account.feedbackLabel'], { ns: 'common' })}
-        </label>
-        <Textarea
-          aria-label={t(($) => $['account.feedbackLabel'], { ns: 'common' }) as string}
-          rows={6}
-          value={userFeedback}
-          placeholder={t(($) => $['account.feedbackPlaceholder'], { ns: 'common' }) as string}
-          onValueChange={(value) => {
-            setUserFeedback(value)
-          }}
-        />
-        <div className="mt-3 flex w-full flex-col gap-2">
-          <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>
-            {t(($) => $['operation.submit'], { ns: 'common' })}
-          </Button>
-          <Button className="w-full" onClick={handleSkip}>
-            {t(($) => $['operation.skip'], { ns: 'common' })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
+      <Textarea
+        rows={6}
+        value={userFeedback}
+        placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
+        onChange={(e) => {
+          setUserFeedback(e.target.value)
+        }}
+      />
+      <div className="mt-3 flex w-full flex-col gap-2">
+        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
+        <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
+      </div>
+    </CustomDialog>
   )
 }

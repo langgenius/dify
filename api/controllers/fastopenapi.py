@@ -1,3 +1,3 @@
-from fastopenapi.routers.flask import FlaskRouter
+from fastopenapi.routers import FlaskRouter
 
 console_router = FlaskRouter()

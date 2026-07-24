@@ -1,5 +1,5 @@
 import type { ComponentProps, FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '@/utils/classnames'
 
 type SkeletonProps = ComponentProps<'div'>
 
@@ -24,7 +24,7 @@ export const SkeletonRow: FC<SkeletonProps> = (props) => {
 export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
   const { className, children, ...rest } = props
   return (
-    <div className={cn('my-1 h-2 rounded-xs bg-text-quaternary opacity-20', className)} {...rest}>
+    <div className={cn('my-1 h-2 rounded-sm bg-text-quaternary opacity-20', className)} {...rest}>
       {children}
     </div>
   )
@@ -33,9 +33,7 @@ export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
 export const SkeletonPoint: FC<SkeletonProps> = (props) => {
   const { className, ...rest } = props
   return (
-    <div className={cn('text-xs font-medium text-text-quaternary', className)} {...rest}>
-      ·
-    </div>
+    <div className={cn('text-xs font-medium text-text-quaternary', className)} {...rest}>·</div>
   )
 }
 /**

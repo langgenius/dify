@@ -9,25 +9,36 @@ type CardProps = {
   description?: string
 }
 
-const Card: FC<CardProps> = ({ name, type, required, description }) => {
+const Card: FC<CardProps> = ({
+  name,
+  type,
+  required,
+  description,
+}) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex flex-col py-0.5">
-      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
-        <div className="truncate border border-transparent px-1 py-px system-sm-semibold text-text-primary">
+      <div className="flex h-6 items-center gap-x-1 pl-1 pr-0.5">
+        <div className="system-sm-semibold truncate border border-transparent px-1 py-px text-text-primary">
           {name}
         </div>
-        <div className="px-1 py-0.5 system-xs-medium text-text-tertiary">{type}</div>
-        {required && (
-          <div className="px-1 py-0.5 system-2xs-medium-uppercase text-text-warning">
-            {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
-          </div>
-        )}
+        <div className="system-xs-medium px-1 py-0.5 text-text-tertiary">
+          {type}
+        </div>
+        {
+          required && (
+            <div className="system-2xs-medium-uppercase px-1 py-0.5 text-text-warning">
+              {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
+            </div>
+          )
+        }
       </div>
 
       {description && (
-        <div className="truncate px-2 pb-1 system-xs-regular text-text-tertiary">{description}</div>
+        <div className="system-xs-regular truncate px-2 pb-1 text-text-tertiary">
+          {description}
+        </div>
       )}
     </div>
   )

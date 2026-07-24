@@ -1,12 +1,12 @@
 'use client'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import type { Locale } from '@/i18n-config'
+import dynamic from 'next/dynamic'
 import Divider from '@/app/components/base/divider'
+import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
-import dynamic from '@/next/dynamic'
-import LocaleMenu from './_locale-menu'
 
 // Avoid rendering the logo and theme selector on the server
 const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
@@ -20,25 +20,25 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = () => {
   const locale = useLocale()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <div className="flex w-full items-center justify-between p-6">
-      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
-        <img
-          src={systemFeatures.branding.login_page_logo}
-          className="block h-7 w-auto object-contain"
-          alt="logo"
-        />
-      ) : (
-        <DifyLogo size="large" />
-      )}
+      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
+        ? (
+            <img
+              src={systemFeatures.branding.login_page_logo}
+              className="block h-7 w-auto object-contain"
+              alt="logo"
+            />
+          )
+        : <DifyLogo size="large" />}
       <div className="flex items-center gap-1">
-        <LocaleMenu
+        <LocaleSigninSelect
           value={locale}
-          items={languages.filter((item) => item.supported)}
+          items={languages.filter(item => item.supported)}
           onChange={(value) => {
-            setLocaleOnClient(value, false)
+            setLocaleOnClient(value as Locale)
           }}
         />
         <Divider type="vertical" className="mx-0 ml-2 h-4" />

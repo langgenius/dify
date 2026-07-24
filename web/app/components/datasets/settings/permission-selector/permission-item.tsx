@@ -1,49 +1,31 @@
-import type { ReactNode } from 'react'
-import type { DatasetPermission } from '@/models/datasets'
-import { PopoverClose } from '@langgenius/dify-ui/popover'
-import { RadioItem } from '@langgenius/dify-ui/radio'
+import { RiCheckLine } from '@remixicon/react'
+import * as React from 'react'
 
 type PermissionItemProps = {
-  value: DatasetPermission
-  leftIcon: ReactNode
+  leftIcon: React.ReactNode
   text: string
+  onClick: () => void
   isSelected: boolean
-  closeOnSelect?: boolean
 }
-
-const className =
-  'flex w-full touch-manipulation cursor-pointer items-center gap-x-1 rounded-lg border-none bg-transparent px-2 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const PermissionItem = ({
-  value,
   leftIcon,
   text,
+  onClick,
   isSelected,
-  closeOnSelect = false,
 }: PermissionItemProps) => {
-  const content = (
-    <>
-      {leftIcon}
-      <div className="grow px-1 system-md-regular text-text-secondary">{text}</div>
-      {isSelected && (
-        <span aria-hidden="true" className="i-ri-check-line size-4 text-text-accent" />
-      )}
-    </>
-  )
-
-  if (closeOnSelect) {
-    return (
-      <PopoverClose render={<RadioItem<DatasetPermission> value={value} />} className={className}>
-        {content}
-      </PopoverClose>
-    )
-  }
-
   return (
-    <RadioItem<DatasetPermission> value={value} className={className}>
-      {content}
-    </RadioItem>
+    <div
+      className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1 hover:bg-state-base-hover"
+      onClick={onClick}
+    >
+      {leftIcon}
+      <div className="system-md-regular grow px-1 text-text-secondary">
+        {text}
+      </div>
+      {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
+    </div>
   )
 }
 
-export default PermissionItem
+export default React.memo(PermissionItem)

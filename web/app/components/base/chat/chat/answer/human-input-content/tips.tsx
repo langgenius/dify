@@ -1,8 +1,7 @@
-import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { useSelector as useAppSelector } from '@/context/app-context'
 
 type TipsProps = {
   showEmailTip: boolean
@@ -10,34 +9,32 @@ type TipsProps = {
   showDebugModeTip: boolean
 }
 
-const Tips = ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: TipsProps) => {
+const Tips = ({
+  showEmailTip,
+  isEmailDebugMode,
+  showDebugModeTip,
+}: TipsProps) => {
   const { t } = useTranslation()
-  const email = useAtomValue(userProfileEmailAtom)
+  const email = useAppSelector(s => s.userProfile.email)
 
   return (
     <>
-      <Divider className="my-2! w-[30px]" />
+      <Divider className="!my-2 w-[30px]" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">
-            {t(($) => $['common.humanInputEmailTip'], { ns: 'workflow' })}
-          </div>
+          <div className="text-text-secondary system-xs-regular">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
         )}
         {showEmailTip && isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">
+          <div className="text-text-secondary system-xs-regular">
             <Trans
-              i18nKey={($) => $['common.humanInputEmailTipInDebugMode']}
+              i18nKey="common.humanInputEmailTipInDebugMode"
               ns="workflow"
               components={{ email: <span className="system-xs-semibold"></span> }}
               values={{ email }}
             />
           </div>
         )}
-        {showDebugModeTip && (
-          <div className="system-xs-medium text-text-warning">
-            {t(($) => $['common.humanInputWebappTip'], { ns: 'workflow' })}
-          </div>
-        )}
+        {showDebugModeTip && <div className="text-text-warning system-xs-medium">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
       </div>
     </>
   )

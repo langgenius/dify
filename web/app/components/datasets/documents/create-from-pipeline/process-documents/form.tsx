@@ -1,9 +1,9 @@
 import type { ZodSchema } from 'zod'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useImperativeHandle } from 'react'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
+import Toast from '@/app/components/base/toast'
 import Header from './header'
 
 type OptionsProps = {
@@ -33,8 +33,11 @@ const Form = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
-          toast.error(errorMessage)
+          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          Toast.notify({
+            type: 'error',
+            message: errorMessage,
+          })
           return errorMessage
         }
         return undefined
@@ -67,8 +70,8 @@ const Form = ({
       }}
     >
       <form.Subscribe
-        selector={(state) => state.isDirty}
-        children={(isDirty) => (
+        selector={state => state.isDirty}
+        children={isDirty => (
           <Header
             onReset={handleReset}
             resetDisabled={!isDirty}

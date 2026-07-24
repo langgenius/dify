@@ -10,7 +10,6 @@ from typing import Any
 import click
 from celery import shared_task  # type: ignore
 from flask import current_app, g
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -119,20 +118,20 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             with Session(db.engine, expire_on_commit=False) as session:
                 # Load required entities
-                account = session.scalar(select(Account).where(Account.id == user_id).limit(1))
+                account = session.query(Account).where(Account.id == user_id).first()
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
 
-                tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+                tenant = session.query(Tenant).where(Tenant.id == tenant_id).first()
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
-                account.set_current_tenant_with_session(tenant, session=session)
+                account.current_tenant = tenant
 
-                pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
+                pipeline = session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
                 if not pipeline:
                     raise ValueError(f"Pipeline {pipeline_id} not found")
 
-                workflow = session.scalar(select(Workflow).where(Workflow.id == pipeline.workflow_id).limit(1))
+                workflow = session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
                 if not workflow:
                     raise ValueError(f"Workflow {pipeline.workflow_id} not found")
 
@@ -146,7 +145,6 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
                 workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=session_factory,
-                    tenant_id=pipeline.tenant_id,
                     user=account,
                     app_id=entity.app_config.app_id,
                     triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
@@ -155,7 +153,6 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 workflow_node_execution_repository = (
                     DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                         session_factory=session_factory,
-                        tenant_id=pipeline.tenant_id,
                         user=account,
                         app_id=entity.app_config.app_id,
                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
@@ -174,21 +171,19 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
 
             pipeline_generator = PipelineGenerator()
             # Using protected method intentionally for async execution
-            with Session(db.engine, expire_on_commit=False) as session:
-                pipeline_generator._generate(  # type: ignore[attr-defined]
-                    session=session,
-                    flask_app=flask_app,
-                    context=context,
-                    pipeline=pipeline,
-                    workflow_id=workflow_id,
-                    user=account,
-                    application_generate_entity=entity,
-                    invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
-                    streaming=streaming,
-                    workflow_thread_pool_id=workflow_thread_pool_id,
-                )
+            pipeline_generator._generate(  # type: ignore[attr-defined]
+                flask_app=flask_app,
+                context=context,
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                user=account,
+                application_generate_entity=entity,
+                invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+                streaming=streaming,
+                workflow_thread_pool_id=workflow_thread_pool_id,
+            )
         except Exception:
             logging.exception("Error in priority pipeline task")
             raise

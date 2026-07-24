@@ -1,5 +1,3 @@
-from typing import override
-
 """Provider ID entities for plugin system."""
 
 import re
@@ -16,7 +14,6 @@ class GenericProviderID:
     def to_string(self) -> str:
         return str(self)
 
-    @override
     def __str__(self) -> str:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 

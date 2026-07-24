@@ -1,19 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { SSOProtocol } from '@/features/system-features/constants'
-import { useRouter, useSearchParams } from '@/next/navigation'
+import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
+import { SSOProtocol } from '@/types/feature'
 
 type SSOAuthProps = {
-  protocol: string
+  protocol: SSOProtocol | ''
 }
 
-const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
+const SSOAuth: FC<SSOAuthProps> = ({
+  protocol,
+}) => {
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -24,33 +26,33 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === SSOProtocol.SAML) {
-      getUserSAMLSSOUrl(invite_token)
-        .then((res) => {
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else if (protocol === SSOProtocol.OIDC) {
-      getUserOIDCSSOUrl(invite_token)
-        .then((res) => {
-          document.cookie = `user-oidc-state=${res.state};Path=/`
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else if (protocol === SSOProtocol.OAuth2) {
-      getUserOAuth2SSOUrl(invite_token)
-        .then((res) => {
-          document.cookie = `user-oauth2-state=${res.state};Path=/`
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else {
-      toast.error(t(($) => $['error.invalidSSOProtocol'], { ns: 'login' }))
+      getUserSAMLSSOUrl(invite_token).then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === SSOProtocol.OIDC) {
+      getUserOIDCSSOUrl(invite_token).then((res) => {
+        document.cookie = `user-oidc-state=${res.state};Path=/`
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === SSOProtocol.OAuth2) {
+      getUserOAuth2SSOUrl(invite_token).then((res) => {
+        document.cookie = `user-oauth2-state=${res.state};Path=/`
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else {
+      Toast.notify({
+        type: 'error',
+        message: 'invalid SSO protocol',
+      })
       setIsLoading(false)
     }
   }
@@ -58,14 +60,12 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   return (
     <Button
       tabIndex={0}
-      onClick={() => {
-        handleSSOLogin()
-      }}
+      onClick={() => { handleSSOLogin() }}
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
-      <span className="truncate">{t(($) => $.withSSO, { ns: 'login' })}</span>
+      <Lock01 className="mr-2 h-5 w-5 text-text-accent-light-mode-only" />
+      <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
     </Button>
   )
 }

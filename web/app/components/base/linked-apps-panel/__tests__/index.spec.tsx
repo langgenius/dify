@@ -4,16 +4,8 @@ import { vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '../index'
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    className: string
-  }) => (
+vi.mock('next/link', () => ({
+  default: ({ children, href, className }: { children: React.ReactNode, href: string, className: string }) => (
     <a href={href} className={className} data-testid="link-item">
       {children}
     </a>
@@ -82,9 +74,10 @@ describe('LinkedAppsPanel Component', () => {
     })
 
     it('handles empty relatedApps list gracefully', () => {
-      render(<LinkedAppsPanel relatedApps={[]} isMobile={false} />)
-
-      expect(screen.queryAllByTestId('link-item')).toHaveLength(0)
+      const { container } = render(<LinkedAppsPanel relatedApps={[]} isMobile={false} />)
+      const items = screen.queryAllByTestId('link-item')
+      expect(items).toHaveLength(0)
+      expect(container.firstChild).toBeInTheDocument()
     })
   })
 

@@ -1,28 +1,14 @@
-import type { ReactElement } from 'react'
-import { screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import BuiltInPipelineList from '../built-in-pipeline-list'
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: true },
-  })
+import BuiltInPipelineList from '../built-in-pipeline-list'
 
 vi.mock('../create-card', () => ({
   default: () => <div data-testid="create-card">CreateCard</div>,
 }))
 
 vi.mock('../template-card', () => ({
-  default: ({
-    type,
-    pipeline,
-    showMoreOperations,
-  }: {
-    type: string
-    pipeline: { name: string }
-    showMoreOperations?: boolean
-  }) => (
+  default: ({ type, pipeline, showMoreOperations }: { type: string, pipeline: { name: string }, showMoreOperations?: boolean }) => (
     <div data-testid="template-card" data-type={type} data-show-more={String(showMoreOperations)}>
       {pipeline.name}
     </div>
@@ -34,6 +20,13 @@ let mockLocale = 'en-US'
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale,
+}))
+
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: vi.fn((selector) => {
+    const state = { systemFeatures: { enable_marketplace: true } }
+    return selector(state)
+  }),
 }))
 
 const mockUsePipelineTemplateList = vi.fn()
@@ -50,6 +43,16 @@ describe('BuiltInPipelineList', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      mockUsePipelineTemplateList.mockReturnValue({
+        data: { pipeline_templates: [] },
+        isLoading: false,
+      })
+
+      render(<BuiltInPipelineList />)
+      expect(screen.getByTestId('create-card')).toBeInTheDocument()
+    })
+
     it('should always render CreateCard', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: null,
@@ -79,7 +82,10 @@ describe('BuiltInPipelineList', () => {
   // Rendering with Data Tests
   describe('Rendering with Data', () => {
     it('should render TemplateCard for each pipeline when not loading', () => {
-      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }]
+      const mockPipelines = [
+        { name: 'Pipeline 1' },
+        { name: 'Pipeline 2' },
+      ]
       mockUsePipelineTemplateList.mockReturnValue({
         data: { pipeline_templates: mockPipelines },
         isLoading: false,
@@ -144,13 +150,18 @@ describe('BuiltInPipelineList', () => {
 
       const { container } = render(<BuiltInPipelineList />)
       const grid = container.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
-      expect(grid).not.toHaveClass(
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'md:grid-cols-3',
-        'lg:grid-cols-4',
-      )
+      expect(grid).toHaveClass('grid-cols-1', 'gap-3', 'py-2')
+    })
+
+    it('should have responsive grid columns', () => {
+      mockUsePipelineTemplateList.mockReturnValue({
+        data: { pipeline_templates: [] },
+        isLoading: false,
+      })
+
+      const { container } = render(<BuiltInPipelineList />)
+      const grid = container.querySelector('.grid')
+      expect(grid).toHaveClass('sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4')
     })
   })
 

@@ -8,10 +8,8 @@ from collections.abc import Generator
 from flask import Response, request
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.errors import InvalidArgumentError, NotFoundError
-from controllers.common.fields import EventStreamResponse
-from controllers.common.schema import register_response_schema_model
-from controllers.web import api, web_ns
+from controllers.web import api
+from controllers.web.error import InvalidArgumentError, NotFoundError
 from controllers.web.wraps import WebApiResource
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -24,13 +22,10 @@ from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
-register_response_schema_model(web_ns, EventStreamResponse)
-
 
 class WorkflowEventsApi(WebApiResource):
     """API for getting workflow execution events after resume."""
 
-    @web_ns.response(200, "SSE event stream", web_ns.models[EventStreamResponse.__name__])
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Get workflow execution events stream after resume.
@@ -77,13 +72,12 @@ class WorkflowEventsApi(WebApiResource):
             app_mode = AppMode.value_of(app_model.mode)
             msg_generator = MessageGenerator()
             generator: BaseAppGenerator
-            match app_mode:
-                case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator()
-                case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator()
-                case _:
-                    raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
+            if app_mode == AppMode.ADVANCED_CHAT:
+                generator = AdvancedChatAppGenerator()
+            elif app_mode == AppMode.WORKFLOW:
+                generator = WorkflowAppGenerator()
+            else:
+                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
 

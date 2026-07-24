@@ -1,143 +1,23 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 
-from pydantic import Field, field_validator, model_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from fields.base import ResponseModel
-from graphon.file import File
-from libs.helper import to_timestamp
-from models.account import Account
-from models.model import (
-    AppModelConfigDict,
-    MessageAgentThought,
-    MessageAnnotation,
-    MessageFeedback,
-    MessageFileInfo,
-)
-from models.model import (
-    Conversation as ConversationModel,
-)
-from models.model import (
-    Message as MessageModel,
-)
+from dify_graph.file import File
 
-type JSONValue = Any
+JSONValue: TypeAlias = Any
 
 
-class _SessionResponseSource[SourceT]:
-    def __init__(self, source: SourceT, *, session: Session) -> None:
-        self._source = source
-        self._session = session
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._source, name)  # noqa: no-new-getattr response adapter delegates model fields
-
-
-class _FeedbackResponseSource(_SessionResponseSource[MessageFeedback]):
-    @property
-    def from_account(self) -> Account | None:
-        return self._source.from_account_with_session(session=self._session)
-
-
-class _AnnotationResponseSource(_SessionResponseSource[MessageAnnotation]):
-    @property
-    def account(self) -> Account | None:
-        return self._source.account_with_session(session=self._session)
-
-    @property
-    def annotation_create_account(self) -> Account | None:
-        return self._source.annotation_create_account_with_session(session=self._session)
-
-
-class MessageResponseSource(_SessionResponseSource[MessageModel]):
-    @property
-    def inputs(self) -> dict[str, Any]:
-        return self._source.inputs_with_session(session=self._session)
-
-    @property
-    def feedbacks(self) -> list[_FeedbackResponseSource]:
-        return [
-            _FeedbackResponseSource(feedback, session=self._session)
-            for feedback in self._source.feedbacks_with_session(session=self._session)
-        ]
-
-    @property
-    def user_feedback(self) -> MessageFeedback | None:
-        return self._source.user_feedback_with_session(session=self._session)
-
-    @property
-    def annotation(self) -> _AnnotationResponseSource | None:
-        annotation = self._source.annotation_with_session(session=self._session)
-        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
-
-    @property
-    def annotation_hit_history(self) -> _AnnotationResponseSource | None:
-        annotation = self._source.annotation_hit_history_with_session(session=self._session)
-        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
-
-    @property
-    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
-        return self._source.agent_thoughts_with_session(session=self._session)
-
-    @property
-    def message_files(self) -> list[MessageFileInfo]:
-        return self._source.message_files_with_session(session=self._session)
-
-
-class ConversationResponseSource(_SessionResponseSource[ConversationModel]):
-    @property
-    def inputs(self) -> dict[str, Any]:
-        return self._source.inputs_with_session(session=self._session)
-
-    @property
-    def model_config(self) -> AppModelConfigDict:
-        return self._source.model_config_with_session(session=self._session)
-
-    @property
-    def summary_or_query(self) -> str:
-        return self._source.summary_or_query_with_session(session=self._session)
-
-    @property
-    def annotated(self) -> bool:
-        return self._source.annotated_with_session(session=self._session)
-
-    @property
-    def annotation(self) -> _AnnotationResponseSource | None:
-        annotation = self._source.annotation_with_session(session=self._session)
-        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
-
-    @property
-    def message_count(self) -> int:
-        return self._source.message_count_with_session(session=self._session)
-
-    @property
-    def user_feedback_stats(self) -> dict[str, int]:
-        return self._source.user_feedback_stats_with_session(session=self._session)
-
-    @property
-    def admin_feedback_stats(self) -> dict[str, int]:
-        return self._source.admin_feedback_stats_with_session(session=self._session)
-
-    @property
-    def status_count(self) -> dict[str, int] | None:
-        return self._source.status_count_with_session(session=self._session)
-
-    @property
-    def first_message(self) -> MessageResponseSource | None:
-        message = self._source.first_message_with_session(session=self._session)
-        return MessageResponseSource(message, session=self._session) if message else None
-
-    @property
-    def from_end_user_session_id(self) -> str | None:
-        return self._source.from_end_user_session_id_with_session(session=self._session)
-
-    @property
-    def from_account_name(self) -> str | None:
-        return self._source.from_account_name_with_session(session=self._session)
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
 
 class MessageFile(ResponseModel):
@@ -176,7 +56,9 @@ class SimpleConversation(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class ConversationInfiniteScrollPagination(ResponseModel):
@@ -207,7 +89,7 @@ class Feedback(ResponseModel):
     from_account: SimpleAccount | None = None
 
 
-class ConversationAnnotation(ResponseModel):
+class Annotation(ResponseModel):
     id: str
     question: str | None = None
     content: str
@@ -217,18 +99,22 @@ class ConversationAnnotation(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
-class ConversationAnnotationHitHistory(ResponseModel):
-    annotation_id: str = Field(validation_alias="id")
+class AnnotationHitHistory(ResponseModel):
+    annotation_id: str
     annotation_create_account: SimpleAccount | None = None
     created_at: int | None = None
 
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class AgentThought(ResponseModel):
@@ -238,7 +124,6 @@ class AgentThought(ResponseModel):
     message_id: str
     position: int
     thought: str | None = None
-    answer: str | None = None
     tool: str | None = None
     tool_labels: JSONValue
     tool_input: str | None = None
@@ -249,7 +134,9 @@ class AgentThought(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
     @model_validator(mode="after")
     def _fallback_chain_id(self):
@@ -265,7 +152,7 @@ class MessageDetail(ResponseModel):
     query: str
     message: JSONValue
     message_tokens: int
-    answer: str = Field(validation_alias="re_sign_file_url_answer")
+    answer: str
     answer_tokens: int
     provider_response_latency: float
     from_source: str
@@ -273,12 +160,12 @@ class MessageDetail(ResponseModel):
     from_account_id: str | None = None
     feedbacks: list[Feedback]
     workflow_run_id: str | None = None
-    annotation: ConversationAnnotation | None = None
-    annotation_hit_history: ConversationAnnotationHitHistory | None = None
+    annotation: Annotation | None = None
+    annotation_hit_history: AnnotationHitHistory | None = None
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
-    metadata: JSONValue = Field(validation_alias="message_metadata_dict")
+    metadata: JSONValue
     status: str
     error: str | None = None
     parent_message_id: str | None = None
@@ -291,7 +178,9 @@ class MessageDetail(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class FeedbackStat(ResponseModel):
@@ -308,18 +197,15 @@ class StatusCount(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = Field(default=None)
-    model: JSONValue | None = Field(default=None)
-    user_input_form: JSONValue | None = Field(default=None)
+    suggested_questions: JSONValue | None = None
+    model: JSONValue | None = None
+    user_input_form: JSONValue | None = None
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = Field(default=None)
+    agent_mode: JSONValue | None = None
 
 
 class SimpleModelConfig(ResponseModel):
-    model: JSONValue | None = Field(
-        default=None,
-        validation_alias="model_dict",
-    )
+    model: JSONValue | None = None
     pre_prompt: str | None = None
 
 
@@ -334,11 +220,6 @@ class SimpleMessageDetail(ResponseModel):
     def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
         return format_files_contained(value)
 
-    @field_validator("message", mode="before")
-    @classmethod
-    def _normalize_message(cls, value: JSONValue) -> str:
-        return message_text(value)
-
 
 class Conversation(ResponseModel):
     id: str
@@ -351,24 +232,19 @@ class Conversation(ResponseModel):
     read_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
-    annotation: ConversationAnnotation | None = None
+    annotation: Annotation | None = None
     model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
-    message: SimpleMessageDetail | None = Field(default=None, validation_alias="first_message")
-
-    @field_validator("read_at", "created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+    message: SimpleMessageDetail | None = None
 
 
 class ConversationPagination(ResponseModel):
     page: int
-    limit: int = Field(validation_alias="per_page")
+    limit: int
     total: int
-    has_more: bool = Field(validation_alias="has_next")
-    data: list[Conversation] = Field(validation_alias="items")
+    has_more: bool
+    data: list[Conversation]
 
 
 class ConversationMessageDetail(ResponseModel):
@@ -379,12 +255,7 @@ class ConversationMessageDetail(ResponseModel):
     from_account_id: str | None = None
     created_at: int | None = None
     model_config_: ModelConfig | None = Field(default=None, alias="model_config")
-    message: MessageDetail | None = Field(default=None, validation_alias="first_message")
-
-    @field_validator("created_at", mode="before")
-    @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+    message: MessageDetail | None = None
 
 
 class ConversationWithSummary(ResponseModel):
@@ -396,7 +267,7 @@ class ConversationWithSummary(ResponseModel):
     from_account_id: str | None = None
     from_account_name: str | None = None
     name: str
-    summary: str = Field(validation_alias="summary_or_query")
+    summary: str
     read_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -407,18 +278,13 @@ class ConversationWithSummary(ResponseModel):
     admin_feedback_stats: FeedbackStat | None = None
     status_count: StatusCount | None = None
 
-    @field_validator("read_at", "created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
 
 class ConversationWithSummaryPagination(ResponseModel):
     page: int
-    limit: int = Field(validation_alias="per_page")
+    limit: int
     total: int
-    has_more: bool = Field(validation_alias="has_next")
-    data: list[ConversationWithSummary] = Field(validation_alias="items")
+    has_more: bool
+    data: list[ConversationWithSummary]
 
 
 class ConversationDetail(ResponseModel):
@@ -436,17 +302,16 @@ class ConversationDetail(ResponseModel):
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
 
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+
+def to_timestamp(value: datetime | None) -> int | None:
+    if value is None:
+        return None
+    return int(value.timestamp())
 
 
 def format_files_contained(value: JSONValue) -> JSONValue:
     if isinstance(value, File):
-        # Response payloads must preserve legacy file keys like `related_id`/`url`
-        # while still exposing the new graph-layer `reference` field.
-        return value.to_dict()
+        return value.model_dump()
     if isinstance(value, dict):
         return {k: format_files_contained(v) for k, v in value.items()}
     if isinstance(value, list):

@@ -1,3 +1,5 @@
+from mimetypes import guess_extension
+
 from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
@@ -5,9 +7,8 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 import services
-from core.tools.signature import verify_plugin_file_signature
-from core.tools.tool_file_manager import ToolFileManager, resolve_extension
-from core.workflow.file_reference import build_file_reference
+from core.tools.tool_file_manager import ToolFileManager
+from dify_graph.file.helpers import verify_plugin_file_signature
 from fields.file_fields import FileResponse
 
 from ..common.errors import (
@@ -19,6 +20,8 @@ from ..console.wraps import setup_required
 from ..files import files_ns
 from ..inner_api.plugin.wraps import get_user
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 class PluginUploadQuery(BaseModel):
     timestamp: str = Field(..., description="Unix timestamp for signature verification")
@@ -26,11 +29,11 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
-    conversation_id: str | None = Field(default=None, description="Conversation identifier")
 
 
-register_schema_models(files_ns, PluginUploadQuery)
-
+files_ns.schema_model(
+    PluginUploadQuery.__name__, PluginUploadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
 
 register_schema_models(files_ns, FileResponse)
 
@@ -58,8 +61,7 @@ class PluginUploadFileApi(Resource):
         The file must be accompanied by valid timestamp, nonce, and signature parameters.
 
         Returns:
-            dict: File metadata including ID, canonical ``reference`` for
-                output-file reconstruction, URLs, and properties
+            dict: File metadata including ID, URLs, and properties
             int: HTTP status code (201 for success)
 
         Raises:
@@ -67,7 +69,7 @@ class PluginUploadFileApi(Resource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))
+        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         file = request.files.get("file")
         if file is None:
@@ -91,7 +93,6 @@ class PluginUploadFileApi(Resource):
             mimetype=mimetype,
             tenant_id=tenant_id,
             user_id=user.id,
-            conversation_id=args.conversation_id,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
@@ -102,19 +103,18 @@ class PluginUploadFileApi(Resource):
             tool_file = ToolFileManager().create_file_by_raw(
                 user_id=user.id,
                 tenant_id=tenant_id,
-                file_binary=file.stream.read(),
+                file_binary=file.read(),
                 mimetype=mimetype,
                 filename=filename,
-                conversation_id=args.conversation_id,
+                conversation_id=None,
             )
 
-            extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
+            extension = guess_extension(tool_file.mimetype) or ".bin"
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
 
             # Create a dictionary with all the necessary attributes
             result = FileResponse(
                 id=tool_file.id,
-                reference=build_file_reference(record_id=tool_file.id),
                 name=tool_file.name,
                 size=tool_file.size,
                 extension=extension,

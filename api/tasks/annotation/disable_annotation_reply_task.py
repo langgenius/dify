@@ -7,7 +7,6 @@ from sqlalchemy import exists, select
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
@@ -24,16 +23,14 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     start_at = time.perf_counter()
     # get app info
     with session_factory.create_session() as session:
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
-        )
+        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
         annotations_exists = session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
             return
 
-        app_annotation_setting = session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
+        app_annotation_setting = (
+            session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         )
 
         if not app_annotation_setting:
@@ -47,13 +44,13 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             dataset = Dataset(
                 id=app_id,
                 tenant_id=tenant_id,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                indexing_technique="high_quality",
                 collection_binding_id=app_annotation_setting.collection_binding_id,
             )
 
             try:
                 if annotations_exists:
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                     vector.delete()
             except Exception:
                 logger.exception("Delete annotation index failed when annotation deleted.")

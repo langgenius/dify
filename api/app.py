@@ -1,25 +1,5 @@
 from __future__ import annotations
 
-# ``python -m app`` (docker DEBUG=true, or IDE debugging) serves through the
-# gevent pywsgi server at the bottom of this file, so the stdlib must be
-# monkey-patched BEFORE any other import pulls in sockets or locks. Without
-# this, every request runs as a greenlet on one OS thread while blocking
-# calls (LLM invokes, ``Future.result`` waits, DB I/O) pin that thread — the
-# whole process freezes until the call returns. Gunicorn and Celery apply
-# their own patching (see gunicorn.conf.py / celery_entrypoint.py), and
-# ``flask run`` uses real Werkzeug threads, so both skip this branch.
-if __name__ == "__main__":
-    from gevent import monkey
-
-    monkey.patch_all()
-
-    import psycogreen.gevent as psycogreen_gevent
-    from grpc.experimental import gevent as grpc_gevent
-
-    grpc_gevent.init_gevent()
-    psycogreen_gevent.patch_psycopg()
-
-import logging
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -29,35 +9,17 @@ if TYPE_CHECKING:
     celery: Celery
 
 
-HOST = "0.0.0.0"
-PORT = 5001
-logger = logging.getLogger(__name__)
-
-
 def is_db_command() -> bool:
     if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
         return True
     return False
 
 
-def log_startup_banner(host: str, port: int) -> None:
-    debugger_attached = sys.gettrace() is not None
-    logger.info("Serving Dify API via gevent WebSocket server")
-    logger.info("Bound to http://%s:%s", host, port)
-    logger.info("Debugger attached: %s", "on" if debugger_attached else "off")
-    logger.info("Press CTRL+C to quit")
-
-
 # create app
-flask_app = None
-socketio_app = None
-
 if is_db_command():
     from app_factory import create_migrations_app
 
     app = create_migrations_app()
-    socketio_app = app
-    flask_app = app
 else:
     # Gunicorn and Celery handle monkey patching automatically in production by
     # specifying the `gevent` worker class. Manual monkey patching is not required here.
@@ -68,14 +30,8 @@ else:
 
     from app_factory import create_app
 
-    socketio_app, flask_app = create_app()
-    app = flask_app
+    app = create_app()
     celery = cast("Celery", app.extensions["celery"])
 
 if __name__ == "__main__":
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
-
-    log_startup_banner(HOST, PORT)
-    server = pywsgi.WSGIServer((HOST, PORT), socketio_app, handler_class=WebSocketHandler)
-    server.serve_forever()
+    app.run(host="0.0.0.0", port=5001)

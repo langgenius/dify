@@ -43,7 +43,13 @@ describe('RunBatch', () => {
 
   it('should enable run button after CSV parsed and send data', async () => {
     const onSend = vi.fn()
-    render(<RunBatch vars={vars} onSend={onSend} isAllFinished />)
+    render(
+      <RunBatch
+        vars={vars}
+        onSend={onSend}
+        isAllFinished
+      />,
+    )
 
     expect(receivedCSVDownloadProps?.vars).toEqual(vars)
     await act(async () => {
@@ -62,7 +68,13 @@ describe('RunBatch', () => {
   it('should keep button disabled and show spinner when results still running on mobile', async () => {
     mockUseBreakpoints.mockReturnValue(MediaType.mobile)
     const onSend = vi.fn()
-    const { container } = render(<RunBatch vars={vars} onSend={onSend} isAllFinished={false} />)
+    const { container } = render(
+      <RunBatch
+        vars={vars}
+        onSend={onSend}
+        isAllFinished={false}
+      />,
+    )
 
     await act(async () => {
       latestOnParsed?.([['row']])

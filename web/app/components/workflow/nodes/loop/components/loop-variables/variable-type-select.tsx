@@ -1,18 +1,14 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
+import PureSelect from '@/app/components/base/select/pure'
 import { VarType } from '@/app/components/workflow/types'
 
 type VariableTypeSelectProps = {
   value?: string
   onChange: (value: string) => void
 }
-const VariableTypeSelect = ({ value, onChange }: VariableTypeSelectProps) => {
+const VariableTypeSelect = ({
+  value,
+  onChange,
+}: VariableTypeSelectProps) => {
   const options = [
     {
       label: 'String',
@@ -47,23 +43,16 @@ const VariableTypeSelect = ({ value, onChange }: VariableTypeSelectProps) => {
       value: VarType.arrayBoolean,
     },
   ]
-  const selectedOption = options.find((option) => option.value === value) ?? null
 
   return (
-    <Select
-      value={selectedOption?.value ?? null}
-      onValueChange={(nextValue) => nextValue && onChange(nextValue)}
-    >
-      <SelectTrigger className="w-full">{selectedOption?.label}</SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            <SelectItemText>{option.label}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <PureSelect
+      options={options}
+      value={value}
+      onChange={onChange}
+      popupProps={{
+        className: 'w-[132px]',
+      }}
+    />
   )
 }
 

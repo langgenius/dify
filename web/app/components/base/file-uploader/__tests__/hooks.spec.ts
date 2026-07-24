@@ -5,28 +5,16 @@ import { act, renderHook } from '@testing-library/react'
 import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
-const mockNavigationState = vi.hoisted(() => ({
-  params: {} as { token?: string },
-  pathname: '/chat',
-}))
-const mockFileUploadContext = vi.hoisted(() => ({
-  localUploadUrl: undefined as string | undefined,
-  remoteUploadUrl: undefined as string | undefined,
+
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ token: undefined }),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useParams: () => mockNavigationState.params,
-  usePathname: () => mockNavigationState.pathname,
-}))
-
-vi.mock('../upload-context', () => ({
-  useFileUploadContext: () => mockFileUploadContext,
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: (message: string) => mockNotify({ type: 'error', message }),
-  },
+// Exception: hook requires toast context that isn't available without a provider wrapper
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
 }))
 
 const mockSetFiles = vi.fn()
@@ -53,14 +41,6 @@ vi.mock('../utils', () => ({
 const mockUploadRemoteFileInfo = vi.fn()
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
-}))
-
-const mockUploadHumanInputFormLocalFile = vi.fn()
-const mockUploadHumanInputFormRemoteFileInfo = vi.fn()
-vi.mock('@/service/share', () => ({
-  uploadHumanInputFormLocalFile: (...args: unknown[]) => mockUploadHumanInputFormLocalFile(...args),
-  uploadHumanInputFormRemoteFileInfo: (...args: unknown[]) =>
-    mockUploadHumanInputFormRemoteFileInfo(...args),
 }))
 
 vi.mock('uuid', () => ({
@@ -130,10 +110,6 @@ describe('useFile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockStoreFiles = []
-    mockNavigationState.params = {}
-    mockNavigationState.pathname = '/chat'
-    mockFileUploadContext.localUploadUrl = undefined
-    mockFileUploadContext.remoteUploadUrl = undefined
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
   })
@@ -208,53 +184,22 @@ describe('useFile', () => {
   describe('handleReUploadFile', () => {
     it('should re-upload a file and call fileUpload', () => {
       const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'file-1',
+        name: 'test.txt',
+        type: 'text/plain',
+        size: 100,
+        progress: -1,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        originalFile,
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
 
       result.current.handleReUploadFile('file-1')
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockFileUpload).toHaveBeenCalled()
-    })
-
-    it('should use human input form local upload when re-uploading on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleReUploadFile('file-1')
-
-      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formToken: 'form-token',
-          file: originalFile,
-        }),
-      )
-      expect(mockFileUpload).not.toHaveBeenCalled()
     })
 
     it('should not re-upload when file id is not found', () => {
@@ -267,69 +212,63 @@ describe('useFile', () => {
 
     it('should handle progress callback during re-upload', () => {
       const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'file-1',
+        name: 'test.txt',
+        type: 'text/plain',
+        size: 100,
+        progress: -1,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        originalFile,
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
+      const uploadCall = mockFileUpload.mock.calls[0][0]
       uploadCall.onProgressCallback(50)
       expect(mockSetFiles).toHaveBeenCalled()
     })
 
     it('should handle success callback during re-upload', () => {
       const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'file-1',
+        name: 'test.txt',
+        type: 'text/plain',
+        size: 100,
+        progress: -1,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        originalFile,
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
+      const uploadCall = mockFileUpload.mock.calls[0][0]
       uploadCall.onSuccessCallback({ id: 'uploaded-1' })
       expect(mockSetFiles).toHaveBeenCalled()
     })
 
     it('should handle error callback during re-upload', () => {
       const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockStoreFiles = [
-        {
-          id: 'file-1',
-          name: 'test.txt',
-          type: 'text/plain',
-          size: 100,
-          progress: -1,
-          transferMethod: 'local_file',
-          supportFileType: 'document',
-          originalFile,
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'file-1',
+        name: 'test.txt',
+        type: 'text/plain',
+        size: 100,
+        progress: -1,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        originalFile,
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleReUploadFile('file-1')
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
+      const uploadCall = mockFileUpload.mock.calls[0][0]
       uploadCall.onErrorCallback(new Error('fail'))
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
@@ -341,17 +280,15 @@ describe('useFile', () => {
       mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {})) // never resolves
 
       // Set up a file in the store that has progress 0
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: 0,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'mock-uuid',
+        name: 'https://example.com/file.txt',
+        type: '',
+        size: 0,
+        progress: 0,
+        transferMethod: 'remote_url',
+        supportFileType: '',
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLoadFileFromLink('https://example.com/file.txt')
@@ -377,42 +314,6 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
-    })
-
-    it('should upload a remote file through the configured resource-scoped endpoint', () => {
-      mockFileUploadContext.remoteUploadUrl = '/trial-apps/app-id/remote-files/upload'
-      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
-        'https://example.com/file.txt',
-        false,
-        undefined,
-        '/trial-apps/app-id/remote-files/upload',
-      )
-    })
-
-    it('should use human input form remote upload on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      mockUploadHumanInputFormRemoteFileInfo.mockResolvedValue({
-        id: 'remote-1',
-        mime_type: 'text/plain',
-        size: 100,
-        name: 'remote.txt',
-        url: 'https://example.com/remote.txt',
-      })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLoadFileFromLink('https://example.com/file.txt')
-
-      expect(mockUploadHumanInputFormRemoteFileInfo).toHaveBeenCalledWith(
-        'form-token',
-        'https://example.com/file.txt',
-      )
-      expect(mockUploadRemoteFileInfo).not.toHaveBeenCalled()
     })
 
     it('should remove file when extension is not allowed', async () => {
@@ -515,17 +416,15 @@ describe('useFile', () => {
       mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
 
       // Set up a file already at 80% progress
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: 80,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'mock-uuid',
+        name: 'https://example.com/file.txt',
+        type: '',
+        size: 0,
+        progress: 80,
+        transferMethod: 'remote_url',
+        supportFileType: '',
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLoadFileFromLink('https://example.com/file.txt')
@@ -541,17 +440,15 @@ describe('useFile', () => {
       mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
 
       // Set up a file with negative progress (error state)
-      mockStoreFiles = [
-        {
-          id: 'mock-uuid',
-          name: 'https://example.com/file.txt',
-          type: '',
-          size: 0,
-          progress: -1,
-          transferMethod: 'remote_url',
-          supportFileType: '',
-        },
-      ] as FileEntity[]
+      mockStoreFiles = [{
+        id: 'mock-uuid',
+        name: 'https://example.com/file.txt',
+        type: '',
+        size: 0,
+        progress: -1,
+        transferMethod: 'remote_url',
+        supportFileType: '',
+      }] as FileEntity[]
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLoadFileFromLink('https://example.com/file.txt')
@@ -573,13 +470,14 @@ describe('useFile', () => {
       class MockFileReader {
         result: string | null = null
         addEventListener(event: string, handler: () => void) {
-          if (!capturedListeners[event]) capturedListeners[event] = []
+          if (!capturedListeners[event])
+            capturedListeners[event] = []
           capturedListeners[event].push(handler)
         }
 
         readAsDataURL() {
           this.result = mockReaderResult
-          capturedListeners.load?.forEach((handler) => handler())
+          capturedListeners.load?.forEach(handler => handler())
         }
       }
       vi.stubGlobal('FileReader', MockFileReader)
@@ -637,9 +535,7 @@ describe('useFile', () => {
 
     it('should reject image file exceeding size limit', () => {
       mockGetSupportFileType.mockReturnValue('image')
-      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.png', {
-        type: 'image/png',
-      })
+      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.png', { type: 'image/png' })
       Object.defineProperty(largeFile, 'size', { value: 20 * 1024 * 1024 })
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
@@ -773,7 +669,7 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       // The file should have been added with base64Url set (for image type)
-      const addedFiles = mockSetFiles.mock.calls[0]![0]
+      const addedFiles = mockSetFiles.mock.calls[0][0]
       expect(addedFiles[0].base64Url).toBe('data:text/plain;base64,Y29udGVudA==')
     })
 
@@ -785,7 +681,7 @@ describe('useFile', () => {
       result.current.handleLocalFileUpload(file)
 
       expect(mockSetFiles).toHaveBeenCalled()
-      const addedFiles = mockSetFiles.mock.calls[0]![0]
+      const addedFiles = mockSetFiles.mock.calls[0][0]
       expect(addedFiles[0].base64Url).toBe('')
     })
 
@@ -796,7 +692,7 @@ describe('useFile', () => {
       result.current.handleLocalFileUpload(file)
 
       expect(mockFileUpload).toHaveBeenCalled()
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
+      const uploadCall = mockFileUpload.mock.calls[0][0]
 
       // Test progress callback
       uploadCall.onProgressCallback(50)
@@ -807,44 +703,13 @@ describe('useFile', () => {
       expect(mockSetFiles).toHaveBeenCalled()
     })
 
-    it('should upload through the configured resource-scoped endpoint', () => {
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-      mockFileUploadContext.localUploadUrl = '/trial-apps/app-id/files/upload'
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockFileUpload).toHaveBeenCalledWith(
-        expect.any(Object),
-        false,
-        '/trial-apps/app-id/files/upload',
-      )
-    })
-
-    it('should use human input form local upload on form page', () => {
-      mockNavigationState.params = { token: 'form-token' }
-      mockNavigationState.pathname = '/form/form-token'
-      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-
-      const { result } = renderHook(() => useFile(defaultFileConfig))
-      result.current.handleLocalFileUpload(file)
-
-      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          formToken: 'form-token',
-          file,
-        }),
-      )
-      expect(mockFileUpload).not.toHaveBeenCalled()
-    })
-
     it('should handle fileUpload error callback', () => {
       const file = new File(['content'], 'test.txt', { type: 'text/plain' })
 
       const { result } = renderHook(() => useFile(defaultFileConfig))
       result.current.handleLocalFileUpload(file)
 
-      const uploadCall = mockFileUpload.mock.calls[0]![0]
+      const uploadCall = mockFileUpload.mock.calls[0][0]
       uploadCall.onErrorCallback(new Error('upload failed'))
 
       expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
@@ -857,14 +722,16 @@ describe('useFile', () => {
       class ErrorFileReader {
         result: string | null = null
         addEventListener(event: string, handler: () => void) {
-          if (event === 'error') errorListeners.push(handler)
-          if (!capturedListeners[event]) capturedListeners[event] = []
+          if (event === 'error')
+            errorListeners.push(handler)
+          if (!capturedListeners[event])
+            capturedListeners[event] = []
           capturedListeners[event].push(handler)
         }
 
         readAsDataURL() {
           // Simulate error instead of load
-          errorListeners.forEach((handler) => handler())
+          errorListeners.forEach(handler => handler())
         }
       }
       vi.stubGlobal('FileReader', ErrorFileReader)
@@ -915,10 +782,7 @@ describe('useFile', () => {
     it('should set isDragActive on drag enter', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
 
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
+      const event = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.DragEvent<HTMLElement>
       act(() => {
         result.current.handleDragFileEnter(event)
       })
@@ -929,10 +793,7 @@ describe('useFile', () => {
     it('should call preventDefault on drag over', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
 
-      const event = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
+      const event = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.DragEvent<HTMLElement>
       result.current.handleDragFileOver(event)
 
       expect(event.preventDefault).toHaveBeenCalled()
@@ -941,19 +802,13 @@ describe('useFile', () => {
     it('should unset isDragActive on drag leave', () => {
       const { result } = renderHook(() => useFile(defaultFileConfig))
 
-      const enterEvent = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
+      const enterEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.DragEvent<HTMLElement>
       act(() => {
         result.current.handleDragFileEnter(enterEvent)
       })
       expect(result.current.isDragActive).toBe(true)
 
-      const leaveEvent = {
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      } as unknown as React.DragEvent<HTMLElement>
+      const leaveEvent = { preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.DragEvent<HTMLElement>
       act(() => {
         result.current.handleDragFileLeave(leaveEvent)
       })

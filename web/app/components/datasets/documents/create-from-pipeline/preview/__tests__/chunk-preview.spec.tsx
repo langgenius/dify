@@ -12,23 +12,17 @@ import ChunkPreview from '../chunk-preview'
 // Mock dataset-detail context - needs mock to control return values
 const mockDocForm = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    _selector: (s: { dataset: { doc_form: ChunkingMode } }) => ChunkingMode,
-  ) => {
+  useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { doc_form: ChunkingMode } }) => ChunkingMode) => {
     return mockDocForm()
   },
 }))
 
 // Mock document picker - needs mock for simplified interaction testing
 vi.mock('../../../../common/document-picker/preview-document-picker', () => ({
-  default: ({
-    files,
-    onChange,
-    value,
-  }: {
-    files: Array<{ id: string; name: string; extension: string }>
-    onChange: (selected: { id: string; name: string; extension: string }) => void
-    value: { id: string; name: string; extension: string }
+  default: ({ files, onChange, value }: {
+    files: Array<{ id: string, name: string, extension: string }>
+    onChange: (selected: { id: string, name: string, extension: string }) => void
+    value: { id: string, name: string, extension: string }
   }) => (
     <div data-testid="document-picker">
       <span data-testid="picker-value">{value?.name || 'No selection'}</span>
@@ -36,36 +30,34 @@ vi.mock('../../../../common/document-picker/preview-document-picker', () => ({
         data-testid="picker-select"
         value={value?.id || ''}
         onChange={(e) => {
-          const selected = files.find((f) => f.id === e.target.value)
-          if (selected) onChange(selected)
+          const selected = files.find(f => f.id === e.target.value)
+          if (selected)
+            onChange(selected)
         }}
       >
-        {files.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-          </option>
+        {files.map(f => (
+          <option key={f.id} value={f.id}>{f.name}</option>
         ))}
       </select>
     </div>
   ),
 }))
 
-const createMockLocalFile = (overrides?: Partial<CustomFile>): CustomFile =>
-  ({
-    id: 'file-1',
-    name: 'test-file.pdf',
-    size: 1024,
-    type: 'application/pdf',
-    extension: 'pdf',
-    lastModified: Date.now(),
-    webkitRelativePath: '',
-    arrayBuffer: vi.fn() as () => Promise<ArrayBuffer>,
-    bytes: vi.fn() as () => Promise<Uint8Array>,
-    slice: vi.fn() as (start?: number, end?: number, contentType?: string) => Blob,
-    stream: vi.fn() as () => ReadableStream<Uint8Array>,
-    text: vi.fn() as () => Promise<string>,
-    ...overrides,
-  }) as CustomFile
+const createMockLocalFile = (overrides?: Partial<CustomFile>): CustomFile => ({
+  id: 'file-1',
+  name: 'test-file.pdf',
+  size: 1024,
+  type: 'application/pdf',
+  extension: 'pdf',
+  lastModified: Date.now(),
+  webkitRelativePath: '',
+  arrayBuffer: vi.fn() as () => Promise<ArrayBuffer>,
+  bytes: vi.fn() as () => Promise<Uint8Array>,
+  slice: vi.fn() as (start?: number, end?: number, contentType?: string) => Blob,
+  stream: vi.fn() as () => ReadableStream<Uint8Array>,
+  text: vi.fn() as () => Promise<string>,
+  ...overrides,
+} as CustomFile)
 
 const createMockNotionPage = (overrides?: Partial<NotionPage>): NotionPage => ({
   page_id: 'page-1',
@@ -94,9 +86,7 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   ...overrides,
 })
 
-const createMockEstimateData = (
-  overrides?: Partial<FileIndexingEstimateResponse>,
-): FileIndexingEstimateResponse => ({
+const createMockEstimateData = (overrides?: Partial<FileIndexingEstimateResponse>): FileIndexingEstimateResponse => ({
   total_nodes: 5,
   tokens: 1000,
   total_price: 0.01,
@@ -194,9 +184,7 @@ describe('ChunkPreview', () => {
 
       // i18n mock returns keys
       expect(screen.getByText('datasetCreation.stepTwo.previewChunkTip')).toBeInTheDocument()
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.previewChunks'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.previewChunks')).toBeInTheDocument()
     })
 
     it('should call onPreview when preview button is clicked', () => {
@@ -267,7 +255,9 @@ describe('ChunkPreview', () => {
     it('should render parent-child preview chunks', () => {
       mockDocForm.mockReturnValue(ChunkingMode.parentChild)
       const estimateData = createMockEstimateData({
-        preview: [{ content: 'Parent chunk 1', child_chunks: ['Child 1', 'Child 2'] }],
+        preview: [
+          { content: 'Parent chunk 1', child_chunks: ['Child 1', 'Child 2'] },
+        ],
       })
 
       render(<ChunkPreview {...defaultProps} estimateData={estimateData} />)
@@ -455,6 +445,15 @@ describe('ChunkPreview', () => {
       )
 
       expect(screen.getByTestId('document-picker')).toBeInTheDocument()
+    })
+  })
+
+  describe('Component Memoization', () => {
+    it('should be exported as a memoized component', () => {
+      // ChunkPreview is wrapped with React.memo
+      // We verify this by checking the component type
+      expect(typeof ChunkPreview).toBe('object')
+      expect(ChunkPreview.$$typeof?.toString()).toBe('Symbol(react.memo)')
     })
   })
 })

@@ -1,10 +1,10 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLatest } from 'ahooks'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
+import Tooltip from '@/app/components/base/tooltip'
 
-type CooldownTimerProps = {
+export type CooldownTimerProps = {
   secondsRemaining?: number
   onFinish?: () => void
 }
@@ -36,7 +36,8 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
       if (now <= targetTime.current) {
         setCurrentTime(Date.now())
         countdown()
-      } else {
+      }
+      else {
         onFinishRef.current?.()
         clearCountdown()
       }
@@ -51,18 +52,13 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
     return clearCountdown
   }, [clearCountdown, countdown, secondsRemaining])
 
-  return displayTime ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <SimplePieChart percentage={Math.round((displayTime / 60) * 100)} className="size-3" />
-        }
-      />
-      <TooltipContent>
-        {t(($) => $['modelProvider.apiKeyRateLimit'], { ns: 'common', seconds: displayTime })}
-      </TooltipContent>
-    </Tooltip>
-  ) : null
+  return displayTime
+    ? (
+        <Tooltip popupContent={t('modelProvider.apiKeyRateLimit', { ns: 'common', seconds: displayTime })}>
+          <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="h-3 w-3" />
+        </Tooltip>
+      )
+    : null
 }
 
 export default memo(CooldownTimer)

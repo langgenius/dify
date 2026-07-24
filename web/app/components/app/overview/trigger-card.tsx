@@ -1,37 +1,48 @@
 'use client'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { Switch } from '@langgenius/dify-ui/switch'
-import { useAtomValue } from 'jotai'
+import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
+import Switch from '@/app/components/base/switch'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
+import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import Link from '@/next/link'
 import {
+
   useAppTriggers,
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
-import { getAppACLCapabilities } from '@/utils/permission'
 
-type ITriggerCardProps = {
+export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   onToggleResult?: (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => void
 }
 
-const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: TriggerWithProvider[]) => {
+const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   const { trigger_type, status, provider_name } = trigger
+
+  // Status dot styling based on trigger status
+  const getStatusDot = () => {
+    if (status === 'enabled') {
+      return (
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-black/15 bg-green-500" />
+      )
+    }
+    else {
+      return (
+        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-sm border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
+      )
+    }
+  }
 
   // Get BlockEnum type from trigger_type
   let blockType: BlockEnum
@@ -52,23 +63,22 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: TriggerWithProvider
   let triggerIcon: string | undefined
   if (trigger_type === 'trigger-plugin' && provider_name) {
     const targetTriggers = triggerPlugins || []
-    const foundTrigger = targetTriggers.find(
-      (triggerWithProvider) =>
-        canFindTool(triggerWithProvider.id, provider_name) ||
-        triggerWithProvider.id.includes(provider_name) ||
-        triggerWithProvider.name === provider_name,
+    const foundTrigger = targetTriggers.find(triggerWithProvider =>
+      canFindTool(triggerWithProvider.id, provider_name)
+      || triggerWithProvider.id.includes(provider_name)
+      || triggerWithProvider.name === provider_name,
     )
-    triggerIcon = typeof foundTrigger?.icon === 'string' ? foundTrigger.icon : undefined
+    triggerIcon = foundTrigger?.icon
   }
 
   return (
     <div className="relative">
-      <BlockIcon type={blockType} size="md" toolIcon={triggerIcon} />
-      <StatusDot
-        className="absolute -top-0.5 -left-0.5"
-        size="small"
-        status={status === 'enabled' ? 'success' : 'disabled'}
+      <BlockIcon
+        type={blockType}
+        size="md"
+        toolIcon={triggerIcon}
       />
+      {getStatusDot()}
     </div>
   )
 }
@@ -77,17 +87,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canEditApp = React.useMemo(
-    () =>
-      getAppACLCapabilities(appInfo.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appInfo.maintainer,
-        workspacePermissionKeys,
-      }).canEdit,
-    [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
-  )
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -96,20 +96,17 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   // Zustand store for trigger status sync
   const { setTriggerStatus, setTriggerStatuses } = useTriggerStatusStore()
 
-  const triggers = React.useMemo(() => triggersResponse?.data || [], [triggersResponse?.data])
+  const triggers = triggersResponse?.data || []
   const triggerCount = triggers.length
 
   // Sync trigger statuses to Zustand store when data loads initially or after API calls
   React.useEffect(() => {
     if (triggers.length > 0) {
-      const statusMap = triggers.reduce(
-        (acc, trigger) => {
-          // Map API status to EntryNodeStatus: only 'enabled' shows green, others show gray
-          acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
-          return acc
-        },
-        {} as Record<string, 'enabled' | 'disabled'>,
-      )
+      const statusMap = triggers.reduce((acc, trigger) => {
+        // Map API status to EntryNodeStatus: only 'enabled' shows green, others show gray
+        acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
+        return acc
+      }, {} as Record<string, 'enabled' | 'disabled'>)
 
       // Only update if there are actual changes to prevent overriding optimistic updates
       setTriggerStatuses(statusMap)
@@ -117,8 +114,6 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   }, [triggers, setTriggerStatuses])
 
   const onToggleTrigger = async (trigger: AppTrigger, enabled: boolean) => {
-    if (!canEditApp) return
-
     try {
       // Immediately update Zustand store for real-time UI sync
       const newStatus = enabled ? 'enabled' : 'disabled'
@@ -133,7 +128,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
       // Success toast notification
       onToggleResult?.(null)
-    } catch (error) {
+    }
+    catch (error) {
       // Rollback Zustand store state on error
       const rollbackStatus = enabled ? 'disabled' : 'enabled'
       setTriggerStatus(trigger.node_id, rollbackStatus)
@@ -145,10 +141,10 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight">
+      <div className="w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight">
         <div className="rounded-xl bg-background-default">
           <div className="flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3">
-            <div className="h-6 w-full animate-pulse rounded-sm bg-components-input-bg-normal"></div>
+            <div className="h-6 w-full animate-pulse rounded bg-components-input-bg-normal"></div>
           </div>
         </div>
       </div>
@@ -156,22 +152,19 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   }
 
   return (
-    <div className="w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight">
+    <div className="w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight">
       <div className="rounded-xl bg-background-default">
         <div className="flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3">
           <div className="flex w-full items-center gap-3 self-stretch">
             <div className="flex grow items-center">
               <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-purple-purple-500 p-1 shadow-md">
-                <div className="i-custom-vender-workflow-trigger-all size-4 text-text-primary-on-surface" />
+                <TriggerAll className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className="group w-full">
-                <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
+                <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
-                    ? t(($) => $['overview.triggerInfo.triggersAdded'], {
-                        ns: 'appOverview',
-                        count: triggerCount,
-                      })
-                    : t(($) => $['overview.triggerInfo.noTriggerAdded'], { ns: 'appOverview' })}
+                    ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
+                    : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
                 </div>
               </div>
             </div>
@@ -180,28 +173,28 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
         {triggerCount > 0 && (
           <div className="flex flex-col gap-2 p-3">
-            {triggers.map((trigger) => (
+            {triggers.map(trigger => (
               <div key={trigger.id} className="flex w-full items-center gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <div className="shrink-0">{getTriggerIcon(trigger, triggerPlugins || [])}</div>
-                  <div className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+                  <div className="shrink-0">
+                    {getTriggerIcon(trigger, triggerPlugins || [])}
+                  </div>
+                  <div className="system-sm-medium min-w-0 flex-1 truncate text-text-secondary">
                     {trigger.title}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center">
-                  <div
-                    className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}
-                  >
+                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
                     {trigger.status === 'enabled'
-                      ? t(($) => $['overview.status.running'], { ns: 'appOverview' })
-                      : t(($) => $['overview.status.disable'], { ns: 'appOverview' })}
+                      ? t('overview.status.running', { ns: 'appOverview' })
+                      : t('overview.status.disable', { ns: 'appOverview' })}
                   </div>
                 </div>
                 <div className="shrink-0">
                   <Switch
-                    checked={trigger.status === 'enabled'}
-                    onCheckedChange={(enabled) => onToggleTrigger(trigger, enabled)}
-                    disabled={!canEditApp}
+                    value={trigger.status === 'enabled'}
+                    onChange={enabled => onToggleTrigger(trigger, enabled)}
+                    disabled={!isCurrentWorkspaceEditor}
                   />
                 </div>
               </div>
@@ -212,14 +205,15 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t(($) => $['overview.triggerInfo.triggerStatusDescription'], { ns: 'appOverview' })}{' '}
+              {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
+              {' '}
               <Link
                 href={docLink('/use-dify/nodes/trigger/overview')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-text-accent hover:underline"
               >
-                {t(($) => $['overview.triggerInfo.learnAboutTriggers'], { ns: 'appOverview' })}
+                {t('overview.triggerInfo.learnAboutTriggers', { ns: 'appOverview' })}
               </Link>
             </div>
           </div>

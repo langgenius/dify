@@ -1,19 +1,26 @@
-import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { memo, useCallback, useEffect, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
+import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { submitHumanInputForm } from '@/service/workflow'
-import { useWorkflowInteractions } from '../hooks'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
+import {
+  useWorkflowInteractions,
+} from '../hooks'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
 import TracingPanel from '../run/tracing-panel'
 import { useStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import {
+  WorkflowRunningStatus,
+} from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
 import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
@@ -22,17 +29,15 @@ import InputsPanel from './inputs-panel'
 const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
-  const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const isListening = useStore((s) => s.isListening)
-  const showInputsPanel = useStore((s) => s.showInputsPanel)
-  const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
-  const panelWidth = useStore((s) => s.previewPanelWidth)
-  const setPreviewPanelWidth = useStore((s) => s.setPreviewPanelWidth)
-  const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
-  const humanInputFormDataList = useStore((s) => s.workflowRunningData?.humanInputFormDataList)
-  const humanInputFilledFormDataList = useStore(
-    (s) => s.workflowRunningData?.humanInputFilledFormDataList,
-  )
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isListening = useStore(s => s.isListening)
+  const showInputsPanel = useStore(s => s.showInputsPanel)
+  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
+  const panelWidth = useStore(s => s.previewPanelWidth)
+  const setPreviewPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+  const humanInputFormDataList = useStore(s => s.workflowRunningData?.humanInputFormDataList)
+  const humanInputFilledFormDataList = useStore(s => s.workflowRunningData?.humanInputFilledFormDataList)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
@@ -40,24 +45,24 @@ const WorkflowPreview = () => {
   }
 
   useEffect(() => {
-    if (showDebugAndPreviewPanel && showInputsPanel) switchTab('INPUT')
+    if (showDebugAndPreviewPanel && showInputsPanel)
+      switchTab('INPUT')
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    if (isListening) switchTab('DETAIL')
+    if (isListening)
+      switchTab('DETAIL')
   }, [isListening])
 
   useEffect(() => {
     const status = workflowRunningData?.result.status
-    if (!workflowRunningData) return
+    if (!workflowRunningData)
+      return
 
-    if (
-      (status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) &&
-      !workflowRunningData.resultText &&
-      !workflowRunningData.result.files?.length
-    )
+    if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
-    if (status === WorkflowRunningStatus.Paused) switchTab('RESULT')
+    if (status === WorkflowRunningStatus.Paused)
+      switchTab('RESULT')
   }, [workflowRunningData])
 
   const [isResizing, setIsResizing] = useState(false)
@@ -71,19 +76,17 @@ const WorkflowPreview = () => {
     setIsResizing(false)
   }, [])
 
-  const resize = useCallback(
-    (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = window.innerWidth - e.clientX
-        // width constraints: 400 <= width <= maxAllowed (canvas - reserved 400)
-        const reservedCanvasWidth = 400
-        const maxAllowed = workflowCanvasWidth ? workflowCanvasWidth - reservedCanvasWidth : 1024
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      // width constraints: 400 <= width <= maxAllowed (canvas - reserved 400)
+      const reservedCanvasWidth = 400
+      const maxAllowed = workflowCanvasWidth ? (workflowCanvasWidth - reservedCanvasWidth) : 1024
 
-        if (newWidth >= 400 && newWidth <= maxAllowed) setPreviewPanelWidth(newWidth)
-      }
-    },
-    [isResizing, workflowCanvasWidth, setPreviewPanelWidth],
-  )
+      if (newWidth >= 400 && newWidth <= maxAllowed)
+        setPreviewPanelWidth(newWidth)
+    }
+  }, [isResizing, workflowCanvasWidth, setPreviewPanelWidth])
 
   useEffect(() => {
     window.addEventListener('mousemove', resize)
@@ -94,15 +97,8 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
-  const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: HumanInputFormSubmitData) => {
-      await submitHumanInputForm(formToken, formData)
-    },
-    [],
-  )
-
-  const handleOpenTracingTab = useCallback(() => {
-    switchTab('TRACING')
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+    await submitHumanInputForm(formToken, formData)
   }, [])
 
   return (
@@ -111,78 +107,75 @@ const WorkflowPreview = () => {
       style={{ width: `${panelWidth}px` }}
     >
       <div
-        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded-sm bg-gray-300"
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={() => handleCancelDebugAndPreviewPanel()}
-        >
-          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
+        <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
-                currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
+                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
             >
-              {t(($) => $.input, { ns: 'runLog' })}
+              {t('input', { ns: 'runLog' })}
             </div>
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
-              currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
-              !workflowRunningData && 'cursor-not-allowed! opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
-              if (!workflowRunningData) return
+              if (!workflowRunningData)
+                return
               switchTab('RESULT')
             }}
           >
-            {t(($) => $.result, { ns: 'runLog' })}
+            {t('result', { ns: 'runLog' })}
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
-              currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
-              !workflowRunningData && 'cursor-not-allowed! opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
-              if (!workflowRunningData) return
+              if (!workflowRunningData)
+                return
               switchTab('DETAIL')
             }}
           >
-            {t(($) => $.detail, { ns: 'runLog' })}
+            {t('detail', { ns: 'runLog' })}
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
-              currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
-              !workflowRunningData && 'cursor-not-allowed! opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
-              if (!workflowRunningData) return
+              if (!workflowRunningData)
+                return
               switchTab('TRACING')
             }}
           >
-            {t(($) => $.tracing, { ns: 'runLog' })}
+            {t('tracing', { ns: 'runLog' })}
           </div>
         </div>
-        <div
-          className={cn(
-            'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
-            (currentTab === 'RESULT' || currentTab === 'TRACING') && 'bg-background-section-burn!',
-          )}
+        <div className={cn(
+          'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
+          (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
+        )}
         >
           {currentTab === 'INPUT' && showInputsPanel && (
             <InputsPanel onRun={() => switchTab('RESULT')} />
@@ -200,45 +193,30 @@ const WorkflowPreview = () => {
                   humanInputFilledFormDataList={humanInputFilledFormDataList}
                 />
               )}
-              {workflowRunningData?.reasoningContent &&
-                Object.values(workflowRunningData.reasoningContent).some(Boolean) && (
-                  <ReasoningPanel
-                    content={workflowRunningData.reasoningContent}
-                    // freeze the timer once the answer starts streaming — reasoningFinished and status only flip at run end
-                    done={
-                      !!workflowRunningData?.resultText?.trim() ||
-                      !!workflowRunningData?.reasoningFinished ||
-                      workflowRunningData?.result?.status !== WorkflowRunningStatus.Running
-                    }
-                  />
-                )}
               <ResultText
-                isRunning={
-                  workflowRunningData?.result?.status === WorkflowRunningStatus.Running ||
-                  !workflowRunningData?.result
-                }
+                isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                 outputs={workflowRunningData?.resultText}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}
               />
-              {workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded &&
-                workflowRunningData?.resultText &&
-                typeof workflowRunningData?.resultText === 'string' && (
-                  <Button
-                    className={cn('mb-4 ml-4 space-x-1')}
-                    onClick={() => {
-                      const content = workflowRunningData?.resultText
-                      if (typeof content === 'string') copy(content)
-                      else copy(JSON.stringify(content))
-                      toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-                    }}
-                  >
-                    <span className="i-ri-clipboard-line size-3.5" />
-                    <div>{t(($) => $['operation.copy'], { ns: 'common' })}</div>
-                  </Button>
-                )}
+              {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded && workflowRunningData?.resultText && typeof workflowRunningData?.resultText === 'string') && (
+                <Button
+                  className={cn('mb-4 ml-4 space-x-1')}
+                  onClick={() => {
+                    const content = workflowRunningData?.resultText
+                    if (typeof content === 'string')
+                      copy(content)
+                    else
+                      copy(JSON.stringify(content))
+                    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                  }}
+                >
+                  <span className="i-ri-clipboard-line h-3.5 w-3.5" />
+                  <div>{t('operation.copy', { ns: 'common' })}</div>
+                </Button>
+              )}
             </div>
           )}
           {currentTab === 'DETAIL' && (
@@ -258,7 +236,6 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
-              onOpenTracingTab={handleOpenTracingTab}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
@@ -273,7 +250,7 @@ const WorkflowPreview = () => {
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-            <div className="flex h-full items-center justify-center bg-background-section-burn!">
+            <div className="flex h-full items-center justify-center !bg-background-section-burn">
               <Loading />
             </div>
           )}

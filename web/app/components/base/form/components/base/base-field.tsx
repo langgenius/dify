@@ -1,27 +1,24 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
-import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectTrigger,
-  SelectValue,
-} from '@langgenius/dify-ui/select'
+import { RiExternalLinkLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
-import { isValidElement, memo, useCallback, useMemo } from 'react'
+import {
+  isValidElement,
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckboxList } from '@/app/components/base/checkbox-list'
+import CheckboxList from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
-import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
+import Radio from '@/app/components/base/radio'
+import RadioE from '@/app/components/base/radio/ui'
+import PureSelect from '@/app/components/base/select/pure'
+import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { cn } from '@/utils/classnames'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -34,20 +31,12 @@ const getExtraProps = (type: FormTypeEnum) => {
   }
 }
 
-const getTranslatedContent = ({
-  content,
-  render,
-}: {
-  content:
-    | React.ReactNode
-    | string
-    | null
-    | undefined
-    | TypeWithI18N<string>
-    | Record<string, string>
+const getTranslatedContent = ({ content, render }: {
+  content: React.ReactNode | string | null | undefined | TypeWithI18N<string> | Record<string, string>
   render: (content: TypeWithI18N<string> | Record<string, string>) => string
 }): string => {
-  if (isValidElement(content) || typeof content === 'string') return content as string
+  if (isValidElement(content) || typeof content === 'string')
+    return content as string
 
   if (typeof content === 'object' && content !== null)
     return render(content as TypeWithI18N<string>)
@@ -55,36 +44,14 @@ const getTranslatedContent = ({
   return ''
 }
 
-type SelectOption = {
-  label: string
-  value: string
-}
-
-const getSingleSelectValue = (value: unknown, options: SelectOption[]) => {
-  return options.find((option) => option.value === value)?.value ?? null
-}
-
-const getSingleSelectLabel = (
-  value: unknown,
-  options: SelectOption[],
-  placeholder: string | undefined,
-) => {
-  return options.find((option) => option.value === value)?.label ?? placeholder
-}
-
-const VALIDATE_STATUS_STYLE_MAP: Record<
-  FormItemValidateStatusEnum,
-  { componentClassName: string; textClassName: string; infoFieldName: string }
-> = {
+const VALIDATE_STATUS_STYLE_MAP: Record<FormItemValidateStatusEnum, { componentClassName: string, textClassName: string, infoFieldName: string }> = {
   [FormItemValidateStatusEnum.Error]: {
-    componentClassName:
-      'border-components-input-border-destructive focus:border-components-input-border-destructive',
+    componentClassName: 'border-components-input-border-destructive focus:border-components-input-border-destructive',
     textClassName: 'text-text-destructive',
     infoFieldName: 'errors',
   },
   [FormItemValidateStatusEnum.Warning]: {
-    componentClassName:
-      'border-components-input-border-warning focus:border-components-input-border-warning',
+    componentClassName: 'border-components-input-border-warning focus:border-components-input-border-warning',
     textClassName: 'text-text-warning',
     infoFieldName: 'warnings',
   },
@@ -108,7 +75,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
-  onChange?: (field: string, value: unknown) => void
+  onChange?: (field: string, value: any) => void
   fieldState?: FieldState
 }
 
@@ -144,65 +111,57 @@ const BaseField = ({
   } = formSchema
   const disabled = propsDisabled || formSchemaDisabled
 
-  const [
-    translatedLabel,
-    translatedPlaceholder,
-    translatedTooltip,
-    translatedDescription,
-    translatedHelp,
-  ] = useMemo(() => {
-    const results = [label, placeholder, tooltip, description, help].map((v) =>
-      getTranslatedContent({ content: v, render: renderI18nObject }),
-    )
-    if (!results[1]) results[1] = t(($) => $['placeholder.input'], { ns: 'common' })
+  const [translatedLabel, translatedPlaceholder, translatedTooltip, translatedDescription, translatedHelp] = useMemo(() => {
+    const results = [
+      label,
+      placeholder,
+      tooltip,
+      description,
+      help,
+    ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
+    if (!results[1])
+      results[1] = t('placeholder.input', { ns: 'common' })
     return results
-  }, [label, placeholder, tooltip, description, help, renderI18nObject, t])
+  }, [label, placeholder, tooltip, description, help, renderI18nObject])
 
   const watchedVariables = useMemo(() => {
     const variables = new Set<string>()
 
     for (const option of options || []) {
-      for (const condition of option.show_on || []) variables.add(condition.variable)
+      for (const condition of option.show_on || [])
+        variables.add(condition.variable)
     }
 
     return Array.from(variables)
   }, [options])
 
   const watchedValues = useStore(field.form.store, (s) => {
-    const result: Record<string, unknown> = {}
-    for (const variable of watchedVariables) result[variable] = s.values[variable]
+    const result: Record<string, any> = {}
+    for (const variable of watchedVariables)
+      result[variable] = s.values[variable]
 
     return result
   })
 
   const memorizedOptions = useMemo(() => {
-    return (
-      options
-        ?.filter((option) => {
-          if (!option.show_on?.length) return true
+    return options?.filter((option) => {
+      if (!option.show_on?.length)
+        return true
 
-          return option.show_on.every((condition) => {
-            return watchedValues[condition.variable] === condition.value
-          })
-        })
-        .map((option) => {
-          return {
-            label: getTranslatedContent({ content: option.label, render: renderI18nObject }),
-            value: option.value,
-          }
-        }) || []
-    )
+      return option.show_on.every((condition) => {
+        return watchedValues[condition.variable] === condition.value
+      })
+    }).map((option) => {
+      return {
+        label: getTranslatedContent({ content: option.label, render: renderI18nObject }),
+        value: option.value,
+      }
+    }) || []
   }, [options, renderI18nObject, watchedValues])
 
-  const value = useStore(field.form.store, (s) => s.values[field.name])
-  const stringValue = typeof value === 'string' ? value : undefined
-  const booleanValue = typeof value === 'boolean' ? value : undefined
+  const value = useStore(field.form.store, s => s.values[field.name])
 
-  const {
-    data: dynamicOptionsData,
-    isLoading: isDynamicOptionsLoading,
-    error: dynamicOptionsError,
-  } = useTriggerPluginDynamicOptions(
+  const { data: dynamicOptionsData, isLoading: isDynamicOptionsLoading, error: dynamicOptionsError } = useTriggerPluginDynamicOptions(
     dynamicSelectParams || {
       plugin_id: '',
       provider: '',
@@ -214,327 +173,178 @@ const BaseField = ({
   )
 
   const dynamicOptions = useMemo(() => {
-    if (!dynamicOptionsData?.options) return []
-    return dynamicOptionsData.options.map((option) => ({
+    if (!dynamicOptionsData?.options)
+      return []
+    return dynamicOptionsData.options.map(option => ({
       label: getTranslatedContent({ content: option.label, render: renderI18nObject }),
       value: option.value,
     }))
   }, [dynamicOptionsData, renderI18nObject])
 
-  const handleChange = useCallback(
-    (value: unknown) => {
-      field.handleChange(value)
-      onChange?.(field.name, value)
-    },
-    [field, onChange],
-  )
-  const dynamicPlaceholder = isDynamicOptionsLoading
-    ? t(($) => $['dynamicSelect.loading'], { ns: 'common' })
-    : translatedPlaceholder
-  const dynamicNoticeTitle = dynamicOptionsError
-    ? t(($) => $['dynamicSelect.error'], { ns: 'common' })
-    : !dynamicOptions.length
-      ? t(($) => $['dynamicSelect.noData'], { ns: 'common' })
-      : null
-  const dynamicNoticeClassName = dynamicOptionsError ? 'text-text-destructive-secondary' : undefined
+  const handleChange = useCallback((value: any) => {
+    field.handleChange(value)
+    onChange?.(field.name, value)
+  }, [field, onChange])
 
   return (
     <>
       <div className={cn(fieldClassName)}>
         <div className={cn(labelClassName, formLabelClassName)}>
           {translatedLabel}
-          {required && !isValidElement(label) && (
-            <span className="ml-1 text-text-destructive-secondary">*</span>
-          )}
-          {translatedTooltip && (
-            <Infotip aria-label={translatedTooltip} className="ml-0.5" popupClassName="w-[200px]">
-              {translatedTooltip}
-            </Infotip>
+          {
+            required && !isValidElement(label) && (
+              <span className="ml-1 text-text-destructive-secondary">*</span>
+            )
+          }
+          {tooltip && (
+            <Tooltip
+              popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
+              triggerClassName="ml-0.5 w-4 h-4"
+            />
           )}
         </div>
         <div className={cn(inputContainerClassName)}>
-          {[FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber].includes(
-            formItemType,
-          ) && (
-            <Input
-              id={field.name}
-              name={field.name}
-              className={cn(
-                inputClassName,
-                VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus as FormItemValidateStatusEnum]
-                  ?.componentClassName,
-              )}
-              value={value || ''}
-              onChange={(e) => {
-                handleChange(e.target.value)
-              }}
-              onBlur={field.handleBlur}
-              disabled={disabled}
-              placeholder={translatedPlaceholder}
-              {...getExtraProps(formItemType)}
-              showCopyIcon={showCopy}
-            />
-          )}
-          {formItemType === FormTypeEnum.select &&
-            (multiple ? (
-              <Select
-                multiple
-                items={memorizedOptions}
-                value={Array.isArray(value) ? value : []}
-                disabled={disabled}
-                onValueChange={handleChange}
-              >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
-                  <SelectValue placeholder={translatedPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
-                        ? t(($) => $['dynamicSelect.selected'], {
-                            ns: 'common',
-                            count: selectedValue.length,
-                          })
-                        : translatedPlaceholder
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
-                  {memorizedOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select
-                items={memorizedOptions}
-                value={getSingleSelectValue(value, memorizedOptions)}
-                disabled={disabled}
-                onValueChange={(next) => {
-                  if (next == null) return
-                  handleChange(next)
+          {
+            [FormTypeEnum.textInput, FormTypeEnum.secretInput, FormTypeEnum.textNumber].includes(formItemType) && (
+              <Input
+                id={field.name}
+                name={field.name}
+                className={cn(inputClassName, VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus as FormItemValidateStatusEnum]?.componentClassName)}
+                value={value || ''}
+                onChange={(e) => {
+                  handleChange(e.target.value)
                 }}
-              >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
-                  <SelectValue placeholder={translatedPlaceholder}>
-                    {(nextValue) =>
-                      getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
-                  {memorizedOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
-          {formItemType === FormTypeEnum.checkbox /* && multiple */ && (
-            <CheckboxList
-              name={field.name}
-              title={name}
-              value={value}
-              onChange={(v) => field.handleChange(v)}
-              options={memorizedOptions}
-              maxHeight="200px"
-            />
-          )}
-          {formItemType === FormTypeEnum.dynamicSelect &&
-            (multiple ? (
-              <Select
-                multiple
-                items={dynamicOptions}
-                value={Array.isArray(value) ? value : []}
-                disabled={disabled || isDynamicOptionsLoading}
-                onValueChange={field.handleChange}
-              >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
-                  <SelectValue placeholder={dynamicPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
-                        ? t(($) => $['dynamicSelect.selected'], {
-                            ns: 'common',
-                            count: selectedValue.length,
-                          })
-                        : dynamicPlaceholder
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
-                  {dynamicNoticeTitle && (
-                    <div
-                      className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
-                        dynamicNoticeClassName,
-                      )}
-                    >
-                      {dynamicNoticeTitle}
-                    </div>
-                  )}
-                  {dynamicOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select
-                items={dynamicOptions}
-                value={getSingleSelectValue(value, dynamicOptions)}
-                disabled={disabled || isDynamicOptionsLoading}
-                onValueChange={(next) => {
-                  if (next == null) return
-                  field.handleChange(next)
+                onBlur={field.handleBlur}
+                disabled={disabled}
+                placeholder={translatedPlaceholder}
+                {...getExtraProps(formItemType)}
+                showCopyIcon={showCopy}
+              />
+            )
+          }
+          {
+            formItemType === FormTypeEnum.select && !multiple && (
+              <PureSelect
+                value={value}
+                onChange={v => handleChange(v)}
+                disabled={disabled}
+                placeholder={translatedPlaceholder}
+                options={memorizedOptions}
+                triggerPopupSameWidth
+                popupProps={{
+                  className: 'max-h-[320px] overflow-y-auto',
                 }}
-              >
-                <SelectTrigger
-                  id={field.name}
-                  aria-label={translatedLabel || field.name}
-                  className="px-2"
-                >
-                  <SelectValue placeholder={dynamicPlaceholder}>
-                    {(nextValue) =>
-                      getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
-                  {dynamicNoticeTitle && (
-                    <div
-                      className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
-                        dynamicNoticeClassName,
-                      )}
-                    >
-                      {dynamicNoticeTitle}
-                    </div>
-                  )}
-                  {dynamicOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.label}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
-          {formItemType === FormTypeEnum.radio && (
-            <Field name={name} className="contents">
-              <Fieldset
-                render={
-                  <RadioGroup
-                    value={stringValue}
-                    onValueChange={(optionValue) => handleChange(optionValue)}
-                    className={cn(memorizedOptions.length >= 3 && 'flex-col items-stretch')}
-                  />
+              />
+            )
+          }
+          {
+            formItemType === FormTypeEnum.checkbox /* && multiple */ && (
+              <CheckboxList
+                title={name}
+                value={value}
+                onChange={v => field.handleChange(v)}
+                options={memorizedOptions}
+                maxHeight="200px"
+              />
+            )
+          }
+          {
+            formItemType === FormTypeEnum.dynamicSelect && (
+              <PureSelect
+                options={dynamicOptions}
+                value={value}
+                onChange={field.handleChange}
+                disabled={disabled || isDynamicOptionsLoading}
+                placeholder={
+                  isDynamicOptionsLoading
+                    ? t('dynamicSelect.loading', { ns: 'common' })
+                    : translatedPlaceholder
                 }
+                {...(dynamicOptionsError
+                  ? { popupProps: { title: t('dynamicSelect.error', { ns: 'common' }), titleClassName: 'text-text-destructive-secondary' } }
+                  : (!dynamicOptions.length ? { popupProps: { title: t('dynamicSelect.noData', { ns: 'common' }) } } : {}))}
+                triggerPopupSameWidth
+                multiple={multiple}
+              />
+            )
+          }
+          {
+            formItemType === FormTypeEnum.radio && (
+              <div className={cn(
+                memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+              )}
               >
-                <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
-                {memorizedOptions.map((option) => (
-                  <FieldItem
-                    key={option.value}
-                    className={cn('min-w-0', memorizedOptions.length < 3 && 'flex-1 grow')}
-                  >
-                    <FieldLabel
+                {
+                  memorizedOptions.map(option => (
+                    <div
+                      key={option.value}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
-                        value === option.value &&
-                          'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
+                        'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
+                        value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
                       )}
+                      onClick={() => !disabled && handleChange(option.value)}
                     >
-                      {formSchema.showRadioUI && (
-                        <Radio className="mr-2" value={option.value} disabled={disabled} />
-                      )}
-                      {!formSchema.showRadioUI && (
-                        <Radio className="sr-only" value={option.value} disabled={disabled} />
-                      )}
+                      {
+                        formSchema.showRadioUI && (
+                          <RadioE
+                            className="mr-2"
+                            isChecked={value === option.value}
+                          />
+                        )
+                      }
                       {option.label}
-                    </FieldLabel>
-                  </FieldItem>
-                ))}
-              </Fieldset>
-            </Field>
-          )}
-          {formItemType === FormTypeEnum.boolean && (
-            <Field name={name} className="contents">
-              <Fieldset
-                render={
-                  <RadioGroup<boolean>
-                    className="w-fit gap-3"
-                    value={booleanValue}
-                    onValueChange={(v) => field.handleChange(v)}
-                  />
-                }
-              >
-                <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
-                <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={true} />
-                    True
-                  </FieldLabel>
-                </FieldItem>
-                <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={false} />
-                    False
-                  </FieldLabel>
-                </FieldItem>
-              </Fieldset>
-            </Field>
-          )}
-          {fieldState?.validateStatus &&
-            [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(
-              fieldState?.validateStatus,
-            ) && (
-              <div
-                className={cn(
-                  'mt-1 px-0 py-[2px] system-xs-regular',
-                  VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
-                )}
-              >
-                {
-                  fieldState?.[
-                    VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus]
-                      .infoFieldName as keyof FieldState
-                  ]
+                    </div>
+                  ))
                 }
               </div>
+            )
+          }
+          {
+            formItemType === FormTypeEnum.boolean && (
+              <Radio.Group
+                className="flex w-fit items-center"
+                value={value}
+                onChange={v => field.handleChange(v)}
+              >
+                <Radio value={true} className="!mr-1">True</Radio>
+                <Radio value={false}>False</Radio>
+              </Radio.Group>
+            )
+          }
+          {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (
+            <div className={cn(
+              'system-xs-regular mt-1 px-0 py-[2px]',
+              VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
             )}
+            >
+              {fieldState?.[VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].infoFieldName as keyof FieldState]}
+            </div>
+          )}
         </div>
       </div>
       {description && (
-        <div className="mt-4 system-xs-regular text-text-tertiary">{translatedDescription}</div>
+        <div className="system-xs-regular mt-4 text-text-tertiary">
+          {translatedDescription}
+        </div>
       )}
-      {url && (
-        <a
-          className="mt-4 flex items-center system-xs-regular text-text-accent"
-          href={url}
-          target="_blank"
-        >
-          <span className="break-all">{translatedHelp}</span>
-          <div className="ml-1 i-ri-external-link-line size-3 shrink-0" />
-        </a>
-      )}
+      {
+        url && (
+          <a
+            className="system-xs-regular mt-4 flex items-center text-text-accent"
+            href={url}
+            target="_blank"
+          >
+            <span className="break-all">
+              {translatedHelp}
+            </span>
+            <RiExternalLinkLine className="ml-1 h-3 w-3 shrink-0" />
+          </a>
+        )
+      }
     </>
+
   )
 }
 

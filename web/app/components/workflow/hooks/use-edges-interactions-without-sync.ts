@@ -6,7 +6,10 @@ export const useEdgesInteractionsWithoutSync = () => {
   const store = useStoreApi()
 
   const handleEdgeCancelRunningStatus = useCallback(() => {
-    const { edges, setEdges } = store.getState()
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
 
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {

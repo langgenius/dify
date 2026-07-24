@@ -1,14 +1,27 @@
 import type { LastRunBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
-import { memo, useEffect } from 'react'
-import { $createLastRunBlockNode, LastRunBlockNode } from './node'
+import {
+  $insertNodes,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+} from 'lexical'
+import {
+  memo,
+  useEffect,
+} from 'react'
+import {
+  $createLastRunBlockNode,
+  LastRunBlockNode,
+} from './node'
 
 export const INSERT_LAST_RUN_BLOCK_COMMAND = createCommand('INSERT_LAST_RUN_BLOCK_COMMAND')
 export const DELETE_LAST_RUN_COMMAND = createCommand('DELETE_LAST_RUN_COMMAND')
 
-const LastRunBlock = memo(({ onInsert, onDelete }: LastRunBlockType) => {
+const LastRunBlock = memo(({
+  onInsert,
+  onDelete,
+}: LastRunBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -23,7 +36,8 @@ const LastRunBlock = memo(({ onInsert, onDelete }: LastRunBlockType) => {
 
           $insertNodes([Node])
 
-          if (onInsert) onInsert()
+          if (onInsert)
+            onInsert()
 
           return true
         },
@@ -32,7 +46,8 @@ const LastRunBlock = memo(({ onInsert, onDelete }: LastRunBlockType) => {
       editor.registerCommand(
         DELETE_LAST_RUN_COMMAND,
         () => {
-          if (onDelete) onDelete()
+          if (onDelete)
+            onDelete()
 
           return true
         },

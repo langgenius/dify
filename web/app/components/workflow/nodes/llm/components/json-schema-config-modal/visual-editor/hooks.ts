@@ -1,10 +1,9 @@
 import type { VisualEditorProps } from '.'
 import type { Field } from '../../../types'
 import type { EditData } from './edit-card'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import { ArrayType, Type } from '../../../types'
 import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
@@ -23,15 +22,14 @@ type AddEventParams = {
 
 export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   const { schema: jsonSchema, onChange: doOnChange } = props
-  const { t } = useTranslation()
   const onChange = doOnChange || noop
-  const backupSchema = useVisualEditorStore((state) => state.backupSchema)
-  const setBackupSchema = useVisualEditorStore((state) => state.setBackupSchema)
-  const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
-  const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
-  const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
-  const setAdvancedEditing = useVisualEditorStore((state) => state.setAdvancedEditing)
-  const setHoveringProperty = useVisualEditorStore((state) => state.setHoveringProperty)
+  const backupSchema = useVisualEditorStore(state => state.backupSchema)
+  const setBackupSchema = useVisualEditorStore(state => state.setBackupSchema)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
+  const setAdvancedEditing = useVisualEditorStore(state => state.setAdvancedEditing)
+  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
   const { emit, useSubscribe } = useMittContext()
 
   useSubscribe('restoreSchema', () => {
@@ -48,8 +46,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       onChange(backupSchema)
       setBackupSchema(null)
     }
-    if (isAddingNewField) setIsAddingNewField(false)
-    if (advancedEditing) setAdvancedEditing(false)
+    if (isAddingNewField)
+      setIsAddingNewField(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setHoveringProperty(null)
   })
 
@@ -58,31 +58,31 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { name: oldName } = oldFields
     const { name: newName } = fields
     const newSchema = produce(jsonSchema, (draft) => {
-      if (oldName === newName) return
+      if (oldName === newName)
+        return
       const schema = findPropertyWithPath(draft, parentPath) as Field
 
       if (schema.type === Type.object) {
         const properties = schema.properties || {}
         if (properties[newName]) {
-          toast.error(
-            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
-          )
+          Toast.notify({
+            type: 'error',
+            message: 'Property name already exists',
+          })
           emit('restorePropertyName')
           return
         }
 
-        const newProperties = Object.entries(properties).reduce(
-          (acc, [key, value]) => {
-            acc[key === oldName ? newName : key] = value
-            return acc
-          },
-          {} as Record<string, Field>,
-        )
+        const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
+          acc[key === oldName ? newName : key] = value
+          return acc
+        }, {} as Record<string, Field>)
 
         const required = schema.required || []
         const newRequired = produce(required, (draft) => {
           const index = draft.indexOf(oldName)
-          if (index !== -1) draft.splice(index, 1, newName)
+          if (index !== -1)
+            draft.splice(index, 1, newName)
         })
 
         schema.properties = newProperties
@@ -92,24 +92,23 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         const properties = schema.items.properties || {}
         if (properties[newName]) {
-          toast.error(
-            t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
-          )
+          Toast.notify({
+            type: 'error',
+            message: 'Property name already exists',
+          })
           emit('restorePropertyName')
           return
         }
 
-        const newProperties = Object.entries(properties).reduce(
-          (acc, [key, value]) => {
-            acc[key === oldName ? newName : key] = value
-            return acc
-          },
-          {} as Record<string, Field>,
-        )
+        const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
+          acc[key === oldName ? newName : key] = value
+          return acc
+        }, {} as Record<string, Field>)
         const required = schema.items.required || []
         const newRequired = produce(required, (draft) => {
           const index = draft.indexOf(oldName)
-          if (index !== -1) draft.splice(index, 1, newName)
+          if (index !== -1)
+            draft.splice(index, 1, newName)
         })
 
         schema.items.properties = newProperties
@@ -123,7 +122,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { path, oldFields, fields } = params as ChangeEventParams
     const { type: oldType } = oldFields
     const { type: newType } = fields
-    if (oldType === newType) return
+    if (oldType === newType)
+      return
     const newSchema = produce(jsonSchema, (draft) => {
       const schema = findPropertyWithPath(draft, path) as Field
 
@@ -131,7 +131,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         delete schema.properties
         delete schema.required
       }
-      if (schema.type === Type.array) delete schema.items
+      if (schema.type === Type.array)
+        delete schema.items
       switch (newType) {
         case Type.object:
           schema.type = Type.object
@@ -182,14 +183,14 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       if (schema.type === Type.object) {
         const required = schema.required || []
         const newRequired = required.includes(name)
-          ? required.filter((item) => item !== name)
+          ? required.filter(item => item !== name)
           : [...required, name]
         schema.required = newRequired
       }
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         const required = schema.items.required || []
         const newRequired = required.includes(name)
-          ? required.filter((item) => item !== name)
+          ? required.filter(item => item !== name)
           : [...required, name]
         schema.items.required = newRequired
       }
@@ -214,22 +215,19 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       const schema = findPropertyWithPath(draft, parentPath) as Field
       if (schema.type === Type.object && schema.properties) {
         delete schema.properties[name]
-        schema.required = schema.required?.filter((item) => item !== name)
+        schema.required = schema.required?.filter(item => item !== name)
       }
-      if (
-        schema.type === Type.array &&
-        schema.items?.properties &&
-        schema.items?.type === Type.object
-      ) {
+      if (schema.type === Type.array && schema.items?.properties && schema.items?.type === Type.object) {
         delete schema.items.properties[name]
-        schema.items.required = schema.items.required?.filter((item) => item !== name)
+        schema.items.required = schema.items.required?.filter(item => item !== name)
       }
     })
     onChange(newSchema)
   })
 
   useSubscribe('addField', (params) => {
-    if (advancedEditing) setAdvancedEditing(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setBackupSchema(jsonSchema)
     const { path } = params as AddEventParams
     setIsAddingNewField(true)
@@ -269,24 +267,23 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldName !== newName) {
           const properties = parentSchema.properties
           if (properties[newName]) {
-            toast.error(
-              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
-            )
+            Toast.notify({
+              type: 'error',
+              message: 'Property name already exists',
+            })
             samePropertyNameError = true
           }
 
-          const newProperties = Object.entries(properties).reduce(
-            (acc, [key, value]) => {
-              acc[key === oldName ? newName : key] = value
-              return acc
-            },
-            {} as Record<string, Field>,
-          )
+          const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
+            acc[key === oldName ? newName : key] = value
+            return acc
+          }, {} as Record<string, Field>)
 
           const requiredProperties = parentSchema.required || []
           const newRequiredProperties = produce(requiredProperties, (draft) => {
             const index = draft.indexOf(oldName)
-            if (index !== -1) draft.splice(index, 1, newName)
+            if (index !== -1)
+              draft.splice(index, 1, newName)
           })
 
           parentSchema.properties = newProperties
@@ -297,7 +294,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldRequired !== newRequired) {
           const required = parentSchema.required || []
           const newRequired = required.includes(newName)
-            ? required.filter((item) => item !== newName)
+            ? required.filter(item => item !== newName)
             : [...required, newName]
           parentSchema.required = newRequired
         }
@@ -306,27 +303,28 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
 
         // type change
         if (oldType !== newType) {
-          if (schema!.type === Type.object) {
-            delete schema!.properties
-            delete schema!.required
+          if (schema.type === Type.object) {
+            delete schema.properties
+            delete schema.required
           }
-          if (schema!.type === Type.array) delete schema!.items
+          if (schema.type === Type.array)
+            delete schema.items
           switch (newType) {
             case Type.object:
-              schema!.type = Type.object
-              schema!.properties = {}
-              schema!.required = []
-              schema!.additionalProperties = false
+              schema.type = Type.object
+              schema.properties = {}
+              schema.required = []
+              schema.additionalProperties = false
               break
             case ArrayType.string:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.string,
               }
               break
             case ArrayType.number:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.number,
               }
               break
@@ -337,8 +335,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             //   }
             //   break
             case ArrayType.object:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.object,
                 properties: {},
                 required: [],
@@ -346,43 +344,36 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               }
               break
             default:
-              schema!.type = newType as Type
+              schema.type = newType as Type
           }
         }
 
         // other options change
-        // other options change
-        schema!.description = fields.description
-        schema!.enum = fields.enum
+        schema.description = fields.description
+        schema.enum = fields.enum
       }
 
-      if (
-        parentSchema.type === Type.array &&
-        parentSchema.items &&
-        parentSchema.items.type === Type.object &&
-        parentSchema.items.properties
-      ) {
+      if (parentSchema.type === Type.array && parentSchema.items && parentSchema.items.type === Type.object && parentSchema.items.properties) {
         // name change
         if (oldName !== newName) {
           const properties = parentSchema.items.properties || {}
           if (properties[newName]) {
-            toast.error(
-              t(($) => $['nodes.llm.jsonSchema.fieldNameAlreadyExists'], { ns: 'workflow' }),
-            )
+            Toast.notify({
+              type: 'error',
+              message: 'Property name already exists',
+            })
             samePropertyNameError = true
           }
 
-          const newProperties = Object.entries(properties).reduce(
-            (acc, [key, value]) => {
-              acc[key === oldName ? newName : key] = value
-              return acc
-            },
-            {} as Record<string, Field>,
-          )
+          const newProperties = Object.entries(properties).reduce((acc, [key, value]) => {
+            acc[key === oldName ? newName : key] = value
+            return acc
+          }, {} as Record<string, Field>)
           const required = parentSchema.items.required || []
           const newRequired = produce(required, (draft) => {
             const index = draft.indexOf(oldName)
-            if (index !== -1) draft.splice(index, 1, newName)
+            if (index !== -1)
+              draft.splice(index, 1, newName)
           })
 
           parentSchema.items.properties = newProperties
@@ -393,7 +384,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         if (oldRequired !== newRequired) {
           const required = parentSchema.items.required || []
           const newRequired = required.includes(newName)
-            ? required.filter((item) => item !== newName)
+            ? required.filter(item => item !== newName)
             : [...required, newName]
           parentSchema.items.required = newRequired
         }
@@ -401,27 +392,28 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         const schema = parentSchema.items.properties[newName]
         // type change
         if (oldType !== newType) {
-          if (schema!.type === Type.object) {
-            delete schema!.properties
-            delete schema!.required
+          if (schema.type === Type.object) {
+            delete schema.properties
+            delete schema.required
           }
-          if (schema!.type === Type.array) delete schema!.items
+          if (schema.type === Type.array)
+            delete schema.items
           switch (newType) {
             case Type.object:
-              schema!.type = Type.object
-              schema!.properties = {}
-              schema!.required = []
-              schema!.additionalProperties = false
+              schema.type = Type.object
+              schema.properties = {}
+              schema.required = []
+              schema.additionalProperties = false
               break
             case ArrayType.string:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.string,
               }
               break
             case ArrayType.number:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.number,
               }
               break
@@ -432,8 +424,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
             //   }
             //   break
             case ArrayType.object:
-              schema!.type = Type.array
-              schema!.items = {
+              schema.type = Type.array
+              schema.items = {
                 type: Type.object,
                 properties: {},
                 required: [],
@@ -441,17 +433,17 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
               }
               break
             default:
-              schema!.type = newType as Type
+              schema.type = newType as Type
           }
         }
 
         // other options change
-        // other options change
-        schema!.description = fields.description
-        schema!.enum = fields.enum
+        schema.description = fields.description
+        schema.enum = fields.enum
       }
     })
-    if (samePropertyNameError) return
+    if (samePropertyNameError)
+      return
     onChange(newSchema)
     emit('fieldChangeSuccess')
   })

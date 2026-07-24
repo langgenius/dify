@@ -1,15 +1,3 @@
 web:
   - changed-files:
-      - any-glob-to-any-file:
-          - 'web/**'
-          - 'packages/**'
-          - 'package.json'
-          - 'pnpm-lock.yaml'
-          - 'pnpm-workspace.yaml'
-          - '.nvmrc'
-
-e2e:
-  - changed-files:
-      - any-glob-to-any-file:
-          - 'e2e/**'
-          - '.github/workflows/web-e2e.yml'
+      - any-glob-to-any-file: 'web/**'

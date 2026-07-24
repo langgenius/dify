@@ -16,11 +16,7 @@ vi.mock('../node', async () => {
 
   return {
     ...actual,
-    $createContextBlockNode: (
-      datasets: Dataset[],
-      onAddContext: () => void,
-      canNotAddContext?: boolean,
-    ) => {
+    $createContextBlockNode: (datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean) => {
       mockCreateContextBlockNode(datasets, onAddContext, canNotAddContext)
       return actual.$createContextBlockNode(datasets, onAddContext, canNotAddContext)
     },
@@ -41,9 +37,7 @@ function createEditorConfig(includeContextBlockNode = true): EditorConfig {
   return {
     namespace: 'test',
     nodes: includeContextBlockNode ? [ContextBlockNode] : [],
-    onError: (error: Error) => {
-      throw error
-    },
+    onError: (error: Error) => { throw error },
   }
 }
 
@@ -67,29 +61,29 @@ function renderWithEditor(ui: ReactNode, includeContextBlockNode = true) {
 }
 
 function setupParagraphSelection() {
-  if (!capturedEditor) throw new Error('Editor not captured')
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
 
-  capturedEditor.update(
-    () => {
-      const root = $getRoot()
-      root.clear()
-      const paragraph = $createParagraphNode()
-      root.append(paragraph)
-      paragraph.select()
-    },
-    { discrete: true },
-  )
+  capturedEditor.update(() => {
+    const root = $getRoot()
+    root.clear()
+    const paragraph = $createParagraphNode()
+    root.append(paragraph)
+    paragraph.select()
+  }, { discrete: true })
 }
 
 function dispatchInsert() {
-  if (!capturedEditor) throw new Error('Editor not captured')
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
 
   setupParagraphSelection()
   return capturedEditor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
 }
 
 function dispatchDelete() {
-  if (!capturedEditor) throw new Error('Editor not captured')
+  if (!capturedEditor)
+    throw new Error('Editor not captured')
 
   return capturedEditor.dispatchCommand(DELETE_CONTEXT_BLOCK_COMMAND, undefined)
 }
@@ -145,11 +139,7 @@ describe('ContextBlock', () => {
       renderWithEditor(<ContextBlock datasets={datasets} />)
 
       dispatchInsert()
-      expect(mockCreateContextBlockNode).toHaveBeenCalledWith(
-        datasets,
-        expect.any(Function),
-        undefined,
-      )
+      expect(mockCreateContextBlockNode).toHaveBeenCalledWith(datasets, expect.any(Function), undefined)
     })
 
     it('should pass canNotAddContext to the created node', () => {
@@ -194,7 +184,7 @@ describe('ContextBlock', () => {
       renderWithEditor(<ContextBlock />)
 
       dispatchInsert()
-      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0]![1] as () => void
+      const onAddContextArg = mockCreateContextBlockNode.mock.calls[0][1] as () => void
 
       expect(typeof onAddContextArg).toBe('function')
       expect(() => onAddContextArg()).not.toThrow()
@@ -211,6 +201,20 @@ describe('ContextBlock', () => {
 
       expect(handledAfterUnmount).toBe(false)
       expect(onDelete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Exports', () => {
+    it('should export INSERT_CONTEXT_BLOCK_COMMAND', () => {
+      expect(INSERT_CONTEXT_BLOCK_COMMAND).toBeDefined()
+    })
+
+    it('should export DELETE_CONTEXT_BLOCK_COMMAND', () => {
+      expect(DELETE_CONTEXT_BLOCK_COMMAND).toBeDefined()
+    })
+
+    it('should export ContextBlock component', () => {
+      expect(ContextBlock).toBeDefined()
     })
   })
 

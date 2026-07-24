@@ -294,7 +294,7 @@ class TestFrontendBackendIntegration(unittest.TestCase):
 
     def test_schedule_service_integration(self):
         """Test integration with ScheduleService patterns."""
-        from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+        from dify_graph.nodes.trigger_schedule.entities import VisualConfig
         from services.trigger.schedule_service import ScheduleService
 
         # Test enhanced syntax through visual config conversion

@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import override
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -18,13 +17,9 @@ class UnstructuredWordExtractor(BaseExtractor):
         self._api_url = api_url
         self._api_key = api_key
 
-    @override
     def extract(self) -> list[Document]:
         from unstructured.__version__ import __version__ as __unstructured_version__
-        from unstructured.file_utils.filetype import (
-            FileType,
-            detect_filetype,
-        )
+        from unstructured.file_utils.filetype import FileType, detect_filetype
 
         unstructured_version = tuple(int(x) for x in __unstructured_version__.split("."))
         # check the file extension

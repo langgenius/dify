@@ -1,45 +1,45 @@
 'use client'
+import type { FC } from 'react'
 import type { Props as CreateContentProps } from './create-content'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { CreateContent } from './create-content'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
+import CreateContent from './create-content'
 
-type Props = Readonly<{
+type Props = {
   open: boolean
   setOpen: (open: boolean) => void
+  onSave: (data: any) => void
   trigger: React.ReactNode
   popupLeft?: number
-}> &
-  CreateContentProps
+} & CreateContentProps
 
-export function CreateMetadataModal({
+const CreateMetadataModal: FC<Props> = ({
   open,
   setOpen,
   trigger,
   popupLeft = 20,
   ...createContentProps
-}: Props) {
-  const triggerElement = React.isValidElement(trigger) ? (
-    trigger
-  ) : (
-    <button type="button">{trigger}</button>
-  )
-
+}) => {
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={triggerElement as React.ReactElement} />
-      <PopoverContent
-        placement="left-start"
-        sideOffset={popupLeft}
-        alignOffset={-38}
-        popupClassName="w-[320px]"
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={setOpen}
+      placement="left-start"
+      offset={{
+        mainAxis: popupLeft,
+        crossAxis: -38,
+      }}
+    >
+      <PortalToFollowElemTrigger
+        onClick={() => setOpen(!open)}
       >
-        <CreateContent
-          {...createContentProps}
-          onClose={() => setOpen(false)}
-          onBack={() => setOpen(false)}
-        />
-      </PopoverContent>
-    </Popover>
+        {trigger}
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[1000]">
+        <CreateContent {...createContentProps} onClose={() => setOpen(false)} onBack={() => setOpen(false)} />
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+
   )
 }
+export default React.memo(CreateMetadataModal)

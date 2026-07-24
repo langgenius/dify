@@ -1,4 +1,7 @@
-import type { DataSet, SelectedDatasetsMode } from '@/models/datasets'
+import type {
+  DataSet,
+  SelectedDatasetsMode,
+} from '@/models/datasets'
 import { useMemo } from 'react'
 import { getSelectedDatasetsMode } from './utils'
 

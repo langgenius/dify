@@ -1,4 +1,5 @@
 {
+  "actionLogs": "سجلات العمل",
   "circularInvocationTip": "يوجد استدعاء دائري للأدوات/العقد في سير العمل الحالي.",
   "detail": "تفاصيل",
   "input": "إدخال",
@@ -9,6 +10,7 @@
   "meta.time": "الوقت المستغرق",
   "meta.title": "البيانات الوصفية",
   "meta.tokens": "إجمالي الرموز",
+  "meta.version": "الإصدار",
   "result": "نتيجة",
   "resultEmpty.link": "لوحة التفاصيل",
   "resultEmpty.tipLeft": "يرجى الذهاب إلى ",

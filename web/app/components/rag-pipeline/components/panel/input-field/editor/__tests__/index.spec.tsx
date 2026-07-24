@@ -8,7 +8,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import InputFieldEditorPanel from '../index'
-import { convertFormDataToINputField, convertToInputFieldFormData } from '../utils'
+import {
+  convertFormDataToINputField,
+  convertToInputFieldFormData,
+} from '../utils'
 
 const mockUseFloatingRight = vi.fn(() => ({
   floatingRight: false,
@@ -37,10 +40,11 @@ vi.mock('../form', () => ({
       <span data-testid="form-initial-data">{JSON.stringify(initialData)}</span>
       <span data-testid="form-support-file">{String(supportFile)}</span>
       <span data-testid="form-is-edit-mode">{String(isEditMode)}</span>
-      <button data-testid="form-cancel-btn" onClick={onCancel}>
-        Cancel
-      </button>
-      <button data-testid="form-submit-btn" onClick={() => onSubmit(initialData)}>
+      <button data-testid="form-cancel-btn" onClick={onCancel}>Cancel</button>
+      <button
+        data-testid="form-submit-btn"
+        onClick={() => onSubmit(initialData)}
+      >
         Submit
       </button>
     </div>
@@ -105,7 +109,7 @@ const createInputFieldEditorProps = (
   ...overrides,
 })
 
-const createConsoleQueryClient = () =>
+const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -116,8 +120,10 @@ const createConsoleQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createConsoleQueryClient()
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const queryClient = createTestQueryClient()
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -134,12 +140,20 @@ describe('InputFieldEditorPanel', () => {
   })
 
   describe('Rendering', () => {
+    it('should render panel without crashing', () => {
+      const props = createInputFieldEditorProps()
+
+      renderWithProviders(<InputFieldEditorPanel {...props} />)
+
+      expect(screen.getByTestId('input-field-form')).toBeInTheDocument()
+    })
+
     it('should render close button', () => {
       const props = createInputFieldEditorProps()
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
 
-      const closeButton = screen.getByRole('button', { name: /Close|operation.close/ })
+      const closeButton = screen.getByRole('button', { name: '' })
       expect(closeButton).toBeInTheDocument()
     })
 
@@ -148,7 +162,9 @@ describe('InputFieldEditorPanel', () => {
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
 
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.addInputField')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.addInputField'),
+      ).toBeInTheDocument()
     })
 
     it('should render "Edit Input Field" title when initialData is provided', () => {
@@ -158,7 +174,9 @@ describe('InputFieldEditorPanel', () => {
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
 
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.editInputField')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.editInputField'),
+      ).toBeInTheDocument()
     })
 
     it('should pass supportFile=true to form', () => {
@@ -204,7 +222,9 @@ describe('InputFieldEditorPanel', () => {
         const initialData = createInputVar({ type })
         const props = createInputFieldEditorProps({ initialData })
 
-        const { unmount } = renderWithProviders(<InputFieldEditorPanel {...props} />)
+        const { unmount } = renderWithProviders(
+          <InputFieldEditorPanel {...props} />,
+        )
 
         expect(screen.getByTestId('input-field-form')).toBeInTheDocument()
         unmount()
@@ -250,7 +270,7 @@ describe('InputFieldEditorPanel', () => {
       const props = createInputFieldEditorProps({ onClose })
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
-      fireEvent.click(screen.getByRole('button', { name: /Close|operation.close/ }))
+      fireEvent.click(screen.getByTestId('input-field-editor-close-btn'))
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
@@ -291,6 +311,39 @@ describe('InputFieldEditorPanel', () => {
 
       expect(mockUseFloatingRight).toHaveBeenCalled()
     })
+
+    it('should apply floating right styles when floatingRight is true', () => {
+      mockUseFloatingRight.mockReturnValue({
+        floatingRight: true,
+        floatingRightWidth: 300,
+      })
+      const props = createInputFieldEditorProps()
+
+      const { container } = renderWithProviders(
+        <InputFieldEditorPanel {...props} />,
+      )
+
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).toContain('absolute')
+      expect(panel.className).toContain('right-0')
+      expect(panel.style.width).toBe('300px')
+    })
+
+    it('should not apply floating right styles when floatingRight is false', () => {
+      mockUseFloatingRight.mockReturnValue({
+        floatingRight: false,
+        floatingRightWidth: 400,
+      })
+      const props = createInputFieldEditorProps()
+
+      const { container } = renderWithProviders(
+        <InputFieldEditorPanel {...props} />,
+      )
+
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).not.toContain('absolute')
+      expect(panel.style.width).toBe('400px')
+    })
   })
 
   describe('Callback Stability', () => {
@@ -298,7 +351,9 @@ describe('InputFieldEditorPanel', () => {
       const onClose = vi.fn()
       const props = createInputFieldEditorProps({ onClose })
 
-      const { rerender } = renderWithProviders(<InputFieldEditorPanel {...props} />)
+      const { rerender } = renderWithProviders(
+        <InputFieldEditorPanel {...props} />,
+      )
       fireEvent.click(screen.getByTestId('form-cancel-btn'))
 
       rerender(
@@ -315,7 +370,9 @@ describe('InputFieldEditorPanel', () => {
       const onSubmit = vi.fn()
       const props = createInputFieldEditorProps({ onSubmit })
 
-      const { rerender } = renderWithProviders(<InputFieldEditorPanel {...props} />)
+      const { rerender } = renderWithProviders(
+        <InputFieldEditorPanel {...props} />,
+      )
       fireEvent.click(screen.getByTestId('form-submit-btn'))
 
       rerender(
@@ -330,13 +387,34 @@ describe('InputFieldEditorPanel', () => {
   })
 
   describe('Memoization', () => {
+    it('should memoize formData when initialData does not change', () => {
+      const initialData = createInputVar()
+      const props = createInputFieldEditorProps({ initialData })
+
+      const { rerender } = renderWithProviders(
+        <InputFieldEditorPanel {...props} />,
+      )
+      const firstFormData = screen.getByTestId('form-initial-data').textContent
+
+      rerender(
+        <TestWrapper>
+          <InputFieldEditorPanel {...props} />
+        </TestWrapper>,
+      )
+      const secondFormData = screen.getByTestId('form-initial-data').textContent
+
+      expect(firstFormData).toBe(secondFormData)
+    })
+
     it('should recompute formData when initialData changes', () => {
       const initialData1 = createInputVar({ variable: 'var1' })
       const initialData2 = createInputVar({ variable: 'var2' })
       const props1 = createInputFieldEditorProps({ initialData: initialData1 })
       const props2 = createInputFieldEditorProps({ initialData: initialData2 })
 
-      const { rerender } = renderWithProviders(<InputFieldEditorPanel {...props1} />)
+      const { rerender } = renderWithProviders(
+        <InputFieldEditorPanel {...props1} />,
+      )
       const firstFormData = screen.getByTestId('form-initial-data').textContent
 
       rerender(
@@ -356,7 +434,9 @@ describe('InputFieldEditorPanel', () => {
     it('should handle undefined initialData gracefully', () => {
       const props = createInputFieldEditorProps({ initialData: undefined })
 
-      expect(() => renderWithProviders(<InputFieldEditorPanel {...props} />)).not.toThrow()
+      expect(() =>
+        renderWithProviders(<InputFieldEditorPanel {...props} />),
+      ).not.toThrow()
     })
 
     it('should handle rapid close button clicks', () => {
@@ -365,7 +445,7 @@ describe('InputFieldEditorPanel', () => {
 
       renderWithProviders(<InputFieldEditorPanel {...props} />)
       const closeButtons = screen.getAllByRole('button')
-      const closeButton = closeButtons.find((btn) => btn.querySelector('svg'))
+      const closeButton = closeButtons.find(btn => btn.querySelector('svg'))
 
       if (closeButton) {
         fireEvent.click(closeButton)
@@ -446,7 +526,10 @@ describe('convertToInputFieldFormData', () => {
 
       const result = convertToInputFieldFormData(inputVar)
 
-      expect(result.allowedFileUploadMethods).toEqual(['local_file', 'remote_url'])
+      expect(result.allowedFileUploadMethods).toEqual([
+        'local_file',
+        'remote_url',
+      ])
       expect(result.allowedTypesAndExtensions).toEqual({
         allowedFileTypes: ['image', 'document'],
         allowedFileExtensions: ['.jpg', '.pdf'],
@@ -726,7 +809,10 @@ describe('convertFormDataToINputField', () => {
 
       const result = convertFormDataToINputField(formData)
 
-      expect(result.allowed_file_upload_methods).toEqual(['local_file', 'remote_url'])
+      expect(result.allowed_file_upload_methods).toEqual([
+        'local_file',
+        'remote_url',
+      ])
     })
 
     it('should map allowedTypesAndExtensions to separate fields', () => {
@@ -872,9 +958,13 @@ describe('Round-Trip Conversion', () => {
 
     expect(result.type).toBe(original.type)
     expect(result.max_length).toBe(original.max_length)
-    expect(result.allowed_file_upload_methods).toEqual(original.allowed_file_upload_methods)
+    expect(result.allowed_file_upload_methods).toEqual(
+      original.allowed_file_upload_methods,
+    )
     expect(result.allowed_file_types).toEqual(original.allowed_file_types)
-    expect(result.allowed_file_extensions).toEqual(original.allowed_file_extensions)
+    expect(result.allowed_file_extensions).toEqual(
+      original.allowed_file_extensions,
+    )
   })
 
   it('should handle all input types through round-trip', () => {
@@ -919,12 +1009,17 @@ describe('Edge Cases', () => {
 
     it('should handle options with special characters', () => {
       const inputVar = createInputVar({
-        options: ['<script>', '"quoted"', "'apostrophe'", '&amp;'],
+        options: ['<script>', '"quoted"', '\'apostrophe\'', '&amp;'],
       })
 
       const result = convertToInputFieldFormData(inputVar)
 
-      expect(result.options).toEqual(['<script>', '"quoted"', "'apostrophe'", '&amp;'])
+      expect(result.options).toEqual([
+        '<script>',
+        '"quoted"',
+        '\'apostrophe\'',
+        '&amp;',
+      ])
     })
 
     it('should handle very long strings', () => {
@@ -1027,20 +1122,10 @@ describe('Hook Memoization', () => {
     }
 
     const { rerender } = render(
-      <TestComponent
-        capture={(ref) => {
-          handleSubmitRef1 = ref
-        }}
-        submitFn={onSubmit}
-      />,
+      <TestComponent capture={(ref) => { handleSubmitRef1 = ref }} submitFn={onSubmit} />,
     )
     rerender(
-      <TestComponent
-        capture={(ref) => {
-          handleSubmitRef2 = ref
-        }}
-        submitFn={onSubmit}
-      />,
+      <TestComponent capture={(ref) => { handleSubmitRef2 = ref }} submitFn={onSubmit} />,
     )
 
     expect(handleSubmitRef1).toBe(handleSubmitRef2)
@@ -1058,7 +1143,10 @@ describe('Hook Memoization', () => {
       data: InputVar
       capture: (fd: FormData) => void
     }) => {
-      const formData = React.useMemo(() => convertToInputFieldFormData(data), [data])
+      const formData = React.useMemo(
+        () => convertToInputFieldFormData(data),
+        [data],
+      )
       capture(formData)
       return null
     }
@@ -1066,17 +1154,13 @@ describe('Hook Memoization', () => {
     const { rerender } = render(
       <TestComponent
         data={initialData}
-        capture={(fd) => {
-          formData1 = fd
-        }}
+        capture={(fd) => { formData1 = fd }}
       />,
     )
     rerender(
       <TestComponent
         data={initialData}
-        capture={(fd) => {
-          formData2 = fd
-        }}
+        capture={(fd) => { formData2 = fd }}
       />,
     )
 

@@ -1,5 +1,3 @@
-from typing import Any
-
 import pytest
 
 import core.tools.utils.message_transformer as mt
@@ -7,16 +5,15 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 class _FakeToolFile:
-    def __init__(self, mimetype: str, name: str | None):
+    def __init__(self, mimetype: str):
         self.id = "fake-tool-file-id"
         self.mimetype = mimetype
-        self.name = name or "fake-tool-file.bin"
 
 
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict[str, Any] | None = None
+    last_call: dict | None = None
 
     def __init__(self, *args, **kwargs):
         pass
@@ -39,11 +36,11 @@ class _FakeToolFileManager:
             "mimetype": mimetype,
             "filename": filename,
         }
-        return _FakeToolFile(mimetype, filename)
+        return _FakeToolFile(mimetype)
 
 
 @pytest.fixture(autouse=True)
-def _patch_tool_file_manager(monkeypatch: pytest.MonkeyPatch):
+def _patch_tool_file_manager(monkeypatch):
     # Patch the manager used inside the transformer module
     monkeypatch.setattr(mt, "ToolFileManager", _FakeToolFileManager)
     # also ensure predictable URL generation (no need to patch; uses id and extension only)
@@ -87,47 +84,3 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     # meta is preserved (still contains mime_type: None)
     assert "mime_type" in (o.meta or {})
     assert o.meta["mime_type"] is None
-    assert o.meta["tool_file_id"] == "fake-tool-file-id"
-
-
-def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype():
-    msg = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.BLOB,
-        message=ToolInvokeMessage.BlobMessage(blob=b"docx"),
-        meta={"mime_type": "application/octet-stream", "filename": "report.docx"},
-    )
-
-    out = list(
-        mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
-            messages=_gen([msg]),
-            user_id="u1",
-            tenant_id="t1",
-            conversation_id="c1",
-        )
-    )
-
-    assert _FakeToolFileManager.last_call is not None
-    assert _FakeToolFileManager.last_call["filename"] == "report.docx"
-    assert len(out) == 1
-    assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
-    assert out[0].message.text.endswith(".docx")
-
-
-def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
-    msg = ToolInvokeMessage(
-        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-        message=ToolInvokeMessage.TextMessage(text="/files/tools/existing-tool-file.png"),
-        meta={},
-    )
-
-    out = list(
-        mt.ToolFileMessageTransformer.transform_tool_invoke_messages(
-            messages=_gen([msg]),
-            user_id="u1",
-            tenant_id="t1",
-            conversation_id="c1",
-        )
-    )
-
-    assert len(out) == 1
-    assert out[0].meta["tool_file_id"] == "existing-tool-file"

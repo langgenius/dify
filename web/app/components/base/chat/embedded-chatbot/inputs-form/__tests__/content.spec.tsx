@@ -1,4 +1,4 @@
-/* oxlint-disable typescript/no-explicit-any */
+/* eslint-disable ts/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -9,30 +9,24 @@ vi.mock('../../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({}))
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({ notify: vi.fn() }),
+}))
 
 // Mock CodeEditor to trigger onChange easily
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string
-    onChange: (v: string) => void
-    placeholder: string | React.ReactNode
-  }) => (
+  default: ({ value, onChange, placeholder }: { value: string, onChange: (v: string) => void, placeholder: string | React.ReactNode }) => (
     <textarea
       data-testid="mock-code-editor"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value)}
       placeholder={typeof placeholder === 'string' ? placeholder : 'json-placeholder'}
     />
   ),
@@ -40,17 +34,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 // Mock FileUploaderInAttachmentWrapper to trigger onChange easily
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    value,
-    onChange,
-  }: {
-    value: any[]
-    onChange: (v: any[]) => void
-  }) => (
+
+  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: any[], onChange: (v: any[]) => void }) => (
     <div data-testid="mock-file-uploader">
-      <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>
-        Upload
-      </button>
+      <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>Upload</button>
       <span>{value.length > 0 ? value[0].name : 'no file'}</span>
     </div>
   ),
@@ -166,7 +153,7 @@ describe('InputsFormContent', () => {
   it('should handle text input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Text Label')
-    await user.type(inputs[0]!, 'hello')
+    await user.type(inputs[0], 'hello')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -175,7 +162,7 @@ describe('InputsFormContent', () => {
   it('should handle number input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Number Label')
-    await user.type(inputs[0]!, '123')
+    await user.type(inputs[0], '123')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -184,7 +171,7 @@ describe('InputsFormContent', () => {
   it('should handle paragraph input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Paragraph Label')
-    await user.type(inputs[0]!, 'long text')
+    await user.type(inputs[0], 'long text')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -192,7 +179,7 @@ describe('InputsFormContent', () => {
 
   it('should handle bool input changes', async () => {
     render(<InputsFormContent />)
-    const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
+    const checkbox = screen.getByTestId(/checkbox-/i)
     await user.click(checkbox)
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
@@ -201,8 +188,9 @@ describe('InputsFormContent', () => {
 
   it('should handle select input changes', async () => {
     render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
-    if (!selectTrigger) throw new Error('Select trigger not found')
+    const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
+    if (!selectTrigger)
+      throw new Error('Select trigger not found')
 
     await user.click(selectTrigger)
     const option = screen.getByText('Option 1')
@@ -212,20 +200,10 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
-  it('should render select dropdown on the shared dify-ui overlay layer', async () => {
-    render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
-    if (!selectTrigger) throw new Error('Select trigger not found')
-
-    await user.click(selectTrigger)
-
-    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
-  })
-
   it('should handle single file upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[0]!) // First one is single file
+    await user.click(uploadButtons[0]) // First one is single file
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -234,7 +212,7 @@ describe('InputsFormContent', () => {
   it('should handle multi files upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[1]!) // Second one is multi files
+    await user.click(uploadButtons[1]) // Second one is multi files
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -251,7 +229,7 @@ describe('InputsFormContent', () => {
 
   it('should show tip when showTip is true', () => {
     render(<InputsFormContent showTip />)
-    expect(screen.getByText(/chat.chatFormTip/i))!.toBeInTheDocument()
+    expect(screen.getByText(/chat.chatFormTip/i)).toBeInTheDocument()
   })
 
   it('should set initial values from context', () => {
@@ -265,7 +243,7 @@ describe('InputsFormContent', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues as unknown as any)
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('initial value'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('initial value')).toBeInTheDocument()
   })
 
   it('should use currentConversationInputs when currentConversationId exists', () => {
@@ -280,6 +258,6 @@ describe('InputsFormContent', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv as unknown as any)
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('conv value')).toBeInTheDocument()
   })
 })

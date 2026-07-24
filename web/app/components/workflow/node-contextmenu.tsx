@@ -1,28 +1,50 @@
 import type { Node } from './types'
-import { ContextMenuContent } from '@langgenius/dify-ui/context-menu'
+import { useClickAway } from 'ahooks'
+import {
+  memo,
+  useEffect,
+  useRef,
+} from 'react'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { NodeActionsContextMenuContent } from './node-actions-menu/context-menu-content'
-import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from './node-actions-menu/shared'
+import { usePanelInteractions } from './hooks'
+import PanelOperatorPopup from './nodes/_base/components/panel-operator/panel-operator-popup'
 import { useStore } from './store'
 
-export function NodeContextmenu({ onClose }: { onClose: () => void }) {
+const NodeContextmenu = () => {
+  const ref = useRef(null)
   const nodes = useNodes()
-  const contextMenuTarget = useStore((s) => s.contextMenuTarget)
-  const nodeId = contextMenuTarget?.type === 'node' ? contextMenuTarget.nodeId : undefined
-  const currentNode = nodeId
-    ? (nodes.find((node) => node.id === nodeId) as Node | undefined)
-    : undefined
+  const { handleNodeContextmenuCancel, handlePaneContextmenuCancel } = usePanelInteractions()
+  const nodeMenu = useStore(s => s.nodeMenu)
+  const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
+  useEffect(() => {
+    if (nodeMenu)
+      handlePaneContextmenuCancel()
+  }, [nodeMenu, handlePaneContextmenuCancel])
 
-  if (!nodeId || !currentNode) return null
+  useClickAway(() => {
+    handleNodeContextmenuCancel()
+  }, ref)
+
+  if (!nodeMenu || !currentNode)
+    return null
 
   return (
-    <ContextMenuContent popupClassName={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME} sideOffset={4}>
-      <NodeActionsContextMenuContent
+    <div
+      className="absolute z-[9]"
+      style={{
+        left: nodeMenu.left,
+        top: nodeMenu.top,
+      }}
+      ref={ref}
+    >
+      <PanelOperatorPopup
         id={currentNode.id}
         data={currentNode.data}
-        onClose={onClose}
+        onClosePopup={() => handleNodeContextmenuCancel()}
         showHelpLink
       />
-    </ContextMenuContent>
+    </div>
   )
 }
+
+export default memo(NodeContextmenu)

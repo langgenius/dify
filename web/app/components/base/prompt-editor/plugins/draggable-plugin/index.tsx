@@ -1,8 +1,8 @@
 import type { JSX } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { DraggableBlockPlugin_EXPERIMENTAL } from '@lexical/react/LexicalDraggableBlockPlugin'
 import { useEffect, useRef, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu'
 
@@ -12,13 +12,16 @@ function isOnMenu(element: HTMLElement): boolean {
 
 const SUPPORT_DRAG_CLASS = 'support-drag'
 function checkSupportDrag(element: Element | null): boolean {
-  if (!element) return false
+  if (!element)
+    return false
 
-  if (element.classList.contains(SUPPORT_DRAG_CLASS)) return true
+  if (element.classList.contains(SUPPORT_DRAG_CLASS))
+    return true
 
-  if (element.querySelector(`.${SUPPORT_DRAG_CLASS}`)) return true
+  if (element.querySelector(`.${SUPPORT_DRAG_CLASS}`))
+    return true
 
-  return !!element.closest(`.${SUPPORT_DRAG_CLASS}`)
+  return !!(element.closest(`.${SUPPORT_DRAG_CLASS}`))
 }
 
 export default function DraggableBlockPlugin({
@@ -28,14 +31,17 @@ export default function DraggableBlockPlugin({
 }): JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
   const targetLineRef = useRef<HTMLDivElement>(null)
-  const [, setDraggableElement] = useState<HTMLElement | null>(null)
+  const [, setDraggableElement] = useState<HTMLElement | null>(
+    null,
+  )
   const [editor] = useLexicalComposerContext()
 
   const [isSupportDrag, setIsSupportDrag] = useState(false)
 
   useEffect(() => {
     const root = editor.getRootElement()
-    if (!root) return
+    if (!root)
+      return
 
     const onMove = (e: MouseEvent) => {
       const isSupportDrag = checkSupportDrag(e.target as Element)
@@ -52,32 +58,27 @@ export default function DraggableBlockPlugin({
       menuRef={menuRef as any}
       targetLineRef={targetLineRef as any}
       menuComponent={
-        isSupportDrag ? (
-          <div
-            ref={menuRef}
-            className={cn(
-              DRAGGABLE_BLOCK_MENU_CLASSNAME,
-              'absolute top-4 right-2.5 cursor-grab opacity-0 will-change-transform active:cursor-move',
-            )}
-            data-testid="draggable-menu"
-          >
-            <span
-              className="i-ri-draggable size-3.5 text-text-tertiary"
-              data-testid="draggable-menu-icon"
-            />
-          </div>
-        ) : null
+        isSupportDrag
+          ? (
+              <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-2.5 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move')} data-testid="draggable-menu">
+                <span className="i-ri-draggable size-3.5 text-text-tertiary" data-testid="draggable-menu-icon" />
+              </div>
+            )
+          : null
       }
-      targetLineComponent={
+      targetLineComponent={(
         <div
           ref={targetLineRef}
-          className="pointer-events-none absolute top-0 left-[-21px] opacity-0 will-change-transform"
+          className="pointer-events-none absolute left-[-21px] top-0 opacity-0 will-change-transform"
           data-testid="draggable-target-line"
           // style={{ width: 500 }} // width not worked here
         >
-          <div className="absolute top-0 -right-10 left-0 h-[2px] bg-text-accent-secondary"></div>
+          <div
+            className="absolute -right-10 left-0 top-0 h-[2px] bg-text-accent-secondary"
+          >
+          </div>
         </div>
-      }
+      )}
       isOnMenu={isOnMenu}
       onElementChanged={setDraggableElement}
     />

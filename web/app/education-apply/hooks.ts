@@ -1,53 +1,53 @@
 import type { SearchParams } from './types'
-import { useQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useDebounceFn, useLocalStorageState } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { useCallback, useEffect, useState } from 'react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  useEducationExpiredHasNoticed,
-  useEducationReverifyHasNoticed,
-  useEducationReverifyPrevExpireAt,
-  useEducationVerifying,
-} from '@/app/education-apply/storage'
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
-import { EDUCATION_RE_VERIFY_ACTION, EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION } from './constants'
+import {
+  EDUCATION_RE_VERIFY_ACTION,
+  EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from './constants'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 export const useEducation = () => {
-  const { mutateAsync, isPending, data } = useEducationAutocomplete()
+  const {
+    mutateAsync,
+    isPending,
+    data,
+  } = useEducationAutocomplete()
 
   const [prevSchools, setPrevSchools] = useState<string[]>([])
-  const handleUpdateSchools = useCallback(
-    (searchParams: SearchParams) => {
-      if (searchParams.keywords) {
-        mutateAsync(searchParams).then((res) => {
-          const currentPage = searchParams.page || 0
-          const resSchools = res.data
-          if (currentPage > 0)
-            setPrevSchools((prevSchools) => [...(prevSchools || []), ...resSchools])
-          else setPrevSchools(resSchools)
-        })
-      }
-    },
-    [mutateAsync],
-  )
+  const handleUpdateSchools = useCallback((searchParams: SearchParams) => {
+    if (searchParams.keywords) {
+      mutateAsync(searchParams).then((res) => {
+        const currentPage = searchParams.page || 0
+        const resSchools = res.data
+        if (currentPage > 0)
+          setPrevSchools(prevSchools => [...(prevSchools || []), ...resSchools])
+        else
+          setPrevSchools(resSchools)
+      })
+    }
+  }, [mutateAsync])
 
-  const { run: querySchoolsWithDebounced } = useDebounceFn(
-    (searchParams: SearchParams) => {
-      handleUpdateSchools(searchParams)
-    },
-    {
-      wait: 300,
-    },
-  )
+  const { run: querySchoolsWithDebounced } = useDebounceFn((searchParams: SearchParams) => {
+    handleUpdateSchools(searchParams)
+  }, {
+    wait: 300,
+  })
 
   return {
     schools: prevSchools,
@@ -60,34 +60,43 @@ export const useEducation = () => {
 }
 
 type useEducationReverifyNoticeParams = {
-  onNotice: ({ expireAt, expired }: { expireAt: number; expired: boolean }) => void
+  onNotice: ({
+    expireAt,
+    expired,
+  }: {
+    expireAt: number
+    expired: boolean
+  }) => void
 }
 
 const isExpired = (expireAt?: number, timezone?: string) => {
-  if (!expireAt || !timezone) return false
+  if (!expireAt || !timezone)
+    return false
   const today = dayjs().tz(timezone).startOf('day')
   const expiredDay = dayjs.unix(expireAt).tz(timezone).startOf('day')
   return today.isSame(expiredDay) || today.isAfter(expiredDay)
 }
 
-const useEducationReverifyNotice = ({ onNotice }: useEducationReverifyNoticeParams) => {
-  const { data: timezone } = useQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone ?? undefined,
-  })
+const useEducationReverifyNotice = ({
+  onNotice,
+}: useEducationReverifyNoticeParams) => {
+  const { userProfile: { timezone } } = useAppContext()
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
-  const {
-    educationAccountExpireAt,
-    allowRefreshEducationVerify,
-    isLoadingEducationAccountInfo: isLoading,
-  } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useEducationReverifyPrevExpireAt()
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useEducationReverifyHasNoticed()
-  const [expiredHasNoticed, setExpiredHasNoticed] = useEducationExpiredHasNoticed()
+  const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
+  const [prevExpireAt, setPrevExpireAt] = useLocalStorageState<number | undefined>('education-reverify-prev-expire-at', {
+    defaultValue: 0,
+  })
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorageState<boolean | undefined>('education-reverify-has-noticed', {
+    defaultValue: false,
+  })
+  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorageState<boolean | undefined>('education-expired-has-noticed', {
+    defaultValue: false,
+  })
 
   useEffect(() => {
-    if (isLoading || !timezone) return
+    if (isLoading || !timezone)
+      return
     if (allowRefreshEducationVerify) {
       const expired = isExpired(educationAccountExpireAt!, timezone)
       const isExpireAtChanged = prevExpireAt !== educationAccountExpireAt
@@ -97,7 +106,8 @@ const useEducationReverifyNotice = ({ onNotice }: useEducationReverifyNoticePara
         setExpiredHasNoticed(false)
       }
       const shouldNotice = (() => {
-        if (isExpireAtChanged) return true
+        if (isExpireAtChanged)
+          return true
         return expired ? !expiredHasNoticed : !reverifyHasNoticed
       })()
       if (shouldNotice) {
@@ -105,8 +115,10 @@ const useEducationReverifyNotice = ({ onNotice }: useEducationReverifyNoticePara
           expireAt: educationAccountExpireAt!,
           expired,
         })
-        if (expired) setExpiredHasNoticed(true)
-        else setReverifyHasNoticed(true)
+        if (expired)
+          setExpiredHasNoticed(true)
+        else
+          setReverifyHasNoticed(true)
       }
     }
   }, [allowRefreshEducationVerify, timezone])
@@ -119,11 +131,9 @@ const useEducationReverifyNotice = ({ onNotice }: useEducationReverifyNoticePara
 }
 
 export const useEducationInit = () => {
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
-  const setShowEducationExpireNoticeModal = useModalContextSelector(
-    (s) => s.setShowEducationExpireNoticeModal,
-  )
-  const [educationVerifying, setEducationVerifying] = useEducationVerifying()
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
+  const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 
@@ -137,19 +147,18 @@ export const useEducationInit = () => {
   const { mutateAsync } = useEducationVerify()
   const handleVerify = async () => {
     const { token } = await mutateAsync()
-    if (token) router.push(`/education-apply?token=${token}`)
+    if (token)
+      router.push(`/education-apply?token=${token}`)
   }
 
   useEffect(() => {
-    if (
-      educationVerifying === 'yes' ||
-      educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION
-    ) {
+    if (educationVerifying === 'yes' || educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION) {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
 
       if (educationVerifyAction === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)
-        setEducationVerifying('yes')
+        localStorage.setItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'yes')
     }
-    if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION) handleVerify()
-  }, [setShowAccountSettingModal, setEducationVerifying, educationVerifying, educationVerifyAction])
+    if (educationVerifyAction === EDUCATION_RE_VERIFY_ACTION)
+      handleVerify()
+  }, [setShowAccountSettingModal, educationVerifying, educationVerifyAction])
 }

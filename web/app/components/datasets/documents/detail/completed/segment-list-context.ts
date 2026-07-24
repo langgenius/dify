@@ -2,13 +2,13 @@ import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContextSelector } from 'use-context-selector'
 
-type CurrSegmentType = {
+export type CurrSegmentType = {
   segInfo?: SegmentDetailModel
   showModal: boolean
   isEditMode?: boolean
 }
 
-type CurrChildChunkType = {
+export type CurrChildChunkType = {
   childChunkInfo?: ChildChunkDetail
   showModal: boolean
 }

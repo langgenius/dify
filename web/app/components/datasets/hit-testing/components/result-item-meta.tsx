@@ -1,21 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
 import Score from './score'
 
 type Props = {
-  readonly labelPrefix: string
-  readonly positionId: number
-  readonly wordCount: number
-  readonly score: number
-  readonly className?: string
+  labelPrefix: string
+  positionId: number
+  wordCount: number
+  score: number
+  className?: string
 }
 
-const ResultItemMeta: FC<Props> = ({ labelPrefix, positionId, wordCount, score, className }) => {
+const ResultItemMeta: FC<Props> = ({
+  labelPrefix,
+  positionId,
+  wordCount,
+  score,
+  className,
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -28,8 +34,9 @@ const ResultItemMeta: FC<Props> = ({ labelPrefix, positionId, wordCount, score, 
         />
         <Dot />
         <div className="system-xs-medium text-text-tertiary">
-          {wordCount}{' '}
-          {t(($) => $['segment.characters'], { ns: 'datasetDocuments', count: wordCount })}
+          {wordCount}
+          {' '}
+          {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}
         </div>
       </div>
       <Score value={score} />

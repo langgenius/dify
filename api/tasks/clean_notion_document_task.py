@@ -25,12 +25,12 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     start_at = time.perf_counter()
     total_index_node_ids = []
 
-    with session_factory.create_session() as session, session.begin():
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+    with session_factory.create_session() as session:
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
         if not dataset:
             raise Exception("Document has no dataset")
-        index_type = dataset.get_doc_form(session=session)
+        index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         document_delete_stmt = delete(Document).where(Document.id.in_(document_ids))
@@ -38,36 +38,14 @@ def clean_notion_document_task(document_ids: list[str], dataset_id: str):
 
         for document_id in document_ids:
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
-            total_index_node_ids.extend([segment.index_node_id for segment in segments if segment.index_node_id])
+            total_index_node_ids.extend([segment.index_node_id for segment in segments])
 
-    # Wrap vector / keyword index cleanup in try/except so that a transient
-    # failure here (e.g. billing API hiccup propagated via FeatureService when
-    # ``ModelManager`` is initialized inside ``Vector(dataset)``) does not abort
-    # the task and leave the already-deleted documents' segments stranded in PG.
-    # The Document rows are hard-deleted in the previous session block, so any
-    # exception escaping this task would produce orphans that no later request
-    # can reference back. Mirrors the pattern in ``clean_dataset_task``.
-    try:
-        with session_factory.create_session() as session, session.begin():
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if dataset:
-                index_processor.clean(
-                    dataset,
-                    total_index_node_ids,
-                    with_keywords=True,
-                    delete_child_chunks=True,
-                    delete_summaries=True,
-                    session=session,
-                )
-    except Exception:
-        logger.exception(
-            "Failed to clean vector / keyword index in clean_notion_document_task, "
-            "dataset_id=%s, document_ids=%s, index_node_ids_count=%d. "
-            "Continuing with segment deletion; vector orphans can be reaped later.",
-            dataset_id,
-            document_ids,
-            len(total_index_node_ids),
-        )
+    with session_factory.create_session() as session:
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        if dataset:
+            index_processor.clean(
+                dataset, total_index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+            )
 
     with session_factory.create_session() as session, session.begin():
         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id.in_(document_ids))

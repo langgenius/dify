@@ -3,12 +3,10 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -36,9 +34,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
 
     with session_factory.create_session() as session:
         # get app info
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
-        )
+        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
         if app:
             try:
@@ -56,14 +52,14 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     )
                     documents.append(document)
                 # if annotation reply is enabled , batch add annotations' index
-                app_annotation_setting = session.scalar(
-                    select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
+                app_annotation_setting = (
+                    session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
                 )
 
                 if app_annotation_setting:
                     dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, session, "annotation"
+                            app_annotation_setting.collection_binding_id, "annotation"
                         )
                     )
                     if not dataset_collection_binding:
@@ -71,13 +67,13 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     dataset = Dataset(
                         id=app_id,
                         tenant_id=tenant_id,
-                        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                        indexing_technique="high_quality",
                         embedding_model_provider=dataset_collection_binding.provider_name,
                         embedding_model=dataset_collection_binding.model_name,
                         collection_binding_id=dataset_collection_binding.id,
                     )
 
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                     vector.create(documents, duplicate_check=True)
 
                 session.commit()

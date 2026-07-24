@@ -1,7 +1,6 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
@@ -57,24 +56,24 @@ class PluginParameterService:
                     # fetch credentials from db
                     with Session(db.engine) as session:
                         if credential_id:
-                            db_record = session.scalar(
-                                select(BuiltinToolProvider)
+                            db_record = (
+                                session.query(BuiltinToolProvider)
                                 .where(
                                     BuiltinToolProvider.tenant_id == tenant_id,
                                     BuiltinToolProvider.provider == provider,
                                     BuiltinToolProvider.id == credential_id,
                                 )
-                                .limit(1)
+                                .first()
                             )
                         else:
-                            db_record = session.scalar(
-                                select(BuiltinToolProvider)
+                            db_record = (
+                                session.query(BuiltinToolProvider)
                                 .where(
                                     BuiltinToolProvider.tenant_id == tenant_id,
                                     BuiltinToolProvider.provider == provider,
                                 )
                                 .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-                                .limit(1)
+                                .first()
                             )
 
                     if db_record is None:

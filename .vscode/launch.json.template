@@ -2,12 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: API (gevent)",
+            "name": "Python: Flask API",
             "type": "debugpy",
             "request": "launch",
-            "module": "gevent.monkey",
-            "args": ["--module", "app"],
-            "gevent": true,
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "app.py",
+                "FLASK_ENV": "development"
+            },
+            "args": [
+                "run",
+                "--host=0.0.0.0",
+                "--port=5001",
+                "--no-debugger",
+                "--no-reload"
+            ],
             "jinja": true,
             "justMyCode": true,
             "cwd": "${workspaceFolder}/api",
@@ -35,6 +44,22 @@
             "justMyCode": false,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
-        }
+        },
+        {
+            "name": "Next.js: debug full stack",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/web/node_modules/next/dist/bin/next",
+            "runtimeArgs": ["--inspect"],
+            "skipFiles": ["<node_internals>/**"],
+            "serverReadyAction": {
+              "action": "debugWithChrome",
+              "killOnServerStop": true,
+              "pattern": "- Local:.+(https?://.+)",
+              "uriFormat": "%s",
+              "webRoot": "${workspaceFolder}/web"
+            },
+            "cwd": "${workspaceFolder}/web"
+          }
     ]
 }

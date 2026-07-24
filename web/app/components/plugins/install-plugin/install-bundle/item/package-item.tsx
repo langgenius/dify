@@ -7,13 +7,13 @@ import LoadingError from '../../base/loading-error'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
 
-type Props = Readonly<{
+type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: PackageDependency
   isFromMarketPlace?: boolean
   versionInfo: VersionProps
-}>
+}
 
 const PackageItem: FC<Props> = ({
   payload,
@@ -22,7 +22,8 @@ const PackageItem: FC<Props> = ({
   isFromMarketPlace,
   versionInfo,
 }) => {
-  if (!payload.value?.manifest) return <LoadingError />
+  if (!payload.value?.manifest)
+    return <LoadingError />
 
   const plugin = pluginManifestToCardPluginProps(payload.value.manifest)
   return (

@@ -1,17 +1,12 @@
 import json
-from typing import override
 
 import httpx
 
-from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
-
-# Explicit bounded timeout for credential-validation requests so a slow or
-# hanging Firecrawl endpoint cannot block the worker indefinitely.
-_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
+from services.auth.api_key_auth_base import ApiKeyAuthBase
 
 
 class FirecrawlAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: AuthCredentials):
+    def __init__(self, credentials: dict):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
@@ -22,7 +17,6 @@ class FirecrawlAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
-    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         options = {
@@ -46,7 +40,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data, timeout=_CREDENTIAL_TIMEOUT)
+        return httpx.post(url, headers=headers, json=data)
 
     def _handle_error(self, response):
         try:

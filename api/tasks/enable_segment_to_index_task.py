@@ -3,7 +3,6 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -13,7 +12,6 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
-from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +28,12 @@ def enable_segment_to_index_task(segment_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
+        segment = session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
         if not segment:
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
 
-        if segment.status != SegmentStatus.COMPLETED:
+        if segment.status != "completed":
             logger.info(click.style(f"Segment is not completed, enable is not allowed: {segment_id}", fg="red"))
             return
 
@@ -52,13 +50,13 @@ def enable_segment_to_index_task(segment_id: str):
                 },
             )
 
-            dataset = segment.get_dataset(session=session)
+            dataset = segment.dataset
 
             if not dataset:
                 logger.info(click.style(f"Segment {segment.id} has no dataset, pass.", fg="cyan"))
                 return
 
-            dataset_document = segment.get_document(session=session)
+            dataset_document = segment.document
 
             if not dataset_document:
                 logger.info(click.style(f"Segment {segment.id} has no document, pass.", fg="cyan"))
@@ -67,14 +65,14 @@ def enable_segment_to_index_task(segment_id: str):
             if (
                 not dataset_document.enabled
                 or dataset_document.archived
-                or dataset_document.indexing_status != IndexingStatus.COMPLETED
+                or dataset_document.indexing_status != "completed"
             ):
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
 
             index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
             if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                child_chunks = segment.get_child_chunks(session=session)
+                child_chunks = segment.get_child_chunks()
                 if child_chunks:
                     child_documents = []
                     for child_chunk in child_chunks:
@@ -91,7 +89,7 @@ def enable_segment_to_index_task(segment_id: str):
                     document.children = child_documents
             multimodel_documents = []
             if dataset.is_multimodal:
-                for attachment in segment.get_attachments(session=session):
+                for attachment in segment.attachments:
                     multimodel_documents.append(
                         AttachmentDocument(
                             page_content=attachment["name"],
@@ -106,8 +104,7 @@ def enable_segment_to_index_task(segment_id: str):
                     )
 
             # save vector index
-            index_processor.load(dataset, [document], multimodal_documents=multimodel_documents, session=session)
-            session.commit()
+            index_processor.load(dataset, [document], multimodal_documents=multimodel_documents)
 
             # Enable summary index for this segment
             from services.summary_index_service import SummaryIndexService
@@ -124,10 +121,9 @@ def enable_segment_to_index_task(segment_id: str):
             logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:
             logger.exception("enable segment to index failed")
-            session.rollback()
             segment.enabled = False
             segment.disabled_at = naive_utc_now()
-            segment.status = SegmentStatus.ERROR
+            segment.status = "error"
             segment.error = str(e)
             session.commit()
         finally:

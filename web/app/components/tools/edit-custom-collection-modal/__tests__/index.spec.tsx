@@ -1,8 +1,8 @@
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
@@ -25,8 +25,8 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
-    hasBlockingModalOpen: false,
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
+    setShowApiBasedExtensionModal: vi.fn(),
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),
     setShowPricingModal: mockSetShowPricingModal,
@@ -54,12 +54,24 @@ vi.mock('@/context/i18n', async () => {
   }
 })
 
+// Mock EmojiPicker
+vi.mock('@/app/components/base/emoji-picker', () => ({
+  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => {
+    return (
+      <div data-testid="emoji-picker">
+        <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#FF0000')}>Select Emoji</button>
+        <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
+      </div>
+    )
+  },
+}))
+
 describe('EditCustomCollectionModal', () => {
   const mockOnHide = vi.fn()
   const mockOnAdd = vi.fn()
   const mockOnEdit = vi.fn()
   const mockOnRemove = vi.fn()
-  const toastNotifySpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+  const toastNotifySpy = vi.spyOn(Toast, 'notify')
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -80,47 +92,35 @@ describe('EditCustomCollectionModal', () => {
   const renderModal = (props?: {
     payload?: {
       provider: string
-      credentials: {
-        auth_type: AuthType
-        api_key_header?: string
-        api_key_header_prefix?: AuthHeaderPrefix
-        api_key_value?: string
-      }
+      credentials: { auth_type: AuthType, api_key_header?: string, api_key_header_prefix?: AuthHeaderPrefix, api_key_value?: string }
       schema_type: string
       schema: string
-      icon: { content: string; background: string }
+      icon: { content: string, background: string }
       privacy_policy?: string
       custom_disclaimer?: string
       labels?: string[]
-      tools?: Array<{
-        operation_id: string
-        summary: string
-        method: string
-        server_url: string
-        parameters: Array<{ name: string; label: { en_US: string; zh_Hans: string } }>
-      }>
+      tools?: Array<{ operation_id: string, summary: string, method: string, server_url: string, parameters: Array<{ name: string, label: { en_US: string, zh_Hans: string } }> }>
     }
     positionLeft?: boolean
     dialogClassName?: string
-  }) =>
-    render(
-      <EditCustomCollectionModal
-        payload={props?.payload}
-        onHide={mockOnHide}
-        onAdd={mockOnAdd}
-        onEdit={mockOnEdit}
-        onRemove={mockOnRemove}
-        positionLeft={props?.positionLeft}
-        dialogClassName={props?.dialogClassName}
-      />,
-    )
+  }) => render(
+    <EditCustomCollectionModal
+      payload={props?.payload}
+      onHide={mockOnHide}
+      onAdd={mockOnAdd}
+      onEdit={mockOnEdit}
+      onRemove={mockOnRemove}
+      positionLeft={props?.positionLeft}
+      dialogClassName={props?.dialogClassName}
+    />,
+  )
 
   // Tests for Add mode (no payload)
   describe('Add Mode', () => {
     it('should render add mode title when no payload', () => {
       renderModal()
 
-      expect(screen.getByText('tools.createTool.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.title')).toBeInTheDocument()
     })
 
     it('should show error when provider name is missing', async () => {
@@ -135,9 +135,10 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith(
-          'common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}',
-        )
+        expect(toastNotifySpy).toHaveBeenCalledWith(expect.objectContaining({
+          message: 'common.errorMsg.fieldRequired:{"field":"tools.createTool.name"}',
+          type: 'error',
+        }))
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })
@@ -151,9 +152,10 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
-        expect(toastNotifySpy).toHaveBeenCalledWith(
-          'common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}',
-        )
+        expect(toastNotifySpy).toHaveBeenCalledWith(expect.objectContaining({
+          message: 'common.errorMsg.fieldRequired:{"field":"tools.createTool.schema"}',
+          type: 'error',
+        }))
       })
       expect(mockOnAdd).not.toHaveBeenCalled()
     })
@@ -179,21 +181,19 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnAdd).toHaveBeenCalledWith(
-          expect.objectContaining({
-            provider: 'provider',
-            schema: '{}',
-            schema_type: 'openapi',
-            icon: {
-              content: '🕵️',
-              background: '#FEF7C3',
-            },
-            credentials: {
-              auth_type: 'none',
-            },
-            labels: [],
-          }),
-        )
+        expect(mockOnAdd).toHaveBeenCalledWith(expect.objectContaining({
+          provider: 'provider',
+          schema: '{}',
+          schema_type: 'openapi',
+          icon: {
+            content: '🕵️',
+            background: '#FEF7C3',
+          },
+          credentials: {
+            auth_type: 'none',
+          },
+          labels: [],
+        }))
         expect(toastNotifySpy).not.toHaveBeenCalled()
       })
     })
@@ -223,32 +223,28 @@ describe('EditCustomCollectionModal', () => {
       privacy_policy: 'https://example.com/privacy',
       custom_disclaimer: 'Use at your own risk',
       labels: ['api', 'tools'],
-      tools: [
-        {
-          operation_id: 'getUsers',
-          summary: 'Get all users',
-          method: 'GET',
-          server_url: 'https://api.example.com/users',
-          parameters: [
-            {
-              name: 'limit',
-              label: { en_US: 'Limit', zh_Hans: '限制' },
-            },
-          ],
-        },
-      ],
+      tools: [{
+        operation_id: 'getUsers',
+        summary: 'Get all users',
+        method: 'GET',
+        server_url: 'https://api.example.com/users',
+        parameters: [{
+          name: 'limit',
+          label: { en_US: 'Limit', zh_Hans: '限制' },
+        }],
+      }],
     }
 
     it('should render edit mode title when payload is provided', () => {
       renderModal({ payload: editPayload })
 
-      expect(screen.getByText('tools.createTool.editTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.editTitle')).toBeInTheDocument()
     })
 
     it('should show delete button in edit mode', () => {
       renderModal({ payload: editPayload })
 
-      expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
 
     it('should call onRemove when delete button is clicked', () => {
@@ -271,12 +267,10 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalledWith(
-          expect.objectContaining({
-            provider: 'updated-provider',
-            original_provider: 'existing-provider',
-          }),
-        )
+        expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({
+          provider: 'updated-provider',
+          original_provider: 'existing-provider',
+        }))
       })
     })
 
@@ -284,22 +278,22 @@ describe('EditCustomCollectionModal', () => {
       renderModal({ payload: editPayload })
 
       const providerInput = screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder')
-      expect(providerInput)!.toHaveValue('existing-provider')
+      expect(providerInput).toHaveValue('existing-provider')
     })
 
     it('should display existing schema', () => {
       renderModal({ payload: editPayload })
 
       const schemaInput = screen.getByPlaceholderText('tools.createTool.schemaPlaceHolder')
-      expect(schemaInput)!.toHaveValue('{"openapi": "3.0.0"}')
+      expect(schemaInput).toHaveValue('{"openapi": "3.0.0"}')
     })
 
     it('should display available tools table', () => {
       renderModal({ payload: editPayload })
 
-      expect(screen.getByText('getUsers'))!.toBeInTheDocument()
-      expect(screen.getByText('Get all users'))!.toBeInTheDocument()
-      expect(screen.getByText('GET'))!.toBeInTheDocument()
+      expect(screen.getByText('getUsers')).toBeInTheDocument()
+      expect(screen.getByText('Get all users')).toBeInTheDocument()
+      expect(screen.getByText('GET')).toBeInTheDocument()
     })
 
     it('should strip credential fields when auth_type is none on save', async () => {
@@ -320,15 +314,13 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalledWith(
-          expect.objectContaining({
-            credentials: {
-              auth_type: AuthType.none,
-            },
-          }),
-        )
+        expect(mockOnEdit).toHaveBeenCalledWith(expect.objectContaining({
+          credentials: {
+            auth_type: AuthType.none,
+          },
+        }))
         // These fields should NOT be present
-        const callArg = mockOnEdit.mock.calls[0]![0]
+        const callArg = mockOnEdit.mock.calls[0][0]
         expect(callArg.credentials.api_key_header).toBeUndefined()
         expect(callArg.credentials.api_key_header_prefix).toBeUndefined()
         expect(callArg.credentials.api_key_value).toBeUndefined()
@@ -340,15 +332,13 @@ describe('EditCustomCollectionModal', () => {
   describe('Schema Parsing', () => {
     it('should parse schema and update params when schema changes', async () => {
       parseParamsSchemaMock.mockResolvedValueOnce({
-        parameters_schema: [
-          {
-            operation_id: 'newOp',
-            summary: 'New operation',
-            method: 'POST',
-            server_url: 'https://api.example.com/new',
-            parameters: [],
-          },
-        ],
+        parameters_schema: [{
+          operation_id: 'newOp',
+          summary: 'New operation',
+          method: 'POST',
+          server_url: 'https://api.example.com/new',
+          parameters: [],
+        }],
         schema_type: 'swagger',
       })
 
@@ -362,7 +352,7 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('newOp'))!.toBeInTheDocument()
+        expect(screen.getByText('newOp')).toBeInTheDocument()
       })
     })
 
@@ -379,8 +369,7 @@ describe('EditCustomCollectionModal', () => {
       })
 
       // The table should still be visible but empty (no tools)
-      // The table should still be visible but empty (no tools)
-      expect(screen.getByText('tools.createTool.availableTools.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.availableTools.title')).toBeInTheDocument()
     })
 
     it('should not parse schema when empty', async () => {
@@ -393,7 +382,7 @@ describe('EditCustomCollectionModal', () => {
       fireEvent.change(schemaInput, { target: { value: '' } })
 
       // Wait a bit and check that parseParamsSchema was not called with empty string
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 100))
       expect(parseParamsSchemaMock).not.toHaveBeenCalledWith('')
     })
   })
@@ -405,15 +394,14 @@ describe('EditCustomCollectionModal', () => {
 
       // The name input should be present
       const nameInput = screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder')
-      expect(nameInput)!.toBeInTheDocument()
+      expect(nameInput).toBeInTheDocument()
     })
 
     it('should render name input section', () => {
       renderModal()
 
       // Name label should be present
-      // Name label should be present
-      expect(screen.getByText('tools.createTool.name'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.name')).toBeInTheDocument()
     })
   })
 
@@ -422,15 +410,14 @@ describe('EditCustomCollectionModal', () => {
     it('should show auth method section title', () => {
       renderModal()
 
-      expect(screen.getByText('tools.createTool.authMethod.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.title')).toBeInTheDocument()
     })
 
     it('should display current auth type', () => {
       renderModal()
 
       // The default auth type is 'none'
-      // The default auth type is 'none'
-      expect(screen.getByText('tools.createTool.authMethod.types.none'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.none')).toBeInTheDocument()
     })
   })
 
@@ -442,15 +429,13 @@ describe('EditCustomCollectionModal', () => {
       schema_type: 'openapi',
       schema: '{}',
       icon: { content: '🔧', background: '#FFCC00' },
-      tools: [
-        {
-          operation_id: 'testOp',
-          summary: 'Test operation',
-          method: 'POST',
-          server_url: 'https://api.example.com/test',
-          parameters: [],
-        },
-      ],
+      tools: [{
+        operation_id: 'testOp',
+        summary: 'Test operation',
+        method: 'POST',
+        server_url: 'https://api.example.com/test',
+        parameters: [],
+      }],
     }
 
     it('should render test button in available tools table', () => {
@@ -458,15 +443,15 @@ describe('EditCustomCollectionModal', () => {
 
       // Find the test button
       const testButton = screen.getByText('tools.createTool.availableTools.test')
-      expect(testButton)!.toBeInTheDocument()
+      expect(testButton).toBeInTheDocument()
     })
 
     it('should display tool information in the table', () => {
       renderModal({ payload: payloadWithTools })
 
-      expect(screen.getByText('testOp'))!.toBeInTheDocument()
-      expect(screen.getByText('Test operation'))!.toBeInTheDocument()
-      expect(screen.getByText('POST'))!.toBeInTheDocument()
+      expect(screen.getByText('testOp')).toBeInTheDocument()
+      expect(screen.getByText('Test operation')).toBeInTheDocument()
+      expect(screen.getByText('POST')).toBeInTheDocument()
     })
   })
 
@@ -478,18 +463,16 @@ describe('EditCustomCollectionModal', () => {
       const privacyInput = screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder')
       fireEvent.change(privacyInput, { target: { value: 'https://example.com/privacy' } })
 
-      expect(privacyInput)!.toHaveValue('https://example.com/privacy')
+      expect(privacyInput).toHaveValue('https://example.com/privacy')
     })
 
     it('should update custom disclaimer input', () => {
       renderModal()
 
-      const disclaimerInput = screen.getByPlaceholderText(
-        'tools.createTool.customDisclaimerPlaceholder',
-      )
+      const disclaimerInput = screen.getByPlaceholderText('tools.createTool.customDisclaimerPlaceholder')
       fireEvent.change(disclaimerInput, { target: { value: 'Custom disclaimer text' } })
 
-      expect(disclaimerInput)!.toHaveValue('Custom disclaimer text')
+      expect(disclaimerInput).toHaveValue('Custom disclaimer text')
     })
 
     it('should include privacy policy and custom disclaimer in save payload', async () => {
@@ -504,9 +487,7 @@ describe('EditCustomCollectionModal', () => {
       const privacyInput = screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder')
       fireEvent.change(privacyInput, { target: { value: 'https://privacy.example.com' } })
 
-      const disclaimerInput = screen.getByPlaceholderText(
-        'tools.createTool.customDisclaimerPlaceholder',
-      )
+      const disclaimerInput = screen.getByPlaceholderText('tools.createTool.customDisclaimerPlaceholder')
       fireEvent.change(disclaimerInput, { target: { value: 'My disclaimer' } })
 
       await waitFor(() => {
@@ -518,12 +499,10 @@ describe('EditCustomCollectionModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockOnAdd).toHaveBeenCalledWith(
-          expect.objectContaining({
-            privacy_policy: 'https://privacy.example.com',
-            custom_disclaimer: 'My disclaimer',
-          }),
-        )
+        expect(mockOnAdd).toHaveBeenCalledWith(expect.objectContaining({
+          privacy_policy: 'https://privacy.example.com',
+          custom_disclaimer: 'My disclaimer',
+        }))
       })
     })
   })
@@ -533,13 +512,13 @@ describe('EditCustomCollectionModal', () => {
     it('should render with positionLeft prop', () => {
       renderModal({ positionLeft: true })
 
-      expect(screen.getByText('tools.createTool.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.title')).toBeInTheDocument()
     })
 
     it('should render with dialogClassName prop', () => {
       renderModal({ dialogClassName: 'custom-dialog-class' })
 
-      expect(screen.getByText('tools.createTool.title'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.title')).toBeInTheDocument()
     })
   })
 
@@ -551,49 +530,46 @@ describe('EditCustomCollectionModal', () => {
       schema_type: 'openapi',
       schema: '{}',
       icon: { content: '🔧', background: '#FFCC00' },
-      tools: [
-        {
-          operation_id: 'testOp',
-          summary: 'Test',
-          method: 'GET',
-          server_url: serverUrl,
-          parameters: [],
-        },
-      ],
+      tools: [{
+        operation_id: 'testOp',
+        summary: 'Test',
+        method: 'GET',
+        server_url: serverUrl,
+        parameters: [],
+      }],
     })
 
     it('should extract path from full URL', () => {
       renderModal({ payload: payloadWithVariousUrls('https://api.example.com/users/list') })
 
-      expect(screen.getByText('/users/list'))!.toBeInTheDocument()
+      expect(screen.getByText('/users/list')).toBeInTheDocument()
     })
 
     it('should handle URL with encoded characters', () => {
       renderModal({ payload: payloadWithVariousUrls('https://api.example.com/users%20list') })
 
-      expect(screen.getByText('/users list'))!.toBeInTheDocument()
+      expect(screen.getByText('/users list')).toBeInTheDocument()
     })
 
     it('should handle empty URL', () => {
       renderModal({ payload: payloadWithVariousUrls('') })
 
-      expect(screen.getByText('testOp'))!.toBeInTheDocument()
+      // Should not crash and show the row
+      expect(screen.getByText('testOp')).toBeInTheDocument()
     })
 
     it('should handle invalid URL by returning the original string', () => {
       renderModal({ payload: payloadWithVariousUrls('not-a-valid-url') })
 
       // Should show the original string
-      // Should show the original string
-      expect(screen.getByText('not-a-valid-url'))!.toBeInTheDocument()
+      expect(screen.getByText('not-a-valid-url')).toBeInTheDocument()
     })
 
     it('should handle URL with only domain', () => {
       renderModal({ payload: payloadWithVariousUrls('https://api.example.com') })
 
       // Path would be empty or "/"
-      // Path would be empty or "/"
-      expect(screen.getByText('testOp'))!.toBeInTheDocument()
+      expect(screen.getByText('testOp')).toBeInTheDocument()
     })
   })
 
@@ -603,8 +579,8 @@ describe('EditCustomCollectionModal', () => {
       renderModal()
 
       const link = screen.getByText('tools.createTool.viewSchemaSpec')
-      expect(link.closest('a'))!.toHaveAttribute('href', 'https://swagger.io/specification/')
-      expect(link.closest('a'))!.toHaveAttribute('target', '_blank')
+      expect(link.closest('a')).toHaveAttribute('href', 'https://swagger.io/specification/')
+      expect(link.closest('a')).toHaveAttribute('target', '_blank')
     })
   })
 })

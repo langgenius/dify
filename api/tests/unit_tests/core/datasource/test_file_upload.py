@@ -35,7 +35,7 @@ TEST COVERAGE OVERVIEW:
    - Tests hash consistency and determinism
 
 6. Invalid Filename Handling (TestInvalidFilenameHandling)
-   - Validates rejection of filenames with path separators (/, \\)
+   - Validates rejection of filenames with invalid characters (/, \\, :, *, ?, ", <, >, |)
    - Tests filename length truncation (max 200 characters)
    - Prevents path traversal attacks
    - Handles edge cases like empty filenames
@@ -535,23 +535,30 @@ class TestInvalidFilenameHandling:
 
     @pytest.mark.parametrize(
         "invalid_char",
-        ["/", "\\"],
+        ["/", "\\", ":", "*", "?", '"', "<", ">", "|"],
     )
     def test_filename_contains_invalid_characters(self, invalid_char):
         """Test detection of invalid characters in filename.
 
-        Security-critical test that validates rejection of path separators.
+        Security-critical test that validates rejection of dangerous filename characters.
         These characters are blocked because they:
         - / and \\ : Directory separators, could enable path traversal
+        - : : Drive letter separator on Windows, reserved character
+        - * and ? : Wildcards, could cause issues in file operations
+        - " : Quote character, could break command-line operations
+        - < and > : Redirection operators, command injection risk
+        - | : Pipe operator, command injection risk
 
         Blocking these characters prevents:
         - Path traversal attacks (../../etc/passwd)
-        - ZIP entry traversal issues
-        - Ambiguous path handling
+        - Command injection
+        - File system corruption
+        - Cross-platform compatibility issues
         """
         # Arrange - Create filename with invalid character
         filename = f"test{invalid_char}file.txt"
-        invalid_chars = ["/", "\\"]
+        # Define complete list of invalid characters
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
 
         # Act - Check if filename contains any invalid character
         has_invalid_char = any(c in filename for c in invalid_chars)
@@ -563,22 +570,12 @@ class TestInvalidFilenameHandling:
         """Test that valid filenames pass validation."""
         # Arrange
         filename = "valid_file-name_123.txt"
-        invalid_chars = ["/", "\\"]
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
 
         # Act
         has_invalid_char = any(c in filename for c in invalid_chars)
 
         # Assert
-        assert has_invalid_char is False
-
-    @pytest.mark.parametrize("safe_char", [":", "*", "?", '"', "<", ">", "|"])
-    def test_filename_allows_safe_metadata_characters(self, safe_char):
-        """Test that non-separator punctuation remains allowed in filenames."""
-        filename = f"candidate{safe_char}resume.txt"
-        invalid_chars = ["/", "\\"]
-
-        has_invalid_char = any(c in filename for c in invalid_chars)
-
         assert has_invalid_char is False
 
     def test_extremely_long_filename_truncation(self):
@@ -907,7 +904,7 @@ class TestFilenameValidation:
         """Test that filenames with spaces are handled correctly."""
         # Arrange
         filename = "my document with spaces.pdf"
-        invalid_chars = ["/", "\\"]
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
 
         # Act - Check for invalid characters
         has_invalid = any(c in filename for c in invalid_chars)
@@ -924,7 +921,7 @@ class TestFilenameValidation:
             "مستند.txt",  # Arabic
             "ファイル.jpg",  # Japanese
         ]
-        invalid_chars = ["/", "\\"]
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
 
         # Act & Assert - Unicode should be allowed
         for filename in unicode_filenames:
@@ -1249,9 +1246,9 @@ class TestFileConstants:
     """
 
     def test_image_extensions_set_properties(self):
-        """Test that IMAGE_EXTENSIONS frozenset has expected properties."""
-        # Assert - Should be immutable
-        assert isinstance(IMAGE_EXTENSIONS, frozenset)
+        """Test that IMAGE_EXTENSIONS set has expected properties."""
+        # Assert - Should be a set
+        assert isinstance(IMAGE_EXTENSIONS, set)
         # Should not be empty
         assert len(IMAGE_EXTENSIONS) > 0
         # Should contain common image formats
@@ -1260,9 +1257,9 @@ class TestFileConstants:
             assert ext in IMAGE_EXTENSIONS or ext.upper() in IMAGE_EXTENSIONS
 
     def test_video_extensions_set_properties(self):
-        """Test that VIDEO_EXTENSIONS frozenset has expected properties."""
-        # Assert - Should be immutable
-        assert isinstance(VIDEO_EXTENSIONS, frozenset)
+        """Test that VIDEO_EXTENSIONS set has expected properties."""
+        # Assert - Should be a set
+        assert isinstance(VIDEO_EXTENSIONS, set)
         # Should not be empty
         assert len(VIDEO_EXTENSIONS) > 0
         # Should contain common video formats
@@ -1271,9 +1268,9 @@ class TestFileConstants:
             assert ext in VIDEO_EXTENSIONS or ext.upper() in VIDEO_EXTENSIONS
 
     def test_audio_extensions_set_properties(self):
-        """Test that AUDIO_EXTENSIONS frozenset has expected properties."""
-        # Assert - Should be immutable
-        assert isinstance(AUDIO_EXTENSIONS, frozenset)
+        """Test that AUDIO_EXTENSIONS set has expected properties."""
+        # Assert - Should be a set
+        assert isinstance(AUDIO_EXTENSIONS, set)
         # Should not be empty
         assert len(AUDIO_EXTENSIONS) > 0
         # Should contain common audio formats
@@ -1282,9 +1279,9 @@ class TestFileConstants:
             assert ext in AUDIO_EXTENSIONS or ext.upper() in AUDIO_EXTENSIONS
 
     def test_document_extensions_set_properties(self):
-        """Test that DOCUMENT_EXTENSIONS frozenset has expected properties."""
-        # Assert - Should be immutable
-        assert isinstance(DOCUMENT_EXTENSIONS, frozenset)
+        """Test that DOCUMENT_EXTENSIONS set has expected properties."""
+        # Assert - Should be a set
+        assert isinstance(DOCUMENT_EXTENSIONS, set)
         # Should not be empty
         assert len(DOCUMENT_EXTENSIONS) > 0
         # Should contain common document formats

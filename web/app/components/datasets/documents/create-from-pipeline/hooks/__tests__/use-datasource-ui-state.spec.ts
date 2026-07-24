@@ -102,9 +102,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDocument } } as unknown as Datasource,
           onlineDocumentsLength: 2,
         }),
       )
@@ -115,9 +113,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDocument } } as unknown as Datasource,
           onlineDocumentsLength: 0,
         }),
       )
@@ -135,9 +131,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDocument } } as unknown as Datasource,
           currentWorkspacePagesLength: 5,
         }),
       )
@@ -148,10 +142,10 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDrive },
-          } as unknown as Datasource,
-          onlineDriveFileList: [{ id: '1', name: 'file.txt', type: OnlineDriveFileType.file }],
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDrive } } as unknown as Datasource,
+          onlineDriveFileList: [
+            { id: '1', name: 'file.txt', type: OnlineDriveFileType.file },
+          ],
         }),
       )
       expect(result.current.showSelect).toBe(true)
@@ -161,10 +155,10 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDrive },
-          } as unknown as Datasource,
-          onlineDriveFileList: [{ id: '1', name: 'bucket-1', type: OnlineDriveFileType.bucket }],
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDrive } } as unknown as Datasource,
+          onlineDriveFileList: [
+            { id: '1', name: 'bucket-1', type: OnlineDriveFileType.bucket },
+          ],
         }),
       )
       expect(result.current.showSelect).toBe(false)
@@ -176,9 +170,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDocument } } as unknown as Datasource,
           currentWorkspacePagesLength: 10,
           onlineDocumentsLength: 3,
         }),
@@ -204,9 +196,7 @@ describe('useDatasourceUIState', () => {
       const { result } = renderHook(() =>
         useDatasourceUIState({
           ...defaultParams,
-          datasource: {
-            nodeData: { provider_type: DatasourceType.onlineDocument },
-          } as unknown as Datasource,
+          datasource: { nodeData: { provider_type: DatasourceType.onlineDocument } } as unknown as Datasource,
         }),
       )
       expect(result.current.tip).toContain('selectOnlineDocumentTip')

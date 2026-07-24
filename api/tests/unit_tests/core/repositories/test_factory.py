@@ -11,18 +11,13 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import (
-    DifyCoreRepositoryFactory,
-    RepositoryImportError,
-    WorkflowExecutionRepository,
-    WorkflowNodeExecutionRepository,
-)
+from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
-
-RESOURCE_TENANT_ID = "resource-tenant-id"
 
 
 class TestRepositoryFactory:
@@ -53,7 +48,7 @@ class TestRepositoryFactory:
             import_string("invalidpath")
         assert "doesn't look like a module path" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_execution_repository_success(self, mock_config):
         """Test successful WorkflowExecutionRepository creation."""
         # Setup mock configuration
@@ -74,7 +69,6 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -83,14 +77,13 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_execution_repository_import_error(self, mock_config):
         """Test WorkflowExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
@@ -102,14 +95,13 @@ class TestRepositoryFactory:
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             )
         assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_execution_repository_instantiation_error(self, mock_config):
         """Test WorkflowExecutionRepository creation with instantiation error."""
         # Setup mock configuration
@@ -127,14 +119,13 @@ class TestRepositoryFactory:
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=mock_session_factory,
-                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 )
             assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_node_execution_repository_success(self, mock_config):
         """Test successful WorkflowNodeExecutionRepository creation."""
         # Setup mock configuration
@@ -155,7 +146,6 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -164,14 +154,13 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_node_execution_repository_import_error(self, mock_config):
         """Test WorkflowNodeExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
@@ -183,14 +172,13 @@ class TestRepositoryFactory:
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
             )
         assert "Failed to create WorkflowNodeExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_node_execution_repository_instantiation_error(self, mock_config):
         """Test WorkflowNodeExecutionRepository creation with instantiation error."""
         # Setup mock configuration
@@ -208,7 +196,6 @@ class TestRepositoryFactory:
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                     session_factory=mock_session_factory,
-                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -221,7 +208,7 @@ class TestRepositoryFactory:
         error = RepositoryImportError(error_message)
         assert str(error) == error_message
 
-    @patch("core.repositories.factory.dify_config")
+    @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_with_engine_instead_of_sessionmaker(self, mock_config):
         """Test repository creation with Engine instead of sessionmaker."""
         # Setup mock configuration
@@ -242,7 +229,6 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_engine,  # Using Engine instead of sessionmaker
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -251,7 +237,6 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_engine,
-                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,

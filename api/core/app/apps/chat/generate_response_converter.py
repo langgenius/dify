@@ -1,7 +1,5 @@
 from collections.abc import Generator
-from typing import Any, cast, override
-
-from pydantic import JsonValue
+from typing import cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -14,10 +12,11 @@ from core.app.entities.task_entities import (
 )
 
 
-class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBlockingResponse]):
+class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
+    _blocking_response_type = ChatbotAppBlockingResponse
+
     @classmethod
-    @override
-    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):
+    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -38,8 +37,7 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
         return response
 
     @classmethod
-    @override
-    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):
+    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -56,10 +54,9 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
         return response
 
     @classmethod
-    @override
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -73,7 +70,7 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
                 yield "ping"
                 continue
 
-            response_chunk: dict[str, JsonValue] = {
+            response_chunk = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -88,10 +85,9 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
             yield response_chunk
 
     @classmethod
-    @override
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict[str, Any] | str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -105,23 +101,22 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
                 yield "ping"
                 continue
 
-            response_chunk: dict[str, JsonValue] = {
+            response_chunk = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
                 "created_at": chunk.created_at,
             }
 
-            match sub_stream_response:
-                case MessageEndStreamResponse():
-                    sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
-                    metadata = sub_stream_response_dict.get("metadata", {})
-                    sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
-                    response_chunk.update(sub_stream_response_dict)
-                case ErrorStreamResponse():
-                    data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(data)
-                case _:
-                    response_chunk.update(sub_stream_response.model_dump(mode="json"))
+            if isinstance(sub_stream_response, MessageEndStreamResponse):
+                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
+                metadata = sub_stream_response_dict.get("metadata", {})
+                sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
+                response_chunk.update(sub_stream_response_dict)
+            if isinstance(sub_stream_response, ErrorStreamResponse):
+                data = cls._error_to_stream_response(sub_stream_response.err)
+                response_chunk.update(data)
+            else:
+                response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
             yield response_chunk

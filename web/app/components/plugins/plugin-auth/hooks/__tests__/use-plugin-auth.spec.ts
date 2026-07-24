@@ -25,6 +25,12 @@ vi.mock('../use-credential', () => ({
   useInvalidPluginCredentialInfoHook: () => mockInvalidate,
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    isCurrentWorkspaceManager: true,
+  }),
+}))
+
 const basePayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
@@ -47,6 +53,12 @@ describe('usePluginAuth', () => {
 
     expect(result.current.canOAuth).toBe(true)
     expect(result.current.canApiKey).toBe(true)
+  })
+
+  it('should return disabled=false for workspace managers', () => {
+    const { result } = renderHook(() => usePluginAuth(basePayload, true))
+
+    expect(result.current.disabled).toBe(false)
   })
 
   it('should return notAllowCustomCredential=false when allowed', () => {

@@ -1,7 +1,7 @@
 from collections.abc import Mapping
-from typing import Union, override
+from typing import Union
 
-from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.entities.provider_entities import BasicProviderConfig, ProviderConfig
 from core.helper.provider_cache import ProviderCredentialsCache
 from core.helper.provider_encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -16,7 +16,6 @@ class TriggerProviderCredentialsCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str, credential_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id, credential_id=credential_id)
 
-    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
@@ -30,7 +29,6 @@ class TriggerProviderOAuthClientParamsCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id)
 
-    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
@@ -43,7 +41,6 @@ class TriggerProviderPropertiesCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str, subscription_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id, subscription_id=subscription_id)
 
-    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
@@ -142,7 +139,7 @@ def masked_credentials(
         if not config:
             masked_credentials[key] = value
             continue
-        if config.type == ProviderConfigType.SECRET_INPUT:
+        if config.type == BasicProviderConfig.Type.SECRET_INPUT:
             if len(value) <= 4:
                 masked_credentials[key] = "*" * len(value)
             else:

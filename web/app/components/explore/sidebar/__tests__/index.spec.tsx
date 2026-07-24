@@ -1,27 +1,32 @@
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { expectLoadingButton } from '@/test/button'
+import Toast from '@/app/components/base/toast'
+import { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
-
-const { mockToastSuccess } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
-}))
 
 const mockSegments = ['apps']
 const mockPush = vi.fn()
 const mockUninstall = vi.fn()
 const mockUpdatePinStatus = vi.fn()
 let mockIsPending = false
-let mockIsUninstallPending = false
 let mockInstalledApps: InstalledApp[] = []
+let mockMediaType: string = MediaType.pc
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/',
+vi.mock('next/navigation', () => ({
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
   }),
+}))
+
+vi.mock('@/hooks/use-breakpoints', () => ({
+  default: () => mockMediaType,
+  MediaType: {
+    mobile: 'mobile',
+    tablet: 'tablet',
+    pc: 'pc',
+  },
 }))
 
 vi.mock('@/service/use-explore', () => ({
@@ -31,23 +36,11 @@ vi.mock('@/service/use-explore', () => ({
   }),
   useUninstallApp: () => ({
     mutateAsync: mockUninstall,
-    isPending: mockIsUninstallPending,
   }),
   useUpdateAppPinStatus: () => ({
     mutateAsync: mockUpdatePinStatus,
   }),
 }))
-
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      success: mockToastSuccess,
-    },
-  }
-})
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'app-123',
@@ -74,8 +67,9 @@ describe('SideBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsPending = false
-    mockIsUninstallPending = false
     mockInstalledApps = []
+    mockMediaType = MediaType.pc
+    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   describe('Rendering', () => {
@@ -90,7 +84,6 @@ describe('SideBar', () => {
       renderSideBar()
 
       expect(screen.getByText('explore.sidebar.webApps')).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
       expect(screen.getByText('My App')).toBeInTheDocument()
     })
 
@@ -120,45 +113,13 @@ describe('SideBar', () => {
 
     it('should render divider between pinned and unpinned apps', () => {
       mockInstalledApps = [
-        createInstalledApp({
-          id: 'app-1',
-          is_pinned: true,
-          app: { ...createInstalledApp().app, name: 'Pinned' },
-        }),
-        createInstalledApp({
-          id: 'app-2',
-          is_pinned: false,
-          app: { ...createInstalledApp().app, name: 'Unpinned' },
-        }),
+        createInstalledApp({ id: 'app-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned' } }),
+        createInstalledApp({ id: 'app-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned' } }),
       ]
       const { container } = renderSideBar()
 
       const dividers = container.querySelectorAll('[class*="divider"], hr')
       expect(dividers.length).toBeGreaterThan(0)
-    })
-
-    it('should render a button for toggling the sidebar and update its accessible name', () => {
-      renderSideBar()
-
-      const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
-      fireEvent.click(toggleButton)
-
-      expect(
-        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render icon-only content when folded', () => {
-      mockInstalledApps = [createInstalledApp()]
-      renderSideBar()
-
-      fireEvent.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
-
-      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
-      ).toBeInTheDocument()
     })
   })
 
@@ -168,13 +129,16 @@ describe('SideBar', () => {
       mockUninstall.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
       fireEvent.click(await screen.findByText('common.operation.confirm'))
 
       await waitFor(() => {
         expect(mockUninstall).toHaveBeenCalledWith('app-123')
-        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.remove')
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+          message: 'common.api.remove',
+        }))
       })
     })
 
@@ -183,12 +147,15 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       await waitFor(() => {
         expect(mockUpdatePinStatus).toHaveBeenCalledWith({ appId: 'app-123', isPinned: true })
-        expect(mockToastSuccess).toHaveBeenCalledWith('common.api.success')
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+          message: 'common.api.success',
+        }))
       })
     })
 
@@ -197,7 +164,7 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
 
       await waitFor(() => {
@@ -209,7 +176,7 @@ describe('SideBar', () => {
       mockInstalledApps = [createInstalledApp()]
       renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(await screen.findByText('explore.sidebar.delete.title')).toBeInTheDocument()
@@ -220,17 +187,15 @@ describe('SideBar', () => {
         expect(mockUninstall).not.toHaveBeenCalled()
       })
     })
+  })
 
-    it('should disable dialog actions while uninstall is pending', async () => {
-      mockInstalledApps = [createInstalledApp()]
-      mockIsUninstallPending = true
+  describe('Edge Cases', () => {
+    it('should hide NoApps and app names on mobile', () => {
+      mockMediaType = MediaType.mobile
       renderSideBar()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
-      fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
-
-      expect(screen.getByText('common.operation.cancel')).toBeDisabled()
-      expectLoadingButton(screen.getByText('common.operation.confirm').closest('button'))
+      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
+      expect(screen.queryByText('explore.sidebar.webApps')).not.toBeInTheDocument()
     })
   })
 })

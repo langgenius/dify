@@ -9,7 +9,9 @@ type Params = {
   payload: PluginTriggerNodeType
 }
 
-const useGetDataForCheckMore = ({ payload }: Params) => {
+const useGetDataForCheckMore = ({
+  payload,
+}: Params) => {
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const language = useGetLanguage()
 

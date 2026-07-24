@@ -37,9 +37,7 @@ describe('to-form-schema utilities', () => {
 
   describe('triggerEventParametersToFormSchemas', () => {
     it('returns empty array for null/undefined parameters', () => {
-      expect(
-        triggerEventParametersToFormSchemas(null as unknown as TriggerEventParameter[]),
-      ).toEqual([])
+      expect(triggerEventParametersToFormSchemas(null as unknown as TriggerEventParameter[])).toEqual([])
       expect(triggerEventParametersToFormSchemas([])).toEqual([])
     })
 
@@ -56,9 +54,9 @@ describe('to-form-schema utilities', () => {
       ] as unknown as TriggerEventParameter[]
       const result = triggerEventParametersToFormSchemas(params)
       expect(result).toHaveLength(1)
-      expect(result[0]!.type).toBe('text-input')
-      expect(result[0]!._type).toBe('string')
-      expect(result[0]!.tooltip).toEqual({ en_US: 'Search query', zh_Hans: '搜索查询' })
+      expect(result[0].type).toBe('text-input')
+      expect(result[0]._type).toBe('string')
+      expect(result[0].tooltip).toEqual({ en_US: 'Search query', zh_Hans: '搜索查询' })
     })
 
     it('preserves all original fields via spread', () => {
@@ -73,9 +71,9 @@ describe('to-form-schema utilities', () => {
         },
       ] as unknown as TriggerEventParameter[]
       const result = triggerEventParametersToFormSchemas(params)
-      expect(result[0]!.name).toBe('count')
-      expect(result[0]!.label).toEqual({ en_US: 'Count', zh_Hans: '数量' })
-      expect(result[0]!.required).toBe(false)
+      expect(result[0].name).toBe('count')
+      expect(result[0].label).toEqual({ en_US: 'Count', zh_Hans: '数量' })
+      expect(result[0].required).toBe(false)
     })
   })
 
@@ -100,11 +98,11 @@ describe('to-form-schema utilities', () => {
       ]
       const result = toolParametersToFormSchemas(params)
       expect(result).toHaveLength(1)
-      expect(result[0]!.variable).toBe('input_text')
-      expect(result[0]!.type).toBe('text-input')
-      expect(result[0]!._type).toBe('string')
-      expect(result[0]!.show_on).toEqual([])
-      expect(result[0]!.tooltip).toEqual({ en_US: 'Enter text', zh_Hans: '输入文本' })
+      expect(result[0].variable).toBe('input_text')
+      expect(result[0].type).toBe('text-input')
+      expect(result[0]._type).toBe('string')
+      expect(result[0].show_on).toEqual([])
+      expect(result[0].tooltip).toEqual({ en_US: 'Enter text', zh_Hans: '输入文本' })
     })
 
     it('maps options with show_on = []', () => {
@@ -126,9 +124,9 @@ describe('to-form-schema utilities', () => {
         },
       ]
       const result = toolParametersToFormSchemas(params)
-      expect(result[0]!.options).toHaveLength(2)
-      expect(result[0]!.options![0]!.show_on).toEqual([])
-      expect(result[0]!.options![1]!.show_on).toEqual([])
+      expect(result[0].options).toHaveLength(2)
+      expect(result[0].options![0].show_on).toEqual([])
+      expect(result[0].options![1].show_on).toEqual([])
     })
 
     it('handles parameters without options', () => {
@@ -146,7 +144,7 @@ describe('to-form-schema utilities', () => {
         },
       ]
       const result = toolParametersToFormSchemas(params)
-      expect(result[0]!.options).toBeUndefined()
+      expect(result[0].options).toBeUndefined()
     })
   })
 
@@ -169,13 +167,10 @@ describe('to-form-schema utilities', () => {
       ]
       const result = toolCredentialToFormSchemas(creds)
       expect(result).toHaveLength(1)
-      expect(result[0]!.variable).toBe('api_key')
-      expect(result[0]!.type).toBe('secret-input')
-      expect(result[0]!.tooltip).toEqual({
-        en_US: 'Enter your API key',
-        zh_Hans: '输入你的 API 密钥',
-      })
-      expect(result[0]!.show_on).toEqual([])
+      expect(result[0].variable).toBe('api_key')
+      expect(result[0].type).toBe('secret-input')
+      expect(result[0].tooltip).toEqual({ en_US: 'Enter your API key', zh_Hans: '输入你的 API 密钥' })
+      expect(result[0].show_on).toEqual([])
     })
 
     it('handles null help field → tooltip becomes undefined', () => {
@@ -191,7 +186,7 @@ describe('to-form-schema utilities', () => {
         },
       ]
       const result = toolCredentialToFormSchemas(creds)
-      expect(result[0]!.tooltip).toBeUndefined()
+      expect(result[0].tooltip).toBeUndefined()
     })
 
     it('maps credential options with show_on = []', () => {
@@ -211,8 +206,8 @@ describe('to-form-schema utilities', () => {
         },
       ]
       const result = toolCredentialToFormSchemas(creds)
-      expect(result[0]!.options).toHaveLength(2)
-      result[0]!.options!.forEach((opt) => expect(opt.show_on).toEqual([]))
+      expect(result[0].options).toHaveLength(2)
+      result[0].options!.forEach(opt => expect(opt.show_on).toEqual([]))
     })
   })
 
@@ -266,7 +261,7 @@ describe('to-form-schema utilities', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]
       const result = generateFormValue({}, schemas)
       expect(result.name).toBeDefined()
-      const wrapper = result.name as { value: { type: string; value: unknown } }
+      const wrapper = result.name as { value: { type: string, value: unknown } }
       // correctInitialData sets type to 'mixed' for text-input but preserves default value
       expect(wrapper.value.type).toBe('mixed')
       expect(wrapper.value.value).toBe('hello')
@@ -287,14 +282,14 @@ describe('to-form-schema utilities', () => {
     it('handles boolean default conversion in non-reasoning mode', () => {
       const schemas = [{ variable: 'flag', type: 'boolean', default: 'true' }]
       const result = generateFormValue({}, schemas)
-      const wrapper = result.flag as { value: { type: string; value: unknown } }
+      const wrapper = result.flag as { value: { type: string, value: unknown } }
       expect(wrapper.value.value).toBe(true)
     })
 
     it('handles number-input default conversion', () => {
       const schemas = [{ variable: 'count', type: 'number-input', default: '42' }]
       const result = generateFormValue({}, schemas)
-      const wrapper = result.count as { value: { type: string; value: unknown } }
+      const wrapper = result.count as { value: { type: string, value: unknown } }
       expect(wrapper.value.value).toBe(42)
     })
   })
@@ -331,7 +326,7 @@ describe('to-form-schema utilities', () => {
     it('fills defaults with correctInitialData for missing values', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]
       const result = getConfiguredValue({}, schemas)
-      const val = result.name as { type: string; value: unknown }
+      const val = result.name as { type: string, value: unknown }
       expect(val.type).toBe('mixed')
     })
 
@@ -344,7 +339,7 @@ describe('to-form-schema utilities', () => {
     it('escapes newlines in string defaults', () => {
       const schemas = [{ variable: 'prompt', type: 'text-input', default: 'line1\nline2' }]
       const result = getConfiguredValue({}, schemas)
-      const val = result.prompt as { type: string; value: unknown }
+      const val = result.prompt as { type: string, value: unknown }
       expect(val.type).toBe('mixed')
       expect(val.value).toBe('line1\\nline2')
     })
@@ -352,14 +347,14 @@ describe('to-form-schema utilities', () => {
     it('handles boolean default conversion', () => {
       const schemas = [{ variable: 'flag', type: 'boolean', default: 'true' }]
       const result = getConfiguredValue({}, schemas)
-      const val = result.flag as { type: string; value: unknown }
+      const val = result.flag as { type: string, value: unknown }
       expect(val.value).toBe(true)
     })
 
     it('handles app-selector type', () => {
       const schemas = [{ variable: 'app', type: 'app-selector', default: 'app-id-123' }]
       const result = getConfiguredValue({}, schemas)
-      const val = result.app as { type: string; value: unknown }
+      const val = result.app as { type: string, value: unknown }
       expect(val.value).toBe('app-id-123')
     })
   })
@@ -369,8 +364,8 @@ describe('to-form-schema utilities', () => {
       const schemas = [{ variable: 'name', type: 'text-input', default: 'hello' }]
       const value = { name: { value: 'world' } }
       const result = generateAgentToolValue(value, schemas)
-      expect(result.name!.value).toBeDefined()
-      expect(result.name!.value!.type).toBe('mixed')
+      expect(result.name.value).toBeDefined()
+      expect(result.name.value!.type).toBe('mixed')
     })
 
     it('generates auto:1 for auto-mode parameters in reasoning mode', () => {
@@ -384,30 +379,30 @@ describe('to-form-schema utilities', () => {
       const schemas = [{ variable: 'name', type: 'text-input' }]
       const value = { name: { auto: 0 as const, value: { type: 'constant', value: 'manual' } } }
       const result = generateAgentToolValue(value, schemas, true)
-      expect(result.name!.auto).toBe(0)
-      expect(result.name!.value).toEqual({ type: 'constant', value: 'manual' })
+      expect(result.name.auto).toBe(0)
+      expect(result.name.value).toEqual({ type: 'constant', value: 'manual' })
     })
 
     it('handles undefined value in reasoning mode with fallback', () => {
       const schemas = [{ variable: 'name', type: 'select' }]
       const value = { name: { auto: 0 as const, value: undefined } }
       const result = generateAgentToolValue(value, schemas, true)
-      expect(result.name!.auto).toBe(0)
-      expect(result.name!.value).toEqual({ type: 'constant', value: null })
+      expect(result.name.auto).toBe(0)
+      expect(result.name.value).toEqual({ type: 'constant', value: null })
     })
 
     it('applies correctInitialData for text-input type', () => {
       const schemas = [{ variable: 'query', type: 'text-input' }]
       const value = { query: { value: 'search term' } }
       const result = generateAgentToolValue(value, schemas)
-      expect(result.query!.value!.type).toBe('mixed')
+      expect(result.query.value!.type).toBe('mixed')
     })
 
     it('applies correctInitialData for boolean type conversion', () => {
       const schemas = [{ variable: 'flag', type: 'boolean' }]
       const value = { flag: { value: 'true' } }
       const result = generateAgentToolValue(value, schemas)
-      expect(result.flag!.value!.value).toBe(true)
+      expect(result.flag.value!.value).toBe(true)
     })
   })
 })

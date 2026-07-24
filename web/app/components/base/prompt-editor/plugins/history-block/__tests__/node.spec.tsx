@@ -1,11 +1,19 @@
 import type { SerializedNode as SerializedHistoryBlockNode } from '../node'
 import { act } from '@testing-library/react'
 import { $getNodeByKey, $getRoot } from 'lexical'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../../test-helpers'
 import HistoryBlockComponent from '../component'
-import { $createHistoryBlockNode, $isHistoryBlockNode, HistoryBlockNode } from '../node'
+import {
+  $createHistoryBlockNode,
+  $isHistoryBlockNode,
+  HistoryBlockNode,
 
-const createRoleName = (overrides?: { user?: string; assistant?: string }) => ({
+} from '../node'
+
+const createRoleName = (overrides?: { user?: string, assistant?: string }) => ({
   user: 'user-role',
   assistant: 'assistant-role',
   ...overrides,

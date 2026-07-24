@@ -1,6 +1,6 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
+import { cn } from '@/utils/classnames'
 
 type BreadcrumbItemProps = {
   name: string
@@ -20,7 +20,8 @@ const BreadcrumbItem = ({
   showSeparator = true,
 }: BreadcrumbItemProps) => {
   const handleClickItem = useCallback(() => {
-    if (!disabled) handleClick(index)
+    if (!disabled)
+      handleClick(index)
   }, [disabled, handleClick, index])
 
   return (
@@ -29,9 +30,7 @@ const BreadcrumbItem = ({
         type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive
-            ? 'system-sm-medium text-text-secondary'
-            : 'system-sm-regular text-text-tertiary',
+          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}
@@ -40,7 +39,7 @@ const BreadcrumbItem = ({
       >
         {name}
       </button>
-      {showSeparator && <span className="shrink-0 system-xs-regular text-divider-deep">/</span>}
+      {showSeparator && <span className="system-xs-regular shrink-0 text-divider-deep">/</span>}
     </>
   )
 }

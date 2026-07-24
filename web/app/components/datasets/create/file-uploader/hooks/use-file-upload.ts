@@ -1,10 +1,11 @@
 'use client'
 import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { IS_CE_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -19,7 +20,7 @@ export type FileUploadConfig = {
   file_upload_limit: number
 }
 
-type UseFileUploadOptions = {
+export type UseFileUploadOptions = {
   fileList: FileItem[]
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
@@ -33,7 +34,7 @@ type UseFileUploadOptions = {
   allowedExtensions?: string[]
 }
 
-type UseFileUploadReturn = {
+export type UseFileUploadReturn = {
   // Refs
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>
@@ -69,6 +70,7 @@ export const useFileUpload = ({
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const locale = useLocale()
 
   const [dragging, setDragging] = useState(false)
@@ -97,177 +99,144 @@ export const useFileUpload = ({
     }
 
     return [...supportTypes]
-      .map((item) => extensionMap[item] || item)
-      .map((item) => item.toLowerCase())
+      .map(item => extensionMap[item] || item)
+      .map(item => item.toLowerCase())
       .filter((item, index, self) => self.indexOf(item) === index)
-      .map((item) => item.toUpperCase())
+      .map(item => item.toUpperCase())
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   }, [supportTypes, locale])
 
   const acceptTypes = useMemo(() => supportTypes.map((ext: string) => `.${ext}`), [supportTypes])
 
-  const fileUploadConfig = useMemo(
-    () => ({
-      file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
-      batch_count_limit: supportBatchUpload
-        ? (fileUploadConfigResponse?.batch_count_limit ?? 5)
-        : 1,
-      file_upload_limit: supportBatchUpload
-        ? (fileUploadConfigResponse?.file_upload_limit ?? 5)
-        : 1,
-    }),
-    [fileUploadConfigResponse, supportBatchUpload],
-  )
+  const fileUploadConfig = useMemo(() => ({
+    file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+    batch_count_limit: supportBatchUpload ? (fileUploadConfigResponse?.batch_count_limit ?? 5) : 1,
+    file_upload_limit: supportBatchUpload ? (fileUploadConfigResponse?.file_upload_limit ?? 5) : 1,
+  }), [fileUploadConfigResponse, supportBatchUpload])
 
-  const isValid = useCallback(
-    (file: File) => {
-      const { size } = file
-      const ext = `.${getFileExtension(file.name)}`
-      const isValidType = acceptTypes.includes(ext.toLowerCase())
-      if (!isValidType)
-        toast.error(t(($) => $['stepOne.uploader.validation.typeError'], { ns: 'datasetCreation' }))
+  const isValid = useCallback((file: File) => {
+    const { size } = file
+    const ext = `.${getFileExtension(file.name)}`
+    const isValidType = acceptTypes.includes(ext.toLowerCase())
+    if (!isValidType)
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
-      const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
-      if (!isValidSize)
-        toast.error(
-          t(($) => $['stepOne.uploader.validation.size'], {
-            ns: 'datasetCreation',
-            size: fileUploadConfig.file_size_limit,
-          }),
-        )
+    const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
+    if (!isValidSize)
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
-      return isValidType && isValidSize
-    },
-    [fileUploadConfig, t, acceptTypes],
-  )
+    return isValidType && isValidSize
+  }, [fileUploadConfig, notify, t, acceptTypes])
 
-  const fileUpload = useCallback(
-    async (fileItem: FileItem): Promise<FileItem> => {
-      const formData = new FormData()
-      formData.append('file', fileItem.file)
-      const onProgress = (e: ProgressEvent) => {
-        if (e.lengthComputable) {
-          const percent = Math.floor((e.loaded / e.total) * 100)
-          onFileUpdate(fileItem, percent, fileListRef.current)
+  const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
+    const formData = new FormData()
+    formData.append('file', fileItem.file)
+    const onProgress = (e: ProgressEvent) => {
+      if (e.lengthComputable) {
+        const percent = Math.floor(e.loaded / e.total * 100)
+        onFileUpdate(fileItem, percent, fileListRef.current)
+      }
+    }
+
+    return upload({
+      xhr: new XMLHttpRequest(),
+      data: formData,
+      onprogress: onProgress,
+    }, false, undefined, '?source=datasets')
+      .then((res) => {
+        const completeFile = {
+          fileID: fileItem.fileID,
+          file: res as unknown as File,
+          progress: PROGRESS_NOT_STARTED,
         }
-      }
+        const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
+        fileListRef.current[index] = completeFile
+        onFileUpdate(completeFile, PROGRESS_COMPLETE, fileListRef.current)
+        return Promise.resolve({ ...completeFile })
+      })
+      .catch((e) => {
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
+        notify({ type: 'error', message: errorMessage })
+        onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
+        return Promise.resolve({ ...fileItem })
+      })
+      .finally()
+  }, [notify, onFileUpdate, t])
 
-      return upload(
-        {
-          xhr: new XMLHttpRequest(),
-          data: formData,
-          onprogress: onProgress,
-        },
-        false,
-        undefined,
-        '?source=datasets',
-      )
-        .then((res) => {
-          const completeFile = {
-            fileID: fileItem.fileID,
-            file: res as unknown as File,
-            progress: PROGRESS_NOT_STARTED,
-          }
-          const index = fileListRef.current.findIndex((item) => item.fileID === fileItem.fileID)
-          fileListRef.current[index] = completeFile
-          onFileUpdate(completeFile, PROGRESS_COMPLETE, fileListRef.current)
-          return Promise.resolve({ ...completeFile })
-        })
-        .catch((e) => {
-          const errorMessage = getFileUploadErrorMessage(
-            e,
-            t(($) => $['stepOne.uploader.failed'], { ns: 'datasetCreation' }),
-            t,
-          )
-          toast.error(errorMessage)
-          onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
-          return Promise.resolve({ ...fileItem })
-        })
-        .finally()
-    },
-    [onFileUpdate, t],
-  )
+  const uploadBatchFiles = useCallback((bFiles: FileItem[]) => {
+    bFiles.forEach(bf => (bf.progress = 0))
+    return Promise.all(bFiles.map(fileUpload))
+  }, [fileUpload])
 
-  const uploadBatchFiles = useCallback(
-    (bFiles: FileItem[]) => {
-      bFiles.forEach((bf) => (bf.progress = 0))
-      return Promise.all(bFiles.map(fileUpload))
-    },
-    [fileUpload],
-  )
+  const uploadMultipleFiles = useCallback(async (files: FileItem[]) => {
+    const batchCountLimit = fileUploadConfig.batch_count_limit
+    const length = files.length
+    let start = 0
+    let end = 0
 
-  const uploadMultipleFiles = useCallback(
-    async (files: FileItem[]) => {
-      const batchCountLimit = fileUploadConfig.batch_count_limit
-      const length = files.length
-      let start = 0
-      let end = 0
+    while (start < length) {
+      if (start + batchCountLimit > length)
+        end = length
+      else
+        end = start + batchCountLimit
+      const bFiles = files.slice(start, end)
+      await uploadBatchFiles(bFiles)
+      start = end
+    }
+  }, [fileUploadConfig, uploadBatchFiles])
 
-      while (start < length) {
-        if (start + batchCountLimit > length) end = length
-        else end = start + batchCountLimit
-        const bFiles = files.slice(start, end)
-        await uploadBatchFiles(bFiles)
-        start = end
-      }
-    },
-    [fileUploadConfig, uploadBatchFiles],
-  )
+  const initialUpload = useCallback((files: File[]) => {
+    const filesCountLimit = fileUploadConfig.file_upload_limit
+    if (!files.length)
+      return false
 
-  const initialUpload = useCallback(
-    (files: File[]) => {
-      const filesCountLimit = fileUploadConfig.file_upload_limit
-      if (!files.length) return false
+    if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
+      notify({ type: 'error', message: t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }) })
+      return false
+    }
 
-      if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
-        toast.error(
-          t(($) => $['stepOne.uploader.validation.filesNumber'], {
-            ns: 'datasetCreation',
-            filesNumber: filesCountLimit,
-          }),
-        )
-        return false
-      }
-
-      const preparedFiles = files.map((file, index) => ({
-        fileID: `file${index}-${Date.now()}`,
-        file,
-        progress: PROGRESS_NOT_STARTED,
-      }))
-      const newFiles = [...fileListRef.current, ...preparedFiles]
-      prepareFileList(newFiles)
-      fileListRef.current = newFiles
-      uploadMultipleFiles(preparedFiles)
-    },
-    [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig],
-  )
+    const preparedFiles = files.map((file, index) => ({
+      fileID: `file${index}-${Date.now()}`,
+      file,
+      progress: PROGRESS_NOT_STARTED,
+    }))
+    const newFiles = [...fileListRef.current, ...preparedFiles]
+    prepareFileList(newFiles)
+    fileListRef.current = newFiles
+    uploadMultipleFiles(preparedFiles)
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList, fileUploadConfig])
 
   const traverseFileEntry = useCallback(
     (entry: FileSystemEntry, prefix = ''): Promise<FileWithPath[]> => {
       return new Promise((resolve) => {
         if (entry.isFile) {
-          ;(entry as FileSystemFileEntry).file((file: FileWithPath) => {
+          (entry as FileSystemFileEntry).file((file: FileWithPath) => {
             file.relativePath = `${prefix}${file.name}`
             resolve([file])
           })
-        } else if (entry.isDirectory) {
+        }
+        else if (entry.isDirectory) {
           const reader = (entry as FileSystemDirectoryEntry).createReader()
           const entries: FileSystemEntry[] = []
           const read = () => {
             reader.readEntries(async (results: FileSystemEntry[]) => {
               if (!results.length) {
                 const files = await Promise.all(
-                  entries.map((ent) => traverseFileEntry(ent, `${prefix}${entry.name}/`)),
+                  entries.map(ent =>
+                    traverseFileEntry(ent, `${prefix}${entry.name}/`),
+                  ),
                 )
                 resolve(files.flat())
-              } else {
+              }
+              else {
                 entries.push(...results)
                 read()
               }
             })
           }
           read()
-        } else {
+        }
+        else {
           resolve([])
         }
       })
@@ -278,7 +247,8 @@ export const useFileUpload = ({
   const handleDragEnter = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target !== dragRef.current) setDragging(true)
+    if (e.target !== dragRef.current)
+      setDragging(true)
   }, [])
 
   const handleDragOver = useCallback((e: DragEvent) => {
@@ -289,7 +259,8 @@ export const useFileUpload = ({
   const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.target === dragRef.current) setDragging(false)
+    if (e.target === dragRef.current)
+      setDragging(false)
   }, [])
 
   const handleDrop = useCallback(
@@ -297,19 +268,20 @@ export const useFileUpload = ({
       e.preventDefault()
       e.stopPropagation()
       setDragging(false)
-      if (!e.dataTransfer) return
+      if (!e.dataTransfer)
+        return
       const nested = await Promise.all(
         Array.from(e.dataTransfer.items).map((it) => {
-          const entry = (
-            it as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }
-          ).webkitGetAsEntry?.()
-          if (entry) return traverseFileEntry(entry)
+          const entry = (it as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.()
+          if (entry)
+            return traverseFileEntry(entry)
           const f = it.getAsFile?.()
           return f ? Promise.resolve([f as FileWithPath]) : Promise.resolve([])
         }),
       )
       let files = nested.flat()
-      if (!supportBatchUpload) files = files.slice(0, 1)
+      if (!supportBatchUpload)
+        files = files.slice(0, 1)
       files = files.slice(0, fileUploadConfig.batch_count_limit)
       const valid = files.filter(isValid)
       initialUpload(valid)
@@ -318,34 +290,28 @@ export const useFileUpload = ({
   )
 
   const selectHandle = useCallback(() => {
-    if (fileUploaderRef.current) fileUploaderRef.current.click()
+    if (fileUploaderRef.current)
+      fileUploaderRef.current.click()
   }, [])
 
-  const removeFile = useCallback(
-    (fileID: string) => {
-      if (fileUploaderRef.current) fileUploaderRef.current.value = ''
+  const removeFile = useCallback((fileID: string) => {
+    if (fileUploaderRef.current)
+      fileUploaderRef.current.value = ''
 
-      fileListRef.current = fileListRef.current.filter((item) => item.fileID !== fileID)
-      onFileListUpdate?.([...fileListRef.current])
-    },
-    [onFileListUpdate],
-  )
+    fileListRef.current = fileListRef.current.filter(item => item.fileID !== fileID)
+    onFileListUpdate?.([...fileListRef.current])
+  }, [onFileListUpdate])
 
-  const fileChangeHandle = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      let files = Array.from(e.target.files ?? []) as File[]
-      files = files.slice(0, fileUploadConfig.batch_count_limit)
-      initialUpload(files.filter(isValid))
-    },
-    [isValid, initialUpload, fileUploadConfig],
-  )
+  const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    let files = Array.from(e.target.files ?? []) as File[]
+    files = files.slice(0, fileUploadConfig.batch_count_limit)
+    initialUpload(files.filter(isValid))
+  }, [isValid, initialUpload, fileUploadConfig])
 
-  const handlePreview = useCallback(
-    (file: File) => {
-      if (file?.id) onPreview(file)
-    },
-    [onPreview],
-  )
+  const handlePreview = useCallback((file: File) => {
+    if (file?.id)
+      onPreview(file)
+  }, [onPreview])
 
   useEffect(() => {
     const dropArea = dropRef.current

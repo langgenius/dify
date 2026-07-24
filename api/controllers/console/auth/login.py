@@ -1,23 +1,13 @@
-import logging
+from typing import Any
 
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
+from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
-from controllers.common.fields import (
-    SimpleResultDataResponse,
-    SimpleResultMessageResponse,
-    SimpleResultOptionalDataResponse,
-    SimpleResultResponse,
-)
-from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -32,7 +22,6 @@ from controllers.console.error import (
     AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
-    SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import (
@@ -40,11 +29,10 @@ from controllers.console.wraps import (
     decrypt_password_field,
     email_password_login_enabled,
     setup_required,
-    with_current_user,
 )
-from extensions.ext_database import db
+from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
-from libs.helper import timezone as validate_timezone_string
+from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
@@ -54,23 +42,18 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from models.account import Account
-from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
-from services.errors.account import (
-    AccountRegisterError,
-    RefreshTokenAccountNotFoundError,
-    RefreshTokenNotFoundError,
-    SeatsLimitExceededError,
-)
+from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
-logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-class LoginPayload(LoginPayloadBase):
+class LoginPayload(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+    password: str = Field(..., description="Password")
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
@@ -85,24 +68,15 @@ class EmailCodeLoginPayload(BaseModel):
     code: str = Field(...)
     token: str = Field(...)
     language: str | None = Field(default=None)
-    timezone: str | None = Field(default=None)
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
-register_response_schema_models(
-    console_ns,
-    SimpleResultDataResponse,
-    SimpleResultMessageResponse,
-    SimpleResultOptionalDataResponse,
-    SimpleResultResponse,
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(LoginPayload)
+reg(EmailPayload)
+reg(EmailCodeLoginPayload)
 
 
 @console_ns.route("/login")
@@ -112,7 +86,6 @@ class LoginApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
     @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
@@ -121,20 +94,16 @@ class LoginApi(Resource):
         normalized_email = request_email.lower()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.LOGIN_RATE_LIMITED)
             raise EmailPasswordLoginLimitError()
 
         invite_token = args.invite_token
-        invitation_data: InvitationDetailDict | None = None
+        invitation_data: dict[str, Any] | None = None
         if invite_token:
-            invitation_data = RegisterService.get_invitation_with_case_fallback(
-                None, request_email, invite_token, session=db.session()
-            )
+            invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
             if invitation_data is None:
                 invite_token = None
 
@@ -144,42 +113,33 @@ class LoginApi(Resource):
                 invitee_email = data.get("email") if data else None
                 invitee_email_normalized = invitee_email.lower() if isinstance(invitee_email, str) else invitee_email
                 if invitee_email_normalized != normalized_email:
-                    _log_console_login_failure(
-                        email=normalized_email,
-                        reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
-                    )
                     raise InvalidEmailError()
             account = _authenticate_account_with_case_fallback(
                 request_email, normalized_email, args.password, invite_token
             )
         except services.errors.account.AccountLoginError:
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError as exc:
             AccountService.add_login_error_rate_limit(normalized_email)
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
         # SELF_HOSTED only have one workspace
-        tenants = TenantService.get_join_tenants(account, session=db.session())
+        tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
             system_features = FeatureService.get_system_features()
 
             if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
                 raise WorkspacesLimitExceeded()
             else:
-                return SimpleResultOptionalDataResponse(
-                    result="fail",
-                    data="workspace not found, please contact system admin to invite you to join in a workspace",
-                ).model_dump(mode="json")
+                return {
+                    "result": "fail",
+                    "data": "workspace not found, please contact system admin to invite you to join in a workspace",
+                }
 
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         # Create response with cookies instead of returning tokens in body
-        # response-contract:ignore cookie-bearing Flask response
-        response = make_response(
-            SimpleResultOptionalDataResponse(result="success").model_dump(mode="json", exclude_none=True)
-        )
+        response = make_response({"result": "success"})
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
@@ -191,14 +151,15 @@ class LoginApi(Resource):
 @console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @with_current_user
-    def post(self, account: Account):
-        # response-contract:ignore cookie-bearing Flask response
-        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
-        if not isinstance(account, flask_login.AnonymousUserMixin):
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        account = current_user
+        if isinstance(account, flask_login.AnonymousUserMixin):
+            response = make_response({"result": "success"})
+        else:
             AccountService.logout(account=account)
             flask_login.logout_user()
+            response = make_response({"result": "success"})
 
         # Clear cookies on logout
         clear_access_token_from_cookie(response)
@@ -213,7 +174,6 @@ class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -234,14 +194,13 @@ class ResetPasswordSendEmailApi(Resource):
             is_allow_register=FeatureService.get_system_features().is_allow_register,
         )
 
-        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
+        return {"result": "success", "data": token}
 
 
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -267,14 +226,13 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             token = AccountService.send_email_code_login_email(account=account, language=language)
 
-        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
+        return {"result": "success", "data": token}
 
 
 @console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
@@ -285,30 +243,23 @@ class EmailCodeLoginApi(Resource):
 
         token_data = AccountService.get_email_code_login_data(args.token)
         if token_data is None:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
             raise InvalidTokenError()
 
         token_email = token_data.get("email")
         normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
         if normalized_token_email != user_email:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
         if token_data["code"] != args.code:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
         AccountService.revoke_email_code_login_token(args.token)
         try:
             account = _get_account_with_case_fallback(original_email)
-        except Unauthorized as exc:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
-            raise AccountBannedError() from exc
         except AccountRegisterError:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
         if account:
-            tenants = TenantService.get_join_tenants(account, session=db.session())
+            tenants = TenantService.get_join_tenants(account)
             if not tenants:
                 workspaces = FeatureService.get_system_features().license.workspaces
                 if not workspaces.is_available():
@@ -316,7 +267,10 @@ class EmailCodeLoginApi(Resource):
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
-                    TenantService.create_owner_tenant(account, session=db.session())
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    account.current_tenant = new_tenant
+                    tenant_was_created.send(new_tenant)
 
         if account is None:
             try:
@@ -324,24 +278,18 @@ class EmailCodeLoginApi(Resource):
                     email=user_email,
                     name=user_email,
                     interface_language=get_valid_language(language),
-                    timezone=args.timezone,
-                    session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
-            except SeatsLimitExceededError:
-                raise SeatsLimitExceeded()
             except AccountRegisterError:
-                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
-        # response-contract:ignore cookie-bearing Flask response
-        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
+        response = make_response({"result": "success"})
 
         set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
         # Set HTTP-only secure cookies for tokens
@@ -352,61 +300,42 @@ class EmailCodeLoginApi(Resource):
 
 @console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
-    @with_session(write=False)
-    def post(self, session: Session):
+    def post(self):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)
 
         if not refresh_token:
-            return SimpleResultMessageResponse(result="fail", message="No refresh token provided").model_dump(
-                mode="json"
-            ), 401
+            return {"result": "fail", "message": "No refresh token provided"}, 401
 
         try:
-            new_token_pair = AccountService.refresh_token(refresh_token, session=session)
-        except Unauthorized as exc:
-            return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
-                mode="json"
-            ), 401
-        except (RefreshTokenNotFoundError, RefreshTokenAccountNotFoundError) as exc:
-            return SimpleResultMessageResponse(result="fail", message=str(exc)).model_dump(mode="json"), 401
+            new_token_pair = AccountService.refresh_token(refresh_token)
 
-        # Create response with new cookies
-        # response-contract:ignore cookie-bearing Flask response
-        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
+            # Create response with new cookies
+            response = make_response({"result": "success"})
 
-        # Update cookies with new tokens
-        set_csrf_token_to_cookie(request, response, new_token_pair.csrf_token)
-        set_access_token_to_cookie(request, response, new_token_pair.access_token)
-        set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
-        return response
+            # Update cookies with new tokens
+            set_csrf_token_to_cookie(request, response, new_token_pair.csrf_token)
+            set_access_token_to_cookie(request, response, new_token_pair.access_token)
+            set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
+            return response
+        except Exception as e:
+            return {"result": "fail", "message": str(e)}, 401
 
 
 def _get_account_with_case_fallback(email: str):
-    account = AccountService.get_user_through_email(email, session=db.session())
+    account = AccountService.get_user_through_email(email)
     if account or email == email.lower():
         return account
 
-    return AccountService.get_user_through_email(email.lower(), session=db.session())
+    return AccountService.get_user_through_email(email.lower())
 
 
 def _authenticate_account_with_case_fallback(
     original_email: str, normalized_email: str, password: str, invite_token: str | None
 ):
     try:
-        return AccountService.authenticate(original_email, password, invite_token, session=db.session())
+        return AccountService.authenticate(original_email, password, invite_token)
     except services.errors.account.AccountPasswordError:
         if original_email == normalized_email:
             raise
-        return AccountService.authenticate(normalized_email, password, invite_token, session=db.session())
-
-
-def _log_console_login_failure(*, email: str, reason: LoginFailureReason) -> None:
-    logger.warning(
-        "Console login failed: email=%s reason=%s ip_address=%s",
-        email,
-        reason,
-        extract_remote_ip(request),
-    )
+        return AccountService.authenticate(normalized_email, password, invite_token)

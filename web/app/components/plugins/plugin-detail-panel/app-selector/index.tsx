@@ -1,174 +1,212 @@
 'use client'
-
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
+import type { FC } from 'react'
 import type { App } from '@/types/app'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
-import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
-import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination, useAppDetail } from '@/service/use-apps'
+import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
+import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
+import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
-export type AppSelectorValue = {
-  app_id: string
-  inputs: Record<string, unknown>
-  files?: unknown[]
-}
-
-type AppSelectorProps = {
-  value?: AppSelectorValue
+type Props = {
+  value?: {
+    app_id: string
+    inputs: Record<string, unknown>
+    files?: unknown[]
+  }
   scope?: string
   disabled?: boolean
   placement?: Placement
-  offset?: number
-  onSelect: (app: AppSelectorValue) => void
+  offset?: OffsetOptions
+  onSelect: (app: {
+    app_id: string
+    inputs: Record<string, unknown>
+    files?: unknown[]
+  }) => void
+  supportAddCustomTool?: boolean
 }
 
-export function AppSelector({
+const AppSelector: FC<Props> = ({
   value,
+  scope,
   disabled,
   placement = 'bottom',
   offset = 4,
   onSelect,
-}: AppSelectorProps) {
+}) => {
   const { t } = useTranslation()
-  const [isShow, setIsShow] = useState(false)
-  const [isShowChooseApp, setIsShowChooseApp] = useState(false)
+  const [isShow, onShowChange] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
-  const appListQuery = useMemo(
-    () => ({
-      page: 1,
-      limit: PAGE_SIZE,
-      name: searchText,
-    }),
-    [searchText],
-  )
-
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery({
-    ...consoleQuery.apps.get.infiniteOptions({
-      input: (pageParam) => ({
-        query: {
-          ...appListQuery,
-          page: Number(pageParam),
-        },
-      }),
-      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteAppList({
+    page: 1,
+    limit: PAGE_SIZE,
+    name: searchText,
   })
 
   const displayedApps = useMemo(() => {
-    return data?.pages.flatMap(({ data: apps }) => apps) ?? []
+    const pages = data?.pages ?? []
+    if (!pages.length)
+      return []
+    return pages.flatMap(({ data: apps }) => apps)
   }, [data?.pages])
 
+  // fetch selected app by id to avoid pagination gaps
   const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
 
+  // Ensure the currently selected app is available for display and in the picker options
   const currentAppInfo = useMemo(() => {
-    if (!value?.app_id) return undefined
+    if (!value?.app_id)
+      return undefined
+    return selectedAppDetail || displayedApps.find(app => app.id === value.app_id)
+  }, [value?.app_id, selectedAppDetail, displayedApps])
 
-    return selectedAppDetail || displayedApps.find((app) => app.id === value.app_id)
-  }, [displayedApps, selectedAppDetail, value?.app_id])
+  const appsForPicker = useMemo(() => {
+    if (!currentAppInfo)
+      return displayedApps
+
+    const appIndex = displayedApps.findIndex(a => a.id === currentAppInfo.id)
+
+    if (appIndex === -1)
+      return [currentAppInfo, ...displayedApps]
+
+    const updatedApps = [...displayedApps]
+    updatedApps[appIndex] = currentAppInfo
+    return updatedApps
+  }, [currentAppInfo, displayedApps])
 
   const hasMore = hasNextPage ?? true
 
-  const handleSelectApp = useCallback(
-    (app: App) => {
-      const shouldClearValue = app.id !== value?.app_id
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || isFetchingNextPage || !hasMore)
+      return
 
-      onSelect({
-        app_id: app.id,
-        inputs: shouldClearValue ? {} : value?.inputs || {},
-        files: shouldClearValue ? [] : value?.files || [],
-      })
-    },
-    [onSelect, value?.app_id, value?.files, value?.inputs],
-  )
+    setIsLoadingMore(true)
+    try {
+      await fetchNextPage()
+    }
+    finally {
+      // Add a small delay to ensure state updates are complete
+      setTimeout(() => {
+        setIsLoadingMore(false)
+      }, 300)
+    }
+  }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
 
-  const handleFormChange = useCallback(
-    (inputs: Record<string, unknown>) => {
-      const newFiles = inputs['#image#']
-      const nextInputs = { ...inputs }
-      delete nextInputs['#image#']
+  const handleTriggerClick = () => {
+    if (disabled)
+      return
+    onShowChange(true)
+  }
 
-      onSelect({
-        app_id: value?.app_id || '',
-        inputs: nextInputs,
-        files: newFiles ? [newFiles] : value?.files || [],
-      })
-    },
-    [onSelect, value?.app_id, value?.files],
-  )
+  const [isShowChooseApp, setIsShowChooseApp] = useState(false)
+  const handleSelectApp = (app: App) => {
+    const clearValue = app.id !== value?.app_id
+    const appValue = {
+      app_id: app.id,
+      inputs: clearValue ? {} : value?.inputs || {},
+      files: clearValue ? [] : value?.files || [],
+    }
+    onSelect(appValue)
+    setIsShowChooseApp(false)
+  }
 
-  const formattedValue = useMemo(
-    () => ({
+  const handleFormChange = (inputs: Record<string, unknown>) => {
+    const newFiles = inputs['#image#']
+    delete inputs['#image#']
+    const newValue = {
+      app_id: value?.app_id || '',
+      inputs,
+      files: newFiles ? [newFiles] : value?.files || [],
+    }
+    onSelect(newValue)
+  }
+
+  const formattedValue = useMemo(() => {
+    return {
       app_id: value?.app_id || '',
       inputs: {
         ...value?.inputs,
         ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
       },
-    }),
-    [value],
-  )
+    }
+  }, [value])
 
   return (
-    <Popover open={isShow} onOpenChange={setIsShow}>
-      <PopoverTrigger
-        aria-label={t(($) => $['appSelector.label'], { ns: 'app' })}
-        disabled={disabled}
-        render={
-          <button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />
-        }
-      >
-        <AppTrigger open={isShow} appDetail={currentAppInfo} />
-      </PopoverTrigger>
-      <PopoverContent
+    <>
+      <PortalToFollowElem
         placement={placement}
-        sideOffset={offset}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        offset={offset}
+        open={isShow}
+        onOpenChange={onShowChange}
       >
-        <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-          <div className="flex flex-col gap-1 px-4 py-3">
-            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-              {t(($) => $['appSelector.label'], { ns: 'app' })}
+        <PortalToFollowElemTrigger
+          className="w-full"
+          onClick={handleTriggerClick}
+        >
+          <AppTrigger
+            open={isShow}
+            appDetail={currentAppInfo}
+          />
+        </PortalToFollowElemTrigger>
+        <PortalToFollowElemContent className="z-[1000]">
+          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+            <div className="flex flex-col gap-1 px-4 py-3">
+              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
+              <AppPicker
+                placement="bottom"
+                offset={offset}
+                trigger={(
+                  <AppTrigger
+                    open={isShowChooseApp}
+                    appDetail={currentAppInfo}
+                  />
+                )}
+                isShow={isShowChooseApp}
+                onShowChange={setIsShowChooseApp}
+                disabled={false}
+                onSelect={handleSelectApp}
+                scope={scope || 'all'}
+                apps={appsForPicker}
+                isLoading={isLoading || isLoadingMore || isFetchingNextPage}
+                hasMore={hasMore}
+                onLoadMore={handleLoadMore}
+                searchText={searchText}
+                onSearchChange={setSearchText}
+              />
             </div>
-            <AppPicker
-              placement="bottom"
-              offset={offset}
-              trigger={<AppTrigger open={isShowChooseApp} appDetail={currentAppInfo} />}
-              isShow={isShowChooseApp}
-              onShowChange={setIsShowChooseApp}
-              disabled={false}
-              onSelect={handleSelectApp}
-              apps={displayedApps}
-              isLoading={isLoading || isFetchingNextPage}
-              hasMore={hasMore}
-              onLoadMore={() => {
-                void fetchNextPage()
-              }}
-              searchText={searchText}
-              onSearchChange={setSearchText}
-            />
+            {/* app inputs config panel */}
+            {currentAppInfo && (
+              <AppInputsPanel
+                value={formattedValue}
+                appDetail={currentAppInfo}
+                onFormChange={handleFormChange}
+              />
+            )}
           </div>
-          {currentAppInfo && (
-            <AppInputsPanel
-              value={formattedValue}
-              appDetail={currentAppInfo}
-              onFormChange={handleFormChange}
-            />
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PortalToFollowElemContent>
+      </PortalToFollowElem>
+    </>
   )
 }
+
+export default React.memo(AppSelector)

@@ -7,23 +7,22 @@ with appropriate retry policies and error handling.
 
 import logging
 from datetime import UTC, datetime
-from typing import Any, NotRequired
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
+from dify_graph.runtime import GraphRuntimeState
 from extensions.ext_database import db
-from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -41,13 +40,6 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
 logger = logging.getLogger(__name__)
-
-
-class WorkflowGeneratorArgsDict(TypedDict):
-    inputs: dict[str, Any]
-    files: list[Any]
-    _skip_prepare_user_inputs: bool
-    workflow_id: NotRequired[str]
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -98,13 +90,15 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     )
 
 
-def _build_generator_args(trigger_data: TriggerData) -> WorkflowGeneratorArgsDict:
+def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
-    return {
+
+    args: dict[str, Any] = {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
-        "_skip_prepare_user_inputs": True,
+        SKIP_PREPARE_USER_INPUTS_KEY: True,
     }
+    return args
 
 
 def _execute_workflow_common(
@@ -162,12 +156,7 @@ def _execute_workflow_common(
                 state_owner_user_id=workflow.created_by,
             )
 
-            # NOTE (hj24)
-            # Release the transaction before the blocking generate() call,
-            # otherwise the connection stays "idle in transaction" for hours.
-            session.commit()
-            # NOTE END
-
+            # Execute the workflow with the trigger type
             generator.generate(
                 app_model=app_model,
                 workflow=workflow,
@@ -232,29 +221,28 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         return
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-    response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
         workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
         if workflow is None:
             raise WorkflowNotFoundError(
-                f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
+                "Workflow not found: workflow_run_id=%s, workflow_id=%s", workflow_run.id, workflow_run.workflow_id
             )
         user = _get_user(session, workflow_run)
         app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:
-            raise _AppNotFoundError(f"App not found: app_id={workflow_run.app_id}, workflow_run_id={workflow_run.id}")
+            raise _AppNotFoundError(
+                "App not found: app_id=%s, workflow_run_id=%s", workflow_run.app_id, workflow_run.id
+            )
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
-        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
-        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -297,7 +285,6 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         workflow_node_execution_repository=workflow_node_execution_repository,
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
-        response_stream_filter=response_stream_filter,
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
@@ -316,7 +303,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.set_current_tenant_with_session(tenant, session=session)
+            user.current_tenant = tenant
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 

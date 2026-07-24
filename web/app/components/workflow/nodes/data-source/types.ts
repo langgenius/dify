@@ -1,12 +1,16 @@
-import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ResourceVarInputs } from '../_base/types'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 
+export { VarKindType as VarType } from '../_base/types'
+
 export enum DataSourceClassification {
   localFile = 'local_file',
+  websiteCrawl = 'website_crawl',
+  onlineDocument = 'online_document',
+  onlineDrive = 'online_drive',
 }
 
 export type ToolVarInputs = ResourceVarInputs
@@ -14,7 +18,7 @@ export type ToolVarInputs = ResourceVarInputs
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
   plugin_id: string
-  provider_type: DatasourceProviderType
+  provider_type: string
   provider_name: string
   datasource_name: string
   datasource_label: string

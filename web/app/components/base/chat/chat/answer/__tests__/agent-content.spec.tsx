@@ -8,11 +8,7 @@ import AgentContent from '../agent-content'
 // Mock Markdown component used only in tests
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: (props: MarkdownProps & { 'data-testid'?: string }) => (
-    <div
-      data-testid={props['data-testid'] || 'markdown'}
-      data-content={String(props.content)}
-      className={props.className}
-    >
+    <div data-testid={props['data-testid'] || 'markdown'} data-content={String(props.content)} className={props.className}>
       {String(props.content)}
     </div>
   ),
@@ -30,13 +26,14 @@ vi.mock('@/app/components/base/chat/chat/thought', () => ({
 // Mock FileList and Utils
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileList: ({ files }: { files: FileEntity[] }) => (
-    <div data-testid="file-list-component">{files.map((f) => f.name).join(', ')}</div>
+    <div data-testid="file-list-component">
+      {files.map(f => f.name).join(', ')}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getProcessedFilesFromResponse: (files: FileEntity[]) =>
-    files.map((f) => ({ ...f, name: `processed-${f.id}` })),
+  getProcessedFilesFromResponse: (files: FileEntity[]) => files.map(f => ({ ...f, name: `processed-${f.id}` })),
 }))
 
 describe('AgentContent', () => {
@@ -57,26 +54,6 @@ describe('AgentContent', () => {
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Log Annotation Content')
   })
 
-  it('renders empty string if logAnnotation content is missing', () => {
-    const itemWithEmptyAnnotation = {
-      ...mockItem,
-      annotation: {
-        logAnnotation: { content: '' },
-      },
-    }
-    const { rerender } = render(<AgentContent item={itemWithEmptyAnnotation as ChatItem} />)
-    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
-
-    const itemWithUndefinedAnnotation = {
-      ...mockItem,
-      annotation: {
-        logAnnotation: {},
-      },
-    }
-    rerender(<AgentContent item={itemWithUndefinedAnnotation as ChatItem} />)
-    expect(screen.getByTestId('agent-content-markdown')).toHaveAttribute('data-content', '')
-  })
-
   it('renders content prop if provided and no annotation', () => {
     render(<AgentContent item={mockItem} content="Direct Content" />)
     expect(screen.getByTestId('agent-content-markdown')).toHaveTextContent('Direct Content')
@@ -85,7 +62,10 @@ describe('AgentContent', () => {
   it('renders agent_thoughts if content is absent', () => {
     const itemWithThoughts = {
       ...mockItem,
-      agent_thoughts: [{ thought: 'Thought 1', tool: 'tool1' }, { thought: 'Thought 2' }],
+      agent_thoughts: [
+        { thought: 'Thought 1', tool: 'tool1' },
+        { thought: 'Thought 2' },
+      ],
     }
     render(<AgentContent item={itemWithThoughts as ChatItem} responding={false} />)
     const items = screen.getAllByTestId('agent-thought-item')
@@ -104,9 +84,7 @@ describe('AgentContent', () => {
         { thought: 'T2', tool: 'tool2' }, // finished by responding=false
       ],
     }
-    const { rerender } = render(
-      <AgentContent item={itemWithThoughts as ChatItem} responding={true} />,
-    )
+    const { rerender } = render(<AgentContent item={itemWithThoughts as ChatItem} responding={true} />)
     const thoughts = screen.getAllByTestId('thought-component')
     expect(thoughts[0]).toHaveAttribute('data-finished', 'true')
     expect(thoughts[1]).toHaveAttribute('data-finished', 'false')
@@ -126,9 +104,7 @@ describe('AgentContent', () => {
       ],
     }
     render(<AgentContent item={itemWithFiles as ChatItem} />)
-    expect(screen.getByTestId('file-list-component')).toHaveTextContent(
-      'processed-file1, processed-file2',
-    )
+    expect(screen.getByTestId('file-list-component')).toHaveTextContent('processed-file1, processed-file2')
   })
 
   it('renders nothing if no annotation, content, or thoughts', () => {

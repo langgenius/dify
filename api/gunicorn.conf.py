@@ -1,6 +1,6 @@
-import psycogreen.gevent as pscycogreen_gevent
+import psycogreen.gevent as pscycogreen_gevent  # type: ignore
 from gevent import events as gevent_events
-from grpc.experimental import gevent as grpc_gevent
+from grpc.experimental import gevent as grpc_gevent  # type: ignore
 
 # WARNING: This module is loaded very early in the Gunicorn worker lifecycle,
 # before gevent's monkey-patching is applied. Importing modules at the top level here can

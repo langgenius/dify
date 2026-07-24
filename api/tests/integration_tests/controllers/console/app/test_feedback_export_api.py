@@ -14,7 +14,6 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import AppStatus, FeedbackFromSource, FeedbackRating
 from models.model import AppMode, MessageFeedback
 from services.feedback_service import FeedbackService
 
@@ -29,7 +28,7 @@ class TestFeedbackExportApi:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = AppStatus.NORMAL
+        app.status = "normal"
         app.name = "Test App"
         return app
 
@@ -78,8 +77,8 @@ class TestFeedbackExportApi:
             app_id=app_id,
             conversation_id=conversation_id,
             message_id=message_id,
-            rating=FeedbackRating.LIKE,
-            from_source=FeedbackFromSource.USER,
+            rating="like",
+            from_source="user",
             content=None,
             from_end_user_id=str(uuid.uuid4()),
             from_account_id=None,
@@ -91,8 +90,8 @@ class TestFeedbackExportApi:
             app_id=app_id,
             conversation_id=conversation_id,
             message_id=message_id,
-            rating=FeedbackRating.DISLIKE,
-            from_source=FeedbackFromSource.ADMIN,
+            rating="dislike",
+            from_source="admin",
             content="The response was not helpful",
             from_end_user_id=None,
             from_account_id=str(uuid.uuid4()),
@@ -135,7 +134,7 @@ class TestFeedbackExportApi:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -145,7 +144,7 @@ class TestFeedbackExportApi:
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         mock_export_feedbacks = mock.Mock(return_value="mock csv response")
         monkeypatch.setattr(FeedbackService, "export_feedbacks", mock_export_feedbacks)
@@ -167,19 +166,13 @@ class TestFeedbackExportApi:
             mock_export_feedbacks.assert_called_once()
 
     def test_feedback_export_csv_format(
-        self,
-        test_client: FlaskClient,
-        auth_header,
-        monkeypatch: pytest.MonkeyPatch,
-        mock_app_model,
-        mock_account,
-        sample_feedback_data,
+        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, sample_feedback_data
     ):
         """Test feedback export in CSV format."""
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         # Create mock CSV response
         mock_csv_content = (
@@ -208,19 +201,13 @@ class TestFeedbackExportApi:
         assert "text/csv" in response.content_type
 
     def test_feedback_export_json_format(
-        self,
-        test_client: FlaskClient,
-        auth_header,
-        monkeypatch: pytest.MonkeyPatch,
-        mock_app_model,
-        mock_account,
-        sample_feedback_data,
+        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account, sample_feedback_data
     ):
         """Test feedback export in JSON format."""
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         mock_json_response = {
             "export_info": {
@@ -258,13 +245,13 @@ class TestFeedbackExportApi:
         assert "application/json" in response.content_type
 
     def test_feedback_export_with_filters(
-        self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account
+        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account
     ):
         """Test feedback export with various filters."""
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         mock_export_feedbacks = mock.Mock(return_value="mock filtered response")
         monkeypatch.setattr(FeedbackService, "export_feedbacks", mock_export_feedbacks)
@@ -289,10 +276,9 @@ class TestFeedbackExportApi:
 
         # Verify service was called with correct parameters
         mock_export_feedbacks.assert_called_once_with(
-            mock.ANY,
             app_id=mock_app_model.id,
-            from_source=FeedbackFromSource.USER,
-            rating=FeedbackRating.DISLIKE,
+            from_source="user",
+            rating="dislike",
             has_comment=True,
             start_date="2024-01-01",
             end_date="2024-12-31",
@@ -300,13 +286,13 @@ class TestFeedbackExportApi:
         )
 
     def test_feedback_export_invalid_date_format(
-        self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account
+        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account
     ):
         """Test feedback export with invalid date format."""
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         # Mock the service to raise ValueError for invalid date
         mock_export_feedbacks = mock.Mock(side_effect=ValueError("Invalid date format"))
@@ -325,13 +311,13 @@ class TestFeedbackExportApi:
         assert "Parameter validation error" in response_json["error"]
 
     def test_feedback_export_server_error(
-        self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account
+        self, test_client: FlaskClient, auth_header, monkeypatch, mock_app_model, mock_account
     ):
         """Test feedback export with server error."""
 
         # Setup mocks
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         # Mock the service to raise an exception
         mock_export_feedbacks = mock.Mock(side_effect=Exception("Database connection failed"))

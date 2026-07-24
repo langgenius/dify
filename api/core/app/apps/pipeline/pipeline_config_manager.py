@@ -1,5 +1,3 @@
-from typing import Any
-
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.entities import RagPipelineVariableEntity, WorkflowUIBasedAppConfig
@@ -36,9 +34,7 @@ class PipelineConfigManager(BaseAppConfigManager):
         return pipeline_config
 
     @classmethod
-    def config_validate(
-        cls, tenant_id: str, config: dict[str, Any], only_structure_validate: bool = False
-    ) -> dict[str, Any]:
+    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False) -> dict:
         """
         Validate for pipeline config
 

@@ -1,12 +1,10 @@
 import logging
+from typing import Any
 
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
-from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.app.wraps import with_session
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -24,18 +22,23 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from dify_graph.graph_engine.manager import GraphEngineManager
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+
+class WorkflowRunPayload(BaseModel):
+    inputs: dict[str, Any] = Field(description="Input variables for the workflow")
+    files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed by the workflow")
+
+
 logger = logging.getLogger(__name__)
 
 register_schema_models(web_ns, WorkflowRunPayload)
-register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @web_ns.route("/workflows/run")
@@ -53,9 +56,7 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    @with_session
-    def post(self, session: Session, app_model: App, end_user: EndUser):
+    def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -68,15 +69,9 @@ class WorkflowRunApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
-                session=session,
-                app_model=app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.WEB_APP,
-                streaming=True,
+                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
             )
 
-            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -114,7 +109,6 @@ class WorkflowTaskStopApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
@@ -130,4 +124,4 @@ class WorkflowTaskStopApi(WebApiResource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return SimpleResultResponse(result="success").model_dump(mode="json")
+        return {"result": "success"}

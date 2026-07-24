@@ -1,9 +1,12 @@
-from inspect import unwrap
 from unittest.mock import patch
 
-import pytest
-
 import controllers.console.spec as spec_module
+
+
+def unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestSpecSchemaDefinitionsApi:
@@ -11,17 +14,7 @@ class TestSpecSchemaDefinitionsApi:
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        schema_definitions = [
-            {
-                "name": "conversation-variable",
-                "label": "Conversation variable",
-                "schema": {
-                    "type": "object",
-                    "properties": {"name": {"type": "string"}},
-                    "required": ["name"],
-                },
-            }
-        ]
+        schema_definitions = [{"type": "string"}]
 
         with patch.object(
             spec_module,
@@ -33,24 +26,24 @@ class TestSpecSchemaDefinitionsApi:
 
         assert status == 200
         assert resp == schema_definitions
-        assert spec_module.SchemaDefinitionsResponse.model_validate(resp).model_dump(mode="json") == schema_definitions
 
-    def test_get_documents_tight_response_model(self):
-        response = spec_module.SpecSchemaDefinitionsApi.get.__apidoc__["responses"]["200"]
-
-        assert response[1].name == spec_module.SchemaDefinitionsResponse.__name__
-
-    def test_get_exception_returns_empty_list(self, caplog: pytest.LogCaptureFixture):
+    def test_get_exception_returns_empty_list(self):
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        with patch.object(
-            spec_module,
-            "SchemaManager",
-            side_effect=Exception("boom"),
+        with (
+            patch.object(
+                spec_module,
+                "SchemaManager",
+                side_effect=Exception("boom"),
+            ),
+            patch.object(
+                spec_module.logger,
+                "exception",
+            ) as log_exception,
         ):
             resp, status = method(api)
 
         assert status == 200
         assert resp == []
-        assert "boom" in caplog.text
+        log_exception.assert_called_once()

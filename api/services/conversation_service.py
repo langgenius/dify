@@ -1,22 +1,23 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Union
 
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend import AgentBackendSessionCleanupPayload
 from configs import dify_config
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
+from dify_graph.variables.types import SegmentType
+from extensions.ext_database import db
 from factories import variable_factory
-from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
+from services.conversation_variable_updater import ConversationVariableUpdater
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -24,7 +25,6 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
-from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
 from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class ConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Account | EndUser | None,
+        user: Union[Account, EndUser] | None,
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
@@ -119,33 +119,29 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Account | EndUser | None,
+        user: Union[Account, EndUser] | None,
         name: str | None,
         auto_generate: bool,
-        *,
-        session: Session,
     ):
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        conversation = cls.get_conversation(app_model, conversation_id, user)
 
         if auto_generate:
-            return cls.auto_generate_name(app_model, conversation, session=session)
+            return cls.auto_generate_name(app_model, conversation)
         else:
-            if name is None:
-                raise ValueError("name is required when auto_generate is false")
             conversation.name = name
             conversation.updated_at = naive_utc_now()
-            session.commit()
+            db.session.commit()
 
         return conversation
 
     @classmethod
-    def auto_generate_name(cls, app_model: App, conversation: Conversation, *, session: Session):
+    def auto_generate_name(cls, app_model: App, conversation: Conversation):
         # get conversation first message
-        message = session.scalar(
-            select(Message)
+        message = (
+            db.session.query(Message)
             .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
             .order_by(Message.created_at.asc())
-            .limit(1)
+            .first()
         )
 
         if not message:
@@ -158,16 +154,14 @@ class ConversationService:
             )
             conversation.name = name
 
-        session.commit()
+        db.session.commit()
 
         return conversation
 
     @classmethod
-    def get_conversation(
-        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
-    ):
-        conversation = session.scalar(
-            select(Conversation)
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
+        conversation = (
+            db.session.query(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
@@ -176,7 +170,7 @@ class ConversationService:
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
                 Conversation.is_deleted == False,
             )
-            .limit(1)
+            .first()
         )
 
         if not conversation:
@@ -185,27 +179,14 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session):
+    def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         """
         Delete a conversation only if it belongs to the given user and app context.
-
-        Before removing the conversation row, this best-effort lifecycle path
-        enumerates any ACTIVE conversation-owned Agent backend runtime sessions,
-        enqueues asynchronous backend cleanup for rows with persisted runtime
-        layer specs, and then retires the local session rows even if enqueueing
-        fails. Conversation deletion and related-data cleanup scheduling still
-        proceed when that lifecycle bookkeeping only partially succeeds.
 
         Raises:
             ConversationNotExistsError: When the conversation is not visible to the current user.
         """
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
-        session_store = AgentAppRuntimeSessionStore()
-        stored_sessions = session_store.list_active_sessions_for_conversation(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            conversation_id=conversation.id,
-        )
+        conversation = cls.get_conversation(app_model, conversation_id, user)
 
         try:
             logger.info(
@@ -213,80 +194,27 @@ class ConversationService:
                 app_model.name,
                 conversation_id,
             )
-            for stored_session in stored_sessions:
-                try:
-                    if stored_session.runtime_layer_specs:
-                        payload = AgentBackendSessionCleanupPayload(
-                            session_snapshot=stored_session.session_snapshot,
-                            runtime_layer_specs=stored_session.runtime_layer_specs,
-                            idempotency_key=(
-                                f"{stored_session.scope.tenant_id}:{stored_session.scope.app_id}:"
-                                f"{stored_session.scope.conversation_id}:agent-runtime-session-cleanup:"
-                                f"{stored_session.scope.agent_id}:"
-                                f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
-                                f"{stored_session.backend_run_id or 'no-run'}"
-                            ),
-                            metadata={
-                                "tenant_id": stored_session.scope.tenant_id,
-                                "app_id": stored_session.scope.app_id,
-                                "conversation_id": stored_session.scope.conversation_id,
-                                "agent_id": stored_session.scope.agent_id,
-                                "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
-                                "previous_agent_backend_run_id": stored_session.backend_run_id,
-                            },
-                        )
-                        cleanup_conversation_agent_runtime_session.delay(payload.model_dump(mode="json"))
-                except Exception:
-                    logger.warning(
-                        "Failed to enqueue Agent backend cleanup for conversation deletion: "
-                        "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
-                        stored_session.scope.tenant_id,
-                        stored_session.scope.app_id,
-                        stored_session.scope.conversation_id,
-                        stored_session.scope.agent_id,
-                        stored_session.backend_run_id,
-                        exc_info=True,
-                    )
-                finally:
-                    try:
-                        session_store.mark_cleaned(
-                            scope=stored_session.scope,
-                            backend_run_id=stored_session.backend_run_id,
-                        )
-                    except Exception:
-                        logger.warning(
-                            "Failed to retire Agent App runtime session for conversation deletion: "
-                            "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
-                            stored_session.scope.tenant_id,
-                            stored_session.scope.app_id,
-                            stored_session.scope.conversation_id,
-                            stored_session.scope.agent_id,
-                            stored_session.backend_run_id,
-                            exc_info=True,
-                        )
 
-            session.delete(conversation)
-            session.commit()
+            db.session.delete(conversation)
+            db.session.commit()
 
             delete_conversation_related_data.delay(conversation.id)
 
-        except Exception:
-            session.rollback()
-            raise
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @classmethod
     def get_conversational_variable(
         cls,
         app_model: App,
         conversation_id: str,
-        user: Account | EndUser | None,
+        user: Union[Account, EndUser] | None,
         limit: int,
         last_id: str | None,
         variable_name: str | None = None,
-        *,
-        session: Session,
     ) -> InfiniteScrollPagination:
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        conversation = cls.get_conversation(app_model, conversation_id, user)
 
         stmt = (
             select(ConversationVariable)
@@ -315,17 +243,18 @@ class ConversationService:
                     )
                 )
 
-        if last_id:
-            last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
-            if not last_variable:
-                raise ConversationVariableNotExistsError()
+        with session_factory.create_session() as session:
+            if last_id:
+                last_variable = session.scalar(stmt.where(ConversationVariable.id == last_id))
+                if not last_variable:
+                    raise ConversationVariableNotExistsError()
 
-            # Filter for variables created after the last_id
-            stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
+                # Filter for variables created after the last_id
+                stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
 
-        # Apply limit to query: fetch one extra row to determine has_more
-        query_stmt = stmt.limit(limit + 1)
-        rows = session.scalars(query_stmt).all()
+            # Apply limit to query: fetch one extra row to determine has_more
+            query_stmt = stmt.limit(limit + 1)
+            rows = session.scalars(query_stmt).all()
 
         has_more = False
         if len(rows) > limit:
@@ -349,10 +278,8 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         variable_id: str,
-        user: Account | EndUser | None,
+        user: Union[Account, EndUser] | None,
         new_value: Any,
-        *,
-        session: Session,
     ):
         """
         Update a conversation variable's value.
@@ -373,7 +300,7 @@ class ConversationService:
             ConversationVariableTypeMismatchError: If the new value type doesn't match the variable's expected type
         """
         # Verify conversation exists and user has access
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        conversation = cls.get_conversation(app_model, conversation_id, user)
 
         # Get the existing conversation variable
         stmt = (
@@ -383,43 +310,48 @@ class ConversationService:
             .where(ConversationVariable.id == variable_id)
         )
 
-        existing_variable = session.scalar(stmt)
-        if not existing_variable:
-            raise ConversationVariableNotExistsError()
+        with session_factory.create_session() as session:
+            existing_variable = session.scalar(stmt)
+            if not existing_variable:
+                raise ConversationVariableNotExistsError()
 
-        # Convert existing variable to Variable object
-        current_variable = existing_variable.to_variable()
+            # Convert existing variable to Variable object
+            current_variable = existing_variable.to_variable()
 
-        # Validate that the new value type matches the expected variable type
-        expected_type = SegmentType(current_variable.value_type)
+            # Validate that the new value type matches the expected variable type
+            expected_type = SegmentType(current_variable.value_type)
 
-        # There is showing number in web ui but int in db
-        if expected_type == SegmentType.INTEGER:
-            expected_type = SegmentType.NUMBER
+            # There is showing number in web ui but int in db
+            if expected_type == SegmentType.INTEGER:
+                expected_type = SegmentType.NUMBER
 
-        if not expected_type.is_valid(new_value):
-            inferred_type = SegmentType.infer_segment_type(new_value)
-            raise ConversationVariableTypeMismatchError(
-                f"Type mismatch: variable '{current_variable.name}' expects {expected_type.value}, "
-                f"but got {inferred_type.value if inferred_type else 'unknown'} type"
-            )
+            if not expected_type.is_valid(new_value):
+                inferred_type = SegmentType.infer_segment_type(new_value)
+                raise ConversationVariableTypeMismatchError(
+                    f"Type mismatch: variable '{current_variable.name}' expects {expected_type.value}, "
+                    f"but got {inferred_type.value if inferred_type else 'unknown'} type"
+                )
 
-        # Create updated variable with new value only, preserving everything else
-        updated_variable_dict = {
-            "id": current_variable.id,
-            "name": current_variable.name,
-            "description": current_variable.description,
-            "value_type": current_variable.value_type,
-            "value": new_value,
-            "selector": current_variable.selector,
-        }
+            # Create updated variable with new value only, preserving everything else
+            updated_variable_dict = {
+                "id": current_variable.id,
+                "name": current_variable.name,
+                "description": current_variable.description,
+                "value_type": current_variable.value_type,
+                "value": new_value,
+                "selector": current_variable.selector,
+            }
 
-        updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
-        existing_variable.data = updated_variable.model_dump_json()
-        session.commit()
+            updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
 
-        return {
-            "created_at": existing_variable.created_at,
-            "updated_at": naive_utc_now(),  # Update timestamp
-            **updated_variable.model_dump(),
-        }
+            # Use the conversation variable updater to persist the changes
+            updater = ConversationVariableUpdater(session_factory.get_session_maker())
+            updater.update(conversation_id, updated_variable)
+            updater.flush()
+
+            # Return the updated variable data
+            return {
+                "created_at": existing_variable.created_at,
+                "updated_at": naive_utc_now(),  # Update timestamp
+                **updated_variable.model_dump(),
+            }

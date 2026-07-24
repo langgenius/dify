@@ -13,12 +13,6 @@ class InvalidEmailError(BaseHTTPException):
     code = 400
 
 
-class InvitationAccountMismatchError(BaseHTTPException):
-    error_code = "invitation_account_mismatch"
-    description = "This invitation was sent to another account. Please sign in with the invited account."
-    code = 403
-
-
 class PasswordMismatchError(BaseHTTPException):
     error_code = "password_mismatch"
     description = "The passwords do not match."

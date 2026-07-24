@@ -1,12 +1,7 @@
-"""Provider-configuration behavior with persisted SQLite credential records."""
-
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from sqlalchemy.orm import Session
 
-from core.entities import provider_configuration as provider_configuration_module
 from core.entities.provider_configuration import ProviderConfiguration, SystemConfigurationStatus
 from core.entities.provider_entities import (
     CustomConfiguration,
@@ -17,16 +12,16 @@ from core.entities.provider_entities import (
     RestrictModel,
     SystemConfiguration,
 )
-from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
+from dify_graph.model_runtime.entities.common_entities import I18nObject
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormOption,
     FormType,
     ProviderEntity,
 )
-from models.provider import Provider, ProviderCredential, ProviderType
+from models.provider import Provider, ProviderType
 
 
 @pytest.fixture
@@ -212,25 +207,33 @@ class TestProviderConfiguration:
         # Assert
         assert result is False
 
-    @pytest.mark.parametrize("sqlite_session", [(Provider,)], indirect=True)
-    def test_get_provider_record_found(self, provider_configuration, sqlite_session: Session):
+    @patch("core.entities.provider_configuration.Session")
+    def test_get_provider_record_found(self, mock_session, provider_configuration):
         """Test getting provider record successfully"""
-        provider = Provider(tenant_id="test_tenant", provider_name="openai")
-        sqlite_session.add(provider)
-        sqlite_session.commit()
+        # Arrange
+        mock_provider = Mock(spec=Provider)
+        mock_session_instance = Mock()
+        mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = mock_provider
 
-        result = provider_configuration._get_provider_record(sqlite_session)
+        # Act
+        result = provider_configuration._get_provider_record(mock_session_instance)
 
-        assert result is provider
+        # Assert
+        assert result == mock_provider
 
-    @pytest.mark.parametrize("sqlite_session", [(Provider,)], indirect=True)
-    def test_get_provider_record_not_found(self, provider_configuration, sqlite_session: Session):
+    @patch("core.entities.provider_configuration.Session")
+    def test_get_provider_record_not_found(self, mock_session, provider_configuration):
         """Test getting provider record when not found"""
-        sqlite_session.add(Provider(tenant_id="other_tenant", provider_name="openai"))
-        sqlite_session.commit()
+        # Arrange
+        mock_session_instance = Mock()
+        mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = None
 
-        result = provider_configuration._get_provider_record(sqlite_session)
+        # Act
+        result = provider_configuration._get_provider_record(mock_session_instance)
 
+        # Assert
         assert result is None
 
     def test_init_with_customizable_model_only(
@@ -267,47 +270,47 @@ class TestProviderConfiguration:
         assert credentials is not None
         assert "openai_api_key" in credentials
 
-    @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
-    def test_get_specific_provider_credential_success(
-        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
-    ):
+    @patch("core.entities.provider_configuration.Session")
+    def test_get_specific_provider_credential_success(self, mock_session, provider_configuration):
         """Test getting specific provider credential successfully"""
+        # Arrange
         credential_id = "test_credential_id"
-        credential = ProviderCredential(
-            tenant_id="test_tenant",
-            provider_name="openai",
-            credential_name="primary",
-            encrypted_config='{"openai_api_key": "encrypted_key"}',
-        )
-        credential.id = credential_id
-        sqlite_session.add_all((Provider(tenant_id="test_tenant", provider_name="openai"), credential))
-        sqlite_session.commit()
-        monkeypatch.setattr(
-            provider_configuration_module,
-            "db",
-            SimpleNamespace(engine=sqlite_session.get_bind()),
-        )
+        mock_credential = Mock()
+        mock_credential.encrypted_config = '{"openai_api_key": "encrypted_key"}'
 
-        result = provider_configuration._get_specific_provider_credential(credential_id)
+        mock_session_instance = Mock()
+        mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = mock_credential
 
-        assert result == {"openai_api_key": "encrypted_key"}
+        # Act
+        with patch.object(provider_configuration, "_get_specific_provider_credential") as mock_get:
+            mock_get.return_value = {"openai_api_key": "test_key"}
+            result = provider_configuration._get_specific_provider_credential(credential_id)
 
-    @pytest.mark.parametrize("sqlite_session", [(Provider, ProviderCredential)], indirect=True)
-    def test_get_specific_provider_credential_not_found(
-        self, monkeypatch: pytest.MonkeyPatch, provider_configuration, sqlite_session: Session
-    ):
+        # Assert
+        assert result == {"openai_api_key": "test_key"}
+
+    @patch("core.entities.provider_configuration.Session")
+    def test_get_specific_provider_credential_not_found(self, mock_session, provider_configuration):
         """Test getting specific provider credential when not found"""
+        # Arrange
         credential_id = "nonexistent_credential_id"
-        sqlite_session.add(Provider(tenant_id="other_tenant", provider_name="openai"))
-        sqlite_session.commit()
-        monkeypatch.setattr(
-            provider_configuration_module,
-            "db",
-            SimpleNamespace(engine=sqlite_session.get_bind()),
-        )
 
-        with pytest.raises(ValueError, match=credential_id):
-            provider_configuration._get_specific_provider_credential(credential_id)
+        mock_session_instance = Mock()
+        mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = None
+
+        # Act & Assert
+        with patch.object(provider_configuration, "_get_specific_provider_credential") as mock_get:
+            mock_get.return_value = None
+            result = provider_configuration._get_specific_provider_credential(credential_id)
+            assert result is None
+
+        # Act
+        credentials = provider_configuration.get_current_credentials(ModelType.LLM, "gpt-4")
+
+        # Assert
+        assert credentials == {"openai_api_key": "test_key"}
 
     def test_extract_secret_variables_with_secret_input(self, provider_configuration):
         """Test extracting secret variables from credential form schemas"""

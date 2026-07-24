@@ -1,57 +1,52 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
-import { ReadmeEntrance } from '../entrance'
-import { useReadmePanelStore } from '../store'
+import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/utils/classnames', () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+}))
+
+const mockSetCurrentPluginDetail = vi.fn()
+
+vi.mock('../store', () => ({
+  ReadmeShowType: { drawer: 'drawer', side: 'side', modal: 'modal' },
+  useReadmePanelStore: () => ({
+    setCurrentPluginDetail: mockSetCurrentPluginDetail,
+  }),
+}))
+
+vi.mock('../constants', () => ({
+  BUILTIN_TOOLS_ARRAY: ['google_search', 'bing_search'],
+}))
 
 describe('ReadmeEntrance', () => {
-  beforeEach(() => {
-    useReadmePanelStore.setState({ currentPanel: undefined })
+  let ReadmeEntrance: (typeof import('../entrance'))['ReadmeEntrance']
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    const mod = await import('../entrance')
+    ReadmeEntrance = mod.ReadmeEntrance
   })
 
   it('should render readme button for non-builtin plugin with unique identifier', () => {
-    const pluginDetail = {
-      id: 'custom-plugin',
-      name: 'custom-plugin',
-      plugin_unique_identifier: 'org/custom-plugin',
-    } as never
+    const pluginDetail = { id: 'custom-plugin', name: 'custom-plugin', plugin_unique_identifier: 'org/custom-plugin' } as never
     render(<ReadmeEntrance pluginDetail={pluginDetail} />)
 
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('should open drawer presentation by default', () => {
-    const pluginDetail = {
-      id: 'custom-plugin',
-      name: 'custom-plugin',
-      plugin_unique_identifier: 'org/custom-plugin',
-    } as never
+  it('should call setCurrentPluginDetail on button click', () => {
+    const pluginDetail = { id: 'custom-plugin', name: 'custom-plugin', plugin_unique_identifier: 'org/custom-plugin' } as never
     render(<ReadmeEntrance pluginDetail={pluginDetail} />)
 
     const button = screen.getByRole('button')
     fireEvent.click(button)
 
-    expect(useReadmePanelStore.getState().currentPanel).toEqual({
-      detail: pluginDetail,
-      presentation: 'drawer',
-      triggerId: button.id,
-    })
-  })
-
-  it('should open dialog presentation when requested', () => {
-    const pluginDetail = {
-      id: 'custom-plugin',
-      name: 'custom-plugin',
-      plugin_unique_identifier: 'org/custom-plugin',
-    } as never
-    render(<ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />)
-
-    fireEvent.click(screen.getByRole('button'))
-
-    expect(useReadmePanelStore.getState().currentPanel?.presentation).toBe('dialog')
+    expect(mockSetCurrentPluginDetail).toHaveBeenCalledWith(pluginDetail, 'drawer')
   })
 
   it('should return null for builtin tools', () => {
-    const pluginDetail = { id: 'code', name: 'Code', plugin_unique_identifier: 'org/code' } as never
+    const pluginDetail = { id: 'google_search', name: 'Google Search', plugin_unique_identifier: 'org/google' } as never
     const { container } = render(<ReadmeEntrance pluginDetail={pluginDetail} />)
 
     expect(container.innerHTML).toBe('')

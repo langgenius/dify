@@ -1,1 +1,0 @@
-export const SNIPPET_LIST_SEARCH_DEBOUNCE_MS = 500

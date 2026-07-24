@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -197,7 +198,7 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockPostWithKeepalive).toHaveBeenCalled()
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
     })
   })
@@ -228,27 +229,6 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockSyncWorkflowDraft).toHaveBeenCalled()
-    })
-
-    it('should not include source_workflow_id in sync payloads', async () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft())
-
-      await act(async () => {
-        await result.current.doSyncWorkflowDraft()
-      })
-
-      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-        expect.objectContaining({
-          params: expect.not.objectContaining({
-            source_workflow_id: expect.anything(),
-          }),
-        }),
-      )
     })
 
     it('should call onSuccess callback when sync succeeds', async () => {
@@ -345,7 +325,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft(false)
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
     })
@@ -368,7 +348,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft(true)
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise(resolve => setTimeout(resolve, 0))
 
       expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
     })
@@ -391,7 +371,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
     })
 
@@ -414,7 +394,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
     })
 
@@ -437,36 +417,14 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
-    })
-
-    it('should not include source_workflow_id when syncing on page close', () => {
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft())
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.source_workflow_id).toBeUndefined()
     })
 
     it('should remove underscore-prefixed keys from edges', () => {
       mockStoreGetState.mockReturnValue({
         getNodes: mockGetNodes,
-        edges: [
-          {
-            id: 'edge-1',
-            source: 'node-1',
-            target: 'node-2',
-            data: { _hidden: true, visible: false },
-          },
-        ],
+        edges: [{ id: 'edge-1', source: 'node-1', target: 'node-2', data: { _hidden: true, visible: false } }],
         transform: [0, 0, 1],
       })
       mockGetNodes.mockReturnValue([
@@ -479,7 +437,7 @@ describe('useNodesSyncDraft', () => {
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
+      const sentParams = mockPostWithKeepalive.mock.calls[0][1]
       expect(sentParams.graph.edges[0].data._hidden).toBeUndefined()
       expect(sentParams.graph.edges[0].data.visible).toBe(false)
     })

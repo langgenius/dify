@@ -1,11 +1,11 @@
 import type { App, AppSSO } from '@/types/app'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     const LazyComp = React.lazy(loader)
     return function DynamicWrapper(props: Record<string, unknown>) {
@@ -19,108 +19,72 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('@/app/components/app/switch-app-modal', () => ({
-  default: ({ show, onClose }: { show: boolean; onClose: () => void }) =>
-    show ? (
-      <div data-testid="switch-modal">
-        <button type="button" onClick={onClose}>
-          Close Switch
-        </button>
-      </div>
-    ) : null,
+  default: ({ show, onClose }: { show: boolean, onClose: () => void }) => (
+    show ? <div data-testid="switch-modal"><button type="button" onClick={onClose}>Close Switch</button></div> : null
+  ),
 }))
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({
-    show,
-    onHide,
-    isEditModal,
-  }: {
-    show: boolean
-    onHide: () => void
-    isEditModal?: boolean
-  }) =>
-    show ? (
-      <div data-testid={isEditModal ? 'edit-modal' : 'create-modal'}>
-        <button type="button" onClick={onHide}>
-          Close Edit
-        </button>
-      </div>
-    ) : null,
+  default: ({ show, onHide, isEditModal }: { show: boolean, onHide: () => void, isEditModal?: boolean }) => (
+    show ? <div data-testid={isEditModal ? 'edit-modal' : 'create-modal'}><button type="button" onClick={onHide}>Close Edit</button></div> : null
+  ),
 }))
 
 vi.mock('@/app/components/app/duplicate-modal', () => ({
-  default: ({ show, onHide }: { show: boolean; onHide: () => void }) =>
-    show ? (
-      <div data-testid="duplicate-modal">
-        <button type="button" onClick={onHide}>
-          Close Dup
-        </button>
-      </div>
-    ) : null,
+  default: ({ show, onHide }: { show: boolean, onHide: () => void }) => (
+    show ? <div data-testid="duplicate-modal"><button type="button" onClick={onHide}>Close Dup</button></div> : null
+  ),
+}))
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, title, onConfirm, onCancel }: {
+    isShow: boolean
+    title: string
+    onConfirm: () => void
+    onCancel: () => void
+  }) => (
+    isShow
+      ? (
+          <div data-testid="confirm-modal" data-title={title}>
+            <button type="button" onClick={onConfirm}>Confirm</button>
+            <button type="button" onClick={onCancel}>Cancel</button>
+          </div>
+        )
+      : null
+  ),
 }))
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
-  default: ({ onCancel, onBackup }: { onCancel: () => void; onBackup: () => void }) => (
+  default: ({ onCancel, onBackup }: { onCancel: () => void, onBackup: () => void }) => (
     <div data-testid="import-dsl-modal">
-      <button type="button" onClick={onCancel}>
-        Cancel Import
-      </button>
-      <button type="button" onClick={onBackup}>
-        Backup
-      </button>
+      <button type="button" onClick={onCancel}>Cancel Import</button>
+      <button type="button" onClick={onBackup}>Backup</button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
-  DSLExportConfirmContent: ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: (include?: boolean) => void
-    onClose: () => void
-  }) => (
+  default: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
     <div data-testid="dsl-export-confirm-modal">
-      <button type="button" onClick={() => onConfirm(true)}>
-        Export Include
-      </button>
-      <button type="button" onClick={onClose}>
-        Close Export
-      </button>
-    </div>
-  ),
-  default: ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: (include?: boolean) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="dsl-export-confirm-modal">
-      <button type="button" onClick={() => onConfirm(true)}>
-        Export Include
-      </button>
-      <button type="button" onClick={onClose}>
-        Close Export
-      </button>
+      <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
+      <button type="button" onClick={onClose}>Close Export</button>
     </div>
   ),
 }))
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
-  ({
-    id: 'app-1',
-    name: 'Test App',
-    mode: AppModeEnum.CHAT,
-    icon: '🤖',
-    icon_type: 'emoji',
-    icon_background: '#FFEAD5',
-    icon_url: '',
-    description: '',
-    use_icon_as_answer_icon: false,
-    max_active_requests: null,
-    ...overrides,
-  }) as App & Partial<AppSSO>
+const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
+  id: 'app-1',
+  name: 'Test App',
+  mode: AppModeEnum.CHAT,
+  icon: '🤖',
+  icon_type: 'emoji',
+  icon_background: '#FFEAD5',
+  icon_url: '',
+  description: '',
+  use_icon_as_answer_icon: false,
+  max_active_requests: null,
+  ...overrides,
+} as App & Partial<AppSSO>)
 
 const defaultProps = {
   appDetail: createAppDetail(),
@@ -129,16 +93,15 @@ const defaultProps = {
   setSecretEnvList: vi.fn(),
   onEdit: vi.fn(),
   onCopy: vi.fn(),
-  onExport: vi.fn(async () => {}),
-  isExporting: false,
+  onExport: vi.fn(),
   exportCheck: vi.fn(),
-  handleConfirmExport: vi.fn(async () => {}),
+  handleConfirmExport: vi.fn(),
   onConfirmDelete: vi.fn(),
 }
 
 describe('AppInfoModals', () => {
   beforeAll(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise(resolve => setTimeout(resolve, 0))
   })
 
   beforeEach(() => {
@@ -150,7 +113,7 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal={null} />)
     })
     expect(screen.queryByTestId('switch-modal')).not.toBeInTheDocument()
-    expect(screen.queryByText('app.deleteAppConfirmTitle')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
   })
 
   it('should render SwitchAppModal when activeModal is switch', async () => {
@@ -180,13 +143,14 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render delete alert dialog when activeModal is delete', async () => {
+  it('should render Confirm for delete when activeModal is delete', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
     await waitFor(() => {
-      expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      const confirm = screen.getByTestId('confirm-modal')
+      expect(confirm).toBeInTheDocument()
+      expect(confirm).toHaveAttribute('data-title', 'app.deleteAppConfirmTitle')
     })
   })
 
@@ -199,12 +163,14 @@ describe('AppInfoModals', () => {
     })
   })
 
-  it('should render export warning alert dialog when activeModal is exportWarning', async () => {
+  it('should render export warning Confirm when activeModal is exportWarning', async () => {
     await act(async () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
     await waitFor(() => {
-      expect(screen.getByText('workflow.sidebar.exportWarning')).toBeInTheDocument()
+      const confirm = screen.getByTestId('confirm-modal')
+      expect(confirm).toBeInTheDocument()
+      expect(confirm).toHaveAttribute('data-title', 'workflow.sidebar.exportWarning')
     })
   })
 
@@ -214,15 +180,7 @@ describe('AppInfoModals', () => {
         <AppInfoModals
           {...defaultProps}
           activeModal={null}
-          secretEnvList={[
-            {
-              id: 'env-1',
-              key: 'SECRET',
-              value: '',
-              value_type: 'secret',
-              name: 'Secret',
-            } as never,
-          ]}
+          secretEnvList={[{ id: 'env-1', key: 'SECRET', value: '', value_type: 'secret', name: 'Secret' } as never]}
         />,
       )
     })
@@ -244,39 +202,10 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument(),
-    )
-    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.getByText('Cancel')).toBeInTheDocument())
+    await user.click(screen.getByText('Cancel'))
 
     expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
-  })
-
-  it('should clear the delete confirmation input when delete modal is cancelled', async () => {
-    const user = userEvent.setup()
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
-    })
-
-    const input = await screen.findByRole('textbox')
-    await user.type(input, 'wrong-name')
-    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-    expect(defaultProps.closeModal).toHaveBeenCalledTimes(1)
-    expect(input).toHaveValue('')
-  })
-
-  it('should not confirm delete when the form is submitted with unmatched input', async () => {
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="delete" />)
-    })
-
-    const form = document.querySelector('form')
-    expect(form).toBeTruthy()
-
-    fireEvent.submit(form!)
-
-    expect(defaultProps.onConfirmDelete).not.toHaveBeenCalled()
   })
 
   it('should call onConfirmDelete when confirm on delete modal', async () => {
@@ -285,8 +214,8 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="delete" />)
     })
 
-    await user.type(screen.getByRole('textbox'), 'Test App')
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
+    await user.click(screen.getByText('Confirm'))
 
     expect(defaultProps.onConfirmDelete).toHaveBeenCalledTimes(1)
   })
@@ -297,22 +226,10 @@ describe('AppInfoModals', () => {
       render(<AppInfoModals {...defaultProps} activeModal="exportWarning" />)
     })
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument(),
-    )
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(screen.getByText('Confirm')).toBeInTheDocument())
+    await user.click(screen.getByText('Confirm'))
 
     expect(defaultProps.handleConfirmExport).toHaveBeenCalledTimes(1)
-  })
-
-  it('should show the export warning confirmation as pending during export', async () => {
-    await act(async () => {
-      render(<AppInfoModals {...defaultProps} activeModal="exportWarning" isExporting />)
-    })
-
-    expect(
-      await screen.findByRole('button', { name: 'common.operation.exporting' }),
-    ).toBeInTheDocument()
   })
 
   it('should call exportCheck when backup on importDSL modal', async () => {
@@ -334,15 +251,7 @@ describe('AppInfoModals', () => {
         <AppInfoModals
           {...defaultProps}
           activeModal={null}
-          secretEnvList={[
-            {
-              id: 'env-1',
-              key: 'SECRET',
-              value: '',
-              value_type: 'secret',
-              name: 'Secret',
-            } as never,
-          ]}
+          secretEnvList={[{ id: 'env-1', key: 'SECRET', value: '', value_type: 'secret', name: 'Secret' } as never]}
         />,
       )
     })

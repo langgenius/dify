@@ -16,7 +16,6 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
 
 from controllers.common.errors import (
     FilenameNotExistsError,
@@ -203,7 +202,7 @@ class TestFileUploadResponse:
 # unwrapped method directly to bypass the decorator.
 # =============================================================================
 
-from inspect import unwrap
+from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 @pytest.fixture
@@ -238,7 +237,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app: Flask,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -259,7 +258,6 @@ class TestFileApiPost:
         mock_upload.preview_url = None
         mock_upload.source_url = None
         mock_upload.original_url = None
-        mock_upload.reference = None
         mock_upload.user_id = None
         mock_upload.tenant_id = None
         mock_upload.conversation_id = None
@@ -275,7 +273,7 @@ class TestFileApiPost:
             data=data,
         ):
             api = FileApi()
-            response, status = unwrap(api.post)(
+            response, status = _unwrap(api.post)(
                 api,
                 app_model=mock_app_model,
                 end_user=mock_end_user,
@@ -284,7 +282,7 @@ class TestFileApiPost:
         assert status == 201
         mock_file_svc_cls.return_value.upload_file.assert_called_once()
 
-    def test_upload_no_file(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_no_file(self, app, mock_app_model, mock_end_user):
         """Test NoFileUploadedError when no file in request."""
         from controllers.service_api.app.file import FileApi
 
@@ -296,9 +294,9 @@ class TestFileApiPost:
         ):
             api = FileApi()
             with pytest.raises(NoFileUploadedError):
-                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_too_many_files(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_too_many_files(self, app, mock_app_model, mock_end_user):
         """Test TooManyFilesError when multiple files uploaded."""
         from io import BytesIO
 
@@ -317,9 +315,9 @@ class TestFileApiPost:
         ):
             api = FileApi()
             with pytest.raises(TooManyFilesError):
-                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
-    def test_upload_no_mimetype(self, app: Flask, mock_app_model, mock_end_user):
+    def test_upload_no_mimetype(self, app, mock_app_model, mock_end_user):
         """Test UnsupportedFileTypeError when file has no mimetype."""
         from io import BytesIO
 
@@ -335,7 +333,7 @@ class TestFileApiPost:
         ):
             api = FileApi()
             with pytest.raises(UnsupportedFileTypeError):
-                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
     @patch("controllers.service_api.app.file.FileService")
     @patch("controllers.service_api.app.file.db")
@@ -343,7 +341,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app: Flask,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -367,7 +365,7 @@ class TestFileApiPost:
         ):
             api = FileApi()
             with pytest.raises(FileTooLargeError):
-                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
     @patch("controllers.service_api.app.file.FileService")
     @patch("controllers.service_api.app.file.db")
@@ -375,7 +373,7 @@ class TestFileApiPost:
         self,
         mock_db,
         mock_file_svc_cls,
-        app: Flask,
+        app,
         mock_app_model,
         mock_end_user,
     ):
@@ -397,4 +395,4 @@ class TestFileApiPost:
         ):
             api = FileApi()
             with pytest.raises(UnsupportedFileTypeError):
-                unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
+                _unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)

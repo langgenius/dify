@@ -1,13 +1,12 @@
 import json
 import logging
-from typing import Any, Literal, TypedDict, cast
+from collections.abc import Mapping
+from typing import Any, cast
 
-from pydantic import TypeAdapter
+from httpx import get
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 
-from core.entities.provider_entities import ProviderConfig, ProviderConfigType
-from core.helper import ssrf_proxy
+from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -17,11 +16,11 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
 )
-from core.tools.errors import ApiToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -29,37 +28,9 @@ from services.tools.tools_transform_service import ToolTransformService
 logger = logging.getLogger(__name__)
 
 
-class ApiSchemaParseResult(TypedDict):
-    schema_type: str
-    parameters_schema: list[dict[str, Any]]
-    credentials_schema: list[dict[str, Any]]
-    warning: dict[str, str]
-
-
-class ApiToolPreviewResult(TypedDict, total=False):
-    result: str
-    error: str
-
-
-class RemoteSchemaResult(TypedDict):
-    schema: str
-
-
-class SimpleSuccessResult(TypedDict):
-    result: Literal["success"]
-
-
-def _dump_api_tool_bundles(tool_bundles: list[ApiToolBundle]) -> list[dict[str, Any]]:
-    return cast(list[dict[str, Any]], TypeAdapter(list[ApiToolBundle]).dump_python(tool_bundles, mode="json"))
-
-
-def _dump_provider_configs(configs: list[ProviderConfig]) -> list[dict[str, Any]]:
-    return cast(list[dict[str, Any]], TypeAdapter(list[ProviderConfig]).dump_python(configs, mode="json"))
-
-
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> ApiSchemaParseResult:
+    def parser_api_schema(schema: str) -> Mapping[str, Any]:
         """
         parse api schema to tool bundle
         """
@@ -73,7 +44,7 @@ class ApiToolManageService:
             credentials_schema = [
                 ProviderConfig(
                     name="auth_type",
-                    type=ProviderConfigType.SELECT,
+                    type=ProviderConfig.Type.SELECT,
                     required=True,
                     default="none",
                     options=[
@@ -84,7 +55,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_header",
-                    type=ProviderConfigType.TEXT_INPUT,
+                    type=ProviderConfig.Type.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key header", zh_Hans="输入 api key header，如：X-API-KEY"),
                     default="api_key",
@@ -92,7 +63,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_value",
-                    type=ProviderConfigType.TEXT_INPUT,
+                    type=ProviderConfig.Type.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key", zh_Hans="输入 api key"),
                     default="",
@@ -100,20 +71,22 @@ class ApiToolManageService:
             ]
 
             return cast(
-                ApiSchemaParseResult,
-                {
-                    "schema_type": schema_type.value,
-                    "parameters_schema": _dump_api_tool_bundles(tool_bundles),
-                    "credentials_schema": _dump_provider_configs(credentials_schema),
-                    "warning": warnings,
-                },
+                Mapping,
+                jsonable_encoder(
+                    {
+                        "schema_type": schema_type,
+                        "parameters_schema": tool_bundles,
+                        "credentials_schema": credentials_schema,
+                        "warning": warnings,
+                    }
+                ),
             )
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
     def convert_schema_to_tool_bundles(
-        schema: str, extra_info: dict[str, Any] | None = None
+        schema: str, extra_info: dict | None = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
@@ -130,97 +103,83 @@ class ApiToolManageService:
         user_id: str,
         tenant_id: str,
         provider_name: str,
-        icon: dict[str, Any],
-        credentials: dict[str, Any],
+        icon: dict,
+        credentials: dict,
         schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
         custom_disclaimer: str,
         labels: list[str],
-    ) -> SimpleSuccessResult:
+    ):
         """
-        Create a new API tool provider.
-
-        :param user_id: The ID of the user creating the provider.
-        :param tenant_id: The ID of the workspace/tenant.
-        :param provider_name: The name of the API tool provider.
-        :param icon: The icon configuration for the provider.
-        :param credentials: The credentials for the provider.
-        :param schema_type: The type of schema (e.g., OpenAPI).
-        :param schema: The raw schema string.
-        :param privacy_policy: The privacy policy URL or text.
-        :param custom_disclaimer: Custom disclaimer text.
-        :param labels: A list of labels for the provider.
-        :return: A dictionary indicating the result status.
+        create api tool provider
         """
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        # Create new session with automatic transaction management
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider: ApiToolProvider | None = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
+        provider = (
+            db.session.query(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
             )
+            .first()
+        )
 
-            if provider is not None:
-                raise ValueError(f"provider {provider_name} already exists")
+        if provider is not None:
+            raise ValueError(f"provider {provider_name} already exists")
 
-            # parse openapi to tool bundle
-            extra_info: dict[str, str] = {}
-            # extra info like description will be set here
-            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+        # parse openapi to tool bundle
+        extra_info: dict[str, str] = {}
+        # extra info like description will be set here
+        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-            if len(tool_bundles) > 100:
-                raise ValueError("the number of apis should be less than 100")
+        if len(tool_bundles) > 100:
+            raise ValueError("the number of apis should be less than 100")
 
-            # create API tool provider
-            api_tool_provider = ApiToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                name=provider_name,
-                icon=json.dumps(icon),
-                schema=schema,
-                description=extra_info.get("description", ""),
-                schema_type_str=schema_type,
-                tools_str=json.dumps(_dump_api_tool_bundles(tool_bundles)),
-                credentials_str="{}",
-                privacy_policy=privacy_policy,
-                custom_disclaimer=custom_disclaimer,
-            )
+        # create db provider
+        db_provider = ApiToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            name=provider_name,
+            icon=json.dumps(icon),
+            schema=schema,
+            description=extra_info.get("description", ""),
+            schema_type_str=schema_type,
+            tools_str=json.dumps(jsonable_encoder(tool_bundles)),
+            credentials_str="{}",
+            privacy_policy=privacy_policy,
+            custom_disclaimer=custom_disclaimer,
+        )
 
-            if "auth_type" not in credentials:
-                raise ValueError("auth_type is required")
+        if "auth_type" not in credentials:
+            raise ValueError("auth_type is required")
 
-            # get auth type, none or api key
-            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+        # get auth type, none or api key
+        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-            # create provider entity
-            provider_controller = ApiToolProviderController.from_db(api_tool_provider, auth_type)
-            # load tools into provider entity
-            provider_controller.load_bundled_tools(tool_bundles)
+        # create provider entity
+        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
+        # load tools into provider entity
+        provider_controller.load_bundled_tools(tool_bundles)
 
-            # encrypt credentials
-            encrypter, _ = create_tool_provider_encrypter(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-            )
-            api_tool_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
+        # encrypt credentials
+        encrypter, _ = create_tool_provider_encrypter(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+        )
+        db_provider.credentials_str = json.dumps(encrypter.encrypt(credentials))
 
-            _session.add(api_tool_provider)
+        db.session.add(db_provider)
+        db.session.commit()
 
-            # update labels
-            ToolLabelManager.update_tool_labels(provider_controller, labels, _session)
+        # update labels
+        ToolLabelManager.update_tool_labels(provider_controller, labels)
 
         return {"result": "success"}
 
     @staticmethod
-    def get_api_tool_provider_remote_schema(user_id: str, tenant_id: str, url: str) -> RemoteSchemaResult:
+    def get_api_tool_provider_remote_schema(user_id: str, tenant_id: str, url: str):
         """
         get api tool provider remote schema
         """
@@ -231,7 +190,7 @@ class ApiToolManageService:
         }
 
         try:
-            response = ssrf_proxy.get(url, headers=headers, timeout=10)
+            response = get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 raise ValueError(f"Got status code {response.status_code}")
             schema = response.text
@@ -247,25 +206,16 @@ class ApiToolManageService:
     @staticmethod
     def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[ToolApiEntity]:
         """
-        List tools provided by a specific API tool provider.
-
-        :param user_id: The ID of the user requesting the list.
-        :param tenant_id: The ID of the workspace/tenant.
-        :param provider_name: The name of the API tool provider.
-        :return: A list of ToolApiEntity objects.
+        list api tool provider tools
         """
-
-        # create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
+        provider: ApiToolProvider | None = (
+            db.session.query(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
             )
+            .first()
+        )
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
@@ -288,140 +238,110 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         original_provider: str,
-        icon: dict[str, Any],
-        credentials: dict[str, Any],
+        icon: dict,
+        credentials: dict,
         _schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
-    ) -> SimpleSuccessResult:
+    ):
         """
-        Update an existing API tool provider.
-
-        :param user_id: The ID of the user updating the provider.
-        :param tenant_id: The ID of the workspace/tenant.
-        :param provider_name: The new name of the API tool provider.
-        :param original_provider: The original name of the API tool provider.
-        :param icon: The icon configuration for the provider.
-        :param credentials: The credentials for the provider.
-        :param _schema_type: The type of schema (e.g., OpenAPI).
-        :param schema: The raw schema string.
-        :param privacy_policy: The privacy policy URL or text.
-        :param custom_disclaimer: Custom disclaimer text.
-        :param labels: A list of labels for the provider.
-        :return: A dictionary indicating the result status.
+        update api tool provider
         """
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
-        # create new session with automatic transaction management
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider: ApiToolProvider | None = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == original_provider,
-                )
-                .limit(1)
+        provider = (
+            db.session.query(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == original_provider,
             )
+            .first()
+        )
 
-            if provider is None:
-                raise ApiToolProviderNotFoundError(provider_name=original_provider, tenant_id=tenant_id)
+        if provider is None:
+            raise ValueError(f"api provider {provider_name} does not exists")
+        # parse openapi to tool bundle
+        extra_info: dict[str, str] = {}
+        # extra info like description will be set here
+        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
-            # parse openapi to tool bundle
-            extra_info: dict[str, str] = {}
-            # extra info like description will be set here
-            tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+        # update db provider
+        provider.name = provider_name
+        provider.icon = json.dumps(icon)
+        provider.schema = schema
+        provider.description = extra_info.get("description", "")
+        provider.schema_type_str = schema_type
+        provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
+        provider.privacy_policy = privacy_policy
+        provider.custom_disclaimer = custom_disclaimer
 
-            # update db provider
-            provider.name = provider_name
-            provider.icon = json.dumps(icon)
-            provider.schema = schema
-            provider.description = extra_info.get("description", "")
-            provider.schema_type_str = schema_type
-            provider.tools_str = json.dumps(_dump_api_tool_bundles(tool_bundles))
-            provider.privacy_policy = privacy_policy
-            provider.custom_disclaimer = custom_disclaimer
+        if "auth_type" not in credentials:
+            raise ValueError("auth_type is required")
 
-            if "auth_type" not in credentials:
-                raise ValueError("auth_type is required")
+        # get auth type, none or api key
+        auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
-            # get auth type, none or api key
-            auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
+        # create provider entity
+        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+        # load tools into provider entity
+        provider_controller.load_bundled_tools(tool_bundles)
 
-            # create provider entity
-            provider_controller = ApiToolProviderController.from_db(provider, auth_type)
-            # load tools into provider entity
-            provider_controller.load_bundled_tools(tool_bundles)
+        # get original credentials if exists
+        encrypter, cache = create_tool_provider_encrypter(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+        )
 
-            # get original credentials if exists
-            encrypter, cache = create_tool_provider_encrypter(
-                tenant_id=tenant_id,
-                controller=provider_controller,
-            )
+        original_credentials = encrypter.decrypt(provider.credentials)
+        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
+        # check if the credential has changed, save the original credential
+        for name, value in credentials.items():
+            if name in masked_credentials and value == masked_credentials[name]:
+                credentials[name] = original_credentials[name]
 
-            original_credentials = encrypter.decrypt(provider.credentials)
-            masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
+        credentials = dict(encrypter.encrypt(credentials))
+        provider.credentials_str = json.dumps(credentials)
 
-            # check if the credential has changed, save the original credential
-            for name, value in credentials.items():
-                if name in masked_credentials and value == masked_credentials[name]:
-                    credentials[name] = original_credentials[name]
-
-            credentials = dict(encrypter.encrypt(credentials))
-            provider.credentials_str = json.dumps(credentials)
-
-            _session.add(provider)
-
-            # update labels
-            ToolLabelManager.update_tool_labels(provider_controller, labels, _session)
+        db.session.add(provider)
+        db.session.commit()
 
         # delete cache
         cache.delete()
 
+        # update labels
+        ToolLabelManager.update_tool_labels(provider_controller, labels)
+
         return {"result": "success"}
 
     @staticmethod
-    def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str) -> SimpleSuccessResult:
+    def delete_api_tool_provider(user_id: str, tenant_id: str, provider_name: str):
         """
-        Delete an API tool provider.
-
-        :param user_id: The ID of the user performing the deletion operation.
-        :param tenant_id: The ID of the workspace/tenant where the provider belongs.
-        :param provider_name: The unique name of the API tool provider to be deleted.
-        :raises ValueError: If the specified provider does not exist in the tenant.
-        :return: A dictionary indicating the result status.
+        delete tool provider
         """
-
-        # create new session with automatic transaction management
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider: ApiToolProvider | None = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
+        provider = (
+            db.session.query(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
             )
+            .first()
+        )
 
-            if provider is None:
-                raise ValueError(f"you have not added provider {provider_name}")
+        if provider is None:
+            raise ValueError(f"you have not added provider {provider_name}")
 
-            _session.delete(provider)
+        db.session.delete(provider)
+        db.session.commit()
 
         return {"result": "success"}
 
     @staticmethod
-    def get_api_tool_provider(user_id: str, tenant_id: str, provider: str) -> dict[str, Any]:
+    def get_api_tool_provider(user_id: str, tenant_id: str, provider: str):
         """
-        Get API tool provider details.
-
-        :param user_id: The ID of the user requesting the provider.
-        :param tenant_id: The ID of the workspace/tenant.
-        :param provider: The name of the API tool provider.
-        :return: A dictionary containing the provider details.
+        get api tool provider
         """
         return ToolManager.user_get_api_provider(provider=provider, tenant_id=tenant_id)
 
@@ -430,24 +350,14 @@ class ApiToolManageService:
         tenant_id: str,
         provider_name: str,
         tool_name: str,
-        credentials: dict[str, Any],
-        parameters: dict[str, Any],
-        schema_type: ApiProviderSchemaType | str,
+        credentials: dict,
+        parameters: dict,
+        schema_type: ApiProviderSchemaType,
         schema: str,
-    ) -> ApiToolPreviewResult:
+    ):
         """
-        Test an API tool before adding the API tool provider.
-
-        :param tenant_id: The ID of the workspace/tenant.
-        :param provider_name: The name of the API tool provider.
-        :param tool_name: The name of the specific tool to test.
-        :param credentials: The credentials for the provider.
-        :param parameters: The parameters to pass to the tool.
-        :param schema_type: The type of schema (e.g., OpenAPI).
-        :param schema: The raw schema string.
-        :return: A dictionary containing the result or error message.
+        test api tool before adding api tool provider
         """
-
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema_type}")
 
@@ -461,21 +371,18 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        # create new session with automatic transaction management to get the provider
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
+        db_provider = (
+            db.session.query(ApiToolProvider)
+            .where(
+                ApiToolProvider.tenant_id == tenant_id,
+                ApiToolProvider.name == provider_name,
             )
+            .first()
+        )
 
-        if provider is None:
+        if not db_provider:
             # create a fake db provider
-            provider = ApiToolProvider(
+            db_provider = ApiToolProvider(
                 tenant_id="",
                 user_id="",
                 name="",
@@ -483,7 +390,7 @@ class ApiToolManageService:
                 schema=schema,
                 description="",
                 schema_type_str=ApiProviderSchemaType.OPENAPI,
-                tools_str=json.dumps(_dump_api_tool_bundles(tool_bundles)),
+                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
 
@@ -494,12 +401,12 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
         # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
         # decrypt credentials
-        if provider.id:
+        if db_provider.id:
             encrypter, _ = create_tool_provider_encrypter(
                 tenant_id=tenant_id,
                 controller=provider_controller,
@@ -530,21 +437,14 @@ class ApiToolManageService:
     @staticmethod
     def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
         """
-        List all API tools for a specific tenant.
-
-        :param tenant_id: The ID of the workspace/tenant.
-        :return: A list of ToolProviderApiEntity objects.
+        list api tools
         """
         # get all api providers
-        # create new session with automatic transaction management
-        providers: list[ApiToolProvider] = []
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = list(
-                _session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
-            )
+        db_providers = db.session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
 
         result: list[ToolProviderApiEntity] = []
-        for provider in providers:
+
+        for provider in db_providers:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             labels = ToolLabelManager.get_tool_labels(provider_controller)

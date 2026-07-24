@@ -1,12 +1,9 @@
 'use client'
 import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
-import type { TriggerPluginActionPreviewPayload } from './action-item'
-import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
 import { memo, useEffect, useMemo } from 'react'
 import { useGetLanguage } from '@/context/i18n'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { TriggerPluginActionPreviewCard } from './action-item'
 import TriggerPluginItem from './item'
 
 type TriggerPluginListProps = {
@@ -14,34 +11,31 @@ type TriggerPluginListProps = {
   searchText: string
   onContentStateChange?: (hasContent: boolean) => void
   tags?: string[]
-  disabled?: boolean
 }
 
 const TriggerPluginList = ({
   onSelect,
   searchText,
   onContentStateChange,
-  disabled = false,
 }: TriggerPluginListProps) => {
   const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(
-    () => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
-    [],
-  )
 
   const normalizedSearch = searchText.trim().toLowerCase()
   const triggerPlugins = useMemo(() => {
     const plugins = triggerPluginsData || []
     const getLocalizedText = (text?: Record<string, string> | null) => {
-      if (!text) return ''
+      if (!text)
+        return ''
 
-      if (text[language]) return text[language]
+      if (text[language])
+        return text[language]
 
-      if (text['en-US']) return text['en-US']
+      if (text['en-US'])
+        return text['en-US']
 
       const firstValue = Object.values(text).find(Boolean)
-      return typeof firstValue === 'string' ? firstValue : ''
+      return (typeof firstValue === 'string') ? firstValue : ''
     }
     const getSearchableTexts = (name: string, label?: Record<string, string> | null) => {
       const localized = getLocalizedText(label)
@@ -51,15 +45,16 @@ const TriggerPluginList = ({
     const isMatchingKeywords = (value: string) => value.toLowerCase().includes(normalizedSearch)
 
     if (!normalizedSearch)
-      return plugins.filter((triggerWithProvider) => triggerWithProvider.events.length > 0)
+      return plugins.filter(triggerWithProvider => triggerWithProvider.events.length > 0)
 
     return plugins.reduce<TriggerWithProvider[]>((acc, triggerWithProvider) => {
-      if (triggerWithProvider.events.length === 0) return acc
+      if (triggerWithProvider.events.length === 0)
+        return acc
 
       const providerMatches = getSearchableTexts(
         triggerWithProvider.name,
         triggerWithProvider.label,
-      ).some((text) => isMatchingKeywords(text))
+      ).some(text => isMatchingKeywords(text))
 
       if (providerMatches) {
         acc.push(triggerWithProvider)
@@ -67,7 +62,10 @@ const TriggerPluginList = ({
       }
 
       const matchedEvents = triggerWithProvider.events.filter((event) => {
-        return getSearchableTexts(event.name, event.label).some((text) => isMatchingKeywords(text))
+        return getSearchableTexts(
+          event.name,
+          event.label,
+        ).some(text => isMatchingKeywords(text))
       })
 
       if (matchedEvents.length > 0) {
@@ -87,27 +85,19 @@ const TriggerPluginList = ({
     onContentStateChange?.(hasContent)
   }, [hasContent, onContentStateChange])
 
-  if (!hasContent) return null
+  if (!hasContent)
+    return null
 
   return (
     <div className="p-1">
-      {triggerPlugins.map((plugin) => (
+      {triggerPlugins.map(plugin => (
         <TriggerPluginItem
           key={plugin.id}
           payload={plugin}
           onSelect={onSelect}
-          disabled={disabled}
           hasSearchText={!!searchText}
-          previewCardHandle={previewCardHandle}
         />
       ))}
-      <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => (
-          <TriggerPluginActionPreviewCard
-            payload={payload as TriggerPluginActionPreviewPayload | undefined}
-          />
-        )}
-      </PreviewCard>
     </div>
   )
 }

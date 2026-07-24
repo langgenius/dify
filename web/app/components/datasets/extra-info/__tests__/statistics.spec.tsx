@@ -1,51 +1,80 @@
-import type { RelatedAppResponse } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AppModeEnum } from '@/types/app'
 import Statistics from '../statistics'
 
-vi.mock('@/app/components/base/linked-apps-panel', () => ({
-  default: () => <div>linked applications</div>,
+// Mock useDocLink
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('../../no-linked-apps-panel', () => ({
-  default: () => <div>no linked applications</div>,
-}))
+afterEach(() => {
+  cleanup()
+})
 
 describe('Statistics', () => {
-  it('shows document and related application counts', () => {
-    render(
-      <Statistics
-        expand
-        documentCount={12}
-        relatedApps={{ total: 3, data: [] } as RelatedAppResponse}
-      />,
-    )
+  const mockRelatedApp: RelatedApp = {
+    id: 'app-1',
+    name: 'Test App',
+    mode: AppModeEnum.CHAT,
+    icon_type: 'emoji',
+    icon: '🤖',
+    icon_background: '#ffffff',
+    icon_url: '',
+  }
 
-    expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('3')).toBeInTheDocument()
+  const mockRelatedApps: RelatedAppResponse = {
+    data: [mockRelatedApp],
+    total: 1,
+  }
+
+  it('should render document count', () => {
+    render(<Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('5')).toBeInTheDocument()
   })
 
-  it('shows linked applications from the related-apps control', async () => {
-    const user = userEvent.setup()
-    render(
-      <Statistics
-        expand
-        documentCount={12}
-        relatedApps={{ total: 1, data: [{ id: 'app-1' }] } as RelatedAppResponse}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
-
-    expect(screen.getByText('linked applications')).toBeInTheDocument()
+  it('should render document label', () => {
+    render(<Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('common.datasetMenus.documents')).toBeInTheDocument()
   })
 
-  it('shows an empty state when there are no linked applications', async () => {
-    const user = userEvent.setup()
-    render(<Statistics expand documentCount={12} relatedApps={{ total: 0, data: [] }} />)
+  it('should render related apps total', () => {
+    render(<Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('1')).toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'common.datasetMenus.relatedApp' }))
+  it('should render related app label', () => {
+    render(<Statistics expand={true} documentCount={5} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('common.datasetMenus.relatedApp')).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('no linked applications')).toBeInTheDocument()
+  it('should render -- for undefined document count', () => {
+    render(<Statistics expand={true} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('--')).toBeInTheDocument()
+  })
+
+  it('should render -- for undefined related apps total', () => {
+    render(<Statistics expand={true} documentCount={5} />)
+    const dashes = screen.getAllByText('--')
+    expect(dashes.length).toBeGreaterThan(0)
+  })
+
+  it('should render with zero document count', () => {
+    render(<Statistics expand={true} documentCount={0} relatedApps={mockRelatedApps} />)
+    expect(screen.getByText('0')).toBeInTheDocument()
+  })
+
+  it('should render with empty related apps', () => {
+    const emptyRelatedApps: RelatedAppResponse = {
+      data: [],
+      total: 0,
+    }
+    render(<Statistics expand={true} documentCount={5} relatedApps={emptyRelatedApps} />)
+    expect(screen.getByText('0')).toBeInTheDocument()
+  })
+
+  it('should be wrapped with React.memo', () => {
+    expect((Statistics as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
   })
 })

@@ -1,6 +1,6 @@
-from typing import Any, Self, override
+from typing import Any, Self
 
-from core.entities.mcp_provider import IdentityMode, MCPProviderEntity
+from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.types import Tool as RemoteMCPTool
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -18,7 +18,7 @@ from models.tools import MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 
-class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlugin, MCPTool]):
+class MCPToolProviderController(ToolProviderController):
     def __init__(
         self,
         entity: ToolProviderEntityWithPlugin,
@@ -28,7 +28,6 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
-        identity_mode: IdentityMode = IdentityMode.OFF,
     ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
@@ -38,10 +37,8 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
-        self.identity_mode: IdentityMode = identity_mode
 
     @property
-    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -108,7 +105,6 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
             headers=entity.headers,
             timeout=entity.timeout,
             sse_read_timeout=entity.sse_read_timeout,
-            identity_mode=entity.identity_mode,
         )
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
@@ -117,7 +113,6 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         """
         pass
 
-    @override
     def get_tool(self, tool_name: str) -> MCPTool:
         """
         return tool with given name
@@ -139,7 +134,6 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
-            identity_mode=self.identity_mode,
         )
 
     def get_tools(self) -> list[MCPTool]:
@@ -157,7 +151,6 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
                 headers=self.headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
-                identity_mode=self.identity_mode,
             )
             for tool_entity in self.entity.tools
         ]

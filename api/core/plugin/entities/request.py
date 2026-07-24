@@ -4,12 +4,11 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from flask import Response
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.utils.http_parser import deserialize_response
-from core.workflow.file_reference import is_canonical_file_reference
-from graphon.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageRole,
@@ -18,13 +17,18 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.nodes.llm.entities import ModelConfig as LLMModelConfig
-from graphon.nodes.parameter_extractor.entities import (
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.nodes.parameter_extractor.entities import (
+    ModelConfig as ParameterExtractorModelConfig,
+)
+from dify_graph.nodes.parameter_extractor.entities import (
     ParameterConfig,
 )
-from graphon.nodes.question_classifier.entities import (
+from dify_graph.nodes.question_classifier.entities import (
     ClassConfig,
+)
+from dify_graph.nodes.question_classifier.entities import (
+    ModelConfig as QuestionClassifierModelConfig,
 )
 
 
@@ -50,7 +54,7 @@ class RequestInvokeTool(BaseModel):
     tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
-    tool_parameters: dict[str, Any]
+    tool_parameters: dict
     credential_id: str | None = None
 
 
@@ -73,7 +77,7 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
     tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
     stop: list[str] | None = Field(default_factory=list[str])
-    stream: bool = False
+    stream: bool | None = False
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -172,7 +176,7 @@ class RequestInvokeParameterExtractorNode(BaseModel):
     """
 
     parameters: list[ParameterConfig]
-    model: LLMModelConfig
+    model: ParameterExtractorModelConfig
     instruction: str
     query: str
 
@@ -183,7 +187,7 @@ class RequestInvokeQuestionClassifierNode(BaseModel):
     """
 
     query: str
-    model: LLMModelConfig
+    model: QuestionClassifierModelConfig
     classes: list[ClassConfig]
     instruction: str
 
@@ -210,7 +214,7 @@ class RequestInvokeEncrypt(BaseModel):
     opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
-    data: dict[str, Any] = Field(default_factory=dict)
+    data: dict = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
 
 
@@ -230,55 +234,6 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
-    conversation_id: str | None = None
-
-
-class RequestDownloadFileMapping(BaseModel):
-    """File mapping accepted by trusted download-request control-plane APIs."""
-
-    transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
-    reference: str | None = None
-    url: str | None = None
-
-    model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def validate_locator(self) -> "RequestDownloadFileMapping":
-        if self.transfer_method == "remote_url":
-            if not self.url:
-                raise ValueError("url is required when transfer_method is remote_url")
-            if self.reference is not None:
-                raise ValueError("reference is not allowed when transfer_method is remote_url")
-            return self
-        if not self.reference:
-            raise ValueError("reference is required for non-remote file mappings")
-        if not is_canonical_file_reference(self.reference):
-            raise ValueError("reference must be a canonical Dify file reference")
-        if self.url is not None:
-            raise ValueError("url is not allowed for non-remote file mappings")
-        return self
-
-
-class RequestRequestDownloadFile(BaseModel):
-    """Request to resolve a signed download URL for one runtime file mapping."""
-
-    tenant_id: str
-    user_id: str
-    user_from: Literal["account", "end-user"]
-    invoke_from: Literal[
-        "service-api",
-        "openapi",
-        "web-app",
-        "trigger",
-        "explore",
-        "debugger",
-        "published",
-        "validation",
-    ]
-    file: RequestDownloadFileMapping
-    for_external: bool = True
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class RequestFetchAppInfo(BaseModel):

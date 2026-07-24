@@ -126,7 +126,6 @@ Run with coverage:
 """
 
 import asyncio
-import logging
 import string
 import sys
 import types
@@ -645,13 +644,13 @@ class TestTextSplitterBasePaths:
         with pytest.raises(NotImplementedError):
             asyncio.run(splitter.atransform_documents([Document(page_content="x", metadata={})]))
 
-    def test_merge_splits_logs_warning_for_oversized_total(self, caplog: pytest.LogCaptureFixture):
+    def test_merge_splits_logs_warning_for_oversized_total(self):
         """Cover logger.warning path in _merge_splits."""
         splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=1)
-        with caplog.at_level(logging.WARNING, logger="core.rag.splitter.text_splitter"):
+        with patch("core.rag.splitter.text_splitter.logger.warning") as mock_warning:
             merged = splitter._merge_splits(["abcdefghij", "b"], "", [10, 1])
         assert merged
-        assert any(record.levelno == logging.WARNING for record in caplog.records)
+        mock_warning.assert_called_once()
 
 
 # ============================================================================

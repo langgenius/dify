@@ -13,11 +13,9 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps import message_based_app_generator
-from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from models.model import AppMode, Conversation, Message
-from services.errors.app_model_config import AppModelConfigBrokenError
 
 
 class DummyModelConf:
@@ -85,7 +83,7 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
 
 
 @pytest.fixture(autouse=True)
-def mock_db_session(monkeypatch: pytest.MonkeyPatch):
+def _mock_db_session(monkeypatch):
     session = MagicMock()
 
     def refresh_side_effect(obj):
@@ -102,17 +100,13 @@ def mock_db_session(monkeypatch: pytest.MonkeyPatch):
     return session
 
 
-def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(mock_db_session):
+def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity():
     app_config = _make_app_config(AppMode.COMPLETION)
     entity = DummyCompletionGenerateEntity(app_config=app_config)
 
     generator = MessageBasedAppGenerator()
 
-    conversation, message = generator._init_generate_records(
-        entity,
-        conversation=None,
-        session=mock_db_session,
-    )
+    conversation, message = generator._init_generate_records(entity, conversation=None)
 
     assert conversation.id == "generated-conversation-id"
     assert message.id == "generated-message-id"
@@ -120,73 +114,14 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
     assert hasattr(entity, "is_new_conversation") is False
 
 
-def test_init_generate_records_sets_conversation_fields_for_chat_entity(mock_db_session):
+def test_init_generate_records_sets_conversation_fields_for_chat_entity():
     app_config = _make_app_config(AppMode.CHAT)
     entity = _make_chat_generate_entity(app_config)
 
     generator = MessageBasedAppGenerator()
 
-    conversation, _ = generator._init_generate_records(
-        entity,
-        conversation=None,
-        session=mock_db_session,
-    )
+    conversation, _ = generator._init_generate_records(entity, conversation=None)
 
     assert entity.conversation_id == "generated-conversation-id"
     assert entity.is_new_conversation is True
     assert conversation.id == "generated-conversation-id"
-
-
-class TestMessageBasedAppGeneratorExtras:
-    def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
-        generator = MessageBasedAppGenerator()
-
-        class _Pipeline:
-            def __init__(self, **kwargs) -> None:
-                _ = kwargs
-
-            def process(self):
-                raise ValueError("I/O operation on closed file.")
-
-        monkeypatch.setattr(
-            "core.app.apps.message_based_app_generator.EasyUIBasedGenerateTaskPipeline",
-            _Pipeline,
-        )
-
-        with pytest.raises(GenerateTaskStoppedError):
-            generator._handle_response(
-                application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
-                queue_manager=SimpleNamespace(),
-                conversation=SimpleNamespace(id="conv"),
-                message=SimpleNamespace(id="msg"),
-                user=SimpleNamespace(),
-                stream=False,
-            )
-
-    def test_get_app_model_config_requires_valid_config(self):
-        generator = MessageBasedAppGenerator()
-        app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
-        session = MagicMock()
-
-        with pytest.raises(AppModelConfigBrokenError):
-            generator._get_app_model_config(app_model, conversation=None, session=session)
-
-        conversation = SimpleNamespace(app_model_config_id="missing-id")
-        session.scalar.return_value = None
-
-        with pytest.raises(AppModelConfigBrokenError):
-            generator._get_app_model_config(
-                app_model=SimpleNamespace(id="app"),
-                conversation=conversation,
-                session=session,
-            )
-
-    def test_get_conversation_introduction_handles_missing_inputs(self):
-        app_config = _make_app_config(AppMode.CHAT)
-        app_config.additional_features.opening_statement = "Hello {{name}}"
-        entity = _make_chat_generate_entity(app_config)
-        entity.inputs = {}
-
-        generator = MessageBasedAppGenerator()
-
-        assert generator._get_conversation_introduction(entity) == "Hello {name}"

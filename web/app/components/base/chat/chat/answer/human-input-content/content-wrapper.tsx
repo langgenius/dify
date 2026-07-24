@@ -1,7 +1,7 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type ContentWrapperProps = {
   nodeTitle: string
@@ -26,10 +26,7 @@ const ContentWrapper = ({
 
   return (
     <div
-      className={cn(
-        'rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md',
-        className,
-      )}
+      className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-background-section p-2 shadow-md', className)}
       data-testid="content-wrapper"
     >
       <div className="flex items-center gap-2 p-2">
@@ -37,7 +34,7 @@ const ContentWrapper = ({
         <BlockIcon type={BlockEnum.HumanInput} className="shrink-0" />
         {/* node name */}
         <div
-          className="grow truncate system-sm-semibold-uppercase text-text-primary"
+          className="grow truncate text-text-primary system-sm-semibold-uppercase"
           title={nodeTitle}
         >
           {nodeTitle}
@@ -48,11 +45,15 @@ const ContentWrapper = ({
             onClick={handleToggleExpand}
             data-testid="expand-icon"
           >
-            {isExpanded ? (
-              <div className="i-ri-arrow-down-s-line size-4" />
-            ) : (
-              <div className="i-ri-arrow-right-s-line size-4" />
-            )}
+            {
+              isExpanded
+                ? (
+                    <div className="i-ri-arrow-down-s-line size-4" />
+                  )
+                : (
+                    <div className="i-ri-arrow-right-s-line size-4" />
+                  )
+            }
           </div>
         )}
       </div>

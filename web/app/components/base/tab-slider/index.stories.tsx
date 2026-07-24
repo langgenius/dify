@@ -8,15 +8,22 @@ const OPTIONS = [
   { value: 'plugins', text: 'Plugins' },
 ]
 
-const TabSliderDemo = ({ initialValue = 'models' }: { initialValue?: string }) => {
+const TabSliderDemo = ({
+  initialValue = 'models',
+}: {
+  initialValue?: string
+}) => {
   const [value, setValue] = useState(initialValue)
 
   useEffect(() => {
     const originalFetch = globalThis.fetch?.bind(globalThis)
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url =
-        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const url = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
 
       if (url.includes('/workspaces/current/plugin/list')) {
         return new Response(
@@ -31,7 +38,8 @@ const TabSliderDemo = ({ initialValue = 'models' }: { initialValue?: string }) =
         )
       }
 
-      if (originalFetch) return originalFetch(input, init)
+      if (originalFetch)
+        return originalFetch(input, init)
 
       throw new Error(`Unhandled request for ${url}`)
     }
@@ -39,14 +47,19 @@ const TabSliderDemo = ({ initialValue = 'models' }: { initialValue?: string }) =
     globalThis.fetch = handler as typeof globalThis.fetch
 
     return () => {
-      if (originalFetch) globalThis.fetch = originalFetch
+      if (originalFetch)
+        globalThis.fetch = originalFetch
     }
   }, [])
 
   return (
     <div className="flex w-full max-w-lg flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Segmented tabs</div>
-      <TabSlider value={value} options={OPTIONS} onChange={setValue} />
+      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Segmented tabs</div>
+      <TabSlider
+        value={value}
+        options={OPTIONS}
+        onChange={setValue}
+      />
     </div>
   )
 }
@@ -58,15 +71,14 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Animated segmented control with sliding highlight. A badge appears when plugins are installed (mocked in Storybook).',
+        component: 'Animated segmented control with sliding highlight. A badge appears when plugins are installed (mocked in Storybook).',
       },
     },
   },
   argTypes: {
     initialValue: {
       control: 'radio',
-      options: OPTIONS.map((option) => option.value),
+      options: OPTIONS.map(option => option.value),
     },
   },
   args: {

@@ -1,11 +1,5 @@
 import type { FC } from 'react'
-import type {
-  LegacyDataSourceInfo,
-  LocalFileInfo,
-  OnlineDocumentInfo,
-  OnlineDriveInfo,
-  SimpleDocumentDetail,
-} from '@/models/datasets'
+import type { LegacyDataSourceInfo, LocalFileInfo, OnlineDocumentInfo, OnlineDriveInfo, SimpleDocumentDetail } from '@/models/datasets'
 import { RiGlobalLine } from '@remixicon/react'
 import * as React from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -24,9 +18,7 @@ const isLocalFile = (dataSourceType: DataSourceType | DatasourceType) => {
 }
 
 const isOnlineDocument = (dataSourceType: DataSourceType | DatasourceType) => {
-  return (
-    dataSourceType === DatasourceType.onlineDocument || dataSourceType === DataSourceType.NOTION
-  )
+  return dataSourceType === DatasourceType.onlineDocument || dataSourceType === DataSourceType.NOTION
 }
 
 const isWebsiteCrawl = (dataSourceType: DataSourceType | DatasourceType) => {
@@ -42,13 +34,18 @@ const isCreateFromRAGPipeline = (createdFrom: string) => {
 }
 
 const getFileExtension = (fileName: string): string => {
-  if (!fileName) return ''
+  if (!fileName)
+    return ''
   const parts = fileName.split('.')
-  if (parts.length <= 1 || (parts[0] === '' && parts.length === 2)) return ''
-  return parts[parts.length - 1]!.toLowerCase()
+  if (parts.length <= 1 || (parts[0] === '' && parts.length === 2))
+    return ''
+  return parts[parts.length - 1].toLowerCase()
 }
 
-const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileType }) => {
+const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({
+  doc,
+  fileType,
+}) => {
   if (isOnlineDocument(doc.data_source_type)) {
     return (
       <NotionIcon
@@ -66,11 +63,13 @@ const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileT
   if (isLocalFile(doc.data_source_type)) {
     return (
       <FileTypeIcon
-        type={extensionToFileType(
-          isCreateFromRAGPipeline(doc.created_from)
-            ? (doc?.data_source_info as LocalFileInfo)?.extension
-            : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
-        )}
+        type={
+          extensionToFileType(
+            isCreateFromRAGPipeline(doc.created_from)
+              ? (doc?.data_source_info as LocalFileInfo)?.extension
+              : ((doc?.data_source_info as LegacyDataSourceInfo)?.upload_file?.extension ?? fileType),
+          )
+        }
         className="mr-1.5"
       />
     )
@@ -79,9 +78,11 @@ const DocumentSourceIcon: FC<DocumentSourceIconProps> = React.memo(({ doc, fileT
   if (isOnlineDrive(doc.data_source_type)) {
     return (
       <FileTypeIcon
-        type={extensionToFileType(
-          getFileExtension((doc?.data_source_info as unknown as OnlineDriveInfo)?.name),
-        )}
+        type={
+          extensionToFileType(
+            getFileExtension((doc?.data_source_info as unknown as OnlineDriveInfo)?.name),
+          )
+        }
         className="mr-1.5"
       />
     )

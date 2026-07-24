@@ -1,21 +1,17 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from core.plugin.plugin_service import PluginService
-from graphon.enums import WorkflowExecutionStatus
+from dify_graph.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog
+from services.plugin.plugin_service import PluginService
 from services.workflow.entities import TriggerMetadata
-
-
-class LogViewDetails(TypedDict):
-    trigger_metadata: dict[str, Any] | None
 
 
 # Since the workflow_app_log table has exceeded 100 million records, we use an additional details field to extend it
@@ -26,12 +22,12 @@ class LogView:
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
-    def __init__(self, log: WorkflowAppLog, details: LogViewDetails | None):
+    def __init__(self, log: WorkflowAppLog, details: dict | None):
         self.log = log
         self.details_ = details
 
     @property
-    def details(self) -> LogViewDetails | None:
+    def details(self) -> dict | None:
         return self.details_
 
     def __getattr__(self, name):

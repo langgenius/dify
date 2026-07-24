@@ -18,3 +18,5 @@ export const DebugWithMultipleModelContext = createContext<DebugWithMultipleMode
 })
 
 export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)
+
+export default DebugWithMultipleModelContext

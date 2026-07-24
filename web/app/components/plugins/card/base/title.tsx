@@ -1,6 +1,10 @@
-const Title = ({ title }: { title: string }) => {
+const Title = ({
+  title,
+}: {
+  title: string
+}) => {
   return (
-    <div className="truncate system-md-semibold text-text-secondary" title={title}>
+    <div className="system-md-semibold truncate text-text-secondary">
       {title}
     </div>
   )

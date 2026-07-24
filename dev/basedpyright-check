@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -x
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+cd "$SCRIPT_DIR/.."
+
+# Get the path argument if provided
+PATH_TO_CHECK="$1"
+
+# Determine CPU core count based on OS
+CPU_CORES=$(
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    sysctl -n hw.ncpu 2>/dev/null
+  else
+    nproc
+  fi
+)
+
+# Run basedpyright checks
+uv run --directory api --dev -- basedpyright --threads "$CPU_CORES" $PATH_TO_CHECK

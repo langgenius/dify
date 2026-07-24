@@ -1,22 +1,12 @@
 import json
-from typing import override
 
 import httpx
 
-from core.helper.http_client_pooling import get_pooled_http_client
-from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
-
-_http_client: httpx.Client = get_pooled_http_client(
-    "auth:jina",
-    lambda: httpx.Client(
-        timeout=httpx.Timeout(10.0),
-        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    ),
-)
+from services.auth.api_key_auth_base import ApiKeyAuthBase
 
 
 class JinaAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: AuthCredentials):
+    def __init__(self, credentials: dict):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
@@ -26,7 +16,6 @@ class JinaAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
-    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         options = {
@@ -42,20 +31,14 @@ class JinaAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _post_request(self, url, data, headers):
-        return _http_client.post(url, headers=headers, json=data)
+        return httpx.post(url, headers=headers, json=data)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:
-            try:
-                error_message = response.json().get("error", "Unknown error occurred")
-            except ValueError:
-                error_message = response.text or "Unknown error occurred"
+            error_message = response.json().get("error", "Unknown error occurred")
             raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
         else:
             if response.text:
-                try:
-                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
-                except ValueError:
-                    error_message = response.text
+                error_message = json.loads(response.text).get("error", "Unknown error occurred")
                 raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
             raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")

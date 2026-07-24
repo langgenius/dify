@@ -4,8 +4,6 @@ from decimal import Decimal
 
 import pytest
 
-from libs.helper import to_timestamp
-from models.enums import ConversationFromSource
 from models.model import Message
 from services import message_service
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (
@@ -38,7 +36,7 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
         total_price=Decimal(0),
         currency="USD",
         status="normal",
-        from_source=ConversationFromSource.CONSOLE,
+        from_source="console",
         from_account_id=fixture.account.id,
     )
     db_session_with_containers.add(message_without_extra_content)
@@ -48,37 +46,17 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
 
     message_service.attach_message_extra_contents(messages)
 
-    form = fixture.form
-
     assert messages[0].extra_contents == [
         {
             "type": "human_input",
             "workflow_run_id": fixture.message.workflow_run_id,
             "submitted": True,
-            "form_definition": {
-                "form_id": form.id,
-                "node_id": form.node_id,
-                "node_title": "Approval",
-                "form_content": "Rendered block",
-                "inputs": [],
-                "actions": [
-                    {
-                        "id": "approve",
-                        "title": "Approve request",
-                        "button_style": "default",
-                    }
-                ],
-                "display_in_ui": True,
-                "resolved_default_values": {},
-                "expiration_time": to_timestamp(form.expiration_time),
-            },
             "form_submission_data": {
                 "node_id": fixture.form.node_id,
                 "node_title": fixture.node_title,
                 "rendered_content": fixture.form.rendered_content,
                 "action_id": fixture.action_id,
                 "action_text": fixture.action_text,
-                "submitted_data": {"name": "Alice"},
             },
         }
     ]

@@ -5,12 +5,15 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 
-type Props = Readonly<{
+type Props = {
   isGeneralMode: boolean
   isQAMode: boolean
-}>
+}
 
-const ChunkingModeLabel: FC<Props> = ({ isGeneralMode, isQAMode }) => {
+const ChunkingModeLabel: FC<Props> = ({
+  isGeneralMode,
+  isQAMode,
+}) => {
   const { t } = useTranslation()
   const TypeIcon = isGeneralMode ? GeneralChunk : ParentChildChunk
   const generalSuffix = isQAMode ? ' · QA' : ''
@@ -18,12 +21,8 @@ const ChunkingModeLabel: FC<Props> = ({ isGeneralMode, isQAMode }) => {
   return (
     <Badge>
       <div className="flex h-full items-center space-x-0.5 text-text-tertiary">
-        <TypeIcon className="size-3" />
-        <span className="system-2xs-medium-uppercase">
-          {isGeneralMode
-            ? `${t(($) => $['chunkingMode.general'], { ns: 'dataset' })}${generalSuffix}`
-            : t(($) => $['chunkingMode.parentChild'], { ns: 'dataset' })}
-        </span>
+        <TypeIcon className="h-3 w-3" />
+        <span className="system-2xs-medium-uppercase">{isGeneralMode ? `${t('chunkingMode.general', { ns: 'dataset' })}${generalSuffix}` : t('chunkingMode.parentChild', { ns: 'dataset' })}</span>
       </div>
     </Badge>
   )

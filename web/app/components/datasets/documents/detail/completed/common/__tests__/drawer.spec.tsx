@@ -1,17 +1,27 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CompletedDrawer } from '../drawer'
+import Drawer from '../drawer'
 
-;(
-  globalThis as typeof globalThis & {
-    BASE_UI_ANIMATIONS_DISABLED: boolean
-  }
-).BASE_UI_ANIMATIONS_DISABLED = true
+let capturedKeyPressCallback: ((e: KeyboardEvent) => void) | undefined
 
-const getOverlay = () =>
-  Array.from(document.querySelectorAll<HTMLElement>('[class]')).find((element) =>
-    element.className.includes('bg-background-overlay'),
-  )
+// Mock useKeyPress: required because tests capture the registered callback
+// and invoke it directly to verify ESC key handling behavior.
+vi.mock('ahooks', () => ({
+  useKeyPress: vi.fn((_key: string, cb: (e: KeyboardEvent) => void) => {
+    capturedKeyPressCallback = cb
+  }),
+}))
+
+vi.mock('../..', () => ({
+  useSegmentListContext: (selector: (state: {
+    currSegment: { showModal: boolean }
+    currChildChunk: { showModal: boolean }
+  }) => unknown) =>
+    selector({
+      currSegment: { showModal: false },
+      currChildChunk: { showModal: false },
+    }),
+}))
 
 describe('Drawer', () => {
   const defaultProps = {
@@ -21,109 +31,103 @@ describe('Drawer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    capturedKeyPressCallback = undefined
   })
 
   describe('Rendering', () => {
     it('should return null when open is false', () => {
       const { container } = render(
-        <CompletedDrawer open={false} onClose={vi.fn()}>
+        <Drawer open={false} onClose={vi.fn()}>
           <span>Content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
       expect(container.innerHTML).toBe('')
       expect(screen.queryByText('Content')).not.toBeInTheDocument()
     })
 
-    it('should render children in the drawer portal when open is true', () => {
+    it('should render children in portal when open is true', () => {
       render(
-        <CompletedDrawer {...defaultProps}>
+        <Drawer {...defaultProps}>
           <span>Drawer content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
       expect(screen.getByText('Drawer content')).toBeInTheDocument()
+    })
+
+    it('should render dialog with role="dialog"', () => {
+      render(
+        <Drawer {...defaultProps}>
+          <span>Content</span>
+        </Drawer>,
+      )
+
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 
-  describe('Variant', () => {
-    it('should render a panel drawer without overlay by default', () => {
+  // Overlay visibility
+  describe('Overlay', () => {
+    it('should show overlay when showOverlay is true', () => {
       render(
-        <CompletedDrawer {...defaultProps}>
+        <Drawer {...defaultProps} showOverlay={true}>
           <span>Content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
-      expect(getOverlay()).toBeUndefined()
-      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'false')
+      const overlay = document.querySelector('[aria-hidden="true"]')
+      expect(overlay).toBeInTheDocument()
     })
 
-    it('should render a modal drawer with overlay', () => {
+    it('should hide overlay when showOverlay is false', () => {
       render(
-        <CompletedDrawer {...defaultProps} modal>
+        <Drawer {...defaultProps} showOverlay={false}>
           <span>Content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
-      expect(getOverlay()).toBeInTheDocument()
-      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
+      const overlay = document.querySelector('[aria-hidden="true"]')
+      expect(overlay).not.toBeInTheDocument()
     })
   })
 
-  describe('Dismissal', () => {
-    it('should call onClose when Escape is pressed', async () => {
-      const onClose = vi.fn()
+  // aria-modal attribute
+  describe('aria-modal', () => {
+    it('should set aria-modal="true" when modal is true', () => {
       render(
-        <CompletedDrawer open={true} onClose={onClose}>
+        <Drawer {...defaultProps} modal={true}>
           <span>Content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
-      fireEvent.keyDown(document, { key: 'Escape' })
-
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalledTimes(1)
-      })
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
     })
 
-    it('should keep a panel drawer open when the underlying page is clicked', () => {
-      const onClose = vi.fn()
+    it('should set aria-modal="false" when modal is false', () => {
       render(
-        <>
-          <button type="button">Outside</button>
-          <CompletedDrawer open={true} onClose={onClose}>
-            <span>Content</span>
-          </CompletedDrawer>
-        </>,
-      )
-
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Outside' }))
-
-      expect(onClose).not.toHaveBeenCalled()
-    })
-
-    it('should keep a panel drawer open when the pointer down starts inside content', () => {
-      const onClose = vi.fn()
-      render(
-        <CompletedDrawer open={true} onClose={onClose}>
-          <button type="button">Inside</button>
-        </CompletedDrawer>,
-      )
-
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'Inside' }))
-
-      expect(onClose).not.toHaveBeenCalled()
-    })
-    it('should close a modal drawer when the overlay is clicked', () => {
-      const onClose = vi.fn()
-      render(
-        <CompletedDrawer open={true} onClose={onClose} modal>
+        <Drawer {...defaultProps} modal={false}>
           <span>Content</span>
-        </CompletedDrawer>,
+        </Drawer>,
       )
 
-      fireEvent.click(getOverlay()!)
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'false')
+    })
+  })
+
+  // ESC key handling
+  describe('ESC Key', () => {
+    it('should call onClose when ESC is pressed and drawer is open', () => {
+      const onClose = vi.fn()
+      render(
+        <Drawer open={true} onClose={onClose}>
+          <span>Content</span>
+        </Drawer>,
+      )
+
+      expect(capturedKeyPressCallback).toBeDefined()
+      const fakeEvent = { preventDefault: vi.fn() } as unknown as KeyboardEvent
+      capturedKeyPressCallback!(fakeEvent)
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })

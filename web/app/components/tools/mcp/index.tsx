@@ -1,124 +1,88 @@
 'use client'
-import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useMemo, useState } from 'react'
-import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
-import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
-import { useAllToolProviders } from '@/service/use-tools'
-import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
+import { useMemo, useState } from 'react'
+import {
+  useAllToolProviders,
+} from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
 
-type Props = Readonly<{
+type Props = {
   searchText: string
-  contentInset?: ToolsContentInset
-  createdProviderId?: string
-  onCreatedProviderHandled?: () => void
-  showCreateCard?: boolean
-}>
+}
+
+function renderDefaultCard() {
+  const defaultCards = Array.from({ length: 36 }, (_, index) => (
+    <div
+      key={index}
+      className={cn(
+        'inline-flex h-[111px] rounded-xl bg-background-default-lighter opacity-10',
+        index < 4 && 'opacity-60',
+        index >= 4 && index < 8 && 'opacity-50',
+        index >= 8 && index < 12 && 'opacity-40',
+        index >= 12 && index < 16 && 'opacity-30',
+        index >= 16 && index < 20 && 'opacity-25',
+        index >= 20 && index < 24 && 'opacity-20',
+      )}
+    >
+    </div>
+  ))
+  return defaultCards
+}
 
 const MCPList = ({
   searchText,
-  contentInset = 'default',
-  createdProviderId,
-  onCreatedProviderHandled,
-  showCreateCard = true,
 }: Props) => {
-  const canManageMCP = useCanManageMCP()
-  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
+  const { data: list = [] as ToolWithProvider[], refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
-      if (collection.type !== 'mcp') return false
       if (searchText)
-        return Object.values(collection.name).some((value) =>
-          (value as string).toLowerCase().includes(searchText.toLowerCase()),
-        )
-      return true
+        return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
+      return collection.type === 'mcp'
     }) as ToolWithProvider[]
   }, [list, searchText])
 
   const [currentProviderID, setCurrentProviderID] = useState<string>()
 
   const currentProvider = useMemo(() => {
-    return list.find((provider) => provider.id === currentProviderID)
+    return list.find(provider => provider.id === currentProviderID)
   }, [list, currentProviderID])
 
   const handleCreate = async (provider: ToolWithProvider) => {
-    if (!canManageMCP) return
-
     await refetch() // update list
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
 
-  useEffect(() => {
-    if (!canManageMCP || !createdProviderId) return
-
-    let isActive = true
-
-    const openCreatedProvider = async () => {
-      try {
-        await refetch()
-        if (!isActive) return
-
-        setCurrentProviderID(createdProviderId)
-        setIsTriggerAuthorize(true)
-      } finally {
-        if (isActive) onCreatedProviderHandled?.()
-      }
-    }
-
-    void openCreatedProvider()
-
-    return () => {
-      isActive = false
-    }
-  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refetch])
-
   const handleUpdate = async (providerID: string) => {
-    if (!canManageMCP) return
-
     await refetch() // update list
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
   }
-  const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
-  const contentFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   return (
     <>
       <div
         className={cn(
-          'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
-          contentFrameClassName,
-          isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
+          'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          !list.length && 'h-[calc(100vh_-_136px)] overflow-hidden',
         )}
       >
-        {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
-        {isLoading ? (
-          <ToolCardSkeletonGrid variant="mcp" />
-        ) : (
-          filteredList.map((provider, index) => (
-            <div
-              key={provider.id}
-              data-step-by-step-tour-target={
-                index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationMcpFirstCard : undefined
-              }
-            >
-              <MCPCard
-                data={provider}
-                currentProvider={currentProvider as ToolWithProvider}
-                handleSelect={setCurrentProviderID}
-                onUpdate={handleUpdate}
-                onDeleted={refetch}
-              />
-            </div>
-          ))
-        )}
+        <NewMCPCard handleCreate={handleCreate} />
+        {filteredList.map(provider => (
+          <MCPCard
+            key={provider.id}
+            data={provider}
+            currentProvider={currentProvider as ToolWithProvider}
+            handleSelect={setCurrentProviderID}
+            onUpdate={handleUpdate}
+            onDeleted={refetch}
+          />
+        ))}
+        {!list.length && renderDefaultCard()}
       </div>
       {currentProvider && (
         <MCPDetailPanel

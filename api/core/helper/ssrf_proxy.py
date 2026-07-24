@@ -1,18 +1,10 @@
-"""SSRF-protected HTTP client for generic outbound requests.
-
-Use this module when the URL represents a normal external HTTP interaction that
-must go through network/proxy policy exactly as requested, such as HTTP Request
-nodes, provider/API integrations, auth discovery, or custom tool calls.
-
-Do not use this directly for "remote file" retrieval. File downloads, probes,
-and metadata checks should use `core.file.remote_fetcher` instead so Dify-signed
-file URLs can be resolved through DB + storage before falling back to this SSRF
-client.
+"""
+Proxy requests to avoid SSRF
 """
 
 import logging
 import time
-from typing import Any
+from typing import Any, TypeAlias
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
@@ -20,7 +12,6 @@ from pydantic import TypeAdapter, ValidationError
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from core.tools.errors import ToolSSRFError
-from graphon.http.response import HttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +20,8 @@ SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
-type Headers = dict[str, str]
-_HEADERS_ADAPTER: TypeAdapter[Headers] = TypeAdapter(Headers)
+Headers: TypeAlias = dict[str, str]
+_HEADERS_ADAPTER = TypeAdapter(Headers)
 
 _SSL_VERIFIED_POOL_KEY = "ssrf:verified"
 _SSL_UNVERIFIED_POOL_KEY = "ssrf:unverified"
@@ -47,38 +38,17 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
-class ResponseLimitError(ValueError):
-    """Base error for responses that cannot be safely bounded."""
-
-    pass
-
-
-class ResponseTooLargeError(ResponseLimitError):
-    """Raised when an identity response exceeds the configured byte limit."""
-
-    pass
-
-
-class UnsupportedResponseEncodingError(ResponseLimitError):
-    """Raised when response encoding prevents safe decoded-size enforcement."""
-
-    pass
-
-
 request_error = httpx.RequestError
 max_retries_exceeded_error = MaxRetriesExceededError
 
 
-def _create_proxy_mounts(verify: bool) -> dict[str, httpx.HTTPTransport]:
-    """Build per-scheme proxy transports with the same TLS policy as the SSRF client."""
+def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
     return {
         "http://": httpx.HTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTP_URL,
-            verify=verify,
         ),
         "https://": httpx.HTTPTransport(
             proxy=dify_config.SSRF_PROXY_HTTPS_URL,
-            verify=verify,
         ),
     }
 
@@ -93,7 +63,7 @@ def _build_ssrf_client(verify: bool) -> httpx.Client:
 
     if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
         return httpx.Client(
-            mounts=_create_proxy_mounts(verify=verify),
+            mounts=_create_proxy_mounts(),
             verify=verify,
             limits=_SSRF_CLIENT_LIMITS,
         )
@@ -160,31 +130,7 @@ def _inject_trace_headers(headers: Headers | None) -> Headers:
     return headers
 
 
-def make_request(
-    method: str,
-    url: str,
-    max_retries: int = SSRF_DEFAULT_MAX_RETRIES,
-    stream_response: bool = False,
-    **kwargs: Any,
-) -> httpx.Response:
-    """Send one SSRF-protected request with optional streaming.
-
-    Args:
-        method: HTTP method sent through the configured SSRF client.
-        url: Absolute request URL.
-        max_retries: Number of retry attempts after the initial request.
-        stream_response: Return an open streaming response that the caller must close.
-        **kwargs: Additional keyword arguments forwarded to ``httpx.Client``.
-
-    Returns:
-        A buffered response, or an open response when ``stream_response`` is true.
-
-    Raises:
-        ToolSSRFError: The configured SSRF proxy rejects the destination.
-        MaxRetriesExceededError: All configured request attempts fail.
-        httpx.RequestError: A request fails while retries are disabled.
-        ValueError: The SSL verification option or request headers are invalid.
-    """
+def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
     # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -217,11 +163,6 @@ def make_request(
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
     user_provided_host = _get_user_provided_host_header(headers)
-    send_kwargs: dict[str, Any] = {}
-    if "auth" in kwargs:
-        send_kwargs["auth"] = kwargs.pop("auth")
-    if "follow_redirects" in kwargs:
-        send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
     while retries <= max_retries:
@@ -232,11 +173,7 @@ def make_request(
             if user_provided_host is not None:
                 headers["host"] = user_provided_host
             kwargs["headers"] = headers
-            request = client.build_request(method=method, url=url, **kwargs)
-            if stream_response:
-                response = client.send(request, stream=True, **send_kwargs)
-            else:
-                response = client.send(request, **send_kwargs)
+            response = client.request(method=method, url=url, **kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
@@ -246,13 +183,12 @@ def make_request(
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
-                    response.close()
                     raise ToolSSRFError(
                         f"Access to '{url}' was blocked by SSRF protection. "
                         f"The URL may point to a private or local network address. "
                     )
 
-            if response.status_code not in STATUS_FORCELIST or max_retries == 0:
+            if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
                 logger.warning(
@@ -260,7 +196,6 @@ def make_request(
                     response.status_code,
                     url,
                 )
-                response.close()
 
         except httpx.RequestError as e:
             logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
@@ -271,42 +206,6 @@ def make_request(
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
-
-
-def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
-    """Consume one open identity response under a decoded byte limit and close its stream."""
-    if max_response_bytes <= 0:
-        raise ValueError("max_response_bytes must be positive")
-
-    try:
-        content_encoding = response.headers.get("content-encoding", "identity").strip().lower()
-        if content_encoding not in {"", "identity"}:
-            raise UnsupportedResponseEncodingError(f"content encoding {content_encoding} cannot be safely bounded")
-        content = bytearray()
-        for chunk in response.iter_bytes():
-            if len(content) + len(chunk) > max_response_bytes:
-                raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
-            content.extend(chunk)
-        decoded_headers = {
-            name: value
-            for name, value in response.headers.items()
-            if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
-        }
-        try:
-            request = response.request
-        except RuntimeError:
-            request = None
-        return httpx.Response(
-            response.status_code,
-            headers=decoded_headers,
-            content=bytes(content),
-            request=request,
-            extensions=response.extensions,
-            history=response.history,
-            default_encoding=response.default_encoding,
-        )
-    finally:
-        response.close()
 
 
 def get(url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> httpx.Response:
@@ -368,47 +267,4 @@ class SSRFProxy:
         return patch(url=url, max_retries=max_retries, **kwargs)
 
 
-def _to_graphon_http_response(response: httpx.Response) -> HttpResponse:
-    """Convert an ``httpx`` response into Graphon's transport-agnostic wrapper."""
-    return HttpResponse(
-        status_code=response.status_code,
-        headers=dict(response.headers),
-        content=response.content,
-        url=str(response.url) if response.url else None,
-        reason_phrase=response.reason_phrase,
-        fallback_text=response.text,
-    )
-
-
-class GraphonSSRFProxy:
-    """Adapter exposing SSRF helpers behind Graphon's ``HttpClientProtocol``."""
-
-    @property
-    def max_retries_exceeded_error(self) -> type[Exception]:
-        return max_retries_exceeded_error
-
-    @property
-    def request_error(self) -> type[Exception]:
-        return request_error
-
-    def get(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(get(url=url, max_retries=max_retries, **kwargs))
-
-    def head(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(head(url=url, max_retries=max_retries, **kwargs))
-
-    def post(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(post(url=url, max_retries=max_retries, **kwargs))
-
-    def put(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(put(url=url, max_retries=max_retries, **kwargs))
-
-    def delete(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(delete(url=url, max_retries=max_retries, **kwargs))
-
-    def patch(self, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETRIES, **kwargs: Any) -> HttpResponse:
-        return _to_graphon_http_response(patch(url=url, max_retries=max_retries, **kwargs))
-
-
 ssrf_proxy = SSRFProxy()
-graphon_ssrf_proxy = GraphonSSRFProxy()

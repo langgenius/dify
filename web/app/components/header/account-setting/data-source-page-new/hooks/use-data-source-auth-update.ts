@@ -1,9 +1,5 @@
 import { useCallback } from 'react'
-import {
-  useInvalidDataSourceAuth,
-  useInvalidDataSourceListAuth,
-  useInvalidDefaultDataSourceListAuth,
-} from '@/service/use-datasource'
+import { useInvalidDataSourceAuth, useInvalidDataSourceListAuth, useInvalidDefaultDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 
 export const useDataSourceAuthUpdate = ({
@@ -25,12 +21,7 @@ export const useDataSourceAuthUpdate = ({
     invalidDefaultDataSourceListAuth()
     invalidateDataSourceList()
     invalidateDataSourceAuth()
-  }, [
-    invalidateDataSourceListAuth,
-    invalidateDataSourceList,
-    invalidateDataSourceAuth,
-    invalidDefaultDataSourceListAuth,
-  ])
+  }, [invalidateDataSourceListAuth, invalidateDataSourceList, invalidateDataSourceAuth, invalidDefaultDataSourceListAuth])
 
   return {
     handleAuthUpdate,

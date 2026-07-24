@@ -4,13 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
@@ -70,14 +69,14 @@ class TestRagPipelineRunTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -726,7 +725,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_run_single_rag_pipeline_task_success(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test successful run_single_rag_pipeline_task execution.
@@ -761,7 +760,7 @@ class TestRagPipelineRunTasks:
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with invalid entity data.
@@ -806,7 +805,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_run_single_rag_pipeline_task_database_entity_not_found(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
     ):
         """
         Test run_single_rag_pipeline_task with non-existent database entities.

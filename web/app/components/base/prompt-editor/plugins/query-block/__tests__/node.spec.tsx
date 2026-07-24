@@ -1,7 +1,14 @@
 import { act } from '@testing-library/react'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../../test-helpers'
 import QueryBlockComponent from '../component'
-import { $createQueryBlockNode, $isQueryBlockNode, QueryBlockNode } from '../node'
+import {
+  $createQueryBlockNode,
+  $isQueryBlockNode,
+  QueryBlockNode,
+} from '../node'
 
 describe('QueryBlockNode', () => {
   const createTestEditor = () => {

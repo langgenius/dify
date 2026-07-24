@@ -6,17 +6,17 @@ import uuid
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from constants import HEADER_NAME_CSRF_TOKEN
-from graphon.enums import WorkflowExecutionStatus
+from dify_graph.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
-from models import Account, Tenant, TenantAccountJoin
-from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.enums import ConversationFromSource, CreatorUserRole
+from models import Account, DifySetup, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
 from services.account_service import AccountService
-from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
 
 
 def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
@@ -30,7 +30,7 @@ def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
     db_session.add(account)
     db_session.commit()
 
-    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
+    tenant = Tenant(name="Test Tenant", status="normal")
     db_session.add(tenant)
     db_session.commit()
 
@@ -47,7 +47,9 @@ def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:
     account.timezone = "UTC"
     db_session.commit()
 
-    ensure_dify_setup(db_session)
+    dify_setup = DifySetup(version=dify_config.project.version)
+    db_session.add(dify_setup)
+    db_session.commit()
 
     return account, tenant
 
@@ -73,7 +75,7 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str) -> C
         inputs={},
         status="normal",
         mode=AppMode.CHAT,
-        from_source=ConversationFromSource.CONSOLE,
+        from_source=CreatorUserRole.ACCOUNT,
         from_account_id=account_id,
     )
     db_session.add(conversation)
@@ -122,7 +124,7 @@ def _create_message(
         answer_price_unit=0.001,
         currency="USD",
         status="normal",
-        from_source=ConversationFromSource.CONSOLE,
+        from_source=CreatorUserRole.ACCOUNT,
         from_account_id=account_id,
         workflow_run_id=workflow_run_id,
         inputs={"query": "Hello"},

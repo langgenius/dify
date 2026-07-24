@@ -1,33 +1,25 @@
 from typing import Literal
 
-from flask_restx import Resource
+from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
-from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model
+from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
-    rbac_permission_required,
     setup_required,
-    with_current_user,
 )
-from fields.base import ResponseModel
+from extensions.ext_database import db
+from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
-from libs.helper import dump_response
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import Site
-from models.account import Account
-from models.model import App
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class AppSiteUpdatePayload(BaseModel):
@@ -42,7 +34,6 @@ class AppSiteUpdatePayload(BaseModel):
     customize_domain: str | None = Field(default=None)
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
-    input_placeholder: str | None = Field(default=None)
     custom_disclaimer: str | None = Field(default=None)
     customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
     prompt_public: bool | None = Field(default=None)
@@ -57,27 +48,13 @@ class AppSiteUpdatePayload(BaseModel):
         return supported_language(value)
 
 
-class AppSiteResponse(ResponseModel):
-    app_id: str
-    access_token: str | None = Field(default=None, validation_alias="code")
-    code: str | None = None
-    title: str
-    icon: str | None = None
-    icon_background: str | None = None
-    description: str | None = None
-    default_language: str
-    customize_domain: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    input_placeholder: str | None = None
-    custom_disclaimer: str | None = None
-    customize_token_strategy: str
-    prompt_public: bool
-    show_workflow_steps: bool
-    use_icon_as_answer_icon: bool
+console_ns.schema_model(
+    AppSiteUpdatePayload.__name__,
+    AppSiteUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
-
-register_schema_models(console_ns, AppSiteUpdatePayload, AppSiteResponse)
+# Register model for flask_restx to avoid dict type issues in Swagger
+app_site_model = console_ns.model("AppSite", app_site_fields)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")
@@ -86,21 +63,19 @@ class AppSite(Resource):
     @console_ns.doc(description="Update application site configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppSiteUpdatePayload.__name__])
-    @console_ns.response(200, "Site configuration updated successfully", console_ns.models[AppSiteResponse.__name__])
+    @console_ns.response(200, "Site configuration updated successfully", app_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
     @account_initialization_required
-    @with_current_user
-    @with_session
     @get_app_model
-    def post(self, session: Session, current_user: Account, app_model: App):
+    @marshal_with(app_site_model)
+    def post(self, app_model):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
-        site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
+        current_user, _ = current_account_with_tenant()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
         if not site:
             raise NotFound
 
@@ -116,7 +91,6 @@ class AppSite(Resource):
             "customize_domain",
             "copyright",
             "privacy_policy",
-            "input_placeholder",
             "custom_disclaimer",
             "customize_token_strategy",
             "prompt_public",
@@ -129,9 +103,9 @@ class AppSite(Resource):
 
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
-        session.flush()
+        db.session.commit()
 
-        return dump_response(AppSiteResponse, site)
+        return site
 
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
@@ -139,27 +113,25 @@ class AppSiteAccessTokenReset(Resource):
     @console_ns.doc("reset_app_site_access_token")
     @console_ns.doc(description="Reset access token for application site")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Access token reset successfully", console_ns.models[AppSiteResponse.__name__])
+    @console_ns.response(200, "Access token reset successfully", app_site_model)
     @console_ns.response(403, "Insufficient permissions (admin/owner required)")
     @console_ns.response(404, "App or site not found")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    @agent_manage_required_for_agent_app
     @account_initialization_required
-    @with_current_user
-    @with_session
     @get_app_model
-    def post(self, session: Session, current_user: Account, app_model: App):
-        site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
+    @marshal_with(app_site_model)
+    def post(self, app_model):
+        current_user, _ = current_account_with_tenant()
+        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:
             raise NotFound
 
-        site.code = Site.generate_code(16, session=session)
+        site.code = Site.generate_code(16)
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
-        session.flush()
+        db.session.commit()
 
-        return dump_response(AppSiteResponse, site)
+        return site

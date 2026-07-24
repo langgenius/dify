@@ -1,11 +1,8 @@
 import { act, waitFor } from '@testing-library/react'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
-import { AppModeEnum } from '@/types/app'
-import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
-import { useAppsQueryState } from '../use-apps-query-state'
+import useAppsQueryState from '../use-apps-query-state'
 
 const renderWithAdapter = (searchParams = '') => {
-  // oxlint-disable-next-line eslint-react/use-state -- renderHook executes a custom hook, not React.useState
   return renderHookWithNuqs(() => useAppsQueryState(), { searchParams })
 }
 
@@ -14,126 +11,214 @@ describe('useAppsQueryState', () => {
     vi.clearAllMocks()
   })
 
-  it('should expose app list query state actions', () => {
-    const { result } = renderWithAdapter()
+  describe('Initialization', () => {
+    it('should expose query and setQuery when initialized', () => {
+      const { result } = renderWithAdapter()
 
-    expect(result.current.query).toEqual({
-      category: 'all',
-      keywords: '',
-      creatorIDs: [],
+      expect(result.current.query).toBeDefined()
+      expect(typeof result.current.setQuery).toBe('function')
     })
-    expect(typeof result.current.setCategory).toBe('function')
-    expect(typeof result.current.setKeywords).toBe('function')
-    expect(typeof result.current.setCreatorIDs).toBe('function')
-  })
 
-  it('should parse app list filters from URL', () => {
-    const { result } = renderWithAdapter('?category=workflow&tagIDs=tag1;tag2&keywords=search+term')
+    it('should default to empty filters when search params are missing', () => {
+      const { result } = renderWithAdapter()
 
-    expect(result.current.query).toEqual({
-      category: AppModeEnum.WORKFLOW,
-      keywords: 'search term',
-      creatorIDs: [],
+      expect(result.current.query.tagIDs).toBeUndefined()
+      expect(result.current.query.keywords).toBeUndefined()
+      expect(result.current.query.isCreatedByMe).toBe(false)
     })
   })
 
-  it('should update category URL state', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter()
+  describe('Parsing search params', () => {
+    it('should parse tagIDs when URL includes tagIDs', () => {
+      const { result } = renderWithAdapter('?tagIDs=tag1;tag2;tag3')
 
-    act(() => {
-      result.current.setCategory(AppModeEnum.WORKFLOW)
+      expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2', 'tag3'])
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.category).toBe(AppModeEnum.WORKFLOW)
-    expect(update.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
-    expect(update.options.history).toBe('push')
-  })
+    it('should parse keywords when URL includes keywords', () => {
+      const { result } = renderWithAdapter('?keywords=search+term')
 
-  it('should remove category from URL when set to all', async () => {
-    const { result, onUrlUpdate } = renderWithAdapter('?category=workflow')
-
-    act(() => {
-      result.current.setCategory('all')
+      expect(result.current.query.keywords).toBe('search term')
     })
 
-    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    const update = onUrlUpdate.mock.calls.at(-1)![0]
-    expect(result.current.query.category).toBe('all')
-    expect(update.searchParams.has('category')).toBe(false)
+    it('should parse isCreatedByMe when URL includes true value', () => {
+      const { result } = renderWithAdapter('?isCreatedByMe=true')
+
+      expect(result.current.query.isCreatedByMe).toBe(true)
+    })
+
+    it('should parse all params when URL includes multiple filters', () => {
+      const { result } = renderWithAdapter(
+        '?tagIDs=tag1;tag2&keywords=test&isCreatedByMe=true',
+      )
+
+      expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
+      expect(result.current.query.keywords).toBe('test')
+      expect(result.current.query.isCreatedByMe).toBe(true)
+    })
   })
 
-  it('should update keywords state immediately while debouncing URL writes', async () => {
-    vi.useFakeTimers()
-    try {
+  describe('Updating query state', () => {
+    it('should update keywords when setQuery receives keywords', () => {
+      const { result } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ keywords: 'new search' })
+      })
+
+      expect(result.current.query.keywords).toBe('new search')
+    })
+
+    it('should update tagIDs when setQuery receives tagIDs', () => {
+      const { result } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ tagIDs: ['tag1', 'tag2'] })
+      })
+
+      expect(result.current.query.tagIDs).toEqual(['tag1', 'tag2'])
+    })
+
+    it('should update isCreatedByMe when setQuery receives true', () => {
+      const { result } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ isCreatedByMe: true })
+      })
+
+      expect(result.current.query.isCreatedByMe).toBe(true)
+    })
+
+    it('should support partial updates when setQuery uses callback', () => {
+      const { result } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ keywords: 'initial' })
+      })
+
+      act(() => {
+        result.current.setQuery(prev => ({ ...prev, isCreatedByMe: true }))
+      })
+
+      expect(result.current.query.keywords).toBe('initial')
+      expect(result.current.query.isCreatedByMe).toBe(true)
+    })
+  })
+
+  describe('URL synchronization', () => {
+    it('should sync keywords to URL when keywords change', async () => {
       const { result, onUrlUpdate } = renderWithAdapter()
 
       act(() => {
-        result.current.setKeywords('search')
+        result.current.setQuery({ keywords: 'search' })
       })
 
-      expect(result.current.query.keywords).toBe('search')
-      expect(onUrlUpdate).not.toHaveBeenCalled()
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(APP_LIST_SEARCH_DEBOUNCE_MS + 100)
-      })
-
-      expect(onUrlUpdate).toHaveBeenCalled()
-      const update = onUrlUpdate.mock.calls.at(-1)![0]
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.get('keywords')).toBe('search')
-    } finally {
-      vi.useRealTimers()
-    }
-  })
+      expect(update.options.history).toBe('push')
+    })
 
-  it('should remove keywords from URL when cleared', async () => {
-    vi.useFakeTimers()
-    try {
+    it('should sync tagIDs to URL when tagIDs change', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ tagIDs: ['tag1', 'tag2'] })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.get('tagIDs')).toBe('tag1;tag2')
+    })
+
+    it('should sync isCreatedByMe to URL when enabled', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter()
+
+      act(() => {
+        result.current.setQuery({ isCreatedByMe: true })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.get('isCreatedByMe')).toBe('true')
+    })
+
+    it('should remove keywords from URL when keywords are cleared', async () => {
       const { result, onUrlUpdate } = renderWithAdapter('?keywords=existing')
 
       act(() => {
-        result.current.setKeywords('')
+        result.current.setQuery({ keywords: '' })
       })
 
-      expect(result.current.query.keywords).toBe('')
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(APP_LIST_SEARCH_DEBOUNCE_MS + 100)
-      })
-
-      expect(onUrlUpdate).toHaveBeenCalled()
-      const update = onUrlUpdate.mock.calls.at(-1)![0]
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
       expect(update.searchParams.has('keywords')).toBe(false)
-    } finally {
-      vi.useRealTimers()
-    }
+    })
+
+    it('should remove tagIDs from URL when tagIDs are empty', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter('?tagIDs=tag1;tag2')
+
+      act(() => {
+        result.current.setQuery({ tagIDs: [] })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('tagIDs')).toBe(false)
+    })
+
+    it('should remove isCreatedByMe from URL when disabled', async () => {
+      const { result, onUrlUpdate } = renderWithAdapter('?isCreatedByMe=true')
+
+      act(() => {
+        result.current.setQuery({ isCreatedByMe: false })
+      })
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      expect(update.searchParams.has('isCreatedByMe')).toBe(false)
+    })
   })
 
-  it('should update creator IDs in local state without writing to the URL', () => {
-    const { result, onUrlUpdate } = renderWithAdapter()
+  describe('Edge cases', () => {
+    it('should treat empty tagIDs as empty list when URL param is empty', () => {
+      const { result } = renderWithAdapter('?tagIDs=')
 
-    act(() => {
-      result.current.setCreatorIDs(['creator-1', 'creator-2'])
+      expect(result.current.query.tagIDs).toEqual([])
     })
 
-    expect(result.current.query.creatorIDs).toEqual(['creator-1', 'creator-2'])
-    expect(onUrlUpdate).not.toHaveBeenCalled()
+    it('should treat empty keywords as undefined when URL param is empty', () => {
+      const { result } = renderWithAdapter('?keywords=')
+
+      expect(result.current.query.keywords).toBeUndefined()
+    })
+
+    it('should decode keywords with spaces when URL contains encoded spaces', () => {
+      const { result } = renderWithAdapter('?keywords=test+with+spaces')
+
+      expect(result.current.query.keywords).toBe('test with spaces')
+    })
   })
 
-  it('should clear creator IDs from local state without writing to the URL', () => {
-    const { result, onUrlUpdate } = renderWithAdapter()
+  describe('Integration scenarios', () => {
+    it('should keep accumulated filters when updates are sequential', () => {
+      const { result } = renderWithAdapter()
 
-    act(() => {
-      result.current.setCreatorIDs(['creator-1'])
+      act(() => {
+        result.current.setQuery({ keywords: 'first' })
+      })
+
+      act(() => {
+        result.current.setQuery(prev => ({ ...prev, tagIDs: ['tag1'] }))
+      })
+
+      act(() => {
+        result.current.setQuery(prev => ({ ...prev, isCreatedByMe: true }))
+      })
+
+      expect(result.current.query.keywords).toBe('first')
+      expect(result.current.query.tagIDs).toEqual(['tag1'])
+      expect(result.current.query.isCreatedByMe).toBe(true)
     })
-
-    act(() => {
-      result.current.setCreatorIDs([])
-    })
-
-    expect(result.current.query.creatorIDs).toEqual([])
-    expect(onUrlUpdate).not.toHaveBeenCalled()
   })
 })

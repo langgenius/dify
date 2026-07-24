@@ -5,13 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { Resolution, TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
+
 import {
   useAvailableNodesMetaData,
+  useDSL,
   useGetRunAndTraceUrl,
   useInputFieldPanel,
   useNodesSyncDraft,
   usePipelineInit,
   usePipelineRefreshDraft,
+  usePipelineRun,
+  usePipelineStartRun,
 } from '../index'
 import { useConfigsMap } from '../use-configs-map'
 import { useConfigurations, useInitialData } from '../use-input-fields'
@@ -20,19 +24,17 @@ import { usePipelineTemplate } from '../use-pipeline-template'
 const _mockGetState = vi.fn()
 const mockUseStore = vi.fn()
 const mockUseWorkflowStore = vi.fn()
-const toastMocks = vi.hoisted(() => ({
-  error: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => mockUseStore(selector),
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: toastMocks.error,
-  },
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
 }))
 
 const mockEventEmit = vi.fn()
@@ -42,6 +44,10 @@ vi.mock('@/context/event-emitter', () => ({
       emit: mockEventEmit,
     },
   }),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 vi.mock('@/app/components/workflow/constants', () => ({
@@ -85,18 +91,10 @@ vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
+  const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    generateNewNode: ({
-      id,
-      data,
-      position,
-    }: {
-      id: string
-      data: object
-      position: { x: number; y: number }
-    }) => ({
+    generateNewNode: ({ id, data, position }: { id: string, data: object, position: { x: number, y: number } }) => ({
       newNode: { id, data, position, type: 'custom' },
     }),
   }
@@ -388,12 +386,12 @@ describe('useConfigurations', () => {
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current.length).toBe(1)
-    expect(result.current[0]!.variable).toBe('textVar')
-    expect(result.current[0]!.label).toBe('Text Label')
-    expect(result.current[0]!.required).toBe(true)
-    expect(result.current[0]!.maxLength).toBe(100)
-    expect(result.current[0]!.placeholder).toBe('Enter text')
-    expect(result.current[0]!.tooltip).toBe('Help text')
+    expect(result.current[0].variable).toBe('textVar')
+    expect(result.current[0].label).toBe('Text Label')
+    expect(result.current[0].required).toBe(true)
+    expect(result.current[0].maxLength).toBe(100)
+    expect(result.current[0].placeholder).toBe('Enter text')
+    expect(result.current[0].tooltip).toBe('Help text')
   })
 
   it('should transform options correctly', () => {
@@ -410,7 +408,7 @@ describe('useConfigurations', () => {
 
     const { result } = renderHook(() => useConfigurations(variables))
 
-    expect(result.current[0]!.options).toEqual([
+    expect(result.current[0].options).toEqual([
       { label: 'option1', value: 'option1' },
       { label: 'option2', value: 'option2' },
       { label: 'option3', value: 'option3' },
@@ -458,9 +456,20 @@ describe('usePipelineTemplate', () => {
   })
 })
 
+describe('useDSL', () => {
+  it('should be defined and exported', () => {
+    expect(useDSL).toBeDefined()
+    expect(typeof useDSL).toBe('function')
+  })
+})
+
 describe('exports', () => {
   it('should export useAvailableNodesMetaData', () => {
     expect(useAvailableNodesMetaData).toBeDefined()
+  })
+
+  it('should export useDSL', () => {
+    expect(useDSL).toBeDefined()
   })
 
   it('should export useGetRunAndTraceUrl', () => {
@@ -481,6 +490,14 @@ describe('exports', () => {
 
   it('should export usePipelineRefreshDraft', () => {
     expect(usePipelineRefreshDraft).toBeDefined()
+  })
+
+  it('should export usePipelineRun', () => {
+    expect(usePipelineRun).toBeDefined()
+  })
+
+  it('should export usePipelineStartRun', () => {
+    expect(usePipelineStartRun).toBeDefined()
   })
 })
 

@@ -16,20 +16,11 @@
 
 .note-editor-theme_link {
   cursor: pointer;
-  color: var(--color-text-accent);
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-  text-decoration-color: color-mix(in srgb, var(--color-text-accent) 60%, transparent);
-  transition:
-    color 0.15s ease,
-    text-decoration-color 0.15s ease;
+  color: var(--text-text-selected);
 }
 
 .note-editor-theme_link:hover {
-  color: var(--color-text-accent-secondary);
-  text-decoration-color: currentColor;
+  text-decoration: underline;
 }
 
 .note-editor-theme_text-strikethrough {

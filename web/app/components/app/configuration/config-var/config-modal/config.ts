@@ -1,3 +1,10 @@
+export const jsonObjectWrap = {
+  type: 'object',
+  properties: {},
+  required: [],
+  additionalProperties: true,
+}
+
 export const jsonConfigPlaceHolder = JSON.stringify(
   {
     type: 'object',

@@ -1,27 +1,16 @@
-from collections.abc import Iterator
-from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
-import controllers.console.tag.tags as module
 from controllers.console import console_ns
 from controllers.console.tag.tags import (
-    TagBindingCollectionApi,
-    TagBindingRemoveApi,
+    TagBindingCreateApi,
+    TagBindingDeleteApi,
     TagListApi,
     TagUpdateDeleteApi,
 )
-from models import Account
-from models.account import AccountStatus, TenantAccountRole
-from models.base import TypeBase
-from models.enums import TagType
-from models.model import Tag
-from services.tag_service import UpdateTagPayload
 
 
 def unwrap(func):
@@ -40,61 +29,30 @@ def app():
     return app
 
 
-@pytest.fixture(autouse=True)
-def sqlite_db_session(
-    sqlite_engine: Engine,
-    monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[scoped_session[Session]]:
-    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[Tag.__tablename__]])
-    session_registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    monkeypatch.setattr(module.db, "session", session_registry)
-    try:
-        yield session_registry
-    finally:
-        session_registry.remove()
-
-
-def _assert_sqlite_session(session: object, sqlite_engine: Engine) -> None:
-    assert isinstance(session, Session)
-    assert session.get_bind() is sqlite_engine
-    assert session.is_active
-
-
 @pytest.fixture
 def admin_user():
-    account = Account(
-        name="Admin User",
-        email="admin@example.com",
-        status=AccountStatus.ACTIVE,
+    return MagicMock(
+        id="user-1",
+        has_edit_permission=True,
+        is_dataset_editor=True,
     )
-    account.id = "user-1"
-    account.role = TenantAccountRole.OWNER
-    return account
 
 
 @pytest.fixture
 def readonly_user():
-    account = Account(
-        name="Readonly User",
-        email="readonly@example.com",
-        status=AccountStatus.ACTIVE,
+    return MagicMock(
+        id="user-2",
+        has_edit_permission=False,
+        is_dataset_editor=False,
     )
-    account.id = "user-2"
-    account.role = TenantAccountRole.NORMAL
-    return account
 
 
 @pytest.fixture
-def tag(sqlite_db_session: scoped_session[Session]):
-    tag = Tag(
-        tenant_id="tenant-1",
-        name="test-tag",
-        type=TagType.KNOWLEDGE,
-        created_by="user-1",
-    )
+def tag():
+    tag = MagicMock()
     tag.id = "tag-1"
-    sqlite_db_session.add(tag)
-    sqlite_db_session.commit()
+    tag.name = "test-tag"
+    tag.type = "knowledge"
     return tag
 
 
@@ -112,56 +70,27 @@ def payload_patch():
 
 
 class TestTagListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app):
         api = TagListApi()
         method = unwrap(api.get)
 
         with app.test_request_context("/?type=knowledge"):
             with (
                 patch(
-                    "controllers.console.tag.tags.TagService.get_tags",
-                    return_value=[
-                        SimpleNamespace(
-                            id="1",
-                            name="tag",
-                            type=TagType.KNOWLEDGE,
-                            binding_count=1,
-                        )
-                    ],
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(MagicMock(), "tenant-1"),
                 ),
-            ):
-                result, status = method(api, "tenant-1")
-
-        assert status == 200
-        assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
-
-    def test_get_snippet_tags(self, app: Flask, sqlite_engine: Engine):
-        api = TagListApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/?type=snippet"):
-            with (
                 patch(
                     "controllers.console.tag.tags.TagService.get_tags",
-                    return_value=[
-                        SimpleNamespace(
-                            id="1",
-                            name="snippet-tag",
-                            type=TagType.SNIPPET,
-                            binding_count=1,
-                        )
-                    ],
-                ) as get_tags_mock,
+                    return_value=[{"id": "1", "name": "tag"}],
+                ),
             ):
-                result, status = method(api, "tenant-1")
+                result, status = method(api)
 
-        get_tags_mock.assert_called_once()
-        assert get_tags_mock.call_args.args == ("snippet", "tenant-1", None)
-        _assert_sqlite_session(get_tags_mock.call_args.kwargs["session"], sqlite_engine)
         assert status == 200
-        assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
+        assert isinstance(result, list)
 
-    def test_post_success(self, app: Flask, admin_user, tag, payload_patch):
+    def test_post_success(self, app, admin_user, tag, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
 
@@ -169,49 +98,22 @@ class TestTagListApi:
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(admin_user, None),
+                ),
                 payload_patch(payload),
                 patch(
                     "controllers.console.tag.tags.TagService.save_tags",
                     return_value=tag,
                 ),
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api)
 
         assert status == 200
         assert result["name"] == "test-tag"
-        assert result["binding_count"] == "0"
 
-    def test_post_snippet_tag_checks_snippet_rbac_when_enabled(self, app: Flask, admin_user, tag, payload_patch):
-        api = TagListApi()
-        method = unwrap(api.post)
-
-        payload = {"name": "snippet-tag", "type": "snippet"}
-
-        with app.test_request_context("/", json=payload):
-            with (
-                payload_patch(payload),
-                patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
-                patch(
-                    "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
-                ),
-                patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
-                patch(
-                    "controllers.console.tag.tags.TagService.save_tags",
-                    return_value=tag,
-                ),
-            ):
-                method(api, admin_user)
-
-        enforce_mock.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="user-1",
-            resource_type=module.RBACResourceScope.WORKSPACE,
-            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-            resource_required=False,
-        )
-
-    def test_post_forbidden(self, app: Flask, readonly_user, payload_patch):
+    def test_post_forbidden(self, app, readonly_user, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
 
@@ -219,41 +121,45 @@ class TestTagListApi:
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(readonly_user, None),
+                ),
                 payload_patch(payload),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(api)
 
 
 class TestTagUpdateDeleteApi:
-    def test_patch_success(self, app: Flask, admin_user, tag, payload_patch, sqlite_engine: Engine):
+    def test_patch_success(self, app, admin_user, tag, payload_patch):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
-        payload = {"name": "updated"}
+        payload = {"name": "updated", "type": "knowledge"}
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(admin_user, None),
+                ),
                 payload_patch(payload),
                 patch(
                     "controllers.console.tag.tags.TagService.update_tags",
                     return_value=tag,
-                ) as update_tags_mock,
+                ),
                 patch(
                     "controllers.console.tag.tags.TagService.get_tag_binding_count",
                     return_value=3,
                 ),
             ):
-                result, status = method(api, admin_user, "tag-1")
+                result, status = method(api, "tag-1")
 
         assert status == 200
-        update_payload, tag_id, session = update_tags_mock.call_args.args
-        assert update_payload == UpdateTagPayload(name="updated")
-        assert tag_id == "tag-1"
-        _assert_sqlite_session(session, sqlite_engine)
-        assert result["binding_count"] == "3"
+        assert result["binding_count"] == 3
 
-    def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
+    def test_patch_forbidden(self, app, readonly_user, payload_patch):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
@@ -261,115 +167,36 @@ class TestTagUpdateDeleteApi:
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(readonly_user, None),
+                ),
                 payload_patch(payload),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user, "tag-1")
+                    method(api, "tag-1")
 
-    def test_delete_success(self, app: Flask, admin_user, sqlite_engine: Engine):
+    def test_delete_success(self, app, admin_user):
         api = TagUpdateDeleteApi()
         method = unwrap(api.delete)
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
-        ):
-            result, status = method(api, "tag-1")
-
-        delete_mock.assert_called_once()
-        tag_id, session = delete_mock.call_args.args
-        assert tag_id == "tag-1"
-        _assert_sqlite_session(session, sqlite_engine)
-        assert status == 204
-
-    def test_delete_snippet_tag_checks_type_in_current_tenant(
-        self,
-        app: Flask,
-        admin_user,
-        sqlite_db_session: scoped_session[Session],
-        sqlite_engine: Engine,
-    ):
-        api = TagUpdateDeleteApi()
-        method = unwrap(api.delete)
-        tag = Tag(
-            tenant_id="tenant-1",
-            name="snippet-tag",
-            type=TagType.SNIPPET,
-            created_by="user-1",
-        )
-        tag.id = "tag-1"
-        sqlite_db_session.add(tag)
-        sqlite_db_session.commit()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+                return_value=(admin_user, "tenant-1"),
             ),
-            patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
         ):
             result, status = method(api, "tag-1")
 
-        enforce_mock.assert_called_once_with(
-            tenant_id="tenant-1",
-            account_id="user-1",
-            resource_type=module.RBACResourceScope.WORKSPACE,
-            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-            resource_required=False,
-        )
-        delete_mock.assert_called_once()
-        tag_id, session = delete_mock.call_args.args
-        assert tag_id == "tag-1"
-        _assert_sqlite_session(session, sqlite_engine)
-        assert result == ""
-        assert status == 204
-
-    def test_delete_does_not_apply_snippet_rbac_to_tag_from_another_tenant(
-        self,
-        app: Flask,
-        admin_user,
-        sqlite_db_session: scoped_session[Session],
-        sqlite_engine: Engine,
-    ):
-        api = TagUpdateDeleteApi()
-        method = unwrap(api.delete)
-        tag = Tag(
-            tenant_id="other-tenant",
-            name="other-tenant-snippet-tag",
-            type=TagType.SNIPPET,
-            created_by="other-user",
-        )
-        tag.id = "tag-1"
-        sqlite_db_session.add(tag)
-        sqlite_db_session.commit()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
-            patch(
-                "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
-            ),
-            patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
-            patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
-        ):
-            result, status = method(api, "tag-1")
-
-        enforce_mock.assert_not_called()
-        delete_mock.assert_called_once()
-        tag_id, session = delete_mock.call_args.args
-        assert tag_id == "tag-1"
-        _assert_sqlite_session(session, sqlite_engine)
-        assert result == ""
+        delete_mock.assert_called_once_with("tag-1")
         assert status == 204
 
 
-class TestTagBindingCollectionApi:
-    def test_create_success(self, app: Flask, admin_user, payload_patch):
-        api = TagBindingCollectionApi()
+class TestTagBindingCreateApi:
+    def test_create_success(self, app, admin_user, payload_patch):
+        api = TagBindingCreateApi()
         method = unwrap(api.post)
 
         payload = {
@@ -380,122 +207,72 @@ class TestTagBindingCollectionApi:
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(admin_user, None),
+                ),
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api)
 
         save_mock.assert_called_once()
         assert status == 200
         assert result["result"] == "success"
 
-    def test_create_snippet_binding_success(self, app: Flask, admin_user, payload_patch):
-        api = TagBindingCollectionApi()
-        method = unwrap(api.post)
-
-        payload = {
-            "tag_ids": ["tag-1"],
-            "target_id": "snippet-1",
-            "type": "snippet",
-        }
-
-        with app.test_request_context("/", json=payload):
-            with (
-                payload_patch(payload),
-                patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
-            ):
-                result, status = method(api, admin_user)
-
-        save_mock.assert_called_once()
-        binding_payload = save_mock.call_args.args[0]
-        assert binding_payload.type == TagType.SNIPPET
-        assert binding_payload.target_id == "snippet-1"
-        assert status == 200
-        assert result["result"] == "success"
-
-    def test_create_forbidden(self, app: Flask, readonly_user, payload_patch):
-        api = TagBindingCollectionApi()
+    def test_create_forbidden(self, app, readonly_user, payload_patch):
+        api = TagBindingCreateApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/", json={}):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(readonly_user, None),
+                ),
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
+                    method(api)
 
 
-class TestTagBindingRemoveApi:
-    def test_remove_success(self, app: Flask, admin_user, payload_patch):
-        api = TagBindingRemoveApi()
+class TestTagBindingDeleteApi:
+    def test_remove_success(self, app, admin_user, payload_patch):
+        api = TagBindingDeleteApi()
         method = unwrap(api.post)
 
         payload = {
-            "tag_ids": ["tag-1", "tag-2"],
+            "tag_id": "tag-1",
             "target_id": "target-1",
             "type": "knowledge",
         }
 
         with app.test_request_context("/", json=payload):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(admin_user, None),
+                ),
                 payload_patch(payload),
                 patch("controllers.console.tag.tags.TagService.delete_tag_binding") as delete_mock,
             ):
-                result, status = method(api, admin_user)
+                result, status = method(api)
 
         delete_mock.assert_called_once()
-        delete_payload = delete_mock.call_args.args[0]
-        assert delete_payload.tag_ids == ["tag-1", "tag-2"]
         assert status == 200
         assert result["result"] == "success"
 
-    def test_remove_forbidden(self, app: Flask, readonly_user, payload_patch):
-        api = TagBindingRemoveApi()
+    def test_remove_forbidden(self, app, readonly_user, payload_patch):
+        api = TagBindingDeleteApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/", json={}):
             with (
+                patch(
+                    "controllers.console.tag.tags.current_account_with_tenant",
+                    return_value=(readonly_user, None),
+                ),
                 payload_patch({}),
             ):
                 with pytest.raises(Forbidden):
-                    method(api, readonly_user)
-
-
-class TestTagResponseModel:
-    def test_tag_response_normalizes_enum_type(self):
-        payload = module.TagResponse.model_validate(
-            {"id": "tag-1", "name": "tag", "type": TagType.KNOWLEDGE, "binding_count": 1}
-        ).model_dump(mode="json")
-
-        assert payload["type"] == "knowledge"
-        assert payload["binding_count"] == "1"
-
-
-class TestTagBindingRouteMetadata:
-    def test_write_routes_are_not_deprecated(self):
-        assert TagBindingCollectionApi.post.__apidoc__.get("deprecated") is not True
-        assert TagBindingRemoveApi.post.__apidoc__.get("deprecated") is not True
-
-    def test_write_routes_have_stable_operation_ids(self):
-        assert TagBindingCollectionApi.post.__apidoc__["id"] == "create_tag_binding"
-        assert TagBindingRemoveApi.post.__apidoc__["id"] == "remove_tag_bindings"
-
-    def test_write_routes_are_registered(self):
-        route_map = {
-            resource.__name__: urls
-            for resource, urls, _route_doc, _kwargs in console_ns.resources
-            if resource.__name__
-            in {
-                "TagBindingCollectionApi",
-                "TagBindingRemoveApi",
-            }
-        }
-
-        assert route_map["TagBindingCollectionApi"] == ("/tag-bindings",)
-        assert route_map["TagBindingRemoveApi"] == ("/tag-bindings/remove",)
-
-    def test_legacy_write_routes_are_not_registered(self):
-        urls = {url for _resource, resource_urls, _route_doc, _kwargs in console_ns.resources for url in resource_urls}
-
-        assert "/tag-bindings/create" not in urls
-        assert "/tag-bindings/<uuid:id>" not in urls
+                    method(api)

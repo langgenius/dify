@@ -13,7 +13,7 @@ from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 from core.trigger.entities.entities import TriggerProviderEntity
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from dify_graph.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class PluginInstallationSource(StrEnum):
@@ -123,7 +123,7 @@ class PluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_category(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def validate_category(cls, values: dict):
         # auto detect category
         if values.get("tool"):
             values["category"] = PluginCategory.Tool
@@ -166,13 +166,12 @@ class PluginEntity(PluginInstallation):
         return self
 
 
-class PluginDependencyType(StrEnum):
-    Github = PluginInstallationSource.Github
-    Marketplace = PluginInstallationSource.Marketplace
-    Package = PluginInstallationSource.Package
-
-
 class PluginDependency(BaseModel):
+    class Type(StrEnum):
+        Github = PluginInstallationSource.Github
+        Marketplace = PluginInstallationSource.Marketplace
+        Package = PluginInstallationSource.Package
+
     class Github(BaseModel):
         repo: str
         version: str
@@ -195,7 +194,7 @@ class PluginDependency(BaseModel):
         plugin_unique_identifier: str
         version: str | None = None
 
-    type: PluginDependencyType
+    type: Type
     value: Github | Marketplace | Package
     current_identifier: str | None = None
 

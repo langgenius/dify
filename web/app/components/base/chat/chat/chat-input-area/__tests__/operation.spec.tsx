@@ -2,6 +2,7 @@ import type { EnableType } from '../../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Theme } from '../../../embedded-chatbot/theme/theme-context'
 import Operation from '../operation'
 
 vi.mock('@/app/components/base/file-uploader', () => ({
@@ -9,6 +10,12 @@ vi.mock('@/app/components/base/file-uploader', () => ({
     <div data-testid="file-uploader" data-readonly={readonly} />
   ),
 }))
+
+const createMockTheme = (overrides?: Partial<Theme>): Theme => {
+  const theme = new Theme()
+  theme.primaryColor = 'rgb(255, 0, 0)'
+  return Object.assign(theme, overrides || {})
+}
 
 describe('Operation', () => {
   beforeEach(() => {
@@ -19,15 +26,20 @@ describe('Operation', () => {
     it('should render send button always', () => {
       render(<Operation onSend={vi.fn()} />)
 
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should render file uploader when fileConfig.enabled is true', () => {
       const fileConfig: FileUpload = { enabled: true } as FileUpload
 
-      render(<Operation onSend={vi.fn()} fileConfig={fileConfig} />)
+      render(
+        <Operation
+          onSend={vi.fn()}
+          fileConfig={fileConfig}
+        />,
+      )
 
-      expect(screen.getByTestId('file-uploader'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-uploader')).toBeInTheDocument()
     })
 
     it('should not render file uploader when fileConfig is undefined', () => {
@@ -36,42 +48,28 @@ describe('Operation', () => {
       expect(screen.queryByTestId('file-uploader')).not.toBeInTheDocument()
     })
 
-    it('should render voice input button when speech-to-text is enabled with a handler', () => {
-      const speechConfig: EnableType = { enabled: true }
-
-      render(
-        <Operation onSend={vi.fn()} speechToTextConfig={speechConfig} onShowVoiceInput={vi.fn()} />,
-      )
-
-      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
-    })
-
-    it('should render file upload before voice input when both actions are enabled', () => {
-      const fileConfig: FileUpload = { enabled: true } as FileUpload
+    it('should render voice input button when speechToTextConfig.enabled is true', () => {
       const speechConfig: EnableType = { enabled: true }
 
       render(
         <Operation
           onSend={vi.fn()}
-          fileConfig={fileConfig}
           speechToTextConfig={speechConfig}
-          onShowVoiceInput={vi.fn()}
         />,
       )
 
-      const fileUploader = screen.getByTestId('file-uploader')
-      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
-
-      expect(
-        fileUploader.compareDocumentPosition(voiceButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
+      expect(screen.getAllByRole('button')).toHaveLength(2)
     })
 
     it('should not render voice input button when speechToTextConfig.enabled is false', () => {
       const speechConfig: EnableType = { enabled: false }
 
-      render(<Operation onSend={vi.fn()} speechToTextConfig={speechConfig} />)
+      render(
+        <Operation
+          onSend={vi.fn()}
+          speechToTextConfig={speechConfig}
+        />,
+      )
 
       expect(screen.getAllByRole('button')).toHaveLength(1)
     })
@@ -99,6 +97,30 @@ describe('Operation', () => {
 
       expect(onSend).not.toHaveBeenCalled()
     })
+
+    it('should apply theme primaryColor as background style when theme is provided', () => {
+      render(
+        <Operation
+          onSend={vi.fn()}
+          theme={createMockTheme()}
+        />,
+      )
+
+      expect(screen.getByRole('button')).toHaveStyle({
+        backgroundColor: 'rgb(255, 0, 0)',
+      })
+    })
+
+    it('should not apply background style when theme is null', () => {
+      render(
+        <Operation
+          onSend={vi.fn()}
+          theme={null}
+        />,
+      )
+
+      expect(screen.getByRole('button').style.backgroundColor).toBe('')
+    })
   })
 
   describe('Voice Input Button', () => {
@@ -114,9 +136,10 @@ describe('Operation', () => {
         />,
       )
 
-      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons[0]
 
-      await user.click(voiceButton!)
+      await user.click(voiceButton)
 
       expect(onShowVoiceInput).toHaveBeenCalledTimes(1)
     })
@@ -134,11 +157,12 @@ describe('Operation', () => {
         />,
       )
 
-      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons[0]
 
-      expect(voiceButton)!.toBeDisabled()
+      expect(voiceButton).toBeDisabled()
 
-      await user.click(voiceButton!)
+      await user.click(voiceButton)
 
       expect(onShowVoiceInput).not.toHaveBeenCalled()
     })

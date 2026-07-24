@@ -5,7 +5,6 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
-from models import TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code, send_deletion_success_task
 
@@ -56,7 +55,7 @@ class TestMailAccountDeletionTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

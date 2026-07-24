@@ -1,6 +1,5 @@
 {
   "allTags": "すべてのタグ",
-  "clearSelectedTags": "選択したタグをクリア: {{tags}}",
   "searchTags": "検索タグ",
   "tags.agent": "エージェント",
   "tags.business": "ビジネス",

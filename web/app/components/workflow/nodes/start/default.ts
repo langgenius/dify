@@ -10,7 +10,7 @@ const metaData = genNodeMetaData({
   isRequired: false,
   isSingleton: true,
   isTypeFixed: false, // support node type change for start node(user input)
-  helpLinkUri: 'start',
+  helpLinkUri: 'user-input',
 })
 const nodeDefault: NodeDefault<StartNodeType> = {
   metaData,

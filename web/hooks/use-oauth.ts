@@ -14,31 +14,24 @@ export const useOAuthCallback = () => {
       const targetOrigin = window.opener?.origin || '*'
 
       if (subscriptionId) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: true,
-            subscriptionId,
-          },
-          targetOrigin,
-        )
-      } else if (error) {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-            success: false,
-            error,
-            errorDescription,
-          },
-          targetOrigin,
-        )
-      } else {
-        window.opener.postMessage(
-          {
-            type: 'oauth_callback',
-          },
-          targetOrigin,
-        )
+        window.opener.postMessage({
+          type: 'oauth_callback',
+          success: true,
+          subscriptionId,
+        }, targetOrigin)
+      }
+      else if (error) {
+        window.opener.postMessage({
+          type: 'oauth_callback',
+          success: false,
+          error,
+          errorDescription,
+        }, targetOrigin)
+      }
+      else {
+        window.opener.postMessage({
+          type: 'oauth_callback',
+        }, targetOrigin)
       }
       window.close()
     }

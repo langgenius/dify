@@ -37,26 +37,22 @@ describe('FileList', () => {
   })
 
   it('should render FileImageItem for image files', () => {
-    const files = [
-      createFile({
-        name: 'photo.png',
-        type: 'image/png',
-        supportFileType: 'image',
-        base64Url: 'data:image/png;base64,abc',
-      }),
-    ]
+    const files = [createFile({
+      name: 'photo.png',
+      type: 'image/png',
+      supportFileType: 'image',
+      base64Url: 'data:image/png;base64,abc',
+    })]
     render(<FileList files={files} />)
 
     expect(screen.getByRole('img')).toBeInTheDocument()
   })
 
   it('should render FileItem for non-image files', () => {
-    const files = [
-      createFile({
-        name: 'document.pdf',
-        supportFileType: 'document',
-      }),
-    ]
+    const files = [createFile({
+      name: 'document.pdf',
+      supportFileType: 'document',
+    })]
     render(<FileList files={files} />)
 
     expect(screen.getByText(/document\.pdf/i)).toBeInTheDocument()
@@ -79,9 +75,16 @@ describe('FileList', () => {
   })
 
   it('should render empty list when no files', () => {
-    render(<FileList files={[]} />)
+    const { container } = render(<FileList files={[]} />)
 
+    expect(container.firstChild).toBeInTheDocument()
     expect(screen.queryAllByRole('img')).toHaveLength(0)
+  })
+
+  it('should apply custom className', () => {
+    const { container } = render(<FileList files={[]} className="custom-class" />)
+
+    expect(container.firstChild).toHaveClass('custom-class')
   })
 
   it('should render multiple files', () => {

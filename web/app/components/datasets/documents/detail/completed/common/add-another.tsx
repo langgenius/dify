@@ -1,30 +1,32 @@
 import type { FC } from 'react'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
+import { cn } from '@/utils/classnames'
 
 type AddAnotherProps = {
   className?: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
+  isChecked: boolean
+  onCheck: () => void
 }
 
-const AddAnother: FC<AddAnotherProps> = ({ className, checked, onCheckedChange }) => {
+const AddAnother: FC<AddAnotherProps> = ({
+  className,
+  isChecked,
+  onCheck,
+}) => {
   const { t } = useTranslation()
 
   return (
-    <label className={cn('flex cursor-pointer items-center gap-x-1 pl-1', className)}>
+    <div className={cn('flex items-center gap-x-1 pl-1', className)}>
       <Checkbox
         key="add-another-checkbox"
         className="shrink-0"
-        checked={checked}
-        onCheckedChange={onCheckedChange}
+        checked={isChecked}
+        onCheck={onCheck}
       />
-      <span className="system-xs-medium text-text-tertiary">
-        {t(($) => $['segment.addAnother'], { ns: 'datasetDocuments' })}
-      </span>
-    </label>
+      <span className="system-xs-medium text-text-tertiary">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
+    </div>
   )
 }
 

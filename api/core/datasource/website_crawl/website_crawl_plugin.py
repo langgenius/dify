@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Any, override
+from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
@@ -47,6 +47,5 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
-    @override
     def datasource_provider_type(self) -> str:
         return DatasourceProviderType.WEBSITE_CRAWL

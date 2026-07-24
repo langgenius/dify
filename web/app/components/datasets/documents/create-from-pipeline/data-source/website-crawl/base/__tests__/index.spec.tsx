@@ -1,7 +1,5 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { fireEvent, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import CheckboxWithLabel from '../checkbox-with-label'
 import CrawledResult from '../crawled-result'
@@ -9,9 +7,7 @@ import CrawledResultItem from '../crawled-result-item'
 import Crawling from '../crawling'
 import ErrorMessage from '../error-message'
 
-const createMockCrawlResultItem = (
-  overrides?: Partial<CrawlResultItemType>,
-): CrawlResultItemType => ({
+const createMockCrawlResultItem = (overrides?: Partial<CrawlResultItemType>): CrawlResultItemType => ({
   source_url: 'https://example.com/page1',
   title: 'Test Page Title',
   markdown: '# Test content',
@@ -24,8 +20,7 @@ const createMockCrawlResultItems = (count = 3): CrawlResultItemType[] => {
     createMockCrawlResultItem({
       source_url: `https://example.com/page${i + 1}`,
       title: `Page ${i + 1}`,
-    }),
-  )
+    }))
 }
 
 // CheckboxWithLabel Tests
@@ -41,66 +36,94 @@ describe('CheckboxWithLabel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render checkbox in unchecked state', () => {
-      render(<CheckboxWithLabel {...defaultProps} isChecked={false} />)
+    it('should render without crashing', () => {
+      render(<CheckboxWithLabel {...defaultProps} />)
 
-      expect(screen.getByRole('checkbox', { name: 'Test Label' })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
+      expect(screen.getByText('Test Label')).toBeInTheDocument()
+    })
+
+    it('should render checkbox in unchecked state', () => {
+      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={false} />)
+
+      // Assert - Custom checkbox component uses div with data-testid
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')
+      expect(checkbox).toBeInTheDocument()
+      expect(checkbox).not.toHaveClass('bg-components-checkbox-bg')
     })
 
     it('should render checkbox in checked state', () => {
-      render(<CheckboxWithLabel {...defaultProps} isChecked={true} />)
+      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={true} />)
 
-      expect(screen.getByRole('checkbox', { name: 'Test Label' })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      // Assert - Checked state has check icon
+      const checkIcon = container.querySelector('[data-testid^="check-icon"]')
+      expect(checkIcon).toBeInTheDocument()
     })
 
     it('should render tooltip when provided', () => {
       render(<CheckboxWithLabel {...defaultProps} tooltip="Helpful tooltip text" />)
 
-      expect(screen.getByLabelText('Helpful tooltip text'))!.toBeInTheDocument()
+      // Assert - Tooltip trigger should be present
+      const tooltipTrigger = document.querySelector('[class*="ml-0.5"]')
+      expect(tooltipTrigger).toBeInTheDocument()
     })
 
     it('should not render tooltip when not provided', () => {
       render(<CheckboxWithLabel {...defaultProps} />)
 
-      expect(screen.queryByLabelText('Helpful tooltip text')).not.toBeInTheDocument()
+      const tooltipTrigger = document.querySelector('[class*="ml-0.5"]')
+      expect(tooltipTrigger).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(
+        <CheckboxWithLabel {...defaultProps} className="custom-class" />,
+      )
+
+      const label = container.querySelector('label')
+      expect(label).toHaveClass('custom-class')
+    })
+
+    it('should apply custom labelClassName', () => {
+      render(<CheckboxWithLabel {...defaultProps} labelClassName="custom-label-class" />)
+
+      const labelText = screen.getByText('Test Label')
+      expect(labelText).toHaveClass('custom-label-class')
     })
   })
 
   describe('User Interactions', () => {
-    it('should call onChange with true when clicking unchecked checkbox', async () => {
+    it('should call onChange with true when clicking unchecked checkbox', () => {
       const mockOnChange = vi.fn()
-      const user = userEvent.setup()
-      render(<CheckboxWithLabel {...defaultProps} isChecked={false} onChange={mockOnChange} />)
+      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={false} onChange={mockOnChange} />)
 
-      await user.click(screen.getByText('Test Label'))
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
+      fireEvent.click(checkbox)
 
       expect(mockOnChange).toHaveBeenCalledWith(true)
     })
 
-    it('should call onChange with false when clicking checked checkbox', async () => {
+    it('should call onChange with false when clicking checked checkbox', () => {
       const mockOnChange = vi.fn()
-      const user = userEvent.setup()
-      render(<CheckboxWithLabel {...defaultProps} isChecked={true} onChange={mockOnChange} />)
+      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={true} onChange={mockOnChange} />)
 
-      await user.click(screen.getByText('Test Label'))
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
+      fireEvent.click(checkbox)
 
       expect(mockOnChange).toHaveBeenCalledWith(false)
     })
 
-    it('should trigger onChange when clicking label text', async () => {
+    it('should not trigger onChange when clicking label text due to custom checkbox', () => {
       const mockOnChange = vi.fn()
-      const user = userEvent.setup()
       render(<CheckboxWithLabel {...defaultProps} onChange={mockOnChange} />)
 
-      await user.click(screen.getByText('Test Label'))
+      // Act - Click on the label text element
+      const labelText = screen.getByText('Test Label')
+      fireEvent.click(labelText)
 
-      expect(mockOnChange).toHaveBeenCalledWith(true)
+      // Assert - Custom checkbox does not support native label-input click forwarding
+      expect(mockOnChange).not.toHaveBeenCalled()
     })
   })
 })
@@ -121,10 +144,19 @@ describe('CrawledResultItem', () => {
   })
 
   describe('Rendering', () => {
-    it('should render checkbox when isMultipleChoice is true', () => {
-      render(<CrawledResultItem {...defaultProps} isMultipleChoice={true} />)
+    it('should render without crashing', () => {
+      render(<CrawledResultItem {...defaultProps} />)
 
-      expect(screen.getByRole('checkbox', { name: /Test Page Title/ })).toBeInTheDocument()
+      expect(screen.getByText('Test Page Title')).toBeInTheDocument()
+      expect(screen.getByText('https://example.com/page1')).toBeInTheDocument()
+    })
+
+    it('should render checkbox when isMultipleChoice is true', () => {
+      const { container } = render(<CrawledResultItem {...defaultProps} isMultipleChoice={true} />)
+
+      // Assert - Custom checkbox uses data-testid
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')
+      expect(checkbox).toBeInTheDocument()
     })
 
     it('should render radio when isMultipleChoice is false', () => {
@@ -132,22 +164,21 @@ describe('CrawledResultItem', () => {
 
       // Assert - Radio component has size-4 rounded-full classes
       const radio = container.querySelector('.size-4.rounded-full')
-      expect(radio)!.toBeInTheDocument()
+      expect(radio).toBeInTheDocument()
     })
 
     it('should render checkbox as checked when isChecked is true', () => {
-      render(<CrawledResultItem {...defaultProps} isChecked={true} />)
+      const { container } = render(<CrawledResultItem {...defaultProps} isChecked={true} />)
 
-      expect(screen.getByRole('checkbox', { name: /Test Page Title/ })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      // Assert - Checked state shows check icon
+      const checkIcon = container.querySelector('[data-testid^="check-icon"]')
+      expect(checkIcon).toBeInTheDocument()
     })
 
     it('should render preview button when showPreview is true', () => {
       render(<CrawledResultItem {...defaultProps} showPreview={true} />)
 
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should not render preview button when showPreview is false', () => {
@@ -160,7 +191,15 @@ describe('CrawledResultItem', () => {
       const { container } = render(<CrawledResultItem {...defaultProps} isPreview={true} />)
 
       const item = container.firstChild
-      expect(item)!.toHaveClass('bg-state-base-active')
+      expect(item).toHaveClass('bg-state-base-active')
+    })
+
+    it('should apply hover styles when isPreview is false', () => {
+      const { container } = render(<CrawledResultItem {...defaultProps} isPreview={false} />)
+
+      const item = container.firstChild
+      expect(item).toHaveClass('group')
+      expect(item).toHaveClass('hover:bg-state-base-hover')
     })
   })
 
@@ -170,7 +209,7 @@ describe('CrawledResultItem', () => {
 
       render(<CrawledResultItem {...defaultProps} payload={payload} />)
 
-      expect(screen.getByText('Custom Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Custom Title')).toBeInTheDocument()
     })
 
     it('should display payload source_url', () => {
@@ -178,7 +217,7 @@ describe('CrawledResultItem', () => {
 
       render(<CrawledResultItem {...defaultProps} payload={payload} />)
 
-      expect(screen.getByText('https://custom.url/path'))!.toBeInTheDocument()
+      expect(screen.getByText('https://custom.url/path')).toBeInTheDocument()
     })
 
     it('should set title attribute for truncation tooltip', () => {
@@ -187,31 +226,39 @@ describe('CrawledResultItem', () => {
       render(<CrawledResultItem {...defaultProps} payload={payload} />)
 
       const titleElement = screen.getByText('Very Long Title')
-      expect(titleElement)!.toHaveAttribute('title', 'Very Long Title')
+      expect(titleElement).toHaveAttribute('title', 'Very Long Title')
     })
   })
 
   describe('User Interactions', () => {
-    it('should call onCheckChange with true when clicking unchecked checkbox', async () => {
+    it('should call onCheckChange with true when clicking unchecked checkbox', () => {
       const mockOnCheckChange = vi.fn()
-      const user = userEvent.setup()
-      render(
-        <CrawledResultItem {...defaultProps} isChecked={false} onCheckChange={mockOnCheckChange} />,
+      const { container } = render(
+        <CrawledResultItem
+          {...defaultProps}
+          isChecked={false}
+          onCheckChange={mockOnCheckChange}
+        />,
       )
 
-      await user.click(screen.getByText('Test Page Title'))
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
+      fireEvent.click(checkbox)
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(true)
     })
 
-    it('should call onCheckChange with false when clicking checked checkbox', async () => {
+    it('should call onCheckChange with false when clicking checked checkbox', () => {
       const mockOnCheckChange = vi.fn()
-      const user = userEvent.setup()
-      render(
-        <CrawledResultItem {...defaultProps} isChecked={true} onCheckChange={mockOnCheckChange} />,
+      const { container } = render(
+        <CrawledResultItem
+          {...defaultProps}
+          isChecked={true}
+          onCheckChange={mockOnCheckChange}
+        />,
       )
 
-      await user.click(screen.getByText('Test Page Title'))
+      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
+      fireEvent.click(checkbox)
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(false)
     })
@@ -227,23 +274,18 @@ describe('CrawledResultItem', () => {
 
     it('should toggle radio state when isMultipleChoice is false', () => {
       const mockOnCheckChange = vi.fn()
-      render(
-        <RadioGroup
-          aria-label="Crawled pages"
-          onValueChange={(sourceUrl) => {
-            if (sourceUrl === defaultProps.payload.source_url) mockOnCheckChange(true)
-          }}
-        >
-          <CrawledResultItem
-            {...defaultProps}
-            isMultipleChoice={false}
-            isChecked={false}
-            onCheckChange={mockOnCheckChange}
-          />
-        </RadioGroup>,
+      const { container } = render(
+        <CrawledResultItem
+          {...defaultProps}
+          isMultipleChoice={false}
+          isChecked={false}
+          onCheckChange={mockOnCheckChange}
+        />,
       )
 
-      fireEvent.click(screen.getByRole('radio', { name: /Test Page Title/ }))
+      // Act - Radio uses size-4 rounded-full classes
+      const radio = container.querySelector('.size-4.rounded-full')!
+      fireEvent.click(radio)
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(true)
     })
@@ -264,33 +306,42 @@ describe('CrawledResult', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<CrawledResult {...defaultProps} />)
+
+      // Assert - Check for time info which contains total count
+      expect(screen.getByText(/1.5/)).toBeInTheDocument()
+    })
+
     it('should render all list items', () => {
       render(<CrawledResult {...defaultProps} />)
 
-      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Page 2'))!.toBeInTheDocument()
-      expect(screen.getByText('Page 3'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 1')).toBeInTheDocument()
+      expect(screen.getByText('Page 2')).toBeInTheDocument()
+      expect(screen.getByText('Page 3')).toBeInTheDocument()
     })
 
     it('should display scrape time info', () => {
       render(<CrawledResult {...defaultProps} usedTime={2.5} />)
 
       // Assert - Check for the time display
-      // Assert - Check for the time display
-      expect(screen.getByText(/2.5/))!.toBeInTheDocument()
+      expect(screen.getByText(/2.5/)).toBeInTheDocument()
     })
 
     it('should render select all checkbox when isMultipleChoice is true', () => {
-      render(<CrawledResult {...defaultProps} isMultipleChoice={true} />)
+      const { container } = render(<CrawledResult {...defaultProps} isMultipleChoice={true} />)
 
-      expect(screen.getAllByRole('checkbox')).toHaveLength(4)
+      // Assert - Multiple custom checkboxes (select all + items)
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      expect(checkboxes.length).toBe(4) // 1 select all + 3 items
     })
 
     it('should not render select all checkbox when isMultipleChoice is false', () => {
       const { container } = render(<CrawledResult {...defaultProps} isMultipleChoice={false} />)
 
       // Assert - No select all checkbox, only radio buttons for items
-      expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      expect(checkboxes.length).toBe(0)
       // Radio buttons have size-4 and rounded-full classes
       const radios = container.querySelectorAll('.size-4.rounded-full')
       expect(radios.length).toBe(3)
@@ -299,7 +350,7 @@ describe('CrawledResult', () => {
     it('should show "Select All" when not all items are checked', () => {
       render(<CrawledResult {...defaultProps} checkedList={[]} />)
 
-      expect(screen.getByText(/selectAll|Select All/i))!.toBeInTheDocument()
+      expect(screen.getByText(/selectAll|Select All/i)).toBeInTheDocument()
     })
 
     it('should show "Reset All" when all items are checked', () => {
@@ -307,42 +358,49 @@ describe('CrawledResult', () => {
 
       render(<CrawledResult {...defaultProps} checkedList={allChecked} />)
 
-      expect(screen.getByText(/resetAll|Reset All/i))!.toBeInTheDocument()
+      expect(screen.getByText(/resetAll|Reset All/i)).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(
+        <CrawledResult {...defaultProps} className="custom-class" />,
+      )
+
+      expect(container.firstChild).toHaveClass('custom-class')
+    })
+
     it('should highlight item at previewIndex', () => {
-      render(<CrawledResult {...defaultProps} previewIndex={1} />)
+      const { container } = render(
+        <CrawledResult {...defaultProps} previewIndex={1} />,
+      )
 
       // Assert - Second item should have active state
-      expect(screen.getByText('Page 2').closest('.relative')).toHaveClass('bg-state-base-active')
+      const items = container.querySelectorAll('[class*="rounded-lg"][class*="cursor-pointer"]')
+      expect(items[1]).toHaveClass('bg-state-base-active')
     })
 
     it('should pass showPreview to items', () => {
       render(<CrawledResult {...defaultProps} showPreview={true} />)
 
-      const buttons = screen.getAllByRole('button', {
-        name: 'datasetCreation.stepOne.website.preview',
-      })
+      // Assert - Preview buttons should be visible
+      const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBe(3)
     })
 
     it('should not show preview buttons when showPreview is false', () => {
       render(<CrawledResult {...defaultProps} showPreview={false} />)
 
-      expect(
-        screen.queryByRole('button', { name: 'datasetCreation.stepOne.website.preview' }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
-    it('should call onSelectedChange with all items when clicking select all', async () => {
+    it('should call onSelectedChange with all items when clicking select all', () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const user = userEvent.setup()
-      render(
+      const { container } = render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -351,16 +409,17 @@ describe('CrawledResult', () => {
         />,
       )
 
-      await user.click(screen.getByText(/selectAll/i))
+      // Act - Click select all checkbox (first checkbox)
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      fireEvent.click(checkboxes[0])
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith(list)
     })
 
-    it('should call onSelectedChange with empty array when clicking reset all', async () => {
+    it('should call onSelectedChange with empty array when clicking reset all', () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const user = userEvent.setup()
-      render(
+      const { container } = render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -369,43 +428,46 @@ describe('CrawledResult', () => {
         />,
       )
 
-      await user.click(screen.getByText(/resetAll/i))
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      fireEvent.click(checkboxes[0])
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([])
     })
 
-    it('should add item to checkedList when checking unchecked item', async () => {
+    it('should add item to checkedList when checking unchecked item', () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const user = userEvent.setup()
-      render(
+      const { container } = render(
         <CrawledResult
           {...defaultProps}
           list={list}
-          checkedList={[list[0]!]}
+          checkedList={[list[0]]}
           onSelectedChange={mockOnSelectedChange}
         />,
       )
 
-      await user.click(screen.getByText('Page 2'))
+      // Act - Click second item checkbox (index 2, accounting for select all)
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      fireEvent.click(checkboxes[2])
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([list[0], list[1]])
     })
 
-    it('should remove item from checkedList when unchecking checked item', async () => {
+    it('should remove item from checkedList when unchecking checked item', () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const user = userEvent.setup()
-      render(
+      const { container } = render(
         <CrawledResult
           {...defaultProps}
           list={list}
-          checkedList={[list[0]!, list[1]!]}
+          checkedList={[list[0], list[1]]}
           onSelectedChange={mockOnSelectedChange}
         />,
       )
 
-      await user.click(screen.getByText('Page 1'))
+      // Act - Uncheck first item (index 1, after select all)
+      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+      fireEvent.click(checkboxes[1])
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([list[1]])
     })
@@ -417,7 +479,7 @@ describe('CrawledResult', () => {
         <CrawledResult
           {...defaultProps}
           list={list}
-          checkedList={[list[0]!]}
+          checkedList={[list[0]]}
           onSelectedChange={mockOnSelectedChange}
           isMultipleChoice={false}
         />,
@@ -425,7 +487,7 @@ describe('CrawledResult', () => {
 
       // Act - Click second item radio (Radio uses size-4 rounded-full classes)
       const radios = container.querySelectorAll('.size-4.rounded-full')
-      fireEvent.click(radios[1]!)
+      fireEvent.click(radios[1])
 
       // Assert - Should only select the clicked item
       expect(mockOnSelectedChange).toHaveBeenCalledWith([list[1]])
@@ -443,28 +505,30 @@ describe('CrawledResult', () => {
         />,
       )
 
-      const buttons = screen.getAllByRole('button', {
-        name: 'datasetCreation.stepOne.website.preview',
-      })
-      fireEvent.click(buttons[1]!) // Second item's preview button
+      const buttons = screen.getAllByRole('button')
+      fireEvent.click(buttons[1]) // Second item's preview button
 
       expect(mockOnPreview).toHaveBeenCalledWith(list[1], 1)
     })
 
-    it('ignores preview clicks when the callback is omitted', () => {
+    it('should not crash when clicking preview without onPreview callback', () => {
       // Arrange - showPreview is true but onPreview is undefined
       const list = createMockCrawlResultItems(3)
       render(
-        <CrawledResult {...defaultProps} list={list} onPreview={undefined} showPreview={true} />,
+        <CrawledResult
+          {...defaultProps}
+          list={list}
+          onPreview={undefined}
+          showPreview={true}
+        />,
       )
 
       // Act - Click preview button should trigger early return in handlePreview
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0]!)
+      fireEvent.click(buttons[0])
 
       // Assert - Should not throw error, component still renders
-      // Assert - Should not throw error, component still renders
-      expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Page 1')).toBeInTheDocument()
     })
   })
 
@@ -473,8 +537,7 @@ describe('CrawledResult', () => {
       render(<CrawledResult {...defaultProps} list={[]} usedTime={0.5} />)
 
       // Assert - Should show time info with 0 count
-      // Assert - Should show time info with 0 count
-      expect(screen.getByText(/0.5/))!.toBeInTheDocument()
+      expect(screen.getByText(/0.5/)).toBeInTheDocument()
     })
 
     it('should handle single item list', () => {
@@ -482,13 +545,13 @@ describe('CrawledResult', () => {
 
       render(<CrawledResult {...defaultProps} list={singleItem} />)
 
-      expect(screen.getByText('Test Page Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Test Page Title')).toBeInTheDocument()
     })
 
     it('should format usedTime to one decimal place', () => {
       render(<CrawledResult {...defaultProps} usedTime={1.567} />)
 
-      expect(screen.getByText(/1.6/))!.toBeInTheDocument()
+      expect(screen.getByText(/1.6/)).toBeInTheDocument()
     })
   })
 })
@@ -505,10 +568,16 @@ describe('Crawling', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<Crawling {...defaultProps} />)
+
+      expect(screen.getByText(/5\/10/)).toBeInTheDocument()
+    })
+
     it('should display crawled count and total', () => {
       render(<Crawling crawledNum={3} totalNum={15} />)
 
-      expect(screen.getByText(/3\/15/))!.toBeInTheDocument()
+      expect(screen.getByText(/3\/15/)).toBeInTheDocument()
     })
 
     it('should render skeleton items', () => {
@@ -528,16 +597,24 @@ describe('Crawling', () => {
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(
+        <Crawling {...defaultProps} className="custom-crawling-class" />,
+      )
+
+      expect(container.firstChild).toHaveClass('custom-crawling-class')
+    })
+
     it('should handle zero values', () => {
       render(<Crawling crawledNum={0} totalNum={0} />)
 
-      expect(screen.getByText(/0\/0/))!.toBeInTheDocument()
+      expect(screen.getByText(/0\/0/)).toBeInTheDocument()
     })
 
     it('should handle large numbers', () => {
       render(<Crawling crawledNum={999} totalNum={1000} />)
 
-      expect(screen.getByText(/999\/1000/))!.toBeInTheDocument()
+      expect(screen.getByText(/999\/1000/)).toBeInTheDocument()
     })
   })
 
@@ -546,10 +623,9 @@ describe('Crawling', () => {
       const { container } = render(<Crawling {...defaultProps} />)
 
       // Assert - Check for various width classes
-      // Assert - Check for various width classes
-      expect(container.querySelector('.w-\\[35\\%\\]'))!.toBeInTheDocument()
-      expect(container.querySelector('.w-\\[50\\%\\]'))!.toBeInTheDocument()
-      expect(container.querySelector('.w-\\[40\\%\\]'))!.toBeInTheDocument()
+      expect(container.querySelector('.w-\\[35\\%\\]')).toBeInTheDocument()
+      expect(container.querySelector('.w-\\[50\\%\\]')).toBeInTheDocument()
+      expect(container.querySelector('.w-\\[40\\%\\]')).toBeInTheDocument()
     })
   })
 })
@@ -565,24 +641,30 @@ describe('ErrorMessage', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<ErrorMessage {...defaultProps} />)
+
+      expect(screen.getByText('Error Title')).toBeInTheDocument()
+    })
+
     it('should render error icon', () => {
       const { container } = render(<ErrorMessage {...defaultProps} />)
 
       const icon = container.querySelector('svg')
-      expect(icon)!.toBeInTheDocument()
-      expect(icon)!.toHaveClass('text-text-destructive')
+      expect(icon).toBeInTheDocument()
+      expect(icon).toHaveClass('text-text-destructive')
     })
 
     it('should render title', () => {
       render(<ErrorMessage title="Custom Error Title" />)
 
-      expect(screen.getByText('Custom Error Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Custom Error Title')).toBeInTheDocument()
     })
 
     it('should render error message when provided', () => {
       render(<ErrorMessage {...defaultProps} errorMsg="Detailed error description" />)
 
-      expect(screen.getByText('Detailed error description'))!.toBeInTheDocument()
+      expect(screen.getByText('Detailed error description')).toBeInTheDocument()
     })
 
     it('should not render error message when not provided', () => {
@@ -595,12 +677,19 @@ describe('ErrorMessage', () => {
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(
+        <ErrorMessage {...defaultProps} className="custom-error-class" />,
+      )
+
+      expect(container.firstChild).toHaveClass('custom-error-class')
+    })
+
     it('should render with empty errorMsg', () => {
       render(<ErrorMessage {...defaultProps} errorMsg="" />)
 
       // Assert - Empty string should not render message div
-      // Assert - Empty string should not render message div
-      expect(screen.getByText('Error Title'))!.toBeInTheDocument()
+      expect(screen.getByText('Error Title')).toBeInTheDocument()
     })
 
     it('should handle long title text', () => {
@@ -608,24 +697,35 @@ describe('ErrorMessage', () => {
 
       render(<ErrorMessage title={longTitle} />)
 
-      expect(screen.getByText(longTitle))!.toBeInTheDocument()
+      expect(screen.getByText(longTitle)).toBeInTheDocument()
     })
 
     it('should handle long error message', () => {
-      const longErrorMsg =
-        'This is a very detailed error message explaining what went wrong and how to fix it. It contains multiple sentences.'
+      const longErrorMsg = 'This is a very detailed error message explaining what went wrong and how to fix it. It contains multiple sentences.'
 
       render(<ErrorMessage {...defaultProps} errorMsg={longErrorMsg} />)
 
-      expect(screen.getByText(longErrorMsg))!.toBeInTheDocument()
+      expect(screen.getByText(longErrorMsg)).toBeInTheDocument()
     })
   })
 
   describe('Styling', () => {
-    it('should have rounded-sm corners', () => {
+    it('should have error background styling', () => {
       const { container } = render(<ErrorMessage {...defaultProps} />)
 
-      expect(container.firstChild)!.toHaveClass('rounded-xl')
+      expect(container.firstChild).toHaveClass('bg-toast-error-bg')
+    })
+
+    it('should have border styling', () => {
+      const { container } = render(<ErrorMessage {...defaultProps} />)
+
+      expect(container.firstChild).toHaveClass('border-components-panel-border')
+    })
+
+    it('should have rounded corners', () => {
+      const { container } = render(<ErrorMessage {...defaultProps} />)
+
+      expect(container.firstChild).toHaveClass('rounded-xl')
     })
   })
 })
@@ -634,18 +734,24 @@ describe('Base Components Integration', () => {
   it('should render CrawledResult with CrawledResultItem children', () => {
     const list = createMockCrawlResultItems(2)
 
-    render(<CrawledResult list={list} checkedList={[]} onSelectedChange={vi.fn()} usedTime={1.0} />)
+    render(
+      <CrawledResult
+        list={list}
+        checkedList={[]}
+        onSelectedChange={vi.fn()}
+        usedTime={1.0}
+      />,
+    )
 
     // Assert - Both items should render
-    // Assert - Both items should render
-    expect(screen.getByText('Page 1'))!.toBeInTheDocument()
-    expect(screen.getByText('Page 2'))!.toBeInTheDocument()
+    expect(screen.getByText('Page 1')).toBeInTheDocument()
+    expect(screen.getByText('Page 2')).toBeInTheDocument()
   })
 
   it('should render CrawledResult with CheckboxWithLabel for select all', () => {
     const list = createMockCrawlResultItems(2)
 
-    render(
+    const { container } = render(
       <CrawledResult
         list={list}
         checkedList={[]}
@@ -656,16 +762,16 @@ describe('Base Components Integration', () => {
     )
 
     // Assert - Should have select all checkbox + item checkboxes
-    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+    const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+    expect(checkboxes.length).toBe(3) // select all + 2 items
   })
 
-  it('should allow selecting and previewing items', async () => {
+  it('should allow selecting and previewing items', () => {
     const list = createMockCrawlResultItems(3)
     const mockOnSelectedChange = vi.fn()
     const mockOnPreview = vi.fn()
-    const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <CrawledResult
         list={list}
         checkedList={[]}
@@ -676,15 +782,15 @@ describe('Base Components Integration', () => {
       />,
     )
 
-    await user.click(screen.getByText('Page 1'))
+    // Act - Select first item (index 1, after select all)
+    const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
+    fireEvent.click(checkboxes[1])
 
     expect(mockOnSelectedChange).toHaveBeenCalledWith([list[0]])
 
     // Act - Preview second item
-    const previewButtons = screen.getAllByRole('button', {
-      name: 'datasetCreation.stepOne.website.preview',
-    })
-    fireEvent.click(previewButtons[1]!)
+    const previewButtons = screen.getAllByRole('button')
+    fireEvent.click(previewButtons[1])
 
     expect(mockOnPreview).toHaveBeenCalledWith(list[1], 1)
   })

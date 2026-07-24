@@ -1,297 +1,241 @@
-import type { ReactNode, Ref } from 'react'
-import type { BlockEnum, NodeDefault, OnNodeAdd, OnSelectBlock, ToolWithProvider } from '../types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useState } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
+import type {
+  BlockEnum,
+  NodeDefault,
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
+import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchInput } from '@/app/components/base/search-input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import Tooltip from '@/app/components/base/tooltip'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
+import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
+import AllTools from './all-tools'
 import Blocks from './blocks'
 import DataSources from './data-sources'
-import Snippets from './snippets'
-import { ToolPanel } from './tool-panel'
-import { TabType } from './types'
+import { TabsEnum } from './types'
 
-type TabConfig = {
-  key: TabType
-  name: string
-  disabled?: boolean
-  disabledTip?: ReactNode
-}
-
-type BlockSelectorPanelsProps = {
-  defaultTab: TabType
-  standalonePanel?: TabType
-  tabs: TabConfig[]
-  searchInputRef: Ref<HTMLInputElement>
+export type TabsProps = {
+  activeTab: TabsEnum
+  onActiveTabChange: (activeTab: TabsEnum) => void
+  searchText: string
+  tags: string[]
+  onTagsChange: Dispatch<SetStateAction<string[]>>
   onSelect: OnSelectBlock
-  onRequestClose: () => void
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
   dataSources?: ToolWithProvider[]
-  allowStartNodeSelection?: boolean
-  hasUserInputNode?: boolean
-  hasTriggerNode?: boolean
-  snippetInsertPayload?: Parameters<OnNodeAdd>[1]
+  tabs: Array<{
+    key: TabsEnum
+    name: string
+    disabled?: boolean
+  }>
+  filterElem: React.ReactNode
+  noBlocks?: boolean
+  noTools?: boolean
+  forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
+  allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
 }
-
-type TabFilterState = Record<
-  TabType,
-  {
-    searchText: string
-    tags: string[]
-  }
->
-
-const createTabFilterState = (): TabFilterState => ({
-  [TabType.Blocks]: { searchText: '', tags: [] },
-  [TabType.Tools]: { searchText: '', tags: [] },
-  [TabType.Sources]: { searchText: '', tags: [] },
-  [TabType.Start]: { searchText: '', tags: [] },
-  [TabType.Snippets]: { searchText: '', tags: [] },
-})
-
-function TabHeaderItem({
-  tab,
-  fallbackDisabledTip,
-}: {
-  tab: TabConfig
-  fallbackDisabledTip: ReactNode
-}) {
-  const tabElement = (
-    <TabsTab
-      value={tab.key}
-      disabled={tab.disabled}
-      className={cn(
-        'z-10 mr-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
-        'data-active:cursor-default data-active:border-transparent data-active:text-text-accent',
-        'data-disabled:text-text-disabled data-disabled:opacity-60',
-      )}
-    >
-      {tab.name}
-    </TabsTab>
-  )
-
-  if (!tab.disabled) return tabElement
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={tabElement} />
-      <TooltipContent placement="top" className="max-w-57.5 rounded-xl px-4 py-3.5">
-        {tab.disabledTip || fallbackDisabledTip}
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
-function BlockSelectorPanels({
-  defaultTab,
-  standalonePanel,
-  tabs,
-  searchInputRef,
+const Tabs: FC<TabsProps> = ({
+  activeTab,
+  onActiveTabChange,
+  tags,
+  onTagsChange,
+  searchText,
   onSelect,
-  onRequestClose,
   availableBlocksTypes,
   blocks,
   dataSources = [],
+  tabs = [],
+  filterElem,
+  noBlocks,
+  noTools,
+  forceShowStartContent = false,
   allowStartNodeSelection = false,
-  hasUserInputNode = false,
-  hasTriggerNode = false,
-  snippetInsertPayload,
-}: BlockSelectorPanelsProps) {
+}) => {
   const { t } = useTranslation()
-  const [filters, setFilters] = useState(createTabFilterState)
-  const fallbackDisabledTip = t(($) => $['tabs.startDisabledTip'], { ns: 'workflow' })
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const workflowStore = useWorkflowStore()
+  const inRAGPipeline = dataSources.length > 0
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: isFeaturedLoading,
+  } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
 
-  const setSearchText = (tab: TabType, searchText: string) => {
-    setFilters((currentFilters) => ({
-      ...currentFilters,
-      [tab]: { ...currentFilters[tab], searchText },
-    }))
-  }
+  const normalizeToolList = useMemo(() => {
+    return (list?: ToolWithProvider[]) => {
+      if (!list)
+        return list
+      if (!basePath)
+        return list
+      let changed = false
+      const normalized = list.map((provider) => {
+        if (typeof provider.icon === 'string') {
+          const icon = provider.icon
+          const shouldPrefix = Boolean(basePath)
+            && icon.startsWith('/')
+            && !icon.startsWith(`${basePath}/`)
 
-  const setTags = (tab: TabType, tags: string[]) => {
-    setFilters((currentFilters) => ({
-      ...currentFilters,
-      [tab]: { ...currentFilters[tab], tags },
-    }))
-  }
+          if (shouldPrefix) {
+            changed = true
+            return {
+              ...provider,
+              icon: `${basePath}${icon}`,
+            }
+          }
+        }
+        return provider
+      })
+      return changed ? normalized : list
+    }
+  }, [basePath])
 
-  const renderSearchFilter = (tab: TabType, inputRef?: Ref<HTMLInputElement>) => {
-    if (tab === TabType.Snippets) return null
-    const { searchText, tags } = filters[tab]
+  useEffect(() => {
+    workflowStore.setState((state) => {
+      const updates: Partial<typeof state> = {}
+      const normalizedBuiltIn = normalizeToolList(buildInTools)
+      const normalizedCustom = normalizeToolList(customTools)
+      const normalizedWorkflow = normalizeToolList(workflowTools)
+      const normalizedMCP = normalizeToolList(mcpTools)
 
-    const filter = (() => {
-      if (tab === TabType.Start) {
-        return (
-          <SearchBox
-            ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
-            tags={tags}
-            onTagsChange={(value) => setTags(tab, value)}
-            placeholder={t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })}
-            inputClassName="grow"
-          />
+      if (normalizedBuiltIn !== undefined && state.buildInTools !== normalizedBuiltIn)
+        updates.buildInTools = normalizedBuiltIn
+      if (normalizedCustom !== undefined && state.customTools !== normalizedCustom)
+        updates.customTools = normalizedCustom
+      if (normalizedWorkflow !== undefined && state.workflowTools !== normalizedWorkflow)
+        updates.workflowTools = normalizedWorkflow
+      if (normalizedMCP !== undefined && state.mcpTools !== normalizedMCP)
+        updates.mcpTools = normalizedMCP
+      if (!Object.keys(updates).length)
+        return state
+      return {
+        ...state,
+        ...updates,
+      }
+    })
+  }, [workflowStore, normalizeToolList, buildInTools, customTools, workflowTools, mcpTools])
+
+  return (
+    <div onClick={e => e.stopPropagation()}>
+      {
+        !noBlocks && (
+          <div className="relative flex bg-background-section-burn pl-1 pt-1">
+            {
+              tabs.map((tab) => {
+                const commonProps = {
+                  'className': cn(
+                    'system-sm-medium relative mr-0.5 flex h-8 items-center rounded-t-lg px-3',
+                    tab.disabled
+                      ? 'cursor-not-allowed text-text-disabled opacity-60'
+                      : activeTab === tab.key
+                        ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
+                        : 'cursor-pointer text-text-tertiary',
+                  ),
+                  'aria-disabled': tab.disabled,
+                  'onClick': () => {
+                    if (tab.disabled || activeTab === tab.key)
+                      return
+                    onActiveTabChange(tab.key)
+                  },
+                } as const
+                if (tab.disabled) {
+                  return (
+                    <Tooltip
+                      key={tab.key}
+                      position="top"
+                      popupClassName="max-w-[200px]"
+                      popupContent={t('tabs.startDisabledTip', { ns: 'workflow' })}
+                    >
+                      <div {...commonProps}>
+                        {tab.name}
+                      </div>
+                    </Tooltip>
+                  )
+                }
+                return (
+                  <div
+                    key={tab.key}
+                    {...commonProps}
+                  >
+                    {tab.name}
+                  </div>
+                )
+              })
+            }
+          </div>
         )
       }
-
-      if (tab === TabType.Tools) {
-        return (
-          <SearchBox
-            ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
-            tags={tags}
-            onTagsChange={(value) => setTags(tab, value)}
-            placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-            inputClassName="grow"
-          />
-        )
-      }
-
-      return (
-        <SearchInput
-          ref={inputRef}
-          value={searchText}
-          placeholder={
-            tab === TabType.Blocks
-              ? t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
-              : t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
-          }
-          aria-label={
-            tab === TabType.Blocks
-              ? t(($) => $['tabs.searchBlock'], { ns: 'workflow' })
-              : t(($) => $['tabs.searchDataSource'], { ns: 'workflow' })
-          }
-          onValueChange={(value) => setSearchText(tab, value)}
-        />
-      )
-    })()
-
-    return <div className="relative m-2">{filter}</div>
-  }
-
-  const renderPanel = (tab: TabType, inputRef?: Ref<HTMLInputElement>) => {
-    const searchFilter = renderSearchFilter(tab, inputRef)
-
-    if (tab === TabType.Start) {
-      return (
-        <>
-          {searchFilter}
+      {filterElem}
+      {
+        activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
           <div className="border-t border-divider-subtle">
             <AllStartBlocks
               allowUserInputSelection={allowStartNodeSelection}
-              hasUserInputNode={hasUserInputNode}
-              hasTriggerNode={hasTriggerNode}
-              searchText={filters[TabType.Start].searchText}
+              searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
-              tags={filters[TabType.Start].tags}
+              tags={tags}
             />
           </div>
-        </>
-      )
-    }
-
-    if (tab === TabType.Blocks) {
-      return (
-        <>
-          {searchFilter}
+        )
+      }
+      {
+        activeTab === TabsEnum.Blocks && !noBlocks && (
           <div className="border-t border-divider-subtle">
             <Blocks
-              searchText={filters[TabType.Blocks].searchText}
+              searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}
               blocks={blocks}
             />
           </div>
-        </>
-      )
-    }
-
-    if (tab === TabType.Sources) {
-      return (
-        <>
-          {searchFilter}
+        )
+      }
+      {
+        activeTab === TabsEnum.Sources && !!dataSources.length && (
           <div className="border-t border-divider-subtle">
             <DataSources
-              searchText={filters[TabType.Sources].searchText}
+              searchText={searchText}
               onSelect={onSelect}
               dataSources={dataSources}
             />
           </div>
-        </>
-      )
-    }
-
-    if (tab === TabType.Tools) {
-      return (
-        <>
-          {searchFilter}
-          <ToolPanel
-            searchText={filters[TabType.Tools].searchText}
+        )
+      }
+      {
+        activeTab === TabsEnum.Tools && !noTools && (
+          <AllTools
+            searchText={searchText}
             onSelect={onSelect}
-            tags={filters[TabType.Tools].tags}
-            onTagsChange={(value) => setTags(TabType.Tools, value)}
-            dataSources={dataSources}
+            tags={tags}
+            canNotSelectMultiple
+            buildInTools={buildInTools || []}
+            customTools={customTools || []}
+            workflowTools={workflowTools || []}
+            mcpTools={mcpTools || []}
+            onTagsChange={onTagsChange}
+            isInRAGPipeline={inRAGPipeline}
+            featuredPlugins={featuredPlugins}
+            featuredLoading={isFeaturedLoading}
+            showFeatured={enable_marketplace && !inRAGPipeline}
+            onFeaturedInstallSuccess={async () => {
+              invalidateBuiltInTools()
+            }}
           />
-        </>
-      )
-    }
-
-    return (
-      <Snippets
-        searchText={filters[TabType.Snippets].searchText}
-        onSearchTextChange={(value) => setSearchText(TabType.Snippets, value)}
-        insertPayload={snippetInsertPayload}
-        onInserted={onRequestClose}
-      />
-    )
-  }
-
-  if (standalonePanel) {
-    return (
-      <div className="w-full min-w-0">
-        {renderPanel(
-          standalonePanel,
-          standalonePanel === TabType.Snippets ? undefined : searchInputRef,
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <Tabs defaultValue={defaultTab} className="w-full min-w-0">
-      <TabsList
-        aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        className="relative w-full min-w-0 gap-0 bg-background-section-burn pt-1 pl-1"
-      >
-        {tabs.map((tab) => (
-          <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
-        ))}
-        <TabsIndicator
-          className="sm-no-bottom pointer-events-none absolute left-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
-          style={{
-            top: 'var(--active-tab-top)',
-            translate: 'var(--active-tab-left)',
-            width: 'var(--active-tab-width)',
-            height: 'var(--active-tab-height)',
-          }}
-        />
-      </TabsList>
-      {tabs.map((tab) => (
-        <TabsPanel key={tab.key} value={tab.key} tabIndex={-1}>
-          {renderPanel(
-            tab.key,
-            tab.key === defaultTab && tab.key !== TabType.Snippets ? searchInputRef : undefined,
-          )}
-        </TabsPanel>
-      ))}
-    </Tabs>
+        )
+      }
+    </div>
   )
 }
 
-export { BlockSelectorPanels }
+export default memo(Tabs)

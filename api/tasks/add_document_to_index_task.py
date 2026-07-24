@@ -3,7 +3,6 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import delete, select, update
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -14,7 +13,6 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DatasetAutoDisableLog, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.enums import IndexingStatus, SegmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +29,30 @@ def add_document_to_index_task(dataset_document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset_document = session.scalar(
-            select(DatasetDocument).where(DatasetDocument.id == dataset_document_id).limit(1)
-        )
+        dataset_document = session.query(DatasetDocument).where(DatasetDocument.id == dataset_document_id).first()
         if not dataset_document:
             logger.info(click.style(f"Document not found: {dataset_document_id}", fg="red"))
             return
 
-        if dataset_document.indexing_status != IndexingStatus.COMPLETED:
+        if dataset_document.indexing_status != "completed":
             return
 
         indexing_cache_key = f"document_{dataset_document.id}_indexing"
 
         try:
-            dataset = dataset_document.get_dataset(session=session)
+            dataset = dataset_document.dataset
             if not dataset:
                 raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
 
-            segments = session.scalars(
-                select(DocumentSegment)
+            segments = (
+                session.query(DocumentSegment)
                 .where(
                     DocumentSegment.document_id == dataset_document.id,
-                    DocumentSegment.status == SegmentStatus.COMPLETED,
+                    DocumentSegment.status == "completed",
                 )
                 .order_by(DocumentSegment.position.asc())
-            ).all()
+                .all()
+            )
 
             documents = []
             multimodal_documents = []
@@ -70,7 +67,7 @@ def add_document_to_index_task(dataset_document_id: str):
                     },
                 )
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks(session=session)
+                    child_chunks = segment.get_child_chunks()
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -86,7 +83,7 @@ def add_document_to_index_task(dataset_document_id: str):
                             child_documents.append(child_document)
                         document.children = child_documents
                 if dataset.is_multimodal:
-                    for attachment in segment.get_attachments(session=session):
+                    for attachment in segment.attachments:
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -101,20 +98,23 @@ def add_document_to_index_task(dataset_document_id: str):
                         )
                 documents.append(document)
 
-            index_type = dataset.get_doc_form(session=session)
+            index_type = dataset.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
-            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
+            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
 
             # delete auto disable log
-            session.execute(
-                delete(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == dataset_document.id)
-            )
+            session.query(DatasetAutoDisableLog).where(
+                DatasetAutoDisableLog.document_id == dataset_document.id
+            ).delete()
 
             # update segment to enable
-            session.execute(
-                update(DocumentSegment)
-                .where(DocumentSegment.document_id == dataset_document.id)
-                .values(enabled=True, disabled_at=None, disabled_by=None, updated_at=naive_utc_now())
+            session.query(DocumentSegment).where(DocumentSegment.document_id == dataset_document.id).update(
+                {
+                    DocumentSegment.enabled: True,
+                    DocumentSegment.disabled_at: None,
+                    DocumentSegment.disabled_by: None,
+                    DocumentSegment.updated_at: naive_utc_now(),
+                }
             )
             session.commit()
 
@@ -139,7 +139,7 @@ def add_document_to_index_task(dataset_document_id: str):
             logger.exception("add document to index failed")
             dataset_document.enabled = False
             dataset_document.disabled_at = naive_utc_now()
-            dataset_document.indexing_status = IndexingStatus.ERROR
+            dataset_document.indexing_status = "error"
             dataset_document.error = str(e)
             session.commit()
         finally:

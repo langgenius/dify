@@ -1,133 +1,233 @@
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
-import { AccessMode } from '@/models/access-control'
-import { AppModeEnum } from '@/types/app'
-import { basePath } from '@/utils/var'
-import {
-  getAppCardDisplayState,
-  getAppCardOperationKeys,
-  hasWorkflowStartNode,
-  isAppAccessConfigured,
-} from '../app-card-utils'
+import type { MockedFunction } from 'vitest'
+import type { Node } from '@/app/components/workflow/types'
+import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 
-describe('app-card-utils', () => {
-  const baseAppInfo = {
-    id: 'app-1',
-    mode: AppModeEnum.WORKFLOW,
-    enable_site: true,
-    enable_api: true,
-    site: {
-      app_base_url: 'https://example.com',
-      access_token: 'token-1',
-    },
-    access_mode: AccessMode.PUBLIC,
-  } as AppDetailResponse & Partial<AppSSO>
+// Mock the getWorkflowEntryNode function
+vi.mock('@/app/components/workflow/utils/workflow-entry', () => ({
+  getWorkflowEntryNode: vi.fn(),
+}))
 
-  describe('hasWorkflowStartNode', () => {
-    it('should detect a workflow start node', () => {
-      expect(
-        hasWorkflowStartNode({
-          graph: {
-            nodes: [{ data: { type: 'llm' } }, { data: { type: 'start' } }],
-          },
-        }),
-      ).toBe(true)
+const mockGetWorkflowEntryNode = getWorkflowEntryNode as MockedFunction<typeof getWorkflowEntryNode>
+
+// Mock entry node for testing (truthy value)
+const mockEntryNode = { id: 'start-node', data: { type: 'start' } } as Node
+
+describe('App Card Toggle Logic', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // Helper function that mirrors the actual logic from app-card.tsx
+  const calculateToggleState = (
+    appMode: string,
+    currentWorkflow: any,
+    isCurrentWorkspaceEditor: boolean,
+    isCurrentWorkspaceManager: boolean,
+    cardType: 'webapp' | 'api',
+  ) => {
+    const isWorkflowApp = appMode === 'workflow'
+    const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
+    const hasEntryNode = mockGetWorkflowEntryNode(currentWorkflow?.graph?.nodes || [])
+    const missingEntryNode = isWorkflowApp && !hasEntryNode
+    const hasInsufficientPermissions = cardType === 'webapp' ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
+    const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingEntryNode
+    const isMinimalState = appUnpublished || missingEntryNode
+
+    return {
+      toggleDisabled,
+      isMinimalState,
+      appUnpublished,
+      missingEntryNode,
+      hasInsufficientPermissions,
+    }
+  }
+
+  describe('Entry Node Detection Logic', () => {
+    it('should disable toggle when workflow missing entry node', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(undefined)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        true,
+        true,
+        'webapp',
+      )
+
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.missingEntryNode).toBe(true)
+      expect(result.isMinimalState).toBe(true)
     })
 
-    it('should return false when the workflow has no start node', () => {
-      expect(
-        hasWorkflowStartNode({
-          graph: {
-            nodes: [{ data: { type: 'llm' } }],
-          },
-        }),
-      ).toBe(false)
+    it('should enable toggle when workflow has entry node', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [{ data: { type: 'start' } }] } },
+        true,
+        true,
+        'webapp',
+      )
+
+      expect(result.toggleDisabled).toBe(false)
+      expect(result.missingEntryNode).toBe(false)
+      expect(result.isMinimalState).toBe(false)
     })
   })
 
-  describe('getAppCardDisplayState', () => {
-    it('should disable unpublished workflow apps and mark them as minimal state', () => {
-      const state = getAppCardDisplayState({
-        appInfo: baseAppInfo,
-        cardType: 'webapp',
-        currentWorkflow: null,
-        canManageWebApp: true,
-        canManageApi: true,
-      })
+  describe('Published State Logic', () => {
+    it('should disable toggle when workflow unpublished (no graph)', () => {
+      const result = calculateToggleState(
+        'workflow',
+        null, // No workflow data = unpublished
+        true,
+        true,
+        'webapp',
+      )
 
-      expect(state.appUnpublished).toBe(true)
-      expect(state.missingStartNode).toBe(true)
-      expect(state.toggleDisabled).toBe(true)
-      expect(state.isMinimalState).toBe(true)
-      expect(state.runningStatus).toBe(false)
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.appUnpublished).toBe(true)
+      expect(result.isMinimalState).toBe(true)
     })
 
-    it('should keep published workflow apps enabled when the user has permissions', () => {
-      const state = getAppCardDisplayState({
-        appInfo: baseAppInfo,
-        cardType: 'webapp',
-        currentWorkflow: {
-          graph: {
-            nodes: [{ data: { type: 'start' } }],
-          },
-        },
-        canManageWebApp: true,
-        canManageApi: true,
-      })
+    it('should disable toggle when workflow unpublished (empty graph)', () => {
+      const result = calculateToggleState(
+        'workflow',
+        {}, // No graph property = unpublished
+        true,
+        true,
+        'webapp',
+      )
 
-      expect(state.appUnpublished).toBe(false)
-      expect(state.missingStartNode).toBe(false)
-      expect(state.toggleDisabled).toBe(false)
-      expect(state.isMinimalState).toBe(false)
-      expect(state.accessibleUrl).toBe(`https://example.com${basePath}/workflow/token-1`)
-    })
-  })
-
-  describe('getAppCardOperationKeys', () => {
-    it('should include embedded and settings actions for editable chat webapps', () => {
-      expect(
-        getAppCardOperationKeys({
-          cardType: 'webapp',
-          appMode: AppModeEnum.CHAT,
-          canManageSettings: true,
-        }),
-      ).toEqual(['launch', 'embedded', 'customize', 'settings'])
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.appUnpublished).toBe(true)
+      expect(result.isMinimalState).toBe(true)
     })
 
-    it('should only expose the develop action for api cards', () => {
-      expect(
-        getAppCardOperationKeys({
-          cardType: 'api',
-          appMode: AppModeEnum.COMPLETION,
-          canManageSettings: false,
-        }),
-      ).toEqual(['develop'])
+    it('should consider published state when workflow has graph', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        true,
+        true,
+        'webapp',
+      )
+
+      expect(result.appUnpublished).toBe(false)
     })
   })
 
-  describe('isAppAccessConfigured', () => {
-    it('should require members or groups for specific access mode', () => {
-      expect(
-        isAppAccessConfigured(
-          {
-            id: 'app-1',
-            access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-          } as unknown as AppDetailResponse,
-          { groups: [], members: [] },
-        ),
-      ).toBe(false)
+  describe('Permissions Logic', () => {
+    it('should disable webapp toggle when user lacks editor permissions', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        false, // No editor permission
+        true,
+        'webapp',
+      )
+
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.hasInsufficientPermissions).toBe(true)
     })
 
-    it('should treat non-specific access modes as configured', () => {
-      expect(
-        isAppAccessConfigured(
-          {
-            id: 'app-1',
-            access_mode: AccessMode.PUBLIC,
-          } as unknown as AppDetailResponse,
-          { groups: [], members: [] },
-        ),
-      ).toBe(true)
+    it('should disable api toggle when user lacks manager permissions', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        true,
+        false, // No manager permission
+        'api',
+      )
+
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.hasInsufficientPermissions).toBe(true)
+    })
+
+    it('should enable toggle when user has proper permissions', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const webappResult = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        true, // Has editor permission
+        false,
+        'webapp',
+      )
+
+      const apiResult = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [] } },
+        false,
+        true, // Has manager permission
+        'api',
+      )
+
+      expect(webappResult.toggleDisabled).toBe(false)
+      expect(apiResult.toggleDisabled).toBe(false)
+    })
+  })
+
+  describe('Combined Conditions Logic', () => {
+    it('should handle multiple disable conditions correctly', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(undefined)
+
+      const result = calculateToggleState(
+        'workflow',
+        null, // Unpublished
+        false, // No permissions
+        false,
+        'webapp',
+      )
+
+      // All three conditions should be true
+      expect(result.appUnpublished).toBe(true)
+      expect(result.missingEntryNode).toBe(true)
+      expect(result.hasInsufficientPermissions).toBe(true)
+      expect(result.toggleDisabled).toBe(true)
+      expect(result.isMinimalState).toBe(true)
+    })
+
+    it('should enable when all conditions are satisfied', () => {
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
+
+      const result = calculateToggleState(
+        'workflow',
+        { graph: { nodes: [{ data: { type: 'start' } }] } }, // Published
+        true, // Has permissions
+        true,
+        'webapp',
+      )
+
+      expect(result.appUnpublished).toBe(false)
+      expect(result.missingEntryNode).toBe(false)
+      expect(result.hasInsufficientPermissions).toBe(false)
+      expect(result.toggleDisabled).toBe(false)
+      expect(result.isMinimalState).toBe(false)
+    })
+  })
+
+  describe('Non-Workflow Apps', () => {
+    it('should not check workflow-specific conditions for non-workflow apps', () => {
+      const result = calculateToggleState(
+        'chat', // Non-workflow mode
+        null,
+        true,
+        true,
+        'webapp',
+      )
+
+      expect(result.appUnpublished).toBe(false) // isWorkflowApp is false
+      expect(result.missingEntryNode).toBe(false) // isWorkflowApp is false
+      expect(result.toggleDisabled).toBe(false)
+      expect(result.isMinimalState).toBe(false)
     })
   })
 })

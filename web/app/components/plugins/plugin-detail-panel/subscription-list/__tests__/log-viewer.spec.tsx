@@ -1,26 +1,11 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import LogViewer from '../log-viewer'
 
 const mockToastNotify = vi.fn()
 const mockWriteText = vi.fn()
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value: unknown }) => (
@@ -36,10 +21,10 @@ const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity 
     method: 'POST',
     url: 'https://example.com',
     headers: {
-      Host: 'example.com',
+      'Host': 'example.com',
       'User-Agent': 'vitest',
       'Content-Length': '0',
-      Accept: '*/*',
+      'Accept': '*/*',
       'Content-Type': 'application/json',
       'X-Forwarded-For': '127.0.0.1',
       'X-Forwarded-Host': 'example.com',
@@ -72,6 +57,10 @@ beforeEach(() => {
     },
     configurable: true,
   })
+  vi.spyOn(Toast, 'notify').mockImplementation((args) => {
+    mockToastNotify(args)
+    return { clear: vi.fn() }
+  })
 })
 
 describe('LogViewer', () => {
@@ -91,9 +80,7 @@ describe('LogViewer', () => {
   it('should expand and render request/response payloads', () => {
     render(<LogViewer logs={[createLog()]} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
 
     const editors = screen.getAllByTestId('code-editor')
     expect(editors.length).toBe(2)
@@ -103,14 +90,28 @@ describe('LogViewer', () => {
   it('should collapse expanded content when clicked again', () => {
     render(<LogViewer logs={[createLog()]} />)
 
-    const trigger = screen.getByRole('button', {
-      name: /pluginTrigger\.modal\.manual\.logs\.request/,
-    })
+    const trigger = screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ })
     fireEvent.click(trigger)
     expect(screen.getAllByTestId('code-editor').length).toBe(2)
 
     fireEvent.click(trigger)
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
+  })
+
+  it('should apply distinct styling when response is an error', () => {
+    const { container: errorContainer } = render(
+      <LogViewer logs={[createLog({ response: { ...createLog().response, status_code: 500 } })]} />,
+    )
+    const errorWrapperClass = errorContainer.querySelector('[class*="border"]')?.className ?? ''
+
+    cleanup()
+
+    const { container: okContainer } = render(
+      <LogViewer logs={[createLog()]} />,
+    )
+    const okWrapperClass = okContainer.querySelector('[class*="border"]')?.className ?? ''
+
+    expect(errorWrapperClass).not.toBe(okWrapperClass)
   })
 
   it('should render raw response text and allow copying', () => {
@@ -121,16 +122,12 @@ describe('LogViewer', () => {
 
     render(<LogViewer logs={[rawLog]} />)
 
-    const toggleButton = screen.getByRole('button', {
-      name: /pluginTrigger\.modal\.manual\.logs\.request/,
-    })
+    const toggleButton = screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ })
     fireEvent.click(toggleButton)
 
     expect(screen.getByText('plain response')).toBeInTheDocument()
 
-    const copyButton = screen
-      .getAllByRole('button')
-      .find((button) => button !== toggleButton) as HTMLElement
+    const copyButton = screen.getAllByRole('button').find(button => button !== toggleButton) as HTMLElement
     expect(copyButton).toBeTruthy()
     fireEvent.click(copyButton)
     expect(mockWriteText).toHaveBeenCalledWith('plain response')
@@ -138,13 +135,11 @@ describe('LogViewer', () => {
   })
 
   it('should parse request data when it is raw JSON', () => {
-    const log = createLog({ request: { ...createLog().request, data: '{"hello":1}' } })
+    const log = createLog({ request: { ...createLog().request, data: '{\"hello\":1}' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('"hello":1')
   })
@@ -154,9 +149,7 @@ describe('LogViewer', () => {
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('payload=%E0%A4%A')
   })
@@ -166,9 +159,7 @@ describe('LogViewer', () => {
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }))
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('{invalid}')
   })

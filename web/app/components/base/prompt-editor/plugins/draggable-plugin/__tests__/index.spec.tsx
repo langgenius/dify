@@ -37,12 +37,10 @@ vi.mock('@lexical/react/LexicalDraggableBlockPlugin', () => ({
 
 function createRootElementMock() {
   let mouseMoveHandler: MouseMoveHandler | null = null
-  const addEventListener = vi.fn(
-    (eventName: string, handler: EventListenerOrEventListenerObject) => {
-      if (eventName === 'mousemove' && typeof handler === 'function')
-        mouseMoveHandler = handler as MouseMoveHandler
-    },
-  )
+  const addEventListener = vi.fn((eventName: string, handler: EventListenerOrEventListenerObject) => {
+    if (eventName === 'mousemove' && typeof handler === 'function')
+      mouseMoveHandler = handler as MouseMoveHandler
+  })
   const removeEventListener = vi.fn()
 
   return {
@@ -60,7 +58,8 @@ function getRegisteredMouseMoveHandler(
   rootMock: ReturnType<typeof createRootElementMock>,
 ): MouseMoveHandler {
   const handler = rootMock.getMouseMoveHandler()
-  if (!handler) throw new Error('Expected mousemove handler to be registered')
+  if (!handler)
+    throw new Error('Expected mousemove handler to be registered')
   return handler
 }
 
@@ -69,9 +68,10 @@ function setupEditorRoot(rootElement: HTMLElement | null) {
     getRootElement: vi.fn(() => rootElement),
   } as unknown as LexicalEditor
 
-  vi.mocked(useLexicalComposerContext).mockReturnValue([editor, {}] as unknown as ReturnType<
-    typeof useLexicalComposerContext
-  >)
+  vi.mocked(useLexicalComposerContext).mockReturnValue([
+    editor,
+    {},
+  ] as unknown as ReturnType<typeof useLexicalComposerContext>)
 
   return editor
 }
@@ -140,9 +140,7 @@ describe('DraggableBlockPlugin', () => {
 
       const onMove = getRegisteredMouseMoveHandler(rootMock)
       const target = document.createElement('div')
-      target.appendChild(
-        Object.assign(document.createElement('span'), { className: 'support-drag' }),
-      )
+      target.appendChild(Object.assign(document.createElement('span'), { className: 'support-drag' }))
 
       act(() => {
         onMove({ target } as unknown as MouseEvent)
@@ -226,7 +224,8 @@ describe('DraggableBlockPlugin', () => {
 
       const renderedMenu = screen.getByTestId('draggable-menu')
       const isOnMenu = draggableMockState.latestProps?.isOnMenu
-      if (!isOnMenu) throw new Error('Expected isOnMenu callback')
+      if (!isOnMenu)
+        throw new Error('Expected isOnMenu callback')
 
       const menuIcon = screen.getByTestId('draggable-menu-icon')
       const outsideElement = document.createElement('div')

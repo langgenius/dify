@@ -6,14 +6,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
-from sqlalchemy import delete, func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Tenant
 from models.model import (
     App,
@@ -35,21 +35,6 @@ logger = logging.getLogger(__name__)
 
 
 class ClearFreePlanTenantExpiredLogs:
-    @staticmethod
-    def _serialize_record(record: object) -> dict[str, object]:
-        if hasattr(record, "to_dict"):
-            return record.to_dict()  # type: ignore[no-any-return]
-
-        table = getattr(record, "__table__", None)
-        columns = getattr(table, "columns", None)
-        if columns is None:
-            raise TypeError(f"Unsupported record type for serialization: {type(record)!r}")
-
-        record_dict: dict[str, object] = {}
-        for column in columns:
-            record_dict[column.name] = getattr(record, column.name)
-        return record_dict
-
     @classmethod
     def _clear_message_related_tables(cls, session: Session, tenant_id: str, batch_message_ids: list[str]):
         """
@@ -77,11 +62,13 @@ class ClearFreePlanTenantExpiredLogs:
 
         for model, table_name in related_tables:
             # Query records related to expired messages
-            records = session.scalars(
-                select(model).where(
+            records = (
+                session.query(model)
+                .where(
                     model.message_id.in_(batch_message_ids),  # type: ignore
                 )
-            ).all()
+                .all()
+            )
 
             if len(records) == 0:
                 continue
@@ -92,7 +79,14 @@ class ClearFreePlanTenantExpiredLogs:
                 record_data = []
                 for record in records:
                     try:
-                        record_data.append(cls._serialize_record(record))
+                        if hasattr(record, "to_dict"):
+                            record_data.append(record.to_dict())
+                        else:
+                            # if record doesn't have to_dict method, we need to transform it to dict manually
+                            record_dict = {}
+                            for column in record.__table__.columns:
+                                record_dict[column.name] = getattr(record, column.name)
+                            record_data.append(record_dict)
                     except Exception:
                         logger.exception("Failed to transform %s record: %s", table_name, record.id)
                         continue
@@ -109,13 +103,9 @@ class ClearFreePlanTenantExpiredLogs:
             except Exception:
                 logger.exception("Failed to save %s records", table_name)
 
-            session.execute(
-                delete(model)
-                .where(
-                    model.id.in_(record_ids),  # type: ignore
-                )
-                .execution_options(synchronize_session=False)
-            )
+            session.query(model).where(
+                model.id.in_(record_ids),  # type: ignore
+            ).delete(synchronize_session=False)
 
             click.echo(
                 click.style(
@@ -125,20 +115,21 @@ class ClearFreePlanTenantExpiredLogs:
             )
 
     @classmethod
-    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int, session: Session):
+    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
         with flask_app.app_context():
-            apps = session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
+            apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
-                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
-                    messages = session.scalars(
-                        select(Message)
+                with Session(db.engine).no_autoflush as session:
+                    messages = (
+                        session.query(Message)
                         .where(
                             Message.app_id.in_(app_ids),
                             Message.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                    ).all()
+                        .all()
+                    )
                     if len(messages) == 0:
                         break
 
@@ -156,11 +147,12 @@ class ClearFreePlanTenantExpiredLogs:
                     message_ids = [message.id for message in messages]
 
                     # delete messages
-                    session.execute(
-                        delete(Message).where(Message.id.in_(message_ids)).execution_options(synchronize_session=False)
-                    )
+                    session.query(Message).where(
+                        Message.id.in_(message_ids),
+                    ).delete(synchronize_session=False)
 
                     cls._clear_message_related_tables(session, tenant_id, message_ids)
+                    session.commit()
 
                     click.echo(
                         click.style(
@@ -169,15 +161,16 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             while True:
-                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
-                    conversations = session.scalars(
-                        select(Conversation)
+                with Session(db.engine).no_autoflush as session:
+                    conversations = (
+                        session.query(Conversation)
                         .where(
                             Conversation.app_id.in_(app_ids),
                             Conversation.updated_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                    ).all()
+                        .all()
+                    )
 
                     if len(conversations) == 0:
                         break
@@ -194,11 +187,10 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
                     conversation_ids = [conversation.id for conversation in conversations]
-                    session.execute(
-                        delete(Conversation)
-                        .where(Conversation.id.in_(conversation_ids))
-                        .execution_options(synchronize_session=False)
-                    )
+                    session.query(Conversation).where(
+                        Conversation.id.in_(conversation_ids),
+                    ).delete(synchronize_session=False)
+                    session.commit()
 
                     click.echo(
                         click.style(
@@ -230,12 +222,7 @@ class ClearFreePlanTenantExpiredLogs:
                     f"{tenant_id}/workflow_node_executions/{datetime.datetime.now().strftime('%Y-%m-%d')}"
                     f"-{time.time()}.json",
                     json.dumps(
-                        jsonable_encoder(
-                            [
-                                cls._serialize_record(workflow_node_execution)
-                                for workflow_node_execution in workflow_node_executions
-                            ]
-                        ),
+                        jsonable_encoder(workflow_node_executions),
                     ).encode("utf-8"),
                 )
 
@@ -307,15 +294,16 @@ class ClearFreePlanTenantExpiredLogs:
                     break
 
             while True:
-                with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
-                    workflow_app_logs = session.scalars(
-                        select(WorkflowAppLog)
+                with Session(db.engine).no_autoflush as session:
+                    workflow_app_logs = (
+                        session.query(WorkflowAppLog)
                         .where(
                             WorkflowAppLog.tenant_id == tenant_id,
                             WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
-                    ).all()
+                        .all()
+                    )
 
                     if len(workflow_app_logs) == 0:
                         break
@@ -335,11 +323,10 @@ class ClearFreePlanTenantExpiredLogs:
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 
                     # delete workflow app logs
-                    session.execute(
-                        delete(WorkflowAppLog)
-                        .where(WorkflowAppLog.id.in_(workflow_app_log_ids))
-                        .execution_options(synchronize_session=False)
+                    session.query(WorkflowAppLog).where(WorkflowAppLog.id.in_(workflow_app_log_ids)).delete(
+                        synchronize_session=False
                     )
+                    session.commit()
 
                     click.echo(
                         click.style(
@@ -359,8 +346,8 @@ class ClearFreePlanTenantExpiredLogs:
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
 
-        with sessionmaker(db.engine).begin() as session:
-            total_tenant_count = session.scalar(select(func.count(Tenant.id))) or 0
+        with Session(db.engine) as session:
+            total_tenant_count = session.query(Tenant.id).count()
 
         click.echo(click.style(f"Total tenant count: {total_tenant_count}", fg="white"))
 
@@ -375,8 +362,7 @@ class ClearFreePlanTenantExpiredLogs:
                     or BillingService.get_info(tenant_id)["subscription"]["plan"] == CloudPlan.SANDBOX
                 ):
                     # only process sandbox tenant
-                    with sessionmaker(db.engine).begin() as session:
-                        cls.process_tenant(flask_app, tenant_id, days, batch, session)
+                    cls.process_tenant(flask_app, tenant_id, days, batch)
             except Exception:
                 logger.exception("Failed to process tenant %s", tenant_id)
             finally:
@@ -412,7 +398,7 @@ class ClearFreePlanTenantExpiredLogs:
                 # Initial interval of 1 day, will be dynamically adjusted based on tenant count
                 interval = datetime.timedelta(days=1)
                 # Process tenants in this batch
-                with sessionmaker(db.engine).begin() as session:
+                with Session(db.engine) as session:
                     # Calculate tenant count in next batch with current interval
                     # Try different intervals until we find one with a reasonable tenant count
                     test_intervals = [
@@ -426,12 +412,9 @@ class ClearFreePlanTenantExpiredLogs:
                     tenant_count = 0
                     for test_interval in test_intervals:
                         tenant_count = (
-                            session.scalar(
-                                select(func.count(Tenant.id)).where(
-                                    Tenant.created_at.between(current_time, current_time + test_interval)
-                                )
-                            )
-                            or 0
+                            session.query(Tenant.id)
+                            .where(Tenant.created_at.between(current_time, current_time + test_interval))
+                            .count()
                         )
                         if tenant_count <= 100:
                             interval = test_interval
@@ -453,8 +436,8 @@ class ClearFreePlanTenantExpiredLogs:
 
                     batch_end = min(current_time + interval, ended_at)
 
-                    rs = session.execute(
-                        select(Tenant.id)
+                    rs = (
+                        session.query(Tenant.id)
                         .where(Tenant.created_at.between(current_time, batch_end))
                         .order_by(Tenant.created_at)
                     )

@@ -13,9 +13,10 @@ describe('useFeatures', () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(FeaturesContext.Provider, { value: store }, children)
 
-    const { result } = renderHook(() => useFeatures((s) => s.features.moreLikeThis?.enabled), {
-      wrapper,
-    })
+    const { result } = renderHook(
+      () => useFeatures(s => s.features.moreLikeThis?.enabled),
+      { wrapper },
+    )
 
     expect(result.current).toBe(true)
   })
@@ -23,7 +24,7 @@ describe('useFeatures', () => {
   it('should throw error when used outside FeaturesContext.Provider', () => {
     // Act & Assert
     expect(() => {
-      renderHook(() => useFeatures((s) => s.features))
+      renderHook(() => useFeatures(s => s.features))
     }).toThrow('Missing FeaturesContext.Provider in the tree')
   })
 
@@ -34,10 +35,7 @@ describe('useFeatures', () => {
       React.createElement(FeaturesContext.Provider, { value: store }, children)
 
     const { result } = renderHook(
-      () =>
-        useFeatures(
-          (s) => (s.features as Record<string, unknown>).nonexistent as boolean | undefined,
-        ),
+      () => useFeatures(s => (s.features as Record<string, unknown>).nonexistent as boolean | undefined),
       { wrapper },
     )
 

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '@/utils/classnames'
 import { useSchemaNodeOperations } from './hooks'
 import SchemaNode from './schema-node'
 
@@ -17,12 +17,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
   useSchemaNodeOperations(props)
 
   return (
-    <div
-      className={cn(
-        'h-full overflow-auto rounded-xl bg-background-section-burn p-1 pl-2',
-        className,
-      )}
-    >
+    <div className={cn('h-full overflow-auto rounded-xl bg-background-section-burn p-1 pl-2', className)}>
       <SchemaNode
         name={props.rootName || 'structured_output'}
         schema={schema}

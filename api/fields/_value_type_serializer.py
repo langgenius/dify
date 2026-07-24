@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from graphon.variables.segments import Segment
-from graphon.variables.types import SegmentType
+from dify_graph.variables.segments import Segment
+from dify_graph.variables.types import SegmentType
 
 
 class _VarTypedDict(TypedDict, total=False):
@@ -10,9 +10,9 @@ class _VarTypedDict(TypedDict, total=False):
 
 def serialize_value_type(v: _VarTypedDict | Segment) -> str:
     if isinstance(v, Segment):
-        return str(v.value_type.exposed_type())
+        return v.value_type.exposed_type().value
     else:
         value_type = v.get("value_type")
         if value_type is None:
             raise ValueError("value_type is required but not provided")
-        return str(value_type.exposed_type())
+        return value_type.exposed_type().value

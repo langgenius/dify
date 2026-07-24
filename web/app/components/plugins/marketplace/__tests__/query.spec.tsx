@@ -34,7 +34,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createConsoleQueryClient = () =>
+const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -42,9 +42,11 @@ const createConsoleQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createTestQueryClient()
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
   )
   return { Wrapper, queryClient }
 }
@@ -58,7 +60,9 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
     const mockCollectionData = [
       { name: 'col-1', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
     ]
-    const mockPluginData = [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }]
+    const mockPluginData = [
+      { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
+    ]
 
     mockCollections.mockResolvedValue({ data: { collections: mockCollectionData } })
     mockCollectionPlugins.mockResolvedValue({ data: { plugins: mockPluginData } })
@@ -83,9 +87,10 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
 
     const { useMarketplaceCollectionsAndPlugins } = await import('../query')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({}), {
-      wrapper: Wrapper,
-    })
+    const { result } = renderHook(
+      () => useMarketplaceCollectionsAndPlugins({}),
+      { wrapper: Wrapper },
+    )
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -101,7 +106,10 @@ describe('useMarketplacePlugins', () => {
   it('should not fetch when queryParams is undefined', async () => {
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplacePlugins(undefined), { wrapper: Wrapper })
+    const { result } = renderHook(
+      () => useMarketplacePlugins(undefined),
+      { wrapper: Wrapper },
+    )
 
     // enabled is false, so should not fetch
     expect(result.current.data).toBeUndefined()
@@ -119,15 +127,14 @@ describe('useMarketplacePlugins', () => {
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'test',
-          sort_by: 'install_count',
-          sort_order: 'DESC',
-          category: 'tool',
-          tags: [],
-          type: 'plugin',
-        }),
+      () => useMarketplacePlugins({
+        query: 'test',
+        sort_by: 'install_count',
+        sort_order: 'DESC',
+        category: 'tool',
+        tags: [],
+        type: 'plugin',
+      }),
       { wrapper: Wrapper },
     )
 
@@ -136,7 +143,7 @@ describe('useMarketplacePlugins', () => {
     })
 
     expect(result.current.data?.pages).toHaveLength(1)
-    expect(result.current.data?.pages[0]!.plugins).toHaveLength(1)
+    expect(result.current.data?.pages[0].plugins).toHaveLength(1)
   })
 
   it('should handle bundle type in query params', async () => {
@@ -150,11 +157,10 @@ describe('useMarketplacePlugins', () => {
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'bundle',
-          type: 'bundle',
-        }),
+      () => useMarketplacePlugins({
+        query: 'bundle',
+        type: 'bundle',
+      }),
       { wrapper: Wrapper },
     )
 
@@ -169,10 +175,9 @@ describe('useMarketplacePlugins', () => {
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'fail',
-        }),
+      () => useMarketplacePlugins({
+        query: 'fail',
+      }),
       { wrapper: Wrapper },
     )
 
@@ -180,8 +185,8 @@ describe('useMarketplacePlugins', () => {
       expect(result.current.data).toBeDefined()
     })
 
-    expect(result.current.data?.pages[0]!.plugins).toEqual([])
-    expect(result.current.data?.pages[0]!.total).toBe(0)
+    expect(result.current.data?.pages[0].plugins).toEqual([])
+    expect(result.current.data?.pages[0].total).toBe(0)
   })
 
   it('should determine next page correctly via getNextPageParam', async () => {
@@ -201,11 +206,10 @@ describe('useMarketplacePlugins', () => {
     const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'paginated',
-          page_size: 40,
-        }),
+      () => useMarketplacePlugins({
+        query: 'paginated',
+        page_size: 40,
+      }),
       { wrapper: Wrapper },
     )
 

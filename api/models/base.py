@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import override
 from uuid import uuid4
 
 from sqlalchemy import DateTime, func
@@ -25,8 +24,6 @@ class TypeBase(MappedAsDataclass, DeclarativeBase):
 
 
 class DefaultFieldsMixin:
-    """Mixin for models that inherit from Base (non-dataclass)."""
-
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
@@ -52,44 +49,6 @@ class DefaultFieldsMixin:
         onupdate=func.current_timestamp(),
     )
 
-    @override
-    def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}(id={self.id})>"
-
-
-class DefaultFieldsDCMixin(MappedAsDataclass):
-    """Mixin for models that inherit from TypeBase (MappedAsDataclass)."""
-
-    __abstract__ = True
-
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        insert_default=lambda: str(uuidv7()),
-        default_factory=lambda: str(uuidv7()),
-        init=False,
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        insert_default=naive_utc_now,
-        default_factory=naive_utc_now,
-        init=False,
-        server_default=func.current_timestamp(),
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        insert_default=naive_utc_now,
-        default_factory=naive_utc_now,
-        init=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-    )
-
-    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(id={self.id})>"
 

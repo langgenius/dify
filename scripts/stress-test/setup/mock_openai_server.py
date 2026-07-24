@@ -4,6 +4,7 @@ import json
 import time
 import uuid
 from collections.abc import Iterator
+from typing import Any
 
 from flask import Flask, Response, jsonify, request
 
@@ -28,13 +29,13 @@ MODELS = [
 
 
 @app.route("/v1/models", methods=["GET"])
-def list_models() -> Response:
+def list_models() -> Any:
     """List available models."""
     return jsonify({"object": "list", "data": MODELS})
 
 
 @app.route("/v1/chat/completions", methods=["POST"])
-def chat_completions() -> Response:
+def chat_completions() -> Any:
     """Handle chat completions."""
     data = request.json or {}
     model = data.get("model", "gpt-3.5-turbo")
@@ -122,7 +123,7 @@ def chat_completions() -> Response:
 
 
 @app.route("/v1/completions", methods=["POST"])
-def completions() -> Response:
+def completions() -> Any:
     """Handle text completions."""
     data = request.json or {}
     model = data.get("model", "gpt-3.5-turbo-instruct")
@@ -154,7 +155,7 @@ def completions() -> Response:
 
 
 @app.route("/v1/embeddings", methods=["POST"])
-def embeddings() -> Response:
+def embeddings() -> Any:
     """Handle embeddings requests."""
     data = request.json or {}
     model = data.get("model", "text-embedding-ada-002")
@@ -177,7 +178,7 @@ def embeddings() -> Response:
 
 
 @app.route("/v1/models/<model_id>", methods=["GET"])
-def get_model(model_id: str) -> Response | tuple[Response, int]:
+def get_model(model_id: str) -> tuple[Any, int] | Any:
     """Get specific model details."""
     for model in MODELS:
         if model["id"] == model_id:
@@ -187,7 +188,7 @@ def get_model(model_id: str) -> Response | tuple[Response, int]:
 
 
 @app.route("/health", methods=["GET"])
-def health() -> Response:
+def health() -> Any:
     """Health check endpoint."""
     return jsonify({"status": "healthy"})
 

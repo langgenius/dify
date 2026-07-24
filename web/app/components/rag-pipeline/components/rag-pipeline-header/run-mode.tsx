@@ -1,33 +1,32 @@
-import { cn } from '@langgenius/dify-ui/cn'
-import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { RAG_PIPELINE_RUN_HOTKEY } from './hotkeys'
+import { cn } from '@/utils/classnames'
 
 type RunModeProps = {
   text?: string
 }
 
-export function RunMode({ text }: RunModeProps) {
+const RunMode = ({
+  text,
+}: RunModeProps) => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
-  const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const isPreparingDataSource = useStore((s) => s.isPreparingDataSource)
-  const canRun = useHooksStore((s) => s.accessControl.canRun)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isPreparingDataSource = useStore(s => s.isPreparingDataSource)
 
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
-  const isDisabled = isPreparingDataSource || isRunning || !canRun
+  const isDisabled = isPreparingDataSource || isRunning
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')
@@ -41,61 +40,47 @@ export function RunMode({ text }: RunModeProps) {
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP) handleStop()
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
   })
-
-  function handleRun() {
-    if (isDisabled) return
-    handleWorkflowStartRunInWorkflow()
-  }
-
-  useHotkey(RAG_PIPELINE_RUN_HOTKEY, handleRun, {
-    enabled: !isDisabled,
-    ignoreInputs: true,
-    preventDefault: true,
-  })
-
-  if (!canRun) return null
 
   return (
     <div className="flex items-center gap-x-px">
       <button
         type="button"
         className={cn(
-          'flex h-7 items-center gap-x-1 px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
+          'system-xs-medium flex h-7 items-center gap-x-1 px-1.5 text-text-accent hover:bg-state-accent-hover',
           isDisabled && 'cursor-not-allowed bg-state-accent-hover',
           isDisabled ? 'rounded-l-md' : 'rounded-md',
         )}
-        onClick={handleRun}
+        onClick={() => {
+          handleWorkflowStartRunInWorkflow()
+        }}
         disabled={isDisabled}
       >
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData
-              ? t(($) => $['common.reRun'], { ns: 'pipeline' })
-              : (text ?? t(($) => $['common.testRun'], { ns: 'pipeline' }))}
+            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
             <RiLoader2Line className="mr-1 size-4 animate-spin" />
-            {t(($) => $['common.processing'], { ns: 'pipeline' })}
+            {t('common.processing', { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
             <RiDatabase2Line className="mr-1 size-4" />
-            {t(($) => $['common.preparingDataSource'], { ns: 'pipeline' })}
+            {t('common.preparingDataSource', { ns: 'pipeline' })}
           </>
         )}
-        {!isDisabled && (
-          <KbdGroup>
-            {RAG_PIPELINE_RUN_HOTKEY.split('+').map((key) => (
-              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-            ))}
-          </KbdGroup>
-        )}
+        {
+          !isDisabled && (
+            <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
+          )
+        }
       </button>
       {isRunning && (
         <button
@@ -122,3 +107,5 @@ export function RunMode({ text }: RunModeProps) {
     </div>
   )
 }
+
+export default React.memo(RunMode)

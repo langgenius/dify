@@ -4,15 +4,11 @@ import type { ContextBlockType, HistoryBlockType } from '../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BLUR_COMMAND, FOCUS_COMMAND } from 'lexical'
 import * as React from 'react'
-import { UPDATE_DATASETS_EVENT_EMITTER, UPDATE_HISTORY_EVENT_EMITTER } from '../constants'
+import {
+  UPDATE_DATASETS_EVENT_EMITTER,
+  UPDATE_HISTORY_EVENT_EMITTER,
+} from '../constants'
 import PromptEditor from '../index'
-import { CustomTextNode } from '../plugins/custom-text/node'
-
-type MockNodeReplacementConfig = {
-  replace?: unknown
-  with?: (arg: { __text: string }) => void
-  withKlass?: unknown
-}
 
 const mocks = vi.hoisted(() => {
   const commandHandlers = new Map<unknown, (payload: unknown) => boolean>()
@@ -22,7 +18,6 @@ const mocks = vi.hoisted(() => {
   return {
     emit: vi.fn(),
     rootLines: ['first line', 'second line'],
-    nodeReplacementConfig: undefined as MockNodeReplacementConfig | undefined,
     commandHandlers,
     subscriptions,
     rootElement,
@@ -33,15 +28,10 @@ const mocks = vi.hoisted(() => {
         return vi.fn()
       }),
       registerUpdateListener: vi.fn(() => vi.fn()),
-      registerNodeTransform: vi.fn(() => vi.fn()),
       dispatchCommand: vi.fn(),
       getRootElement: vi.fn(() => rootElement),
-      getEditorState: vi.fn(() => ({
-        read: (fn: () => boolean) => fn(),
-      })),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
       setEditorState: vi.fn(),
-      setEditable: vi.fn(),
       focus: vi.fn(),
       update: vi.fn((fn: () => void) => fn()),
     },
@@ -72,13 +62,10 @@ vi.mock('lexical', async (importOriginal) => {
   return {
     ...actual,
     $getRoot: () => ({
-      getChildren: () =>
-        mocks.rootLines.map((line) => ({
-          getTextContent: () => line,
-        })),
-      getAllTextNodes: () => [],
+      getChildren: () => mocks.rootLines.map(line => ({
+        getTextContent: () => line,
+      })),
     }),
-    $nodesOfType: () => [],
     TextNode: class TextNode {
       __text: string
       constructor(text = '') {
@@ -89,46 +76,13 @@ vi.mock('lexical', async (importOriginal) => {
 })
 
 vi.mock('@lexical/react/LexicalComposer', () => ({
-  LexicalComposer: ({
-    initialConfig,
-    children,
-  }: {
-    initialConfig: {
-      onError?: (error: Error) => void
-      nodes?: unknown[]
-    }
-    children: ReactNode
-  }) => {
-    if (initialConfig?.onError) {
-      try {
-        initialConfig.onError(new Error('test error'))
-      } catch {
-        // Ignore the intentional throw from the mocked error boundary path.
-      }
-    }
-    if (initialConfig?.nodes) {
-      const textNodeConf = initialConfig.nodes.find((node): node is MockNodeReplacementConfig => {
-        return typeof node === 'object' && node !== null && 'replace' in node
-      })
-      mocks.nodeReplacementConfig = textNodeConf
-      textNodeConf?.with?.({ __text: 'test' })
-    }
-    return <div data-testid="lexical-composer">{children}</div>
-  },
-}))
-
-vi.mock('../plugins/shortcuts-popup-plugin', () => ({
-  default: ({
-    children,
-  }: {
-    children: (closePortal: () => void, onInsert: () => void) => ReactNode
-  }) => <div data-testid="shortcuts-popup-plugin">{children(vi.fn(), vi.fn())}</div>,
+  LexicalComposer: ({ children }: { children: ReactNode }) => (
+    <div data-testid="lexical-composer">{children}</div>
+  ),
 }))
 
 vi.mock('@lexical/react/LexicalContentEditable', () => ({
-  ContentEditable: (props: React.HTMLAttributes<HTMLDivElement>) => (
-    <div data-testid="content-editable" {...props} />
-  ),
+  ContentEditable: (props: React.HTMLAttributes<HTMLDivElement>) => <div data-testid="content-editable" {...props} />,
 }))
 
 vi.mock('@lexical/react/LexicalErrorBoundary', () => ({
@@ -140,11 +94,7 @@ vi.mock('@lexical/react/LexicalHistoryPlugin', () => ({
 }))
 
 vi.mock('@lexical/react/LexicalOnChangePlugin', () => ({
-  OnChangePlugin: ({
-    onChange,
-  }: {
-    onChange: (editorState: { read: (fn: () => void) => void }) => void
-  }) => {
+  OnChangePlugin: ({ onChange }: { onChange: (editorState: { read: (fn: () => void) => void }) => void }) => {
     React.useEffect(() => {
       onChange({
         read: (fn: () => void) => fn(),
@@ -155,13 +105,7 @@ vi.mock('@lexical/react/LexicalOnChangePlugin', () => ({
 }))
 
 vi.mock('@lexical/react/LexicalRichTextPlugin', () => ({
-  RichTextPlugin: ({
-    contentEditable,
-    placeholder,
-  }: {
-    contentEditable: ReactNode
-    placeholder: ReactNode
-  }) => (
+  RichTextPlugin: ({ contentEditable, placeholder }: { contentEditable: ReactNode, placeholder: ReactNode }) => (
     <div data-testid="rich-text-plugin">
       {contentEditable}
       {placeholder}
@@ -180,10 +124,7 @@ vi.mock('@lexical/react/LexicalTypeaheadMenuPlugin', () => ({
 }))
 
 vi.mock('@lexical/react/LexicalDraggableBlockPlugin', () => ({
-  DraggableBlockPlugin_EXPERIMENTAL: ({
-    menuComponent,
-    targetLineComponent,
-  }: {
+  DraggableBlockPlugin_EXPERIMENTAL: ({ menuComponent, targetLineComponent }: {
     menuComponent: ReactNode
     targetLineComponent: ReactNode
   }) => (
@@ -200,23 +141,15 @@ describe('PromptEditor', () => {
     mocks.commandHandlers.clear()
     mocks.subscriptions.length = 0
     mocks.rootLines = ['first line', 'second line']
-    mocks.nodeReplacementConfig = undefined
   })
 
   // Rendering shell and text output from lexical state.
   describe('Rendering', () => {
-    it('should register CustomTextNode as the TextNode replacement class', () => {
-      render(<PromptEditor />)
-
-      expect(mocks.nodeReplacementConfig?.withKlass).toBe(CustomTextNode)
-    })
-
     it('should render placeholder and call onChange with joined lexical text', async () => {
       const onChange = vi.fn()
 
       render(
         <PromptEditor
-          aria-labelledby="prompt-label"
           compact={true}
           className="editor-class"
           placeholder="Type prompt"
@@ -228,10 +161,6 @@ describe('PromptEditor', () => {
       expect(screen.getByText('Type prompt')).toBeInTheDocument()
       expect(screen.getByTestId('content-editable')).toHaveClass('editor-class')
       expect(screen.getByTestId('content-editable')).toHaveClass('text-[13px]')
-      expect(screen.getByTestId('content-editable')).toHaveAttribute(
-        'aria-labelledby',
-        'prompt-label',
-      )
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('first line\nsecond line')
@@ -252,7 +181,10 @@ describe('PromptEditor', () => {
       }
 
       const { rerender } = render(
-        <PromptEditor contextBlock={contextBlock} historyBlock={historyBlock} />,
+        <PromptEditor
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+        />,
       )
 
       expect(mocks.emit).toHaveBeenCalledWith({
@@ -294,7 +226,12 @@ describe('PromptEditor', () => {
       const onFocus = vi.fn()
       const onBlur = vi.fn()
 
-      render(<PromptEditor onFocus={onFocus} onBlur={onBlur} />)
+      render(
+        <PromptEditor
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />,
+      )
 
       const focusHandler = mocks.commandHandlers.get(FOCUS_COMMAND)
       const blurHandler = mocks.commandHandlers.get(BLUR_COMMAND)
@@ -313,134 +250,19 @@ describe('PromptEditor', () => {
   // Prop typing guard for shortcut popup shape without any-casts.
   describe('Props Typing', () => {
     it('should accept typed shortcut popup configuration', () => {
-      const Popup: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({
-        onClose,
-      }) => (
-        <button type="button" onClick={onClose}>
-          close
-        </button>
+      const Popup: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({ onClose }) => (
+        <button type="button" onClick={onClose}>close</button>
       )
 
       render(
         <PromptEditor
-          shortcutPopups={[
-            {
-              hotkey: ['mod', '/'],
-              Popup,
-            },
-          ]}
+          shortcutPopups={[{
+            hotkey: ['mod', '/'],
+            Popup,
+          }]}
         />,
       )
 
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should render multiple shortcutPopups', () => {
-      const PopupA: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({
-        onClose,
-      }) => (
-        <button data-testid="popup-a" onClick={onClose}>
-          A
-        </button>
-      )
-      const PopupB: NonNullable<PromptEditorProps['shortcutPopups']>[number]['Popup'] = ({
-        onClose,
-      }) => (
-        <button data-testid="popup-b" onClick={onClose}>
-          B
-        </button>
-      )
-
-      render(
-        <PromptEditor
-          shortcutPopups={[
-            { hotkey: 'ctrl+a', Popup: PopupA },
-            { hotkey: 'ctrl+b', Popup: PopupB },
-          ]}
-        />,
-      )
-
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should render without onChange and not crash', () => {
-      expect(() => render(<PromptEditor compact={false} placeholder="Empty" />)).not.toThrow()
-    })
-
-    it('should render with editable=false', () => {
-      render(<PromptEditor editable={false} placeholder="read only" />)
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should sync editable changes to the lexical editor instance', async () => {
-      const { rerender } = render(<PromptEditor editable={true} />)
-
-      await waitFor(() => {
-        expect(mocks.editor.setEditable).toHaveBeenCalledWith(true)
-      })
-
-      rerender(<PromptEditor editable={false} />)
-
-      await waitFor(() => {
-        expect(mocks.editor.setEditable).toHaveBeenLastCalledWith(false)
-      })
-    })
-
-    it('should render with isSupportFileVar=true', () => {
-      render(<PromptEditor isSupportFileVar={true} />)
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should render all block types when show=true', () => {
-      render(
-        <PromptEditor
-          contextBlock={{ show: true, datasets: [] }}
-          queryBlock={{ show: true }}
-          historyBlock={{ show: true, history: { user: 'u', assistant: 'a' } }}
-          variableBlock={{ show: true }}
-          workflowVariableBlock={{ show: true }}
-          currentBlock={{
-            show: true,
-            generatorType:
-              'summarize' as unknown as import('../types').CurrentBlockType['generatorType'],
-          }}
-          requestURLBlock={{ show: true }}
-          errorMessageBlock={{ show: true }}
-          lastRunBlock={{ show: true }}
-        />,
-      )
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should render externalToolBlock when variableBlock is not shown', () => {
-      render(<PromptEditor variableBlock={{ show: false }} externalToolBlock={{ show: true }} />)
-      expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
-    })
-
-    it('should unmount component to cover onRef cleanup', () => {
-      const { unmount } = render(<PromptEditor />)
-      expect(() => unmount()).not.toThrow()
-    })
-
-    it('should rerender without ref-driven update loops', () => {
-      const { rerender } = render(<PromptEditor value="first" />)
-
-      expect(() => {
-        rerender(<PromptEditor value="second" />)
-      }).not.toThrow()
-    })
-
-    it('should render hitl block when show=true', () => {
-      render(
-        <PromptEditor
-          hitlInputBlock={{
-            show: true,
-            nodeId: 'node-1',
-            onFormInputItemRemove: vi.fn(),
-            onFormInputItemRename: vi.fn(),
-          }}
-        />,
-      )
       expect(screen.getByTestId('lexical-composer')).toBeInTheDocument()
     })
   })

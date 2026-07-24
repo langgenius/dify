@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 from logging.handlers import RotatingFileHandler
-from typing import override
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -93,7 +92,6 @@ def _apply_timezone(handlers: list[logging.Handler]):
 class _TextFormatter(logging.Formatter):
     """Text formatter that ensures trace_id and req_id are always present."""
 
-    @override
     def format(self, record: logging.LogRecord) -> str:
         if not hasattr(record, "req_id"):
             record.req_id = ""
@@ -118,7 +116,6 @@ def get_request_id() -> str:
 class RequestIdFilter(logging.Filter):
     """Deprecated: Use TraceContextFilter from core.logging.filters instead."""
 
-    @override
     def filter(self, record: logging.LogRecord) -> bool:
         from core.logging.context import get_request_id as _get_request_id
         from core.logging.context import get_trace_id as _get_trace_id
@@ -131,7 +128,6 @@ class RequestIdFilter(logging.Filter):
 class RequestIdFormatter(logging.Formatter):
     """Deprecated: Use _TextFormatter instead."""
 
-    @override
     def format(self, record: logging.LogRecord) -> str:
         if not hasattr(record, "req_id"):
             record.req_id = ""

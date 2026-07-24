@@ -1,15 +1,7 @@
-import { screen } from '@testing-library/react'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { render, screen } from '@testing-library/react'
 import DevelopMain from '../index'
 
 const mockAppDetailValue: { current: unknown } = { current: undefined }
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: unknown) => unknown) => {
     const state = { appDetail: mockAppDetailValue.current }
@@ -19,25 +11,24 @@ vi.mock('@/app/components/app/store', () => ({
 
 vi.mock('@/app/components/develop/doc', () => ({
   default: ({ appDetail }: { appDetail: { name?: string } | null }) => (
-    <div data-testid="doc-component">Doc Component -{appDetail?.name}</div>
-  ),
-}))
-
-vi.mock('@/app/components/develop/ApiServer', () => ({
-  default: ({ apiBaseUrl, appId }: { apiBaseUrl: string; appId: string }) => (
-    <div data-testid="api-server">
-      API Server -{apiBaseUrl} -{appId}
+    <div data-testid="doc-component">
+      Doc Component -
+      {appDetail?.name}
     </div>
   ),
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
+vi.mock('@/app/components/develop/ApiServer', () => ({
+  default: ({ apiBaseUrl, appId }: { apiBaseUrl: string, appId: string }) => (
+    <div data-testid="api-server">
+      API Server -
+      {apiBaseUrl}
+      {' '}
+      -
+      {appId}
+    </div>
+  ),
+}))
 
 describe('DevelopMain', () => {
   beforeEach(() => {
@@ -233,13 +224,13 @@ describe('DevelopMain', () => {
 
     it('should have horizontal padding on content', () => {
       const { container } = render(<DevelopMain appId="app-123" />)
-      const content = container.querySelector('.p-4')
+      const content = container.querySelector('.px-4')
       expect(content).toBeInTheDocument()
     })
 
     it('should have vertical padding on content', () => {
       const { container } = render(<DevelopMain appId="app-123" />)
-      const content = container.querySelector('.p-4')
+      const content = container.querySelector('.py-4')
       expect(content).toBeInTheDocument()
     })
 

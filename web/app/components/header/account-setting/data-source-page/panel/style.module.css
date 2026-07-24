@@ -1,0 +1,17 @@
+.notion-icon {
+  background: #ffffff url(../../../assets/notion.svg) center center no-repeat;
+  background-size: 20px 20px;
+}
+
+.website-icon {
+  background: #ffffff url(../../../../datasets/create/assets/web.svg) center center no-repeat;
+  background-size: 20px 20px;
+}
+
+.workspace-item {
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.workspace-item:last-of-type {
+  margin-bottom: 0;
+}

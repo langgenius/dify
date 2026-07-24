@@ -1,4 +1,4 @@
-/* oxlint-disable typescript/no-explicit-any */
+/* eslint-disable ts/no-explicit-any */
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
@@ -56,19 +56,19 @@ describe('InputsFormNode', () => {
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
     expect(screen.getByTestId('mock-inputs-form-content')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'share.chat.startChat' })).toBeInTheDocument()
+    expect(screen.getByTestId('inputs-form-start-chat-button')).toBeInTheDocument()
   })
 
   it('should render collapsed state correctly', () => {
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
     expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
     expect(screen.queryByTestId('mock-inputs-form-content')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+    expect(screen.getByTestId('inputs-form-edit-button')).toBeInTheDocument()
   })
 
   it('should handle edit button click', async () => {
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.click(screen.getByTestId('inputs-form-edit-button'))
     expect(setCollapsed).toHaveBeenCalledWith(false)
   })
 
@@ -78,19 +78,19 @@ describe('InputsFormNode', () => {
       currentConversationId: 'conv-123',
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await user.click(screen.getByTestId('inputs-form-close-button'))
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
 
   it('should handle start chat button click', async () => {
-    const handleStartChat = vi.fn((cb) => cb())
+    const handleStartChat = vi.fn(cb => cb())
 
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       handleStartChat,
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
+    await user.click(screen.getByTestId('inputs-form-start-chat-button'))
     expect(handleStartChat).toHaveBeenCalled()
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
@@ -105,7 +105,17 @@ describe('InputsFormNode', () => {
       },
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    const button = screen.getByRole('button', { name: 'share.chat.startChat' })
+    const button = screen.getByTestId('inputs-form-start-chat-button')
     expect(button).toHaveStyle({ backgroundColor: '#ff0000' })
+  })
+
+  it('should apply tryApp styles when appSourceType is tryApp', () => {
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
+      ...mockContextValue,
+      appSourceType: AppSourceType.tryApp,
+    } as unknown as any)
+    render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
+    const mainDiv = screen.getByTestId('inputs-form-node')
+    expect(mainDiv).toHaveClass('mb-0 px-0')
   })
 })

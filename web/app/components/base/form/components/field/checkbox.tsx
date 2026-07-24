@@ -1,27 +1,42 @@
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
+import Checkbox from '../../../checkbox'
 
 type CheckboxFieldProps = {
   label: string
   labelClassName?: string
 }
 
-const CheckboxField = ({ label, labelClassName }: CheckboxFieldProps) => {
+const CheckboxField = ({
+  label,
+  labelClassName,
+}: CheckboxFieldProps) => {
   const field = useFieldContext<boolean>()
 
   return (
-    <label className="flex cursor-pointer gap-2">
-      <span className="flex h-6 shrink-0 items-center">
+    <div className="flex gap-2">
+      <div className="flex h-6 shrink-0 items-center">
         <Checkbox
+          id={field.name}
           checked={field.state.value}
-          onCheckedChange={(checked) => field.handleChange(checked)}
+          onCheck={() => {
+            field.handleChange(!field.state.value)
+          }}
         />
-      </span>
-      <span className={cn('grow pt-1 system-sm-medium text-text-secondary', labelClassName)}>
+      </div>
+      <label
+        htmlFor={field.name}
+        className={cn(
+          'system-sm-medium grow cursor-pointer pt-1 text-text-secondary',
+          labelClassName,
+        )}
+        onClick={() => {
+          field.handleChange(!field.state.value)
+        }}
+      >
         {label}
-      </span>
-    </label>
+      </label>
+    </div>
   )
 }
 

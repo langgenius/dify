@@ -4,19 +4,28 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RowStruct } from '@/app/components/base/icons/src/public/other'
 
-type Props = Readonly<{
+type Props = {
   className?: string
   crawledNum: number
   totalNum: number
-}>
+}
 
-const Crawling: FC<Props> = ({ className = '', crawledNum, totalNum }) => {
+const Crawling: FC<Props> = ({
+  className = '',
+  crawledNum,
+  totalNum,
+}) => {
   const { t } = useTranslation()
 
   return (
     <div className={className}>
-      <div className="flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4 text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3">
-        {t(($) => $['stepOne.website.totalPageScraped'], { ns: 'datasetCreation' })} {crawledNum}/
+      <div className="flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4
+        text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3"
+      >
+        {t('stepOne.website.totalPageScraped', { ns: 'datasetCreation' })}
+        {' '}
+        {crawledNum}
+        /
         {totalNum}
       </div>
 

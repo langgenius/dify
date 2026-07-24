@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import FieldInfo from '../field-info'
 
 vi.mock('@/utils', () => ({
@@ -79,9 +80,7 @@ describe('FieldInfo', () => {
 
     it('should call onUpdate when input value changes', () => {
       const onUpdate = vi.fn()
-      render(
-        <FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />,
-      )
+      render(<FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />)
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New' } })
 
@@ -90,15 +89,7 @@ describe('FieldInfo', () => {
 
     it('should call onUpdate when textarea value changes', () => {
       const onUpdate = vi.fn()
-      render(
-        <FieldInfo
-          label="Desc"
-          value=""
-          showEdit={true}
-          inputType="textarea"
-          onUpdate={onUpdate}
-        />,
-      )
+      render(<FieldInfo label="Desc" value="" showEdit={true} inputType="textarea" onUpdate={onUpdate} />)
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })
 
@@ -106,7 +97,16 @@ describe('FieldInfo', () => {
     })
   })
 
+  // Verify edge cases
   describe('Edge Cases', () => {
+    it('should render with empty value and label', () => {
+      render(<FieldInfo label="" value="" displayedValue="" />)
+
+      // Should not crash
+      const container = document.querySelector('.flex.min-h-5')
+      expect(container).toBeInTheDocument()
+    })
+
     it('should render with default value prop', () => {
       render(<FieldInfo label="Field" showEdit={true} inputType="input" defaultValue="default" />)
 

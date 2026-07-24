@@ -1,6 +1,6 @@
 import pytest
 
-from libs.oauth import OAuth, decode_oauth_state, encode_oauth_state
+from libs.oauth import OAuth
 
 
 def test_oauth_base_methods_raise_not_implemented():
@@ -17,23 +17,3 @@ def test_oauth_base_methods_raise_not_implemented():
 
     with pytest.raises(NotImplementedError):
         oauth._transform_user_info({})
-
-
-def test_oauth_state_round_trips_login_context():
-    state = encode_oauth_state(
-        invite_token="invite-123",
-        timezone="Asia/Shanghai",
-        language="zh-Hans",
-        redirect_url="/apps?category=workflow",
-    )
-
-    assert decode_oauth_state(state) == {
-        "invite_token": "invite-123",
-        "timezone": "Asia/Shanghai",
-        "language": "zh-Hans",
-        "redirect_url": "/apps?category=workflow",
-    }
-
-
-def test_oauth_state_returns_empty_payload_for_invalid_state():
-    assert decode_oauth_state("invalid-state") == {}

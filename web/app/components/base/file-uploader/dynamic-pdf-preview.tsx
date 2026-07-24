@@ -1,6 +1,6 @@
 'use client'
 
-import dynamic from '@/next/dynamic'
+import dynamic from 'next/dynamic'
 
 type DynamicPdfPreviewProps = {
   url: string
@@ -8,7 +8,8 @@ type DynamicPdfPreviewProps = {
 }
 const DynamicPdfPreview = dynamic<DynamicPdfPreviewProps>(
   (() => {
-    if (typeof window !== 'undefined') return import('./pdf-preview')
+    if (typeof window !== 'undefined')
+      return import('./pdf-preview')
   }) as any,
   { ssr: false }, // This will prevent the module from being loaded on the server-side
 )

@@ -1,22 +1,18 @@
 import type { Mock } from 'vitest'
 import type { InstalledApp as InstalledAppType } from '@/models/explore'
 import { render, screen, waitFor } from '@testing-library/react'
+
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
-import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import {
-  useGetInstalledAppAccessModeByAppId,
-  useGetInstalledAppMeta,
-  useGetInstalledAppParams,
-  useGetInstalledApps,
-} from '@/service/use-explore'
+import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import InstalledApp from '../index'
 
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
 }))
-vi.mock('@/service/access-control/use-app-access-control', () => ({
+vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
 }))
 vi.mock('@/service/use-explore', () => ({
@@ -27,11 +23,7 @@ vi.mock('@/service/use-explore', () => ({
 }))
 
 vi.mock('@/app/components/share/text-generation', () => ({
-  default: ({
-    isInstalledApp,
-    installedAppInfo,
-    isWorkflow,
-  }: {
+  default: ({ isInstalledApp, installedAppInfo, isWorkflow }: {
     isInstalledApp?: boolean
     installedAppInfo?: InstalledAppType
     isWorkflow?: boolean
@@ -45,15 +37,14 @@ vi.mock('@/app/components/share/text-generation', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/chat-with-history', () => ({
-  default: ({
-    installedAppInfo,
-    className,
-  }: {
+  default: ({ installedAppInfo, className }: {
     installedAppInfo?: InstalledAppType
     className?: string
   }) => (
     <div data-testid="chat-with-history" className={className}>
-      Chat With History - {installedAppInfo?.id}
+      Chat With History -
+      {' '}
+      {installedAppInfo?.id}
     </div>
   ),
 }))
@@ -107,7 +98,10 @@ describe('InstalledApp', () => {
       isFetching?: boolean
     } = {},
   ) => {
-    const { isPending = false, isFetching = false } = options
+    const {
+      isPending = false,
+      isFetching = false,
+    } = options
 
     ;(useGetInstalledApps as Mock).mockReturnValue({
       data: { installed_apps: installedApps },
@@ -121,26 +115,24 @@ describe('InstalledApp', () => {
 
     setupMocks()
 
-    ;(useWebAppStore as unknown as Mock).mockImplementation(
-      (
-        selector: (state: {
-          updateAppInfo: Mock
-          updateWebAppAccessMode: Mock
-          updateAppParams: Mock
-          updateWebAppMeta: Mock
-          updateUserCanAccessApp: Mock
-        }) => unknown,
-      ) => {
-        const state = {
-          updateAppInfo: mockUpdateAppInfo,
-          updateWebAppAccessMode: mockUpdateWebAppAccessMode,
-          updateAppParams: mockUpdateAppParams,
-          updateWebAppMeta: mockUpdateWebAppMeta,
-          updateUserCanAccessApp: mockUpdateUserCanAccessApp,
-        }
-        return selector(state)
-      },
-    )
+    ;(useWebAppStore as unknown as Mock).mockImplementation((
+      selector: (state: {
+        updateAppInfo: Mock
+        updateWebAppAccessMode: Mock
+        updateAppParams: Mock
+        updateWebAppMeta: Mock
+        updateUserCanAccessApp: Mock
+      }) => unknown,
+    ) => {
+      const state = {
+        updateAppInfo: mockUpdateAppInfo,
+        updateWebAppAccessMode: mockUpdateWebAppAccessMode,
+        updateAppParams: mockUpdateAppParams,
+        updateWebAppMeta: mockUpdateWebAppMeta,
+        updateUserCanAccessApp: mockUpdateUserCanAccessApp,
+      }
+      return selector(state)
+    })
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isPending: false,
@@ -167,6 +159,11 @@ describe('InstalledApp', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<InstalledApp id="installed-app-123" />)
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+    })
+
     it('should render loading state when fetching app params', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isPending: true,
@@ -280,9 +277,9 @@ describe('InstalledApp', () => {
   })
 
   describe('App Mode Rendering', () => {
-    it('should render ChatWithHistory for CHAT mode', async () => {
+    it('should render ChatWithHistory for CHAT mode', () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(await screen.findByText(/Chat With History/i)).toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
       expect(screen.queryByText(/Text Generation App/i)).not.toBeInTheDocument()
     })
 

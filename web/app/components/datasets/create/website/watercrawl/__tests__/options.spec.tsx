@@ -25,24 +25,29 @@ describe('Options (watercrawl)', () => {
     vi.clearAllMocks()
   })
 
+  const getCheckboxes = (container: HTMLElement) => {
+    return container.querySelectorAll('[data-testid^="checkbox-"]')
+  }
+
   describe('Rendering', () => {
     it('should render all form fields', () => {
       const payload = createMockCrawlOptions()
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByText(/crawlSubPage/i))!.toBeInTheDocument()
-      expect(screen.getByText(/extractOnlyMainContent/i))!.toBeInTheDocument()
-      expect(screen.getByText(/limit/i))!.toBeInTheDocument()
-      expect(screen.getByText(/maxDepth/i))!.toBeInTheDocument()
-      expect(screen.getByText(/excludePaths/i))!.toBeInTheDocument()
-      expect(screen.getByText(/includeOnlyPaths/i))!.toBeInTheDocument()
+      expect(screen.getByText(/crawlSubPage/i)).toBeInTheDocument()
+      expect(screen.getByText(/extractOnlyMainContent/i)).toBeInTheDocument()
+      expect(screen.getByText(/limit/i)).toBeInTheDocument()
+      expect(screen.getByText(/maxDepth/i)).toBeInTheDocument()
+      expect(screen.getByText(/excludePaths/i)).toBeInTheDocument()
+      expect(screen.getByText(/includeOnlyPaths/i)).toBeInTheDocument()
     })
 
     it('should render two checkboxes', () => {
       const payload = createMockCrawlOptions()
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes.length).toBe(2)
     })
 
     it('should render limit field with required indicator', () => {
@@ -50,21 +55,31 @@ describe('Options (watercrawl)', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       const requiredIndicator = screen.getByText('*')
-      expect(requiredIndicator)!.toBeInTheDocument()
+      expect(requiredIndicator).toBeInTheDocument()
     })
 
     it('should render placeholder for excludes field', () => {
       const payload = createMockCrawlOptions()
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByPlaceholderText('blog/*, /about/*'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('blog/*, /about/*')).toBeInTheDocument()
     })
 
     it('should render placeholder for includes field', () => {
       const payload = createMockCrawlOptions()
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByPlaceholderText('articles/*'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('articles/*')).toBeInTheDocument()
+    })
+
+    it('should render with custom className', () => {
+      const payload = createMockCrawlOptions()
+      const { container } = render(
+        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
+      )
+
+      const rootElement = container.firstChild as HTMLElement
+      expect(rootElement).toHaveClass('custom-class')
     })
   })
 
@@ -72,78 +87,72 @@ describe('Options (watercrawl)', () => {
   describe('Props Display', () => {
     it('should display crawl_sub_pages checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[0].querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[0].querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[1].querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ only_main_content: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[1].querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should display limit value in input', () => {
       const payload = createMockCrawlOptions({ limit: 25 })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('25'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('25')).toBeInTheDocument()
     })
 
     it('should display max_depth value in input', () => {
       const payload = createMockCrawlOptions({ max_depth: 5 })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('5'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('5')).toBeInTheDocument()
     })
 
     it('should display excludes value in input', () => {
       const payload = createMockCrawlOptions({ excludes: 'test/*' })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('test/*'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('test/*')).toBeInTheDocument()
     })
 
     it('should display includes value in input', () => {
       const payload = createMockCrawlOptions({ includes: 'docs/*' })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByDisplayValue('docs/*'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('docs/*')).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onChange with updated crawl_sub_pages when checkbox is clicked', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      fireEvent.click(screen.getByRole('checkbox', { name: /crawlSubPage/i }))
+      const checkboxes = getCheckboxes(container)
+      fireEvent.click(checkboxes[0])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,
@@ -153,9 +162,10 @@ describe('Options (watercrawl)', () => {
 
     it('should call onChange with updated only_main_content when checkbox is clicked', () => {
       const payload = createMockCrawlOptions({ only_main_content: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      fireEvent.click(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i }))
+      const checkboxes = getCheckboxes(container)
+      fireEvent.click(checkboxes[1])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,
@@ -257,10 +267,10 @@ describe('Options (watercrawl)', () => {
       const payload2 = createMockCrawlOptions({ limit: 20 })
 
       const { rerender } = render(<Options payload={payload1} onChange={mockOnChange} />)
-      expect(screen.getByDisplayValue('10'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
 
       rerender(<Options payload={payload2} onChange={mockOnChange} />)
-      expect(screen.getByDisplayValue('20'))!.toBeInTheDocument()
+      expect(screen.getByDisplayValue('20')).toBeInTheDocument()
     })
   })
 })

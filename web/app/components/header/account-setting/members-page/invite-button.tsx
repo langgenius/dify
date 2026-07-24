@@ -1,21 +1,21 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
-import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { currentWorkspaceIdAtom } from '@/context/workspace-state'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
-type InviteButtonProps = Omit<ButtonProps, 'children' | 'variant'>
+type InviteButtonProps = {
+  disabled?: boolean
+  onClick?: () => void
+}
 
 const InviteButton = (props: InviteButtonProps) => {
   const { t } = useTranslation()
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
-    useWorkspacePermissions(currentWorkspaceId, systemFeatures.branding.enabled)
+  const { currentWorkspace } = useAppContext()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
       return <Loading />
@@ -25,9 +25,9 @@ const InviteButton = (props: InviteButtonProps) => {
     }
   }
   return (
-    <Button {...props} variant="primary">
-      <span aria-hidden="true" className="mr-1 i-ri-user-add-line size-4" />
-      {t(($) => $['members.invite'], { ns: 'common' })}
+    <Button variant="primary" {...props}>
+      <RiUserAddLine className="mr-1 h-4 w-4" />
+      {t('members.invite', { ns: 'common' })}
     </Button>
   )
 }

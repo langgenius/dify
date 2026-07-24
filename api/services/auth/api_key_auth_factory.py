@@ -1,9 +1,9 @@
-from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
+from services.auth.api_key_auth_base import ApiKeyAuthBase
 from services.auth.auth_type import AuthType
 
 
 class ApiKeyAuthFactory:
-    def __init__(self, provider: str, credentials: AuthCredentials):
+    def __init__(self, provider: str, credentials: dict):
         auth_factory = self.get_apikey_auth_factory(provider)
         self.auth = auth_factory(credentials)
 

@@ -1,6 +1,5 @@
 import json
 import uuid
-from typing import Any
 
 from core.plugin.impl.base import BasePluginClient
 from extensions.ext_redis import redis_client
@@ -17,7 +16,7 @@ class OAuthProxyService(BasePluginClient):
         tenant_id: str,
         plugin_id: str,
         provider: str,
-        extra_data: dict[str, Any] = {},
+        extra_data: dict = {},
         credential_id: str | None = None,
     ):
         """

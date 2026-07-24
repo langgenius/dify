@@ -45,15 +45,9 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
   }),
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
-  }),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (timestamp: number) => `formatted-${timestamp}`,
   }),
 }))
 
@@ -97,17 +91,27 @@ describe('MetadataDocument', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      const { container } = render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
     it('should render metadata fields when hasData is true', () => {
       render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('field_two'))!.toBeInTheDocument()
+      expect(screen.getByText('field_one')).toBeInTheDocument()
+      expect(screen.getByText('field_two')).toBeInTheDocument()
     })
 
     it('should render no-data state when hasData is false and not in edit mode', () => {
@@ -124,7 +128,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
       expect(screen.getAllByText(/metadata/i).length).toBeGreaterThan(0)
@@ -141,12 +144,11 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/save/i)).toBeInTheDocument()
+      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
     })
 
     it('should render built-in section when builtInEnabled is true', () => {
@@ -161,11 +163,10 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
+      expect(screen.getByText('created_at')).toBeInTheDocument()
     })
 
     it('should render divider when builtInEnabled is true', () => {
@@ -180,12 +181,11 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      const divider = container.querySelector('.bg-linear-to-r')
-      expect(divider)!.toBeInTheDocument()
+      const divider = container.querySelector('[class*="bg-gradient"]')
+      expect(divider).toBeInTheDocument()
     })
 
     it('should render origin info section', () => {
@@ -199,19 +199,16 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText('source'))!.toBeInTheDocument()
+      expect(screen.getByText('source')).toBeInTheDocument()
     })
 
     it('should render technical parameters section', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        technicalParameters: [
-          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
-        ],
+        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
       })
 
       render(
@@ -219,11 +216,10 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
+      expect(screen.getByText('word_count')).toBeInTheDocument()
     })
 
     it('should render all sections together', () => {
@@ -232,9 +228,7 @@ describe('MetadataDocument', () => {
         builtInEnabled: true,
         builtList: [{ id: 'built-1', name: 'created_at', type: DataType.time, value: 1609459200 }],
         originInfo: [{ id: 'origin-1', name: 'source', type: DataType.string, value: 'upload' }],
-        technicalParameters: [
-          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
-        ],
+        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
       })
 
       render(
@@ -242,52 +236,26 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
-      expect(screen.getByText('source'))!.toBeInTheDocument()
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
+      expect(screen.getByText('field_one')).toBeInTheDocument()
+      expect(screen.getByText('created_at')).toBeInTheDocument()
+      expect(screen.getByText('source')).toBeInTheDocument()
+      expect(screen.getByText('word_count')).toBeInTheDocument()
     })
   })
 
   describe('Edit Mode', () => {
-    it('should show edit button when not in edit mode, embedding available, and canEdit is true', () => {
+    it('should show edit button when not in edit mode and embedding available', () => {
       render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
-      expect(screen.getByText(/edit/i))!.toBeInTheDocument()
-    })
-
-    it('should hide edit button by default when canEdit is omitted', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide edit button when canEdit is false', () => {
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit={false}
-        />,
-      )
-      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/edit/i)).toBeInTheDocument()
     })
 
     it('should call startToEdit when edit button is clicked', () => {
@@ -303,7 +271,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
@@ -324,7 +291,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
@@ -345,7 +311,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
@@ -369,7 +334,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
@@ -394,14 +358,12 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
       // Should show save/cancel buttons
-      // Should show save/cancel buttons
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/save/i)).toBeInTheDocument()
+      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
     })
   })
 
@@ -414,26 +376,67 @@ describe('MetadataDocument', () => {
         setTempList,
       })
 
+      const { container } = render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+
+      const inputs = container.querySelectorAll('input')
+      if (inputs.length > 0) {
+        fireEvent.change(inputs[0], { target: { value: 'new value' } })
+
+        await waitFor(() => {
+          expect(setTempList).toHaveBeenCalled()
+        })
+      }
+    })
+
+    it('should have handleAddMetaData function available', () => {
+      const handleAddMetaData = vi.fn()
+      mockUseMetadataDocument.mockReturnValue({
+        ...defaultHookReturn,
+        isEdit: true,
+        handleAddMetaData,
+      })
+
       render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      const valueInput = screen.getByDisplayValue('Value 1')
-      fireEvent.change(valueInput, { target: { value: 'new value' } })
+      expect(typeof handleAddMetaData).toBe('function')
+    })
 
-      await waitFor(() => {
-        expect(setTempList).toHaveBeenCalled()
+    it('should have handleSelectMetaData function available', () => {
+      const handleSelectMetaData = vi.fn()
+      mockUseMetadataDocument.mockReturnValue({
+        ...defaultHookReturn,
+        isEdit: true,
+        handleSelectMetaData,
       })
+
+      render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+
+      expect(typeof handleSelectMetaData).toBe('function')
     })
 
     it('should pass onChange callback to InfoGroup', async () => {
       const setTempList = vi.fn()
-      const tempList = [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }]
+      const tempList = [
+        { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
+      ]
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
         isEdit: true,
@@ -441,20 +444,21 @@ describe('MetadataDocument', () => {
         setTempList,
       })
 
-      render(
+      const { container } = render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      const valueInput = screen.getByDisplayValue('Value 1')
-      fireEvent.change(valueInput, { target: { value: 'updated' } })
-      await waitFor(() => {
-        expect(setTempList).toHaveBeenCalled()
-      })
+      const inputs = container.querySelectorAll('input')
+      if (inputs.length > 0) {
+        fireEvent.change(inputs[0], { target: { value: 'updated' } })
+        await waitFor(() => {
+          expect(setTempList).toHaveBeenCalled()
+        })
+      }
     })
 
     it('should pass onDelete callback to InfoGroup', async () => {
@@ -471,7 +475,6 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
@@ -480,8 +483,9 @@ describe('MetadataDocument', () => {
       expect(deleteContainers.length).toBeGreaterThan(0)
 
       if (deleteContainers.length > 0) {
-        const deleteIcon = deleteContainers[0]!.querySelector('svg')
-        if (deleteIcon) fireEvent.click(deleteIcon)
+        const deleteIcon = deleteContainers[0].querySelector('svg')
+        if (deleteIcon)
+          fireEvent.click(deleteIcon)
 
         await waitFor(() => {
           expect(setTempList).toHaveBeenCalled()
@@ -491,6 +495,18 @@ describe('MetadataDocument', () => {
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          className="custom-class"
+        />,
+      )
+      expect(container.firstChild).toHaveClass('custom-class')
+    })
+
     it('should use tempList when in edit mode', () => {
       const tempList = [{ id: 'temp-1', name: 'temp_field', type: DataType.string, value: 'temp' }]
       mockUseMetadataDocument.mockReturnValue({
@@ -508,7 +524,7 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      expect(screen.getByText('temp_field'))!.toBeInTheDocument()
+      expect(screen.getByText('temp_field')).toBeInTheDocument()
     })
 
     it('should use list when not in edit mode', () => {
@@ -520,8 +536,8 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
-      expect(screen.getByText('field_two'))!.toBeInTheDocument()
+      expect(screen.getByText('field_one')).toBeInTheDocument()
+      expect(screen.getByText('field_two')).toBeInTheDocument()
     })
 
     it('should pass datasetId to child components', () => {
@@ -533,8 +549,7 @@ describe('MetadataDocument', () => {
         />,
       )
       // Component should render without errors
-      // Component should render without errors
-      expect(screen.getByText('field_one'))!.toBeInTheDocument()
+      expect(screen.getByText('field_one')).toBeInTheDocument()
     })
   })
 
@@ -574,37 +589,6 @@ describe('MetadataDocument', () => {
       )
 
       // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
-      // NoData component should not be rendered
       expect(screen.queryByText(/start/i)).not.toBeInTheDocument()
     })
 
@@ -624,53 +608,50 @@ describe('MetadataDocument', () => {
       )
 
       // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
-      // headerRight should be null/undefined
       expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
+    it('should handle empty lists', () => {
+      mockUseMetadataDocument.mockReturnValue({
+        ...defaultHookReturn,
+        list: [],
+        tempList: [],
+        hasData: false,
+      })
+
+      const { container } = render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
+    it('should render correctly with minimal props', () => {
+      const { container } = render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
     it('should handle switching between view and edit mode', () => {
       const { unmount } = render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText(/edit/i))!.toBeInTheDocument()
+      expect(screen.getByText(/edit/i)).toBeInTheDocument()
 
       unmount()
 
@@ -684,12 +665,11 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
         />,
       )
 
-      expect(screen.getByText(/save/i))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
+      expect(screen.getByText(/save/i)).toBeInTheDocument()
+      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
     })
 
     it('should handle multiple items in all sections', () => {
@@ -722,40 +702,18 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      expect(screen.getByText('user_field_1'))!.toBeInTheDocument()
-      expect(screen.getByText('user_field_2'))!.toBeInTheDocument()
-      expect(screen.getByText('created_at'))!.toBeInTheDocument()
-      expect(screen.getByText('source'))!.toBeInTheDocument()
-      expect(screen.getByText('word_count'))!.toBeInTheDocument()
+      expect(screen.getByText('user_field_1')).toBeInTheDocument()
+      expect(screen.getByText('user_field_2')).toBeInTheDocument()
+      expect(screen.getByText('created_at')).toBeInTheDocument()
+      expect(screen.getByText('source')).toBeInTheDocument()
+      expect(screen.getByText('word_count')).toBeInTheDocument()
     })
 
     it('should handle null values in metadata', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        list: [{ id: '1', name: 'null_field', type: DataType.string, value: null }],
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-
-      expect(screen.getByText('null_field'))!.toBeInTheDocument()
-    })
-
-    it('should handle undefined values in metadata', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
         list: [
-          {
-            id: '1',
-            name: 'undefined_field',
-            type: DataType.string,
-            value: undefined as unknown as null,
-          },
+          { id: '1', name: 'null_field', type: DataType.string, value: null },
         ],
       })
 
@@ -767,7 +725,26 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      expect(screen.getByText('undefined_field'))!.toBeInTheDocument()
+      expect(screen.getByText('null_field')).toBeInTheDocument()
+    })
+
+    it('should handle undefined values in metadata', () => {
+      mockUseMetadataDocument.mockReturnValue({
+        ...defaultHookReturn,
+        list: [
+          { id: '1', name: 'undefined_field', type: DataType.string, value: undefined as unknown as null },
+        ],
+      })
+
+      render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+        />,
+      )
+
+      expect(screen.getByText('undefined_field')).toBeInTheDocument()
     })
   })
 })

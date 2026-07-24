@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Literal
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -26,7 +26,6 @@ from .vdb.chroma_config import ChromaConfig
 from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
-from .vdb.hologres_config import HologresConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.iris_config import IrisVectorConfig
 from .vdb.lindorm_config import LindormConfig
@@ -50,30 +49,28 @@ from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
-_VALID_STORAGE_TYPE = Literal[
-    "opendal",
-    "s3",
-    "aliyun-oss",
-    "azure-blob",
-    "baidu-obs",
-    "clickzetta-volume",
-    "google-storage",
-    "huawei-obs",
-    "oci-storage",
-    "tencent-cos",
-    "volcengine-tos",
-    "supabase",
-    "local",
-]
-
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: _VALID_STORAGE_TYPE = Field(
+    STORAGE_TYPE: Literal[
+        "opendal",
+        "s3",
+        "aliyun-oss",
+        "azure-blob",
+        "baidu-obs",
+        "clickzetta-volume",
+        "google-storage",
+        "huawei-obs",
+        "oci-storage",
+        "tencent-cos",
+        "volcengine-tos",
+        "supabase",
+        "local",
+    ] = Field(
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
         "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default=cast(_VALID_STORAGE_TYPE, "opendal"),
+        default="opendal",
     )
 
     STORAGE_LOCAL_PATH: str = Field(
@@ -107,17 +104,6 @@ class KeywordStoreConfig(BaseSettings):
         " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )
-
-
-class SQLAlchemyEngineOptionsDict(TypedDict):
-    pool_size: int
-    max_overflow: int
-    pool_recycle: int
-    pool_pre_ping: bool
-    connect_args: dict[str, str]
-    pool_use_lifo: bool
-    pool_reset_on_return: Literal["commit", "rollback", None]
-    pool_timeout: int
 
 
 class DatabaseConfig(BaseSettings):
@@ -160,16 +146,6 @@ class DatabaseConfig(BaseSettings):
     DB_EXTRAS: str = Field(
         description="Additional database connection parameters. Example: 'keepalives_idle=60&keepalives=1'",
         default="",
-    )
-
-    DB_SESSION_TIMEZONE_OVERRIDE: str = Field(
-        description=(
-            "PostgreSQL session timezone override injected via startup options."
-            " Default is 'UTC' for out-of-the-box consistency."
-            " Set to empty string to disable app-level timezone injection, for example when using RDS Proxy"
-            " together with a database-side default timezone."
-        ),
-        default="UTC",
     )
 
     @computed_field  # type: ignore[prop-decorator]
@@ -225,11 +201,6 @@ class DatabaseConfig(BaseSettings):
         default=30,
     )
 
-    SQLALCHEMY_POOL_RESET_ON_RETURN: Literal["commit", "rollback", None] = Field(
-        description="Connection pool reset behavior on return. Options: 'commit', 'rollback', or None",
-        default="rollback",
-    )
-
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
@@ -237,32 +208,30 @@ class DatabaseConfig(BaseSettings):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def SQLALCHEMY_ENGINE_OPTIONS(self) -> SQLAlchemyEngineOptionsDict:
+    def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        connect_args: dict[str, str] = {}
+        connect_args = {}
         # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
         if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
-            merged_options = options.strip()
-            session_timezone_override = self.DB_SESSION_TIMEZONE_OVERRIDE.strip()
-            if session_timezone_override:
-                timezone_opt = f"-c timezone={session_timezone_override}"
-                merged_options = f"{merged_options} {timezone_opt}".strip() if merged_options else timezone_opt
-            if merged_options:
-                connect_args = {"options": merged_options}
+            timezone_opt = "-c timezone=UTC"
+            if options:
+                merged_options = f"{options} {timezone_opt}"
+            else:
+                merged_options = timezone_opt
+            connect_args = {"options": merged_options}
 
-        result: SQLAlchemyEngineOptionsDict = {
+        return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
-            "pool_reset_on_return": self.SQLALCHEMY_POOL_RESET_ON_RETURN,
+            "pool_reset_on_return": None,
             "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
-        return result
 
 
 class CeleryConfig(DatabaseConfig):
@@ -378,7 +347,6 @@ class MiddlewareConfig(
     AnalyticdbConfig,
     ChromaConfig,
     ClickzettaConfig,
-    HologresConfig,
     HuaweiCloudConfig,
     IrisVectorConfig,
     MilvusConfig,

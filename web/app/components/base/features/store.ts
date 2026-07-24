@@ -2,7 +2,7 @@ import type { Features } from './types'
 import { createStore } from 'zustand'
 import { Resolution, TransferMethod } from '@/types/app'
 
-type FeaturesModal = {
+export type FeaturesModal = {
   showFeaturesModal: boolean
   setShowFeaturesModal: (showFeaturesModal: boolean) => void
 }
@@ -11,7 +11,7 @@ export type FeaturesState = {
   features: Features
 }
 
-type FeaturesAction = {
+export type FeaturesAction = {
   setFeatures: (features: Features) => void
 }
 
@@ -56,11 +56,11 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       },
     },
   }
-  return createStore<FeatureStoreState>()((set) => ({
+  return createStore<FeatureStoreState>()(set => ({
     ...DEFAULT_PROPS,
     ...initProps,
-    setFeatures: (features) => set(() => ({ features })),
+    setFeatures: features => set(() => ({ features })),
     showFeaturesModal: false,
-    setShowFeaturesModal: (showFeaturesModal) => set(() => ({ showFeaturesModal })),
+    setShowFeaturesModal: showFeaturesModal => set(() => ({ showFeaturesModal })),
   }))
 }

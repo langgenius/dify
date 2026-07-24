@@ -1,17 +1,20 @@
 import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '../../types'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import Tooltip from '@/app/components/base/tooltip'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
-import { UpgradeModal } from './upgrade-modal'
+import UpgradeModal from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = Readonly<{
+type Props = {
   nodeId: string
   value: DeliveryMethod[]
   nodesOutputVars?: NodeOutPutVar[]
@@ -20,7 +23,7 @@ type Props = Readonly<{
   formInputs?: FormInputItem[]
   onChange: (value: DeliveryMethod[]) => void
   readonly?: boolean
-}>
+}
 
 const DeliveryMethodForm: React.FC<Props> = ({
   nodeId,
@@ -37,8 +40,9 @@ const DeliveryMethodForm: React.FC<Props> = ({
 
   const handleMethodChange = (target: DeliveryMethod) => {
     const newMethods = produce(value, (draft) => {
-      const index = draft.findIndex((method) => method.type === target.type)
-      if (index !== -1) draft[index] = target
+      const index = draft.findIndex(method => method.type === target.type)
+      if (index !== -1)
+        draft[index] = target
     })
     onChange(newMethods)
     handleSyncWorkflowDraft(true, true)
@@ -50,7 +54,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
   }
 
   const handleMethodDelete = (type: DeliveryMethodType) => {
-    const newMethods = value.filter((method) => method.type !== type)
+    const newMethods = value.filter(method => method.type !== type)
     onChange(newMethods)
   }
 
@@ -58,19 +62,18 @@ const DeliveryMethodForm: React.FC<Props> = ({
   const handleShowUpgradeModal = () => {
     setShowUpgradeModal(true)
   }
+  const handleCloseUpgradeModal = () => {
+    setShowUpgradeModal(false)
+  }
 
   return (
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
-          </div>
-          <Infotip
-            aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
-          >
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
-          </Infotip>
+          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
+          <Tooltip
+            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
+          />
         </div>
         {!readonly && (
           <div className="flex items-center px-1">
@@ -83,13 +86,11 @@ const DeliveryMethodForm: React.FC<Props> = ({
         )}
       </div>
       {!value.length && (
-        <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflow' })}
-        </div>
+        <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">
-          {value.map((method) => (
+          {value.map(method => (
             <MethodItem
               nodeId={nodeId}
               method={method}
@@ -105,7 +106,12 @@ const DeliveryMethodForm: React.FC<Props> = ({
           ))}
         </div>
       )}
-      <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} />
+      {showUpgradeModal && (
+        <UpgradeModal
+          isShow={showUpgradeModal}
+          onClose={handleCloseUpgradeModal}
+        />
+      )}
     </div>
   )
 }

@@ -1,13 +1,23 @@
 import type {
+  Plugin,
+} from '../types'
+import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
-  PluginsFromMarketplaceResponse,
   PluginsSearchParams,
-} from '@dify/contracts/marketplace'
-import type { Plugin } from '../types'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+} from './types'
+import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useCallback, useEffect, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'react'
 import { postMarketplace } from '@/service/base'
 import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
@@ -21,12 +31,15 @@ import {
  */
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
-  const [marketplaceCollectionsOverride, setMarketplaceCollections] =
-    useState<MarketplaceCollection[]>()
-  const [marketplaceCollectionPluginsMapOverride, setMarketplaceCollectionPluginsMap] =
-    useState<Record<string, Plugin[]>>()
+  const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
+  const [marketplaceCollectionPluginsMapOverride, setMarketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
 
-  const { data, isFetching, isSuccess, isPending } = useQuery({
+  const {
+    data,
+    isFetching,
+    isSuccess,
+    isPending,
+  } = useQuery({
     queryKey: ['marketplaceCollectionsAndPlugins', queryParams],
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
     enabled: queryParams !== undefined,
@@ -35,19 +48,15 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     retry: false,
   })
 
-  const queryMarketplaceCollectionsAndPlugins = useCallback(
-    (query?: CollectionsAndPluginsSearchParams) => {
-      setQueryParams(query ? { ...query } : {})
-    },
-    [],
-  )
+  const queryMarketplaceCollectionsAndPlugins = useCallback((query?: CollectionsAndPluginsSearchParams) => {
+    setQueryParams(query ? { ...query } : {})
+  }, [])
   const isLoading = !!queryParams && (isFetching || isPending)
 
   return {
     marketplaceCollections: marketplaceCollectionsOverride ?? data?.marketplaceCollections,
     setMarketplaceCollections,
-    marketplaceCollectionPluginsMap:
-      marketplaceCollectionPluginsMapOverride ?? data?.marketplaceCollectionPluginsMap,
+    marketplaceCollectionPluginsMap: marketplaceCollectionPluginsMapOverride ?? data?.marketplaceCollectionPluginsMap,
     setMarketplaceCollectionPluginsMap,
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
@@ -59,10 +68,16 @@ export const useMarketplacePluginsByCollectionId = (
   collectionId?: string,
   query?: CollectionsAndPluginsSearchParams,
 ) => {
-  const { data, isFetching, isSuccess, isPending } = useQuery({
+  const {
+    data,
+    isFetching,
+    isSuccess,
+    isPending,
+  } = useQuery({
     queryKey: ['marketplaceCollectionPlugins', collectionId, query],
     queryFn: ({ signal }) => {
-      if (!collectionId) return Promise.resolve<Plugin[]>([])
+      if (!collectionId)
+        return Promise.resolve<Plugin[]>([])
       return getMarketplacePluginsByCollectionId(collectionId, query, { signal })
     },
     enabled: !!collectionId,
@@ -106,36 +121,43 @@ export const useMarketplacePlugins = () => {
       }
 
       const params = normalizeParams(queryParams)
-      const { query, sort_by, sort_order, category, tags, exclude, type, page_size } = params
+      const {
+        query,
+        sort_by,
+        sort_order,
+        category,
+        tags,
+        exclude,
+        type,
+        page_size,
+      } = params
       const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
 
       try {
-        const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
-          `/${pluginOrBundle}/search/advanced`,
-          {
-            body: {
-              page: pageParam,
-              page_size,
-              query,
-              sort_by,
-              sort_order,
-              category: category !== 'all' ? category : '',
-              tags,
-              exclude,
-              type,
-            },
-            signal,
+        const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+          body: {
+            page: pageParam,
+            page_size,
+            query,
+            sort_by,
+            sort_order,
+            category: category !== 'all' ? category : '',
+            tags,
+            exclude,
+            type,
           },
-        )
+          signal,
+        })
         const resPlugins = res.data.bundles || res.data.plugins || []
 
         return {
-          plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
+          plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
           total: res.data.total,
           page: pageParam,
           page_size,
         }
-      } catch {
+      }
+      catch {
         return {
           plugins: [],
           total: 0,
@@ -163,33 +185,26 @@ export const useMarketplacePlugins = () => {
     })
   }, [queryClient])
 
-  const handleUpdatePlugins = useCallback(
-    (pluginsSearchParams: PluginsSearchParams) => {
-      setQueryParams(normalizeParams(pluginsSearchParams))
-    },
-    [normalizeParams],
-  )
+  const handleUpdatePlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
+    setQueryParams(normalizeParams(pluginsSearchParams))
+  }, [normalizeParams])
 
-  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn(
-    (pluginsSearchParams: PluginsSearchParams) => {
-      handleUpdatePlugins(pluginsSearchParams)
-    },
-    {
-      wait: 500,
-    },
-  )
+  const { run: queryPluginsWithDebounced, cancel: cancelQueryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
+    handleUpdatePlugins(pluginsSearchParams)
+  }, {
+    wait: 500,
+  })
 
   const hasQuery = !!queryParams
   const hasData = marketplacePluginsQuery.data !== undefined
-  const plugins =
-    hasQuery && hasData
-      ? marketplacePluginsQuery.data.pages.flatMap((page) => page.plugins)
-      : undefined
+  const plugins = hasQuery && hasData
+    ? marketplacePluginsQuery.data.pages.flatMap(page => page.plugins)
+    : undefined
   const total = hasQuery && hasData ? marketplacePluginsQuery.data.pages?.[0]?.total : undefined
-  const isPluginsLoading =
-    hasQuery &&
-    (marketplacePluginsQuery.isPending ||
-      (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data))
+  const isPluginsLoading = hasQuery && (
+    marketplacePluginsQuery.isPending
+    || (marketplacePluginsQuery.isFetching && !marketplacePluginsQuery.data)
+  )
 
   return {
     plugins,
@@ -202,9 +217,7 @@ export const useMarketplacePlugins = () => {
     isFetchingNextPage: marketplacePluginsQuery.isFetchingNextPage,
     hasNextPage: marketplacePluginsQuery.hasNextPage,
     fetchNextPage: marketplacePluginsQuery.fetchNextPage,
-    page:
-      marketplacePluginsQuery.data?.pages?.length ||
-      (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
+    page: marketplacePluginsQuery.data?.pages?.length || (marketplacePluginsQuery.isPending && hasQuery ? 1 : 0),
   }
 }
 
@@ -212,22 +225,25 @@ export const useMarketplaceContainerScroll = (
   callback: () => void,
   scrollContainerId = 'marketplace-container',
 ) => {
-  const handleScroll = useCallback(
-    (e: Event) => {
-      const target = e.target as HTMLDivElement
-      const { scrollTop, scrollHeight, clientHeight } = target
-      if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
-        callback()
-    },
-    [callback],
-  )
+  const handleScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
+    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
+      callback()
+  }, [callback])
 
   useEffect(() => {
     const container = document.getElementById(scrollContainerId)
-    if (container) container.addEventListener('scroll', handleScroll)
+    if (container)
+      container.addEventListener('scroll', handleScroll)
 
     return () => {
-      if (container) container.removeEventListener('scroll', handleScroll)
+      if (container)
+        container.removeEventListener('scroll', handleScroll)
     }
   }, [handleScroll])
 }

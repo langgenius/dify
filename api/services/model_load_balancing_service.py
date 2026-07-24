@@ -1,54 +1,32 @@
 import json
 import logging
-from typing import Any, TypedDict, cast
+from json import JSONDecodeError
+from typing import Union
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
-from core.helper.model_provider_cache import (
-    ProviderCredentialsCache,
-    ProviderCredentialsCacheType,
-)
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_manager import LBModelManager
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
+from core.provider_manager import ProviderManager
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from dify_graph.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
 
 logger = logging.getLogger(__name__)
 
 
-class LoadBalancingConfigDetailDict(TypedDict):
-    id: str
-    name: str
-    credentials: dict[str, Any]
-    enabled: bool
-
-
-class LoadBalancingConfigSummaryDict(TypedDict):
-    id: str
-    name: str
-    credentials: dict[str, Any]
-    credential_id: str | None
-    enabled: bool
-    in_cooldown: bool
-    ttl: int
-
-
 class ModelLoadBalancingService:
-    @staticmethod
-    def _get_provider_manager(tenant_id: str) -> ProviderManager:
-        return create_plugin_provider_manager(tenant_id=tenant_id)
+    def __init__(self):
+        self.provider_manager = ProviderManager()
 
     def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -61,7 +39,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -69,7 +47,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Enable model load balancing
-        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType(model_type))
+        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
 
     def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -82,7 +60,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -90,17 +68,11 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # disable model load balancing
-        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType(model_type))
+        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
 
     def get_load_balancing_configs(
-        self,
-        tenant_id: str,
-        provider: str,
-        model: str,
-        model_type: str,
-        session: Session,
-        config_from: str = "",
-    ) -> tuple[bool, list[LoadBalancingConfigSummaryDict]]:
+        self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
+    ) -> tuple[bool, list[dict]]:
         """
         Get load balancing configurations.
         :param tenant_id: workspace id
@@ -110,7 +82,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -118,7 +90,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType(model_type)
+        model_type_enum = ModelType.value_of(model_type)
 
         # Get provider model setting
         provider_model_setting = provider_configuration.get_provider_model_setting(
@@ -131,26 +103,25 @@ class ModelLoadBalancingService:
             is_load_balancing_enabled = True
 
         if config_from == "predefined-model":
-            credential_source_type = CredentialSourceType.PROVIDER
+            credential_source_type = "provider"
         else:
-            credential_source_type = CredentialSourceType.CUSTOM_MODEL
+            credential_source_type = "custom_model"
 
         # Get load balancing configurations
-        load_balancing_configs = list(
-            session.scalars(
-                select(LoadBalancingModelConfig)
-                .where(
-                    LoadBalancingModelConfig.tenant_id == tenant_id,
-                    LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                    LoadBalancingModelConfig.model_type == model_type_enum,
-                    LoadBalancingModelConfig.model_name == model,
-                    or_(
-                        LoadBalancingModelConfig.credential_source_type == credential_source_type,
-                        LoadBalancingModelConfig.credential_source_type.is_(None),
-                    ),
-                )
-                .order_by(LoadBalancingModelConfig.created_at)
-            ).all()
+        load_balancing_configs = (
+            db.session.query(LoadBalancingModelConfig)
+            .where(
+                LoadBalancingModelConfig.tenant_id == tenant_id,
+                LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
+                LoadBalancingModelConfig.model_name == model,
+                or_(
+                    LoadBalancingModelConfig.credential_source_type == credential_source_type,
+                    LoadBalancingModelConfig.credential_source_type.is_(None),
+                ),
+            )
+            .order_by(LoadBalancingModelConfig.created_at)
+            .all()
         )
 
         if provider_configuration.custom_configuration.provider:
@@ -164,13 +135,13 @@ class ModelLoadBalancingService:
 
             if not inherit_config_exists:
                 # Initialize the inherit configuration
-                inherit_config = self._init_inherit_config(tenant_id, provider, model, model_type_enum, session=session)
+                inherit_config = self._init_inherit_config(tenant_id, provider, model, model_type_enum)
 
                 # prepend the inherit configuration
                 load_balancing_configs.insert(0, inherit_config)
             else:
                 # move the inherit configuration to the first
-                for i, load_balancing_config in enumerate(load_balancing_configs.copy()):
+                for i, load_balancing_config in enumerate(load_balancing_configs[:]):
                     if load_balancing_config.name == "__inherit__":
                         inherit_config = load_balancing_configs.pop(i)
                         load_balancing_configs.insert(0, inherit_config)
@@ -182,7 +153,7 @@ class ModelLoadBalancingService:
         decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
 
         # fetch status and ttl for each config
-        datas: list[LoadBalancingConfigSummaryDict] = []
+        datas = []
         for load_balancing_config in load_balancing_configs:
             in_cooldown, ttl = LBModelManager.get_config_in_cooldown_and_ttl(
                 tenant_id=tenant_id,
@@ -194,10 +165,10 @@ class ModelLoadBalancingService:
 
             try:
                 if load_balancing_config.encrypted_config:
-                    credentials: dict[str, Any] = json.loads(load_balancing_config.encrypted_config)
+                    credentials: dict[str, object] = json.loads(load_balancing_config.encrypted_config)
                 else:
                     credentials = {}
-            except (json.JSONDecodeError, ValueError):
+            except JSONDecodeError:
                 credentials = {}
 
             # Get provider credential secret variables
@@ -239,14 +210,8 @@ class ModelLoadBalancingService:
         return is_load_balancing_enabled, datas
 
     def get_load_balancing_config(
-        self,
-        tenant_id: str,
-        provider: str,
-        model: str,
-        model_type: str,
-        config_id: str,
-        session: Session,
-    ) -> LoadBalancingConfigDetailDict | None:
+        self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
+    ) -> dict | None:
         """
         Get load balancing configuration.
         :param tenant_id: workspace id
@@ -256,8 +221,8 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
-        provider_configurations = provider_manager.get_configurations(tenant_id)
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -265,19 +230,19 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType(model_type)
+        model_type_enum = ModelType.value_of(model_type)
 
         # Get load balancing configurations
-        load_balancing_model_config = session.scalar(
-            select(LoadBalancingModelConfig)
+        load_balancing_model_config = (
+            db.session.query(LoadBalancingModelConfig)
             .where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum,
+                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
                 LoadBalancingModelConfig.id == config_id,
             )
-            .limit(1)
+            .first()
         )
 
         if not load_balancing_model_config:
@@ -288,7 +253,7 @@ class ModelLoadBalancingService:
                 credentials = json.loads(load_balancing_model_config.encrypted_config)
             else:
                 credentials = {}
-        except (json.JSONDecodeError, ValueError):
+        except JSONDecodeError:
             credentials = {}
 
         # Get credential form schemas from model credential schema or provider credential schema
@@ -299,21 +264,15 @@ class ModelLoadBalancingService:
             credentials=credentials, credential_form_schemas=credential_schemas.credential_form_schemas
         )
 
-        result: LoadBalancingConfigDetailDict = {
+        return {
             "id": load_balancing_model_config.id,
             "name": load_balancing_model_config.name,
             "credentials": credentials,
             "enabled": load_balancing_model_config.enabled,
         }
-        return result
 
     def _init_inherit_config(
-        self,
-        tenant_id: str,
-        provider: str,
-        model: str,
-        model_type: ModelType,
-        session: Session,
+        self, tenant_id: str, provider: str, model: str, model_type: ModelType
     ) -> LoadBalancingModelConfig:
         """
         Initialize the inherit configuration.
@@ -327,28 +286,17 @@ class ModelLoadBalancingService:
         inherit_config = LoadBalancingModelConfig(
             tenant_id=tenant_id,
             provider_name=provider,
-            model_type=model_type,
+            model_type=model_type.to_origin_model_type(),
             model_name=model,
             name="__inherit__",
         )
-        session.add(inherit_config)
-        session.commit()
-        ProviderManager.invalidate_configurations_cache(
-            tenant_id,
-            sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
-        )
+        db.session.add(inherit_config)
+        db.session.commit()
 
         return inherit_config
 
     def update_load_balancing_configs(
-        self,
-        tenant_id: str,
-        provider: str,
-        model: str,
-        model_type: str,
-        configs: list[dict],
-        config_from: str,
-        session: Session,
+        self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
     ):
         """
         Update load balancing configurations.
@@ -361,7 +309,7 @@ class ModelLoadBalancingService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -369,16 +317,16 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType(model_type)
+        model_type_enum = ModelType.value_of(model_type)
 
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
 
-        current_load_balancing_configs = session.scalars(
+        current_load_balancing_configs = db.session.scalars(
             select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == tenant_id,
                 LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
-                LoadBalancingModelConfig.model_type == model_type_enum,
+                LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                 LoadBalancingModelConfig.model_name == model,
             )
         ).all()
@@ -401,26 +349,26 @@ class ModelLoadBalancingService:
 
             if credential_id:
                 if config_from == "predefined-model":
-                    credential_record = session.scalar(
-                        select(ProviderCredential)
-                        .where(
-                            ProviderCredential.id == credential_id,
-                            ProviderCredential.tenant_id == tenant_id,
-                            ProviderCredential.provider_name == provider_configuration.provider.provider,
+                    credential_record = (
+                        db.session.query(ProviderCredential)
+                        .filter_by(
+                            id=credential_id,
+                            tenant_id=tenant_id,
+                            provider_name=provider_configuration.provider.provider,
                         )
-                        .limit(1)
+                        .first()
                     )
                 else:
-                    credential_record = session.scalar(
-                        select(ProviderModelCredential)
-                        .where(
-                            ProviderModelCredential.id == credential_id,
-                            ProviderModelCredential.tenant_id == tenant_id,
-                            ProviderModelCredential.provider_name == provider_configuration.provider.provider,
-                            ProviderModelCredential.model_name == model,
-                            ProviderModelCredential.model_type == model_type_enum,
+                    credential_record = (
+                        db.session.query(ProviderModelCredential)
+                        .filter_by(
+                            id=credential_id,
+                            tenant_id=tenant_id,
+                            provider_name=provider_configuration.provider.provider,
+                            model_name=model,
+                            model_type=model_type_enum.to_origin_model_type(),
                         )
-                        .limit(1)
+                        .first()
                     )
                 if not credential_record:
                     raise ValueError(f"Provider credential with id {credential_id} not found")
@@ -464,11 +412,7 @@ class ModelLoadBalancingService:
                 load_balancing_config.name = name
                 load_balancing_config.enabled = enabled
                 load_balancing_config.updated_at = naive_utc_now()
-                session.commit()
-                ProviderManager.invalidate_configurations_cache(
-                    tenant_id,
-                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
-                )
+                db.session.commit()
 
                 self._clear_credentials_cache(tenant_id, config_id)
             else:
@@ -477,16 +421,12 @@ class ModelLoadBalancingService:
                     raise ValueError("Invalid load balancing config name")
 
                 if credential_id:
-                    credential_source = (
-                        CredentialSourceType.PROVIDER
-                        if config_from == "predefined-model"
-                        else CredentialSourceType.CUSTOM_MODEL
-                    )
+                    credential_source = "provider" if config_from == "predefined-model" else "custom_model"
                     assert credential_record is not None
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,
                         provider_name=provider_configuration.provider.provider,
-                        model_type=model_type_enum,
+                        model_type=model_type_enum.to_origin_model_type(),
                         model_name=model,
                         name=credential_record.credential_name,
                         encrypted_config=credential_record.encrypted_config,
@@ -514,28 +454,20 @@ class ModelLoadBalancingService:
                     load_balancing_model_config = LoadBalancingModelConfig(
                         tenant_id=tenant_id,
                         provider_name=provider_configuration.provider.provider,
-                        model_type=model_type_enum,
+                        model_type=model_type_enum.to_origin_model_type(),
                         model_name=model,
                         name=name,
                         encrypted_config=json.dumps(credentials),
                     )
 
-                session.add(load_balancing_model_config)
-                session.commit()
-                ProviderManager.invalidate_configurations_cache(
-                    tenant_id,
-                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
-                )
+                db.session.add(load_balancing_model_config)
+                db.session.commit()
 
         # get deleted config ids
         deleted_config_ids = set(current_load_balancing_configs_dict.keys()) - updated_config_ids
         for config_id in deleted_config_ids:
-            session.delete(current_load_balancing_configs_dict[config_id])
-            session.commit()
-            ProviderManager.invalidate_configurations_cache(
-                tenant_id,
-                sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
-            )
+            db.session.delete(current_load_balancing_configs_dict[config_id])
+            db.session.commit()
 
             self._clear_credentials_cache(tenant_id, config_id)
 
@@ -545,8 +477,7 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict[str, Any],
-        session: Session,
+        credentials: dict,
         config_id: str | None = None,
     ):
         """
@@ -559,8 +490,8 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
-        provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
@@ -568,21 +499,21 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType(model_type)
+        model_type_enum = ModelType.value_of(model_type)
 
         load_balancing_model_config = None
         if config_id:
             # Get load balancing config
-            load_balancing_model_config = session.scalar(
-                select(LoadBalancingModelConfig)
+            load_balancing_model_config = (
+                db.session.query(LoadBalancingModelConfig)
                 .where(
                     LoadBalancingModelConfig.tenant_id == tenant_id,
                     LoadBalancingModelConfig.provider_name == provider,
-                    LoadBalancingModelConfig.model_type == model_type_enum,
+                    LoadBalancingModelConfig.model_type == model_type_enum.to_origin_model_type(),
                     LoadBalancingModelConfig.model_name == model,
                     LoadBalancingModelConfig.id == config_id,
                 )
-                .limit(1)
+                .first()
             )
 
             if not load_balancing_model_config:
@@ -596,7 +527,6 @@ class ModelLoadBalancingService:
             model=model,
             credentials=credentials,
             load_balancing_model_config=load_balancing_model_config,
-            model_provider_factory=assembly.model_provider_factory,
         )
 
     def _custom_credentials_validate(
@@ -605,9 +535,8 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict[str, Any],
+        credentials: dict,
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
-        model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
     ):
         """
@@ -618,7 +547,6 @@ class ModelLoadBalancingService:
         :param model: model name
         :param credentials: credentials
         :param load_balancing_model_config: load balancing model config
-        :param model_provider_factory: model provider factory sharing the active runtime
         :param validate: validate credentials
         :return:
         """
@@ -637,7 +565,7 @@ class ModelLoadBalancingService:
                     original_credentials = json.loads(load_balancing_model_config.encrypted_config)
                 else:
                     original_credentials = {}
-            except (json.JSONDecodeError, ValueError):
+            except JSONDecodeError:
                 original_credentials = {}
 
             # encrypt credentials
@@ -648,8 +576,7 @@ class ModelLoadBalancingService:
                         credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:
-            if model_provider_factory is None:
-                model_provider_factory = provider_configuration.get_model_provider_factory()
+            model_provider_factory = ModelProviderFactory(tenant_id)
             if isinstance(credential_schemas, ModelCredentialSchema):
                 credentials = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,
@@ -664,13 +591,13 @@ class ModelLoadBalancingService:
 
         for key, value in credentials.items():
             if key in provider_credential_secret_variables:
-                credentials[key] = encrypter.encrypt_token(tenant_id, cast(str, value))
+                credentials[key] = encrypter.encrypt_token(tenant_id, value)
 
         return credentials
 
     def _get_credential_schema(
         self, provider_configuration: ProviderConfiguration
-    ) -> ModelCredentialSchema | ProviderCredentialSchema:
+    ) -> Union[ModelCredentialSchema, ProviderCredentialSchema]:
         """Get form schemas."""
         if provider_configuration.provider.model_credential_schema:
             return provider_configuration.provider.model_credential_schema

@@ -13,15 +13,14 @@ from unittest.mock import MagicMock
 
 from sqlalchemy import Engine
 
-from configs import dify_config
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
 )
-from graphon.entities.workflow_node_execution import (
+from dify_graph.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
-from graphon.enums import BuiltinNodeTypes
+from dify_graph.enums import NodeType
 from models import Account, WorkflowNodeExecutionTriggeredFrom
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
@@ -42,7 +41,7 @@ class TruncationTestCase:
 def create_test_cases() -> list[TruncationTestCase]:
     """Create test cases for different truncation scenarios."""
     # Create large data that will definitely exceed the threshold (10KB)
-    large_data = {"data": "x" * (dify_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE + 1000)}
+    large_data = {"data": "x" * (TRUNCATION_SIZE_THRESHOLD + 1000)}
     small_data = {"data": "small"}
 
     return [
@@ -102,7 +101,7 @@ def create_workflow_node_execution(
         workflow_execution_id="test-workflow-execution-id",
         index=1,
         node_id="test-node-id",
-        node_type=BuiltinNodeTypes.LLM,
+        node_type=NodeType.LLM,
         title="Test Node",
         inputs=inputs,
         outputs=outputs,
@@ -128,7 +127,6 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         """Create a repository instance for testing."""
         return SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=MagicMock(spec=Engine),
-            tenant_id="test-tenant-id",
             user=mock_user(),
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -147,7 +145,7 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         db_model.index = 1
         db_model.predecessor_node_id = None
         db_model.node_id = "node-id"
-        db_model.node_type = BuiltinNodeTypes.LLM
+        db_model.node_type = NodeType.LLM
         db_model.title = "Test Node"
         db_model.inputs = json.dumps({"value": "inputs"})
         db_model.process_data = json.dumps({"value": "process_data"})

@@ -4,18 +4,17 @@ import AppBasic from '../basic'
 
 vi.mock('@/app/components/base/icons/src/vender/workflow', () => ({
   ApiAggregate: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="api-icon" {...props} />,
-  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="webapp-icon" {...props} />
+  WindowCursor: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="webapp-icon" {...props} />,
+}))
+
+vi.mock('@/app/components/base/tooltip', () => ({
+  default: ({ popupContent }: { popupContent: React.ReactNode }) => (
+    <div data-testid="tooltip">{popupContent}</div>
   ),
 }))
 
 vi.mock('../../base/app-icon', () => ({
-  default: ({
-    icon,
-    background,
-    innerIcon,
-    className,
-  }: {
+  default: ({ icon, background, innerIcon, className }: {
     icon?: string
     background?: string
     innerIcon?: React.ReactNode
@@ -76,12 +75,13 @@ describe('AppBasic', () => {
 
     it('should show hover tip when provided', () => {
       render(<AppBasic name="My App" type="Chatbot" hoverTip="Some tip" />)
-      expect(screen.getByLabelText('Some tip')).toBeInTheDocument()
+      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByText('Some tip')).toBeInTheDocument()
     })
 
     it('should not show hover tip when not provided', () => {
       render(<AppBasic name="My App" type="Chatbot" />)
-      expect(screen.queryByLabelText('Some tip')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
     })
   })
 
@@ -99,6 +99,12 @@ describe('AppBasic', () => {
     it('should show type inline when isExtraInLine is true and hideType is false', () => {
       render(<AppBasic name="My App" type="Chatbot" isExtraInLine />)
       expect(screen.getByText('Chatbot')).toBeInTheDocument()
+    })
+
+    it('should apply custom text styles', () => {
+      render(<AppBasic name="My App" type="Chatbot" textStyle={{ main: 'text-red-500' }} />)
+      const nameContainer = screen.getByText('My App').parentElement
+      expect(nameContainer).toHaveClass('text-red-500')
     })
   })
 })

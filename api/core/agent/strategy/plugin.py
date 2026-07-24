@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Any, override
+from typing import Any
 
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
@@ -23,7 +23,6 @@ class PluginAgentStrategy(BaseAgentStrategy):
         self.declaration = declaration
         self.meta_version = meta_version
 
-    @override
     def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         return self.declaration.parameters
 
@@ -35,7 +34,6 @@ class PluginAgentStrategy(BaseAgentStrategy):
             params[parameter.name] = parameter.init_frontend_parameter(params.get(parameter.name))
         return params
 
-    @override
     def _invoke(
         self,
         params: dict[str, Any],

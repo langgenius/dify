@@ -2,10 +2,7 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import {
-  useConfigurations,
-  useInitialData,
-} from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { useInputVariables } from '../hooks'
 import ProcessDocuments from '../index'
 
@@ -34,9 +31,7 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
 /**
  * Creates mock configuration for testing
  */
-const createMockConfiguration = (
-  overrides: Partial<BaseConfiguration> = {},
-): BaseConfiguration => ({
+const createMockConfiguration = (overrides: Partial<BaseConfiguration> = {}): BaseConfiguration => ({
   type: BaseFieldType.textInput,
   variable: 'testVariable',
   label: 'Test Label',
@@ -52,9 +47,7 @@ const createMockConfiguration = (
 /**
  * Creates default test props
  */
-const createDefaultProps = (
-  overrides: Partial<React.ComponentProps<typeof ProcessDocuments>> = {},
-) => ({
+const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof ProcessDocuments>> = {}) => ({
   dataSourceNodeId: 'test-node-id',
   ref: { current: null } as React.RefObject<unknown>,
   isRunning: false,
@@ -76,15 +69,23 @@ describe('ProcessDocuments', () => {
   })
 
   describe('Rendering', () => {
+    // Tests basic rendering functionality
+    it('should render without crashing', () => {
+      const props = createDefaultProps()
+
+      render(<ProcessDocuments {...props} />)
+
+      // Assert - check for Header title from Form component
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
+    })
+
     it('should render Form and Actions components', () => {
       const props = createDefaultProps()
 
       render(<ProcessDocuments {...props} />)
 
       // Assert - check for elements from both components
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.operations.dataSource')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.operations.saveAndProcess')).toBeInTheDocument()
     })
@@ -114,9 +115,7 @@ describe('ProcessDocuments', () => {
 
         render(<ProcessDocuments {...props} />)
 
-        expect(
-          screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-        ).toBeInTheDocument()
+        expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
       })
     })
 
@@ -126,9 +125,7 @@ describe('ProcessDocuments', () => {
 
         render(<ProcessDocuments {...props} />)
 
-        const previewButton = screen.getByRole('button', {
-          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
-        })
+        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
         expect(previewButton).toBeDisabled()
       })
 
@@ -137,9 +134,7 @@ describe('ProcessDocuments', () => {
 
         render(<ProcessDocuments {...props} />)
 
-        const previewButton = screen.getByRole('button', {
-          name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i,
-        })
+        const previewButton = screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i })
         expect(previewButton).not.toBeDisabled()
       })
 
@@ -149,9 +144,7 @@ describe('ProcessDocuments', () => {
 
         render(<ProcessDocuments {...props} />)
 
-        const processButton = screen.getByRole('button', {
-          name: /datasetPipeline.operations.saveAndProcess/i,
-        })
+        const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
         expect(processButton).toBeDisabled()
       })
     })
@@ -177,9 +170,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
-      )
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }))
 
       expect(onProcess).toHaveBeenCalledTimes(1)
     })
@@ -190,9 +181,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }),
-      )
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }))
 
       expect(onBack).toHaveBeenCalledTimes(1)
     })
@@ -203,9 +192,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
-      )
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }))
 
       expect(onPreview).toHaveBeenCalledTimes(1)
     })
@@ -275,9 +262,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      const processButton = screen.getByRole('button', {
-        name: /datasetPipeline.operations.saveAndProcess/i,
-      })
+      const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
       expect(processButton).toBeDisabled()
     })
 
@@ -287,9 +272,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      const processButton = screen.getByRole('button', {
-        name: /datasetPipeline.operations.saveAndProcess/i,
-      })
+      const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
       expect(processButton).toBeDisabled()
     })
 
@@ -299,9 +282,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      const processButton = screen.getByRole('button', {
-        name: /datasetPipeline.operations.saveAndProcess/i,
-      })
+      const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
       expect(processButton).not.toBeDisabled()
     })
 
@@ -311,24 +292,25 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      const processButton = screen.getByRole('button', {
-        name: /datasetPipeline.operations.saveAndProcess/i,
-      })
+      const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
       expect(processButton).toBeDisabled()
     })
   })
 
   // Component Memoization Testing
   describe('Component Memoization', () => {
+    it('should be wrapped with React.memo', () => {
+      // Assert - verify component has memo wrapper
+      expect(ProcessDocuments.$$typeof).toBe(Symbol.for('react.memo'))
+    })
+
     it('should render correctly after rerender with same props', () => {
       const props = createDefaultProps()
 
       const { rerender } = render(<ProcessDocuments {...props} />)
       rerender(<ProcessDocuments {...props} />)
 
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
     })
 
     it('should update when dataSourceNodeId prop changes', () => {
@@ -351,9 +333,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
     })
 
     it('should handle empty variables array', () => {
@@ -363,9 +343,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
     })
 
     it('should handle special characters in dataSourceNodeId', () => {
@@ -393,15 +371,9 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }),
-      )
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }),
-      )
-      fireEvent.click(
-        screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }),
-      )
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i }))
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.operations.dataSource/i }))
+      fireEvent.click(screen.getByRole('button', { name: /datasetPipeline.addDocuments.stepTwo.previewChunks/i }))
 
       expect(onProcess).toHaveBeenCalledTimes(1)
       expect(onBack).toHaveBeenCalledTimes(1)
@@ -426,11 +398,11 @@ describe('ProcessDocuments', () => {
 
         render(<ProcessDocuments {...props} />)
 
-        const processButton = screen.getByRole('button', {
-          name: /datasetPipeline.operations.saveAndProcess/i,
-        })
-        if (expectedDisabled) expect(processButton).toBeDisabled()
-        else expect(processButton).not.toBeDisabled()
+        const processButton = screen.getByRole('button', { name: /datasetPipeline.operations.saveAndProcess/i })
+        if (expectedDisabled)
+          expect(processButton).toBeDisabled()
+        else
+          expect(processButton).not.toBeDisabled()
       },
     )
   })
@@ -453,16 +425,8 @@ describe('ProcessDocuments', () => {
 
     it('should handle configurations with different field types', () => {
       mockConfigurations = [
-        createMockConfiguration({
-          type: BaseFieldType.textInput,
-          variable: 'textVar',
-          label: 'Text Field',
-        }),
-        createMockConfiguration({
-          type: BaseFieldType.numberInput,
-          variable: 'numberVar',
-          label: 'Number Field',
-        }),
+        createMockConfiguration({ type: BaseFieldType.textInput, variable: 'textVar', label: 'Text Field' }),
+        createMockConfiguration({ type: BaseFieldType.numberInput, variable: 'numberVar', label: 'Number Field' }),
       ]
       mockInitialData = { textVar: '', numberVar: 0 }
       const props = createDefaultProps()
@@ -481,9 +445,7 @@ describe('ProcessDocuments', () => {
       mockIsFetchingParams = false
       mockParamsConfig = { variables: [{ variable: 'testVar', type: 'text', label: 'Test' }] }
       mockInitialData = { testVar: 'initial value' }
-      mockConfigurations = [
-        createMockConfiguration({ variable: 'testVar', label: 'Test Variable' }),
-      ]
+      mockConfigurations = [createMockConfiguration({ variable: 'testVar', label: 'Test Variable' })]
 
       const props = {
         dataSourceNodeId: 'full-test-node',
@@ -497,9 +459,7 @@ describe('ProcessDocuments', () => {
 
       render(<ProcessDocuments {...props} />)
 
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.operations.dataSource')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.operations.saveAndProcess')).toBeInTheDocument()
       expect(screen.getByText('Test Variable')).toBeInTheDocument()

@@ -1,7 +1,5 @@
 'use client'
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -13,13 +11,15 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { cn } from '@/utils/classnames'
 
-type Props = Readonly<{
+type Props = {
   logs: TriggerLogEntity[]
   className?: string
-}>
+}
 
 enum LogTypeEnum {
   REQUEST = 'request',
@@ -32,8 +32,10 @@ const LogViewer = ({ logs, className }: Props) => {
 
   const toggleLogExpansion = (logId: string) => {
     const newExpanded = new Set(expandedLogs)
-    if (newExpanded.has(logId)) newExpanded.delete(logId)
-    else newExpanded.add(logId)
+    if (newExpanded.has(logId))
+      newExpanded.delete(logId)
+    else
+      newExpanded.add(logId)
 
     setExpandedLogs(newExpanded)
   }
@@ -43,25 +45,25 @@ const LogViewer = ({ logs, className }: Props) => {
       try {
         const urlDecoded = decodeURIComponent(data.substring(8)) // Remove 'payload='
         return JSON.parse(urlDecoded)
-      } catch {
+      }
+      catch {
         return data
       }
     }
 
-    if (typeof data === 'object') return data
+    if (typeof data === 'object')
+      return data
 
     try {
       return JSON.parse(data)
-    } catch {
+    }
+    catch {
       return data
     }
   }
 
   const renderJsonContent = (originalData: any, title: LogTypeEnum) => {
-    const parsedData =
-      title === LogTypeEnum.REQUEST
-        ? { headers: originalData.headers, data: parseRequestData(originalData.data) }
-        : originalData
+    const parsedData = title === LogTypeEnum.REQUEST ? { headers: originalData.headers, data: parseRequestData(originalData.data) } : originalData
     const isJsonObject = typeof parsedData === 'object'
 
     if (isJsonObject) {
@@ -80,20 +82,25 @@ const LogViewer = ({ logs, className }: Props) => {
     return (
       <div className="rounded-md bg-components-input-bg-normal">
         <div className="flex items-center justify-between px-2 py-1">
-          <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
+          <div className="system-xs-semibold-uppercase text-text-secondary">
+            {title}
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation()
               navigator.clipboard.writeText(String(parsedData))
-              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
+              Toast.notify({
+                type: 'success',
+                message: t('actionMsg.copySuccessfully', { ns: 'common' }),
+              })
             }}
             className="rounded-md p-0.5 hover:bg-components-panel-border"
           >
-            <RiFileCopyLine className="size-4 text-text-tertiary" />
+            <RiFileCopyLine className="h-4 w-4 text-text-tertiary" />
           </button>
         </div>
-        <div className="px-2 pt-1 pb-2">
-          <pre className="code-xs-regular break-all whitespace-pre-wrap text-text-secondary">
+        <div className="px-2 pb-2 pt-1">
+          <pre className="code-xs-regular whitespace-pre-wrap break-all text-text-secondary">
             {String(parsedData)}
           </pre>
         </div>
@@ -101,7 +108,8 @@ const LogViewer = ({ logs, className }: Props) => {
     )
   }
 
-  if (!logs || logs.length === 0) return null
+  if (!logs || logs.length === 0)
+    return null
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
@@ -122,35 +130,15 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className="pointer-events-none absolute top-0 left-0 h-7 w-[179px]">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="179"
-                  height="28"
-                  viewBox="0 0 179 28"
-                  fill="none"
-                  className="size-full"
-                >
+              <div className="pointer-events-none absolute left-0 top-0 h-7 w-[179px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className="h-full w-full">
                   <g filter="url(#filter0_f_error_glow)">
                     <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25" />
                   </g>
                   <defs>
-                    <filter
-                      id="filter0_f_error_glow"
-                      x="-125"
-                      y="-138"
-                      width="304"
-                      height="304"
-                      filterUnits="userSpaceOnUse"
-                      colorInterpolationFilters="sRGB"
-                    >
+                    <filter id="filter0_f_error_glow" x="-125" y="-138" width="304" height="304" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
                       <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                      <feBlend
-                        mode="normal"
-                        in="SourceGraphic"
-                        in2="BackgroundImageFix"
-                        result="shape"
-                      />
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
                       <feGaussianBlur stdDeviation="60" result="effect1_foregroundBlur" />
                     </filter>
                   </defs>
@@ -162,18 +150,22 @@ const LogViewer = ({ logs, className }: Props) => {
               onClick={() => toggleLogExpansion(logId)}
               className={cn(
                 'flex w-full items-center justify-between px-2 py-1.5 text-left',
-                isExpanded ? 'pt-2 pb-1' : 'min-h-7',
+                isExpanded ? 'pb-1 pt-2' : 'min-h-7',
               )}
             >
               <div className="flex items-center gap-0">
-                {isExpanded ? (
-                  <RiArrowDownSLine className="size-4 text-text-tertiary" />
-                ) : (
-                  <RiArrowRightSLine className="size-4 text-text-tertiary" />
-                )}
+                {isExpanded
+                  ? (
+                      <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+                    )
+                  : (
+                      <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+                    )}
                 <div className="system-xs-semibold-uppercase text-text-secondary">
-                  {t(($) => $[`modal.manual.logs.${LogTypeEnum.REQUEST}`], { ns: 'pluginTrigger' })}{' '}
-                  #{index + 1}
+                  {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
+                  {' '}
+                  #
+                  {index + 1}
                 </div>
               </div>
 
@@ -181,12 +173,14 @@ const LogViewer = ({ logs, className }: Props) => {
                 <div className="system-xs-regular text-text-tertiary">
                   {dayjs(log.created_at).format('HH:mm:ss')}
                 </div>
-                <div className="size-3.5">
-                  {isSuccess ? (
-                    <RiCheckboxCircleFill className="size-full text-text-success" />
-                  ) : (
-                    <RiErrorWarningFill className="size-full text-text-destructive" />
-                  )}
+                <div className="h-3.5 w-3.5">
+                  {isSuccess
+                    ? (
+                        <RiCheckboxCircleFill className="h-full w-full text-text-success" />
+                      )
+                    : (
+                        <RiErrorWarningFill className="h-full w-full text-text-destructive" />
+                      )}
                 </div>
               </div>
             </button>

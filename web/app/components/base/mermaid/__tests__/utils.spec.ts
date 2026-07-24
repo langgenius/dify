@@ -1,12 +1,4 @@
-import {
-  cleanUpSvgCode,
-  isMermaidCodeComplete,
-  prepareMermaidCode,
-  processSvgForTheme,
-  sanitizeMermaidCode,
-  svgToBase64,
-  waitForDOMElement,
-} from '../utils'
+import { cleanUpSvgCode, isMermaidCodeComplete, prepareMermaidCode, processSvgForTheme, sanitizeMermaidCode, svgToBase64, waitForDOMElement } from '../utils'
 
 const FILL_HEX_RE = /fill="#[a-fA-F0-9]{6}"/g
 
@@ -51,7 +43,11 @@ describe('sanitizeMermaidCode', () => {
     })
 
     it('should remove Mermaid init directives to prevent config overrides', () => {
-      const input = ['%%{init: {"securityLevel":"loose"}}%%', 'graph TD', 'A-->B'].join('\n')
+      const input = [
+        '%%{init: {"securityLevel":"loose"}}%%',
+        'graph TD',
+        'A-->B',
+      ].join('\n')
 
       const result = sanitizeMermaidCode(input)
 
@@ -71,9 +67,11 @@ describe('prepareMermaidCode', () => {
   describe('Sanitization', () => {
     it('should sanitize click directives in flowcharts', () => {
       const unsafeProtocol = ['java', 'script:'].join('')
-      const input = ['graph TD', 'A[Click]-->B', `click A href "${unsafeProtocol}alert(1)"`].join(
-        '\n',
-      )
+      const input = [
+        'graph TD',
+        'A[Click]-->B',
+        `click A href "${unsafeProtocol}alert(1)"`,
+      ].join('\n')
 
       const result = prepareMermaidCode(input, 'classic')
 
@@ -130,16 +128,11 @@ describe('svgToBase64', () => {
 
   describe('Edge Cases', () => {
     it('should handle errors gracefully', async () => {
-      const encoderSpy = vi.spyOn(globalThis, 'TextEncoder').mockImplementation(
-        () =>
-          ({
-            encoding: 'utf-8',
-            encode: () => {
-              throw new Error('Encoder fail')
-            },
-            encodeInto: () => ({ read: 0, written: 0 }),
-          }) as unknown as TextEncoder,
-      )
+      const encoderSpy = vi.spyOn(globalThis, 'TextEncoder').mockImplementation(() => ({
+        encoding: 'utf-8',
+        encode: () => { throw new Error('Encoder fail') },
+        encodeInto: () => ({ read: 0, written: 0 }),
+      } as unknown as TextEncoder))
 
       const result = await svgToBase64('<svg>fail</svg>')
       expect(result).toBe('')
@@ -178,8 +171,7 @@ describe('processSvgForTheme', () => {
 
   describe('Dark Theme', () => {
     it('should process dark theme node colors and general elements', () => {
-      const svg =
-        '<rect fill="#ffffff" class="node-1"/><path stroke="#ffffff"/><rect fill="#ffffff" style="fill: #000000; stroke: #000000"/>'
+      const svg = '<rect fill="#ffffff" class="node-1"/><path stroke="#ffffff"/><rect fill="#ffffff" style="fill: #000000; stroke: #000000"/>'
       const result = processSvgForTheme(svg, true, false, themes)
       expect(result).toContain('fill="#121212"')
       expect(result).toContain('fill="#1e293b"') // Generic rect replacement
@@ -187,13 +179,12 @@ describe('processSvgForTheme', () => {
     })
 
     it('should handle multiple node colors in cyclic manner', () => {
-      const svg =
-        '<rect fill="#ffffff" class="node-1"/><rect fill="#ffffff" class="node-2"/><rect fill="#ffffff" class="node-3"/>'
+      const svg = '<rect fill="#ffffff" class="node-1"/><rect fill="#ffffff" class="node-2"/><rect fill="#ffffff" class="node-3"/>'
       const result = processSvgForTheme(svg, true, false, themes)
       const fillMatches = result.match(FILL_HEX_RE)
       expect(fillMatches).toContain('fill="#121212"')
       expect(fillMatches).toContain('fill="#222222"')
-      expect(fillMatches?.filter((f) => f === 'fill="#121212"').length).toBe(2)
+      expect(fillMatches?.filter(f => f === 'fill="#121212"').length).toBe(2)
     })
 
     it('should process handDrawn style for dark theme', () => {
@@ -219,7 +210,7 @@ describe('isMermaidCodeComplete', () => {
     })
 
     it('should handle validation error gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
       const startsWithSpy = vi.spyOn(String.prototype, 'startsWith').mockImplementation(() => {
         throw new Error('Start fail')
       })
@@ -260,7 +251,9 @@ describe('waitForDOMElement', () => {
   })
 
   it('should retry on failure', async () => {
-    const cb = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('success')
+    const cb = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('success')
     const result = await waitForDOMElement(cb, 3, 10)
     expect(result).toBe('success')
     expect(cb).toHaveBeenCalledTimes(2)

@@ -1,10 +1,7 @@
 import json
-from typing import cast
 
 import click
 import sqlalchemy as sa
-from sqlalchemy import update
-from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -743,17 +740,14 @@ def migrate_oss(
         else:
             try:
                 source_storage_type = StorageType.LOCAL if is_source_local else StorageType.OPENDAL
-                updated = cast(
-                    CursorResult,
-                    db.session.execute(
-                        update(UploadFile)
-                        .where(
-                            UploadFile.storage_type == source_storage_type,
-                            UploadFile.key.in_(copied_upload_file_keys),
-                        )
-                        .values(storage_type=dify_config.STORAGE_TYPE)
-                    ),
-                ).rowcount
+                updated = (
+                    db.session.query(UploadFile)
+                    .where(
+                        UploadFile.storage_type == source_storage_type,
+                        UploadFile.key.in_(copied_upload_file_keys),
+                    )
+                    .update({UploadFile.storage_type: dify_config.STORAGE_TYPE}, synchronize_session=False)
+                )
                 db.session.commit()
                 click.echo(click.style(f"Updated storage_type for {updated} upload_files records.", fg="green"))
             except Exception as e:

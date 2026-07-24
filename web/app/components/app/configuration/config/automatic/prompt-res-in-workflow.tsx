@@ -7,16 +7,22 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import PromptRes from './prompt-res'
 
-type Props = Readonly<{
+type Props = {
   value: string
   nodeId: string
-}>
+}
 
-const PromptResInWorkflow: FC<Props> = ({ value, nodeId }) => {
+const PromptResInWorkflow: FC<Props> = ({
+  value,
+  nodeId,
+}) => {
   const { t } = useTranslation()
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const {
+    availableVars,
+    availableNodes,
+  } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
-    filterVar: (_payload) => true,
+    filterVar: _payload => true,
   })
   return (
     <PromptRes
@@ -35,14 +41,15 @@ const PromptResInWorkflow: FC<Props> = ({ value, nodeId }) => {
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t(($) => $['blocks.start'], { ns: 'workflow' }),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }
           return acc
         }, {} as any),
       }}
-    ></PromptRes>
+    >
+    </PromptRes>
   )
 }
 export default React.memo(PromptResInWorkflow)

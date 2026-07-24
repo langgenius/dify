@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any, override
+from typing import Any
 
 import click
 from celery import shared_task
@@ -22,7 +22,6 @@ class SandboxedEnvironment(ImmutableSandboxedEnvironment):
         self._timeout_time = time.time() + timeout
         super().__init__(*args, **kwargs)
 
-    @override
     def call(self, context: Context, obj: Any, *args: Any, **kwargs: Any) -> Any:
         if time.time() > self._timeout_time:
             raise TimeoutError("Template rendering timeout")

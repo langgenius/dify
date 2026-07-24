@@ -12,14 +12,12 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration, MCPProviderEntity
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
-from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.error import MCPAuthError, MCPError
-from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.utils.encryption import ProviderConfigEncrypter
 from models.tools import MCPToolProvider
@@ -136,7 +134,6 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         headers: dict[str, str] | None = None,
-        identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
         # Validate URL format
@@ -172,7 +169,6 @@ class MCPToolManageService:
             sse_read_timeout=configuration.sse_read_timeout,
             encrypted_headers=encrypted_headers,
             encrypted_credentials=encrypted_credentials,
-            identity_mode=identity_mode,
         )
 
         self._session.add(mcp_tool)
@@ -196,7 +192,6 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         validation_result: ServerUrlValidationResult | None = None,
-        identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> None:
         """
         Update an MCP provider.
@@ -258,11 +253,6 @@ class MCPToolManageService:
             if authentication and authentication.client_id:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
 
-            # Update user-identity forwarding mode. The controller has already
-            # resolved "leave unchanged" and applied the ENTERPRISE_ENABLED gate,
-            # so this is always a concrete, vetted value.
-            mcp_provider.identity_mode = identity_mode
-
             # Flush changes to database
             self._session.flush()
 
@@ -294,7 +284,7 @@ class MCPToolManageService:
 
         # Batch query all users to avoid N+1 problem
         user_ids = {provider.user_id for provider in mcp_providers}
-        users = self._session.scalars(select(Account).where(Account.id.in_(user_ids))).all()
+        users = self._session.query(Account).where(Account.id.in_(user_ids)).all()
         user_name_map = {user.id: user.name for user in users}
 
         return [
@@ -459,11 +449,13 @@ class MCPToolManageService:
         Returns:
             JSON string of encrypted data
         """
-        from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+        from core.entities.provider_entities import BasicProviderConfig
         from core.tools.utils.encryption import create_provider_encrypter
 
         # Create config for secret fields
-        config = [BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=field) for field in secret_fields]
+        config = [
+            BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=field) for field in secret_fields
+        ]
 
         encrypter_instance, _ = create_provider_encrypter(
             tenant_id=tenant_id,
@@ -503,13 +495,7 @@ class MCPToolManageService:
         ) as mcp_client:
             return mcp_client.list_tools()
 
-    _ACTION_TO_OAUTH: dict[AuthActionType, OAuthDataType] = {
-        AuthActionType.SAVE_CLIENT_INFO: OAuthDataType.CLIENT_INFO,
-        AuthActionType.SAVE_TOKENS: OAuthDataType.TOKENS,
-        AuthActionType.SAVE_CODE_VERIFIER: OAuthDataType.CODE_VERIFIER,
-    }
-
-    def execute_auth_actions(self, auth_result: AuthResult) -> dict[str, str]:
+    def execute_auth_actions(self, auth_result: Any) -> dict[str, str]:
         """
         Execute the actions returned by the auth function.
 
@@ -521,13 +507,19 @@ class MCPToolManageService:
         Returns:
             The response from the auth result
         """
+        from core.mcp.entities import AuthAction, AuthActionType
+
+        action: AuthAction
         for action in auth_result.actions:
             if action.provider_id is None or action.tenant_id is None:
                 continue
 
-            oauth_type = self._ACTION_TO_OAUTH.get(action.action_type)
-            if oauth_type is not None:
-                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, oauth_type)
+            if action.action_type == AuthActionType.SAVE_CLIENT_INFO:
+                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.CLIENT_INFO)
+            elif action.action_type == AuthActionType.SAVE_TOKENS:
+                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.TOKENS)
+            elif action.action_type == AuthActionType.SAVE_CODE_VERIFIER:
+                self.save_oauth_data(action.provider_id, action.tenant_id, action.data, OAuthDataType.CODE_VERIFIER)
 
         return auth_result.response
 
@@ -689,7 +681,7 @@ class MCPToolManageService:
             raise ValueError(f"Failed to re-connect MCP server: {e}") from e
 
     def _build_tool_provider_response(
-        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
+        self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
         user = db_provider.load_user()
@@ -711,7 +703,7 @@ class MCPToolManageService:
             raise ValueError(f"MCP tool {server_url} already exists")
         if "unique_mcp_provider_server_identifier" in error_msg:
             raise ValueError(f"MCP tool {server_identifier} already exists")
-        raise error
+        raise
 
     def _is_valid_url(self, url: str) -> bool:
         """Validate URL format."""

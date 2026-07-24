@@ -1,155 +1,111 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import type { FC } from 'react'
+import { RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import ActionButton from '@/app/components/base/action-button'
+// import Button from '@/app/components/base/button'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
 import { PluginSource } from '../types'
 
-type OperationDropdownProps = Readonly<{
+type Props = {
   source: PluginSource
   onInfo: () => void
   onCheckVersion: () => void
   onRemove: () => void
-  onViewReadme?: () => void
   detailUrl: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  popupClassName?: string
-  triggerSize?: 'm' | 'xs'
-  destructiveRemove?: boolean
-  showCheckVersion?: boolean
-  showRemove?: boolean
-}>
+}
 
-export function OperationDropdown({
+const OperationDropdown: FC<Props> = ({
   source,
   detailUrl,
   onInfo,
   onCheckVersion,
   onRemove,
-  onViewReadme,
-  placement = 'bottom-end',
-  sideOffset = 4,
-  alignOffset = 0,
-  popupClassName,
-  triggerSize = 'm',
-  destructiveRemove = false,
-  showCheckVersion = true,
-  showRemove = true,
-}: OperationDropdownProps) {
+}) => {
   const { t } = useTranslation()
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
-  const showInfo = source === PluginSource.github
-  const showCheckVersionAction = showCheckVersion && source === PluginSource.github
-  const showMarketplaceDetail =
-    (source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace
-  const showRemoveAction = showRemove
-  const showSeparator = showRemoveAction && (showMarketplaceDetail || !!onViewReadme)
+  const [open, doSetOpen] = useState(false)
+  const openRef = useRef(open)
+  const setOpen = useCallback((v: boolean) => {
+    doSetOpen(v)
+    openRef.current = v
+  }, [doSetOpen])
 
-  if (
-    !showInfo &&
-    !showCheckVersionAction &&
-    !showMarketplaceDetail &&
-    !onViewReadme &&
-    !showRemoveAction
-  )
-    return null
+  const handleTrigger = useCallback(() => {
+    setOpen(!openRef.current)
+  }, [setOpen])
+
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          'action-btn data-popup-open:bg-state-base-hover',
-          triggerSize === 'xs' ? 'action-btn-xs' : 'action-btn-m',
-        )}
-        aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        popupClassName={cn('w-[192px] py-1', popupClassName)}
-      >
-        {showInfo && (
-          <DropdownMenuItem
-            className="px-2 py-1 system-md-regular text-text-secondary"
-            onClick={onInfo}
-          >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
-              {t(($) => $['detailPanel.operation.info'], { ns: 'plugin' })}
-            </span>
-          </DropdownMenuItem>
-        )}
-        {showCheckVersionAction && (
-          <DropdownMenuItem
-            className="px-2 py-1 system-md-regular text-text-secondary"
-            onClick={onCheckVersion}
-          >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
-              {t(($) => $['detailPanel.operation.checkUpdate'], { ns: 'plugin' })}
-            </span>
-          </DropdownMenuItem>
-        )}
-        {showMarketplaceDetail && (
-          <DropdownMenuLinkItem
-            className="px-2 py-1 system-md-regular text-text-secondary"
-            href={detailUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
-          >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
-              {t(($) => $['detailPanel.operation.viewDetail'], { ns: 'plugin' })}
-            </span>
-            <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
-          </DropdownMenuLinkItem>
-        )}
-        {onViewReadme && (
-          <DropdownMenuItem
-            className="px-2 py-1 system-md-regular text-text-secondary"
-            onClick={onViewReadme}
-          >
-            <span className="min-w-0 grow truncate px-1 py-0.5">
-              {t(($) => $['detailPanel.operation.viewReadme'], { ns: 'plugin' })}
-            </span>
-          </DropdownMenuItem>
-        )}
-        {showSeparator && <DropdownMenuSeparator />}
-        {showRemoveAction && (
-          <DropdownMenuItem
-            className={cn(
-              'px-2 py-1 system-md-regular text-text-secondary',
-              destructiveRemove &&
-                'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-            )}
-            onClick={onRemove}
-          >
-            <span
-              className={cn(
-                'min-w-0 grow truncate px-1 py-0.5',
-                destructiveRemove && 'text-inherit',
-              )}
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={setOpen}
+      placement="bottom-end"
+      offset={{
+        mainAxis: -12,
+        crossAxis: 36,
+      }}
+    >
+      <PortalToFollowElemTrigger onClick={handleTrigger}>
+        <div>
+          <ActionButton className={cn(open && 'bg-state-base-hover')}>
+            <RiMoreFill className="h-4 w-4" />
+          </ActionButton>
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-50">
+        <div className="w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+          {source === PluginSource.github && (
+            <div
+              onClick={() => {
+                onInfo()
+                handleTrigger()
+              }}
+              className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
             >
-              {t(($) => $['detailPanel.operation.remove'], { ns: 'plugin' })}
-            </span>
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              {t('detailPanel.operation.info', { ns: 'plugin' })}
+            </div>
+          )}
+          {source === PluginSource.github && (
+            <div
+              onClick={() => {
+                onCheckVersion()
+                handleTrigger()
+              }}
+              className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+            >
+              {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
+            </div>
+          )}
+          {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
+            <a href={detailUrl} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
+              <span className="grow">{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
+              <RiArrowRightUpLine className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+            </a>
+          )}
+          {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
+            <div className="my-1 h-px bg-divider-subtle"></div>
+          )}
+          <div
+            onClick={() => {
+              onRemove()
+              handleTrigger()
+            }}
+            className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive"
+          >
+            {t('detailPanel.operation.remove', { ns: 'plugin' })}
+          </div>
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
+export default React.memo(OperationDropdown)

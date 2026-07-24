@@ -1,6 +1,5 @@
 {
   "allTags": "Всі теги",
-  "clearSelectedTags": "Очистити вибрані теги: {{tags}}",
   "searchTags": "Пошукові теги",
   "tags.agent": "Агент",
   "tags.business": "Бізнес",

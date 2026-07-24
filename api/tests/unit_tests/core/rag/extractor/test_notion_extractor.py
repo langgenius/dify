@@ -1,51 +1,11 @@
-"""Unit tests for Notion extraction, HTTP parsing, and persisted metadata updates."""
-
-import json
-import uuid
-from collections.abc import Iterator
 from types import SimpleNamespace
 from unittest import mock
 
 import httpx
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor import notion_extractor
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.base import TypeBase
-from models.dataset import Document as DocumentModel
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-
-
-@pytest.fixture
-def persisted_document(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-) -> Iterator[tuple[sessionmaker[Session], DocumentModel]]:
-    """Persist a Notion document and bind the extractor's ``db.session`` to SQLite."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    document = DocumentModel(
-        id=str(uuid.uuid4()),
-        tenant_id=str(uuid.uuid4()),
-        dataset_id=str(uuid.uuid4()),
-        position=1,
-        data_source_type=DataSourceType.NOTION_IMPORT,
-        data_source_info=json.dumps({"source": "notion", "last_edited_time": "2025-01-01T00:00:00.000Z"}),
-        batch="batch",
-        name="Notion page",
-        created_from=DocumentCreatedFrom.API,
-        created_by=str(uuid.uuid4()),
-        indexing_status=IndexingStatus.COMPLETED,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-    )
-    with session_maker() as sqlite_session:
-        sqlite_session.add(document)
-        sqlite_session.commit()
-        monkeypatch.setattr(notion_extractor, "db", SimpleNamespace(session=sqlite_session))
-        yield session_maker, document
 
 
 def _mock_response(data, status_code: int = 200, text: str = ""):
@@ -68,7 +28,7 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "token"
 
-    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch: pytest.MonkeyPatch):
+    def test_init_falls_back_to_env_token_when_credential_lookup_fails(self, monkeypatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
@@ -86,7 +46,7 @@ class TestNotionExtractorInitAndPublicMethods:
 
         assert extractor._notion_access_token == "env-token"
 
-    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch: pytest.MonkeyPatch):
+    def test_init_raises_if_no_credential_and_no_env_token(self, monkeypatch):
         monkeypatch.setattr(
             notion_extractor.NotionExtractor,
             "_get_access_token",
@@ -103,7 +63,7 @@ class TestNotionExtractorInitAndPublicMethods:
                 credential_id="cred",
             )
 
-    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_updates_last_edited_and_loads_documents(self, monkeypatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -123,7 +83,7 @@ class TestNotionExtractorInitAndPublicMethods:
         load_mock.assert_called_once_with("obj", "page")
         assert len(docs) == 1
 
-    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_data_as_documents_page_database_and_invalid(self, monkeypatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -434,11 +394,7 @@ class TestNotionMetadataAndCredentialMethods:
 
         assert extractor.update_last_edited_time(None) is None
 
-    def test_update_last_edited_time_updates_document_and_commits(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        persisted_document: tuple[sessionmaker[Session], DocumentModel],
-    ):
+    def test_update_last_edited_time_updates_document_and_commits(self, monkeypatch):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",
             notion_obj_id="obj",
@@ -446,20 +402,39 @@ class TestNotionMetadataAndCredentialMethods:
             tenant_id="tenant",
             notion_access_token="token",
         )
+
+        class FakeDocumentModel:
+            data_source_info = "data_source_info"
+
+        update_calls = []
+
+        class FakeQuery:
+            def filter_by(self, **kwargs):
+                return self
+
+            def update(self, payload):
+                update_calls.append(payload)
+
+        class FakeSession:
+            committed = False
+
+            def query(self, model):
+                assert model is FakeDocumentModel
+                return FakeQuery()
+
+            def commit(self):
+                self.committed = True
+
+        fake_db = SimpleNamespace(session=FakeSession())
+        monkeypatch.setattr(notion_extractor, "DocumentModel", FakeDocumentModel)
+        monkeypatch.setattr(notion_extractor, "db", fake_db)
         monkeypatch.setattr(extractor, "get_notion_last_edited_time", lambda: "2026-01-01T00:00:00.000Z")
-        session_maker, document = persisted_document
 
-        extractor.update_last_edited_time(document)
+        doc_model = SimpleNamespace(id="doc-1", data_source_info_dict={"source": "notion"})
+        extractor.update_last_edited_time(doc_model)
 
-        # Closing the writer session rolls back an uncommitted update before the independent read below.
-        notion_extractor.db.session.close()
-        with session_maker() as verification_session:
-            stored_document = verification_session.get(DocumentModel, document.id)
-            assert stored_document is not None
-            assert stored_document.data_source_info_dict == {
-                "source": "notion",
-                "last_edited_time": "2026-01-01T00:00:00.000Z",
-            }
+        assert update_calls
+        assert fake_db.session.committed is True
 
     def test_get_notion_last_edited_time_uses_page_and_database_urls(self, mocker: MockerFixture):
         extractor_page = notion_extractor.NotionExtractor(
@@ -503,7 +478,7 @@ class TestNotionMetadataAndCredentialMethods:
         with pytest.raises(AssertionError, match="Notion access token is required"):
             extractor.get_notion_last_edited_time()
 
-    def test_get_access_token_success_and_errors(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_access_token_success_and_errors(self, monkeypatch):
         with pytest.raises(Exception, match="No credential id found"):
             notion_extractor.NotionExtractor._get_access_token("tenant", None)
 

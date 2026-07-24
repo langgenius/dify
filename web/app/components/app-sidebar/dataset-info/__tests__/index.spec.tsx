@@ -1,39 +1,27 @@
 import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
+import { RiEditLine } from '@remixicon/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+} from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
 import Menu from '../menu'
 import MenuItem from '../menu-item'
 
 let mockDataset: DataSet
-const mockPush = vi.fn()
+let mockIsDatasetOperator = false
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
-const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
-let mockIsRbacEnabled = true
-const mockConsoleState = vi.hoisted(() => ({
-  current: {
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: [] as string[],
-  },
-}))
-
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      rbac_enabled: mockIsRbacEnabled,
-    },
-  })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -99,34 +87,23 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'rag_pipeline',
   enable_api: false,
   is_multimodal: false,
-  permission_keys: [
-    DatasetACLPermission.Edit,
-    DatasetACLPermission.Delete,
-    DatasetACLPermission.ImportExportDSL,
-  ],
   ...overrides,
 })
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: mockPush,
     replace: mockReplace,
   }),
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
-    selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current)
-})
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
+    selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
+}))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
@@ -164,15 +141,12 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     onClose: () => void
     onSuccess?: () => void
   }) => {
-    if (!show) return null
+    if (!show)
+      return null
     return (
       <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>
-          Success
-        </button>
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
+        <button type="button" onClick={onSuccess}>Success</button>
+        <button type="button" onClick={onClose}>Close</button>
       </div>
     )
   },
@@ -186,23 +160,22 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('DatasetInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsRbacEnabled = true
     mockDataset = createDataset()
+    mockIsDatasetOperator = false
   })
 
   // Rendering of dataset summary details based on expand and dataset state.
   describe('Rendering', () => {
     it('should show dataset details when expanded', () => {
       // Arrange
-      mockDataset = createDataset({ is_published: false })
+      mockDataset = createDataset({ is_published: true })
       render(<DatasetInfo expand />)
 
       // Assert
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset description')).toBeInTheDocument()
       expect(screen.getByText('dataset.chunkingMode.general')).toBeInTheDocument()
       expect(screen.getByText('indexing-technique')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
     it('should show external tag when provider is external', () => {
@@ -237,38 +210,13 @@ describe('MenuItem', () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
       // Arrange
-      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
+      render(<MenuItem name="Edit" Icon={RiEditLine} handleClick={handleClick} />)
 
       // Act
       await user.click(screen.getByText('Edit'))
 
       // Assert
       expect(handleClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
-      const handleClick = vi.fn()
-
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
-
-      fireEvent.click(screen.getByText('Edit'))
-
-      expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
-    })
-
-    it('should prevent the default action when no click handler is provided', () => {
-      render(<MenuItem name="Edit" Icon={TestEditIcon} />)
-
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
-
-      expect(event.defaultPrevented).toBe(true)
     })
   })
 })
@@ -299,21 +247,6 @@ describe('Menu', () => {
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
 
-    it('should show resource access option when enabled', () => {
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
-    })
-
     it('should hide export and delete options when not rag pipeline and not deletable', () => {
       // Arrange
       mockDataset = createDataset({ runtime_mode: 'general' })
@@ -328,71 +261,8 @@ describe('Menu', () => {
 
       // Assert
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(
-        screen.queryByText('datasetPipeline.operations.exportPipeline'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Interactions', () => {
-    it('should invoke the rename callback when edit is clicked', async () => {
-      const user = userEvent.setup()
-      const openRenameModal = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={openRenameModal}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      await user.click(screen.getByText('common.operation.edit'))
-
-      expect(openRenameModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke export and delete callbacks from their menu items', async () => {
-      const user = userEvent.setup()
-      const handleExportPipeline = vi.fn()
-      const detectIsUsedByApp = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={vi.fn()}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-        />,
-      )
-
-      await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
-      await user.click(screen.getByText('common.operation.delete'))
-
-      expect(handleExportPipeline).toHaveBeenCalledTimes(1)
-      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke access config callback from its menu item', async () => {
-      const user = userEvent.setup()
-      const openAccessConfig = vi.fn()
-
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={openAccessConfig}
-        />,
-      )
-
-      await user.click(screen.getByText('common.settings.resourceAccess'))
-
-      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 })
@@ -401,7 +271,7 @@ describe('Dropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
-    mockIsRbacEnabled = true
+    mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -419,16 +289,12 @@ describe('Dropdown', () => {
     }
   })
 
-  // Rendering behavior based on dataset ACL permission keys.
+  // Rendering behavior based on workspace role.
   describe('Rendering', () => {
-    it('should hide delete option when dataset lacks delete ACL permission', async () => {
+    it('should hide delete option when user is dataset operator', async () => {
       const user = userEvent.setup()
       // Arrange
-      mockDataset = createDataset({
-        pipeline_id: 'pipeline-1',
-        runtime_mode: 'rag_pipeline',
-        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.ImportExportDSL],
-      })
+      mockIsDatasetOperator = true
       render(<Dropdown expand />)
 
       // Act
@@ -436,42 +302,6 @@ describe('Dropdown', () => {
 
       // Assert
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
-    })
-
-    it('should show resource access option when dataset only has access config ACL permission', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      mockDataset = createDataset({
-        runtime_mode: 'general',
-        permission_keys: [DatasetACLPermission.AccessConfig],
-      })
-      render(<Dropdown expand />)
-
-      // Act
-      await openMenu(user)
-
-      // Assert
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
-      expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
-    })
-
-    it('should hide resource access option when RBAC is disabled', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      mockIsRbacEnabled = false
-      mockDataset = createDataset({
-        runtime_mode: 'general',
-        permission_keys: [DatasetACLPermission.AccessConfig, DatasetACLPermission.Delete],
-      })
-      render(<Dropdown expand />)
-
-      // Act
-      await openMenu(user)
-
-      // Assert
-      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
@@ -543,23 +373,6 @@ describe('Dropdown', () => {
       })
       expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
-    })
-
-    it('should navigate to dataset access config when resource access is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      mockDataset = createDataset({
-        runtime_mode: 'general',
-        permission_keys: [DatasetACLPermission.AccessConfig],
-      })
-      render(<Dropdown expand />)
-
-      // Act
-      await openMenu(user)
-      await user.click(screen.getByText('common.settings.resourceAccess'))
-
-      // Assert
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')
     })
   })
 })

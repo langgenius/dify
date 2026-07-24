@@ -1,10 +1,9 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import abort
 from flask_restx import Resource
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed
@@ -15,22 +14,26 @@ from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
-def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+
+def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
-            installed_app = db.session.scalar(
-                select(InstalledApp)
+            installed_app = (
+                db.session.query(InstalledApp)
                 .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
-                .limit(1)
+                .first()
             )
 
             if installed_app is None:
                 raise NotFound("Installed app not found")
 
-            if not installed_app.app_with_session(session=db.session()):
+            if not installed_app.app:
                 db.session.delete(installed_app)
                 db.session.commit()
 
@@ -45,7 +48,7 @@ def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], 
     return decorator
 
 
-def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
@@ -69,26 +72,25 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
     return decorator
 
 
-def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = None):
+def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
     def decorator(view: Callable[Concatenate[App, P], R]):
         @wraps(view)
         def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):
             current_user, _ = current_account_with_tenant()
-            session = db.session()
 
-            trial_app = session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
+            trial_app = db.session.query(TrialApp).where(TrialApp.app_id == str(app_id)).first()
 
             if trial_app is None:
                 raise TrialAppNotAllowed()
-            app = trial_app.app_with_session(session=session)
+            app = trial_app.app
 
             if app is None:
                 raise TrialAppNotAllowed()
 
-            account_trial_app_record = session.scalar(
-                select(AccountTrialAppRecord)
+            account_trial_app_record = (
+                db.session.query(AccountTrialAppRecord)
                 .where(AccountTrialAppRecord.account_id == current_user.id, AccountTrialAppRecord.app_id == app_id)
-                .limit(1)
+                .first()
             )
             if account_trial_app_record:
                 if account_trial_app_record.count >= trial_app.trial_limit:
@@ -103,7 +105,7 @@ def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = N
     return decorator
 
 
-def trial_feature_enable[**P, R](view: Callable[P, R]):
+def trial_feature_enable(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -114,7 +116,7 @@ def trial_feature_enable[**P, R](view: Callable[P, R]):
     return decorated
 
 
-def explore_banner_enabled[**P, R](view: Callable[P, R]):
+def explore_banner_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()

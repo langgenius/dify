@@ -2,11 +2,9 @@
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
@@ -16,7 +14,6 @@ import {
 } from '@/service/use-tools'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
-import { getAppACLCapabilities } from '@/utils/permission'
 
 const BASIC_APP_CONFIG_KEY = 'basicAppConfig'
 
@@ -27,7 +24,10 @@ type BasicAppConfig = {
   user_input_form?: Array<Record<string, unknown>>
 }
 
-export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: boolean) => {
+export const useMCPServiceCardState = (
+  appInfo: AppInfo,
+  triggerModeDisabled: boolean,
+) => {
   const appId = appInfo.id
   const queryClient = useQueryClient()
 
@@ -35,26 +35,16 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
   const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const canManageMCP = useMemo(
-    () =>
-      getAppACLCapabilities(appInfo.permission_keys, {
-        currentUserId,
-        resourceMaintainer: appInfo.maintainer,
-        workspacePermissionKeys,
-      }).canEdit,
-    [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
-  )
+  // Context
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
 
   // UI state
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
   // Derived app type values
-  const isAdvancedApp =
-    appInfo?.mode === AppModeEnum.ADVANCED_CHAT || appInfo?.mode === AppModeEnum.WORKFLOW
+  const isAdvancedApp = appInfo?.mode === AppModeEnum.ADVANCED_CHAT || appInfo?.mode === AppModeEnum.WORKFLOW
   const isBasicApp = !isAdvancedApp
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
 
@@ -72,34 +62,32 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   })
 
   // MCP server detail
-  const { data: detail } = useMCPServerDetail(appId, !!appId)
+  const { data: detail } = useMCPServerDetail(appId)
   const { id, status, server_code } = detail ?? {}
 
   // Server state
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished
-    ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${server_code}/mcp`
+    ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp`
     : '***********'
 
   // App state checks
   const appUnpublished = isAdvancedApp ? !currentWorkflow?.graph : !basicAppConfig.updated_at
-  const hasStartNode = currentWorkflow?.graph?.nodes?.some(
-    (node) => node.data.type === BlockEnum.Start,
-  )
+  const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
   const missingStartNode = isWorkflowApp && !hasStartNode
-  const hasInsufficientPermissions = !canManageMCP
-  const toggleDisabled =
-    hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
+  const hasInsufficientPermissions = !isCurrentWorkspaceEditor
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
   const isMinimalState = appUnpublished || missingStartNode
 
   // Basic app input form
   const basicAppInputForm = useMemo(() => {
-    if (!isBasicApp || !basicAppConfig?.user_input_form) return []
+    if (!isBasicApp || !basicAppConfig?.user_input_form)
+      return []
     return (basicAppConfig.user_input_form as Array<Record<string, unknown>>).map((item) => {
       const type = Object.keys(item)[0]
       return {
-        ...(item[type!] as object),
+        ...(item[type] as object),
         type: type || 'text-input',
       }
     })
@@ -108,11 +96,10 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   // Latest params for modal
   const latestParams = useMemo(() => {
     if (isAdvancedApp) {
-      if (!currentWorkflow?.graph) return []
-      type StartNodeData = { type: string; variables?: Array<{ variable: string; label: string }> }
-      const startNode = currentWorkflow?.graph.nodes.find(
-        (node) => node.data.type === BlockEnum.Start,
-      ) as { data: StartNodeData } | undefined
+      if (!currentWorkflow?.graph)
+        return []
+      type StartNodeData = { type: string, variables?: Array<{ variable: string, label: string }> }
+      const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as { data: StartNodeData } | undefined
       return startNode?.data.variables || []
     }
     return basicAppInputForm
@@ -120,33 +107,26 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
 
   // Handlers
   const handleGenCode = useCallback(async () => {
-    if (!canManageMCP) return
-
     await refreshMCPServerCode(detail?.id || '')
     invalidateMCPServerDetail(appId)
-  }, [canManageMCP, refreshMCPServerCode, detail?.id, invalidateMCPServerDetail, appId])
+  }, [refreshMCPServerCode, detail?.id, invalidateMCPServerDetail, appId])
 
-  const handleStatusChange = useCallback(
-    async (state: boolean) => {
-      if (!canManageMCP) return { activated: false }
+  const handleStatusChange = useCallback(async (state: boolean) => {
+    if (state && !serverPublished) {
+      setShowMCPServerModal(true)
+      return { activated: false }
+    }
 
-      if (state && !serverPublished) {
-        setShowMCPServerModal(true)
-        return { activated: false }
-      }
-
-      await updateMCPServer({
-        appID: appId,
-        id: id || '',
-        description: detail?.description || '',
-        parameters: detail?.parameters || {},
-        status: state ? 'active' : 'inactive',
-      })
-      invalidateMCPServerDetail(appId)
-      return { activated: state }
-    },
-    [canManageMCP, serverPublished, updateMCPServer, appId, id, detail, invalidateMCPServerDetail],
-  )
+    await updateMCPServer({
+      appID: appId,
+      id: id || '',
+      description: detail?.description || '',
+      parameters: detail?.parameters || {},
+      status: state ? 'active' : 'inactive',
+    })
+    invalidateMCPServerDetail(appId)
+    return { activated: state }
+  }, [serverPublished, updateMCPServer, appId, id, detail, invalidateMCPServerDetail])
 
   const handleServerModalHide = useCallback((wasActivated: boolean) => {
     setShowMCPServerModal(false)
@@ -154,17 +134,9 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
     return { shouldDeactivate: !wasActivated }
   }, [])
 
-  const openConfirmDelete = useCallback(() => {
-    if (!canManageMCP) return
-
-    setShowConfirmDelete(true)
-  }, [canManageMCP])
+  const openConfirmDelete = useCallback(() => setShowConfirmDelete(true), [])
   const closeConfirmDelete = useCallback(() => setShowConfirmDelete(false), [])
-  const openServerModal = useCallback(() => {
-    if (!canManageMCP) return
-
-    setShowMCPServerModal(true)
-  }, [canManageMCP])
+  const openServerModal = useCallback(() => setShowMCPServerModal(true), [])
 
   const invalidateBasicAppConfig = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: [BASIC_APP_CONFIG_KEY, appId] })
@@ -182,7 +154,7 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
     detail,
 
     // Permission & validation flags
-    canManageMCP,
+    isCurrentWorkspaceManager,
     toggleDisabled,
     isMinimalState,
     appUnpublished,

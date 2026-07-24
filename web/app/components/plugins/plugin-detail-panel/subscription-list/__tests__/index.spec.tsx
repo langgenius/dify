@@ -2,19 +2,9 @@ import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/t
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { createReactI18nextMock } from '@/test/i18n-mock'
+import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
-
-vi.mock('react-i18next', () =>
-  createReactI18nextMock({
-    'errorBoundary.title': 'Something went wrong',
-    'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
-    'errorBoundary.tryAgain': 'Try Again',
-    'errorBoundary.reloadPage': 'Reload Page',
-  }),
-)
 
 const mockRefetch = vi.fn()
 let mockSubscriptionListError: Error | null = null
@@ -28,15 +18,15 @@ let mockPluginDetail: PluginDetail | undefined
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => {
-    if (mockSubscriptionListError) throw mockSubscriptionListError
+    if (mockSubscriptionListError)
+      throw mockSubscriptionListError
     return mockSubscriptionListState
   },
 }))
 
 vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
-  ) => selector({ detail: mockPluginDetail }),
+  usePluginStore: (selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined) =>
+    selector({ detail: mockPluginDetail }),
 }))
 
 const mockInitiateOAuth = vi.fn()
@@ -53,7 +43,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialType.ApiKey,
+  credential_type: TriggerCredentialTypeEnum.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},
@@ -102,8 +92,8 @@ describe('SubscriptionList', () => {
     it('should render list view by default', () => {
       render(<SubscriptionList />)
 
-      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/))!.toBeInTheDocument()
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/)).toBeInTheDocument()
+      expect(screen.getByText('Subscription One')).toBeInTheDocument()
     })
 
     it('should render loading state when subscriptions are loading', () => {
@@ -114,7 +104,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList />)
 
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
       expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
     })
 
@@ -123,7 +113,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList pluginDetail={pluginDetail} />)
 
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
+      expect(screen.getByText('Subscription One')).toBeInTheDocument()
     })
 
     it('should render without list entries when subscriptions are empty', () => {
@@ -143,12 +133,15 @@ describe('SubscriptionList', () => {
     it('should render selector view when mode is selector', () => {
       render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
 
-      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
+      expect(screen.getByText('Subscription One')).toBeInTheDocument()
     })
 
     it('should visually distinguish selected subscription from unselected', () => {
       const { rerender } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="sub-1" />,
+        <SubscriptionList
+          mode={SubscriptionListMode.SELECTOR}
+          selectedId="sub-1"
+        />,
       )
 
       const getRowClassName = () =>
@@ -156,7 +149,12 @@ describe('SubscriptionList', () => {
 
       const selectedClassName = getRowClassName()
 
-      rerender(<SubscriptionList mode={SubscriptionListMode.SELECTOR} selectedId="other-id" />)
+      rerender(
+        <SubscriptionList
+          mode={SubscriptionListMode.SELECTOR}
+          selectedId="other-id"
+        />,
+      )
 
       expect(selectedClassName).not.toBe(getRowClassName())
     })
@@ -166,12 +164,17 @@ describe('SubscriptionList', () => {
     it('should call onSelect with refetch callback when selecting a subscription', () => {
       const onSelect = vi.fn()
 
-      render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />)
+      render(
+        <SubscriptionList
+          mode={SubscriptionListMode.SELECTOR}
+          onSelect={onSelect}
+        />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
-      const [selectedSubscription, callback] = (onSelect.mock.calls[0] ?? []) as [any, any]
+      const [selectedSubscription, callback] = onSelect.mock.calls[0]
       expect(selectedSubscription).toMatchObject({ id: 'sub-1', name: 'Subscription One' })
       expect(typeof callback).toBe('function')
 
@@ -190,7 +193,10 @@ describe('SubscriptionList', () => {
     it('should open delete confirm without triggering selection', () => {
       const onSelect = vi.fn()
       const { container } = render(
-        <SubscriptionList mode={SubscriptionListMode.SELECTOR} onSelect={onSelect} />,
+        <SubscriptionList
+          mode={SubscriptionListMode.SELECTOR}
+          onSelect={onSelect}
+        />,
       )
 
       const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
@@ -198,19 +204,17 @@ describe('SubscriptionList', () => {
       fireEvent.click(deleteButton)
 
       expect(onSelect).not.toHaveBeenCalled()
-      expect(
-        screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-      )!.toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
-    it('should render error boundary fallback when an error occurs', async () => {
+    it('should render error boundary fallback when an error occurs', () => {
       mockSubscriptionListError = new Error('boom')
 
       render(<SubscriptionList />)
 
-      expect(await screen.findByText('Something went wrong'))!.toBeInTheDocument()
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument()
     })
   })
 })

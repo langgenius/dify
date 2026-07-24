@@ -1,68 +1,36 @@
 'use client'
 
-import { useAtomValue } from 'jotai'
+import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
+import { useAppContext } from '@/context/app-context'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
-import {
-  workspacePermissionKeysAtom,
-  workspacePermissionKeysLoadingAtom,
-} from '@/context/permission-state'
-import { currentWorkspaceIdAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
-import { usePathname, useRouter } from '@/next/navigation'
-import { hasPermission } from '@/utils/permission'
-
-const isDatasetCreatePath = (pathname: string) => {
-  return (
-    pathname === '/datasets/create' ||
-    pathname.startsWith('/datasets/create/') ||
-    pathname === '/datasets/new/create' ||
-    pathname === '/datasets/create-from-pipeline' ||
-    pathname.startsWith('/datasets/create-from-pipeline/')
-  )
-}
-
-const isDatasetExternalConnectPath = (pathname: string) => {
-  return (
-    pathname === '/datasets/connect' ||
-    pathname.startsWith('/datasets/connect/') ||
-    /^\/datasets\/new\/[^/]+\/sources\/new\/?$/.test(pathname)
-  )
-}
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
   const router = useRouter()
-  const pathname = usePathname()
-  const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
-  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const canConnectExternalDataset = hasPermission(
-    workspacePermissionKeys,
-    'dataset.external.connect',
-  )
-  const shouldRedirectToDatasets =
-    !isLoadingAccess &&
-    !!currentWorkspaceId &&
-    ((isDatasetCreatePath(pathname) && !canCreateDataset) ||
-      (isDatasetExternalConnectPath(pathname) && !canConnectExternalDataset))
+  const shouldRedirect = !isLoadingCurrentWorkspace
+    && currentWorkspace.id
+    && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
 
   useEffect(() => {
-    if (shouldRedirectToDatasets) router.replace('/datasets')
-  }, [shouldRedirectToDatasets, router])
+    if (shouldRedirect)
+      router.replace('/apps')
+  }, [shouldRedirect, router])
 
-  if (isLoadingAccess || !currentWorkspaceId) return <Loading type="app" />
+  if (isLoadingCurrentWorkspace || !currentWorkspace.id)
+    return <Loading type="app" />
 
-  if (shouldRedirectToDatasets) {
+  if (shouldRedirect) {
     return null
   }
 
   return (
-    <ExternalKnowledgeApiProvider enabled={canConnectExternalDataset}>
-      <ExternalApiPanelProvider>{children}</ExternalApiPanelProvider>
+    <ExternalKnowledgeApiProvider>
+      <ExternalApiPanelProvider>
+        {children}
+      </ExternalApiPanelProvider>
     </ExternalKnowledgeApiProvider>
   )
 }

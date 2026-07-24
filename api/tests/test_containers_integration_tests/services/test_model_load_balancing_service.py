@@ -18,10 +18,11 @@ class TestModelLoadBalancingService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch(
-                "services.model_load_balancing_service.create_plugin_provider_manager", autospec=True
-            ) as mock_provider_manager,
+            patch("services.model_load_balancing_service.ProviderManager", autospec=True) as mock_provider_manager,
             patch("services.model_load_balancing_service.LBModelManager", autospec=True) as mock_lb_model_manager,
+            patch(
+                "services.model_load_balancing_service.ModelProviderFactory", autospec=True
+            ) as mock_model_provider_factory,
             patch("services.model_load_balancing_service.encrypter", autospec=True) as mock_encrypter,
         ):
             # Setup default mock returns
@@ -45,6 +46,9 @@ class TestModelLoadBalancingService:
             # Mock LBModelManager
             mock_lb_model_manager.get_config_in_cooldown_and_ttl.return_value = (False, 0)
 
+            # Mock ModelProviderFactory
+            mock_model_provider_factory_instance = mock_model_provider_factory.return_value
+
             # Mock credential schemas
             mock_credential_schema = MagicMock()
             mock_credential_schema.credential_form_schemas = []
@@ -57,6 +61,7 @@ class TestModelLoadBalancingService:
             yield {
                 "provider_manager": mock_provider_manager,
                 "lb_model_manager": mock_lb_model_manager,
+                "model_provider_factory": mock_model_provider_factory,
                 "encrypter": mock_encrypter,
                 "provider_config": mock_provider_config,
                 "provider_model_setting": mock_provider_model_setting,
@@ -141,7 +146,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant_id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
-            model_type="llm",
+            model_type="text-generation",  # Use the origin model type that matches the query
             enabled=True,
             load_balancing_enabled=False,
         )
@@ -298,7 +303,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant.id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
-            model_type="llm",
+            model_type="text-generation",  # Use the origin model type that matches the query
             name="config1",
             encrypted_config='{"api_key": "test_key"}',
             enabled=True,
@@ -339,11 +344,7 @@ class TestModelLoadBalancingService:
         # Act: Execute the method under test
         service = ModelLoadBalancingService()
         is_enabled, configs = service.get_load_balancing_configs(
-            tenant_id=tenant.id,
-            provider="openai",
-            model="gpt-3.5-turbo",
-            model_type="llm",
-            session=db_session_with_containers,
+            tenant_id=tenant.id, provider="openai", model="gpt-3.5-turbo", model_type="llm"
         )
 
         # Assert: Verify the expected outcomes
@@ -385,11 +386,7 @@ class TestModelLoadBalancingService:
         service = ModelLoadBalancingService()
         with pytest.raises(ValueError) as exc_info:
             service.get_load_balancing_configs(
-                tenant_id=tenant.id,
-                provider="nonexistent_provider",
-                model="gpt-3.5-turbo",
-                model_type="llm",
-                session=db_session_with_containers,
+                tenant_id=tenant.id, provider="nonexistent_provider", model="gpt-3.5-turbo", model_type="llm"
             )
 
         # Verify correct error message
@@ -425,7 +422,7 @@ class TestModelLoadBalancingService:
             tenant_id=tenant.id,
             provider_name="openai",
             model_name="gpt-3.5-turbo",
-            model_type="llm",
+            model_type="text-generation",  # Use the origin model type that matches the query
             name="config1",
             encrypted_config='{"api_key": "test_key"}',
             enabled=True,
@@ -451,11 +448,7 @@ class TestModelLoadBalancingService:
         # Act: Execute the method under test
         service = ModelLoadBalancingService()
         is_enabled, configs = service.get_load_balancing_configs(
-            tenant_id=tenant.id,
-            provider="openai",
-            model="gpt-3.5-turbo",
-            model_type="llm",
-            session=db_session_with_containers,
+            tenant_id=tenant.id, provider="openai", model="gpt-3.5-turbo", model_type="llm"
         )
 
         # Assert: Verify the expected outcomes

@@ -1,112 +1,86 @@
-import type { InputProps } from '@langgenius/dify-ui/input'
-import type { Ref } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
-import { useImperativeHandle, useRef, useState } from 'react'
+import type { FC } from 'react'
+import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 type SearchInputProps = {
-  ref?: Ref<HTMLInputElement>
-  value: string
-  onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<InputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
+  value: string
+  onChange: (v: string) => void
+  white?: boolean
+}
 
-export function SearchInput({
-  ref,
+const SearchInput: FC<SearchInputProps> = ({
   placeholder,
   className,
   value,
-  onValueChange,
-  autoFocus,
-  disabled,
-  'aria-describedby': ariaDescribedBy,
-  'aria-label': ariaLabel,
-}: SearchInputProps) {
+  onChange,
+  white,
+}) => {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
-  const isComposingRef = useRef<boolean>(false)
-  const compositionCommitRef = useRef<string | null>(null)
-  const [compositionValue, setCompositionValue] = useState('')
-  const inputValue = isComposingRef.current ? compositionValue : value
-  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
-
-  const handleClear = () => {
-    isComposingRef.current = false
-    compositionCommitRef.current = null
-    setCompositionValue('')
-    onValueChange('')
-    inputRef.current?.focus()
-  }
+  const [focus, setFocus] = useState<boolean>(false)
+  const isComposing = useRef<boolean>(false)
+  const [compositionValue, setCompositionValue] = useState<string>('')
 
   return (
-    <div className={cn('relative', className)}>
-      <span
-        className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-        aria-hidden="true"
-      />
-      <Input
+    <div className={cn(
+      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
+      focus && '!bg-components-input-bg-active',
+      white && '!border-gray-300 !bg-white shadow-xs hover:!border-gray-300 hover:!bg-white',
+      className,
+    )}
+    >
+      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
+        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
+      </div>
+      <input
         ref={inputRef}
-        type="search"
+        type="text"
         name="query"
-        aria-describedby={ariaDescribedBy}
-        aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
         className={cn(
-          'ps-7',
-          !!inputValue && 'pe-7',
-          '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
+          'system-sm-regular caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder',
+          white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
-        placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
-        value={inputValue}
-        disabled={disabled}
-        onValueChange={(nextValue) => {
-          if (isComposingRef.current) {
-            setCompositionValue(nextValue)
-            return
-          }
-          if (compositionCommitRef.current !== null) {
-            if (compositionCommitRef.current !== nextValue) {
-              compositionCommitRef.current = null
-              onValueChange(nextValue)
-              return
-            }
-            compositionCommitRef.current = null
-            return
-          }
-          onValueChange(nextValue)
+        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
+        value={isComposing.current ? compositionValue : value}
+        onChange={(e) => {
+          const newValue = e.target.value
+          if (isComposing.current)
+            setCompositionValue(newValue)
+          else
+            onChange(newValue)
         }}
         onCompositionStart={() => {
-          isComposingRef.current = true
-          compositionCommitRef.current = null
+          isComposing.current = true
           setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
-          if (!isComposingRef.current) return
-
-          isComposingRef.current = false
+          isComposing.current = false
           setCompositionValue('')
-          compositionCommitRef.current = e.currentTarget.value
-          onValueChange(e.currentTarget.value)
+          onChange(e.currentTarget.value)
         }}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
         autoComplete="off"
-        // oxlint-disable-next-line jsx-a11y/no-autofocus
-        autoFocus={autoFocus}
-        enterKeyHint="search"
       />
-      {!!inputValue && !disabled && (
+      {value && (
         <button
           type="button"
-          aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-          onClick={handleClear}
+          aria-label={t('operation.clear', { ns: 'common' })}
+          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
+          onClick={() => {
+            onChange('')
+            inputRef.current?.focus()
+          }}
         >
-          <span
-            className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary"
-            aria-hidden="true"
-          />
+          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
         </button>
       )}
     </div>
   )
 }
+
+export default SearchInput

@@ -3,40 +3,26 @@ import type { Dataset } from './index'
 import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode & {
-  datasets: Dataset[]
-  onAddContext: () => void
-  canNotAddContext: boolean
-}
+export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[], onAddContext: () => void, canNotAddContext: boolean }
 
 export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
   __datasets: Dataset[]
   __onAddContext: () => void
   __canNotAddContext: boolean
 
-  static override getType(): string {
+  static getType(): string {
     return 'context-block'
   }
 
-  static override clone(node: ContextBlockNode): ContextBlockNode {
-    return new ContextBlockNode(
-      node.__datasets,
-      node.__onAddContext,
-      node.getKey(),
-      node.__canNotAddContext,
-    )
+  static clone(node: ContextBlockNode): ContextBlockNode {
+    return new ContextBlockNode(node.__datasets, node.__onAddContext, node.getKey(), node.__canNotAddContext)
   }
 
-  override isInline(): boolean {
+  isInline(): boolean {
     return true
   }
 
-  constructor(
-    datasets: Dataset[],
-    onAddContext: () => void,
-    key?: NodeKey,
-    canNotAddContext?: boolean,
-  ) {
+  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey, canNotAddContext?: boolean) {
     super(key)
 
     this.__datasets = datasets
@@ -44,17 +30,17 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__canNotAddContext = canNotAddContext || false
   }
 
-  override createDOM(): HTMLElement {
+  createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  override updateDOM(): false {
+  updateDOM(): false {
     return false
   }
 
-  override decorate(): React.JSX.Element {
+  decorate(): React.JSX.Element {
     return (
       <ContextBlockComponent
         nodeKey={this.getKey()}
@@ -83,17 +69,13 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
     return self.__canNotAddContext
   }
 
-  static override importJSON(serializedNode: SerializedNode): ContextBlockNode {
-    const node = $createContextBlockNode(
-      serializedNode.datasets,
-      serializedNode.onAddContext,
-      serializedNode.canNotAddContext,
-    )
+  static importJSON(serializedNode: SerializedNode): ContextBlockNode {
+    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext, serializedNode.canNotAddContext)
 
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  exportJSON(): SerializedNode {
     return {
       type: 'context-block',
       version: 1,
@@ -103,15 +85,11 @@ export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
     }
   }
 
-  override getTextContent(): string {
+  getTextContent(): string {
     return '{{#context#}}'
   }
 }
-export function $createContextBlockNode(
-  datasets: Dataset[],
-  onAddContext: () => void,
-  canNotAddContext?: boolean,
-): ContextBlockNode {
+export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean): ContextBlockNode {
   return new ContextBlockNode(datasets, onAddContext, undefined, canNotAddContext)
 }
 

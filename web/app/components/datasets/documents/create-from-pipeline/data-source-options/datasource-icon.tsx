@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 
 type DatasourceIconProps = {
   size?: string
@@ -14,17 +14,22 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
 
-const DatasourceIcon: FC<DatasourceIconProps> = ({ size = 'sm', className, iconUrl }) => {
+const DatasourceIcon: FC<DatasourceIconProps> = ({
+  size = 'sm',
+  className,
+  iconUrl,
+}) => {
   return (
-    <div
-      className={cn(
+    <div className={
+      cn(
         'flex items-center justify-center shadow-none',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         className,
-      )}
+      )
+    }
     >
       <div
-        className="size-full shrink-0 rounded-md bg-cover bg-center"
+        className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
         style={{
           backgroundImage: `url(${iconUrl})`,
         }}

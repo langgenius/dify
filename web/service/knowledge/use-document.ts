@@ -1,26 +1,16 @@
 import type { UseQueryOptions } from '@tanstack/react-query'
-import type {
-  DocumentDownloadResponse,
-  DocumentDownloadZipRequest,
-  MetadataType,
-  SortType,
-} from '../datasets'
+import type { DocumentDownloadResponse, DocumentDownloadZipRequest, MetadataType, SortType } from '../datasets'
 import type { CommonResponse } from '@/models/common'
-import type {
-  DocumentDetailResponse,
-  DocumentListResponse,
-  UpdateDocumentBatchParams,
-} from '@/models/datasets'
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+} from '@tanstack/react-query'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
 import { del, get, patch, post } from '../base'
-import {
-  downloadDocumentsZip,
-  fetchDocumentDownloadUrl,
-  pauseDocIndexing,
-  resumeDocIndexing,
-} from '../datasets'
+import { downloadDocumentsZip, fetchDocumentDownloadUrl, pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
@@ -47,14 +37,15 @@ export const useDocumentList = (payload: {
     page,
     limit,
   }
-  if (sort) params.sort = sort
-  if (normalizedStatus && normalizedStatus !== 'all') params.status = normalizedStatus
+  if (sort)
+    params.sort = sort
+  if (normalizedStatus && normalizedStatus !== 'all')
+    params.status = normalizedStatus
   return useQuery<DocumentListResponse>({
     queryKey: [...useDocumentListKey, datasetId, params],
-    queryFn: () =>
-      get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
-        params,
-      }),
+    queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
+      params,
+    }),
     placeholderData: keepPreviousData,
     refetchInterval,
   })
@@ -78,15 +69,13 @@ export const useInvalidDisabledDocument = () => {
 
 const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
   const ids = Array.isArray(documentIds) ? documentIds : [documentIds]
-  return ids.map((id) => `document_id=${id}`).join('&')
+  return ids.map(id => `document_id=${id}`).join('&')
 }
 
-const useDocumentBatchAction = (action: DocumentActionType) => {
+export const useDocumentBatchAction = (action: DocumentActionType) => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
-      return patch<CommonResponse>(
-        `/datasets/${datasetId}/documents/status/${action}/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`,
-      )
+      return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
     },
   })
 }
@@ -110,9 +99,7 @@ export const useDocumentUnArchive = () => {
 export const useDocumentDelete = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
-      return del<CommonResponse>(
-        `/datasets/${datasetId}/documents?${toBatchDocumentsIdParams(documentId || documentIds!)}`,
-      )
+      return del<CommonResponse>(`/datasets/${datasetId}/documents?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
     },
   })
 }
@@ -146,20 +133,15 @@ export const useSyncWebsite = () => {
 }
 
 const useDocumentDetailKey = [NAME_SPACE, 'documentDetail', 'withoutMetaData']
-type DocumentDetailRefetchInterval = UseQueryOptions<DocumentDetailResponse>['refetchInterval']
-
 export const useDocumentDetail = (payload: {
   datasetId: string
   documentId: string
   params: { metadata: MetadataType }
-  refetchInterval?: DocumentDetailRefetchInterval
 }) => {
-  const { datasetId, documentId, params, refetchInterval } = payload
+  const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
     queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId, params],
-    queryFn: () =>
-      get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
-    refetchInterval,
+    queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }
 
@@ -171,8 +153,7 @@ export const useDocumentMetadata = (payload: {
   const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
     queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId, params],
-    queryFn: () =>
-      get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
+    queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }
 
@@ -183,7 +164,8 @@ export const useInvalidDocumentDetail = () => {
 export const useDocumentPause = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
-      if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
       return pauseDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
     },
   })
@@ -192,7 +174,8 @@ export const useDocumentPause = () => {
 export const useDocumentResume = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
-      if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
     },
   })
@@ -201,11 +184,9 @@ export const useDocumentResume = () => {
 export const useDocumentDownload = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentId }: UpdateDocumentBatchParams) => {
-      if (!datasetId || !documentId) throw new Error('datasetId and documentId are required')
-      return fetchDocumentDownloadUrl({
-        datasetId,
-        documentId,
-      }) as Promise<DocumentDownloadResponse>
+      if (!datasetId || !documentId)
+        throw new Error('datasetId and documentId are required')
+      return fetchDocumentDownloadUrl({ datasetId, documentId }) as Promise<DocumentDownloadResponse>
     },
   })
 }
@@ -222,7 +203,7 @@ export const useDocumentDownloadZip = () => {
 
 export const useDocumentBatchRetryIndex = () => {
   return useMutation({
-    mutationFn: ({ datasetId, documentIds }: { datasetId: string; documentIds: string[] }) => {
+    mutationFn: ({ datasetId, documentIds }: { datasetId: string, documentIds: string[] }) => {
       return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
         body: {
           document_ids: documentIds,

@@ -4,13 +4,23 @@ import type { UpdateFromGitHubPayload } from '../types'
 import * as React from 'react'
 import InstallFromGitHub from '../install-plugin/install-from-github'
 
-type Props = Readonly<{
+type Props = {
   payload: UpdateFromGitHubPayload
   onSave: () => void
   onCancel: () => void
-}>
+}
 
-const FromGitHub: FC<Props> = ({ payload, onSave, onCancel }) => {
-  return <InstallFromGitHub updatePayload={payload} onClose={onCancel} onSuccess={onSave} />
+const FromGitHub: FC<Props> = ({
+  payload,
+  onSave,
+  onCancel,
+}) => {
+  return (
+    <InstallFromGitHub
+      updatePayload={payload}
+      onClose={onCancel}
+      onSuccess={onSave}
+    />
+  )
 }
 export default React.memo(FromGitHub)

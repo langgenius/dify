@@ -1,44 +1,33 @@
 import logging
 from typing import Literal
-from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, TypeAdapter
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
-    AppUnavailableError,
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
-from fields.conversation_fields import MessageResponseSource, ResultResponse
-from fields.message_fields import (
-    ExploreMessageInfiniteScrollPagination,
-    ExploreMessageListItem,
-    SuggestedQuestionsResponse,
-)
-from graphon.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
 from libs import helper
-from models import Account
-from models.enums import FeedbackRating
-from models.model import AppMode, InstalledApp
+from libs.helper import UUIDStrOrEmpty
+from libs.login import current_account_with_tenant
+from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -54,17 +43,22 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 
+class MessageListQuery(BaseModel):
+    conversation_id: UUIDStrOrEmpty
+    first_id: UUIDStrOrEmpty | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class MessageFeedbackPayload(BaseModel):
+    rating: Literal["like", "dislike"] | None = None
+    content: str | None = None
+
+
 class MoreLikeThisQuery(BaseModel):
     response_mode: Literal["blocking", "streaming"]
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
-register_response_schema_models(
-    console_ns,
-    ExploreMessageInfiniteScrollPagination,
-    ResultResponse,
-    SuggestedQuestionsResponse,
-)
 
 
 @console_ns.route(
@@ -72,14 +66,10 @@ register_response_schema_models(
     endpoint="installed_app_messages",
 )
 class MessageListApi(InstalledAppResource):
-    @console_ns.doc(params=query_params_from_model(MessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
-    @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp):
-        session = db.session()
-        app_model = installed_app.app_with_session(session=session)
-        if app_model is None:
-            raise AppUnavailableError()
+    @console_ns.expect(console_ns.models[MessageListQuery.__name__])
+    def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
+        app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -90,17 +80,13 @@ class MessageListApi(InstalledAppResource):
             pagination = MessageService.pagination_by_first_id(
                 app_model,
                 current_user,
-                args.conversation_id,
-                args.first_id or None,
+                str(args.conversation_id),
+                str(args.first_id) if args.first_id else None,
                 args.limit,
-                session=session,
             )
-            adapter = TypeAdapter(ExploreMessageListItem)
-            items = [
-                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
-                for message in pagination.data
-            ]
-            return ExploreMessageInfiniteScrollPagination(
+            adapter = TypeAdapter(MessageListItem)
+            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            return MessageInfiniteScrollPagination(
                 limit=pagination.limit,
                 has_more=pagination.has_more,
                 data=items,
@@ -117,25 +103,21 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
-    @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
+    def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
+        app_model = installed_app.app
 
-        message_id_str = str(message_id)
+        message_id = str(message_id)
 
         payload = MessageFeedbackPayload.model_validate(console_ns.payload or {})
 
         try:
             MessageService.create_feedback(
                 app_model=app_model,
-                message_id=message_id_str,
+                message_id=message_id,
                 user=current_user,
-                rating=FeedbackRating(payload.rating) if payload.rating else None,
+                rating=payload.rating,
                 content=payload.content,
-                session=db.session(),
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -148,18 +130,14 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
-    @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
-    @console_ns.response(200, "Success")
-    @with_current_user
-    @with_session
-    def get(self, session: Session, current_user: Account, installed_app: InstalledApp, message_id: UUID):
-        app_model = installed_app.app_with_session(session=session)
-        if app_model is None:
-            raise AppUnavailableError()
+    @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
+    def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
+        app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id_str = str(message_id)
+        message_id = str(message_id)
 
         args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
@@ -167,14 +145,12 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
-                session=session,
                 app_model=app_model,
                 user=current_user,
-                message_id=message_id_str,
+                message_id=message_id,
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming,
             )
-            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -200,25 +176,18 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
-    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
-    @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
+    def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
+        app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id_str = str(message_id)
+        message_id = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id_str,
-                invoke_from=InvokeFrom.EXPLORE,
-                session=db.session(),
+                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

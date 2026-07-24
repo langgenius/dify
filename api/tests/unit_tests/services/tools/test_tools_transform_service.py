@@ -1,26 +1,10 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
 from core.tools.__base.tool import Tool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from services.tools.tools_transform_service import ToolTransformService
-
-MODULE = "services.tools.tools_transform_service"
-
-
-def _parameter(
-    name: str,
-    label: str,
-    form: ToolParameter.ToolParameterForm = ToolParameter.ToolParameterForm.FORM,
-) -> ToolParameter:
-    return ToolParameter(
-        name=name,
-        label=I18nObject(en_US=label),
-        human_description=I18nObject(en_US=label),
-        type=ToolParameter.ToolParameterType.STRING,
-        form=form,
-    )
 
 
 class TestToolTransformService:
@@ -28,10 +12,25 @@ class TestToolTransformService:
 
     def test_convert_tool_with_parameter_override(self):
         """Test that runtime parameters correctly override base parameters"""
-        base_param1 = _parameter("param1", "Base Param 1")
-        base_param2 = _parameter("param2", "Base Param 2")
+        # Create mock base parameters
+        base_param1 = Mock(spec=ToolParameter)
+        base_param1.name = "param1"
+        base_param1.form = ToolParameter.ToolParameterForm.FORM
+        base_param1.type = "string"
+        base_param1.label = "Base Param 1"
 
-        runtime_param1 = _parameter("param1", "Runtime Param 1")
+        base_param2 = Mock(spec=ToolParameter)
+        base_param2.name = "param2"
+        base_param2.form = ToolParameter.ToolParameterForm.FORM
+        base_param2.type = "string"
+        base_param2.label = "Base Param 2"
+
+        # Create mock runtime parameters that override base parameters
+        runtime_param1 = Mock(spec=ToolParameter)
+        runtime_param1.name = "param1"
+        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param1.type = "string"
+        runtime_param1.label = "Runtime Param 1"  # Different label to verify override
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -62,19 +61,34 @@ class TestToolTransformService:
         # Find the overridden parameter
         overridden_param = next((p for p in result.parameters if p.name == "param1"), None)
         assert overridden_param is not None
-        assert overridden_param.label.en_US == "Runtime Param 1"  # Should be runtime version
+        assert overridden_param.label == "Runtime Param 1"  # Should be runtime version
 
         # Find the non-overridden parameter
         original_param = next((p for p in result.parameters if p.name == "param2"), None)
         assert original_param is not None
-        assert original_param.label.en_US == "Base Param 2"  # Should be base version
+        assert original_param.label == "Base Param 2"  # Should be base version
 
     def test_convert_tool_with_additional_runtime_parameters(self):
         """Test that additional runtime parameters are added to the final list"""
-        base_param1 = _parameter("param1", "Base Param 1")
+        # Create mock base parameters
+        base_param1 = Mock(spec=ToolParameter)
+        base_param1.name = "param1"
+        base_param1.form = ToolParameter.ToolParameterForm.FORM
+        base_param1.type = "string"
+        base_param1.label = "Base Param 1"
 
-        runtime_param1 = _parameter("param1", "Runtime Param 1")
-        runtime_param2 = _parameter("runtime_only", "Runtime Only Param")
+        # Create mock runtime parameters - one that overrides and one that's new
+        runtime_param1 = Mock(spec=ToolParameter)
+        runtime_param1.name = "param1"
+        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param1.type = "string"
+        runtime_param1.label = "Runtime Param 1"
+
+        runtime_param2 = Mock(spec=ToolParameter)
+        runtime_param2.name = "runtime_only"
+        runtime_param2.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param2.type = "string"
+        runtime_param2.label = "Runtime Only Param"
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -108,19 +122,34 @@ class TestToolTransformService:
         # Verify the overridden parameter has runtime version
         overridden_param = next((p for p in result.parameters if p.name == "param1"), None)
         assert overridden_param is not None
-        assert overridden_param.label.en_US == "Runtime Param 1"
+        assert overridden_param.label == "Runtime Param 1"
 
         # Verify the new runtime parameter is included
         new_param = next((p for p in result.parameters if p.name == "runtime_only"), None)
         assert new_param is not None
-        assert new_param.label.en_US == "Runtime Only Param"
+        assert new_param.label == "Runtime Only Param"
 
     def test_convert_tool_with_non_form_runtime_parameters(self):
         """Test that non-FORM runtime parameters are not added as new parameters"""
-        base_param1 = _parameter("param1", "Base Param 1")
+        # Create mock base parameters
+        base_param1 = Mock(spec=ToolParameter)
+        base_param1.name = "param1"
+        base_param1.form = ToolParameter.ToolParameterForm.FORM
+        base_param1.type = "string"
+        base_param1.label = "Base Param 1"
 
-        runtime_param1 = _parameter("param1", "Runtime Param 1")
-        runtime_param2 = _parameter("llm_param", "LLM Param", ToolParameter.ToolParameterForm.LLM)
+        # Create mock runtime parameters with different forms
+        runtime_param1 = Mock(spec=ToolParameter)
+        runtime_param1.name = "param1"
+        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param1.type = "string"
+        runtime_param1.label = "Runtime Param 1"
+
+        runtime_param2 = Mock(spec=ToolParameter)
+        runtime_param2.name = "llm_param"
+        runtime_param2.form = ToolParameter.ToolParameterForm.LLM
+        runtime_param2.type = "string"
+        runtime_param2.label = "LLM Param"
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -205,15 +234,38 @@ class TestToolTransformService:
 
     def test_convert_tool_parameter_order_preserved(self):
         """Test that parameter order is preserved correctly"""
-        base_param1 = _parameter("param1", "Base Param 1")
-        base_param2 = _parameter("param2", "Base Param 2")
-        base_param3 = _parameter("param3", "Base Param 3")
+        # Create mock base parameters in specific order
+        base_param1 = Mock(spec=ToolParameter)
+        base_param1.name = "param1"
+        base_param1.form = ToolParameter.ToolParameterForm.FORM
+        base_param1.type = "string"
+        base_param1.label = "Base Param 1"
+
+        base_param2 = Mock(spec=ToolParameter)
+        base_param2.name = "param2"
+        base_param2.form = ToolParameter.ToolParameterForm.FORM
+        base_param2.type = "string"
+        base_param2.label = "Base Param 2"
+
+        base_param3 = Mock(spec=ToolParameter)
+        base_param3.name = "param3"
+        base_param3.form = ToolParameter.ToolParameterForm.FORM
+        base_param3.type = "string"
+        base_param3.label = "Base Param 3"
 
         # Create runtime parameter that overrides middle parameter
-        runtime_param2 = _parameter("param2", "Runtime Param 2")
+        runtime_param2 = Mock(spec=ToolParameter)
+        runtime_param2.name = "param2"
+        runtime_param2.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param2.type = "string"
+        runtime_param2.label = "Runtime Param 2"
 
         # Create new runtime parameter
-        runtime_param4 = _parameter("param4", "Runtime Param 4")
+        runtime_param4 = Mock(spec=ToolParameter)
+        runtime_param4.name = "param4"
+        runtime_param4.form = ToolParameter.ToolParameterForm.FORM
+        runtime_param4.type = "string"
+        runtime_param4.label = "Runtime Param 4"
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -246,7 +298,7 @@ class TestToolTransformService:
         # Verify that param2 was overridden with runtime version
         param2 = result.parameters[1]
         assert param2.name == "param2"
-        assert param2.label.en_US == "Runtime Param 2"
+        assert param2.label == "Runtime Param 2"
 
 
 class TestWorkflowProviderToUserProvider:
@@ -398,147 +450,3 @@ class TestWorkflowProviderToUserProvider:
         assert result.plugin_id is None
         assert result.plugin_unique_identifier is None
         assert result.tools == []
-
-
-class TestGetToolProviderIconUrl:
-    def test_builtin_provider_returns_console_url(self):
-        with patch(f"{MODULE}.dify_config") as cfg:
-            cfg.CONSOLE_API_URL = "https://app.dify.ai"
-            url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
-
-        assert "/builtin/google/icon" in url
-        assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
-
-    def test_builtin_provider_with_no_console_url(self):
-        with patch(f"{MODULE}.dify_config") as cfg:
-            cfg.CONSOLE_API_URL = None
-            url = ToolTransformService.get_tool_provider_icon_url("builtin", "slack", "icon.png")
-
-        assert "/builtin/slack/icon" in url
-
-    def test_api_provider_parses_json_icon(self):
-        icon_json = '{"background": "#fff", "content": "A"}'
-        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon_json)
-        assert result == {"background": "#fff", "content": "A"}
-
-    def test_api_provider_returns_dict_icon_directly(self):
-        icon = {"background": "#000", "content": "B"}
-        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon)
-        assert result == icon
-
-    def test_api_provider_returns_fallback_on_invalid_json(self):
-        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", "not-json")
-        assert result == {"background": "#252525", "content": "\ud83d\ude01"}
-
-    def test_workflow_provider_behaves_like_api(self):
-        icon = {"background": "#123", "content": "W"}
-        assert ToolTransformService.get_tool_provider_icon_url("workflow", "wf", icon) == icon
-
-    def test_mcp_returns_icon_as_is(self):
-        assert ToolTransformService.get_tool_provider_icon_url("mcp", "srv", "icon-value") == "icon-value"
-
-    def test_unknown_type_returns_empty(self):
-        assert ToolTransformService.get_tool_provider_icon_url("unknown", "x", "i") == ""
-
-
-class TestRepackProvider:
-    def test_repacks_dict_provider_icon(self):
-        provider = {"type": "builtin", "name": "google", "icon": "old"}
-        with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/new-url") as mock_fn:
-            ToolTransformService.repack_provider("t1", provider)
-
-        assert provider["icon"] == "/new-url"
-        mock_fn.assert_called_once_with(provider_type="builtin", provider_name="google", icon="old")
-
-    def test_repacks_tool_provider_api_entity_without_plugin(self):
-        entity = MagicMock(spec=ToolProviderApiEntity)
-        entity.plugin_id = None
-        entity.type = ToolProviderType.BUILT_IN
-        entity.name = "slack"
-        entity.icon = "icon.svg"
-        entity.icon_dark = "dark.svg"
-
-        with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/url"):
-            ToolTransformService.repack_provider("t1", entity)
-
-        assert entity.icon == "/url"
-        assert entity.icon_dark == "/url"
-
-
-class TestConvertMcpSchemaToParameter:
-    def test_simple_object_schema(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Search query"},
-                "count": {"type": "integer", "description": "Result count"},
-            },
-            "required": ["query"],
-        }
-
-        params = ToolTransformService.convert_mcp_schema_to_parameter(schema)
-
-        assert len(params) == 2
-        query_param = next(p for p in params if p.name == "query")
-        count_param = next(p for p in params if p.name == "count")
-        assert query_param.required is True
-        assert count_param.required is False
-        assert count_param.type.value == "number"
-
-    def test_float_maps_to_number(self):
-        schema = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": []}
-        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "number"
-
-    def test_array_type_attaches_input_schema(self):
-        prop = {"type": "array", "description": "Items", "items": {"type": "string"}}
-        schema = {"type": "object", "properties": {"items": prop}, "required": []}
-        param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
-        assert param.input_schema is not None
-
-    def test_non_object_schema_returns_empty(self):
-        assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "string"}) == []
-
-    def test_missing_properties_returns_empty(self):
-        assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "object"}) == []
-
-    def test_list_type_uses_first_element(self):
-        schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": []}
-        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
-
-    def test_missing_description_defaults_empty(self):
-        schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
-        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
-
-
-class TestApiProviderToController:
-    def test_api_key_header_auth(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key_header"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
-
-    def test_api_key_query_auth(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key_query"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY)
-
-    def test_legacy_api_key_maps_to_header(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "api_key"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
-
-    def test_unknown_auth_defaults_to_none(self):
-        db_provider = MagicMock()
-        db_provider.credentials = {"auth_type": "something_else"}
-        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-            ctrl_cls.from_db.return_value = MagicMock()
-            ToolTransformService.api_provider_to_controller(db_provider)
-        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.NONE)

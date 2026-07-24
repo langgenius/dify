@@ -1,16 +1,6 @@
-import type { ReactElement } from 'react'
-import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Item from '../item'
-
-const renderItem = (ui: ReactElement) => {
-  return render(
-    <DropdownMenu open>
-      <DropdownMenuContent>{ui}</DropdownMenuContent>
-    </DropdownMenu>,
-  )
-}
 
 describe('Item', () => {
   const defaultProps = {
@@ -26,7 +16,7 @@ describe('Item', () => {
   // Rendering: verify the breadcrumb name is displayed
   describe('Rendering', () => {
     it('should render breadcrumb name', () => {
-      renderItem(<Item {...defaultProps} />)
+      render(<Item {...defaultProps} />)
 
       expect(screen.getByText('Documents')).toBeInTheDocument()
     })
@@ -35,7 +25,7 @@ describe('Item', () => {
   // User interactions: clicking triggers callback with correct index
   describe('User Interactions', () => {
     it('should call onBreadcrumbClick with correct index on click', () => {
-      renderItem(<Item {...defaultProps} />)
+      render(<Item {...defaultProps} />)
 
       fireEvent.click(screen.getByText('Documents'))
 
@@ -44,7 +34,7 @@ describe('Item', () => {
     })
 
     it('should pass different index values correctly', () => {
-      renderItem(<Item {...defaultProps} index={5} />)
+      render(<Item {...defaultProps} index={5} />)
 
       fireEvent.click(screen.getByText('Documents'))
 

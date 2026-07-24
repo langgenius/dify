@@ -10,22 +10,22 @@ from pydantic import TypeAdapter, ValidationError
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
-from graphon.model_runtime.callbacks.base_callback import Callback
-from graphon.model_runtime.entities.llm_entities import (
+from dify_graph.model_runtime.callbacks.base_callback import Callback
+from dify_graph.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkDelta,
     LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
 )
-from graphon.model_runtime.entities.message_entities import (
+from dify_graph.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
 )
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
+from dify_graph.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
 
 
 class ResponseFormat(StrEnum):
@@ -55,6 +55,7 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: Literal[True],
+    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
@@ -69,6 +70,7 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: Literal[False],
+    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
@@ -83,6 +85,7 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: bool = True,
+    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
@@ -96,6 +99,7 @@ def invoke_llm_with_structured_output(
     tools: Sequence[PromptMessageTool] | None = None,
     stop: list[str] | None = None,
     stream: bool = True,
+    user: str | None = None,
     callbacks: list[Callback] | None = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
@@ -109,6 +113,7 @@ def invoke_llm_with_structured_output(
     :param tools: tools for tool calling
     :param stop: stop words
     :param stream: is stream response
+    :param user: unique user id
     :param callbacks: callbacks
     :return: full response or stream response chunk generator result
     """
@@ -138,6 +143,7 @@ def invoke_llm_with_structured_output(
         tools=tools,
         stop=stop,
         stream=stream,
+        user=user,
         callbacks=callbacks,
     )
 
@@ -166,13 +172,12 @@ def invoke_llm_with_structured_output(
                     prompt_messages = event.prompt_messages
                     system_fingerprint = event.system_fingerprint
 
-                    match event.delta.message.content:
-                        case str():
-                            result_text += event.delta.message.content
-                        case list():
-                            for item in event.delta.message.content:
-                                if isinstance(item, TextPromptMessageContent):
-                                    result_text += item.data
+                    if isinstance(event.delta.message.content, str):
+                        result_text += event.delta.message.content
+                    elif isinstance(event.delta.message.content, list):
+                        for item in event.delta.message.content:
+                            if isinstance(item, TextPromptMessageContent):
+                                result_text += item.data
 
                 yield LLMResultChunkWithStructuredOutput(
                     model=model_schema.model,
@@ -201,9 +206,9 @@ def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
     structured_output_schema: Mapping,
-    model_parameters: dict[str, Any],
+    model_parameters: dict,
     rules: list[ParameterRule],
-) -> dict[str, Any]:
+):
     """
     Handle structured output for models with native JSON schema support.
 
@@ -225,7 +230,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
+def _set_response_format(model_parameters: dict, rules: list):
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -289,13 +294,11 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
     except ValidationError:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
-        match temp_parsed:
-            case dict():
-                pass
-            case list():
-                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
+        if not isinstance(temp_parsed, dict):
+            # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
+            if isinstance(temp_parsed, list):
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
-            case _:
+            else:
                 raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = cast(dict, temp_parsed)
     return structured_output
@@ -329,7 +332,7 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict[str, Any]) -> None:
+def remove_additional_properties(schema: dict):
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
@@ -344,16 +347,15 @@ def remove_additional_properties(schema: dict[str, Any]) -> None:
 
     # Process nested structures recursively
     for value in schema.values():
-        match value:
-            case dict():
-                remove_additional_properties(value)
-            case list():
-                for item in value:
-                    if isinstance(item, dict):
-                        remove_additional_properties(item)
+        if isinstance(value, dict):
+            remove_additional_properties(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    remove_additional_properties(item)
 
 
-def convert_boolean_to_string(schema: dict[str, Any]) -> None:
+def convert_boolean_to_string(schema: dict):
     """
     Convert boolean type specifications to string in JSON schema.
 
@@ -368,10 +370,9 @@ def convert_boolean_to_string(schema: dict[str, Any]) -> None:
 
     # Process nested dictionaries and lists recursively
     for value in schema.values():
-        match value:
-            case dict():
-                convert_boolean_to_string(value)
-            case list():
-                for item in value:
-                    if isinstance(item, dict):
-                        convert_boolean_to_string(item)
+        if isinstance(value, dict):
+            convert_boolean_to_string(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    convert_boolean_to_string(item)

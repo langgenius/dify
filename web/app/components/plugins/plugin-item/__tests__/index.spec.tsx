@@ -1,17 +1,8 @@
-import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
-
-const mockEnableMarketplace = vi.fn(() => true)
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
-  })
 
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
@@ -23,12 +14,12 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => mockGetValueFromI18nObject,
 }))
 
-const mockCategoriesMap: Record<string, { name: string; label: string }> = {
-  tool: { name: 'tool', label: 'Tools' },
-  model: { name: 'model', label: 'Models' },
-  extension: { name: 'extension', label: 'Extensions' },
+const mockCategoriesMap: Record<string, { name: string, label: string }> = {
+  'tool': { name: 'tool', label: 'Tools' },
+  'model': { name: 'model', label: 'Models' },
+  'extension': { name: 'extension', label: 'Extensions' },
   'agent-strategy': { name: 'agent-strategy', label: 'Agents' },
-  datasource: { name: 'datasource', label: 'Data Sources' },
+  'datasource': { name: 'datasource', label: 'Data Sources' },
 }
 vi.mock('../../hooks', () => ({
   useCategories: () => ({
@@ -55,38 +46,24 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list',
 }))
 
 const mockLangGeniusVersionInfo = vi.fn(() => ({
-  current_env: '',
   current_version: '1.0.0',
-  latest_version: '',
-  release_date: '',
-  release_notes: '',
-  version: '',
-  can_auto_update: false,
+}))
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
+  }),
 }))
 
-const createLangGeniusVersionInfo = (currentVersion: string) => ({
-  current_env: '',
-  current_version: currentVersion,
-  latest_version: '',
-  release_date: '',
-  release_notes: '',
-  version: '',
-  can_auto_update: false,
-})
-
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
+const mockEnableMarketplace = vi.fn(() => true)
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace() } }),
+}))
 
 vi.mock('../action', () => ({
-  default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
+  default: ({ onDelete, pluginName }: { onDelete: () => void, pluginName: string }) => (
     <div data-testid="plugin-action" data-plugin-name={pluginName}>
-      <button data-testid="delete-button" onClick={onDelete}>
-        Delete
-      </button>
+      <button data-testid="delete-button" onClick={onDelete}>Delete</button>
     </div>
   ),
 }))
@@ -104,9 +81,11 @@ vi.mock('../../card/base/description', () => ({
 }))
 
 vi.mock('../../card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
+  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
     <div data-testid="org-info" data-org={orgName} data-package={packageName}>
-      {orgName}/{packageName}
+      {orgName}
+      /
+      {packageName}
     </div>
   ),
 }))
@@ -116,16 +95,12 @@ vi.mock('../../base/badges/verified', () => ({
 }))
 
 vi.mock('../../../base/badge', () => ({
-  default: ({ text, hasRedCornerMark }: { text: string; hasRedCornerMark?: boolean }) => (
-    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>
-      {text}
-    </div>
+  default: ({ text, hasRedCornerMark }: { text: string, hasRedCornerMark?: boolean }) => (
+    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>{text}</div>
   ),
 }))
 
-const createPluginDeclaration = (
-  overrides: Partial<PluginDeclaration> = {},
-): PluginDeclaration => ({
+const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -139,7 +114,7 @@ const createPluginDeclaration = (
   resource: null,
   plugins: null,
   verified: false,
-  endpoint: undefined as unknown as PluginDeclaration['endpoint'],
+  endpoint: {} as unknown as PluginDeclaration['endpoint'],
   model: null,
   tags: [],
   agent_strategy: null,
@@ -184,7 +159,7 @@ describe('PluginItem', () => {
     mockTheme.mockReturnValue('light')
     mockCurrentPluginID.mockReturnValue(undefined)
     mockEnableMarketplace.mockReturnValue(true)
-    mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
+    mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
     mockGetValueFromI18nObject.mockImplementation((obj: Record<string, string>) => obj?.en_US || '')
   })
 
@@ -199,7 +174,7 @@ describe('PluginItem', () => {
       // Assert
       expect(screen.getByTestId('plugin-title')).toBeInTheDocument()
       expect(screen.getByTestId('plugin-description')).toBeInTheDocument()
-      expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
+      expect(screen.getByTestId('corner-mark')).toBeInTheDocument()
       expect(screen.getByTestId('version-badge')).toBeInTheDocument()
     })
 
@@ -215,7 +190,7 @@ describe('PluginItem', () => {
       expect(img).toHaveAttribute('alt', `plugin-${plugin.plugin_unique_identifier}-logo`)
     })
 
-    it('should not render category label in corner mark', () => {
+    it('should render category label in corner mark', () => {
       // Arrange
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({ category: PluginCategoryEnum.model }),
@@ -225,7 +200,19 @@ describe('PluginItem', () => {
       render(<PluginItem plugin={plugin} />)
 
       // Assert
-      expect(screen.queryByTestId('corner-mark')).not.toBeInTheDocument()
+      expect(screen.getByTestId('corner-mark')).toHaveTextContent('Models')
+    })
+
+    it('should apply custom className', () => {
+      // Arrange
+      const plugin = createPluginDetail()
+
+      // Act
+      const { container } = render(<PluginItem plugin={plugin} className="custom-class" />)
+
+      // Assert
+      const innerDiv = container.querySelector('.custom-class')
+      expect(innerDiv).toBeInTheDocument()
     })
   })
 
@@ -326,32 +313,22 @@ describe('PluginItem', () => {
     })
   })
 
-  describe('Endpoint Declaration', () => {
-    it('should show endpoints info when declaration has endpoint', () => {
+  describe('Extension Category', () => {
+    it('should show endpoints info for extension category', () => {
       // Arrange
       const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          category: PluginCategoryEnum.tool,
-          endpoint: {
-            settings: [],
-            endpoints: [
-              { path: '/test', method: 'POST' },
-              { path: '/another-test', method: 'GET' },
-              { path: '/hidden-test', method: 'POST', hidden: true },
-            ],
-          },
-        }),
-        endpoints_active: 0,
+        declaration: createPluginDeclaration({ category: PluginCategoryEnum.extension }),
+        endpoints_active: 3,
       })
 
       // Act
       render(<PluginItem plugin={plugin} />)
 
-      // Assert
-      expect(screen.getByTitle('plugin.endpointsEnabled:{"num":2}')).toBeInTheDocument()
+      // Assert - The translation includes interpolation
+      expect(screen.getByText(/plugin\.endpointsEnabled/)).toBeInTheDocument()
     })
 
-    it('should not show endpoints info when declaration has no endpoint', () => {
+    it('should not show endpoints info for non-extension category', () => {
       // Arrange
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
@@ -369,7 +346,7 @@ describe('PluginItem', () => {
   describe('Version Compatibility', () => {
     it('should show warning icon when Dify version is not compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('0.3.0'))
+      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '0.3.0' })
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -386,7 +363,7 @@ describe('PluginItem', () => {
 
     it('should not show warning when Dify version is compatible', () => {
       // Arrange
-      mockLangGeniusVersionInfo.mockReturnValue(createLangGeniusVersionInfo('1.0.0'))
+      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '1.0.0' })
       const plugin = createPluginDetail({
         declaration: createPluginDeclaration({
           meta: { version: '1.0.0', minimum_dify_version: '0.5.0' },
@@ -397,6 +374,35 @@ describe('PluginItem', () => {
       const { container } = render(<PluginItem plugin={plugin} />)
 
       // Assert
+      const warningIcon = container.querySelector('.text-text-accent')
+      expect(warningIcon).not.toBeInTheDocument()
+    })
+
+    it('should handle missing current_version gracefully', () => {
+      // Arrange
+      mockLangGeniusVersionInfo.mockReturnValue({ current_version: '' })
+      const plugin = createPluginDetail()
+
+      // Act
+      const { container } = render(<PluginItem plugin={plugin} />)
+
+      // Assert - Should not crash and not show warning
+      const warningIcon = container.querySelector('.text-text-accent')
+      expect(warningIcon).not.toBeInTheDocument()
+    })
+
+    it('should handle missing minimum_dify_version gracefully', () => {
+      // Arrange
+      const plugin = createPluginDetail({
+        declaration: createPluginDeclaration({
+          meta: { version: '1.0.0' },
+        }),
+      })
+
+      // Act
+      const { container } = render(<PluginItem plugin={plugin} />)
+
+      // Assert - Should not crash and not show warning
       const warningIcon = container.querySelector('.text-text-accent')
       expect(warningIcon).not.toBeInTheDocument()
     })
@@ -628,9 +634,7 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).not.toHaveClass(
-        'border-components-option-card-option-selected-border',
-      )
+      expect(pluginContainer).not.toHaveClass('border-components-option-card-option-selected-border')
     })
 
     it('should stop propagation when action area is clicked', () => {
@@ -644,21 +648,6 @@ describe('PluginItem', () => {
 
       // Assert - setCurrentPluginID should not be called
       expect(mockSetCurrentPluginID).not.toHaveBeenCalled()
-    })
-
-    it('should only reveal actions on card hover or focus', () => {
-      // Arrange
-      const plugin = createPluginDetail()
-
-      // Act
-      render(<PluginItem plugin={plugin} />)
-
-      // Assert
-      expect(screen.getByTestId('plugin-action').parentElement).toHaveClass(
-        'opacity-0',
-        'group-hover/plugin-item:opacity-100',
-        'focus-within:opacity-100',
-      )
     })
   })
 
@@ -868,28 +857,18 @@ describe('PluginItem', () => {
       expect(screen.getByTestId('plugin-title')).toHaveTextContent('')
     })
 
-    it('should count declaration endpoints when endpoints_active is zero', () => {
+    it('should handle zero endpoints_active', () => {
       // Arrange
       const plugin = createPluginDetail({
-        declaration: createPluginDeclaration({
-          category: PluginCategoryEnum.extension,
-          endpoint: {
-            settings: [],
-            endpoints: [
-              { path: '/test', method: 'POST' },
-              { path: '/another-test', method: 'GET' },
-              { path: '/third-test', method: 'PUT' },
-            ],
-          },
-        }),
+        declaration: createPluginDeclaration({ category: PluginCategoryEnum.extension }),
         endpoints_active: 0,
       })
 
       // Act
       render(<PluginItem plugin={plugin} />)
 
-      // Assert
-      expect(screen.getByTitle('plugin.endpointsEnabled:{"num":3}')).toBeInTheDocument()
+      // Assert - Should still render endpoints info with zero
+      expect(screen.getByText(/plugin\.endpointsEnabled/)).toBeInTheDocument()
     })
 
     it('should handle null latest_version', () => {
@@ -957,6 +936,26 @@ describe('PluginItem', () => {
   })
 
   describe('Callback Stability', () => {
+    it('should have stable handleDelete callback', () => {
+      // Arrange
+      const plugin = createPluginDetail({
+        declaration: createPluginDeclaration({ category: PluginCategoryEnum.tool }),
+      })
+
+      // Act
+      const { rerender } = render(<PluginItem plugin={plugin} />)
+      fireEvent.click(screen.getByTestId('delete-button'))
+      const firstCallArgs = mockRefreshPluginList.mock.calls[0]
+
+      mockRefreshPluginList.mockClear()
+      rerender(<PluginItem plugin={plugin} />)
+      fireEvent.click(screen.getByTestId('delete-button'))
+      const secondCallArgs = mockRefreshPluginList.mock.calls[0]
+
+      // Assert - Both calls should have same arguments
+      expect(firstCallArgs).toEqual(secondCallArgs)
+    })
+
     it('should update handleDelete when category changes', () => {
       // Arrange
       const toolPlugin = createPluginDetail({
@@ -975,6 +974,17 @@ describe('PluginItem', () => {
       rerender(<PluginItem plugin={modelPlugin} />)
       fireEvent.click(screen.getByTestId('delete-button'))
       expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: PluginCategoryEnum.model })
+    })
+  })
+
+  describe('React.memo Behavior', () => {
+    it('should be wrapped with React.memo', () => {
+      // Arrange & Assert
+      // The component is exported as React.memo(PluginItem)
+      // We can verify by checking the displayName or type
+      expect(PluginItem).toBeDefined()
+      // React.memo components have a $$typeof property
+      expect((PluginItem as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 })

@@ -1,35 +1,10 @@
 import json
 import time
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, cast
 
 import httpx
 
 from extensions.ext_storage import storage
-
-
-class FirecrawlDocumentData(TypedDict):
-    title: str | None
-    description: str | None
-    source_url: str | None
-    markdown: str | None
-
-
-class CrawlStatusResponse(TypedDict):
-    status: str
-    total: int | None
-    current: int | None
-    data: list[FirecrawlDocumentData]
-
-
-class MapResponse(TypedDict):
-    success: bool
-    links: list[str]
-
-
-class SearchResponse(TypedDict):
-    success: bool
-    data: list[dict[str, Any]]
-    warning: NotRequired[str]
 
 
 class FirecrawlApp:
@@ -39,7 +14,7 @@ class FirecrawlApp:
         if self.api_key is None and self.base_url == "https://api.firecrawl.dev":
             raise ValueError("No API key provided")
 
-    def scrape_url(self, url, params=None) -> FirecrawlDocumentData:
+    def scrape_url(self, url, params=None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/scrape
         headers = self._prepare_headers()
         json_data = {
@@ -57,7 +32,9 @@ class FirecrawlApp:
             return self._extract_common_fields(data)
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "scrape URL")
-        raise Exception(f"Failed to scrape URL. Status code: {response.status_code}")
+            return {}  # Avoid additional exception after handling error
+        else:
+            raise Exception(f"Failed to scrape URL. Status code: {response.status_code}")
 
     def crawl_url(self, url, params=None) -> str:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/crawl-post
@@ -74,7 +51,7 @@ class FirecrawlApp:
             self._handle_error(response, "start crawl job")
             return ""  # unreachable
 
-    def map(self, url: str, params: dict[str, Any] | None = None) -> MapResponse:
+    def map(self, url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/map
         headers = self._prepare_headers()
         json_data: dict[str, Any] = {"url": url, "integration": "dify"}
@@ -83,22 +60,28 @@ class FirecrawlApp:
             json_data.update(params)
         response = self._post_request(self._build_url("v2/map"), json_data, headers)
         if response.status_code == 200:
-            return cast(MapResponse, response.json())
+            return cast(dict[str, Any], response.json())
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "start map job")
-        raise Exception(f"Failed to start map job. Status code: {response.status_code}")
+            return {}
+        else:
+            raise Exception(f"Failed to start map job. Status code: {response.status_code}")
 
-    def check_crawl_status(self, job_id) -> CrawlStatusResponse:
+    def check_crawl_status(self, job_id) -> dict[str, Any]:
         headers = self._prepare_headers()
         response = self._get_request(self._build_url(f"v2/crawl/{job_id}"), headers)
         if response.status_code == 200:
             crawl_status_response = response.json()
             if crawl_status_response.get("status") == "completed":
-                # Normalize to avoid None bypassing the zero-guard when the API returns null.
-                total = crawl_status_response.get("total") or 0
-                if total <= 0:
+                total = crawl_status_response.get("total", 0)
+                if total == 0:
                     raise Exception("Failed to check crawl status. Error: No page found")
-                url_data_list = self._collect_all_crawl_pages(crawl_status_response, headers)
+                data = crawl_status_response.get("data", [])
+                url_data_list = []
+                for item in data:
+                    if isinstance(item, dict) and "metadata" in item and "markdown" in item:
+                        url_data = self._extract_common_fields(item)
+                        url_data_list.append(url_data)
                 if url_data_list:
                     file_key = "website_files/" + job_id + ".txt"
                     try:
@@ -112,45 +95,13 @@ class FirecrawlApp:
                 return self._format_crawl_status_response(
                     crawl_status_response.get("status"), crawl_status_response, []
                 )
-        self._handle_error(response, "check crawl status")
-        raise RuntimeError("unreachable: _handle_error always raises")
-
-    def _collect_all_crawl_pages(
-        self, first_page: dict[str, Any], headers: dict[str, str]
-    ) -> list[FirecrawlDocumentData]:
-        """Collect all crawl result pages by following pagination links.
-
-        Raises an exception if any paginated request fails, to avoid returning
-        partial data that is inconsistent with the reported total.
-
-        The number of pages processed is capped at ``total`` (the
-        server-reported page count) to guard against infinite loops caused by
-        a misbehaving server that keeps returning a ``next`` URL.
-        """
-        total: int = first_page.get("total") or 0
-        url_data_list: list[FirecrawlDocumentData] = []
-        current_page = first_page
-        pages_processed = 0
-        while True:
-            for item in current_page.get("data", []):
-                if isinstance(item, dict) and "metadata" in item and "markdown" in item:
-                    url_data_list.append(self._extract_common_fields(item))
-            next_url: str | None = current_page.get("next")
-            pages_processed += 1
-            if not next_url or pages_processed >= total:
-                break
-            response = self._get_request(next_url, headers)
-            if response.status_code != 200:
-                self._handle_error(response, "fetch next crawl page")
-            current_page = response.json()
-        return url_data_list
+        else:
+            self._handle_error(response, "check crawl status")
+            return {}  # unreachable
 
     def _format_crawl_status_response(
-        self,
-        status: str,
-        crawl_status_response: dict[str, Any],
-        url_data_list: list[FirecrawlDocumentData],
-    ) -> CrawlStatusResponse:
+        self, status: str, crawl_status_response: dict[str, Any], url_data_list: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         return {
             "status": status,
             "total": crawl_status_response.get("total"),
@@ -158,7 +109,7 @@ class FirecrawlApp:
             "data": url_data_list,
         }
 
-    def _extract_common_fields(self, item: dict[str, Any]) -> FirecrawlDocumentData:
+    def _extract_common_fields(self, item: dict[str, Any]) -> dict[str, Any]:
         return {
             "title": item.get("metadata", {}).get("title"),
             "description": item.get("metadata", {}).get("description"),
@@ -166,7 +117,7 @@ class FirecrawlApp:
             "markdown": item.get("markdown"),
         }
 
-    def _prepare_headers(self) -> dict[str, str]:
+    def _prepare_headers(self) -> dict[str, Any]:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _build_url(self, path: str) -> str:
@@ -174,25 +125,21 @@ class FirecrawlApp:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
-        response: httpx.Response | None = None
         for attempt in range(retries):
             response = httpx.post(url, headers=headers, json=data)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
-        assert response is not None, "retries must be at least 1"
         return response
 
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
-        response: httpx.Response | None = None
         for attempt in range(retries):
             response = httpx.get(url, headers=headers)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
                 return response
-        assert response is not None, "retries must be at least 1"
         return response
 
     def _handle_error(self, response, action):
@@ -203,10 +150,10 @@ class FirecrawlApp:
             error_message = response.text or "Unknown error occurred"
         raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
 
-    def search(self, query: str, params: dict[str, Any] | None = None) -> SearchResponse:
+    def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/search
         headers = self._prepare_headers()
-        json_data: dict[str, Any] = {
+        json_data = {
             "query": query,
             "limit": 5,
             "lang": "en",
@@ -223,10 +170,12 @@ class FirecrawlApp:
             json_data.update(params)
         response = self._post_request(self._build_url("v2/search"), json_data, headers)
         if response.status_code == 200:
-            response_data: SearchResponse = response.json()
+            response_data = response.json()
             if not response_data.get("success"):
                 raise Exception(f"Search failed. Error: {response_data.get('warning', 'Unknown error')}")
-            return response_data
+            return cast(dict[str, Any], response_data)
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "perform search")
-        raise Exception(f"Failed to perform search. Status code: {response.status_code}")
+            return {}  # Avoid additional exception after handling error
+        else:
+            raise Exception(f"Failed to perform search. Status code: {response.status_code}")

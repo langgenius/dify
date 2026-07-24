@@ -85,7 +85,7 @@ vi.mock('../../../test-run/preparation/data-source-options', () => ({
   }) => (
     <div data-testid="data-source-options">
       <span data-testid="current-node-id">{dataSourceNodeId}</span>
-      {mockDatasourceOptions.map((option) => (
+      {mockDatasourceOptions.map(option => (
         <button
           key={option.value}
           data-testid={`option-${option.value}`}
@@ -93,8 +93,7 @@ vi.mock('../../../test-run/preparation/data-source-options', () => ({
             onSelect({
               nodeId: option.value,
               nodeData: option.data,
-            })
-          }
+            })}
         >
           {option.label}
         </button>
@@ -122,7 +121,7 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
   },
   useConfigurations: (variables: RAGPipelineVariables) => {
     return React.useMemo(() => {
-      return variables.map((item) => ({
+      return variables.map(item => ({
         type: item.type,
         variable: item.variable,
         label: item.label,
@@ -151,12 +150,7 @@ vi.mock('@/app/components/base/form', () => ({
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/base/field', () => ({
-  default: ({
-    config,
-  }: {
-    initialData: Record<string, unknown>
-    config: { variable: string; label: string }
-  }) => {
+  default: ({ config }: { initialData: Record<string, unknown>, config: { variable: string, label: string } }) => {
     const FieldComponent = ({ form }: { form: unknown }) => (
       <div data-testid={`field-${config.variable}`}>
         <label>{config.label}</label>
@@ -184,7 +178,9 @@ const createRAGPipelineVariable = (
   ...overrides,
 })
 
-const createDatasourceOption = (overrides?: Partial<DataSourceOption>): DataSourceOption => ({
+const createDatasourceOption = (
+  overrides?: Partial<DataSourceOption>,
+): DataSourceOption => ({
   label: 'Test Datasource',
   value: 'datasource-node-1',
   data: {
@@ -194,7 +190,7 @@ const createDatasourceOption = (overrides?: Partial<DataSourceOption>): DataSour
   ...overrides,
 })
 
-const createConsoleQueryClient = () =>
+const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -205,8 +201,10 @@ const createConsoleQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createConsoleQueryClient()
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const queryClient = createTestQueryClient()
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -227,6 +225,14 @@ describe('PreviewPanel', () => {
   })
 
   describe('Rendering', () => {
+    it('should render preview panel without crashing', () => {
+      renderWithProviders(<PreviewPanel />)
+
+      expect(
+        screen.getByText('datasetPipeline.operations.preview'),
+      ).toBeInTheDocument()
+    })
+
     it('should render preview badge', () => {
       renderWithProviders(<PreviewPanel />)
 
@@ -271,7 +277,9 @@ describe('PreviewPanel', () => {
     })
 
     it('should update datasource state when DataSource selects', () => {
-      mockDatasourceOptions = [createDatasourceOption({ value: 'node-1', label: 'Node 1' })]
+      mockDatasourceOptions = [
+        createDatasourceOption({ value: 'node-1', label: 'Node 1' }),
+      ]
 
       renderWithProviders(<PreviewPanel />)
       fireEvent.click(screen.getByTestId('option-node-1'))
@@ -280,7 +288,9 @@ describe('PreviewPanel', () => {
     })
 
     it('should pass datasource nodeId to ProcessDocuments', () => {
-      mockDatasourceOptions = [createDatasourceOption({ value: 'test-node', label: 'Test Node' })]
+      mockDatasourceOptions = [
+        createDatasourceOption({ value: 'test-node', label: 'Test Node' }),
+      ]
 
       renderWithProviders(<PreviewPanel />)
       fireEvent.click(screen.getByTestId('option-test-node'))
@@ -326,6 +336,33 @@ describe('PreviewPanel', () => {
   })
 
   describe('Floating Right Behavior', () => {
+    it('should apply floating right styles when floatingRight is true', () => {
+      mockUseFloatingRight.mockReturnValue({
+        floatingRight: true,
+        floatingRightWidth: 400,
+      })
+
+      const { container } = renderWithProviders(<PreviewPanel />)
+
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).toContain('absolute')
+      expect(panel.className).toContain('right-0')
+      expect(panel.style.width).toBe('400px')
+    })
+
+    it('should not apply floating right styles when floatingRight is false', () => {
+      mockUseFloatingRight.mockReturnValue({
+        floatingRight: false,
+        floatingRightWidth: 480,
+      })
+
+      const { container } = renderWithProviders(<PreviewPanel />)
+
+      const panel = container.firstChild as HTMLElement
+      expect(panel.className).not.toContain('absolute')
+      expect(panel.style.width).toBe('480px')
+    })
+
     it('should update width when floatingRightWidth changes', () => {
       mockUseFloatingRight.mockReturnValue({
         floatingRight: false,
@@ -394,7 +431,9 @@ describe('DataSource', () => {
     it('should render step one title', () => {
       const onSelect = vi.fn()
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="" />,
+      )
 
       expect(
         screen.getByText('datasetPipeline.inputFieldPanel.preview.stepOneTitle'),
@@ -404,7 +443,9 @@ describe('DataSource', () => {
     it('should render DataSourceOptions component', () => {
       const onSelect = vi.fn()
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="" />,
+      )
 
       expect(screen.getByTestId('data-source-options')).toBeInTheDocument()
     })
@@ -412,9 +453,13 @@ describe('DataSource', () => {
     it('should pass dataSourceNodeId to DataSourceOptions', () => {
       const onSelect = vi.fn()
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="test-node-id" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="test-node-id" />,
+      )
 
-      expect(screen.getByTestId('current-node-id').textContent).toBe('test-node-id')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'test-node-id',
+      )
     })
   })
 
@@ -453,7 +498,9 @@ describe('DataSource', () => {
         variables: [createRAGPipelineVariable()],
       }
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="test-node" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="test-node" />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
@@ -464,7 +511,9 @@ describe('DataSource', () => {
       const onSelect = vi.fn()
       mockPreProcessingParamsData = { variables: [] }
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="test-node" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="test-node" />,
+      )
 
       expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
     })
@@ -473,7 +522,9 @@ describe('DataSource', () => {
       const onSelect = vi.fn()
       mockPreProcessingParamsData = undefined
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="" />,
+      )
 
       expect(
         screen.getByText('datasetPipeline.inputFieldPanel.preview.stepOneTitle'),
@@ -488,7 +539,9 @@ describe('DataSource', () => {
         createDatasourceOption({ value: 'selected-node', label: 'Selected' }),
       ]
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="" />,
+      )
       fireEvent.click(screen.getByTestId('option-selected-node'))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
@@ -500,12 +553,34 @@ describe('DataSource', () => {
     })
   })
 
+  describe('Memoization', () => {
+    it('should be memoized (React.memo)', () => {
+      const onSelect = vi.fn()
+
+      const { rerender } = renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="node-1" />,
+      )
+
+      rerender(
+        <TestWrapper>
+          <DataSource onSelect={onSelect} dataSourceNodeId="node-1" />
+        </TestWrapper>,
+      )
+
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.preview.stepOneTitle'),
+      ).toBeInTheDocument()
+    })
+  })
+
   describe('Edge Cases', () => {
     it('should handle null pipelineId', () => {
       const onSelect = vi.fn()
       mockPipelineId = null
 
-      renderWithProviders(<DataSource onSelect={onSelect} dataSourceNodeId="test-node" />)
+      renderWithProviders(
+        <DataSource onSelect={onSelect} dataSourceNodeId="test-node" />,
+      )
 
       expect(
         screen.getByText('datasetPipeline.inputFieldPanel.preview.stepOneTitle'),
@@ -516,10 +591,15 @@ describe('DataSource', () => {
       const onSelect = vi.fn()
 
       renderWithProviders(
-        <DataSource onSelect={onSelect} dataSourceNodeId="node-with-special-chars_123" />,
+        <DataSource
+          onSelect={onSelect}
+          dataSourceNodeId="node-with-special-chars_123"
+        />,
       )
 
-      expect(screen.getByTestId('current-node-id').textContent).toBe('node-with-special-chars_123')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'node-with-special-chars_123',
+      )
     })
   })
 })
@@ -563,7 +643,9 @@ describe('ProcessDocuments', () => {
     })
 
     it('should handle different dataSourceNodeId values', () => {
-      const { rerender } = renderWithProviders(<ProcessDocuments dataSourceNodeId="node-1" />)
+      const { rerender } = renderWithProviders(
+        <ProcessDocuments dataSourceNodeId="node-1" />,
+      )
 
       expect(
         screen.getByText('datasetPipeline.inputFieldPanel.preview.stepTwoTitle'),
@@ -637,6 +719,24 @@ describe('ProcessDocuments', () => {
         expect(screen.getByTestId('field-var1')).toBeInTheDocument()
         expect(screen.getByTestId('field-var2')).toBeInTheDocument()
       })
+    })
+  })
+
+  describe('Memoization', () => {
+    it('should be memoized (React.memo)', () => {
+      const { rerender } = renderWithProviders(
+        <ProcessDocuments dataSourceNodeId="node-1" />,
+      )
+
+      rerender(
+        <TestWrapper>
+          <ProcessDocuments dataSourceNodeId="node-1" />
+        </TestWrapper>,
+      )
+
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.preview.stepTwoTitle'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -778,6 +878,39 @@ describe('Form', () => {
     })
   })
 
+  describe('Memoization', () => {
+    it('should memoize initialData when variables do not change', () => {
+      const variables = [createRAGPipelineVariable()]
+
+      const { rerender } = renderWithProviders(<Form variables={variables} />)
+      rerender(
+        <TestWrapper>
+          <Form variables={variables} />
+        </TestWrapper>,
+      )
+
+      expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
+    })
+
+    it('should memoize configurations when variables do not change', () => {
+      const variables = [
+        createRAGPipelineVariable({ variable: 'var1' }),
+        createRAGPipelineVariable({ variable: 'var2' }),
+      ]
+
+      const { rerender } = renderWithProviders(<Form variables={variables} />)
+
+      rerender(
+        <TestWrapper>
+          <Form variables={variables} />
+        </TestWrapper>,
+      )
+
+      expect(screen.getByTestId('field-var1')).toBeInTheDocument()
+      expect(screen.getByTestId('field-var2')).toBeInTheDocument()
+    })
+  })
+
   describe('Edge Cases', () => {
     it('should handle empty variables array', () => {
       const { container } = renderWithProviders(<Form variables={[]} />)
@@ -796,8 +929,7 @@ describe('Form', () => {
 
     it('should handle many variables', () => {
       const variables = Array.from({ length: 20 }, (_, i) =>
-        createRAGPipelineVariable({ variable: `var_${i}`, label: `Var ${i}` }),
-      )
+        createRAGPipelineVariable({ variable: `var_${i}`, label: `Var ${i}` }))
 
       renderWithProviders(<Form variables={variables} />)
 
@@ -876,7 +1008,9 @@ describe('Preview Panel Integration', () => {
 
   describe('End-to-End Flow', () => {
     it('should complete full preview flow: select datasource -> show forms', async () => {
-      mockDatasourceOptions = [createDatasourceOption({ value: 'node-1', label: 'Local File' })]
+      mockDatasourceOptions = [
+        createDatasourceOption({ value: 'node-1', label: 'Local File' }),
+      ]
       mockPreProcessingParamsData = {
         variables: [
           createRAGPipelineVariable({
@@ -941,7 +1075,9 @@ describe('Preview Panel Integration', () => {
       renderWithProviders(<PreviewPanel />)
       fireEvent.click(screen.getByTestId('option-communicated-node'))
 
-      expect(screen.getByTestId('current-node-id').textContent).toBe('communicated-node')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'communicated-node',
+      )
     })
   })
 
@@ -955,13 +1091,19 @@ describe('Preview Panel Integration', () => {
       renderWithProviders(<PreviewPanel />)
       fireEvent.click(screen.getByTestId('option-persistent-node'))
 
-      expect(screen.getByTestId('current-node-id').textContent).toBe('persistent-node')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'persistent-node',
+      )
 
       fireEvent.click(screen.getByTestId('option-other-node'))
-      expect(screen.getByTestId('current-node-id').textContent).toBe('other-node')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'other-node',
+      )
 
       fireEvent.click(screen.getByTestId('option-persistent-node'))
-      expect(screen.getByTestId('current-node-id').textContent).toBe('persistent-node')
+      expect(screen.getByTestId('current-node-id').textContent).toBe(
+        'persistent-node',
+      )
     })
   })
 })

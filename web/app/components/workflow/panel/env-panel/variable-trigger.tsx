@@ -1,48 +1,59 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
-type Props = Readonly<{
+type Props = {
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
-}>
+}
 
-const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
+const VariableTrigger = ({
+  open,
+  setOpen,
+  env,
+  onClose,
+  onSave,
+}: Props) => {
   const { t } = useTranslation()
-  const handleOpenChange = React.useCallback(
-    (nextOpen: boolean) => {
-      setOpen(nextOpen)
-      if (!nextOpen) onClose()
-    },
-    [onClose, setOpen],
-  )
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger
-        render={
-          <Button variant="primary">
-            <RiAddLine className="mr-1 size-4" />
-            <span className="system-sm-medium">
-              {t(($) => $['env.envPanelButton'], { ns: 'workflow' })}
-            </span>
-          </Button>
-        }
-      />
-      <PopoverContent
-        placement="left-start"
-        sideOffset={8}
-        alignOffset={-104}
-        popupClassName="border-none bg-transparent shadow-none"
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={() => {
+        setOpen(v => !v)
+        if (open)
+          onClose()
+      }}
+      placement="left-start"
+      offset={{
+        mainAxis: 8,
+        alignmentAxis: -104,
+      }}
+    >
+      <PortalToFollowElemTrigger onClick={() => {
+        setOpen(v => !v)
+        if (open)
+          onClose()
+      }}
       >
+        <Button variant="primary">
+          <RiAddLine className="mr-1 h-4 w-4" />
+          <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
+        </Button>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[11]">
         <VariableModal
           env={env}
           onSave={onSave}
@@ -51,8 +62,8 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
             setOpen(false)
           }}
         />
-      </PopoverContent>
-    </Popover>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

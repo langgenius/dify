@@ -1,44 +1,52 @@
-import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import type {
+  CommonNodeType,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
 import { intersection } from 'es-toolkit/array'
-import { useCallback } from 'react'
+import {
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
-import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import {
+  useAvailableBlocks,
+  useNodesInteractions,
+} from '@/app/components/workflow/hooks'
 
 type ChangeItemProps = {
   data: CommonNodeType
   nodeId: string
   sourceHandle: string
 }
-const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
+const ChangeItem = ({
+  data,
+  nodeId,
+  sourceHandle,
+}: ChangeItemProps) => {
   const { t } = useTranslation()
 
   const { handleNodeChange } = useNodesInteractions()
-  const nodeCatalogType = getNodeCatalogType(data)
-  const { availablePrevBlocks, availableNextBlocks } = useAvailableBlocks(
-    nodeCatalogType,
-    data.isInIteration || data.isInLoop,
-  )
+  const {
+    availablePrevBlocks,
+    availableNextBlocks,
+  } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
 
-  const handleSelect = useCallback<OnSelectBlock>(
-    (type, pluginDefaultValue) => {
-      handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
-    },
-    [nodeId, sourceHandle, handleNodeChange],
-  )
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
+  }, [nodeId, sourceHandle, handleNodeChange])
 
   const renderTrigger = useCallback(() => {
     return (
-      <Button variant="ghost" size="medium" className="w-full justify-start px-2">
-        {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </Button>
+      <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
+        {t('panel.change', { ns: 'workflow' })}
+      </div>
     )
   }, [t])
 
@@ -46,13 +54,13 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     <BlockSelector
       onSelect={handleSelect}
       placement="top-end"
-      sideOffset={6}
-      alignOffset={8}
+      offset={{
+        mainAxis: 6,
+        crossAxis: 8,
+      }}
       trigger={renderTrigger}
-      popupClassName="w-[328px]!"
-      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
-        (item) => item !== nodeCatalogType,
-      )}
+      popupClassName="!w-[328px]"
+      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
     />
   )
 }
@@ -64,55 +72,57 @@ type OperatorProps = {
   nodeId: string
   sourceHandle: string
 }
-const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorProps) => {
+const Operator = ({
+  open,
+  onOpenChange,
+  data,
+  nodeId,
+  sourceHandle,
+}: OperatorProps) => {
   const { t } = useTranslation()
-  const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
+  const {
+    handleNodeDelete,
+    handleNodeDisconnect,
+  } = useNodesInteractions()
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            className="size-6 p-0"
-            aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
-          >
-            <span aria-hidden className="i-ri-more-fill size-4" />
-          </Button>
-        }
-      />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        alignOffset={-4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
+    <PortalToFollowElem
+      placement="bottom-end"
+      offset={{ mainAxis: 4, crossAxis: -4 }}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <PortalToFollowElemTrigger onClick={() => onOpenChange(!open)}>
+        <Button className="h-6 w-6 p-0">
+          <RiMoreFill className="h-4 w-4" />
+        </Button>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-10">
+        <div className="system-md-regular min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
           <div className="p-1">
-            <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
+            <ChangeItem
+              data={data}
+              nodeId={nodeId}
+              sourceHandle={sourceHandle}
+            />
             <div
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-              onClick={() => {
-                onOpenChange(false)
-                handleNodeDisconnect(nodeId)
-              }}
+              onClick={() => handleNodeDisconnect(nodeId)}
             >
-              {t(($) => $['common.disconnect'], { ns: 'workflow' })}
+              {t('common.disconnect', { ns: 'workflow' })}
             </div>
           </div>
           <div className="p-1">
             <div
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-              onClick={() => {
-                onOpenChange(false)
-                handleNodeDelete(nodeId)
-              }}
+              onClick={() => handleNodeDelete(nodeId)}
             >
-              {t(($) => $['operation.delete'], { ns: 'common' })}
+              {t('operation.delete', { ns: 'common' })}
             </div>
           </div>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

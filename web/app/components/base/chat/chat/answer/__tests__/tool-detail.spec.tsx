@@ -54,4 +54,21 @@ describe('ToolDetail', () => {
     await user.click(label)
     expect(screen.queryByText('tools.thought.requestTitle')).not.toBeInTheDocument()
   })
+
+  it('should apply different styles when expanded', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ToolDetail payload={mockPayload} />)
+    const rootDiv = container.firstChild as HTMLElement
+    const label = screen.getByText('Test Tool Label')
+    const headerDiv = label.parentElement!
+
+    // Initial styles
+    expect(rootDiv).toHaveClass('bg-workflow-process-bg')
+    expect(headerDiv).not.toHaveClass('pb-1.5')
+
+    // Expand
+    await user.click(label)
+    expect(rootDiv).toHaveClass('bg-background-section-burn')
+    expect(headerDiv).toHaveClass('pb-1.5')
+  })
 })

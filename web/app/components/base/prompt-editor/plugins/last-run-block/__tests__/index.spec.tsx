@@ -1,14 +1,14 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { LAST_RUN_PLACEHOLDER_TEXT } from '../../../constants'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../__tests__/test-helpers'
-import { CustomTextNode } from '../../custom-text/node'
+} from '../../test-helpers'
 import {
   DELETE_LAST_RUN_COMMAND,
   INSERT_LAST_RUN_BLOCK_COMMAND,
@@ -16,11 +16,16 @@ import {
   LastRunBlockNode,
 } from '../index'
 
-const renderLastRunBlock = (props?: { onInsert?: () => void; onDelete?: () => void }) => {
+const renderLastRunBlock = (props?: {
+  onInsert?: () => void
+  onDelete?: () => void
+}) => {
   return renderLexicalEditor({
     namespace: 'last-run-block-plugin-test',
     nodes: [CustomTextNode, LastRunBlockNode],
-    children: <LastRunBlock {...(props ?? {})} />,
+    children: (
+      <LastRunBlock {...(props ?? {})} />
+    ),
   })
 }
 

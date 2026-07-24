@@ -1,4 +1,8 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 
@@ -7,7 +11,10 @@ type TitleInputProps = {
   onBlur: (value: string) => void
 }
 
-export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
+export const TitleInput = memo(({
+  value,
+  onBlur,
+}: TitleInputProps) => {
   const { t } = useTranslation()
   const [localValue, setLocalValue] = useState(value)
 
@@ -21,31 +28,15 @@ export const TitleInput = memo(({ value, onBlur }: TitleInputProps) => {
     onBlur(localValue)
   }
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalValue(e.target.value)
-  }, [])
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      ;(e.target as HTMLInputElement).blur()
-    }
-  }, [])
-
-  // Sync local state with incoming collaborative updates so remote title edits appear immediately.
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setLocalValue(value)
-    })
-  }, [value])
-
   return (
     <input
       value={localValue}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      className={`mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 system-xl-semibold text-text-primary outline-hidden focus:shadow-xs`}
-      placeholder={t(($) => $['common.addTitle'], { ns: 'workflow' }) || ''}
+      onChange={e => setLocalValue(e.target.value)}
+      className={`
+        system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
+        outline-none focus:shadow-xs
+      `}
+      placeholder={t('common.addTitle', { ns: 'workflow' }) || ''}
       onBlur={handleBlur}
     />
   )
@@ -56,7 +47,10 @@ type DescriptionInputProps = {
   value: string
   onChange: (value: string) => void
 }
-export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps) => {
+export const DescriptionInput = memo(({
+  value,
+  onChange,
+}: DescriptionInputProps) => {
   const { t } = useTranslation()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {
@@ -68,16 +62,24 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
 
   return (
     <div
-      className={`group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-[5px] leading-0 ${focus && 'shadow-xs!'} `}
+      className={`
+        leading-0 group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg
+        px-2 py-[5px]
+        ${focus && '!shadow-xs'}
+      `}
     >
       <Textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         minRows={1}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        className={`w-full resize-none appearance-none bg-transparent text-xs leading-[18px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary`}
-        placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' }) || ''}
+        className={`
+          w-full resize-none appearance-none bg-transparent text-xs
+          leading-[18px] text-text-primary caret-[#295EFF]
+          outline-none placeholder:text-text-quaternary
+        `}
+        placeholder={t('common.addDescription', { ns: 'workflow' }) || ''}
       />
     </div>
   )

@@ -1,47 +1,33 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { RiKey2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 
 type ISecretKeyButtonProps = {
   className?: string
   appId?: string
   textCls?: string
-  canManage?: boolean
 }
 
-const SecretKeyButton = ({
-  className,
-  appId,
-  textCls,
-  canManage = false,
-}: ISecretKeyButtonProps) => {
-  const [isVisible, setIsVisible] = useState(false)
+const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) => {
+  const [isVisible, setVisible] = useState(false)
   const { t } = useTranslation()
-
   return (
     <>
       <Button
         className={`px-3 ${className}`}
-        onClick={() => setIsVisible(true)}
+        onClick={() => setVisible(true)}
         size="small"
         variant="ghost"
-        disabled={!canManage}
       >
-        <div className="flex size-3.5 items-center justify-center">
-          <span className="i-ri-key-2-line size-3.5 text-text-tertiary" />
+        <div className="flex h-3.5 w-3.5 items-center justify-center">
+          <RiKey2Line className="h-3.5 w-3.5 text-text-tertiary" />
         </div>
-        <div className={`px-[3px] system-xs-medium text-text-tertiary ${textCls}`}>
-          {t(($) => $.apiKey, { ns: 'appApi' })}
-        </div>
+        <div className={`system-xs-medium px-[3px] text-text-tertiary ${textCls}`}>{t('apiKey', { ns: 'appApi' })}</div>
       </Button>
-      <SecretKeyModal
-        isShow={isVisible}
-        onClose={() => setIsVisible(false)}
-        appId={appId}
-        canManage={canManage}
-      />
+      <SecretKeyModal isShow={isVisible} onClose={() => setVisible(false)} appId={appId} />
     </>
   )
 }

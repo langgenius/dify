@@ -2,24 +2,22 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, override
+from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.model_manager import ModelManager
-from core.rag.datasource.vdb.vector_backend_registry import get_vector_factory_class
-from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
+from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from extensions.otel import trace_span
-from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
 
@@ -32,103 +30,21 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> VectorIndexStructDict:
-        index_struct_dict: VectorIndexStructDict = {
-            "type": vector_type,
-            "vector_store": {"class_prefix": collection_name},
-        }
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
+        index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
 
 
-class _LazyEmbeddings(Embeddings):
-    """Lazy proxy that defers materializing the real embedding model.
-
-    Constructing the real embeddings (via ``ModelManager.get_model_instance``)
-    transitively calls ``FeatureService.get_features`` → ``BillingService``
-    HTTP GETs (see ``provider_manager.py``). Cleanup paths
-    (``delete_by_ids`` / ``delete`` / ``text_exists``) do not need embeddings
-    at all, so deferring this until an ``embed_*`` method is actually invoked
-    keeps cleanup tasks resilient to transient billing-API failures and avoids
-    leaving stranded ``document_segments`` / ``child_chunks`` whenever billing
-    hiccups.
-
-    Existing callers that perform create / search operations are unaffected:
-    the first ``embed_*`` call materializes the underlying model and the
-    behavior is identical from that point on.
-    """
-
-    def __init__(self, dataset: Dataset):
-        self._dataset = dataset
-        self._real: Embeddings | None = None
-
-    def _ensure(self) -> Embeddings:
-        if self._real is None:
-            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=self._dataset.tenant_id,
-                provider=self._dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=self._dataset.embedding_model,
-            )
-            self._real = CacheEmbedding(embedding_model)
-        return self._real
-
-    @override
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return self._ensure().embed_documents(texts)
-
-    @override
-    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
-        return self._ensure().embed_multimodal_documents(multimodel_documents)
-
-    @override
-    def embed_query(self, text: str) -> list[float]:
-        return self._ensure().embed_query(text)
-
-    @override
-    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
-        return self._ensure().embed_multimodal_query(multimodel_document)
-
-    @override
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        return await self._ensure().aembed_documents(texts)
-
-    @override
-    async def aembed_query(self, text: str) -> list[float]:
-        return await self._ensure().aembed_query(text)
-
-
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None, *, session: Session):
+    def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
-            # `is_summary` and `original_chunk_id` are stored on summary vectors
-            # by `SummaryIndexService` and read back by `RetrievalService` to
-            # route summary hits through their original parent chunks. They
-            # must be listed here so vector backends that use this list as an
-            # explicit return-properties projection (notably Weaviate) actually
-            # return those fields; without them, summary hits silently
-            # collapse into `is_summary = False` branches and the summary
-            # retrieval path is a no-op. See #34884.
-            attributes = [
-                "doc_id",
-                "dataset_id",
-                "document_id",
-                "doc_hash",
-                "doc_type",
-                "is_summary",
-                "original_chunk_id",
-            ]
+            attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
-        # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
-        # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
-        # construction. The real embedding model is materialized only when an
-        # ``embed_*`` method is actually invoked (i.e. create / search paths).
-        self._embeddings: Embeddings = _LazyEmbeddings(dataset)
+        self._embeddings = self._get_embeddings()
         self._attributes = attributes
-        self._session = session
-        self._vector_processor = self._init_vector(session=session)
+        self._vector_processor = self._init_vector()
 
-    def _init_vector(self, *, session: Session) -> BaseVector:
+    def _init_vector(self) -> BaseVector:
         vector_type = dify_config.VECTOR_STORE
 
         if self._dataset.index_struct_dict:
@@ -138,7 +54,7 @@ class Vector:
                 stmt = select(Whitelist).where(
                     Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
-                whitelist = session.scalars(stmt).one_or_none()
+                whitelist = db.session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
@@ -150,22 +66,136 @@ class Vector:
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
-        return get_vector_factory_class(vector_type)
+        match vector_type:
+            case VectorType.CHROMA:
+                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
 
-    @staticmethod
-    def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
-        filtered_documents = [document for document in documents if document.page_content.strip()]
-        skipped_count = len(documents) - len(filtered_documents)
-        if skipped_count:
-            logger.warning("skip %d empty documents before vector embedding", skipped_count)
-        return filtered_documents
+                return ChromaVectorFactory
+            case VectorType.MILVUS:
+                from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
+
+                return MilvusVectorFactory
+            case VectorType.ALIBABACLOUD_MYSQL:
+                from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
+                    AlibabaCloudMySQLVectorFactory,
+                )
+
+                return AlibabaCloudMySQLVectorFactory
+            case VectorType.MYSCALE:
+                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
+
+                return MyScaleVectorFactory
+            case VectorType.PGVECTOR:
+                from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
+
+                return PGVectorFactory
+            case VectorType.VASTBASE:
+                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
+
+                return VastbaseVectorFactory
+            case VectorType.PGVECTO_RS:
+                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
+
+                return PGVectoRSFactory
+            case VectorType.QDRANT:
+                from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+
+                return QdrantVectorFactory
+            case VectorType.RELYT:
+                from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
+
+                return RelytVectorFactory
+            case VectorType.ELASTICSEARCH:
+                from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
+
+                return ElasticSearchVectorFactory
+            case VectorType.ELASTICSEARCH_JA:
+                from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
+                    ElasticSearchJaVectorFactory,
+                )
+
+                return ElasticSearchJaVectorFactory
+            case VectorType.TIDB_VECTOR:
+                from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
+
+                return TiDBVectorFactory
+            case VectorType.WEAVIATE:
+                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
+
+                return WeaviateVectorFactory
+            case VectorType.TENCENT:
+                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
+
+                return TencentVectorFactory
+            case VectorType.ORACLE:
+                from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
+
+                return OracleVectorFactory
+            case VectorType.OPENSEARCH:
+                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
+
+                return OpenSearchVectorFactory
+            case VectorType.ANALYTICDB:
+                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
+
+                return AnalyticdbVectorFactory
+            case VectorType.COUCHBASE:
+                from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
+
+                return CouchbaseVectorFactory
+            case VectorType.BAIDU:
+                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
+
+                return BaiduVectorFactory
+            case VectorType.VIKINGDB:
+                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
+
+                return VikingDBVectorFactory
+            case VectorType.UPSTASH:
+                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+
+                return UpstashVectorFactory
+            case VectorType.TIDB_ON_QDRANT:
+                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
+
+                return TidbOnQdrantVectorFactory
+            case VectorType.LINDORM:
+                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+
+                return LindormVectorStoreFactory
+            case VectorType.OCEANBASE | VectorType.SEEKDB:
+                from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
+
+                return OceanBaseVectorFactory
+            case VectorType.OPENGAUSS:
+                from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
+
+                return OpenGaussFactory
+            case VectorType.TABLESTORE:
+                from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
+
+                return TableStoreVectorFactory
+            case VectorType.HUAWEI_CLOUD:
+                from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
+
+                return HuaweiCloudVectorFactory
+            case VectorType.MATRIXONE:
+                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
+
+                return MatrixoneVectorFactory
+            case VectorType.CLICKZETTA:
+                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+                return ClickzettaVectorFactory
+            case VectorType.IRIS:
+                from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
+
+                return IrisVectorFactory
+            case _:
+                raise ValueError(f"Vector store {vector_type} is not supported.")
 
     def create(self, texts: list | None = None, **kwargs):
         if texts:
-            texts = self._filter_empty_text_documents(texts)
-            if not texts:
-                return
-
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
@@ -195,7 +225,7 @@ class Vector:
                 # Batch query all upload files to avoid N+1 queries
                 attachment_ids = [doc.metadata["doc_id"] for doc in batch]
                 stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
-                upload_files = self._session.scalars(stmt).all()
+                upload_files = db.session.scalars(stmt).all()
                 upload_file_map = {str(f.id): f for f in upload_files}
 
                 file_base64_list = []
@@ -223,14 +253,8 @@ class Vector:
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
-        documents = self._filter_empty_text_documents(documents)
-        if not documents:
-            return
-
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
-            if not documents:
-                return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)
@@ -246,14 +270,10 @@ class Vector:
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
         query_vector = self._embeddings.embed_query(query)
-        return self._search_by_vector_traced(query_vector, **kwargs)
-
-    @trace_span()
-    def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
 
         if not upload_file:
             return []
@@ -266,7 +286,7 @@ class Vector:
                 "file_id": file_id,
             }
         )
-        return self._search_by_vector_traced(multimodal_vector, **kwargs)
+        return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
@@ -279,7 +299,7 @@ class Vector:
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
-        model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
+        model_manager = ModelManager()
 
         embedding_model = model_manager.get_model_instance(
             tenant_id=self._dataset.tenant_id,

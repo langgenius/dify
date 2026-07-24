@@ -1,7 +1,9 @@
-@reference "../../../../styles/globals.css";
+.modal {
+  position: relative;
+}
 
 .modalHeader {
-  @apply flex h-8 place-content-between items-center;
+  @apply flex items-center place-content-between h-8;
 }
 .modalHeader .title {
   @apply grow text-text-primary;
@@ -10,12 +12,12 @@
   line-height: 32px;
 }
 .modalHeader .close {
-  @apply h-4 w-4 shrink-0 cursor-pointer bg-center bg-no-repeat;
+  @apply shrink-0 h-4 w-4 bg-center bg-no-repeat cursor-pointer;
   background-image: url(../assets/close.svg);
   background-size: 16px;
 }
 
-.tip {
+.modal .tip {
   @apply mt-1 mb-8 text-text-tertiary;
   font-weight: 400;
   font-size: 13px;

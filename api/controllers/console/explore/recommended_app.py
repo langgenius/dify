@@ -1,151 +1,84 @@
-from typing import Any
-from uuid import UUID
-
 from flask import request
-from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field
 
 from constants.languages import languages
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import get_or_create_model
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, with_current_user
-from extensions.ext_database import db
-from fields.base import ResponseModel
-from libs.helper import build_icon_url
-from libs.login import login_required
-from models import Account
+from controllers.console.wraps import account_initialization_required
+from libs.helper import AppIconUrlField
+from libs.login import current_user, login_required
 from services.recommended_app_service import RecommendedAppService
+
+app_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "mode": fields.String,
+    "icon": fields.String,
+    "icon_type": fields.String,
+    "icon_url": AppIconUrlField,
+    "icon_background": fields.String,
+}
+
+app_model = get_or_create_model("RecommendedAppInfo", app_fields)
+
+recommended_app_fields = {
+    "app": fields.Nested(app_model, attribute="app"),
+    "app_id": fields.String,
+    "description": fields.String(attribute="description"),
+    "copyright": fields.String,
+    "privacy_policy": fields.String,
+    "custom_disclaimer": fields.String,
+    "category": fields.String,
+    "position": fields.Integer,
+    "is_listed": fields.Boolean,
+    "can_trial": fields.Boolean,
+}
+
+recommended_app_model = get_or_create_model("RecommendedApp", recommended_app_fields)
+
+recommended_app_list_fields = {
+    "recommended_apps": fields.List(fields.Nested(recommended_app_model)),
+    "categories": fields.List(fields.String),
+}
+
+recommended_app_list_model = get_or_create_model("RecommendedAppList", recommended_app_list_fields)
 
 
 class RecommendedAppsQuery(BaseModel):
-    language: str | None = Field(default=None, description="Language code for recommended app localization")
+    language: str | None = Field(default=None)
 
 
-class RecommendedAppInfoResponse(ResponseModel):
-    id: str
-    name: str | None = None
-    mode: str | None = None
-    icon: str | None = None
-    icon_type: str | None = None
-    icon_background: str | None = None
-
-    @staticmethod
-    def _normalize_enum_like(value: Any) -> str | None:
-        if value is None:
-            return None
-        if isinstance(value, str):
-            return value
-        return str(getattr(value, "value", value))
-
-    @field_validator("mode", "icon_type", mode="before")
-    @classmethod
-    def _normalize_enum_fields(cls, value: Any) -> str | None:
-        return cls._normalize_enum_like(value)
-
-    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
-
-
-class RecommendedAppResponse(ResponseModel):
-    app: RecommendedAppInfoResponse | None = None
-    app_id: str
-    description: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
-    categories: list[str] = Field(default_factory=list)
-    position: int | None = None
-    is_listed: bool | None = None
-    can_trial: bool | None = None
-
-
-class RecommendedAppListResponse(ResponseModel):
-    recommended_apps: list[RecommendedAppResponse]
-    categories: list[str]
-
-
-class LearnDifyAppListResponse(ResponseModel):
-    recommended_apps: list[RecommendedAppResponse]
-
-
-class RecommendedAppDetailResponse(ResponseModel):
-    id: str
-    name: str
-    icon: str | None = None
-    icon_background: str | None = None
-    mode: str
-    export_data: str
-    can_trial: bool | None = None
-
-
-class RecommendedAppDetailNullableResponse(RootModel[RecommendedAppDetailResponse | None]):
-    pass
-
-
-register_schema_models(
-    console_ns,
-    RecommendedAppsQuery,
+console_ns.schema_model(
+    RecommendedAppsQuery.__name__,
+    RecommendedAppsQuery.model_json_schema(ref_template="#/definitions/{model}"),
 )
-register_response_schema_models(
-    console_ns,
-    RecommendedAppInfoResponse,
-    RecommendedAppResponse,
-    RecommendedAppListResponse,
-    LearnDifyAppListResponse,
-    RecommendedAppDetailResponse,
-    RecommendedAppDetailNullableResponse,
-)
-
-
-def _resolve_language(language: str | None, user: Account) -> str:
-    if language and language in languages:
-        return language
-    if user.interface_language:
-        return user.interface_language
-    return languages[0]
 
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
+    @console_ns.expect(console_ns.models[RecommendedAppsQuery.__name__])
     @login_required
     @account_initialization_required
-    @with_current_user
-    def get(self, current_user: Account):
+    @marshal_with(recommended_app_list_model)
+    def get(self):
         # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        language = args.language
+        if language and language in languages:
+            language_prefix = language
+        elif current_user and current_user.interface_language:
+            language_prefix = current_user.interface_language
+        else:
+            language_prefix = languages[0]
 
-        return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
-
-
-@console_ns.route("/explore/apps/learn-dify")
-class LearnDifyAppListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
-    @console_ns.response(200, "Success", console_ns.models[LearnDifyAppListResponse.__name__])
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def get(self, current_user: Account):
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
-
-        return LearnDifyAppListResponse.model_validate(
-            RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
+        return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailNullableResponse.__name__])
     @login_required
     @account_initialization_required
-    def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+    def get(self, app_id):
+        app_id = str(app_id)
+        return RecommendedAppService.get_recommend_app_detail(app_id)

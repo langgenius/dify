@@ -6,16 +6,11 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Any, override
+from typing import Any
 
 from pydantic import BaseModel
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
-    TRIGGER_SCHEDULE_NODE_TYPE,
-    TRIGGER_WEBHOOK_NODE_TYPE,
-)
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import (
     PluginTriggerDebugEvent,
@@ -24,10 +19,10 @@ from core.trigger.debug.events import (
     build_plugin_pool_key,
     build_webhook_pool_key,
 )
-from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
+from dify_graph.enums import NodeType
+from dify_graph.nodes.trigger_plugin.entities import TriggerEventNodeData
+from dify_graph.nodes.trigger_schedule.entities import ScheduleConfig
 from extensions.ext_redis import redis_client
-from graphon.entities.graph_config import NodeConfigDict
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
 from models.model import App
@@ -46,10 +41,10 @@ class TriggerDebugEventPoller(ABC):
     app_id: str
     user_id: str
     tenant_id: str
-    node_config: NodeConfigDict
+    node_config: Mapping[str, Any]
     node_id: str
 
-    def __init__(self, tenant_id: str, user_id: str, app_id: str, node_config: NodeConfigDict, node_id: str):
+    def __init__(self, tenant_id: str, user_id: str, app_id: str, node_config: Mapping[str, Any], node_id: str):
         self.tenant_id = tenant_id
         self.user_id = user_id
         self.app_id = app_id
@@ -62,11 +57,10 @@ class TriggerDebugEventPoller(ABC):
 
 
 class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
-    @override
     def poll(self) -> TriggerDebugEvent | None:
         from services.trigger.trigger_service import TriggerService
 
-        plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config["data"], from_attributes=True)
+        plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config.get("data", {}))
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = build_plugin_pool_key(
             name=plugin_trigger_data.event_name,
@@ -104,7 +98,6 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 
 class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
-    @override
     def poll(self) -> TriggerDebugEvent | None:
         pool_key = build_webhook_pool_key(
             tenant_id=self.tenant_id,
@@ -192,7 +185,6 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
             inputs={},
         )
 
-    @override
     def poll(self) -> TriggerDebugEvent | None:
         schedule_debug_runtime = self.get_or_create_schedule_debug_runtime()
         if schedule_debug_runtime.next_run_at > naive_utc_now():
@@ -213,19 +205,21 @@ def create_event_poller(
     if not node_config:
         raise ValueError("Node data not found for node %s", node_id)
     node_type = draft_workflow.get_node_type_from_node_config(node_config)
-    if node_type == TRIGGER_PLUGIN_NODE_TYPE:
-        return PluginTriggerDebugEventPoller(
-            tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
-        )
-    if node_type == TRIGGER_WEBHOOK_NODE_TYPE:
-        return WebhookTriggerDebugEventPoller(
-            tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
-        )
-    if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
-        return ScheduleTriggerDebugEventPoller(
-            tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
-        )
-    raise ValueError("unable to create event poller for node type %s", node_type)
+    match node_type:
+        case NodeType.TRIGGER_PLUGIN:
+            return PluginTriggerDebugEventPoller(
+                tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
+            )
+        case NodeType.TRIGGER_WEBHOOK:
+            return WebhookTriggerDebugEventPoller(
+                tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
+            )
+        case NodeType.TRIGGER_SCHEDULE:
+            return ScheduleTriggerDebugEventPoller(
+                tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
+            )
+        case _:
+            raise ValueError("unable to create event poller for node type %s", node_type)
 
 
 def select_trigger_debug_events(

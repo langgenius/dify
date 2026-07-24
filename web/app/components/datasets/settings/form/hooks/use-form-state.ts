@@ -4,21 +4,18 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useMembers } from '@/service/use-common'
-import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -30,25 +27,9 @@ const DEFAULT_APP_ICON: IconInfo = {
 
 export const useFormState = () => {
   const { t } = useTranslation()
-  const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const datasetACLCapabilities = useMemo(
-    () =>
-      getDatasetACLCapabilities(currentDataset?.permission_keys, {
-        currentUserId,
-        resourceMaintainer: currentDataset?.maintainer,
-        workspacePermissionKeys,
-      }),
-    [
-      currentDataset?.maintainer,
-      currentDataset?.permission_keys,
-      currentUserId,
-      workspacePermissionKeys,
-    ],
-  )
-  const canEditSettings = datasetACLCapabilities.canEdit
+  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
+  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
 
   // Basic form state
   const [loading, setLoading] = useState(false)
@@ -58,28 +39,21 @@ export const useFormState = () => {
   // Icon state
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const previousAppIcon = useRef(DEFAULT_APP_ICON)
 
   // Permission state
   const [permission, setPermission] = useState(currentDataset?.permission)
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
-    currentDataset?.partial_member_list || [],
-  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
 
   // External retrieval state
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(
-    currentDataset?.external_retrieval_model.score_threshold ?? 0.5,
-  )
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(
-    currentDataset?.external_retrieval_model.score_threshold_enabled ?? false,
-  )
+  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
 
   // Indexing and retrieval state
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [keywordNumber, setKeywordNumber] = useState(currentDataset?.keyword_number ?? 10)
-  const [retrievalConfig, setRetrievalConfig] = useState(
-    currentDataset?.retrieval_model_dict as RetrievalConfig,
-  )
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
       ? {
@@ -93,9 +67,7 @@ export const useFormState = () => {
   )
 
   // Summary index state
-  const [summaryIndexSetting, setSummaryIndexSetting] = useState(
-    currentDataset?.summary_index_setting,
-  )
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState(currentDataset?.summary_index_setting)
 
   // Model lists
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
@@ -111,7 +83,8 @@ export const useFormState = () => {
   // Icon handlers
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
-  }, [])
+    previousAppIcon.current = iconInfo
+  }, [iconInfo])
 
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     const newIconInfo: IconInfo = {
@@ -121,37 +94,41 @@ export const useFormState = () => {
       icon_url: icon.type === 'emoji' ? undefined : icon.url,
     }
     setIconInfo(newIconInfo)
+    setShowAppIconPicker(false)
+  }, [])
+
+  const handleCloseAppIconPicker = useCallback(() => {
+    setIconInfo(previousAppIcon.current)
+    setShowAppIconPicker(false)
   }, [])
 
   // External retrieval settings handler
-  const handleSettingsChange = useCallback(
-    (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
-      if (data.top_k !== undefined) setTopK(data.top_k)
-      if (data.score_threshold !== undefined) setScoreThreshold(data.score_threshold)
-      if (data.score_threshold_enabled !== undefined)
-        setScoreThresholdEnabled(data.score_threshold_enabled)
-    },
-    [],
-  )
+  const handleSettingsChange = useCallback((data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
+    if (data.top_k !== undefined)
+      setTopK(data.top_k)
+    if (data.score_threshold !== undefined)
+      setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
+  }, [])
 
   // Summary index setting handler
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
-    setSummaryIndexSetting((prev) => ({ ...prev, ...payload }))
+    setSummaryIndexSetting(prev => ({ ...prev, ...payload }))
   }, [])
 
   // Save handler
   const handleSave = async () => {
-    if (!canEditSettings) return
-
-    if (loading) return
+    if (loading)
+      return
 
     if (!name?.trim()) {
-      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
+      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
 
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      toast.error(t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
+      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
 
@@ -171,9 +148,7 @@ export const useFormState = () => {
         indexing_technique: indexMethod,
         retrieval_model: {
           ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled
-            ? retrievalConfig.score_threshold
-            : 0,
+          score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
         },
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
@@ -183,8 +158,7 @@ export const useFormState = () => {
 
       if (currentDataset!.provider === 'external') {
         body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id
-        body.external_knowledge_api_id =
-          currentDataset!.external_knowledge_info.external_knowledge_api_id
+        body.external_knowledge_api_id = currentDataset!.external_knowledge_info.external_knowledge_api_id
         body.external_retrieval_model = {
           top_k: topK,
           score_threshold: scoreThreshold,
@@ -196,21 +170,23 @@ export const useFormState = () => {
         body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
-            role: memberList.find((member) => member.id === id)?.role,
+            role: memberList.find(member => member.id === id)?.role,
           }
         })
       }
 
       await updateDatasetSetting({ datasetId: currentDataset!.id, body })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
 
       if (mutateDatasets) {
         await mutateDatasets()
         invalidDatasetList()
       }
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    } finally {
+    }
+    catch {
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+    }
+    finally {
       setLoading(false)
     }
   }
@@ -228,19 +204,12 @@ export const useFormState = () => {
       embeddingModelList,
       rerankModelList,
     })
-  }, [
-    embeddingModel,
-    rerankModelList,
-    retrievalConfig.reranking_enable,
-    retrievalConfig.reranking_model,
-    embeddingModelList,
-    indexMethod,
-  ])
+  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
 
   return {
     // Context values
     currentDataset,
-    canEditSettings,
+    isCurrentWorkspaceDatasetOperator,
 
     // Loading state
     loading,
@@ -254,9 +223,9 @@ export const useFormState = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
-    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
+    handleCloseAppIconPicker,
 
     // Permission
     permission,

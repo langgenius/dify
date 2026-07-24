@@ -1,56 +1,60 @@
-import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useState } from 'react'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { useToastContext } from '@/app/components/base/toast/context'
+import {
+  DSL_EXPORT_CHECK,
+} from '@/app/components/workflow/constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
-import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
-
-const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+export const useDSL = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appDetail = useAppStore(s => s.appDetail)
 
-  const handleExportDSL = useCallback(
-    async (include = false, workflowId?: string) => {
-      if (!appDetail) return
+  const handleExportDSL = useCallback(async (include = false, workflowId?: string) => {
+    if (!appDetail)
+      return
 
-      if (exporting) return
+    if (exporting)
+      return
 
-      try {
-        setExporting(true)
-        await doSyncWorkflowDraft()
-        const { data } = await exportAppConfig({
-          appID: appDetail.id,
-          include,
-          workflowID: workflowId,
-        })
-        const file = new Blob([data], { type: 'application/yaml' })
-        downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-      } finally {
-        setExporting(false)
-      }
-    },
-    [appDetail, t, doSyncWorkflowDraft, exporting],
-  )
+    try {
+      setExporting(true)
+      await doSyncWorkflowDraft()
+      const { data } = await exportAppConfig({
+        appID: appDetail.id,
+        include,
+        workflowID: workflowId,
+      })
+      const file = new Blob([data], { type: 'application/yaml' })
+      downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
+    }
+    catch {
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+    }
+    finally {
+      setExporting(false)
+    }
+  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
 
   const exportCheck = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail)
+      return
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
-      )
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
         handleExportDSL()
         return
@@ -61,19 +65,14 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           data: list,
         },
       } as any)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, t])
+    catch {
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+    }
+  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
 
   return {
     exportCheck,
     handleExportDSL,
   }
-}
-
-export const useDSLByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return useDSLBase(doSyncWorkflowDraft)
 }

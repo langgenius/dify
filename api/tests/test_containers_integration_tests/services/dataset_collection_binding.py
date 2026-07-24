@@ -12,7 +12,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.dataset import DatasetCollectionBinding
-from models.enums import CollectionBindingType
 from services.dataset_service import DatasetCollectionBindingService
 
 
@@ -33,7 +32,7 @@ class DatasetCollectionBindingTestDataFactory:
         provider_name: str = "openai",
         model_name: str = "text-embedding-ada-002",
         collection_name: str = "collection-abc",
-        collection_type: str = CollectionBindingType.DATASET,
+        collection_type: str = "dataset",
     ) -> DatasetCollectionBinding:
         """
         Create a DatasetCollectionBinding with specified attributes.
@@ -42,7 +41,7 @@ class DatasetCollectionBindingTestDataFactory:
             provider_name: Name of the embedding model provider (e.g., "openai", "cohere")
             model_name: Name of the embedding model (e.g., "text-embedding-ada-002")
             collection_name: Name of the vector database collection
-            collection_type: Type of collection (default: CollectionBindingType.DATASET)
+            collection_type: Type of collection (default: "dataset")
 
         Returns:
             DatasetCollectionBinding instance
@@ -77,7 +76,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         # Arrange
         provider_name = "openai"
         model_name = "text-embedding-ada-002"
-        collection_type = CollectionBindingType.DATASET
+        collection_type = "dataset"
         existing_binding = DatasetCollectionBindingTestDataFactory.create_collection_binding(
             db_session_with_containers,
             provider_name=provider_name,
@@ -88,7 +87,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+            provider_name, model_name, collection_type
         )
 
         # Assert
@@ -105,11 +104,11 @@ class TestDatasetCollectionBindingServiceGetBinding:
         # Arrange
         provider_name = f"provider-{uuid4()}"
         model_name = f"model-{uuid4()}"
-        collection_type = CollectionBindingType.DATASET
+        collection_type = "dataset"
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+            provider_name, model_name, collection_type
         )
 
         # Assert
@@ -128,7 +127,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
+            provider_name, model_name, collection_type
         )
 
         # Assert
@@ -143,12 +142,10 @@ class TestDatasetCollectionBindingServiceGetBinding:
         model_name = "text-embedding-ada-002"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
-            provider_name, model_name, session=db_session_with_containers
-        )
+        result = DatasetCollectionBindingService.get_dataset_collection_binding(provider_name, model_name)
 
         # Assert
-        assert result.type == CollectionBindingType.DATASET
+        assert result.type == "dataset"
         assert result.provider_name == provider_name
         assert result.model_name == model_name
 
@@ -189,20 +186,18 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
             provider_name="openai",
             model_name="text-embedding-ada-002",
             collection_name="test-collection",
-            collection_type=CollectionBindingType.DATASET,
+            collection_type="dataset",
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
-        )
+        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id, "dataset")
 
         # Assert
         assert result.id == binding.id
         assert result.provider_name == "openai"
         assert result.model_name == "text-embedding-ada-002"
         assert result.collection_name == "test-collection"
-        assert result.type == CollectionBindingType.DATASET
+        assert result.type == "dataset"
 
     def test_get_dataset_collection_binding_by_id_and_type_not_found_error(self, db_session_with_containers: Session):
         """Test error handling when collection binding is not found by ID and type."""
@@ -211,9 +206,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                non_existent_id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
-            )
+            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(non_existent_id, "dataset")
 
     def test_get_dataset_collection_binding_by_id_and_type_different_collection_type(
         self, db_session_with_containers: Session
@@ -230,7 +223,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act
         result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers, collection_type="custom_type"
+            binding.id, "custom_type"
         )
 
         # Assert
@@ -247,17 +240,15 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
             provider_name="openai",
             model_name="text-embedding-ada-002",
             collection_name="test-collection",
-            collection_type=CollectionBindingType.DATASET,
+            collection_type="dataset",
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-            binding.id, session=db_session_with_containers
-        )
+        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id)
 
         # Assert
         assert result.id == binding.id
-        assert result.type == CollectionBindingType.DATASET
+        assert result.type == "dataset"
 
     def test_get_dataset_collection_binding_by_id_and_type_wrong_type_error(self, db_session_with_containers: Session):
         """Test error when binding exists but with wrong collection type."""
@@ -267,11 +258,9 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
             provider_name="openai",
             model_name="text-embedding-ada-002",
             collection_name="test-collection",
-            collection_type=CollectionBindingType.DATASET,
+            collection_type="dataset",
         )
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                binding.id, session=db_session_with_containers, collection_type="wrong_type"
-            )
+            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id, "wrong_type")

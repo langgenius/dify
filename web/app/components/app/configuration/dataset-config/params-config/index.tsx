@@ -1,33 +1,39 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
-  useCurrentProviderAndModel,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+  getMultipleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import ConfigContent from './config-content'
 
 type ParamsConfigProps = {
   disabled?: boolean
   selectedDatasets: DataSet[]
 }
-const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
+const ParamsConfig = ({
+  disabled,
+  selectedDatasets,
+}: ParamsConfigProps) => {
   const { t } = useTranslation()
-  const { datasetConfigs, setDatasetConfigs, rerankSettingModalOpen, setRerankSettingModalOpen } =
-    useContext(ConfigContext)
+  const {
+    datasetConfigs,
+    setDatasetConfigs,
+    rerankSettingModalOpen,
+    setRerankSettingModalOpen,
+  } = useContext(ConfigContext)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
 
   useEffect(() => {
@@ -40,29 +46,36 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
     currentProvider: rerankDefaultProvider,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
-  const { currentModel: isCurrentRerankModelValid } = useCurrentProviderAndModel(rerankModelList, {
-    provider: tempDataSetConfigs.reranking_model?.reranking_provider_name ?? '',
-    model: tempDataSetConfigs.reranking_model?.reranking_model_name ?? '',
-  })
+  const {
+    currentModel: isCurrentRerankModelValid,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    {
+      provider: tempDataSetConfigs.reranking_model?.reranking_provider_name ?? '',
+      model: tempDataSetConfigs.reranking_model?.reranking_model_name ?? '',
+    },
+  )
 
   const isValid = () => {
     let errMsg = ''
     if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
-      if (
-        tempDataSetConfigs.reranking_enable &&
-        tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel &&
-        !isCurrentRerankModelValid
-      ) {
-        errMsg = t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' })
+      if (tempDataSetConfigs.reranking_enable
+        && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
+        && !isCurrentRerankModelValid) {
+        errMsg = t('datasetConfig.rerankModelRequired', { ns: 'appDebug' })
       }
     }
     if (errMsg) {
-      toast.error(errMsg)
+      Toast.notify({
+        type: 'error',
+        message: errMsg,
+      })
     }
     return !errMsg
   }
   const handleSave = () => {
-    if (!isValid()) return
+    if (!isValid())
+      return
     setDatasetConfigs(tempDataSetConfigs)
     setRerankSettingModalOpen(false)
   }
@@ -70,25 +83,20 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
   const handleSetTempDataSetConfigs = (newDatasetConfigs: DatasetConfigs) => {
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = newDatasetConfigs
 
-    const retrievalConfig = getMultipleRetrievalConfig(
-      {
-        top_k: restConfigs.top_k,
-        score_threshold: restConfigs.score_threshold,
-        reranking_model: restConfigs.reranking_model && {
-          provider: restConfigs.reranking_model.reranking_provider_name,
-          model: restConfigs.reranking_model.reranking_model_name,
-        },
-        reranking_mode: restConfigs.reranking_mode,
-        weights: restConfigs.weights,
-        reranking_enable: restConfigs.reranking_enable,
+    const retrievalConfig = getMultipleRetrievalConfig({
+      top_k: restConfigs.top_k,
+      score_threshold: restConfigs.score_threshold,
+      reranking_model: restConfigs.reranking_model && {
+        provider: restConfigs.reranking_model.reranking_provider_name,
+        model: restConfigs.reranking_model.reranking_model_name,
       },
-      selectedDatasets,
-      selectedDatasets,
-      {
-        provider: rerankDefaultProvider?.provider,
-        model: rerankDefaultModel?.model,
-      },
-    )
+      reranking_mode: restConfigs.reranking_mode,
+      weights: restConfigs.weights,
+      reranking_enable: restConfigs.reranking_enable,
+    }, selectedDatasets, selectedDatasets, {
+      provider: rerankDefaultProvider?.provider,
+      model: rerankDefaultModel?.model,
+    })
 
     setTempDataSetConfigs({
       ...retrievalConfig,
@@ -113,19 +121,18 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 size-3.5" />
-        {t(($) => $.retrievalSettings, { ns: 'dataset' })}
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+        {t('retrievalSettings', { ns: 'dataset' })}
       </Button>
-      {rerankSettingModalOpen && (
-        <Dialog
-          open={rerankSettingModalOpen}
-          onOpenChange={(open) => {
-            if (!open) {
+      {
+        rerankSettingModalOpen && (
+          <Modal
+            isShow={rerankSettingModalOpen}
+            onClose={() => {
               setRerankSettingModalOpen(false)
-            }
-          }}
-        >
-          <DialogContent className="w-full max-w-[480px] border-none text-left align-middle sm:min-w-[528px]">
+            }}
+            className="sm:min-w-[528px]"
+          >
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}
@@ -140,15 +147,14 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
                   setRerankSettingModalOpen(false)
                 }}
               >
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
+                {t('operation.cancel', { ns: 'common' })}
               </Button>
-              <Button variant="primary" className="shrink-0" onClick={handleSave}>
-                {t(($) => $['operation.save'], { ns: 'common' })}
-              </Button>
+              <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+          </Modal>
+        )
+      }
+
     </div>
   )
 }

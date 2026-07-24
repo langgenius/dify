@@ -1,262 +1,210 @@
-import type { Ref } from 'react'
-import type { VoiceRecorder } from './recorder'
-import type { SpeechToTextTarget } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useRafInterval } from 'ahooks'
+import Recorder from 'js-audio-recorder'
+import { useParams, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { transcribeAudio } from './api'
+import { AppSourceType, audioToText } from '@/service/share'
+import { cn } from '@/utils/classnames'
 import s from './index.module.css'
-import { startVoiceRecorder } from './recorder'
+import { convertToMp3 } from './utils'
 
-const MAX_RECORDING_DURATION = 600
-
-type VoiceInputStatus = 'starting' | 'recording' | 'converting'
-
-type VoiceInputProps = {
-  ref?: Ref<HTMLDivElement>
+type VoiceInputTypes = {
   onConverted: (text: string) => void
   onCancel: () => void
-  onBeforeTranscribe?: () => Promise<unknown>
-  onError?: () => void
-  onStartError?: (error: unknown) => void
-  target: SpeechToTextTarget
+  wordTimestamps?: string
 }
 
-function VoiceInput({
-  ref,
+const VoiceInput = ({
   onCancel,
-  onBeforeTranscribe,
   onConverted,
-  onError,
-  onStartError,
-  target,
-}: VoiceInputProps) {
+  wordTimestamps,
+}: VoiceInputTypes) => {
   const { t } = useTranslation()
-  const recorderRef = useRef<VoiceRecorder | null>(null)
+  const recorder = useRef(new Recorder({
+    sampleBits: 16,
+    sampleRate: 16000,
+    numChannels: 1,
+    compiling: false,
+  }))
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const canvasContextRef = useRef<CanvasRenderingContext2D | null>(null)
-  const canvasSizeRef = useRef({ height: 0, width: 0 })
-  const drawRecordIdRef = useRef<number | null>(null)
-  const mountedRef = useRef(true)
-  const stopRequestedRef = useRef(false)
-  const cancelledRef = useRef(false)
-  const setupAbortControllerRef = useRef<AbortController | null>(null)
-  const transcriptionAbortControllerRef = useRef<AbortController | null>(null)
-  const [duration, setDuration] = useState(0)
-  const [status, setStatus] = useState<VoiceInputStatus>('starting')
-  const handleRecorderStartError = useEffectEvent((error: unknown) => {
-    onStartError?.(error)
-    onCancel()
-  })
-
-  const stopDrawing = useCallback(() => {
-    if (drawRecordIdRef.current !== null) cancelAnimationFrame(drawRecordIdRef.current)
-    drawRecordIdRef.current = null
-    const { height, width } = canvasSizeRef.current
-    canvasContextRef.current?.clearRect(0, 0, width, height)
-  }, [])
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
+  const drawRecordId = useRef<number | null>(null)
+  const [originDuration, setOriginDuration] = useState(0)
+  const [startRecord, setStartRecord] = useState(false)
+  const [startConvert, setStartConvert] = useState(false)
+  const pathname = usePathname()
+  const params = useParams()
+  const clearInterval = useRafInterval(() => {
+    setOriginDuration(originDuration + 1)
+  }, 1000)
 
   const drawRecord = useCallback(() => {
-    const recorder = recorderRef.current
-    const context = canvasContextRef.current
-    const { height, width } = canvasSizeRef.current
-    if (!recorder || !context || !height || !width) return
+    drawRecordId.current = requestAnimationFrame(drawRecord)
+    const canvas = canvasRef.current!
+    const ctx = ctxRef.current!
+    const dataUnit8Array = recorder.current.getRecordAnalyseData()
+    const dataArray = [].slice.call(dataUnit8Array)
+    const lineLength = Number.parseInt(`${canvas.width / 3}`)
+    const gap = Number.parseInt(`${1024 / lineLength}`)
 
-    const frequencyData = new Uint8Array(recorder.analyser.frequencyBinCount)
-    recorder.analyser.getByteFrequencyData(frequencyData)
-    const lineCount = Math.max(1, Math.floor(width / 3))
-    const sampleStep = Math.max(1, Math.floor(frequencyData.length / lineCount))
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.beginPath()
+    let x = 0
+    for (let i = 0; i < lineLength; i++) {
+      let v = dataArray.slice(i * gap, i * gap + gap).reduce((prev: number, next: number) => {
+        return prev + next
+      }, 0) / gap
 
-    context.clearRect(0, 0, width, height)
-    context.beginPath()
-    for (let index = 0; index < lineCount; index++) {
-      const amplitude = frequencyData[index * sampleStep] ?? 0
-      const lineHeight = Math.max(1, (amplitude / 255) * height)
-      const x = index * 3
-      if (context.roundRect) context.roundRect(x, height - lineHeight, 2, lineHeight, [1, 1, 0, 0])
-      else context.rect(x, height - lineHeight, 2, lineHeight)
+      if (v < 128)
+        v = 128
+      if (v > 178)
+        v = 178
+      const y = (v - 128) / 50 * canvas.height
+
+      ctx.moveTo(x, 16)
+      if (ctx.roundRect)
+        ctx.roundRect(x, 16 - y, 2, y, [1, 1, 0, 0])
+      else
+        ctx.rect(x, 16 - y, 2, y)
+      ctx.fill()
+      x += 3
     }
-    context.fill()
-    context.closePath()
-    drawRecordIdRef.current = requestAnimationFrame(drawRecord)
+    ctx.closePath()
   }, [])
-
   const handleStopRecorder = useCallback(async () => {
-    const recorder = recorderRef.current
-    if (!recorder || status !== 'recording' || stopRequestedRef.current) return
+    clearInterval()
+    setStartRecord(false)
+    setStartConvert(true)
+    recorder.current.stop()
+    if (drawRecordId.current)
+      cancelAnimationFrame(drawRecordId.current)
+    drawRecordId.current = null
+    const canvas = canvasRef.current!
+    const ctx = ctxRef.current!
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const mp3Blob = convertToMp3(recorder.current)
+    const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
+    const formData = new FormData()
+    formData.append('file', mp3File)
+    formData.append('word_timestamps', wordTimestamps || 'disabled')
 
-    stopRequestedRef.current = true
-    setStatus('converting')
-    stopDrawing()
-    let mp3Blob: Blob
-    try {
-      mp3Blob = await recorder.stop()
-    } catch {
-      if (mountedRef.current && !cancelledRef.current) {
-        onError?.()
-        onCancel()
-      }
-      return
+    let url = ''
+    let isPublic = false
+
+    if (params.token) {
+      url = '/audio-to-text'
+      isPublic = true
     }
-    if (cancelledRef.current) return
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        url = `/installed-apps/${params.appId}/audio-to-text`
+      else
+        url = `/apps/${params.appId}/audio-to-text`
+    }
 
     try {
-      await onBeforeTranscribe?.()
-    } catch {
-      if (mountedRef.current && !cancelledRef.current) onCancel()
-      return
+      const audioResponse = await audioToText(url, isPublic ? AppSourceType.webApp : AppSourceType.installedApp, formData)
+      onConverted(audioResponse.text)
+      onCancel()
     }
-    if (cancelledRef.current) return
-
-    const file = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
-    const abortController = new AbortController()
-    transcriptionAbortControllerRef.current = abortController
+    catch {
+      onConverted('')
+      onCancel()
+    }
+  }, [clearInterval, onCancel, onConverted, params.appId, params.token, pathname, wordTimestamps])
+  const handleStartRecord = useCallback(async () => {
     try {
-      const audioResponse = await transcribeAudio(target, file, abortController.signal)
-      if (mountedRef.current && !cancelledRef.current) onConverted(audioResponse.text)
-    } catch {
-      if (mountedRef.current && !cancelledRef.current) onError?.()
-    } finally {
-      transcriptionAbortControllerRef.current = null
-      if (mountedRef.current && !cancelledRef.current) onCancel()
-    }
-  }, [onBeforeTranscribe, onCancel, onConverted, onError, status, stopDrawing, target])
+      await recorder.current.start()
+      setStartRecord(true)
+      setStartConvert(false)
 
-  const handleCancel = useCallback(() => {
-    cancelledRef.current = true
-    setupAbortControllerRef.current?.abort()
-    transcriptionAbortControllerRef.current?.abort()
-    void recorderRef.current?.cancel()
-    onCancel()
-  }, [onCancel])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const devicePixelRatio = window.devicePixelRatio || 1
-    const { height, width } = canvas.getBoundingClientRect()
-    canvas.width = devicePixelRatio * width
-    canvas.height = devicePixelRatio * height
-    canvasSizeRef.current = { height, width }
-    const context = canvas.getContext('2d')
-    if (!context) return
-    context.scale(devicePixelRatio, devicePixelRatio)
-    context.fillStyle = 'rgba(209, 224, 255, 1)'
-    canvasContextRef.current = context
-  }, [])
-
-  useEffect(() => {
-    mountedRef.current = true
-    cancelledRef.current = false
-    let effectCancelled = false
-    const abortController = new AbortController()
-    setupAbortControllerRef.current = abortController
-    void startVoiceRecorder(abortController.signal)
-      .then((recorder) => {
-        if (setupAbortControllerRef.current === abortController)
-          setupAbortControllerRef.current = null
-        if (effectCancelled) {
-          void recorder.cancel()
-          return
-        }
-        recorderRef.current = recorder
-        setStatus('recording')
+      if (canvasRef.current && ctxRef.current)
         drawRecord()
-      })
-      .catch((error: unknown) => {
-        if (setupAbortControllerRef.current === abortController)
-          setupAbortControllerRef.current = null
-        if (effectCancelled || abortController.signal.aborted) return
-        handleRecorderStartError(error)
-      })
-
-    return () => {
-      effectCancelled = true
-      mountedRef.current = false
-      cancelledRef.current = true
-      abortController.abort()
-      transcriptionAbortControllerRef.current?.abort()
-      stopDrawing()
-      void recorderRef.current?.cancel()
     }
-  }, [drawRecord, stopDrawing])
+    catch {
+      onCancel()
+    }
+  }, [drawRecord, onCancel, setStartRecord, setStartConvert])
+  const initCanvas = useCallback(() => {
+    const dpr = window.devicePixelRatio || 1
+    const canvas = document.getElementById('voice-input-record') as HTMLCanvasElement
+
+    if (canvas) {
+      const { width: cssWidth, height: cssHeight } = canvas.getBoundingClientRect()
+
+      canvas.width = dpr * cssWidth
+      canvas.height = dpr * cssHeight
+      canvasRef.current = canvas
+
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.scale(dpr, dpr)
+        ctx.fillStyle = 'rgba(209, 224, 255, 1)'
+        ctxRef.current = ctx
+      }
+    }
+  }, [])
+  if (originDuration >= 600 && startRecord)
+    handleStopRecorder()
 
   useEffect(() => {
-    if (status !== 'recording') return
-    const intervalId = window.setInterval(() => {
-      setDuration((currentDuration) => currentDuration + 1)
-    }, 1000)
-    return () => window.clearInterval(intervalId)
-  }, [status])
+    initCanvas()
+    handleStartRecord()
+    const recorderRef = recorder?.current
+    return () => {
+      recorderRef?.stop()
+    }
+  }, [handleStartRecord, initCanvas])
 
-  useEffect(() => {
-    if (duration >= MAX_RECORDING_DURATION && status === 'recording') void handleStopRecorder()
-  }, [duration, handleStopRecorder, status])
-
-  const minutes = Math.floor(duration / 60)
-    .toString()
-    .padStart(2, '0')
-  const seconds = (duration % 60).toString().padStart(2, '0')
-  const isStarting = status === 'starting'
-  const isRecording = status === 'recording'
-  const isConverting = status === 'converting'
+  const minutes = Number.parseInt(`${Number.parseInt(`${originDuration}`) / 60}`)
+  const seconds = Number.parseInt(`${originDuration}`) % 60
 
   return (
-    <div ref={ref} className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
-        <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
-        {(isStarting || isConverting) && (
-          <div
-            className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700"
-            aria-hidden="true"
-          />
-        )}
+    <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
+        <canvas id="voice-input-record" className="absolute bottom-0 left-0 h-4 w-full" />
+        {
+          startConvert && <div className="i-ri-loader-2-line mr-2 h-4 w-4 animate-spin text-primary-700" data-testid="voice-input-loader" />
+        }
         <div className="grow">
-          {isStarting && (
-            <div className="text-sm text-gray-500" role="status">
-              {t(($) => $['voiceInput.starting'], { ns: 'common' })}
-            </div>
-          )}
-          {isRecording && (
-            <div className="text-sm text-gray-500">
-              {t(($) => $['voiceInput.speaking'], { ns: 'common' })}
-            </div>
-          )}
-          {isConverting && (
-            <div className={cn(s.convert, 'text-sm')} role="status">
-              {t(($) => $['voiceInput.converting'], { ns: 'common' })}
-            </div>
-          )}
+          {
+            startRecord && (
+              <div className="text-sm text-gray-500">
+                {t('voiceInput.speaking', { ns: 'common' })}
+              </div>
+            )
+          }
+          {
+            startConvert && (
+              <div className={cn(s.convert, 'text-sm')} data-testid="voice-input-converting-text">
+                {t('voiceInput.converting', { ns: 'common' })}
+              </div>
+            )
+          }
         </div>
-        {isRecording && (
-          <button
-            type="button"
-            className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t(($) => $['voiceInput.stop'], { ns: 'common' })}
-            onClick={handleStopRecorder}
-          >
-            <span className="i-ri-stop-circle-line size-5 text-primary-600" aria-hidden="true" />
-          </button>
-        )}
-        {(isStarting || isConverting) && (
-          <button
-            type="button"
-            className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
-            onClick={handleCancel}
-          >
-            <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />
-          </button>
-        )}
-        <div
-          className={cn(
-            'w-[45px] pl-1 text-xs font-medium',
-            duration > 500 ? 'text-text-destructive' : 'text-text-secondary',
-          )}
-          data-testid="voice-input-timer"
-        >
-          {`${minutes}:${seconds}`}
-        </div>
+        {
+          startRecord && (
+            <div
+              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-primary-100"
+              onClick={handleStopRecorder}
+              data-testid="voice-input-stop"
+            >
+              <div className="i-ri-stop-circle-line h-5 w-5 text-primary-600" />
+            </div>
+          )
+        }
+        {
+          startConvert && (
+            <div
+              className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-200"
+              onClick={onCancel}
+              data-testid="voice-input-cancel"
+            >
+              <div className="i-ri-close-line h-4 w-4 text-gray-500" />
+            </div>
+          )
+        }
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 500 ? 'text-[#F04438]' : 'text-gray-700'}`} data-testid="voice-input-timer">{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
       </div>
     </div>
   )

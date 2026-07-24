@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import override
 
-from sqlalchemy import select
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -23,8 +22,8 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 from extensions.ext_database import db
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -42,14 +41,13 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
 }
 
 
-class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, WorkflowTool | None]):
+class WorkflowToolProviderController(ToolProviderController):
     provider_id: str
-    tools: list[WorkflowTool] | None
+    tools: list[WorkflowTool] = Field(default_factory=list)
 
     def __init__(self, entity: ToolProviderEntity, provider_id: str):
         super().__init__(entity=entity)
         self.provider_id = provider_id
-        self.tools = None
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
@@ -81,7 +79,6 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         return controller
 
     @property
-    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
@@ -99,10 +96,10 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = session.scalar(
-            select(Workflow)
+        workflow: Workflow | None = (
+            session.query(Workflow)
             .where(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
-            .limit(1)
+            .first()
         )
 
         if not workflow:
@@ -220,13 +217,13 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
             return self.tools
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            db_provider: WorkflowToolProvider | None = session.scalar(
-                select(WorkflowToolProvider)
+            db_provider: WorkflowToolProvider | None = (
+                session.query(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
                     WorkflowToolProvider.id == self.provider_id,
                 )
-                .limit(1)
+                .first()
             )
 
             if not db_provider:
@@ -241,8 +238,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
 
         return self.tools
 
-    @override
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
         """
         get tool by name
 

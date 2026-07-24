@@ -5,9 +5,7 @@ import { useAppForm } from '../../..'
 import InputField from '../field'
 import { InputFieldType } from '../types'
 
-const createConfig = (
-  overrides: Partial<InputFieldConfiguration> = {},
-): InputFieldConfiguration => ({
+const createConfig = (overrides: Partial<InputFieldConfiguration> = {}): InputFieldConfiguration => ({
   type: InputFieldType.textInput,
   variable: 'fieldA',
   label: 'Field A',
@@ -29,14 +27,6 @@ const FieldHarness = ({ config, initialData = {} }: FieldHarnessProps) => {
   const Component = useMemo(() => InputField({ initialData, config }), [config, initialData])
 
   return <Component form={form} />
-}
-
-const getVisibleText = (text: string) => {
-  const element = screen
-    .getAllByText(text)
-    .find((element) => !element.classList.contains('sr-only'))
-  expect(element).toBeDefined()
-  return element!
 }
 
 describe('InputField', () => {
@@ -61,7 +51,7 @@ describe('InputField', () => {
       />,
     )
 
-    expect(getVisibleText('Temperature')).toBeInTheDocument()
+    expect(screen.getByText('Temperature')).toBeInTheDocument()
     expect(screen.getByText('Control randomness')).toBeInTheDocument()
   })
 
@@ -109,10 +99,7 @@ describe('InputField', () => {
   })
 
   it('should render remaining field types and fallback for unsupported type', () => {
-    const scenarios: Array<{
-      config: InputFieldConfiguration
-      initialData: Record<string, unknown>
-    }> = [
+    const scenarios: Array<{ config: InputFieldConfiguration, initialData: Record<string, unknown> }> = [
       {
         config: createConfig({ type: InputFieldType.numberInput, label: 'Count', min: 1, max: 5 }),
         initialData: { fieldA: 2 },
@@ -122,11 +109,7 @@ describe('InputField', () => {
         initialData: { fieldA: false },
       },
       {
-        config: createConfig({
-          type: InputFieldType.inputTypeSelect,
-          label: 'Input Type',
-          supportFile: true,
-        }),
+        config: createConfig({ type: InputFieldType.inputTypeSelect, label: 'Input Type', supportFile: true }),
         initialData: { fieldA: 'text' },
       },
       {
@@ -140,9 +123,7 @@ describe('InputField', () => {
     ]
 
     for (const scenario of scenarios) {
-      const { unmount } = render(
-        <FieldHarness config={scenario.config} initialData={scenario.initialData} />,
-      )
+      const { unmount } = render(<FieldHarness config={scenario.config} initialData={scenario.initialData} />)
       expect(screen.getByText(scenario.config.label)).toBeInTheDocument()
       unmount()
     }

@@ -1,17 +1,10 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { expectLoadingButton } from '@/test/button'
-import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
-
-const { mockToastError } = vi.hoisted(() => ({
-  mockToastError: vi.fn(),
-}))
 
 // Mock contexts
 const mockMutateDatasets = vi.fn()
@@ -24,57 +17,16 @@ const mockUserProfile = {
   avatar_url: '',
   role: 'owner',
 }
-let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        rbac_enabled: false,
-      },
-    }),
-  }
-})
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createWorkspaceStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    ...(() => ({
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: unknown) => unknown) => {
+    const state = {
+      isCurrentWorkspaceDatasetOperator: false,
       userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }))(),
-    datasetRbacEnabled: (() => ({
-      isRbacEnabled: false,
-    }))().isRbacEnabled,
-  }))
-})
+    }
+    return selector(state)
+  },
+}))
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -142,16 +94,13 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
-  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 })
 
 let mockDataset: DataSet = createMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
-  ) => {
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: DataSet | null, mutateDatasetRes: () => void }) => unknown) => {
     const state = {
       dataset: mockDataset,
       mutateDatasetRes: mockMutateDatasets,
@@ -173,28 +122,8 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        {
-          id: 'user-1',
-          name: 'User 1',
-          email: 'user1@example.com',
-          role: 'owner',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'user-2',
-          name: 'User 2',
-          email: 'user2@example.com',
-          role: 'admin',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
+        { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+        { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
       ],
     },
   }),
@@ -243,6 +172,7 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
+    isCurrentWorkspaceDatasetOperator: false,
     supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
@@ -251,57 +181,28 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: () => true,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: mockToastError,
-    success: vi.fn(),
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: vi.fn(),
   },
 }))
 
-vi.mock('../components/indexing-section', () => ({
-  default: ({
-    currentDataset,
-    indexMethod,
-  }: {
-    currentDataset?: DataSet
-    indexMethod?: IndexingType
-  }) => (
-    <div data-testid="indexing-section">
-      {!!currentDataset?.doc_form && (
-        <>
-          <div>form.chunkStructure.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text">
-            form.chunkStructure.learnMore
-          </a>
-        </>
-      )}
-      {!!(
-        currentDataset &&
-        currentDataset.doc_form !== ChunkingMode.parentChild &&
-        currentDataset.indexing_technique &&
-        indexMethod
-      ) && <div>form.indexMethod</div>}
-      {indexMethod === IndexingType.QUALIFIED && <div>form.embeddingModel</div>}
-      {currentDataset?.provider !== 'external' && indexMethod && (
-        <>
-          <div>form.retrievalSetting.title</div>
-          <a href="https://docs.dify.ai/use-dify/knowledge/create-knowledge/setting-indexing-methods">
-            form.retrievalSetting.learnMore
-          </a>
-        </>
-      )}
-    </div>
-  ),
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
 describe('Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
-    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<Form />)
+      expect(screen.getByRole('button', { name: /form\.save/i })).toBeInTheDocument()
+    })
+
     it('should render dataset name input with initial value', () => {
       render(<Form />)
       const nameInput = screen.getByDisplayValue('Test Dataset')
@@ -431,7 +332,7 @@ describe('Form', () => {
     it('should show loading state on save button while saving', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       vi.mocked(updateDatasetSetting).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
+        () => new Promise(resolve => setTimeout(resolve, 100)),
       )
 
       render(<Form />)
@@ -439,13 +340,14 @@ describe('Form', () => {
       const saveButton = screen.getByRole('button', { name: /form\.save/i })
       fireEvent.click(saveButton)
 
+      // Button should be disabled during loading
       await waitFor(() => {
-        expectLoadingButton(saveButton)
+        expect(saveButton).toBeDisabled()
       })
     })
 
     it('should show error when trying to save with empty name', async () => {
-      const { toast } = await import('@langgenius/dify-ui/toast')
+      const Toast = await import('@/app/components/base/toast')
       render(<Form />)
 
       // Clear the name
@@ -457,7 +359,10 @@ describe('Form', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.default.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.any(String),
+        })
       })
     })
 
@@ -516,15 +421,6 @@ describe('Form', () => {
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
       expect(descriptionTextarea).toBeDisabled()
-    })
-
-    it('should disable save when dataset only has readonly ACL permission', () => {
-      mockWorkspacePermissionKeys = []
-      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
-      render(<Form />)
-
-      const saveButton = screen.getByRole('button', { name: /form\.save/i })
-      expect(saveButton).toBeDisabled()
     })
   })
 

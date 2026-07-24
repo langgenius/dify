@@ -1,8 +1,8 @@
 import logging
-from collections.abc import Callable
-from typing import override
+from collections.abc import Callable, Mapping
+from typing import Any, TypeVar
 
-from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
 from extensions.otel.decorators.handler import SpanHandler
@@ -12,19 +12,21 @@ from models.model import Account
 logger = logging.getLogger(__name__)
 
 
+R = TypeVar("R")
+
+
 class AppGenerateHandler(SpanHandler):
     """Span handler for ``AppGenerateService.generate``."""
 
-    @override
-    def wrapper[**P, R](
+    def wrapper(
         self,
-        tracer: Tracer,
-        wrapped: Callable[P, R],
-        *args: P.args,
-        **kwargs: P.kwargs,
+        tracer: Any,
+        wrapped: Callable[..., R],
+        args: tuple[object, ...],
+        kwargs: Mapping[str, object],
     ) -> R:
         try:
-            arguments = self._extract_arguments(wrapped, *args, **kwargs)
+            arguments = self._extract_arguments(wrapped, args, kwargs)
             if not arguments:
                 return wrapped(*args, **kwargs)
 

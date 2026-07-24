@@ -1,5 +1,9 @@
 import type { DataSourceNodeType } from '../nodes/data-source/types'
-import type { InputVar, ToolWithProvider } from '../types'
+import type {
+  InputVar,
+  ToolWithProvider,
+} from '../types'
+import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export const getDataSourceCheckParams = (
@@ -7,14 +11,11 @@ export const getDataSourceCheckParams = (
   dataSourceList: ToolWithProvider[],
   language: string,
 ) => {
-  const { plugin_id, datasource_name } = toolData
-  const currentDataSource = dataSourceList.find((item) => item.plugin_id === plugin_id)
-  const currentDataSourceItem = currentDataSource?.tools.find(
-    (tool) => tool.name === datasource_name,
-  )
-  const formSchemas = currentDataSourceItem
-    ? toolParametersToFormSchemas(currentDataSourceItem.parameters)
-    : []
+  const { plugin_id, provider_type, datasource_name } = toolData
+  const isBuiltIn = provider_type === CollectionType.builtIn
+  const currentDataSource = dataSourceList.find(item => item.plugin_id === plugin_id)
+  const currentDataSourceItem = currentDataSource?.tools.find(tool => tool.name === datasource_name)
+  const formSchemas = currentDataSourceItem ? toolParametersToFormSchemas(currentDataSourceItem.parameters) : []
 
   return {
     dataSourceInputsSchema: (() => {
@@ -30,7 +31,7 @@ export const getDataSourceCheckParams = (
       })
       return formInputs
     })(),
-    notAuthed: !!currentDataSource?.allow_delete && !currentDataSource?.is_authorized,
+    notAuthed: isBuiltIn && !!currentDataSource?.allow_delete && !currentDataSource?.is_authorized,
     language,
   }
 }

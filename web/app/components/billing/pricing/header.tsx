@@ -1,44 +1,38 @@
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '../../base/button'
 import DifyLogo from '../../base/logo/dify-logo'
-import styles from './header.module.css'
 
 type HeaderProps = {
   onClose: () => void
 }
 
-const Header = ({ onClose }: HeaderProps) => {
+const Header = ({
+  onClose,
+}: HeaderProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex min-h-[105px] w-full justify-center px-10">
       <div className="relative flex max-w-[1680px] grow flex-col justify-end gap-y-1 border-x border-divider-accent p-6 pt-8">
         <div className="flex items-end">
-          <div aria-hidden="true" className="py-[5px]">
+          <div className="py-[5px]">
             <DifyLogo className="h-[27px] w-[60px]" />
           </div>
-          <DialogTitle
-            className={cn(
-              'bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] text-transparent',
-              styles.instrumentSerif,
-            )}
-          >
-            {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
-          </DialogTitle>
+          <span className="bg-billing-plan-title-bg bg-clip-text px-1.5 font-instrument text-[37px] italic leading-[1.2] text-transparent">
+            {t('plansCommon.title.plans', { ns: 'billing' })}
+          </span>
         </div>
-        <DialogDescription className="system-sm-regular text-text-tertiary">
-          {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
-        </DialogDescription>
+        <p className="system-sm-regular text-text-tertiary">
+          {t('plansCommon.title.description', { ns: 'billing' })}
+        </p>
         <Button
           variant="secondary"
-          className="absolute right-[-18px] bottom-[40.5px] z-10 size-9 rounded-full p-2"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="absolute bottom-[40.5px] right-[-18px] z-10 size-9 rounded-full p-2"
           onClick={onClose}
         >
-          <span aria-hidden="true" className="i-ri-close-line size-5" />
+          <RiCloseLine className="size-5" />
         </Button>
       </div>
     </div>

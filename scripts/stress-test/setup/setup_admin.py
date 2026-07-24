@@ -5,27 +5,22 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-import os
-
 import httpx
 from common import Logger, config_helper
 
 
-def build_admin_config() -> dict[str, str]:
-    return {
-        "email": os.getenv("STRESS_TEST_ADMIN_EMAIL", "test@dify.ai"),
-        "username": os.getenv("STRESS_TEST_ADMIN_USERNAME", "dify"),
-        "password": os.getenv("STRESS_TEST_ADMIN_PASSWORD", "password123"),
-    }
-
-
-def setup_admin_account() -> bool:
+def setup_admin_account() -> None:
     """Setup Dify API with an admin account."""
 
     log = Logger("SetupAdmin")
     log.header("Setting up Admin Account")
 
-    admin_config = build_admin_config()
+    # Admin account credentials
+    admin_config = {
+        "email": "test@dify.ai",
+        "username": "dify",
+        "password": "password123",
+    }
 
     # Save credentials to config file
     if config_helper.write_config("admin_config", admin_config):
@@ -57,26 +52,20 @@ def setup_admin_account() -> bool:
                 log.success("Admin account created successfully!")
                 log.key_value("Email", admin_config["email"])
                 log.key_value("Username", admin_config["username"])
-                return True
 
-            elif response.status_code in {400, 403}:
-                log.warning("Setup may have already been completed")
+            elif response.status_code == 400:
+                log.warning("Setup may have already been completed or invalid data provided")
                 log.debug(f"Response: {response.text}")
-                return True
             else:
                 log.error(f"Setup failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
-                return False
 
     except httpx.ConnectError:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
-        return False
     except Exception as e:
         log.error(f"An error occurred: {e}")
-        return False
 
 
 if __name__ == "__main__":
-    if not setup_admin_account():
-        sys.exit(1)
+    setup_admin_account()

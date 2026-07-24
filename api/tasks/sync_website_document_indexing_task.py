@@ -11,7 +11,6 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
         if dataset is None:
             raise ValueError("Dataset not found")
 
@@ -39,18 +38,17 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
-                assert vector_space is not None
                 if 0 < vector_space.limit <= vector_space.size:
                     raise ValueError(
                         "Your total number of documents plus the number of uploads have over the limit of "
                         "your subscription."
                     )
         except Exception as e:
-            document = session.scalar(
-                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+            document = (
+                session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
             )
             if document:
-                document.indexing_status = IndexingStatus.ERROR
+                document.indexing_status = "error"
                 document.error = str(e)
                 document.stopped_at = naive_utc_now()
                 session.add(document)
@@ -59,9 +57,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             return
 
         logger.info(click.style(f"Start sync website document: {document_id}", fg="green"))
-        document = session.scalar(
-            select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-        )
+        document = session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
@@ -71,39 +67,29 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             if segments:
-                index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                index_node_ids = [segment.index_node_id for segment in segments]
                 # delete from vector index
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, session=session
-                )
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
             segment_ids = [segment.id for segment in segments]
-            if segment_ids:
-                segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                session.execute(segment_delete_stmt)
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+            session.execute(segment_delete_stmt)
             session.commit()
 
-            document.indexing_status = IndexingStatus.PARSING
+            document.indexing_status = "parsing"
             document.processing_started_at = naive_utc_now()
             session.add(document)
-            # Release document/segment locks before extraction starts.
             session.commit()
 
             indexing_runner = IndexingRunner()
-            indexing_runner.run([document], session)
-            session.commit()
+            indexing_runner.run([document])
             redis_client.delete(sync_indexing_cache_key)
         except Exception as ex:
-            session.rollback()
-            document = session.scalar(
-                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-            )
-            if document:
-                document.indexing_status = IndexingStatus.ERROR
-                document.error = str(ex)
-                document.stopped_at = naive_utc_now()
-                session.add(document)
-                session.commit()
+            document.indexing_status = "error"
+            document.error = str(ex)
+            document.stopped_at = naive_utc_now()
+            session.add(document)
+            session.commit()
             logger.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(sync_indexing_cache_key)
             logger.exception("sync_website_document_indexing_task failed, document_id: %s", document_id)

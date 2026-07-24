@@ -5,18 +5,15 @@ from typing import Any, Protocol
 
 import click
 from celery import current_app, shared_task
-from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
-from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 from tasks.generate_summary_index_task import generate_summary_index_task
 
@@ -54,10 +51,11 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     Usage: _document_indexing(dataset_id, document_ids)
     """
+    documents = []
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
         if not dataset:
             logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
             return
@@ -66,7 +64,6 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
-                assert vector_space is not None
                 count = len(document_ids)
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -80,49 +77,35 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     )
         except Exception as e:
             for document_id in document_ids:
-                document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                document = (
+                    session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
                 )
                 if document:
-                    document.indexing_status = IndexingStatus.ERROR
+                    document.indexing_status = "error"
                     document.error = str(e)
                     document.stopped_at = naive_utc_now()
                     session.add(document)
             session.commit()
             return
 
-    # Phase 1: Persist parsing status before slow extraction and vector operations.
+    # Phase 1: Update status to parsing (short transaction)
     with session_factory.create_session() as session, session.begin():
-        documents: list[Document] = list(
-            session.scalars(
-                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-            ).all()
+        documents = (
+            session.query(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id).all()
         )
 
         for document in documents:
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            session.add(document)
+            if document:
+                document.indexing_status = "parsing"
+                document.processing_started_at = naive_utc_now()
+                session.add(document)
+    # Transaction committed and closed
 
-    # Phase 2: Execute indexing without holding locks from the parsing-status update.
+    # Phase 2: Execute indexing (no transaction - IndexingRunner creates its own sessions)
     has_error = False
     try:
         indexing_runner = IndexingRunner()
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if not dataset:
-                logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
-                return
-
-            documents = list(
-                session.scalars(
-                    select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                ).all()
-            )
-
-            indexing_runner.run(documents, session)
-            session.commit()
-
+        indexing_runner.run(documents)
         end_at = time.perf_counter()
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
@@ -134,20 +117,25 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
     if not has_error:
         with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            # Trigger summary index generation for completed documents if enabled
+            # Only generate for high_quality indexing technique and when summary_index_setting is enabled
+            # Re-query dataset to get latest summary_index_setting (in case it was updated)
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
             if not dataset:
                 logger.warning("Dataset %s not found after indexing", dataset_id)
                 return
 
-            if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            if dataset.indexing_technique == "high_quality":
                 summary_index_setting = dataset.summary_index_setting
                 if summary_index_setting and summary_index_setting.get("enable"):
+                    # expire all session to get latest document's indexing status
+                    session.expire_all()
                     # Check each document's indexing status and trigger summary generation if completed
 
-                    documents = list(
-                        session.scalars(
-                            select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
-                        ).all()
+                    documents = (
+                        session.query(Document)
+                        .where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
+                        .all()
                     )
 
                     for document in documents:
@@ -160,8 +148,8 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 document.need_summary,
                             )
                             if (
-                                document.indexing_status == IndexingStatus.COMPLETED
-                                and document.doc_form != IndexStructureType.QA_INDEX
+                                document.indexing_status == "completed"
+                                and document.doc_form != "qa_model"
                                 and document.need_summary is True
                             ):
                                 try:

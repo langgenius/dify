@@ -11,17 +11,12 @@ Focus on:
 - Error types and their mappings
 """
 
-import sys
 import uuid
-from decimal import Decimal
-from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -34,85 +29,24 @@ from controllers.service_api.app.completion import (
     CompletionStopApi,
 )
 from controllers.service_api.app.error import (
-    AgentNotPublishedError,
     AppUnavailableError,
     ConversationCompletedError,
     NotChatAppError,
-    WorkflowVersionExecutionNotAllowedError,
 )
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
-from enums.cloud_plan import CloudPlan
-from graphon.model_runtime.errors.invoke import InvokeError
-from models.base import TypeBase
-from models.enums import ConversationFromSource, EndUserType
-from models.model import App, AppMode, Conversation, EndUser, IconType, Message
+from dify_graph.model_runtime.errors.invoke import InvokeError
+from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
-from services.billing_service import BillingService
-from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 
 
-@pytest.fixture
-def orm_session(sqlite_engine: Engine):
-    models = (App, EndUser, Conversation, Message)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
-
-
-def _persist_completion_state(session: Session, mode: AppMode) -> tuple[App, EndUser, Conversation, Message]:
-    tenant_id = str(uuid.uuid4())
-    app_model = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant_id,
-        name="Completion App",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="chat",
-        icon_background="#FFFFFF",
-        enable_site=False,
-        enable_api=True,
-    )
-    end_user = EndUser(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant_id,
-        app_id=app_model.id,
-        type=EndUserType.SERVICE_API,
-        name="API User",
-        session_id=f"session-{uuid.uuid4()}",
-    )
-    conversation = Conversation(
-        id=str(uuid.uuid4()),
-        app_id=app_model.id,
-        mode=mode,
-        name="Conversation",
-        _inputs={},
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-    )
-    message = Message(
-        id=str(uuid.uuid4()),
-        app_id=app_model.id,
-        conversation_id=conversation.id,
-        _inputs={},
-        query="Hello",
-        message={},
-        message_unit_price=Decimal(0),
-        answer="Hi",
-        answer_unit_price=Decimal(0),
-        currency="USD",
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user.id,
-        app_mode=mode,
-    )
-    session.add_all([app_model, end_user, conversation, message])
-    session.commit()
-    return app_model, end_user, conversation, message
+def _unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestCompletionRequestPayload:
@@ -276,12 +210,12 @@ class TestAppModeValidation:
 
     def test_chat_modes_are_distinct_from_completion(self):
         """Test that chat modes are distinct from completion mode."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
         assert AppMode.COMPLETION not in chat_modes
 
     def test_workflow_mode_is_distinct_from_chat_modes(self):
         """Test that WORKFLOW mode is not a chat mode."""
-        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
+        chat_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
         assert AppMode.WORKFLOW not in chat_modes
 
     def test_not_chat_app_error_can_be_raised(self):
@@ -291,16 +225,7 @@ class TestAppModeValidation:
 
     def test_all_app_modes_are_defined(self):
         """Test that all expected app modes are defined."""
-        expected_modes = [
-            "COMPLETION",
-            "CHAT",
-            "AGENT_CHAT",
-            "AGENT",
-            "ADVANCED_CHAT",
-            "WORKFLOW",
-            "CHANNEL",
-            "RAG_PIPELINE",
-        ]
+        expected_modes = ["COMPLETION", "CHAT", "AGENT_CHAT", "ADVANCED_CHAT", "WORKFLOW", "CHANNEL", "RAG_PIPELINE"]
         for mode_name in expected_modes:
             assert hasattr(AppMode, mode_name), f"AppMode.{mode_name} should exist"
 
@@ -314,69 +239,45 @@ class TestAppGenerateService:
         assert callable(AppGenerateService.generate)
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_returns_response(self, mock_generate, orm_session: Session):
+    def test_generate_returns_response(self, mock_generate):
         """Test that generate returns expected response format."""
         expected = {"answer": "Hello!"}
         mock_generate.return_value = expected
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         result = AppGenerateService.generate(
-            app_model=app_model,
-            user=end_user,
-            args={"query": "Hi"},
-            invoke_from=Mock(),
-            session=orm_session,
-            streaming=False,
+            app_model=Mock(spec=App), user=Mock(spec=EndUser), args={"query": "Hi"}, invoke_from=Mock(), streaming=False
         )
 
         assert result == expected
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_conversation_not_exists(self, mock_generate, orm_session: Session):
+    def test_generate_raises_conversation_not_exists(self, mock_generate):
         """Test generate raises ConversationNotExistsError."""
         mock_generate.side_effect = services.errors.conversation.ConversationNotExistsError()
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args={},
-                invoke_from=Mock(),
-                session=orm_session,
-                streaming=False,
+                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_quota_exceeded(self, mock_generate, orm_session: Session):
+    def test_generate_raises_quota_exceeded(self, mock_generate):
         """Test generate raises QuotaExceededError."""
         mock_generate.side_effect = QuotaExceededError()
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(QuotaExceededError):
             AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args={},
-                invoke_from=Mock(),
-                session=orm_session,
-                streaming=False,
+                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_invoke_error(self, mock_generate, orm_session: Session):
+    def test_generate_raises_invoke_error(self, mock_generate):
         """Test generate raises InvokeError."""
         mock_generate.side_effect = InvokeError("Model invocation failed")
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(InvokeError):
             AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args={},
-                invoke_from=Mock(),
-                session=orm_session,
-                streaming=False,
+                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
             )
 
 
@@ -394,14 +295,14 @@ class TestCompletionControllerLogic:
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
-    def test_completion_api_post_success(
-        self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session
-    ):
+    def test_completion_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
         """Test CompletionApi.post success path."""
         from controllers.service_api.app.completion import CompletionApi
 
         # Setup mocks
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION
+        mock_end_user = Mock(spec=EndUser)
 
         payload_dict = {"inputs": {"text": "hello"}, "response_mode": "blocking"}
         mock_service_api_ns.payload = payload_dict
@@ -413,29 +314,33 @@ class TestCompletionControllerLogic:
                 mock_compact.return_value = {"text": "compacted"}
 
                 api = CompletionApi()
-                response = unwrap(api.post)(api, orm_session, app_model, end_user)
+                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
 
                 assert response == {"text": "compacted"}
                 mock_generate_service.generate.assert_called_once()
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
+    def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app):
         """Test CompletionApi.post with wrong app mode."""
         from controllers.service_api.app.completion import CompletionApi
 
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT  # Wrong mode
+        mock_end_user = Mock(spec=EndUser)
 
         with app.test_request_context():
             with pytest.raises(AppUnavailableError):
-                unwrap(CompletionApi().post)(CompletionApi(), orm_session, app_model, end_user)
+                CompletionApi().post.__wrapped__(CompletionApi(), mock_app_model, mock_end_user)
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
-    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session):
+    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
         """Test ChatApi.post success path."""
         from controllers.service_api.app.completion import ChatApi
 
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT
+        mock_end_user = Mock(spec=EndUser)
 
         payload_dict = {"inputs": {}, "query": "hello", "response_mode": "blocking"}
         mock_service_api_ns.payload = payload_dict
@@ -446,44 +351,52 @@ class TestCompletionControllerLogic:
                 mock_compact.return_value = {"text": "compacted"}
 
                 api = ChatApi()
-                response = unwrap(api.post)(api, orm_session, app_model, end_user)
+                response = api.post.__wrapped__(api, mock_app_model, mock_end_user)
                 assert response == {"text": "compacted"}
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
+    def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app):
         """Test ChatApi.post with wrong app mode."""
         from controllers.service_api.app.completion import ChatApi
 
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION  # Wrong mode
+        mock_end_user = Mock(spec=EndUser)
 
         with app.test_request_context():
             with pytest.raises(NotChatAppError):
-                unwrap(ChatApi().post)(ChatApi(), orm_session, app_model, end_user)
+                ChatApi().post.__wrapped__(ChatApi(), mock_app_model, mock_end_user)
 
     @patch("controllers.service_api.app.completion.AppTaskService")
-    def test_completion_stop_api_success(self, mock_task_service, app: Flask, orm_session: Session):
+    def test_completion_stop_api_success(self, mock_task_service, app):
         """Test CompletionStopApi.post success."""
         from controllers.service_api.app.completion import CompletionStopApi
 
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.COMPLETION
+        mock_end_user = Mock(spec=EndUser)
+        mock_end_user.id = "user_id"
 
         with app.test_request_context():
             api = CompletionStopApi()
-            response = api.post.__wrapped__(api, app_model, end_user, "task_id")
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user, "task_id")
 
             assert response == ({"result": "success"}, 200)
             mock_task_service.stop_task.assert_called_once()
 
     @patch("controllers.service_api.app.completion.AppTaskService")
-    def test_chat_stop_api_success(self, mock_task_service, app: Flask, orm_session: Session):
+    def test_chat_stop_api_success(self, mock_task_service, app):
         """Test ChatStopApi.post success."""
         from controllers.service_api.app.completion import ChatStopApi
 
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        mock_app_model = Mock(spec=App)
+        mock_app_model.mode = AppMode.CHAT
+        mock_end_user = Mock(spec=EndUser)
+        mock_end_user.id = "user_id"
 
         with app.test_request_context():
             api = ChatStopApi()
-            response = api.post.__wrapped__(api, app_model, end_user, "task_id")
+            response = api.post.__wrapped__(api, mock_app_model, mock_end_user, "task_id")
 
             assert response == ({"result": "success"}, 200)
             mock_task_service.stop_task.assert_called_once()
@@ -501,48 +414,52 @@ class TestChatRequestPayloadController:
 
 
 class TestCompletionApiController:
-    def test_wrong_mode(self, app: Flask, orm_session: Session) -> None:
+    def test_wrong_mode(self, app) -> None:
         api = CompletionApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
             with pytest.raises(AppUnavailableError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+                handler(api, app_model=app_model, end_user=end_user)
 
-    def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_conversation_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
         )
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+        end_user = SimpleNamespace()
 
         api = CompletionApi()
-        handler = unwrap(api.post)
+        handler = _unwrap(api.post)
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+                handler(api, app_model=app_model, end_user=end_user)
 
 
 class TestCompletionStopApiController:
-    def test_wrong_mode(self, app: Flask, orm_session: Session) -> None:
+    def test_wrong_mode(self, app) -> None:
         api = CompletionStopApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/completion-messages/1/stop", method="POST"):
             with pytest.raises(AppUnavailableError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
-    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_success(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
         monkeypatch.setattr(AppTaskService, "stop_task", stop_mock)
 
         api = CompletionStopApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
+        end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/completion-messages/1/stop", method="POST"):
             response, status = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
@@ -552,90 +469,17 @@ class TestCompletionStopApiController:
 
 
 class TestChatApiController:
-    def test_rejects_sandbox_plan_workflow_version(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
-    ) -> None:
-        completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", True)
-
-        billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
-        generate = Mock()
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
-
+    def test_wrong_mode(self, app) -> None:
         api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
-        workflow_id = str(uuid.uuid4())
-
-        with app.test_request_context(
-            "/chat-messages",
-            method="POST",
-            json={"inputs": {}, "query": "hi", "workflow_id": workflow_id},
-        ):
-            with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
-
-        billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
-        generate.assert_not_called()
-        assert exc_info.value.code == 403
-        assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
-
-    @pytest.mark.parametrize(
-        ("billing_config_enabled", "billing_enabled", "plan", "workflow_id"),
-        [
-            (False, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
-            (True, True, CloudPlan.SANDBOX, None),
-        ],
-    )
-    def test_allows_default_or_entitled_workflow_version_execution(
-        self,
-        app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        orm_session: Session,
-        billing_config_enabled: bool,
-        billing_enabled: bool,
-        plan: CloudPlan,
-        workflow_id: str | None,
-    ) -> None:
-        completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
-
-        billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
-        generate = Mock(return_value={"result": "ok"})
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
-        monkeypatch.setattr(completion_module.helper, "compact_generate_response", lambda response: response)
-
-        api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
-        request_json = {"inputs": {}, "query": "hi"}
-        if workflow_id:
-            request_json["workflow_id"] = workflow_id
-
-        with app.test_request_context("/chat-messages", method="POST", json=request_json):
-            response = handler(api, session=orm_session, app_model=app_model, end_user=end_user)
-
-        assert response == {"result": "ok"}
-        generate.assert_called_once()
-        if billing_config_enabled and workflow_id:
-            billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
-        else:
-            billing_get_info.assert_not_called()
-
-    def test_wrong_mode(self, app: Flask, orm_session: Session) -> None:
-        api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace()
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(NotChatAppError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+                handler(api, app_model=app_model, end_user=end_user)
 
-    def test_workflow_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_workflow_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -643,14 +487,15 @@ class TestChatApiController:
         )
 
         api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+                handler(api, app_model=app_model, end_user=end_user)
 
-    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_draft_workflow(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -658,64 +503,21 @@ class TestChatApiController:
         )
 
         api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        end_user = SimpleNamespace()
 
         with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(BadRequest):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
-
-    def test_agent_not_published_error_mapped(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
-    ) -> None:
-        monkeypatch.setattr(
-            AppGenerateService,
-            "generate",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(AgentAppNotPublishedError("Agent has not been published")),
-        )
-
-        api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.AGENT)
-
-        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(AgentNotPublishedError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
-
-    def test_invalid_conversation_id_fails_fast_as_not_found(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
-    ) -> None:
-        # A well-formed but nonexistent conversation_id must fail fast as 404, before the
-        # streaming generator is created. Previously the lookup only ran inside the generator,
-        # so an invalid id surfaced as a hang instead of a clean error.
-        get_conversation_mock = Mock(side_effect=ConversationNotExistsError())
-        monkeypatch.setattr(ConversationService, "get_conversation", get_conversation_mock)
-
-        generate_mock = Mock(return_value={"text": "unused"})
-        monkeypatch.setattr(AppGenerateService, "generate", generate_mock)
-
-        api = ChatApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
-
-        with app.test_request_context(
-            "/chat-messages",
-            method="POST",
-            json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
-        ):
-            with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
-
-        # The lookup must run before generation, so the generator is never started.
-        generate_mock.assert_not_called()
-        assert get_conversation_mock.call_args.kwargs["session"] is orm_session
+                handler(api, app_model=app_model, end_user=end_user)
 
 
 class TestChatStopApiController:
-    def test_wrong_mode(self, app: Flask, orm_session: Session) -> None:
+    def test_wrong_mode(self, app) -> None:
         api = ChatStopApi()
-        handler = unwrap(api.post)
-        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+        handler = _unwrap(api.post)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        end_user = SimpleNamespace(id="u1")
 
         with app.test_request_context("/chat-messages/1/stop", method="POST"):
             with pytest.raises(NotChatAppError):

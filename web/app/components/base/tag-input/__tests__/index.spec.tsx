@@ -5,16 +5,10 @@ import TagInput from '../index'
 
 const mockNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: {
-    notify: (args: unknown) => mockNotify(args),
-  },
-  toast: {
-    success: (message: string) => mockNotify({ type: 'success', message }),
-    error: (message: string) => mockNotify({ type: 'error', message }),
-    warning: (message: string) => mockNotify({ type: 'warning', message }),
-    info: (message: string) => mockNotify({ type: 'info', message }),
-  },
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
 }))
 
 type TagInputProps = ComponentProps<typeof TagInput>
@@ -37,37 +31,21 @@ describe('TagInput', () => {
     it('should render existing tags and default placeholder', () => {
       renderTagInput({ items: ['alpha', 'beta'] })
 
-      expect(screen.getByText('alpha'))!.toBeInTheDocument()
-      expect(screen.getByText('beta'))!.toBeInTheDocument()
-      expect(
-        screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'),
-      )!.toBeInTheDocument()
+      expect(screen.getByText('alpha')).toBeInTheDocument()
+      expect(screen.getByText('beta')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord')).toBeInTheDocument()
     })
 
     it('should render special mode placeholder when confirm key is Tab', () => {
       renderTagInput({ customizedConfirmKey: 'Tab' })
 
-      expect(
-        screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'),
-      )!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder')).toBeInTheDocument()
     })
 
     it('should render custom placeholder when placeholder prop is provided', () => {
       renderTagInput({ placeholder: 'Custom placeholder' })
 
-      expect(screen.getByPlaceholderText('Custom placeholder'))!.toBeInTheDocument()
-    })
-
-    it('should apply input className and expose visible text for CSS sizing', async () => {
-      renderTagInput({ inputClassName: 'custom-input', placeholder: 'Tag' })
-      const input = screen.getByRole('textbox')
-      const inputContainer = input.parentElement
-
-      expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
-
-      await userEvent.type(input, 'longer')
-
-      expect(inputContainer).toHaveAttribute('data-input-value', 'longer')
+      expect(screen.getByPlaceholderText('Custom placeholder')).toBeInTheDocument()
     })
 
     it('should hide input when add is disabled', () => {
@@ -79,9 +57,19 @@ describe('TagInput', () => {
     it('should hide remove controls when remove is disabled', () => {
       renderTagInput({ items: ['alpha'], disableRemove: true })
 
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.remove alpha' }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('remove-tag')).not.toBeInTheDocument()
+    })
+
+    it('should apply focused style in special mode when input is focused', async () => {
+      renderTagInput({ customizedConfirmKey: 'Tab' })
+      const input = screen.getByRole('textbox')
+      const inputContainer = input.parentElement
+
+      expect(inputContainer).toHaveClass('border-transparent')
+
+      await userEvent.click(input)
+
+      expect(inputContainer).toHaveClass('border-dashed')
     })
   })
 
@@ -89,7 +77,7 @@ describe('TagInput', () => {
     it('should remove item when remove control is clicked', async () => {
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
-      const removeControl = screen.getByRole('button', { name: 'common.operation.remove alpha' })
+      const removeControl = screen.getAllByTestId('remove-tag')[0]
 
       await userEvent.click(removeControl)
 
@@ -105,11 +93,11 @@ describe('TagInput', () => {
 
       expect(onChange).toHaveBeenCalledWith(['new-tag'])
       await waitFor(() => {
-        expect(input)!.toHaveValue('')
+        expect(input).toHaveValue('')
       })
     })
 
-    it('should add tag on blur-sm when input has valid value', async () => {
+    it('should add tag on blur when input has valid value', async () => {
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
@@ -128,7 +116,7 @@ describe('TagInput', () => {
       await user.type(input, 'stop')
       await user.keyboard('{Enter}')
 
-      expect(input)!.toHaveValue('stop↵')
+      expect(input).toHaveValue('stop↵')
       expect(onChange).not.toHaveBeenCalled()
 
       // Low-level test for preventDefault

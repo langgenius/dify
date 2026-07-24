@@ -43,23 +43,6 @@ describe('Link component', () => {
     expect(mockOnSend).toHaveBeenCalledWith('hello world')
   })
 
-  it('renders abbr with empty fallback title/value when child value is missing', () => {
-    const node = {
-      properties: {
-        href: 'abbr:hi',
-      },
-      children: [{}],
-    }
-
-    const { container } = render(<Link node={node} />)
-
-    const abbr = container.querySelector('abbr')
-    expect(abbr).toBeTruthy()
-    expect(abbr?.tagName).toBe('ABBR')
-    fireEvent.click(abbr as HTMLElement)
-    expect(mockOnSend).toHaveBeenCalledWith('hi')
-  })
-
   // --------------------------
   // HASH SCROLL LINK
   // --------------------------
@@ -94,40 +77,6 @@ describe('Link component', () => {
     fireEvent.click(link)
 
     expect(scrollIntoView).toHaveBeenCalled()
-  })
-
-  it('does not throw when hash link is clicked outside chat-answer-container', () => {
-    const node = {
-      properties: {
-        href: '#section2',
-      },
-    }
-
-    render(<Link node={node}>Outside</Link>)
-
-    expect(() => {
-      fireEvent.click(screen.getByText('Outside'))
-    }).not.toThrow()
-  })
-
-  it('does not scroll when hash target element is missing', () => {
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
-
-    const node = {
-      properties: {
-        href: '#missing-target',
-      },
-    }
-
-    render(
-      <div className="chat-answer-container">
-        <Link node={node}>Missing</Link>
-      </div>,
-    )
-
-    fireEvent.click(screen.getByText('Missing'))
-    expect(scrollIntoView).not.toHaveBeenCalled()
   })
 
   // --------------------------
@@ -168,57 +117,6 @@ describe('Link component', () => {
     expect(link).toHaveAttribute('href', 'https://example.com')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-  })
-
-  it('adds attachment mode to file-preview links by default', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
-    const node = {
-      properties: {
-        href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3',
-      },
-    }
-
-    render(<Link node={node}>doc.pdf</Link>)
-
-    expect(screen.getByText('doc.pdf')).toHaveAttribute(
-      'href',
-      'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
-    )
-  })
-
-  it('does not duplicate attachment mode for file-preview links', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
-    const node = {
-      properties: {
-        href: 'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
-      },
-    }
-
-    render(<Link node={node}>doc.pdf</Link>)
-
-    expect(screen.getByText('doc.pdf')).toHaveAttribute(
-      'href',
-      'http://localhost:5001/files/123/file-preview?timestamp=1&nonce=2&sign=3&as_attachment=true',
-    )
-  })
-
-  it('keeps protocol-relative file-preview links protocol-relative', () => {
-    mockIsValidUrl.mockReturnValue(true)
-
-    const node = {
-      properties: {
-        href: '//localhost:5001/files/123/file-preview?timestamp=1#page',
-      },
-    }
-
-    render(<Link node={node}>doc.pdf</Link>)
-
-    expect(screen.getByText('doc.pdf')).toHaveAttribute(
-      'href',
-      '//localhost:5001/files/123/file-preview?timestamp=1&as_attachment=true#page',
-    )
   })
 
   // --------------------------

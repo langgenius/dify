@@ -1,18 +1,9 @@
 import type { Viewport } from 'reactflow'
 import type { DSLImportMode, DSLImportStatus } from './app'
-import type {
-  ChunkingMode,
-  DocumentIndexingStatus,
-  FileIndexingEstimateResponse,
-  IconInfo,
-} from './datasets'
+import type { ChunkingMode, DatasetPermission, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Dependency } from '@/app/components/plugins/types'
-import type {
-  Edge,
-  EnvironmentVariable,
-  Node,
-  SupportUploadFileTypes,
-} from '@/app/components/workflow/types'
+import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { NodeRunResult } from '@/types/workflow'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
@@ -62,6 +53,14 @@ export type PipelineTemplateByIdResponse = {
   created_by: string
 }
 
+export type CreateFormData = {
+  name: string
+  appIcon: AppIconSelection
+  description: string
+  permission: DatasetPermission
+  selectedMemberIDs: string[]
+}
+
 export type UpdateTemplateInfoRequest = {
   template_id: string
   name: string
@@ -99,7 +98,6 @@ export type ImportPipelineDSLResponse = {
   dataset_id: string
   current_dsl_version: string
   imported_dsl_version: string
-  error?: string
 }
 
 export type ImportPipelineDSLConfirmResponse = {

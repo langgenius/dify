@@ -1,5 +1,4 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
@@ -38,17 +37,13 @@ const List = ({
 
   useEffect(() => {
     if (anchorRef.current) {
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          const { setNextPageParameters, currentNextPageParametersRef, isTruncated } =
-            dataSourceStore.getState()
-          if (entries[0]!.isIntersecting && isTruncated.current && !isLoading)
-            setNextPageParameters(currentNextPageParametersRef.current)
-        },
-        {
-          rootMargin: '100px',
-        },
-      )
+      observerRef.current = new IntersectionObserver((entries) => {
+        const { setNextPageParameters, currentNextPageParametersRef, isTruncated } = dataSourceStore.getState()
+        if (entries[0].isIntersecting && isTruncated.current && !isLoading)
+          setNextPageParameters(currentNextPageParametersRef.current)
+      }, {
+        rootMargin: '100px',
+      })
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
@@ -58,56 +53,53 @@ const List = ({
   const isPartialLoading = isLoading && fileList.length > 0
   const isEmptyFolder = !isLoading && fileList.length === 0 && keywords.length === 0
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
-  const selectedFileId = selectedFileIds[0]
-  const handleRadioChange = (fileId: string) => {
-    const selectedFile = fileList.find((file) => file.id === fileId)
-    if (selectedFile) handleSelectFile(selectedFile)
-  }
-  const fileItems = fileList.map((file) => {
-    const isSelected = selectedFileIds.includes(file.id)
-    return (
-      <Item
-        key={file.id}
-        file={file}
-        isSelected={isSelected}
-        onSelect={handleSelectFile}
-        onOpen={handleOpenFolder}
-        isMultipleChoice={supportBatchUpload}
-      />
-    )
-  })
 
   return (
     <div className="grow overflow-hidden p-1 pt-0">
-      {isAllLoading && <Loading type="app" />}
-      {isEmptyFolder && <EmptyFolder />}
-      {isSearchResultEmpty && <EmptySearchResult onResetKeywords={handleResetKeywords} />}
+      {
+        isAllLoading && (
+          <Loading type="app" />
+        )
+      }
+      {
+        isEmptyFolder && (
+          <EmptyFolder />
+        )
+      }
+      {
+        isSearchResultEmpty && (
+          <EmptySearchResult onResetKeywords={handleResetKeywords} />
+        )
+      }
       {fileList.length > 0 && (
         <div className="flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5">
-          {supportBatchUpload ? (
-            fileItems
-          ) : (
-            <RadioGroup
-              aria-label={t(($) => $['onlineDrive.breadcrumbs.allFiles'], {
-                ns: 'datasetPipeline',
-              })}
-              value={selectedFileId}
-              onValueChange={handleRadioChange}
-              className="contents"
-            >
-              {fileItems}
-            </RadioGroup>
-          )}
-          {isPartialLoading && (
-            <div
-              className="flex items-center justify-center py-2"
-              role="status"
-              aria-live="polite"
-              aria-label={t(($) => $.loading, { ns: 'appApi' })}
-            >
-              <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
-            </div>
-          )}
+          {
+            fileList.map((file) => {
+              const isSelected = selectedFileIds.includes(file.id)
+              return (
+                <Item
+                  key={file.id}
+                  file={file}
+                  isSelected={isSelected}
+                  onSelect={handleSelectFile}
+                  onOpen={handleOpenFolder}
+                  isMultipleChoice={supportBatchUpload}
+                />
+              )
+            })
+          }
+          {
+            isPartialLoading && (
+              <div
+                className="flex items-center justify-center py-2"
+                role="status"
+                aria-live="polite"
+                aria-label={t('loading', { ns: 'appApi' })}
+              >
+                <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
+              </div>
+            )
+          }
           <div ref={anchorRef} className="h-0" />
         </div>
       )}

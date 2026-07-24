@@ -23,8 +23,7 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component:
-          'Zustand-backed provider used for feature toggles. Paired with `NewFeaturePanel` for workflow settings.',
+        component: 'Zustand-backed provider used for feature toggles. Paired with `NewFeaturePanel` for workflow settings.',
       },
     },
   },
@@ -59,7 +58,7 @@ const FeaturesDemo = () => {
         show={show}
         isChatMode
         disabled={false}
-        onChange={(next) => setFeatures((prev) => ({ ...prev, ...next }))}
+        onChange={next => setFeatures(prev => ({ ...prev, ...next }))}
         onClose={() => setShow(false)}
       />
     </FeaturesProvider>

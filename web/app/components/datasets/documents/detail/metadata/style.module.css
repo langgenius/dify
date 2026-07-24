@@ -1,23 +1,21 @@
-@reference "../../../../../styles/globals.css";
-
 .main {
-  @apply w-full shrink-0 overflow-y-auto border-none p-0 sm:w-96 sm:border-l sm:border-l-gray-100 sm:px-6 sm:py-5 xl:w-[360px];
+  @apply w-full sm:w-96 xl:w-[360px] flex-shrink-0 p-0 sm:px-6 sm:py-5 overflow-y-auto border-none sm:border-l-gray-100 sm:border-l;
 }
 .operationWrapper {
-  @apply mt-7 mb-8 flex flex-col items-center gap-4;
+  @apply flex flex-col items-center gap-4 mt-7 mb-8;
 }
 .iconWrapper {
-  @apply box-border inline-flex h-8 w-8 cursor-pointer items-center justify-center;
-  @apply rounded-lg border border-[#EAECF5] hover:border-primary-200 hover:bg-primary-25 hover:shadow-md;
+  @apply box-border cursor-pointer h-8 w-8 inline-flex items-center justify-center;
+  @apply border-[#EAECF5] border rounded-lg hover:border-primary-200 hover:bg-primary-25 hover:shadow-md;
 }
 .icon {
   @apply h-4 w-4 stroke-current stroke-[2px] text-gray-700 group-hover:stroke-primary-600;
 }
 .iconCheck {
-  @apply !border-[1.5px] !border-primary-400 !bg-primary-25 !shadow-xs;
+  @apply border-primary-400 border-[1.5px] bg-primary-25 shadow-sm !important;
 }
 .commonIcon {
-  @apply inline-block h-4 w-4 bg-gray-700 align-middle hover:bg-primary-600;
+  @apply w-4 h-4 inline-block align-middle bg-gray-700 hover:bg-primary-600;
 }
 .bookOpenIcon {
   mask-image: url(../../assets/bookOpen.svg);
@@ -41,68 +39,65 @@
   mask-image: url(../../assets/messageTextCircle.svg);
 }
 .radioGroup {
-  @apply !gap-2 !bg-transparent;
+  @apply !bg-transparent !gap-2;
 }
 .radio {
-  @apply !mr-0 !rounded-lg !p-0 hover:bg-transparent;
+  @apply !p-0 !mr-0 hover:bg-transparent !rounded-lg;
 }
 .title {
-  @apply text-sm leading-6 font-medium text-gray-800;
+  @apply text-sm text-gray-800 font-medium leading-6;
 }
 .titleWrapper {
   @apply flex items-center justify-between;
 }
 .desc {
-  @apply text-xs text-gray-500;
+  @apply text-gray-500 text-xs;
 }
 
 .changeTip {
-  @apply text-center text-xs text-[#D92D20];
+  @apply text-[#D92D20] text-xs text-center;
 }
 .opBtnWrapper {
   @apply flex items-center justify-center gap-1;
 }
 .opBtn {
-  @apply !h-6 !w-14 rounded-md !px-0 !text-xs !font-medium;
+  @apply h-6 w-14 px-0 text-xs font-medium rounded-md !important;
 }
 .opEditBtn {
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
-  @apply !border-[0.5px] !border-gray-200 !bg-white;
+  @apply border-[0.5px] border-gray-200 bg-white !important;
 }
 .opCancelBtn {
-  @apply !border-none !bg-gray-50 !font-medium !text-gray-700 hover:!bg-gray-100;
+  @apply border-none bg-gray-50 font-medium text-gray-700 hover:bg-gray-100 !important;
 }
 .opSaveBtn {
-  @apply !border-[0.5px] !border-primary-700 !font-medium hover:!border-none;
+  @apply border-primary-700 border-[0.5px] font-medium hover:border-none !important;
 }
 .opIcon {
-  @apply mr-1 h-3 w-3 stroke-current stroke-2;
+  @apply h-3 w-3 stroke-current stroke-2 mr-1;
 }
 .select {
-  @apply !h-7 rounded-md !bg-gray-50 !py-0 !pl-2 !text-xs !shadow-none hover:!bg-gray-100;
+  @apply h-7 py-0 pl-2 text-xs bg-gray-50 hover:bg-gray-100 rounded-md shadow-none !important;
 }
 .selectWrapper {
-  @apply !h-7 w-full;
+  @apply !h-7 w-full
 }
 .selectWrapper ul {
-  @apply text-xs;
+  @apply text-xs
 }
 .selectWrapper li {
-  @apply flex h-8 items-center;
+  @apply flex items-center h-8
 }
 .documentTypeShow {
   @apply flex items-center text-xs text-gray-500;
 }
 .iconShow {
   mask-size: contain;
-  @apply !mr-1 !h-3 !w-3 !bg-gray-500 hover:!bg-none;
+  @apply w-3 h-3 bg-gray-500 hover:bg-none mr-1 !important;
 }
 .textArea {
-  @apply rounded-md bg-gray-50 px-2 py-1 caret-primary-600 placeholder:text-gray-400 hover:bg-gray-100 focus-visible:border focus-visible:border-gray-300 focus-visible:bg-white focus-visible:outline-hidden;
-}
-.textArea:hover {
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  @apply placeholder:text-gray-400 bg-gray-50 px-2 py-1 caret-primary-600 rounded-md hover:bg-gray-100 focus-visible:outline-none focus-visible:bg-white focus-visible:border focus-visible:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05);];
 }
 .input {
-  @apply !bg-gray-50 hover:!bg-gray-100 focus-visible:!bg-white;
+  @apply bg-gray-50 hover:bg-gray-100 focus-visible:bg-white !important
 }

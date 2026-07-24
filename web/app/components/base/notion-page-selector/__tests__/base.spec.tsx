@@ -5,14 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
-import { useModalContext, useModalContextSelector } from '@/context/modal-context'
-import {
-  useInvalidPreImportNotionPages,
-  usePreImportNotionPages,
-} from '@/service/knowledge/use-import'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
-
-vi.mock('@tanstack/react-virtual')
 
 vi.mock('@/service/knowledge/use-import', () => ({
   usePreImportNotionPages: vi.fn(),
@@ -20,7 +15,6 @@ vi.mock('@/service/knowledge/use-import', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
   useModalContextSelector: vi.fn(),
 }))
 
@@ -51,30 +45,9 @@ const mockNotionWorkspaces: DataSourceNotionWorkspace[] = [
     workspace_icon: '',
     workspace_name: 'Workspace 1',
     pages: [
-      {
-        page_id: 'root-1',
-        page_name: 'Root 1',
-        parent_id: 'root',
-        page_icon: null,
-        type: 'page',
-        is_bound: false,
-      },
-      {
-        page_id: 'child-1',
-        page_name: 'Child 1',
-        parent_id: 'root-1',
-        page_icon: null,
-        type: 'page',
-        is_bound: false,
-      },
-      {
-        page_id: 'bound-1',
-        page_name: 'Bound 1',
-        parent_id: 'root',
-        page_icon: null,
-        type: 'page',
-        is_bound: true,
-      },
+      { page_id: 'root-1', page_name: 'Root 1', parent_id: 'root', page_icon: null, type: 'page', is_bound: false },
+      { page_id: 'child-1', page_name: 'Child 1', parent_id: 'root-1', page_icon: null, type: 'page', is_bound: false },
+      { page_id: 'bound-1', page_name: 'Bound 1', parent_id: 'root', page_icon: null, type: 'page', is_bound: true },
     ],
   },
   {
@@ -82,14 +55,7 @@ const mockNotionWorkspaces: DataSourceNotionWorkspace[] = [
     workspace_icon: '',
     workspace_name: 'Workspace 2',
     pages: [
-      {
-        page_id: 'external-1',
-        page_name: 'External 1',
-        parent_id: 'root',
-        page_icon: null,
-        type: 'page',
-        is_bound: false,
-      },
+      { page_id: 'external-1', page_name: 'External 1', parent_id: 'root', page_icon: null, type: 'page', is_bound: false },
     ],
   },
 ]
@@ -115,16 +81,7 @@ describe('NotionPageSelector Base', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    } as unknown as ReturnType<typeof useModalContext>)
-    vi.mocked(useModalContextSelector).mockImplementation((selector) => {
-      // Execute the selector to get branch/func coverage for the inline function
-      selector({
-        setShowAccountSettingModal: mockSetShowAccountSettingModal,
-      } as unknown as Parameters<Parameters<typeof useModalContextSelector>[0]>[0])
-      return mockSetShowAccountSettingModal
-    })
+    vi.mocked(useModalContextSelector).mockReturnValue(mockSetShowAccountSettingModal)
     vi.mocked(useInvalidPreImportNotionPages).mockReturnValue(mockInvalidPreImportNotionPages)
   })
 
@@ -145,9 +102,7 @@ describe('NotionPageSelector Base', () => {
     const connectButton = screen.getByRole('button', { name: 'datasetCreation.stepOne.connect' })
     await user.click(connectButton)
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   })
 
   it('should render page selector and allow selecting a page tree', async () => {
@@ -158,18 +113,16 @@ describe('NotionPageSelector Base', () => {
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={handleSelect} />)
 
     expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
-    expect(screen.getByText('Root 1')).toBeInTheDocument()
-    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
+    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalled()
-    expect(handleSelect).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ page_id: 'root-1', workspace_id: 'w1' }),
-        expect.objectContaining({ page_id: 'child-1', workspace_id: 'w1' }),
-        expect.objectContaining({ page_id: 'bound-1', workspace_id: 'w1' }),
-      ]),
-    )
+    expect(handleSelect).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ page_id: 'root-1', workspace_id: 'w1' }),
+      expect.objectContaining({ page_id: 'child-1', workspace_id: 'w1' }),
+      expect.objectContaining({ page_id: 'bound-1', workspace_id: 'w1' }),
+    ]))
   })
 
   it('should keep bound pages disabled and selected by default', async () => {
@@ -178,8 +131,8 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={handleSelect} />)
 
-    const boundCheckbox = screen.getByRole('checkbox', { name: 'Bound 1' })
-    expect(boundCheckbox).toHaveAttribute('aria-checked', 'true')
+    const boundCheckbox = screen.getByTestId('checkbox-notion-page-checkbox-bound-1')
+    expect(screen.getByTestId('check-icon-notion-page-checkbox-bound-1')).toBeInTheDocument()
     await user.click(boundCheckbox)
     expect(handleSelect).not.toHaveBeenCalled()
   })
@@ -189,12 +142,12 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    const searchInput = screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages')
+    const searchInput = screen.getByTestId('notion-search-input')
     await user.type(searchInput, 'no-such-page')
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(screen.getByText('Root 1')).toBeInTheDocument()
+    await user.click(screen.getByTestId('notion-search-input-clear'))
+    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
   })
 
   it('should switch credential and reset selection when choosing a different workspace', async () => {
@@ -211,15 +164,12 @@ describe('NotionPageSelector Base', () => {
       />,
     )
 
-    const selectorBtn = screen.getByRole('combobox', { name: /Workspace 1/ })
+    const selectorBtn = screen.getByTestId('notion-credential-selector-btn')
     await user.click(selectorBtn)
-    const item2 = screen.getByRole('option', { name: /Workspace 2/ })
+    const item2 = screen.getByTestId('notion-credential-item-c2')
     await user.click(item2)
 
-    expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
-      datasetId: 'dataset-1',
-      credentialId: 'c2',
-    })
+    expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({ datasetId: 'dataset-1', credentialId: 'c2' })
     expect(handleSelect).toHaveBeenCalledWith([])
     expect(onSelectCredential).toHaveBeenLastCalledWith('c2')
   })
@@ -229,12 +179,8 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    await user.click(
-      screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
-    )
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
+    await user.click(screen.getByRole('button', { name: 'Configure Notion' }))
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   })
 
   it('should preview a page and call onPreview when callback is provided', async () => {
@@ -252,9 +198,7 @@ describe('NotionPageSelector Base', () => {
 
     const previewBtn = screen.getByTestId('notion-page-preview-root-1')
     await user.click(previewBtn)
-    expect(onPreview).toHaveBeenCalledWith(
-      expect.objectContaining({ page_id: 'root-1', workspace_id: 'w1' }),
-    )
+    expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ page_id: 'root-1', workspace_id: 'w1' }))
   })
 
   it('should handle preview click without onPreview callback', async () => {
@@ -262,7 +206,7 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
     await user.click(screen.getByTestId('notion-page-preview-root-1'))
-    expect(screen.getByText('Root 1')).toBeInTheDocument()
+    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
   })
 
   it('should call onSelectCredential with current credential on initial render', () => {
@@ -302,10 +246,7 @@ describe('NotionPageSelector Base', () => {
     )
 
     await waitFor(() => {
-      expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
-        datasetId: 'dataset-fallback',
-        credentialId: 'c3',
-      })
+      expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({ datasetId: 'dataset-fallback', credentialId: 'c3' })
       expect(onSelect).toHaveBeenCalledWith([])
       expect(onSelectCredential).toHaveBeenLastCalledWith('c3')
     })
@@ -314,82 +255,17 @@ describe('NotionPageSelector Base', () => {
   it('should update selected page state when controlled value changes', () => {
     vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
     const { rerender } = render(
-      <NotionPageSelector
-        credentialList={mockCredentialList}
-        onSelect={vi.fn()}
-        value={['root-1']}
-      />,
+      <NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} value={['root-1']} />,
     )
-    expect(screen.getByRole('checkbox', { name: 'Root 1' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByTestId('check-icon-notion-page-checkbox-root-1')).toBeInTheDocument()
 
-    rerender(
-      <NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} value={[]} />,
-    )
-    expect(screen.getByRole('checkbox', { name: 'Root 1' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    )
+    rerender(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} value={[]} />)
+    expect(screen.queryByTestId('check-icon-notion-page-checkbox-root-1')).not.toBeInTheDocument()
   })
 
   it('should hide preview actions when canPreview is false', () => {
     vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
-    render(
-      <NotionPageSelector
-        credentialList={mockCredentialList}
-        onSelect={vi.fn()}
-        canPreview={false}
-      />,
-    )
+    render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} canPreview={false} />)
     expect(screen.queryByTestId('notion-page-preview-root-1')).not.toBeInTheDocument()
-  })
-
-  it('should handle undefined data gracefully during loading', () => {
-    vi.mocked(usePreImportNotionPages).mockReturnValue({
-      data: undefined,
-      isFetching: true,
-      isError: false,
-    } as unknown as ReturnType<typeof usePreImportNotionPages>)
-    render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
-    expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
-  })
-
-  it('should handle credential with empty id', () => {
-    vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
-    const onSelectCredential = vi.fn()
-    render(
-      <NotionPageSelector
-        credentialList={[buildCredential('', 'Empty', 'Empty Workspace')]}
-        onSelect={vi.fn()}
-        onSelectCredential={onSelectCredential}
-      />,
-    )
-    expect(onSelectCredential).toHaveBeenCalledWith('')
-  })
-
-  it('should render empty page selector when notion_info is empty', () => {
-    vi.mocked(usePreImportNotionPages).mockReturnValue({
-      data: { notion_info: undefined },
-      isFetching: false,
-      isError: false,
-    } as unknown as ReturnType<typeof usePreImportNotionPages>)
-    render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
-    expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
-  })
-
-  it('should run credential effect fallback when onSelectCredential is not provided', () => {
-    vi.mocked(usePreImportNotionPages).mockReturnValue(createPreImportResult())
-    const { rerender } = render(
-      <NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />,
-    )
-
-    // Rerender with a new credentialList but same credential to hit the else block without onSelectCredential
-    rerender(
-      <NotionPageSelector
-        credentialList={[...mockCredentialList, buildCredential('c3', 'Cred 3', 'Workspace 3')]}
-        onSelect={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
   })
 })

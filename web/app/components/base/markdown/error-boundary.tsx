@@ -17,25 +17,24 @@ export default class ErrorBoundary extends Component {
     this.state = { hasError: false }
   }
 
-  override componentDidCatch(error: any, errorInfo: any) {
+  componentDidCatch(error: any, errorInfo: any) {
     this.setState({ hasError: true })
     console.error(error, errorInfo)
   }
 
-  override render() {
-    // oxlint-disable-next-line typescript/ban-ts-comment
+  render() {
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError) {
       return (
         <div>
-          Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG
-          content.
+          Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content.
           <br />
           (see the browser console for more information)
         </div>
       )
     }
-    // oxlint-disable-next-line typescript/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

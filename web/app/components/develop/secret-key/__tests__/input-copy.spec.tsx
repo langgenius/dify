@@ -35,7 +35,7 @@ describe('InputCopy', () => {
 
     it('should render with empty value by default', async () => {
       await renderAndFlush(<InputCopy />)
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should render children when provided', async () => {
@@ -55,6 +55,12 @@ describe('InputCopy', () => {
   })
 
   describe('styling', () => {
+    it('should apply custom className', async () => {
+      const { container } = await renderAndFlush(<InputCopy value="test" className="custom-class" />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.className).toContain('custom-class')
+    })
+
     it('should have flex layout', async () => {
       const { container } = await renderAndFlush(<InputCopy value="test" />)
       const wrapper = container.firstChild as HTMLElement
@@ -65,6 +71,18 @@ describe('InputCopy', () => {
       const { container } = await renderAndFlush(<InputCopy value="test" />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper.className).toContain('items-center')
+    })
+
+    it('should have rounded-lg class', async () => {
+      const { container } = await renderAndFlush(<InputCopy value="test" />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.className).toContain('rounded-lg')
+    })
+
+    it('should have background class', async () => {
+      const { container } = await renderAndFlush(<InputCopy value="test" />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.className).toContain('bg-components-input-bg-normal')
     })
 
     it('should have hover state', async () => {
@@ -140,9 +158,8 @@ describe('InputCopy', () => {
     it('should have cursor-pointer on clickable area', async () => {
       await renderAndFlush(<InputCopy value="test" />)
       const valueText = screen.getByText('test')
-      const clickableArea = valueText.closest('button')
+      const clickableArea = valueText.closest('div[class*="cursor-pointer"]')
       expect(clickableArea).toBeInTheDocument()
-      expect(clickableArea?.className).toContain('cursor-pointer')
     })
   })
 
@@ -171,7 +188,7 @@ describe('InputCopy', () => {
     it('should have truncate class for long values', async () => {
       await renderAndFlush(<InputCopy value="very-long-api-key-value-that-might-overflow" />)
       const valueText = screen.getByText('very-long-api-key-value-that-might-overflow')
-      const container = valueText.closest('button')
+      const container = valueText.closest('div[class*="truncate"]')
       expect(container).toBeInTheDocument()
     })
 
@@ -184,9 +201,8 @@ describe('InputCopy', () => {
     it('should have absolute positioning for overlay', async () => {
       await renderAndFlush(<InputCopy value="test" />)
       const valueText = screen.getByText('test')
-      const container = valueText.closest('button')
+      const container = valueText.closest('div[class*="absolute"]')
       expect(container).toBeInTheDocument()
-      expect(container?.className).toContain('absolute')
     })
   })
 
@@ -257,12 +273,12 @@ describe('InputCopy', () => {
   describe('edge cases', () => {
     it('should handle undefined value', async () => {
       await renderAndFlush(<InputCopy value={undefined} />)
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should handle empty string value', async () => {
       await renderAndFlush(<InputCopy value="" />)
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should handle very long values', async () => {

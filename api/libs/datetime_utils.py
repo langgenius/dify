@@ -2,7 +2,7 @@ import abc
 import datetime
 from typing import Protocol
 
-import pytz  # type: ignore[import-untyped]
+import pytz
 
 
 class _NowFunction(Protocol):

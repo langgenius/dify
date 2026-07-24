@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.runtime import GraphRuntimeState
+from dify_graph.runtime import GraphRuntimeState
 
 if TYPE_CHECKING:
     from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -31,10 +30,10 @@ class GraphRuntimeStateSupport:
         return self._resolve_graph_runtime_state(graph_runtime_state)
 
     def _extract_workflow_run_id(self, graph_runtime_state: GraphRuntimeState) -> str:
-        workflow_run_id = get_system_text(graph_runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
-        if not workflow_run_id:
+        system_variables = graph_runtime_state.variable_pool.system_variables
+        if not system_variables or not system_variables.workflow_execution_id:
             raise ValueError("workflow_execution_id missing from runtime state")
-        return workflow_run_id
+        return str(system_variables.workflow_execution_id)
 
     def _resolve_graph_runtime_state(
         self,

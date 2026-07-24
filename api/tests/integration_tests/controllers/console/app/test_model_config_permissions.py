@@ -11,7 +11,6 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import AppStatus
 from models.model import AppMode
 from services.app_model_config_service import AppModelConfigService
 
@@ -26,7 +25,7 @@ class TestModelConfigResourcePermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = AppStatus.NORMAL
+        app.status = "normal"
         app.app_model_config_id = str(uuid.uuid4())
         return app
 
@@ -74,7 +73,7 @@ class TestModelConfigResourcePermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch: pytest.MonkeyPatch,
+        monkeypatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -86,7 +85,7 @@ class TestModelConfigResourcePermissions:
 
         # Mock app loading
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
         # Mock current user
         monkeypatch.setattr(model_config_api, "current_user", mock_account)
@@ -107,6 +106,13 @@ class TestModelConfigResourcePermissions:
             }
         )
         monkeypatch.setattr(AppModelConfigService, "validate_configuration", mock_validate_config)
+
+        # Mock database operations
+        mock_db_session = mock.Mock()
+        mock_db_session.add = mock.Mock()
+        mock_db_session.flush = mock.Mock()
+        mock_db_session.commit = mock.Mock()
+        monkeypatch.setattr(model_config_api.db, "session", mock_db_session)
 
         # Mock app_model_config_was_updated event
         mock_event = mock.Mock()

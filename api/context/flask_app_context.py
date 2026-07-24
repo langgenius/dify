@@ -6,11 +6,15 @@ import contextvars
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, final, override
+from typing import Any, final
 
 from flask import Flask, current_app, g
 
-from context.execution_context import AppContext, IExecutionContext, register_context_capturer
+from dify_graph.context import register_context_capturer
+from dify_graph.context.execution_context import (
+    AppContext,
+    IExecutionContext,
+)
 
 
 @final
@@ -30,18 +34,15 @@ class FlaskAppContext(AppContext):
         """
         self._flask_app = flask_app
 
-    @override
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value from Flask app config."""
         return self._flask_app.config.get(key, default)
 
-    @override
     def get_extension(self, name: str) -> Any:
         """Get Flask extension by name."""
         return self._flask_app.extensions.get(name)
 
     @contextmanager
-    @override
     def enter(self) -> Generator[None, None, None]:
         """Enter Flask app context."""
         with self._flask_app.app_context():

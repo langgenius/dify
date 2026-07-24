@@ -3,10 +3,14 @@ import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { $getRoot } from 'lexical'
+import {
+  $getRoot,
+} from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { CaptureEditorPlugin } from '../../__tests__/test-utils'
+import {
+  BlockEnum,
+} from '@/app/components/workflow/types'
+import { CaptureEditorPlugin } from '../../test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
 import HITLInputVariableBlockComponent from '../variable-block'
@@ -28,33 +32,14 @@ const createWorkflowNodesMap = (title = 'Node One'): WorkflowNodesMap => ({
   },
 })
 
-const createVar = (variable: string): Var => ({
-  variable,
-  type: VarType.string,
-})
-
-const createSelectorWithTransientPrefix = (prefix: string, suffix: string): string[] => {
-  let accessCount = 0
-  const selector = [prefix, suffix]
-  return new Proxy(selector, {
-    get(target, property, receiver) {
-      if (property === '0') {
-        accessCount += 1
-        return accessCount > 4 ? undefined : prefix
-      }
-      return Reflect.get(target, property, receiver)
-    },
-  }) as unknown as string[]
-}
-
 const hasErrorIcon = (container: HTMLElement) => {
-  return container.querySelector('svg.text-text-warning') !== null
+  return container.querySelector('svg.text-text-destructive') !== null
 }
 
 const renderVariableBlock = (props: {
   variables: string[]
   workflowNodesMap?: WorkflowNodesMap
-  getVarType?: (payload: { nodeId: string; valueSelector: string[] }) => Type
+  getVarType?: (payload: { nodeId: string, valueSelector: string[] }) => Type
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -143,10 +128,7 @@ describe('HITLInputVariableBlockComponent', () => {
         editor!.update(() => {
           $getRoot().selectEnd()
         })
-        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, {
-          workflowNodesMap: createWorkflowNodesMap(),
-          availableVariables: [],
-        })
+        handled = editor!.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, createWorkflowNodesMap())
       })
 
       expect(handled).toBe(true)
@@ -171,100 +153,10 @@ describe('HITLInputVariableBlockComponent', () => {
       const { container } = renderVariableBlock({
         variables: ['conversation', 'session_id'],
         workflowNodesMap: {},
-        conversationVariables: [createVar('conversation.session_id')],
+        conversationVariables: [{ variable: 'conversation.session_id', type: 'string' } as Var],
       })
 
       expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should show valid state when conversation variables array is undefined', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation', 'session_id'],
-        workflowNodesMap: {},
-        conversationVariables: undefined,
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should show valid state when env variables array is undefined', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env', 'api_key'],
-        workflowNodesMap: {},
-        environmentVariables: undefined,
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should show valid state when rag variables array is undefined', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag', 'node-rag', 'chunk'],
-        workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: undefined,
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should validate env variable when matching entry exists in multi-element array', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env', 'api_key'],
-        workflowNodesMap: {},
-        environmentVariables: [
-          { variable: 'env.other_key', type: 'string' } as Var,
-          { variable: 'env.api_key', type: 'string' } as Var,
-        ],
-      })
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should validate conversation variable when matching entry exists in multi-element array', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation', 'session_id'],
-        workflowNodesMap: {},
-        conversationVariables: [
-          { variable: 'conversation.other', type: 'string' } as Var,
-          { variable: 'conversation.session_id', type: 'string' } as Var,
-        ],
-      })
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should validate rag variable when matching entry exists in multi-element array', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag', 'node-rag', 'chunk'],
-        workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: [
-          { variable: 'rag.node-rag.other', type: 'string', isRagVariable: true } as Var,
-          { variable: 'rag.node-rag.chunk', type: 'string', isRagVariable: true } as Var,
-        ],
-      })
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should handle undefined indices in variables array gracefully', () => {
-      // Testing the `variables?.[1] ?? ''` fallback logic
-      const { container: envContainer } = renderVariableBlock({
-        variables: ['env'], // missing second part
-        workflowNodesMap: {},
-        environmentVariables: [{ variable: 'env.', type: 'string' } as Var],
-      })
-      expect(hasErrorIcon(envContainer)).toBe(false)
-
-      const { container: chatContainer } = renderVariableBlock({
-        variables: ['conversation'],
-        workflowNodesMap: {},
-        conversationVariables: [{ variable: 'conversation.', type: 'string' } as Var],
-      })
-      expect(hasErrorIcon(chatContainer)).toBe(false)
-
-      const { container: ragContainer } = renderVariableBlock({
-        variables: ['rag', 'node-rag'], // missing third part
-        workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: [{ variable: 'rag.node-rag.', type: 'string', isRagVariable: true } as Var],
-      })
-      expect(hasErrorIcon(ragContainer)).toBe(false)
     })
 
     it('should keep global system variable valid without workflow node mapping', () => {
@@ -276,42 +168,24 @@ describe('HITLInputVariableBlockComponent', () => {
       expect(screen.getByText('sys.global_name')).toBeInTheDocument()
       expect(hasErrorIcon(container)).toBe(false)
     })
-
-    it('should format system variable names with sys. prefix correctly', () => {
-      const { container } = renderVariableBlock({
-        variables: ['sys', 'query'],
-        workflowNodesMap: {},
-      })
-      // 'query' exception variable is valid sys variable
-      expect(screen.getByText('query')).toBeInTheDocument()
-      expect(hasErrorIcon(container)).toBe(true)
-    })
-
-    it('should apply exception styling for recognized exception variables', () => {
-      renderVariableBlock({
-        variables: ['node-1', 'error_message'],
-        workflowNodesMap: createWorkflowNodesMap(),
-      })
-      expect(screen.getByText('error_message')).toBeInTheDocument()
-      expect(screen.getByTestId('exception-variable')).toBeInTheDocument()
-    })
   })
 
-  describe('Full-path preview payload', () => {
-    it('should resolve the rag node via isRagVar offset and skip the full-path preview', () => {
+  describe('Tooltip payload', () => {
+    it('should call getVarType with rag selector and use rag node id mapping', () => {
       const getVarType = vi.fn(() => Type.number)
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
         workflowNodesMap: createWorkflowNodesMap(),
-        ragVariables: [{ ...createVar('rag.node-rag.chunk'), isRagVariable: true }],
+        ragVariables: [{ variable: 'rag.node-rag.chunk', type: 'string', isRagVariable: true } as Var],
         getVarType,
       })
 
       expect(screen.getByText('chunk')).toBeInTheDocument()
       expect(hasErrorIcon(container)).toBe(false)
-      // Rag selectors always have `isShowAPart === false`, so the full-path
-      // preview is not rendered and `getVarType` is not invoked.
-      expect(getVarType).not.toHaveBeenCalled()
+      expect(getVarType).toHaveBeenCalledWith({
+        nodeId: 'rag',
+        valueSelector: ['rag', 'node-rag', 'chunk'],
+      })
     })
 
     it('should use shortened display name for deep non-rag selectors', () => {
@@ -329,75 +203,6 @@ describe('HITLInputVariableBlockComponent', () => {
         nodeId: 'node-1',
         valueSelector: ['node-1', 'parent', 'child'],
       })
-    })
-  })
-
-  describe('Optional lists and selector fallbacks', () => {
-    it('should keep env variable valid when environmentVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env', 'api_key'],
-        workflowNodesMap: {},
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate env selector fallback when selector second segment is missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['env'],
-        workflowNodesMap: {},
-        environmentVariables: [createVar('env.')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate env selector fallback when selector prefix becomes undefined at lookup time', () => {
-      const { container } = renderVariableBlock({
-        variables: createSelectorWithTransientPrefix('env', 'api_key'),
-        workflowNodesMap: {},
-        environmentVariables: [createVar('.api_key')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should keep conversation variable valid when conversationVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation', 'session_id'],
-        workflowNodesMap: {},
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate conversation selector fallback when selector second segment is missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['conversation'],
-        workflowNodesMap: {},
-        conversationVariables: [createVar('conversation.')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should keep rag variable valid when ragVariables is not provided', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag', 'node-rag', 'chunk'],
-        workflowNodesMap: createWorkflowNodesMap(),
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
-    })
-
-    it('should evaluate rag selector fallbacks when node and key segments are missing', () => {
-      const { container } = renderVariableBlock({
-        variables: ['rag'],
-        workflowNodesMap: {},
-        ragVariables: [createVar('rag..')],
-      })
-
-      expect(hasErrorIcon(container)).toBe(false)
     })
   })
 })

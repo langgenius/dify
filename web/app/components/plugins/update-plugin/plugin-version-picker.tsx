@@ -1,17 +1,24 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { lt } from 'semver'
 import Badge from '@/app/components/base/badge'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
-import { isEarlierThanVersion } from '@/utils/semver'
+import { cn } from '@/utils/classnames'
 
-type Props = Readonly<{
+type Props = {
   disabled?: boolean
   isShow: boolean
   onShowChange: (isShow: boolean) => void
@@ -19,8 +26,7 @@ type Props = Readonly<{
   currentVersion: string
   trigger: React.ReactNode
   placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+  offset?: OffsetOptions
   onSelect: ({
     version,
     unique_identifier,
@@ -30,7 +36,7 @@ type Props = Readonly<{
     unique_identifier: string
     isDowngrade: boolean
   }) => void
-}>
+}
 
 const PluginVersionPicker: FC<Props> = ({
   disabled = false,
@@ -40,89 +46,79 @@ const PluginVersionPicker: FC<Props> = ({
   currentVersion,
   trigger,
   placement = 'bottom-start',
-  sideOffset = 4,
-  alignOffset = 0,
+  offset = {
+    mainAxis: 4,
+    crossAxis: -16,
+  },
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const format = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]
+  const format = t('dateTimeFormat', { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
+
+  const handleTriggerClick = () => {
+    if (disabled)
+      return
+    onShowChange(true)
+  }
 
   const { data: res } = useVersionListOfPlugin(pluginID)
 
-  const handleSelect = useCallback(
-    ({
-      version,
-      unique_identifier,
-      isDowngrade,
-    }: {
-      version: string
-      unique_identifier: string
-      isDowngrade: boolean
-    }) => {
-      if (currentVersion === version) return
-      onSelect({ version, unique_identifier, isDowngrade })
-      onShowChange(false)
-    },
-    [currentVersion, onSelect, onShowChange],
-  )
+  const handleSelect = useCallback(({ version, unique_identifier, isDowngrade }: {
+    version: string
+    unique_identifier: string
+    isDowngrade: boolean
+  }) => {
+    if (currentVersion === version)
+      return
+    onSelect({ version, unique_identifier, isDowngrade })
+    onShowChange(false)
+  }, [currentVersion, onSelect, onShowChange])
 
   return (
-    <Popover
+    <PortalToFollowElem
+      placement={placement}
+      offset={offset}
       open={isShow}
-      onOpenChange={(open) => {
-        if (!disabled) onShowChange(open)
-      }}
+      onOpenChange={onShowChange}
     >
-      <PopoverTrigger
-        disabled={disabled}
+      <PortalToFollowElemTrigger
         className={cn('inline-flex cursor-pointer items-center', disabled && 'cursor-default')}
+        onClick={handleTriggerClick}
       >
         {trigger}
-      </PopoverTrigger>
+      </PortalToFollowElemTrigger>
 
-      <PopoverContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        popupClassName="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
-      >
-        <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-          {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-        </div>
-        <div className="relative max-h-[224px] overflow-y-auto">
-          {res?.data.versions.map((version) => (
-            <div
-              key={version.unique_identifier}
-              className={cn(
-                'flex cursor-pointer items-center rounded-lg px-2 py-1 hover:bg-state-base-hover',
-                currentVersion === version.version &&
-                  'cursor-default opacity-30 hover:bg-transparent',
-              )}
-              onClick={() =>
-                handleSelect({
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
+          <div className="system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary">
+            {t('detailPanel.switchVersion', { ns: 'plugin' })}
+          </div>
+          <div className="relative">
+            {res?.data.versions.map(version => (
+              <div
+                key={version.unique_identifier}
+                className={cn(
+                  'flex h-7 cursor-pointer items-center gap-1 rounded-lg px-3 py-1 hover:bg-state-base-hover',
+                  currentVersion === version.version && 'cursor-default opacity-30 hover:bg-transparent',
+                )}
+                onClick={() => handleSelect({
                   version: version.version,
                   unique_identifier: version.unique_identifier,
-                  isDowngrade: isEarlierThanVersion(version.version, currentVersion),
-                })
-              }
-            >
-              <div className="flex min-h-5 min-w-0 grow items-center gap-1 px-1">
-                <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
-                  {version.version}
+                  isDowngrade: lt(version.version, currentVersion),
+                })}
+              >
+                <div className="flex grow items-center">
+                  <div className="system-sm-medium text-text-secondary">{version.version}</div>
+                  {currentVersion === version.version && <Badge className="ml-1" text="CURRENT" />}
                 </div>
-                {currentVersion === version.version && (
-                  <Badge className="shrink-0" variant="dimm" text="CURRENT" />
-                )}
-                <div className="shrink-0 system-xs-regular text-text-tertiary">
-                  {formatDate(version.created_at, format!)}
-                </div>
+                <div className="system-xs-regular shrink-0 text-text-tertiary">{formatDate(version.created_at, format)}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 

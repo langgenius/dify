@@ -2,10 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-from graphon.entities import GraphInitParams
-from graphon.runtime import VariablePool
-from graphon.variables.variables import Variable
+from dify_graph.entities.graph_init_params import GraphInitParams
 
 
 def build_test_run_context(
@@ -54,16 +51,3 @@ def build_test_graph_init_params(
         ),
         call_depth=call_depth,
     )
-
-
-def build_test_variable_pool(
-    *,
-    variables: list[Variable] | tuple[Variable, ...] = (),
-    node_id: str | None = None,
-    inputs: Mapping[str, Any] | None = None,
-) -> VariablePool:
-    variable_pool = VariablePool()
-    add_variables_to_pool(variable_pool, variables)
-    if node_id is not None and inputs is not None:
-        add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=inputs)
-    return variable_pool

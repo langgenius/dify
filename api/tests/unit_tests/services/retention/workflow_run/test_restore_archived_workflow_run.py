@@ -8,14 +8,11 @@ and both positive and negative test scenarios.
 
 import io
 import json
-import logging
 import zipfile
 from datetime import datetime
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
-from pydantic import ValidationError
-from sqlalchemy import Column, Integer, MetaData, String, Table
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models.trigger import WorkflowTriggerLog
@@ -130,41 +127,10 @@ class WorkflowRunRestoreTestDataFactory:
 
         if tables_data is None:
             tables_data = {
-                "workflow_runs": [
-                    {
-                        "id": "run-123",
-                        "tenant_id": "tenant-123",
-                        "app_id": "app-123",
-                        "workflow_id": "workflow-123",
-                        "type": "workflow",
-                        "triggered_from": "app",
-                        "version": "1",
-                        "status": "succeeded",
-                        "created_by_role": "account",
-                        "created_by": "user-123",
-                    }
-                ],
+                "workflow_runs": [{"id": "run-123", "tenant_id": "tenant-123"}],
                 "workflow_app_logs": [
-                    {
-                        "id": "log-1",
-                        "tenant_id": "tenant-123",
-                        "app_id": "app-123",
-                        "workflow_id": "workflow-123",
-                        "workflow_run_id": "run-123",
-                        "created_from": "app",
-                        "created_by_role": "account",
-                        "created_by": "user-123",
-                    },
-                    {
-                        "id": "log-2",
-                        "tenant_id": "tenant-123",
-                        "app_id": "app-123",
-                        "workflow_id": "workflow-123",
-                        "workflow_run_id": "run-123",
-                        "created_from": "app",
-                        "created_by_role": "account",
-                        "created_by": "user-123",
-                    },
+                    {"id": "log-1", "workflow_run_id": "run-123"},
+                    {"id": "log-2", "workflow_run_id": "run-123"},
                 ],
             }
 
@@ -294,7 +260,7 @@ class TestLoadManifestFromZip:
         zip_buffer.seek(0)
 
         with zipfile.ZipFile(zip_buffer, "r") as archive:
-            with pytest.raises(ValidationError):
+            with pytest.raises(json.JSONDecodeError):
                 WorkflowRunRestore._load_manifest_from_zip(archive)
 
 
@@ -313,16 +279,16 @@ class TestGetSchemaVersion:
         result = restore._get_schema_version(manifest)
         assert result == "1.0"
 
-    def test_missing_schema_version_defaults_to_1_0(self, caplog: pytest.LogCaptureFixture):
+    def test_missing_schema_version_defaults_to_1_0(self):
         """Should default to 1.0 when schema_version is missing."""
         restore = WorkflowRunRestore()
         manifest = {"tables": {}}
-        caplog.set_level(logging.WARNING, logger="services.retention.workflow_run.restore_archived_workflow_run")
 
-        result = restore._get_schema_version(manifest)
+        with patch("services.retention.workflow_run.restore_archived_workflow_run.logger") as mock_logger:
+            result = restore._get_schema_version(manifest)
 
         assert result == "1.0"
-        assert "Manifest missing schema_version; defaulting to 1.0" in caplog.messages
+        mock_logger.warning.assert_called_once_with("Manifest missing schema_version; defaulting to 1.0")
 
     def test_unsupported_schema_version_raises_error(self):
         """Should raise ValueError for unsupported schema version."""
@@ -440,48 +406,14 @@ class TestGetModelColumnInfo:
         assert "created_by" in column_names
         assert "status" in column_names
 
-        # Columns without defaults should be required for restore inserts.
-        assert {
-            "tenant_id",
-            "app_id",
-            "workflow_id",
-            "type",
-            "triggered_from",
-            "version",
-            "status",
-            "created_by_role",
-            "created_by",
-        }.issubset(required_columns)
-        assert "id" not in required_columns
-        assert "created_at" not in required_columns
+        # WorkflowRun model has no required columns (all have defaults or are auto-generated)
+        assert required_columns == set()
 
         # Check columns with defaults or server defaults
         assert "id" in non_nullable_with_default
         assert "created_at" in non_nullable_with_default
         assert "elapsed_time" in non_nullable_with_default
         assert "total_tokens" in non_nullable_with_default
-        assert "tenant_id" not in non_nullable_with_default
-
-    def test_non_pk_auto_autoincrement_column_is_still_required(self):
-        """`autoincrement='auto'` should not mark non-PK columns as defaulted."""
-        restore = WorkflowRunRestore()
-
-        test_table = Table(
-            "test_autoincrement",
-            MetaData(),
-            Column("id", Integer, primary_key=True, autoincrement=True),
-            Column("required_field", String(255), nullable=False),
-            Column("defaulted_field", String(255), nullable=False, default="x"),
-        )
-
-        class MockModel:
-            __table__ = test_table
-
-        _, required_columns, non_nullable_with_default = restore._get_model_column_info(MockModel)
-
-        assert required_columns == {"required_field"}
-        assert "id" in non_nullable_with_default
-        assert "defaulted_field" in non_nullable_with_default
 
 
 # ---------------------------------------------------------------------------
@@ -493,19 +425,19 @@ class TestRestoreTableRecords:
     """Tests for WorkflowRunRestore._restore_table_records method."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.TABLE_MODELS")
-    def test_unknown_table_returns_zero(self, mock_table_models, caplog: pytest.LogCaptureFixture):
+    def test_unknown_table_returns_zero(self, mock_table_models):
         """Should return 0 for unknown table."""
         restore = WorkflowRunRestore()
         mock_table_models.get.return_value = None
 
         mock_session = Mock()
         records = [{"id": "test"}]
-        caplog.set_level(logging.WARNING, logger="services.retention.workflow_run.restore_archived_workflow_run")
 
-        result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
+        with patch("services.retention.workflow_run.restore_archived_workflow_run.logger") as mock_logger:
+            result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
 
         assert result == 0
-        assert "Unknown table: unknown_table" in caplog.messages
+        mock_logger.warning.assert_called_once_with("Unknown table: %s", "unknown_table")
 
     def test_empty_records_returns_zero(self):
         """Should return 0 for empty records list."""
@@ -533,32 +465,7 @@ class TestRestoreTableRecords:
         mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
         mock_pg_insert.return_value = mock_stmt
 
-        records = [
-            {
-                "id": "test1",
-                "tenant_id": "tenant-123",
-                "app_id": "app-123",
-                "workflow_id": "workflow-123",
-                "type": "workflow",
-                "triggered_from": "app",
-                "version": "1",
-                "status": "succeeded",
-                "created_by_role": "account",
-                "created_by": "user-123",
-            },
-            {
-                "id": "test2",
-                "tenant_id": "tenant-123",
-                "app_id": "app-123",
-                "workflow_id": "workflow-123",
-                "type": "workflow",
-                "triggered_from": "app",
-                "version": "1",
-                "status": "succeeded",
-                "created_by_role": "account",
-                "created_by": "user-123",
-            },
-        ]
+        records = [{"id": "test1", "tenant_id": "tenant-123"}, {"id": "test2", "tenant_id": "tenant-123"}]
 
         result = restore._restore_table_records(mock_session, "workflow_runs", records, schema_version="1.0")
 
@@ -570,7 +477,8 @@ class TestRestoreTableRecords:
         restore = WorkflowRunRestore()
 
         mock_session = Mock()
-        # Use a dedicated mock model to isolate required-column validation behavior.
+        # Since WorkflowRun has no required columns, we need to test with a different model
+        # Let's test with a mock model that has required columns
         mock_model = Mock()
 
         # Mock a required column
@@ -1057,13 +965,6 @@ class TestIntegration:
                     "id": "run-123",
                     "tenant_id": "tenant-123",
                     "app_id": "app-123",
-                    "workflow_id": "workflow-123",
-                    "type": "workflow",
-                    "triggered_from": "app",
-                    "version": "1",
-                    "status": "succeeded",
-                    "created_by_role": "account",
-                    "created_by": "user-123",
                     "created_at": "2024-01-01T12:00:00",
                 }
             ],

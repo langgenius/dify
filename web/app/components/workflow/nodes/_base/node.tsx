@@ -1,40 +1,42 @@
-import type { FC, ReactElement } from 'react'
-import type { WorkflowTranslator } from './node-sections'
+import type {
+  FC,
+  ReactElement,
+} from 'react'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
-import { cloneElement, memo, useMemo, useRef } from 'react'
+import {
+  cloneElement,
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { ToolType } from '@/app/components/workflow/block-selector/types'
-import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  isTriggerNode,
+  NodeRunningStatus,
+} from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/account-state'
-import { selectWorkflowNode } from '../../utils/node-navigation'
+import { cn } from '@/utils/classnames'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import NodeControl from './components/node-control'
-import { NodeSourceHandle, NodeTargetHandle } from './components/node-handle'
+import {
+  NodeSourceHandle,
+  NodeTargetHandle,
+} from './components/node-handle'
 import NodeResizer from './components/node-resizer'
 import RetryOnNode from './components/retry/retry-on-node'
-import { NodeBody, NodeDescription, NodeHeaderMeta } from './node-sections'
-import {
-  getLoopIndexTextKey,
-  getNodeStatusBorders,
-  isContainerNode,
-  isEntryWorkflowNode,
-} from './node.helpers'
-import useNodeResizeObserver from './use-node-resize-observer'
 
 type NodeChildProps = {
   id: string
@@ -47,99 +49,78 @@ type BaseNodeProps = {
   data: NodeProps['data']
 }
 
-const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
+const BaseNode: FC<BaseNodeProps> = ({
+  id,
+  data,
+  children,
+}) => {
   const { t } = useTranslation()
-  const translateWorkflow: WorkflowTranslator = (selector, options) => t(selector, options)
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
 
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
-  const userProfile = useAtomValue(userProfileAtom)
-  const appId = useStore((s) => s.appId)
-  const { nodePanelPresence } = useCollaboration(appId as string)
-  const controlMode = useStore((s) => s.controlMode)
-  const isContextMenuTarget = useStore(
-    (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
-  )
 
-  const currentUserPresence = useMemo(() => {
-    const userId = userProfile?.id || ''
-    const username = userProfile?.name || userProfile?.email || 'User'
-    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+  useEffect(() => {
+    if (nodeRef.current && data.selected && data.isInIteration) {
+      const resizeObserver = new ResizeObserver(() => {
+        handleNodeIterationChildSizeChange(id)
+      })
 
-    return {
-      userId,
-      username,
-      avatar,
+      resizeObserver.observe(nodeRef.current)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
     }
-  }, [
-    userProfile?.avatar,
-    userProfile?.avatar_url,
-    userProfile?.email,
-    userProfile?.id,
-    userProfile?.name,
-  ])
+  }, [data.isInIteration, data.selected, id, handleNodeIterationChildSizeChange])
 
-  const viewingUsers = useMemo(() => {
-    const presence = nodePanelPresence?.[id]
-    if (!presence) return []
+  useEffect(() => {
+    if (nodeRef.current && data.selected && data.isInLoop) {
+      const resizeObserver = new ResizeObserver(() => {
+        handleNodeLoopChildSizeChange(id)
+      })
 
-    return Object.values(presence)
-      .filter((viewer) => viewer.userId && viewer.userId !== currentUserPresence.userId)
-      .map((viewer) => ({
-        id: viewer.userId,
-        name: viewer.username,
-        avatar_url: viewer.avatar || null,
-      }))
-  }, [currentUserPresence.userId, id, nodePanelPresence])
-  const {
-    shouldDim: pluginDimmed,
-    isChecking: pluginIsChecking,
-    isMissing: pluginIsMissing,
-    canInstall: pluginCanInstall,
-    uniqueIdentifier: pluginUniqueIdentifier,
-  } = useNodePluginInstallation(data)
-  const pluginInstallLocked =
-    !pluginIsChecking && pluginIsMissing && pluginCanInstall && Boolean(pluginUniqueIdentifier)
+      resizeObserver.observe(nodeRef.current)
 
-  useNodeResizeObserver({
-    enabled: Boolean(data.selected && data.isInIteration),
-    nodeRef,
-    onResize: () => handleNodeIterationChildSizeChange(id),
-  })
-
-  useNodeResizeObserver({
-    enabled: Boolean(data.selected && data.isInLoop),
-    nodeRef,
-    onResize: () => handleNodeLoopChildSizeChange(id),
-  })
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
   const { hasNodeInspectVars } = useInspectVarsCrud()
-  const isLoading =
-    data._runningStatus === NodeRunningStatus.Running ||
-    data._singleRunningStatus === NodeRunningStatus.Running
+  const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
   const hasVarValue = hasNodeInspectVars(id)
-  const showSelectedBorder = Boolean(
-    data.selected || isContextMenuTarget || data._isBundled || data._isEntering,
-  )
-  const { showRunningBorder, showSuccessBorder, showFailedBorder, showExceptionBorder } = useMemo(
-    () => getNodeStatusBorders(data._runningStatus, hasVarValue, showSelectedBorder),
-    [data._runningStatus, hasVarValue, showSelectedBorder],
-  )
+  const showSelectedBorder = data.selected || data._isBundled || data._isEntering
+  const {
+    showRunningBorder,
+    showSuccessBorder,
+    showFailedBorder,
+    showExceptionBorder,
+  } = useMemo(() => {
+    return {
+      showRunningBorder: (data._runningStatus === NodeRunningStatus.Running || data._runningStatus === NodeRunningStatus.Paused) && !showSelectedBorder,
+      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || (hasVarValue && !data._runningStatus)) && !showSelectedBorder,
+      showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
+      showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
+    }
+  }, [data._runningStatus, hasVarValue, showSelectedBorder])
 
   const LoopIndex = useMemo(() => {
-    const translationKey = getLoopIndexTextKey(data._runningStatus)
-    const text = translationKey
-      ? t(($) => $[translationKey], { ns: 'workflow', count: data._loopIndex })
-      : ''
+    let text = ''
+
+    if (data._runningStatus === NodeRunningStatus.Running)
+      text = t('nodes.loop.currentLoopCount', { ns: 'workflow', count: data._loopIndex })
+    if (data._runningStatus === NodeRunningStatus.Succeeded || data._runningStatus === NodeRunningStatus.Failed)
+      text = t('nodes.loop.totalLoopCount', { ns: 'workflow', count: data._loopIndex })
 
     if (text) {
       return (
         <div
           className={cn(
-            'mr-2 system-xs-medium text-text-tertiary',
+            'mr-2 text-text-tertiary system-xs-medium',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -155,123 +136,210 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     <div
       className={cn(
         'relative flex rounded-2xl border',
-        showSelectedBorder
-          ? 'border-components-option-card-option-selected-border'
-          : 'border-transparent',
+        showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
-        pluginInstallLocked && 'cursor-not-allowed',
+        data._pluginInstallLocked && 'cursor-not-allowed',
       )}
       ref={nodeRef}
       style={{
-        width: isContainerNode(data.type) ? data.width : 'auto',
-        height: isContainerNode(data.type) ? data.height : 'auto',
+        width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
+        height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
-      {pluginInstallLocked && (
-        <button
-          type="button"
-          disabled
-          aria-label={t(($) => $.installPlugin, { ns: 'plugin' })}
-          className="pointer-events-auto absolute inset-0 z-30 rounded-2xl border-0 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]"
-        />
-      )}
-      {!pluginInstallLocked && (data._dimmed || pluginDimmed) && (
+      {(data._dimmed || data._pluginInstallLocked) && (
         <div
-          className="pointer-events-none absolute inset-0 z-20 rounded-2xl bg-workflow-block-parma-bg opacity-50 transition-opacity"
+          className={cn(
+            'absolute inset-0 rounded-2xl transition-opacity',
+            data._pluginInstallLocked
+              ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
+              : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
+          )}
           data-testid="workflow-node-install-overlay"
         />
       )}
-      {data.type === BlockEnum.DataSource && (
-        <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
-          <div className="flex h-5 items-center px-2.5 system-2xs-semibold-uppercase text-text-tertiary">
-            {t(($) => $['blocks.datasource'], { ns: 'workflow' })}
+      {
+        data.type === BlockEnum.DataSource && (
+          <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
+            <div className="flex h-5 items-center px-2.5 text-text-tertiary system-2xs-semibold-uppercase">
+              {t('blocks.datasource', { ns: 'workflow' })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
       <div
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
-          controlMode === ControlMode.Comment && 'hover:cursor-none',
-          !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
-          isContainerNode(data.type) &&
-            'flex size-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
+          (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && 'border-state-accent-solid!',
-          showSuccessBorder && 'border-state-success-solid!',
-          showFailedBorder && 'border-state-destructive-solid!',
-          showExceptionBorder && 'border-state-warning-solid!',
-          data._isBundled && 'shadow-lg!',
+          showRunningBorder && '!border-state-accent-solid',
+          showSuccessBorder && '!border-state-success-solid',
+          showFailedBorder && '!border-state-destructive-solid',
+          showExceptionBorder && '!border-state-warning-solid',
+          data._isBundled && '!shadow-lg',
         )}
       >
-        {data._showAddVariablePopup && <AddVariablePopupWithPosition nodeId={id} nodeData={data} />}
-        {data.type === BlockEnum.Iteration && <NodeResizer nodeId={id} nodeData={data} />}
-        {data.type === BlockEnum.Loop && <NodeResizer nodeId={id} nodeData={data} />}
-        {data.type !== BlockEnum.StartPlaceholder && !data._isCandidate && (
-          <NodeTargetHandle
-            id={id}
-            data={data}
-            handleClassName="top-4! -left-[9px]! translate-y-0!"
-            handleId="target"
-          />
-        )}
-        {data.type !== BlockEnum.StartPlaceholder &&
-          data.type !== BlockEnum.IfElse &&
-          data.type !== BlockEnum.QuestionClassifier &&
-          data.type !== BlockEnum.HumanInput &&
+        {
+          data._showAddVariablePopup && (
+            <AddVariablePopupWithPosition
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
+        {
+          data.type === BlockEnum.Iteration && (
+            <NodeResizer
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
+        {
+          data.type === BlockEnum.Loop && (
+            <NodeResizer
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
+        {
           !data._isCandidate && (
+            <NodeTargetHandle
+              id={id}
+              data={data}
+              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleId="target"
+            />
+          )
+        }
+        {
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
-              handleClassName="top-4! -right-[9px]! translate-y-0!"
+              handleClassName="!top-4 !-right-[9px] !translate-y-0"
               handleId="source"
             />
-          )}
-        {!data._runningStatus && !nodesReadOnly && !data._isCandidate && (
-          <NodeControl id={id} data={data} pluginInstallLocked={pluginInstallLocked} />
-        )}
-        <div
-          className={cn(
-            'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
-            isContainerNode(data.type) && 'bg-transparent',
-          )}
-        >
-          <button
-            type="button"
-            aria-label={data.title}
-            className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => selectWorkflowNode(id)}
-          >
-            <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
-            <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">
-              <div title={data.title} className="min-w-0 grow truncate">
-                {data.title}
-              </div>
-              {viewingUsers.length > 0 && (
-                <div className="ml-3 shrink-0">
-                  <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
-                </div>
-              )}
-            </div>
-          </button>
-          <div className="flex shrink-0 items-center">
-            <NodeHeaderMeta
+          )
+        }
+        {
+          !data._runningStatus && !nodesReadOnly && !data._isCandidate && (
+            <NodeControl
+              id={id}
               data={data}
-              hasVarValue={hasVarValue}
-              isLoading={isLoading}
-              loopIndex={LoopIndex}
-              t={translateWorkflow}
             />
+          )
+        }
+        <div className={cn(
+          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'bg-transparent',
+        )}
+        >
+          <BlockIcon
+            className="mr-2 shrink-0"
+            type={data.type}
+            size="md"
+            toolIcon={toolIcon}
+          />
+          <div
+            title={data.title}
+            className="mr-1 flex grow items-center truncate text-text-primary system-sm-semibold-uppercase"
+          >
+            <div>
+              {data.title}
+            </div>
+            {
+              data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
+                <Tooltip popupContent={(
+                  <div className="w-[180px]">
+                    <div className="font-extrabold">
+                      {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+                    </div>
+                    {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
+                  </div>
+                )}
+                >
+                  <div className="ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
+                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+                  </div>
+                </Tooltip>
+              )
+            }
           </div>
+          {
+            !!(data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running) && (
+              <div className="mr-1.5 text-xs font-medium text-text-accent">
+                {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
+                /
+                {data._iterationLength}
+              </div>
+            )
+          }
+          {
+            !!(data.type === BlockEnum.Loop && data._loopIndex) && LoopIndex
+          }
+          {
+            isLoading && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Failed && (
+              <span className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Exception && (
+              <span className="i-ri-alert-fill h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
+          {
+            !isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || (hasVarValue && !data._runningStatus)) && (
+              <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
+            )
+          }
+          {
+            !isLoading && data._runningStatus === NodeRunningStatus.Paused && (
+              <span className="i-ri-pause-circle-fill h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
         </div>
-        <NodeBody
-          data={data}
-          child={cloneElement(children, { id, data } satisfies Partial<NodeChildProps>)}
-        />
-        {hasRetryNode(data.type) && <RetryOnNode id={id} data={data} />}
-        {hasErrorHandleNode(data.type) && <ErrorHandleOnNode id={id} data={data} />}
-        <NodeDescription data={data} />
-        {data.type === BlockEnum.Tool && data.provider_type === ToolType.MCP && (
+        {
+          data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
+            cloneElement(children, { id, data } as any)
+          )
+        }
+        {
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
+            <div className="grow pb-1 pl-1 pr-1">
+              {cloneElement(children, { id, data } as any)}
+            </div>
+          )
+        }
+        {
+          hasRetryNode(data.type) && (
+            <RetryOnNode
+              id={id}
+              data={data}
+            />
+          )
+        }
+        {
+          hasErrorHandleNode(data.type) && (
+            <ErrorHandleOnNode
+              id={id}
+              data={data}
+            />
+          )
+        }
+        {
+          !!(data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && (
+            <div className="whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
+              {data.desc}
+            </div>
+          )
+        }
+        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
           <div className="px-3 pb-2">
             <CopyID content={data.provider_id || ''} />
           </div>
@@ -280,18 +348,18 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     </div>
   )
 
-  const isStartNode = data.type === BlockEnum.Start || data.type === BlockEnum.StartPlaceholder
-  const isEntryNode = isEntryWorkflowNode(data.type)
+  const isStartNode = data.type === BlockEnum.Start
+  const isEntryNode = isTriggerNode(data.type as any) || isStartNode
 
-  return isEntryNode ? (
-    <EntryNodeContainer
-      nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
-    >
-      {nodeContent}
-    </EntryNodeContainer>
-  ) : (
-    nodeContent
-  )
+  return isEntryNode
+    ? (
+        <EntryNodeContainer
+          nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
+        >
+          {nodeContent}
+        </EntryNodeContainer>
+      )
+    : nodeContent
 }
 
 export default memo(BaseNode)

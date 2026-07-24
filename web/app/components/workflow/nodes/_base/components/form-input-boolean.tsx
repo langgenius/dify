@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '@/utils/classnames'
 
-type Props = Readonly<{
+type Props = {
   value: boolean
   onChange: (value: boolean) => void
-}>
+}
 
-const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
+const FormInputBoolean: FC<Props> = ({
+  value,
+  onChange,
+}) => {
   return (
     <div className="flex w-full space-x-1">
       <div
         className={cn(
-          'flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-          !value &&
-            'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-          value &&
-            'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+          'system-sm-regular flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+          !value && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+          value && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
         )}
         onClick={() => onChange(true)}
       >
@@ -24,11 +25,9 @@ const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
       </div>
       <div
         className={cn(
-          'flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-          value &&
-            'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-          !value &&
-            'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+          'system-sm-regular flex h-8 grow cursor-default items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 text-text-secondary',
+          value && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+          !value && 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
         )}
         onClick={() => onChange(false)}
       >

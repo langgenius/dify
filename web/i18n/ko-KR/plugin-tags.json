@@ -1,6 +1,5 @@
 {
   "allTags": "모든 태그",
-  "clearSelectedTags": "선택한 태그 지우기: {{tags}}",
   "searchTags": "검색 태그",
   "tags.agent": "에이전트",
   "tags.business": "사업",

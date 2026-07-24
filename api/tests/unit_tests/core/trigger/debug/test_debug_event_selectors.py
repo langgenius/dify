@@ -8,17 +8,11 @@ and select_trigger_debug_events orchestrator.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.trigger.constants import (
-    TRIGGER_PLUGIN_NODE_TYPE,
-    TRIGGER_SCHEDULE_NODE_TYPE,
-    TRIGGER_WEBHOOK_NODE_TYPE,
-)
 from core.trigger.debug.event_selectors import (
     PluginTriggerDebugEventPoller,
     ScheduleTriggerDebugEventPoller,
@@ -27,11 +21,11 @@ from core.trigger.debug.event_selectors import (
     select_trigger_debug_events,
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
-from graphon.enums import BuiltinNodeTypes, NodeType
+from dify_graph.enums import NodeType
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
-def _make_poller_args(node_config: dict[str, Any] | None = None) -> dict[str, Any]:
+def _make_poller_args(node_config: dict | None = None) -> dict:
     return {
         "tenant_id": "t1",
         "user_id": "u1",
@@ -221,24 +215,24 @@ class TestCreateEventPoller:
         return wf
 
     def test_creates_plugin_poller(self):
-        wf = self._workflow_with_node(TRIGGER_PLUGIN_NODE_TYPE)
+        wf = self._workflow_with_node(NodeType.TRIGGER_PLUGIN)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, PluginTriggerDebugEventPoller)
 
     def test_creates_webhook_poller(self):
-        wf = self._workflow_with_node(TRIGGER_WEBHOOK_NODE_TYPE)
+        wf = self._workflow_with_node(NodeType.TRIGGER_WEBHOOK)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, WebhookTriggerDebugEventPoller)
 
     def test_creates_schedule_poller(self):
-        wf = self._workflow_with_node(TRIGGER_SCHEDULE_NODE_TYPE)
+        wf = self._workflow_with_node(NodeType.TRIGGER_SCHEDULE)
         poller = create_event_poller(wf, "t1", "u1", "a1", "n1")
         assert isinstance(poller, ScheduleTriggerDebugEventPoller)
 
     def test_raises_for_unknown_type(self):
         wf = MagicMock()
         wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = BuiltinNodeTypes.START
+        wf.get_node_type_from_node_config.return_value = NodeType.START
 
         with pytest.raises(ValueError):
             create_event_poller(wf, "t1", "u1", "a1", "n1")
@@ -255,7 +249,7 @@ class TestSelectTriggerDebugEvents:
     def test_returns_first_non_none_event(self):
         wf = MagicMock()
         wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = TRIGGER_WEBHOOK_NODE_TYPE
+        wf.get_node_type_from_node_config.return_value = NodeType.TRIGGER_WEBHOOK
         app_model = MagicMock()
         app_model.tenant_id = "t1"
         app_model.id = "a1"
@@ -271,7 +265,7 @@ class TestSelectTriggerDebugEvents:
     def test_returns_none_when_no_events(self):
         wf = MagicMock()
         wf.get_node_config_by_id.return_value = {"data": {}}
-        wf.get_node_type_from_node_config.return_value = TRIGGER_WEBHOOK_NODE_TYPE
+        wf.get_node_type_from_node_config.return_value = NodeType.TRIGGER_WEBHOOK
         app_model = MagicMock()
         app_model.tenant_id = "t1"
         app_model.id = "a1"

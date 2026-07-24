@@ -2,66 +2,70 @@ import threading
 from typing import Any
 
 import pytz
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
 from libs.login import current_user
 from models import Account
-from models.model import App, Conversation, EndUser, Message, load_annotation_reply_config
+from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str, session: Session):
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str):
         """
         Service to get agent logs
         """
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
-        conversation: Conversation | None = session.scalar(
-            select(Conversation)
+        conversation: Conversation | None = (
+            db.session.query(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
             )
-            .limit(1)
+            .first()
         )
 
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message | None = session.scalar(
-            select(Message)
+        message: Message | None = (
+            db.session.query(Message)
             .where(
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
             )
-            .limit(1)
+            .first()
         )
 
         if not message:
             raise ValueError(f"Message not found: {message_id}")
 
-        agent_thoughts = message.agent_thoughts_with_session(session=session)
+        agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
 
         if conversation.from_end_user_id:
             # only select name field
-            executor_name = session.scalar(select(EndUser.name).where(EndUser.id == conversation.from_end_user_id))
+            executor = (
+                db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
+            )
         else:
-            executor_name = session.scalar(select(Account.name).where(Account.id == conversation.from_account_id))
+            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
 
-        executor = executor_name or "Unknown"
+        if executor:
+            executor = executor.name
+        else:
+            executor = "Unknown"
         assert isinstance(current_user, Account)
         assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
-        app_model_config = app_model.app_model_config_with_session(session=session)
+        app_model_config = app_model.app_model_config
         if not app_model_config:
             raise ValueError("App model config not found")
 
@@ -76,11 +80,10 @@ class AgentService:
                 "iterations": len(agent_thoughts),
             },
             "iterations": [],
-            "files": message.message_files_with_session(session=session),
+            "files": message.message_files,
         }
 
-        annotation_reply = load_annotation_reply_config(session, app_model.id)
-        agent_config = AgentConfigManager.convert(app_model_config.to_dict(annotation_reply=annotation_reply))
+        agent_config = AgentConfigManager.convert(app_model_config.to_dict())
         if not agent_config:
             raise ValueError("Agent config not found")
 

@@ -83,14 +83,8 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
     vi.clearAllMocks()
     mockHasNodes.mockReturnValue(true)
     mockRegisterNodeTransform.mockReturnValue(vi.fn())
-    vi.mocked(mergeRegister).mockImplementation(
-      (...cleanups) =>
-        () =>
-          cleanups.forEach((cleanup) => cleanup()),
-    )
-    vi.mocked($createWorkflowVariableBlockNode).mockReturnValue({
-      type: 'workflow-node',
-    } as unknown as WorkflowVariableBlockNode)
+    vi.mocked(mergeRegister).mockImplementation((...cleanups) => () => cleanups.forEach(cleanup => cleanup()))
+    vi.mocked($createWorkflowVariableBlockNode).mockReturnValue({ type: 'workflow-node' } as unknown as WorkflowVariableBlockNode)
     vi.mocked($applyNodeReplacement).mockImplementation((node: LexicalNode) => node)
   })
 
@@ -99,7 +93,9 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
     mockRegisterNodeTransform.mockReturnValue(transformCleanup)
 
     const { unmount, container } = renderWithLexicalContext(
-      <WorkflowVariableBlockReplacementBlock workflowNodesMap={workflowNodesMap} />,
+      <WorkflowVariableBlockReplacementBlock
+        workflowNodesMap={workflowNodesMap}
+      />,
     )
 
     expect(container.firstChild).toBeNull()
@@ -113,21 +109,21 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
   it('should throw when WorkflowVariableBlockNode is not registered', () => {
     mockHasNodes.mockReturnValue(false)
 
-    expect(() =>
-      renderWithLexicalContext(
-        <WorkflowVariableBlockReplacementBlock workflowNodesMap={workflowNodesMap} />,
-      ),
-    ).toThrow('WorkflowVariableBlockNodePlugin: WorkflowVariableBlockNode not registered on editor')
+    expect(() => renderWithLexicalContext(
+      <WorkflowVariableBlockReplacementBlock
+        workflowNodesMap={workflowNodesMap}
+      />,
+    )).toThrow('WorkflowVariableBlockNodePlugin: WorkflowVariableBlockNode not registered on editor')
   })
 
   it('should pass matcher and creator to decoratorTransform', () => {
     renderWithLexicalContext(
-      <WorkflowVariableBlockReplacementBlock workflowNodesMap={workflowNodesMap} />,
+      <WorkflowVariableBlockReplacementBlock
+        workflowNodesMap={workflowNodesMap}
+      />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (
-      node: LexicalNode,
-    ) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     const textNode = { id: 'text-node' } as unknown as LexicalNode
     transformCallback(textNode)
 
@@ -140,17 +136,15 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
 
   it('should match variable placeholders and return null for non-placeholder text', () => {
     renderWithLexicalContext(
-      <WorkflowVariableBlockReplacementBlock workflowNodesMap={workflowNodesMap} />,
+      <WorkflowVariableBlockReplacementBlock
+        workflowNodesMap={workflowNodesMap}
+      />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (
-      node: LexicalNode,
-    ) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const getMatch = vi.mocked(decoratorTransform).mock.calls[0]![1] as (
-      text: string,
-    ) => EntityMatch | null
+    const getMatch = vi.mocked(decoratorTransform).mock.calls[0][1] as (text: string) => EntityMatch | null
     const match = getMatch('prefix {{#node-1.output#}} suffix')
 
     expect(match).toEqual({
@@ -173,14 +167,12 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (
-      node: LexicalNode,
-    ) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as (textNode: {
-      getTextContent: () => string
-    }) => WorkflowVariableBlockNode
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as (
+      textNode: { getTextContent: () => string },
+    ) => WorkflowVariableBlockNode
 
     const created = createNode({
       getTextContent: () => '{{#node-1.output#}}',
@@ -191,7 +183,12 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       ['node-1', 'output'],
       workflowNodesMap,
       getVarType,
-      variables,
+      variables[0].vars,
+      variables[1].vars,
+      [
+        { variable: 'ragVarA', type: VarType.string, isRagVariable: true },
+        { variable: 'rag.shared.answer', type: VarType.string, isRagVariable: true },
+      ],
     )
     expect($applyNodeReplacement).toHaveBeenCalledWith({ type: 'workflow-node' })
     expect(created).toEqual({ type: 'workflow-node' })
@@ -199,17 +196,17 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
 
   it('should create replacement node without optional callbacks and variable groups', () => {
     renderWithLexicalContext(
-      <WorkflowVariableBlockReplacementBlock workflowNodesMap={workflowNodesMap} />,
+      <WorkflowVariableBlockReplacementBlock
+        workflowNodesMap={workflowNodesMap}
+      />,
     )
 
-    const transformCallback = mockRegisterNodeTransform.mock.calls[0]![1] as (
-      node: LexicalNode,
-    ) => void
+    const transformCallback = mockRegisterNodeTransform.mock.calls[0][1] as (node: LexicalNode) => void
     transformCallback({ id: 'text-node' } as unknown as LexicalNode)
 
-    const createNode = vi.mocked(decoratorTransform).mock.calls[0]![2] as (textNode: {
-      getTextContent: () => string
-    }) => WorkflowVariableBlockNode
+    const createNode = vi.mocked(decoratorTransform).mock.calls[0][2] as (
+      textNode: { getTextContent: () => string },
+    ) => WorkflowVariableBlockNode
 
     expect(() => createNode({ getTextContent: () => '{{#node-1.output#}}' })).not.toThrow()
     expect($createWorkflowVariableBlockNode).toHaveBeenCalledWith(
@@ -217,6 +214,8 @@ describe('WorkflowVariableBlockReplacementBlock', () => {
       workflowNodesMap,
       undefined,
       [],
+      [],
+      undefined,
     )
   })
 })

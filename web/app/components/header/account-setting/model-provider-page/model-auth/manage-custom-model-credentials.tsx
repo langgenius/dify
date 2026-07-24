@@ -2,16 +2,23 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useCallback } from 'react'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  Button,
+} from '@/app/components/base/button'
 import {
   ConfigurationMethodEnum,
   ModelModalModeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@/utils/classnames'
 import Authorized from './authorized'
-import { useCustomModels } from './hooks'
+import {
+  useCustomModels,
+} from './hooks'
 
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider
@@ -25,30 +32,31 @@ const ManageCustomModelCredentials = ({
   const customModels = useCustomModels(provider)
   const noModels = !customModels.length
 
-  const renderTrigger = useCallback(
-    (open?: boolean) => {
-      const Item = (
-        <Button
-          variant="ghost"
-          size="small"
-          className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
-        >
-          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'common' })}
-        </Button>
-      )
-      return Item
-    },
-    [t],
-  )
+  const renderTrigger = useCallback((open?: boolean) => {
+    const Item = (
+      <Button
+        variant="ghost"
+        size="small"
+        className={cn(
+          'mr-0.5 text-text-tertiary',
+          open && 'bg-components-button-ghost-bg-hover',
+        )}
+      >
+        {t('modelProvider.auth.manageCredentials', { ns: 'common' })}
+      </Button>
+    )
+    return Item
+  }, [t])
 
-  if (noModels) return null
+  if (noModels)
+    return null
 
   return (
     <Authorized
       provider={provider}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
-      items={customModels.map((model) => ({
+      items={customModels.map(model => ({
         model,
         credentials: model.available_model_credentials ?? [],
         selectedCredential: model.current_credential_id
@@ -65,12 +73,10 @@ const ManageCustomModelCredentials = ({
       }}
       hideAddAction
       disableItemClick
-      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'common' })}
+      popupTitle={t('modelProvider.auth.customModelCredentials', { ns: 'common' })}
       showModelTitle
       disableDeleteButShowAction
-      disableDeleteTip={t(($) => $['modelProvider.auth.customModelCredentialsDeleteTip'], {
-        ns: 'common',
-      })}
+      disableDeleteTip={t('modelProvider.auth.customModelCredentialsDeleteTip', { ns: 'common' })}
     />
   )
 }

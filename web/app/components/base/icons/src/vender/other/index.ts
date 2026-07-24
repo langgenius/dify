@@ -1,3 +1,4 @@
+export { default as AnthropicText } from './AnthropicText'
 export { default as Generator } from './Generator'
 export { default as Group } from './Group'
 export { default as HourglassShape } from './HourglassShape'

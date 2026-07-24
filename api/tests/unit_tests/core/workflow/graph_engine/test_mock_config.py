@@ -11,6 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from dify_graph.enums import NodeType
+
 
 @dataclass
 class NodeMockConfig:

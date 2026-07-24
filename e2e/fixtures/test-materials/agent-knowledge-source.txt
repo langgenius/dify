@@ -1,3 +1,0 @@
-Dify Agent E2E knowledge source.
-The Dify Agent E2E knowledge marker is AGENT_KNOWLEDGE_PASS.
-Use the connected knowledge source to find the Dify Agent E2E knowledge marker.

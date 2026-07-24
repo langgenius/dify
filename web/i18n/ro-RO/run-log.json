@@ -1,4 +1,5 @@
 {
+  "actionLogs": "Jurnale de acțiuni",
   "circularInvocationTip": "Există o invocare circulară a instrumentelor/nodurilor în fluxul de lucru curent.",
   "detail": "DETALIU",
   "input": "INTRARE",
@@ -9,6 +10,7 @@
   "meta.time": "Timp scurs",
   "meta.title": "METADATE",
   "meta.tokens": "Total tokeni",
+  "meta.version": "Versiune",
   "result": "REZULTAT",
   "resultEmpty.link": "panoul de detalii",
   "resultEmpty.tipLeft": "vă rugăm să mergeți la ",

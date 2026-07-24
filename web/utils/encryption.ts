@@ -12,14 +12,15 @@
  * @param plaintext - The plain text to encode
  * @returns Base64 encoded text
  */
-function encryptField(plaintext: string): string {
+export function encryptField(plaintext: string): string {
   try {
     // Base64 encode the plaintext
     // btoa works with ASCII, so we need to handle UTF-8 properly
     const utf8Bytes = new TextEncoder().encode(plaintext)
     const base64 = btoa(String.fromCharCode(...utf8Bytes))
     return base64
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Field encoding failed:', error)
     // If encoding fails, throw error to prevent sending plaintext
     throw new Error('Encoding failed. Please check your input.')

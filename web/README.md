@@ -1,6 +1,6 @@
 # Dify Frontend
 
-This is a [Next.js] project, but you can dev with [vinext].
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
 
@@ -8,11 +8,8 @@ This is a [Next.js] project, but you can dev with [vinext].
 
 Before starting the web frontend service, please make sure the following environment is ready.
 
-- [Node.js]
-- [pnpm]
-
-You can also use [Vite+] with the corresponding `vp` commands.
-For example, use `vp install` instead of `pnpm install` and `vp test` instead of `pnpm run test`.
+- [Node.js](https://nodejs.org)
+- [pnpm](https://pnpm.io)
 
 > [!TIP]
 > It is recommended to install and enable Corepack to manage package manager versions automatically:
@@ -22,9 +19,7 @@ For example, use `vp install` instead of `pnpm install` and `vp test` instead of
 > corepack enable
 > ```
 >
-> Learn more: [Corepack]
-
-Run the following commands from the repository root.
+> Learn more: [Corepack](https://github.com/nodejs/corepack#readme)
 
 First, install the dependencies:
 
@@ -32,16 +27,29 @@ First, install the dependencies:
 pnpm install
 ```
 
-> [!NOTE]
-> JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.nvmrc`.
-> Install dependencies from the repository root, then run frontend scripts from `web/`.
-
-Then, configure the environment variables.
-Create `web/.env.local` and copy the contents from `web/.env.example`.
-Modify the values of these environment variables according to your requirements:
+Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
 
 ```bash
-cp web/.env.example web/.env.local
+cp .env.example .env.local
+```
+
+```txt
+# For production release, change this to PRODUCTION
+NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
+# The deployment edition, SELF_HOSTED
+NEXT_PUBLIC_EDITION=SELF_HOSTED
+# The base URL of console application, refers to the Console base URL of WEB service if console domain is
+# different from api or web app domain.
+# example: http://cloud.dify.ai/console/api
+NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
+NEXT_PUBLIC_COOKIE_DOMAIN=
+# The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
+# console or api domain.
+# example: http://udify.app/api
+NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
+
+# SENTRY
+NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 > [!IMPORTANT]
@@ -52,19 +60,12 @@ cp web/.env.example web/.env.local
 Finally, run the development server:
 
 ```bash
-pnpm -C web run dev
-# or if you are using vinext which provides a better development experience
-pnpm -C web run dev:vinext
-# (optional) start the dev proxy server so that you can use online API in development
-# edit web/dev-proxy.config.ts to choose proxy paths
-# edit web/.env.local to override DEV_PROXY_TARGET, DEV_PROXY_ENTERPRISE_TARGET, DEV_PROXY_HOST, or DEV_PROXY_PORT
-pnpm -C web run dev:proxy
+pnpm run dev
 ```
 
-Open <http://localhost:3000> with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the files under `web/app`.
-The page auto-updates as you edit the file.
+You can start editing the file under folder `app`. The page auto-updates as you edit the file.
 
 ## Deploy
 
@@ -73,70 +74,67 @@ The page auto-updates as you edit the file.
 First, build the app for production:
 
 ```bash
-pnpm -C web run build
+pnpm run build
 ```
 
 Then, start the server:
 
 ```bash
-pnpm -C web run start
-```
-
-If you build the Docker image manually, use the repository root as the build context:
-
-```bash
-docker build -f web/Dockerfile -t dify-web .
+pnpm run start
 ```
 
 If you want to customize the host and port:
 
 ```bash
-pnpm -C web run start --port=3001 --host=0.0.0.0
+pnpm run start --port=3001 --host=0.0.0.0
 ```
 
 ## Storybook
 
-This project uses [Storybook] for UI component development.
+This project uses [Storybook](https://storybook.js.org/) for UI component development.
 
 To start the storybook server, run:
 
 ```bash
-pnpm -C web storybook
+pnpm storybook
 ```
 
-Open <http://localhost:6006> with your browser to see the result.
+Open [http://localhost:6006](http://localhost:6006) with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
-Then follow the [Lint Documentation] to lint the code.
+Then follow the [Lint Documentation](./docs/lint.md) to lint the code.
 
 ## Test
 
-We use [Vitest] and [React Testing Library] for Unit Testing.
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-**📖 Frontend Testing Guide**: See [web/docs/test.md] for the canonical testing policy and workflow.
-
-> [!IMPORTANT]
-> As we are using Vite+, the `vitest` command is not available.
-> Please make sure to run tests with `vp` commands.
-> For example, use `npx vp test` instead of `npx vitest`.
+**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
 ```bash
-cd web
-vp test run
+pnpm test
 ```
-
-If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
 ### Example Code
 
 If you are not familiar with writing tests, refer to:
 
-- [index.spec.tsx] - Component test example
+- [classnames.spec.ts](./utils/classnames.spec.ts) - Utility function test example
+- [index.spec.tsx](./app/components/base/button/index.spec.tsx) - Component test example
+
+### Analyze Component Complexity
+
+Before writing tests, use the script to analyze component complexity:
+
+```bash
+pnpm analyze-component app/components/your-component/index.tsx
+```
+
+This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
 
 ## Documentation
 
@@ -144,18 +142,4 @@ Visit <https://docs.dify.ai> to view the full documentation.
 
 ## Community
 
-The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
-
-[Corepack]: https://github.com/nodejs/corepack#readme
-[Discord community]: https://discord.gg/5AEfbxcd9k
-[Lint Documentation]: ./docs/lint.md
-[Next.js]: https://nextjs.org
-[Node.js]: https://nodejs.org
-[React Testing Library]: https://testing-library.com/docs/react-testing-library/intro
-[Storybook]: https://storybook.js.org
-[Vite+]: https://viteplus.dev
-[Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/action-button/__tests__/index.spec.tsx
-[pnpm]: https://pnpm.io
-[vinext]: https://github.com/cloudflare/vinext
-[web/docs/test.md]: ./docs/test.md
+The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.

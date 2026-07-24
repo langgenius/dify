@@ -3,29 +3,6 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import dayjs from '../../utils/dayjs'
 import DatePicker from '../index'
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    className,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-    className?: string
-  }) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      className={className as string | undefined}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 // Mock scrollIntoView
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
@@ -56,14 +33,14 @@ describe('DatePicker', () => {
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should render with custom placeholder', () => {
       const props = createDatePickerProps({ placeholder: 'Select date' })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', 'Select date')
+      expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Select date')
     })
 
     it('should display formatted date value when value is provided', () => {
@@ -78,20 +55,12 @@ describe('DatePicker', () => {
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toHaveValue('')
+      expect(screen.getByRole('textbox')).toHaveValue('')
     })
 
     it('should normalize value with timezone applied', () => {
       const value = dayjs('2024-06-15T14:30:00')
       const props = createDatePickerProps({ value, timezone: 'America/New_York' })
-      render(<DatePicker {...props} />)
-
-      expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
-    })
-
-    it('should normalize non-Dayjs value input', () => {
-      const value = new Date('2024-06-15T14:30:00Z') as unknown as DatePickerProps['value']
-      const props = createDatePickerProps({ value })
       render(<DatePicker {...props} />)
 
       expect(screen.getByRole('textbox').getAttribute('value')).not.toBe('')
@@ -116,7 +85,7 @@ describe('DatePicker', () => {
       openPicker()
       openPicker() // second click closes
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should restore selected date from value when reopening', () => {
@@ -127,8 +96,7 @@ describe('DatePicker', () => {
       openPicker()
 
       // Calendar should be showing June 2024
-      // Calendar should be showing June 2024
-      expect(screen.getByText(/2024/))!.toBeInTheDocument()
+      expect(screen.getByText(/2024/)).toBeInTheDocument()
     })
 
     it('should close when clicking outside the container', () => {
@@ -136,14 +104,14 @@ describe('DatePicker', () => {
       render(<DatePicker {...props} />)
 
       openPicker()
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
 
+      // Simulate a mousedown event outside the container
       act(() => {
         document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
       })
 
-      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      // The picker should now be closed - input shows its value
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -155,7 +123,7 @@ describe('DatePicker', () => {
 
       openPicker()
 
-      expect(screen.getByText('--:-- --'))!.toBeInTheDocument()
+      expect(screen.getByText('--:-- --')).toBeInTheDocument()
     })
 
     it('should not show time toggle when needTimePicker is false', () => {
@@ -177,8 +145,7 @@ describe('DatePicker', () => {
       fireEvent.click(screen.getByText('--:-- --'))
 
       // In time view, the "pickDate" text should appear instead of the time
-      // In time view, the "pickDate" text should appear instead of the time
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
 
     it('should switch back to date view when pickDate is clicked in time view', () => {
@@ -197,10 +164,7 @@ describe('DatePicker', () => {
     })
 
     it('should render time picker options in time view', () => {
-      const props = createDatePickerProps({
-        needTimePicker: true,
-        value: dayjs('2024-06-15T14:30:00'),
-      })
+      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -209,16 +173,12 @@ describe('DatePicker', () => {
       fireEvent.click(screen.getByText(/\d{2}:\d{2}\s(AM|PM)/))
 
       // Should show AM/PM options (TimePickerOptions renders these)
-      // Should show AM/PM options (TimePickerOptions renders these)
-      expect(screen.getByText('AM'))!.toBeInTheDocument()
-      expect(screen.getByText('PM'))!.toBeInTheDocument()
+      expect(screen.getByText('AM')).toBeInTheDocument()
+      expect(screen.getByText('PM')).toBeInTheDocument()
     })
 
     it('should update selected time when hour is selected in time view', () => {
-      const props = createDatePickerProps({
-        needTimePicker: true,
-        value: dayjs('2024-06-15T14:30:00'),
-      })
+      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -228,19 +188,15 @@ describe('DatePicker', () => {
 
       // Click hour "05" from the time options
       const allLists = screen.getAllByRole('list')
-      const hourItems = within(allLists[0]!).getAllByRole('listitem')
-      fireEvent.click(hourItems[4]!)
+      const hourItems = within(allLists[0]).getAllByRole('listitem')
+      fireEvent.click(hourItems[4])
 
       // The picker should still be in time view
-      // The picker should still be in time view
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
 
     it('should update selected time when minute is selected in time view', () => {
-      const props = createDatePickerProps({
-        needTimePicker: true,
-        value: dayjs('2024-06-15T14:30:00'),
-      })
+      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -250,17 +206,14 @@ describe('DatePicker', () => {
 
       // Click minute "45" from the time options
       const allLists = screen.getAllByRole('list')
-      const minuteItems = within(allLists[1]!).getAllByRole('listitem')
-      fireEvent.click(minuteItems[45]!)
+      const minuteItems = within(allLists[1]).getAllByRole('listitem')
+      fireEvent.click(minuteItems[45])
 
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
 
     it('should update selected time when period is changed in time view', () => {
-      const props = createDatePickerProps({
-        needTimePicker: true,
-        value: dayjs('2024-06-15T14:30:00'),
-      })
+      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -271,7 +224,7 @@ describe('DatePicker', () => {
       // Click AM to switch period
       fireEvent.click(screen.getByText('AM'))
 
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
 
     it('should update time when no selectedDate exists and hour is selected', () => {
@@ -285,35 +238,10 @@ describe('DatePicker', () => {
 
       // Click hour "03" from the time options
       const allLists = screen.getAllByRole('list')
-      const hourItems = within(allLists[0]!).getAllByRole('listitem')
-      fireEvent.click(hourItems[2]!)
+      const hourItems = within(allLists[0]).getAllByRole('listitem')
+      fireEvent.click(hourItems[2])
 
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
-    })
-
-    it('should update time when no selectedDate exists and minute is selected', () => {
-      const props = createDatePickerProps({ needTimePicker: true })
-      render(<DatePicker {...props} />)
-
-      openPicker()
-      fireEvent.click(screen.getByText('--:-- --'))
-
-      const allLists = screen.getAllByRole('list')
-      const minuteItems = within(allLists[1]!).getAllByRole('listitem')
-      fireEvent.click(minuteItems[15]!)
-
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
-    })
-
-    it('should update time when no selectedDate exists and period is selected', () => {
-      const props = createDatePickerProps({ needTimePicker: true })
-      render(<DatePicker {...props} />)
-
-      openPicker()
-      fireEvent.click(screen.getByText('--:-- --'))
-      fireEvent.click(screen.getByText('PM'))
-
-      expect(screen.getByText(/operation\.pickDate/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.pickDate/)).toBeInTheDocument()
     })
   })
 
@@ -353,8 +281,7 @@ describe('DatePicker', () => {
       fireEvent.click(dayButton)
 
       // The date should now appear in the header/display
-      // The date should now appear in the header/display
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should immediately confirm when noConfirm is true and a date is clicked', () => {
@@ -367,17 +294,6 @@ describe('DatePicker', () => {
       // Click on a day
       const dayButton = screen.getByRole('button', { name: '20' })
       fireEvent.click(dayButton)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-    })
-
-    it('should clone time from timezone default when selecting a date without initial value', () => {
-      const onChange = vi.fn()
-      const props = createDatePickerProps({ onChange, noConfirm: true })
-      render(<DatePicker {...props} />)
-
-      openPicker()
-      fireEvent.click(screen.getByRole('button', { name: '20' }))
 
       expect(onChange).toHaveBeenCalledTimes(1)
     })
@@ -460,7 +376,7 @@ describe('DatePicker', () => {
       // The header has: month/year button, prev button, next button
       // Then calendar days are also buttons. We need the 3rd button (next month).
       // Header buttons come first in DOM order.
-      fireEvent.click(allButtons[2]!) // next month button
+      fireEvent.click(allButtons[2]) // next month button
 
       expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
     })
@@ -472,7 +388,7 @@ describe('DatePicker', () => {
       openPicker()
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!) // prev month button
+      fireEvent.click(allButtons[1]) // prev month button
 
       expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
     })
@@ -490,8 +406,7 @@ describe('DatePicker', () => {
       fireEvent.click(headerButton)
 
       // Cancel button visible in year/month picker footer
-      // Cancel button visible in year/month picker footer
-      expect(screen.getByText(/operation\.cancel/))!.toBeInTheDocument()
+      expect(screen.getByText(/operation\.cancel/)).toBeInTheDocument()
     })
 
     it('should close year/month picker when cancel is clicked', () => {
@@ -520,7 +435,7 @@ describe('DatePicker', () => {
 
       // Confirm - click the last OK button (year/month footer)
       const okButtons = screen.getAllByText(/operation\.ok/)
-      fireEvent.click(okButtons[okButtons.length - 1]!)
+      fireEvent.click(okButtons[okButtons.length - 1])
 
       // Should return to date view
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
@@ -534,7 +449,10 @@ describe('DatePicker', () => {
       // Open year/month picker
       fireEvent.click(screen.getByText(/2024/))
 
-      fireEvent.click(screen.getByRole('button', { name: /time\.months\.June 2024/ }))
+      // The header in year/month view shows selected month/year with an up arrow
+      // Clicking it closes the year/month picker
+      const headerButtons = screen.getAllByRole('button')
+      fireEvent.click(headerButtons[0]) // First button in year/month view is the header
 
       // Should return to date view
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
@@ -549,12 +467,12 @@ describe('DatePicker', () => {
 
       // Select a different month using RTL queries
       const allLists = screen.getAllByRole('list')
-      const monthItems = within(allLists[0]!).getAllByRole('listitem')
-      fireEvent.click(monthItems[0]!)
+      const monthItems = within(allLists[0]).getAllByRole('listitem')
+      fireEvent.click(monthItems[0])
 
       // Confirm the selection - click the last OK button (year/month footer)
       const okButtons = screen.getAllByText(/operation\.ok/)
-      fireEvent.click(okButtons[okButtons.length - 1]!)
+      fireEvent.click(okButtons[okButtons.length - 1])
 
       // Should return to date view
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
@@ -585,7 +503,7 @@ describe('DatePicker', () => {
       const props = createDatePickerProps({ renderTrigger })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
 
     it('should open picker when custom trigger is clicked', () => {
@@ -629,7 +547,7 @@ describe('DatePicker', () => {
       })
       render(<DatePicker {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should call onChange when timezone changes with a value', () => {
@@ -677,24 +595,8 @@ describe('DatePicker', () => {
 
       // Should have been called with the new timezone-adjusted value
       expect(onChange).toHaveBeenCalledTimes(1)
-      const emitted = onChange.mock.calls[0]![0]
+      const emitted = onChange.mock.calls[0][0]
       expect(emitted.isValid()).toBe(true)
-    })
-
-    it('should preserve selected date when timezone changes after selecting now without initial value', () => {
-      const onChange = vi.fn()
-      const props = createDatePickerProps({
-        timezone: 'UTC',
-        onChange,
-      })
-      const { rerender } = render(<DatePicker {...props} />)
-
-      openPicker()
-      fireEvent.click(screen.getByText(/operation\.now/))
-      rerender(<DatePicker {...props} timezone="Asia/Tokyo" />)
-
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
@@ -708,8 +610,7 @@ describe('DatePicker', () => {
       openPicker()
 
       // The footer should show the time from selectedDate (02:30 PM)
-      // The footer should show the time from selectedDate (02:30 PM)
-      expect(screen.getByText(/\d{2}:\d{2}\s(AM|PM)/))!.toBeInTheDocument()
+      expect(screen.getByText(/\d{2}:\d{2}\s(AM|PM)/)).toBeInTheDocument()
     })
   })
 })

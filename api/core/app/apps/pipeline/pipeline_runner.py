@@ -2,9 +2,6 @@ import logging
 import time
 from typing import cast
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -15,22 +12,22 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.db.session_factory import create_session
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.enums import WorkflowType
-from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import VariableLoader
-from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from models.dataset import Pipeline
+from dify_graph.entities.graph_init_params import GraphInitParams
+from dify_graph.enums import WorkflowType
+from dify_graph.graph import Graph
+from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variable_loader import VariableLoader
+from dify_graph.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
+from extensions.ext_database import db
+from models.dataset import Document, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
-from services.dataset_ref_service import DatasetRefService, DocumentRef
 
 logger = logging.getLogger(__name__)
 
@@ -85,53 +82,22 @@ class PipelineRunner(WorkflowBasedAppRunner):
         user_from = self._resolve_user_from(invoke_from)
 
         user_id = None
-        with create_session() as session:
-            if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-                end_user = session.get(EndUser, self.application_generate_entity.user_id)
-                if end_user:
-                    user_id = end_user.session_id
-            else:
-                user_id = self.application_generate_entity.user_id
+        if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
+            end_user = db.session.query(EndUser).where(EndUser.id == self.application_generate_entity.user_id).first()
+            if end_user:
+                user_id = end_user.session_id
+        else:
+            user_id = self.application_generate_entity.user_id
 
-            pipeline = session.get(Pipeline, app_config.app_id)
-            if not pipeline or pipeline.tenant_id != app_config.tenant_id:
-                raise ValueError("Pipeline not found")
+        pipeline = db.session.query(Pipeline).where(Pipeline.id == app_config.app_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
 
-            dataset = pipeline.retrieve_dataset(session)
-            if (
-                not dataset
-                or dataset.tenant_id != pipeline.tenant_id
-                or dataset.id != self.application_generate_entity.dataset_id
-            ):
-                raise ValueError("Pipeline dataset not found")
+        workflow = self.get_workflow(pipeline=pipeline, workflow_id=app_config.workflow_id)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
 
-            document_id = self.application_generate_entity.document_id
-            original_document_id = self.application_generate_entity.original_document_id
-            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-            document_ref = (
-                DatasetRefService.create_document_ref_from_id(
-                    dataset_ref,
-                    document_id,
-                )
-                if document_id
-                else None
-            )
-            if document_ref and DatasetRefService.get_document_by_ref(document_ref, session=session) is None:
-                raise ValueError("Pipeline document not found")
-            if original_document_id and original_document_id != document_id:
-                original_document_ref = DatasetRefService.create_document_ref_from_id(
-                    dataset_ref,
-                    original_document_id,
-                )
-                if DatasetRefService.get_document_by_ref(original_document_ref, session=session) is None:
-                    raise ValueError("Pipeline original document not found")
-
-            workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
-            if not workflow:
-                raise ValueError("Workflow not initialized")
-
-            session.expunge(pipeline)
-            session.expunge(workflow)
+        db.session.close()
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -140,14 +106,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
-                user_id=self.application_generate_entity.user_id,
             )
         else:
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = build_system_variables(
+            system_inputs = SystemVariable(
                 files=files,
                 user_id=user_id,
                 app_id=app_config.app_id,
@@ -177,25 +142,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
                             )
                         )
 
-            variable_pool = VariablePool()
-            add_variables_to_pool(
-                variable_pool,
-                build_bootstrap_variables(
-                    system_variables=system_inputs,
-                    environment_variables=workflow.environment_variables,
-                    rag_pipeline_variables=rag_pipeline_variables,
-                ),
+            variable_pool = VariablePool(
+                system_variables=system_inputs,
+                user_inputs=inputs,
+                environment_variables=workflow.environment_variables,
+                conversation_variables=[],
+                rag_pipeline_variables=rag_pipeline_variables,
             )
-            root_node_id = self.application_generate_entity.start_node_id or get_default_root_node_id(
-                workflow.graph_dict
-            )
-            add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
             # init graph
             graph = self._init_rag_pipeline_graph(
                 graph_runtime_state=graph_runtime_state,
-                start_node_id=root_node_id,
+                start_node_id=self.application_generate_entity.start_node_id,
                 workflow=workflow,
                 user_from=user_from,
                 invoke_from=invoke_from,
@@ -236,18 +195,20 @@ class PipelineRunner(WorkflowBasedAppRunner):
         generator = workflow_entry.run()
 
         for event in generator:
-            self._update_document_status(event, document_ref)
+            self._update_document_status(
+                event, self.application_generate_entity.document_id, self.application_generate_entity.dataset_id
+            )
             self._handle_event(workflow_entry, event)
 
-    def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+    def get_workflow(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """
         Get workflow
         """
         # fetch workflow by workflow_id
-        workflow = session.scalar(
-            select(Workflow)
+        workflow = (
+            db.session.query(Workflow)
             .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
-            .limit(1)
+            .first()
         )
 
         # return workflow
@@ -295,27 +256,24 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["nodes"] = real_run_nodes
         # graph_config["edges"] = real_edges
         # init graph
-        # Create explicit graph init context for Graph.init.
-        run_context = build_dify_run_context(
-            tenant_id=workflow.tenant_id,
-            app_id=self._app_id,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-        )
-        graph_init_context = DifyGraphInitContext(
+        # Create required parameters for Graph.init
+        graph_init_params = GraphInitParams(
             workflow_id=workflow.id,
             graph_config=graph_config,
-            run_context=run_context,
+            run_context=build_dify_run_context(
+                tenant_id=workflow.tenant_id,
+                app_id=self._app_id,
+                user_id=self.application_generate_entity.user_id,
+                user_from=user_from,
+                invoke_from=invoke_from,
+            ),
             call_depth=0,
         )
 
-        node_factory = DifyNodeFactory.from_graph_init_context(
-            graph_init_context=graph_init_context,
+        node_factory = DifyNodeFactory(
+            graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        if start_node_id is None:
-            start_node_id = get_default_root_node_id(graph_config)
         graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=start_node_id)
 
         if not graph:
@@ -323,14 +281,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
-        """Set an owner-bound document to error after a failed graph run, if it exists."""
-        if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
-            return
-
-        with create_session() as session, session.begin():
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
-            if document:
-                document.indexing_status = "error"
-                document.error = event.error or "Unknown error"
-                session.add(document)
+    def _update_document_status(self, event: GraphEngineEvent, document_id: str | None, dataset_id: str | None) -> None:
+        """
+        Update document status
+        """
+        if isinstance(event, GraphRunFailedEvent):
+            if document_id and dataset_id:
+                document = (
+                    db.session.query(Document)
+                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                    .first()
+                )
+                if document:
+                    document.indexing_status = "error"
+                    document.error = event.error or "Unknown error"
+                    db.session.add(document)
+                    db.session.commit()

@@ -1,16 +1,18 @@
 import type { VersionInfo } from '../../types'
+
 import { useMemo } from 'react'
 import { useCheckInstalled as useDoCheckInstalled } from '@/service/use-plugins'
 
-type Props = Readonly<{
+type Props = {
   pluginIds: string[]
   enabled: boolean
-}>
+}
 const useCheckInstalled = (props: Props) => {
   const { data, isLoading, error } = useDoCheckInstalled(props)
 
   const installedInfo = useMemo(() => {
-    if (!data) return undefined
+    if (!data)
+      return undefined
 
     const res: Record<string, VersionInfo> = {}
     data?.plugins.forEach((plugin) => {

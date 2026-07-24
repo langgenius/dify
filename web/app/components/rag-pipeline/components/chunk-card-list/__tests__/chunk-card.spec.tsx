@@ -2,6 +2,7 @@ import type { ParentChildChunk } from '../types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
+
 import ChunkCard from '../chunk-card'
 
 vi.mock('@/app/components/datasets/documents/detail/completed/common/dot', () => ({
@@ -9,9 +10,11 @@ vi.mock('@/app/components/datasets/documents/detail/completed/common/dot', () =>
 }))
 
 vi.mock('@/app/components/datasets/documents/detail/completed/common/segment-index-tag', () => ({
-  default: ({ positionId, labelPrefix }: { positionId?: string | number; labelPrefix: string }) => (
+  default: ({ positionId, labelPrefix }: { positionId?: string | number, labelPrefix: string }) => (
     <span data-testid="segment-tag">
-      {labelPrefix}-{positionId}
+      {labelPrefix}
+      -
+      {positionId}
     </span>
   ),
 }))
@@ -21,9 +24,12 @@ vi.mock('@/app/components/datasets/documents/detail/completed/common/summary-lab
 }))
 
 vi.mock('@/app/components/datasets/formatted-text/flavours/preview-slice', () => ({
-  PreviewSlice: ({ label, text }: { label: string; text: string }) => (
+  PreviewSlice: ({ label, text }: { label: string, text: string }) => (
     <span data-testid="preview-slice">
-      {label}: {text}
+      {label}
+      :
+      {' '}
+      {text}
     </span>
   ),
 }))
@@ -41,7 +47,7 @@ vi.mock('@/utils/format', () => ({
 }))
 
 vi.mock('../q-a-item', () => ({
-  default: ({ type, text }: { type: string; text: string }) => (
+  default: ({ type, text }: { type: string, text: string }) => (
     <span data-testid={`qa-${type}`}>{text}</span>
   ),
 }))

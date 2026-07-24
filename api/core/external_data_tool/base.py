@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
-from typing import Any
 
 from core.extension.extensible import Extensible, ExtensionModule
 
@@ -17,14 +15,14 @@ class ExternalDataTool(Extensible, ABC):
     variable: str
     """the tool variable name of app tool"""
 
-    def __init__(self, tenant_id: str, app_id: str, variable: str, config: dict[str, Any] | None = None):
+    def __init__(self, tenant_id: str, app_id: str, variable: str, config: dict | None = None):
         super().__init__(tenant_id, config)
         self.app_id = app_id
         self.variable = variable
 
     @classmethod
     @abstractmethod
-    def validate_config(cls, tenant_id: str, config: dict[str, Any]):
+    def validate_config(cls, tenant_id: str, config: dict):
         """
         Validate the incoming form config data.
 
@@ -35,7 +33,7 @@ class ExternalDataTool(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+    def query(self, inputs: dict, query: str | None = None) -> str:
         """
         Query the external data tool.
 

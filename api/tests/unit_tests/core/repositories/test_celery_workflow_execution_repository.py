@@ -11,13 +11,10 @@ from uuid import uuid4
 import pytest
 
 from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
-from graphon.entities import WorkflowExecution
-from graphon.enums import WorkflowType
+from dify_graph.entities.workflow_execution import WorkflowExecution, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
-
-RESOURCE_TENANT_ID = "resource-tenant-id"
 
 
 @pytest.fixture
@@ -73,13 +70,12 @@ class TestCeleryWorkflowExecutionRepository:
 
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id=app_id,
             triggered_from=triggered_from,
         )
 
-        assert repo._tenant_id == RESOURCE_TENANT_ID
+        assert repo._tenant_id == mock_account.current_tenant_id
         assert repo._app_id == app_id
         assert repo._triggered_from == triggered_from
         assert repo._creator_user_id == mock_account.id
@@ -89,14 +85,13 @@ class TestCeleryWorkflowExecutionRepository:
         """Test repository initialization basic functionality."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
 
         # Verify basic initialization
-        assert repo._tenant_id == RESOURCE_TENANT_ID
+        assert repo._tenant_id == mock_account.current_tenant_id
         assert repo._app_id == "test-app"
         assert repo._triggered_from == WorkflowRunTriggeredFrom.DEBUGGING
 
@@ -104,13 +99,12 @@ class TestCeleryWorkflowExecutionRepository:
         """Test repository initialization with EndUser."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_end_user,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         )
 
-        assert repo._tenant_id == RESOURCE_TENANT_ID
+        assert repo._tenant_id == mock_end_user.tenant_id
 
     def test_init_without_tenant_id_raises_error(self, mock_session_factory):
         """Test that initialization fails without tenant_id."""
@@ -119,37 +113,19 @@ class TestCeleryWorkflowExecutionRepository:
         user.current_tenant_id = None
         user.id = str(uuid4())
 
-        with pytest.raises(ValueError, match="tenant_id is required"):
+        with pytest.raises(ValueError, match="User must have a tenant_id"):
             CeleryWorkflowExecutionRepository(
                 session_factory=mock_session_factory,
-                tenant_id="",
                 user=user,
                 app_id="test-app",
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             )
-
-    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(self, mock_session_factory):
-        user = Mock(spec=Account)
-        user.current_tenant_id = None
-        user.id = str(uuid4())
-
-        repo = CeleryWorkflowExecutionRepository(
-            session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
-            user=user,
-            app_id="test-app",
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-        )
-
-        assert repo._tenant_id == RESOURCE_TENANT_ID
-        assert repo._creator_user_id == user.id
 
     @patch("core.repositories.celery_workflow_execution_repository.save_workflow_execution_task")
     def test_save_queues_celery_task(self, mock_task, mock_session_factory, mock_account, sample_workflow_execution):
         """Test that save operation queues a Celery task without tracking."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -162,7 +138,7 @@ class TestCeleryWorkflowExecutionRepository:
         call_args = mock_task.delay.call_args[1]
 
         assert call_args["execution_data"] == sample_workflow_execution.model_dump()
-        assert call_args["tenant_id"] == RESOURCE_TENANT_ID
+        assert call_args["tenant_id"] == mock_account.current_tenant_id
         assert call_args["app_id"] == "test-app"
         assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN
         assert call_args["creator_user_id"] == mock_account.id
@@ -179,7 +155,6 @@ class TestCeleryWorkflowExecutionRepository:
 
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -195,7 +170,6 @@ class TestCeleryWorkflowExecutionRepository:
         """Test that save operation works in fire-and-forget mode."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -212,7 +186,6 @@ class TestCeleryWorkflowExecutionRepository:
         """Test multiple save operations work correctly."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -250,7 +223,6 @@ class TestCeleryWorkflowExecutionRepository:
         """Test save operation with different user types."""
         repo = CeleryWorkflowExecutionRepository(
             session_factory=mock_session_factory,
-            tenant_id=mock_end_user.tenant_id,
             user=mock_end_user,
             app_id="test-app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,

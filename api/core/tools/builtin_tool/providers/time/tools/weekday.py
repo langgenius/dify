@@ -1,19 +1,15 @@
 import calendar
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, override
-
-from sqlalchemy.orm import Session
+from typing import Any
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 class WeekdayTool(BuiltinTool):
-    @override
     def _invoke(
         self,
-        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

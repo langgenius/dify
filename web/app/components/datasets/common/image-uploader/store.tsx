@@ -1,6 +1,15 @@
-import type { FileEntity } from './types'
-import { createContext, use, useRef } from 'react'
-import { create, useStore } from 'zustand'
+import type {
+  FileEntity,
+} from './types'
+import {
+  createContext,
+  useContext,
+  useRef,
+} from 'react'
+import {
+  create,
+  useStore,
+} from 'zustand'
 
 type Shape = {
   files: FileEntity[]
@@ -11,7 +20,7 @@ export const createFileStore = (
   value: FileEntity[] = [],
   onChange?: (files: FileEntity[]) => void,
 ) => {
-  return create<Shape>((set) => ({
+  return create<Shape>(set => ({
     files: value ? [...value] : [],
     setFiles: (files) => {
       set({ files })
@@ -21,17 +30,18 @@ export const createFileStore = (
 }
 
 type FileStore = ReturnType<typeof createFileStore>
-const FileContext = createContext<FileStore | null>(null)
+export const FileContext = createContext<FileStore | null>(null)
 
 export function useFileStoreWithSelector<T>(selector: (state: Shape) => T): T {
-  const store = use(FileContext)
-  if (!store) throw new Error('Missing FileContext.Provider in the tree')
+  const store = useContext(FileContext)
+  if (!store)
+    throw new Error('Missing FileContext.Provider in the tree')
 
   return useStore(store, selector)
 }
 
 export const useFileStore = () => {
-  return use(FileContext)!
+  return useContext(FileContext)!
 }
 
 type FileProviderProps = {
@@ -39,10 +49,19 @@ type FileProviderProps = {
   value?: FileEntity[]
   onChange?: (files: FileEntity[]) => void
 }
-export const FileContextProvider = ({ children, value, onChange }: FileProviderProps) => {
+export const FileContextProvider = ({
+  children,
+  value,
+  onChange,
+}: FileProviderProps) => {
   const storeRef = useRef<FileStore | undefined>(undefined)
 
-  if (!storeRef.current) storeRef.current = createFileStore(value, onChange)
+  if (!storeRef.current)
+    storeRef.current = createFileStore(value, onChange)
 
-  return <FileContext.Provider value={storeRef.current}>{children}</FileContext.Provider>
+  return (
+    <FileContext.Provider value={storeRef.current}>
+      {children}
+    </FileContext.Provider>
+  )
 }

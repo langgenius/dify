@@ -1,22 +1,22 @@
+import type { Item } from '@/app/components/base/select'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type SegmentStatusFilterValue = 'all' | 0 | 1
-
-export type SegmentStatusFilterOption = {
-  value: SegmentStatusFilterValue
-  name: string
-}
-
-type UseSearchFilterReturn = {
+export type SearchFilterState = {
   inputValue: string
   searchValue: string
   selectedStatus: boolean | 'all'
-  statusList: SegmentStatusFilterOption[]
-  selectDefaultValue: SegmentStatusFilterValue
+}
+
+export type UseSearchFilterReturn = {
+  inputValue: string
+  searchValue: string
+  selectedStatus: boolean | 'all'
+  statusList: Item[]
+  selectDefaultValue: 'all' | 0 | 1
   handleInputChange: (value: string) => void
-  onChangeStatus: (item: SegmentStatusFilterOption) => void
+  onChangeStatus: (item: Item) => void
   onClearFilter: () => void
   resetPage: () => void
 }
@@ -33,35 +33,26 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   const [searchValue, setSearchValue] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all')
 
-  const statusList = useRef<SegmentStatusFilterOption[]>([
-    { value: 'all', name: t(($) => $['list.index.all'], { ns: 'datasetDocuments' }) },
-    { value: 0, name: t(($) => $['list.status.disabled'], { ns: 'datasetDocuments' }) },
-    { value: 1, name: t(($) => $['list.status.enabled'], { ns: 'datasetDocuments' }) },
+  const statusList = useRef<Item[]>([
+    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
+    { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
+    { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
   ])
 
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchValue(inputValue)
-      onPageChange(1)
-    },
-    { wait: 500 },
-  )
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchValue(inputValue)
+    onPageChange(1)
+  }, { wait: 500 })
 
-  const handleInputChange = useCallback(
-    (value: string) => {
-      setInputValue(value)
-      handleSearch()
-    },
-    [handleSearch],
-  )
+  const handleInputChange = useCallback((value: string) => {
+    setInputValue(value)
+    handleSearch()
+  }, [handleSearch])
 
-  const onChangeStatus = useCallback(
-    ({ value }: SegmentStatusFilterOption) => {
-      setSelectedStatus(value === 'all' ? 'all' : !!value)
-      onPageChange(1)
-    },
-    [onPageChange],
-  )
+  const onChangeStatus = useCallback(({ value }: Item) => {
+    setSelectedStatus(value === 'all' ? 'all' : !!value)
+    onPageChange(1)
+  }, [onPageChange])
 
   const onClearFilter = useCallback(() => {
     setInputValue('')
@@ -75,7 +66,8 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   }, [onPageChange])
 
   const selectDefaultValue = useMemo(() => {
-    if (selectedStatus === 'all') return 'all'
+    if (selectedStatus === 'all')
+      return 'all'
     return selectedStatus ? 1 : 0
   }, [selectedStatus])
 

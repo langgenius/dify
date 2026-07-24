@@ -17,16 +17,17 @@ export const processNodesWithoutDataSource = (nodes: Node[], viewport?: Viewport
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i]
 
-    if (node!.data.type === BlockEnum.DataSource) {
+    if (node.data.type === BlockEnum.DataSource) {
       return {
         nodes,
         viewport,
       }
     }
 
-    if (node!.type === CUSTOM_NODE && !leftNode) leftNode = node
+    if (node.type === CUSTOM_NODE && !leftNode)
+      leftNode = node
 
-    if (node!.type === CUSTOM_NODE && leftNode && node!.position.x < leftNode.position.x)
+    if (node.type === CUSTOM_NODE && leftNode && node.position.x < leftNode.position.x)
       leftNode = node
   }
 
@@ -69,7 +70,11 @@ export const processNodesWithoutDataSource = (nodes: Node[], viewport?: Viewport
       },
     }).newNode
     return {
-      nodes: [newNode, newNoteNode, ...nodes],
+      nodes: [
+        newNode,
+        newNoteNode,
+        ...nodes,
+      ],
       viewport: {
         x: (START_INITIAL_POSITION.x - startX) * (viewport?.zoom || 1),
         y: (START_INITIAL_POSITION.y - startY) * (viewport?.zoom || 1),

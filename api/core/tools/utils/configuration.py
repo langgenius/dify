@@ -116,7 +116,6 @@ class ToolParameterConfigurationManager:
 
         return a deep copy of parameters with decrypted values
         """
-        parameters = self._deep_copy(parameters)
 
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,

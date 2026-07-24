@@ -1,11 +1,11 @@
 import type { Option } from './type'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
   ParentChildChunk,
   QuestionAndAnswer,
 } from '@/app/components/base/icons/src/vender/knowledge'
+import { cn } from '@/utils/classnames'
 import { ChunkStructureEnum } from '../../types'
 
 export const useChunkStructure = () => {
@@ -20,8 +20,8 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: t(($) => $['stepTwo.general'], { ns: 'datasetCreation' }),
-    description: t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' }),
+    title: t('stepTwo.general', { ns: 'datasetCreation' }),
+    description: t('stepTwo.generalTip', { ns: 'datasetCreation' }),
     effectColor: 'blue',
   }
   const ParentChildOption: Option = {
@@ -34,8 +34,8 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' }),
-    description: t(($) => $['stepTwo.parentChildTip'], { ns: 'datasetCreation' }),
+    title: t('stepTwo.parentChild', { ns: 'datasetCreation' }),
+    description: t('stepTwo.parentChildTip', { ns: 'datasetCreation' }),
     effectColor: 'blue-light',
   }
   const QuestionAnswerOption: Option = {
@@ -49,7 +49,7 @@ export const useChunkStructure = () => {
       />
     ),
     title: 'Q&A',
-    description: t(($) => $['stepTwo.qaTip'], { ns: 'datasetCreation' }),
+    description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
     effectColor: 'teal',
   }
 
@@ -59,7 +59,11 @@ export const useChunkStructure = () => {
     [ChunkStructureEnum.question_answer]: QuestionAnswerOption,
   }
 
-  const options = [GeneralOption, ParentChildOption, QuestionAnswerOption]
+  const options = [
+    GeneralOption,
+    ParentChildOption,
+    QuestionAnswerOption,
+  ]
 
   return {
     options,

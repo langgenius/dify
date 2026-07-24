@@ -1,32 +1,21 @@
-from typing import override
-
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
+from dify_graph.graph_engine.layers.base import GraphEngineLayer
+from dify_graph.graph_events.base import GraphEngineEvent
+from dify_graph.graph_events.graph import GraphRunPausedEvent
 
 
 class SuspendLayer(GraphEngineLayer):
     """ """
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._paused = False
-
-    @override
     def on_graph_start(self):
-        self._paused = False
+        pass
 
-    @override
     def on_event(self, event: GraphEngineEvent):
         """
         Handle the paused event, stash runtime state into storage and wait for resume.
         """
         if isinstance(event, GraphRunPausedEvent):
-            self._paused = True
+            pass
 
-    @override
     def on_graph_end(self, error: Exception | None):
         """ """
-        self._paused = False
-
-    def is_paused(self) -> bool:
-        return self._paused
+        pass

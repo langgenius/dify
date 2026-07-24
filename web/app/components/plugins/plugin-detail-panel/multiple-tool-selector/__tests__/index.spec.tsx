@@ -1,12 +1,12 @@
-import type { MouseEventHandler, ReactElement } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 // ==================== Imports (after mocks) ====================
+
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import MultipleToolSelector from '../index'
 
@@ -30,8 +30,7 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
     onSelectMultiple,
     onDelete,
     controlledState,
-    onControlledStateChange,
-    trigger,
+    onControlledStateChange: _onControlledStateChange,
     panelShowState,
     onPanelShowStateChange: _onPanelShowStateChange,
     isEdit,
@@ -43,10 +42,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
     onDelete?: () => void
     controlledState?: boolean
     onControlledStateChange?: (state: boolean) => void
-    trigger?: ReactElement<{
-      'aria-label'?: string
-      onClick?: MouseEventHandler<HTMLButtonElement>
-    }>
     panelShowState?: boolean
     onPanelShowStateChange?: (state: boolean) => void
     isEdit?: boolean
@@ -70,18 +65,19 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
               >
                 Configure
               </button>
-              <button data-testid={`delete-btn-${currentIndex}`} onClick={() => onDelete?.()}>
+              <button
+                data-testid={`delete-btn-${currentIndex}`}
+                onClick={() => onDelete?.()}
+              >
                 Delete
               </button>
               {onSelectMultiple && (
                 <button
                   data-testid={`add-multiple-btn-${currentIndex}`}
-                  onClick={() =>
-                    onSelectMultiple([
-                      { ...value, tool_name: 'batch-tool-1', provider_name: 'batch-provider' },
-                      { ...value, tool_name: 'batch-tool-2', provider_name: 'batch-provider' },
-                    ])
-                  }
+                  onClick={() => onSelectMultiple([
+                    { ...value, tool_name: 'batch-tool-1', provider_name: 'batch-provider' },
+                    { ...value, tool_name: 'batch-tool-2', provider_name: 'batch-provider' },
+                  ])}
                 >
                   Add Multiple
                 </button>
@@ -90,55 +86,32 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
           )}
         </div>
       )
-    } else {
+    }
+    else {
       return (
         <div
           data-testid="tool-selector-add"
           data-controlled-state={controlledState}
           data-panel-show-state={panelShowState}
         >
-          {trigger && (
-            <button
-              type="button"
-              aria-label={trigger.props['aria-label']}
-              onClick={(event) => {
-                trigger.props.onClick?.(event)
-                onControlledStateChange?.(!controlledState)
-              }}
-            />
-          )}
           <button
             data-testid="add-tool-btn"
-            onClick={() =>
-              onSelect({
-                provider_name: 'new-provider',
-                tool_name: 'new-tool',
-                tool_label: 'New Tool',
-                enabled: true,
-              })
-            }
+            onClick={() => onSelect({
+              provider_name: 'new-provider',
+              tool_name: 'new-tool',
+              tool_label: 'New Tool',
+              enabled: true,
+            })}
           >
             Add Tool
           </button>
           {onSelectMultiple && (
             <button
               data-testid="add-multiple-tools-btn"
-              onClick={() =>
-                onSelectMultiple([
-                  {
-                    provider_name: 'batch-p',
-                    tool_name: 'batch-t1',
-                    tool_label: 'Batch T1',
-                    enabled: true,
-                  },
-                  {
-                    provider_name: 'batch-p',
-                    tool_name: 'batch-t2',
-                    tool_label: 'Batch T2',
-                    enabled: true,
-                  },
-                ])
-              }
+              onClick={() => onSelectMultiple([
+                { provider_name: 'batch-p', tool_name: 'batch-t1', tool_label: 'Batch T1', enabled: true },
+                { provider_name: 'batch-p', tool_name: 'batch-t2', tool_label: 'Batch T2', enabled: true },
+              ])}
             >
               Add Multiple Tools
             </button>
@@ -151,13 +124,12 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
 
 // ==================== Test Utilities ====================
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+    mutations: { retry: false },
+  },
+})
 
 const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   provider_name: 'test-provider',
@@ -172,33 +144,26 @@ const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   ...overrides,
 })
 
-const createMCPTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
-  ({
-    id: 'mcp-provider-1',
-    name: 'mcp-provider',
-    author: 'test-author',
-    type: 'mcp',
-    icon: 'test-icon.png',
-    label: { en_US: 'MCP Provider' } as unknown as ToolWithProvider['label'],
-    description: {
-      en_US: 'MCP Provider description',
-    } as unknown as ToolWithProvider['description'],
-    is_team_authorization: true,
-    allow_delete: false,
-    labels: [],
-    tools: [
-      {
-        name: 'mcp-tool-1',
-        label: { en_US: 'MCP Tool 1' } as unknown as ToolWithProvider['label'],
-        description: {
-          en_US: 'MCP Tool 1 description',
-        } as unknown as ToolWithProvider['description'],
-        parameters: [],
-        output_schema: {},
-      },
-    ],
-    ...overrides,
-  }) as ToolWithProvider
+const createMCPTool = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
+  id: 'mcp-provider-1',
+  name: 'mcp-provider',
+  author: 'test-author',
+  type: 'mcp',
+  icon: 'test-icon.png',
+  label: { en_US: 'MCP Provider' } as unknown as ToolWithProvider['label'],
+  description: { en_US: 'MCP Provider description' } as unknown as ToolWithProvider['description'],
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  tools: [{
+    name: 'mcp-tool-1',
+    label: { en_US: 'MCP Tool 1' } as unknown as ToolWithProvider['label'],
+    description: { en_US: 'MCP Tool 1 description' } as unknown as ToolWithProvider['description'],
+    parameters: [],
+    output_schema: {},
+  }],
+  ...overrides,
+} as ToolWithProvider)
 
 const createNodeOutputVar = (overrides: Partial<NodeOutPutVar> = {}): NodeOutPutVar => ({
   nodeId: 'node-1',
@@ -319,11 +284,12 @@ describe('MultipleToolSelector', () => {
     })
 
     it('should render add button when not disabled', () => {
-      renderComponent({ disabled: false })
+      // Arrange & Act
+      const { container } = renderComponent({ disabled: false })
 
-      expect(
-        screen.getByRole('button', { name: 'plugin.detailPanel.toolSelector.title' }),
-      ).toBeInTheDocument()
+      // Assert
+      const addButton = container.querySelector('[class*="mx-1"]')
+      expect(addButton).toBeInTheDocument()
     })
 
     it('should not render add button when disabled', () => {
@@ -331,10 +297,18 @@ describe('MultipleToolSelector', () => {
       renderComponent({ disabled: true })
 
       // Assert
-      expect(screen.queryByTestId('tool-selector-add')).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'plugin.detailPanel.toolSelector.title' }),
-      ).not.toBeInTheDocument()
+      const addSelectors = screen.queryAllByTestId('tool-selector-add')
+      // The add button should still be present but outside the disabled check
+      expect(addSelectors).toHaveLength(1)
+    })
+
+    it('should render tooltip when provided', () => {
+      // Arrange & Act
+      const { container } = renderComponent({ tooltip: 'This is a tooltip' })
+
+      // Assert - Tooltip icon should be present
+      const tooltipIcon = container.querySelector('svg')
+      expect(tooltipIcon).toBeInTheDocument()
     })
 
     it('should render enabled count when tools are selected', () => {
@@ -355,27 +329,37 @@ describe('MultipleToolSelector', () => {
 
   // ==================== Collapse Functionality Tests ====================
   describe('Collapse Functionality', () => {
-    it('should render a non-interactive label when collapsing is unavailable', () => {
-      renderComponent({ supportCollapse: false })
+    it('should render collapse arrow when supportCollapse is true', () => {
+      // Arrange & Act
+      const { container } = renderComponent({ supportCollapse: true })
 
-      expect(screen.getByText('Tools')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Tools' })).not.toBeInTheDocument()
+      // Assert
+      const collapseArrow = container.querySelector('svg[class*="cursor-pointer"]')
+      expect(collapseArrow).toBeInTheDocument()
     })
 
-    it('should expose and toggle the collapsible tools region from the keyboard', async () => {
-      const user = userEvent.setup()
-      const tools = [createToolValue()]
-      renderComponent({ supportCollapse: true, value: tools })
-      const collapseButton = screen.getByRole('button', { name: 'Tools' })
+    it('should not render collapse arrow when supportCollapse is false', () => {
+      // Arrange & Act
+      const { container } = renderComponent({ supportCollapse: false })
 
-      expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
+      // Assert
+      const collapseArrows = container.querySelectorAll('svg[class*="rotate"]')
+      expect(collapseArrows).toHaveLength(0)
+    })
+
+    it('should toggle collapse state when clicking header with supportCollapse enabled', () => {
+      // Arrange
+      const tools = [createToolValue()]
+      const { container } = renderComponent({ supportCollapse: true, value: tools })
+      const headerArea = container.querySelector('[class*="cursor-pointer"]')
+
+      // Act - Initially visible
       expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
 
-      await user.tab()
-      expect(collapseButton).toHaveFocus()
-      await user.keyboard('{Enter}')
+      // Click to collapse
+      fireEvent.click(headerArea!)
 
-      expect(collapseButton).toHaveAttribute('aria-expanded', 'false')
+      // Assert - Should be collapsed
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
     })
 
@@ -392,17 +376,17 @@ describe('MultipleToolSelector', () => {
     })
 
     it('should expand when add button is clicked while collapsed', async () => {
+      // Arrange
       const tools = [createToolValue()]
-      renderComponent({ supportCollapse: true, value: tools })
-      const collapseButton = screen.getByRole('button', { name: 'Tools' })
+      const { container } = renderComponent({ supportCollapse: true, value: tools })
+      const headerArea = container.querySelector('[class*="cursor-pointer"]')
 
-      fireEvent.click(collapseButton)
+      // Collapse first
+      fireEvent.click(headerArea!)
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
 
       // Act - Click add button
-      const addButton = screen.getByRole('button', {
-        name: 'plugin.detailPanel.toolSelector.title',
-      })
+      const addButton = container.querySelector('button')
       fireEvent.click(addButton!)
 
       // Assert - Should be expanded
@@ -465,23 +449,18 @@ describe('MultipleToolSelector', () => {
 
     it('should manage open state for add tool panel', () => {
       // Arrange
-      renderComponent()
+      const { container } = renderComponent()
 
       // Initially closed
       const addSelector = screen.getByTestId('tool-selector-add')
       expect(addSelector).toHaveAttribute('data-controlled-state', 'false')
 
       // Act - Click add button (ActionButton)
-      const actionButton = screen.getByRole('button', {
-        name: 'plugin.detailPanel.toolSelector.title',
-      })
+      const actionButton = container.querySelector('[class*="mx-1"]')
       fireEvent.click(actionButton!)
 
       // Assert - Open state should change to true
-      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute(
-        'data-controlled-state',
-        'true',
-      )
+      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute('data-controlled-state', 'true')
     })
   })
 
@@ -628,6 +607,25 @@ describe('MultipleToolSelector', () => {
       // Assert - Add tool panel should open
       expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
     })
+
+    it('should handle collapse click with supportCollapse', () => {
+      // Arrange
+      const tools = [createToolValue()]
+      const { container } = renderComponent({ supportCollapse: true, value: tools })
+      const labelArea = container.querySelector('[class*="cursor-pointer"]')
+
+      // Act
+      fireEvent.click(labelArea!)
+
+      // Assert - Tools should be hidden
+      expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
+
+      // Click again to expand
+      fireEvent.click(labelArea!)
+
+      // Assert - Tools should be visible again
+      expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
+    })
   })
 
   // ==================== Edge Cases Tests ====================
@@ -663,13 +661,23 @@ describe('MultipleToolSelector', () => {
 
     it('should handle tools with missing enabled property', () => {
       // Arrange
-      const tools = [{ ...createToolValue(), enabled: undefined } as ToolValue]
+      const tools = [
+        { ...createToolValue(), enabled: undefined } as ToolValue,
+      ]
 
       // Act
       renderComponent({ value: tools })
 
       // Assert - Should count as not enabled (falsy)
       expect(screen.getByText('0/1')).toBeInTheDocument()
+    })
+
+    it('should handle empty label', () => {
+      // Arrange & Act
+      renderComponent({ label: '' })
+
+      // Assert - Should not crash
+      expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
     })
 
     it('should handle nodeOutputVars as empty array', () => {
@@ -731,8 +739,7 @@ describe('MultipleToolSelector', () => {
     it('should handle multiple tools correctly', () => {
       // Arrange
       const tools = Array.from({ length: 5 }, (_, i) =>
-        createToolValue({ tool_name: `tool-${i}`, tool_label: `Tool ${i}` }),
-      )
+        createToolValue({ tool_name: `tool-${i}`, tool_label: `Tool ${i}` }))
 
       // Act
       renderComponent({ value: tools })
@@ -821,7 +828,9 @@ describe('MultipleToolSelector', () => {
     it('should deduplicate multiple tools in batch add', () => {
       // Arrange
       const onChange = vi.fn()
-      const existingTools = [createToolValue({ provider_name: 'batch-p', tool_name: 'batch-t1' })]
+      const existingTools = [
+        createToolValue({ provider_name: 'batch-p', tool_name: 'batch-t1' }),
+      ]
       renderComponent({ value: existingTools, onChange })
 
       // Act - Add multiple tools (batch-t1 is duplicate)
@@ -870,7 +879,9 @@ describe('MultipleToolSelector', () => {
       fireEvent.click(screen.getByTestId('delete-btn-1'))
 
       // Assert
-      expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ tool_name: 'tool-0' })])
+      expect(onChange).toHaveBeenCalledWith([
+        expect.objectContaining({ tool_name: 'tool-0' }),
+      ])
     })
 
     it('should result in empty array when deleting last remaining tool', () => {
@@ -891,7 +902,9 @@ describe('MultipleToolSelector', () => {
   describe('Configure Functionality', () => {
     it('should update tool at specific index when configured', () => {
       // Arrange
-      const tools = [createToolValue({ tool_name: 'tool-1', enabled: true })]
+      const tools = [
+        createToolValue({ tool_name: 'tool-1', enabled: true }),
+      ]
       const onChange = vi.fn()
       renderComponent({ value: tools, onChange })
 
@@ -963,20 +976,13 @@ describe('MultipleToolSelector', () => {
 
   // ==================== Accessibility Tests ====================
   describe('Accessibility', () => {
-    it('should open the add-tool panel from the keyboard', async () => {
-      const user = userEvent.setup()
-      renderComponent()
+    it('should have clickable add button', () => {
+      // Arrange
+      const { container } = renderComponent()
 
-      const addButton = screen.getByRole('button', {
-        name: 'plugin.detailPanel.toolSelector.title',
-      })
-      addButton.focus()
-      await user.keyboard('{Enter}')
-
-      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute(
-        'data-controlled-state',
-        'true',
-      )
+      // Assert
+      const addButton = container.querySelector('button')
+      expect(addButton).toBeInTheDocument()
     })
 
     it('should show divider when tools are selected', () => {
@@ -989,6 +995,29 @@ describe('MultipleToolSelector', () => {
       // Assert
       const divider = container.querySelector('[class*="h-3"]')
       expect(divider).toBeInTheDocument()
+    })
+  })
+
+  // ==================== Tooltip Tests ====================
+  describe('Tooltip Rendering', () => {
+    it('should render question icon when tooltip is provided', () => {
+      // Arrange & Act
+      const { container } = renderComponent({ tooltip: 'Help text' })
+
+      // Assert
+      const questionIcon = container.querySelector('svg')
+      expect(questionIcon).toBeInTheDocument()
+    })
+
+    it('should not render question icon when tooltip is not provided', () => {
+      // Arrange & Act
+      const { container } = renderComponent({ tooltip: undefined })
+
+      // Assert - Should only have add icon, not question icon in label area
+      const labelDiv = container.querySelector('.system-sm-semibold-uppercase')
+      const icons = labelDiv?.querySelectorAll('svg') || []
+      // Question icon should not be in the label area
+      expect(icons.length).toBeLessThanOrEqual(1)
     })
   })
 })

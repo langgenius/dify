@@ -4,8 +4,6 @@ import type { InputValueTypes, Task } from '../../../share/text-generation/types
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -22,23 +20,24 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { Resolution, TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import RunOnce from '../../../share/text-generation/run-once'
 
-type Props = Readonly<{
+type Props = {
   appId: string
   className?: string
   isWorkflow?: boolean
   appData: AppData | null
-}>
+}
 
-const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
+const TextGeneration: FC<Props> = ({
+  appId,
+  className,
+  isWorkflow,
+  appData,
+}) => {
   const { t } = useTranslation()
-  const [descExpanded, setDescExpanded] = useState(false)
-  const [showDescToggle, setShowDescToggle] = useState(false)
-  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
-    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
-  }, [])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -49,16 +48,14 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     inputsRef.current = newInputs
   }, [])
 
-  const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
+  const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const { data: tryAppParams } = useGetTryAppParams(appId)
 
-  const updateAppParams = useWebAppStore((s) => s.updateAppParams)
-  const appParams = useWebAppStore((s) => s.appParams)
+  const updateAppParams = useWebAppStore(s => s.updateAppParams)
+  const appParams = useWebAppStore(s => s.appParams)
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [customConfig, setCustomConfig] = useState<Record<string, CustomConfigValueType> | null>(
-    null,
-  )
+  const [customConfig, setCustomConfig] = useState<Record<string, CustomConfigValueType> | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [controlSend, setControlSend] = useState(0)
@@ -69,8 +66,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
     transfer_methods: [TransferMethod.local_file],
   })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
-  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] =
-    useBoolean(false)
+  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
   const showResultPanel = () => {
     // fix: useClickAway hideResSidebar will close sidebar
     setTimeout(() => {
@@ -86,18 +82,21 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const [resultExisted, setResultExisted] = useState(false)
 
   useEffect(() => {
-    if (!appData) return
+    if (!appData)
+      return
     updateAppInfo(appData)
   }, [appData, updateAppInfo])
 
   useEffect(() => {
-    if (!tryAppParams) return
+    if (!tryAppParams)
+      return
     updateAppParams(tryAppParams)
   }, [tryAppParams, updateAppParams])
 
   useEffect(() => {
-    ;(async () => {
-      if (!appData || !appParams) return
+    (async () => {
+      if (!appData || !appParams)
+        return
       const { site: siteInfo, custom_config } = appData
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
@@ -106,12 +105,11 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods:
-          file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
+        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
-        // oxlint-disable-next-line typescript/no-explicit-any
+        // eslint-disable-next-line ts/no-explicit-any
       } as any)
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
@@ -127,7 +125,9 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const handleCompleted = useCallback(() => {
     setIsCompleted(true)
   }, [])
-  const [isHideTryNotice, { setTrue: hideTryNotice }] = useBoolean(false)
+  const [isHideTryNotice, {
+    setTrue: hideTryNotice,
+  }] = useBoolean(false)
 
   const renderRes = (task?: Task) => (
     <Res
@@ -156,14 +156,18 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   )
 
   const renderResWrap = (
-    <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
-      <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
+    <div
+      className={cn(
+        'relative flex h-full flex-col',
+        'rounded-r-2xl bg-chatbot-bg',
+      )}
+    >
+      <div className={cn(
+        'flex h-0 grow flex-col overflow-y-auto p-6',
+      )}
+      >
         {isCompleted && !isHideTryNotice && (
-          <Alert
-            className="mb-3 shrink-0"
-            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
-            onHide={hideTryNotice}
-          />
+          <Alert className="mb-3 shrink-0" message={t('tryApp.tryInfo', { ns: 'explore' })} onHide={hideTryNotice} />
         )}
         {renderRes()}
       </div>
@@ -179,25 +183,23 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   }
 
   return (
-    <div
-      className={cn(
-        'rounded-2xl border border-components-panel-border bg-background-section-burn',
-        isPC && 'flex',
-        !isPC && 'flex-col',
-        'h-full rounded-2xl shadow-md',
-        className,
-      )}
+    <div className={cn(
+      'rounded-2xl border border-components-panel-border bg-background-section-burn',
+      isPC && 'flex',
+      !isPC && 'flex-col',
+      'h-full rounded-2xl shadow-md',
+      className,
+    )}
     >
       {/* Left */}
-      <div
-        className={cn(
-          'relative flex h-full shrink-0 flex-col',
-          isPC && 'w-[600px] max-w-[50%]',
-          'rounded-l-2xl bg-components-panel-bg',
-        )}
+      <div className={cn(
+        'relative flex h-full shrink-0 flex-col',
+        isPC && 'w-[600px] max-w-[50%]',
+        'rounded-l-2xl bg-components-panel-bg',
+      )}
       >
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? ' p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}
@@ -206,57 +208,18 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className="grow truncate system-md-semibold text-text-secondary">
-              {siteInfo.title}
-            </div>
+            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
           </div>
           {siteInfo.description && (
-            <div>
-              <div
-                ref={handleDescRef}
-                className={cn(
-                  'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
-                  !descExpanded && 'line-clamp-3',
-                  descExpanded && 'max-h-32 overflow-y-auto',
-                )}
-              >
-                {siteInfo.description}
-                {!descExpanded && showDescToggle && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-                )}
-              </div>
-              {showDescToggle && (
-                <button
-                  type="button"
-                  className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                  onClick={() => setDescExpanded((v) => !v)}
-                >
-                  {descExpanded ? (
-                    <>
-                      <RiArrowUpSLine className="size-3" />
-                      {t(($) => $['chat.collapse'], { ns: 'share' })}
-                    </>
-                  ) : (
-                    <>
-                      <RiArrowDownSLine className="size-3" />
-                      {t(($) => $['chat.expand'], { ns: 'share' })}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
+            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
           )}
         </div>
         {/* form */}
-        <div
-          className={cn(
-            'h-0 grow overflow-y-auto',
-            isPC ? 'px-8' : 'px-4',
-            !isPC &&
-              resultExisted &&
-              customConfig?.remove_webapp_brand &&
-              'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-          )}
+        <div className={cn(
+          'h-0 grow overflow-y-auto',
+          isPC ? 'px-8' : 'px-4',
+          !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+        )}
         >
           <RunOnce
             siteInfo={siteInfo}
@@ -278,14 +241,16 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
-                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
+                : 'absolute left-0 top-0 z-10 flex w-full items-center justify-center px-2 pb-[57px] pt-[3px]',
             )}
             onClick={() => {
-              if (isShowResultPanel) hideResultPanel()
-              else showResultPanel()
+              if (isShowResultPanel)
+                hideResultPanel()
+              else
+                showResultPanel()
             }}
           >
-            <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
+            <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
           </div>
         )}
         {renderResWrap}

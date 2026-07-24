@@ -6,24 +6,22 @@ with support for different subscription tiers, rate limiting, and execution trac
 """
 
 import json
-import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser
-from models.trigger import WorkflowTriggerLog, WorkflowTriggerLogDict
+from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.app import QuotaExceededError, WorkflowNotFoundError
-from services.quota_service import QuotaService, unlimited
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
 from services.workflow_service import WorkflowService
@@ -32,8 +30,6 @@ from tasks.async_workflow_tasks import (
     execute_workflow_sandbox,
     execute_workflow_team,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class AsyncWorkflowService:
@@ -54,7 +50,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def trigger_workflow_async(
-        cls, user: Account | EndUser, trigger_data: TriggerData, *, session: Session
+        cls, session: Session, user: Union[Account, EndUser], trigger_data: TriggerData
     ) -> AsyncTriggerResponse:
         """
         Universal entry point for async workflow execution - THIS METHOD WILL NOT BLOCK
@@ -74,7 +70,7 @@ class AsyncWorkflowService:
 
         Raises:
             WorkflowNotFoundError: If app or workflow not found
-            QuotaExceededError: If workflow execution quota is exhausted
+            InvokeDailyRateLimitError: If daily rate limit exceeded
 
         Behavior:
             - Non-blocking: Returns immediately after queuing
@@ -92,10 +88,7 @@ class AsyncWorkflowService:
             raise WorkflowNotFoundError(f"App not found: {trigger_data.app_id}")
 
         # 2. Get workflow
-        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id, session=session)
-
-        # commit read only session before starting the billig rpc call
-        session.commit()
+        workflow = cls._get_workflow(workflow_service, app_model, trigger_data.workflow_id)
 
         # 3. Get dispatcher based on tenant subscription
         dispatcher = dispatcher_manager.get_dispatcher(trigger_data.tenant_id)
@@ -138,25 +131,19 @@ class AsyncWorkflowService:
         trigger_log = trigger_log_repo.create(trigger_log)
         session.commit()
 
-        # 7. Reserve quota (commit after successful dispatch)
-        quota_charge = unlimited()
+        # 7. Check and consume quota
         try:
-            quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, trigger_data.tenant_id)
+            QuotaType.WORKFLOW.consume(trigger_data.tenant_id)
         except QuotaExceededError as e:
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
             trigger_log.error = f"Quota limit reached: {e}"
             trigger_log_repo.update(trigger_log)
             session.commit()
-            logger.info(
-                "Workflow quota exceeded for tenant %s, app %s, workflow %s, trigger log %s",
-                trigger_data.tenant_id,
-                trigger_data.app_id,
-                workflow.id,
-                trigger_log.id,
-            )
 
-            raise
+            raise WorkflowQuotaLimitError(
+                f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
+            ) from e
 
         # 8. Create task data
         queue_name = dispatcher.get_queue_name()
@@ -166,18 +153,13 @@ class AsyncWorkflowService:
         # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
-        try:
-            task: AsyncResult[Any] | None = None
-            if queue_name == QueuePriority.PROFESSIONAL:
-                task = execute_workflow_professional.delay(task_data_dict)
-            elif queue_name == QueuePriority.TEAM:
-                task = execute_workflow_team.delay(task_data_dict)
-            else:  # SANDBOX
-                task = execute_workflow_sandbox.delay(task_data_dict)
-            quota_charge.commit()
-        except Exception:
-            quota_charge.refund()
-            raise
+        task: AsyncResult[Any] | None = None
+        if queue_name == QueuePriority.PROFESSIONAL:
+            task = execute_workflow_professional.delay(task_data_dict)
+        elif queue_name == QueuePriority.TEAM:
+            task = execute_workflow_team.delay(task_data_dict)
+        else:  # SANDBOX
+            task = execute_workflow_sandbox.delay(task_data_dict)
 
         # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
@@ -195,7 +177,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def reinvoke_trigger(
-        cls, user: Account | EndUser, workflow_trigger_log_id: str, *, session: Session
+        cls, session: Session, user: Union[Account, EndUser], workflow_trigger_log_id: str
     ) -> AsyncTriggerResponse:
         """
         Re-invoke a previously failed or rate-limited trigger - THIS METHOD WILL NOT BLOCK
@@ -214,7 +196,6 @@ class AsyncWorkflowService:
 
         Raises:
             ValueError: If trigger log not found
-            QuotaExceededError: If workflow execution quota is exhausted
 
         Behavior:
             - Non-blocking: Returns immediately after queuing retry
@@ -240,12 +221,10 @@ class AsyncWorkflowService:
         session.commit()
 
         # Re-trigger workflow (this will create a new trigger log)
-        return cls.trigger_workflow_async(user, trigger_data, session=session)
+        return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
-    def get_trigger_log(
-        cls, workflow_trigger_log_id: str, tenant_id: str | None = None
-    ) -> WorkflowTriggerLogDict | None:
+    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
         """
         Get trigger log by ID
 
@@ -256,7 +235,7 @@ class AsyncWorkflowService:
         Returns:
             Trigger log as dictionary or None if not found
         """
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine) as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             trigger_log = trigger_log_repo.get_by_id(workflow_trigger_log_id, tenant_id)
 
@@ -268,7 +247,7 @@ class AsyncWorkflowService:
     @classmethod
     def get_recent_logs(
         cls, tenant_id: str, app_id: str, hours: int = 24, limit: int = 100, offset: int = 0
-    ) -> list[WorkflowTriggerLogDict]:
+    ) -> list[dict[str, Any]]:
         """
         Get recent trigger logs
 
@@ -282,7 +261,7 @@ class AsyncWorkflowService:
         Returns:
             List of trigger logs as dictionaries
         """
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine) as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_recent_logs(
                 tenant_id=tenant_id, app_id=app_id, hours=hours, limit=limit, offset=offset
@@ -293,7 +272,7 @@ class AsyncWorkflowService:
     @classmethod
     def get_failed_logs_for_retry(
         cls, tenant_id: str, max_retry_count: int = 3, limit: int = 100
-    ) -> list[WorkflowTriggerLogDict]:
+    ) -> list[dict[str, Any]]:
         """
         Get failed logs eligible for retry
 
@@ -305,7 +284,7 @@ class AsyncWorkflowService:
         Returns:
             List of failed trigger logs as dictionaries
         """
-        with sessionmaker(db.engine).begin() as session:
+        with Session(db.engine) as session:
             trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
             logs = trigger_log_repo.get_failed_for_retry(
                 tenant_id=tenant_id, max_retry_count=max_retry_count, limit=limit
@@ -314,20 +293,13 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @staticmethod
-    def _get_workflow(
-        workflow_service: WorkflowService,
-        app_model: App,
-        workflow_id: str | None = None,
-        *,
-        session: Session,
-    ) -> Workflow:
+    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: str | None = None) -> Workflow:
         """
         Get workflow for the app
 
         Args:
             app_model: App model instance
             workflow_id: Optional specific workflow ID
-            session: SQLAlchemy session used for the workflow lookup.
 
         Returns:
             Workflow instance
@@ -337,12 +309,12 @@ class AsyncWorkflowService:
         """
         if workflow_id:
             # Get specific published workflow
-            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id, session=session)
+            workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id)
             if not workflow:
                 raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
         else:
             # Get default published workflow
-            workflow = workflow_service.get_published_workflow(app_model, session=session)
+            workflow = workflow_service.get_published_workflow(app_model)
             if not workflow:
                 raise WorkflowNotFoundError(f"No published workflow found for app: {app_model.id}")
 

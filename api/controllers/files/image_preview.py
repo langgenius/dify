@@ -1,5 +1,4 @@
 from urllib.parse import quote
-from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -9,11 +8,12 @@ from werkzeug.exceptions import NotFound
 import services
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class FileSignatureQuery(BaseModel):
@@ -26,7 +26,12 @@ class FilePreviewQuery(FileSignatureQuery):
     as_attachment: bool = Field(default=False, description="Whether to download as attachment")
 
 
-register_schema_models(files_ns, FileSignatureQuery, FilePreviewQuery)
+files_ns.schema_model(
+    FileSignatureQuery.__name__, FileSignatureQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+files_ns.schema_model(
+    FilePreviewQuery.__name__, FilePreviewQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
@@ -50,17 +55,17 @@ class ImagePreviewApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, file_id: UUID):
-        file_id_str = str(file_id)
+    def get(self, file_id):
+        file_id = str(file_id)
 
-        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))
+        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         timestamp = args.timestamp
         nonce = args.nonce
         sign = args.sign
 
         try:
             generator, mimetype = FileService(db.engine).get_image_preview(
-                file_id=file_id_str,
+                file_id=file_id,
                 timestamp=timestamp,
                 nonce=nonce,
                 sign=sign,
@@ -92,14 +97,14 @@ class FilePreviewApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, file_id: UUID):
-        file_id_str = str(file_id)
+    def get(self, file_id):
+        file_id = str(file_id)
 
-        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
+        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
             generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
-                file_id=file_id_str,
+                file_id=file_id,
                 timestamp=args.timestamp,
                 nonce=args.nonce,
                 sign=args.sign,
@@ -160,10 +165,10 @@ class WorkspaceWebappLogoApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, workspace_id: UUID):
-        workspace_id_str = str(workspace_id)
+    def get(self, workspace_id):
+        workspace_id = str(workspace_id)
 
-        custom_config = TenantService.get_custom_config(workspace_id_str)
+        custom_config = TenantService.get_custom_config(workspace_id)
         webapp_logo_file_id = custom_config.get("replace_webapp_logo") if custom_config is not None else None
 
         if not webapp_logo_file_id:

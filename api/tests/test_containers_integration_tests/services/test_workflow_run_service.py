@@ -7,13 +7,13 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.enums import CreatorUserRole
 from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService, CreateAppParams
+from services.app_service import AppService
 from services.workflow_run_service import WorkflowRunService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -27,7 +27,7 @@ class TestWorkflowRunService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.app_service.ModelManager") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
@@ -74,25 +74,24 @@ class TestWorkflowRunService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = CreateAppParams(
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            mode="chat",
-            icon_type="emoji",
-            icon="🤖",
-            icon_background="#FF6B6B",
-            api_rph=100,
-            api_rpm=10,
-        )
+        app_args = {
+            "name": fake.company(),
+            "description": fake.text(max_nb_chars=100),
+            "mode": "chat",
+            "icon_type": "emoji",
+            "icon": "🤖",
+            "icon_background": "#FF6B6B",
+            "api_rph": 100,
+            "api_rpm": 10,
+        }
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app = app_service.create_app(tenant.id, app_args, account)
 
         return app, account
 
@@ -166,7 +165,7 @@ class TestWorkflowRunService:
             inputs={},
             status="normal",
             mode="chat",
-            from_source=ConversationFromSource.CONSOLE,
+            from_source=CreatorUserRole.ACCOUNT,
             from_account_id=account.id,
         )
         db_session_with_containers.add(conversation)
@@ -187,7 +186,7 @@ class TestWorkflowRunService:
         message.answer_price_unit = 0.001
         message.currency = "USD"
         message.status = "normal"
-        message.from_source = ConversationFromSource.CONSOLE
+        message.from_source = CreatorUserRole.ACCOUNT
         message.from_account_id = account.id
         message.workflow_run_id = workflow_run.id
         message.inputs = {"input": "test input"}
@@ -531,20 +530,19 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
-            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
         tenant = account.current_tenant
 
         # Create app
-        app_args = CreateAppParams(
-            name="Test App",
-            mode="chat",
-            icon_type="emoji",
-            icon="🚀",
-            icon_background="#4ECDC4",
-        )
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app_args = {
+            "name": "Test App",
+            "mode": "chat",
+            "icon_type": "emoji",
+            "icon": "🚀",
+            "icon_background": "#4ECDC4",
+        }
+        app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run without node executions
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
@@ -583,20 +581,19 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
-            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
         tenant = account.current_tenant
 
         # Create app
-        app_args = CreateAppParams(
-            name="Test App",
-            mode="chat",
-            icon_type="emoji",
-            icon="🚀",
-            icon_background="#4ECDC4",
-        )
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app_args = {
+            "name": "Test App",
+            "mode": "chat",
+            "icon_type": "emoji",
+            "icon": "🚀",
+            "icon_background": "#4ECDC4",
+        }
+        app = app_service.create_app(tenant.id, app_args, account)
 
         # Use invalid workflow run ID
         invalid_workflow_run_id = str(uuid.uuid4())
@@ -635,20 +632,19 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
-            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
         tenant = account.current_tenant
 
         # Create app
-        app_args = CreateAppParams(
-            name="Test App",
-            mode="chat",
-            icon_type="emoji",
-            icon="🚀",
-            icon_background="#4ECDC4",
-        )
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app_args = {
+            "name": "Test App",
+            "mode": "chat",
+            "icon_type": "emoji",
+            "icon": "🚀",
+            "icon_background": "#4ECDC4",
+        }
+        app = app_service.create_app(tenant.id, app_args, account)
 
         # Create workflow run
         workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
@@ -688,7 +684,7 @@ class TestWorkflowRunService:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=EndUserType.BROWSER,
+            type="web_app",
             is_anonymous=False,
             session_id=str(uuid.uuid4()),
             external_user_id=str(uuid.uuid4()),

@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand'
-import type { VersionHistory } from '@/types/workflow'
+import type {
+  VersionHistory,
+} from '@/types/workflow'
 
 export type VersionSliceShape = {
   draftUpdatedAt: number
@@ -12,15 +14,13 @@ export type VersionSliceShape = {
   setIsRestoring: (isRestoring: boolean) => void
 }
 
-export const createVersionSlice: StateCreator<VersionSliceShape> = (set) => ({
+export const createVersionSlice: StateCreator<VersionSliceShape> = set => ({
   draftUpdatedAt: 0,
-  setDraftUpdatedAt: (draftUpdatedAt) =>
-    set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
+  setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
   publishedAt: 0,
-  setPublishedAt: (publishedAt) =>
-    set(() => ({ publishedAt: publishedAt ? publishedAt * 1000 : 0 })),
+  setPublishedAt: publishedAt => set(() => ({ publishedAt: publishedAt ? publishedAt * 1000 : 0 })),
   currentVersion: null,
-  setCurrentVersion: (currentVersion) => set(() => ({ currentVersion })),
+  setCurrentVersion: currentVersion => set(() => ({ currentVersion })),
   isRestoring: false,
-  setIsRestoring: (isRestoring) => set(() => ({ isRestoring })),
+  setIsRestoring: isRestoring => set(() => ({ isRestoring })),
 })

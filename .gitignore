@@ -115,12 +115,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
-# cli/ has a src/env/ module (DIFY_* registry) — don't treat it as a venv
-!/cli/src/env/
-!/cli/src/commands/env/
-# cli/scripts/lib/ holds TS build helpers (resolve-buildinfo etc.) — don't treat as Python lib/
-!/cli/scripts/lib/
 .conda/
 
 # Spyder project settings
@@ -209,25 +203,18 @@ sdks/python-client/dify_client.egg-info
 
 .vscode/*
 !.vscode/launch.json.template
-!.vscode/settings.example.json
 !.vscode/README.md
 api/.vscode
 # vscode Code History Extension
 .history
-.eslintcache
 
 .idea/
 
 # pnpm
 /.pnpm-store
-node_modules
-.vite-hooks/_
 
 # plugin migrate
 plugins.jsonl
-
-# generated API OpenAPI specs
-packages/contracts/openapi/
 
 # mise
 mise.toml
@@ -247,21 +234,6 @@ scripts/stress-test/reports/
 .playwright-mcp/
 .serena/
 
-# vitest browser mode attachments (failure screenshots, traces, etc.)
-.vitest-attachments/
-**/__screenshots__/
-
 # settings
 *.local.json
 *.local.md
-*.local.toml
-
-# Code Agent Folder
-.qoder/*
-.context/
-# Vitest local reports
-web/.vitest-reports/
-
-# dify-agent-runtime
-dify-agent-runtime/bin/
-dify-agent-runtime/.integration-state

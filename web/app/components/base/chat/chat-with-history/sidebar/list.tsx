@@ -21,9 +21,9 @@ const List: FC<ListProps> = ({
   return (
     <div className="space-y-0.5">
       {title && (
-        <div className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{title}</div>
+        <div className="system-xs-medium-uppercase px-3 pb-1 pt-2 text-text-tertiary">{title}</div>
       )}
-      {list.map((item) => (
+      {list.map(item => (
         <Item
           key={item.id}
           isPin={isPin}

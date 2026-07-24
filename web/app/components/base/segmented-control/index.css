@@ -1,0 +1,81 @@
+@tailwind components;
+
+@layer components {
+  .segmented-control {
+    @apply flex items-center bg-components-segmented-control-bg-normal gap-x-px
+  }
+
+  .segmented-control-regular,
+  .segmented-control-large {
+    @apply rounded-lg
+  }
+
+  .segmented-control-large.padding,
+  .segmented-control-regular.padding {
+    @apply p-0.5
+  }
+
+  .segmented-control-small {
+    @apply rounded-md
+  }
+
+  .segmented-control-small.padding {
+    @apply p-px
+  }
+
+  .no-padding {
+    @apply border-[0.5px] border-divider-subtle
+  }
+
+  .segmented-control-item {
+    @apply flex items-center justify-center relative border-[0.5px] border-transparent
+  }
+
+  .segmented-control-item-regular {
+    @apply px-2 h-7 gap-x-0.5 rounded-lg
+  }
+
+  .segmented-control-item-small {
+    @apply p-px h-[22px] rounded-md
+  }
+
+  .segmented-control-item-large {
+    @apply px-2.5 h-8 gap-x-0.5 rounded-lg
+  }
+
+  .segmented-control-item-disabled {
+    @apply cursor-not-allowed text-text-disabled
+  }
+
+  .default {
+    @apply hover:bg-state-base-hover text-text-tertiary hover:text-text-secondary
+  }
+
+  .active {
+    @apply border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3 text-text-secondary
+  }
+
+  .disabled {
+    @apply cursor-not-allowed text-text-disabled hover:text-text-disabled bg-transparent hover:bg-transparent
+  }
+
+  .active.accent {
+    @apply text-text-accent
+  }
+
+  .active.accent-light {
+    @apply text-text-accent-light-mode-only
+  }
+
+  .item-text-regular {
+    @apply p-0.5
+  }
+
+  .item-text-small {
+    @apply p-0.5 pr-1
+  }
+
+  .item-text-large {
+    @apply px-0.5
+  }
+}

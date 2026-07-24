@@ -26,8 +26,7 @@ export type QAChunks = {
 
 export type ChunkInfo = GeneralChunks | ParentChildChunks | QAChunks
 
-export const QAItemType = {
-  Question: 'question',
-  Answer: 'answer',
-} as const
-export type QAItemType = (typeof QAItemType)[keyof typeof QAItemType]
+export enum QAItemType {
+  Question = 'question',
+  Answer = 'answer',
+}

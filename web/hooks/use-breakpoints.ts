@@ -1,19 +1,19 @@
 'use client'
 import * as React from 'react'
 
-export const MediaType = {
-  mobile: 'mobile',
-  tablet: 'tablet',
-  pc: 'pc',
-} as const
+export enum MediaType {
+  mobile = 'mobile',
+  tablet = 'tablet',
+  pc = 'pc',
+}
 
-type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
-
-const useBreakpoints = (): MediaTypeValue => {
+const useBreakpoints = () => {
   const [width, setWidth] = React.useState(globalThis.innerWidth)
   const media = (() => {
-    if (width <= 640) return MediaType.mobile
-    if (width <= 768) return MediaType.tablet
+    if (width <= 640)
+      return MediaType.mobile
+    if (width <= 768)
+      return MediaType.tablet
     return MediaType.pc
   })()
 

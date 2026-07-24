@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -25,7 +23,7 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    EDITION: Literal["SELF_HOSTED", "CLOUD"] = Field(
+    EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",
     )

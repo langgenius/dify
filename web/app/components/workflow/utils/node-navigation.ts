@@ -6,7 +6,7 @@
 /**
  * Interface for node selection event detail
  */
-type NodeSelectionDetail = {
+export type NodeSelectionDetail = {
   nodeId: string
   focus?: boolean
 }
@@ -44,7 +44,9 @@ export function scrollToWorkflowNode(nodeId: string): void {
  * @param handleNodeSelect - Function to handle node selection
  * @returns Cleanup function
  */
-export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) => void): () => void {
+export function setupNodeSelectionListener(
+  handleNodeSelect: (nodeId: string) => void,
+): () => void {
   // Event handler for node selection
   const handleNodeSelection = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId, focus } = event.detail
@@ -63,11 +65,17 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
   }
 
   // Add event listener
-  document.addEventListener('workflow:select-node', handleNodeSelection as EventListener)
+  document.addEventListener(
+    'workflow:select-node',
+    handleNodeSelection as EventListener,
+  )
 
   // Return cleanup function
   return () => {
-    document.removeEventListener('workflow:select-node', handleNodeSelection as EventListener)
+    document.removeEventListener(
+      'workflow:select-node',
+      handleNodeSelection as EventListener,
+    )
   }
 }
 
@@ -77,13 +85,16 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
  * @param reactflow - The ReactFlow instance
  * @returns Cleanup function
  */
-export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => void {
+export function setupScrollToNodeListener(
+  nodes: any[],
+  reactflow: any,
+): () => void {
   // Event handler for scrolling to node
   const handleScrollToNode = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId } = event.detail
     if (nodeId) {
       // Find the target node
-      const node = nodes.find((n) => n.id === nodeId)
+      const node = nodes.find(n => n.id === nodeId)
       if (node) {
         // Use ReactFlow's fitView API to scroll to the node
         const nodePosition = { x: node.position.x, y: node.position.y }
@@ -99,10 +110,16 @@ export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => v
   }
 
   // Add event listener
-  document.addEventListener('workflow:scroll-to-node', handleScrollToNode as EventListener)
+  document.addEventListener(
+    'workflow:scroll-to-node',
+    handleScrollToNode as EventListener,
+  )
 
   // Return cleanup function
   return () => {
-    document.removeEventListener('workflow:scroll-to-node', handleScrollToNode as EventListener)
+    document.removeEventListener(
+      'workflow:scroll-to-node',
+      handleScrollToNode as EventListener,
+    )
   }
 }

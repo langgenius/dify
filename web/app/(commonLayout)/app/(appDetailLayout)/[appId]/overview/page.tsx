@@ -1,5 +1,7 @@
 import * as React from 'react'
-import OverviewView from './view'
+import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
+import ChartView from './chart-view'
+import TracingPanel from './tracing/panel'
 
 export type IDevelopProps = {
   params: Promise<{ appId: string }>
@@ -8,9 +10,19 @@ export type IDevelopProps = {
 const Overview = async (props: IDevelopProps) => {
   const params = await props.params
 
-  const { appId } = params
+  const {
+    appId,
+  } = params
 
-  return <OverviewView appId={appId} />
+  return (
+    <div className="h-full overflow-y-auto bg-chatbot-bg px-4 py-6 sm:px-12">
+      <ApikeyInfoPanel />
+      <ChartView
+        appId={appId}
+        headerRight={<TracingPanel />}
+      />
+    </div>
+  )
 }
 
 export default Overview

@@ -1,71 +1,114 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import type { Emoji } from '@/app/components/tools/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { RiArrowRightUpLine, RiHammerLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useRouter } from '@/next/navigation'
+import Indicator from '@/app/components/header/indicator'
+import WorkflowToolModal from '@/app/components/tools/workflow-tool'
+import { cn } from '@/utils/classnames'
 import Divider from '../../base/divider'
+import { useConfigureButton } from './hooks/use-configure-button'
 
-type Props = Readonly<{
+type Props = {
   disabled: boolean
   published: boolean
-  isLoading: boolean
-  outdated: boolean
-  onConfigure: () => void
+  detailNeedUpdate: boolean
+  workflowAppId: string
+  icon: Emoji
+  name: string
+  description: string
+  inputs?: InputVar[]
+  outputs?: Variable[]
+  handlePublish: (params?: PublishWorkflowParams) => Promise<void>
+  onRefreshData?: () => void
   disabledReason?: string
-}>
+}
 
 const WorkflowToolConfigureButton = ({
   disabled,
   published,
-  isLoading,
-  outdated,
-  onConfigure,
+  detailNeedUpdate,
+  workflowAppId,
+  icon,
+  name,
+  description,
+  inputs,
+  outputs,
+  handlePublish,
+  onRefreshData,
   disabledReason,
 }: Props) => {
   const { t } = useTranslation()
-  const router = useRouter()
+  const {
+    showModal,
+    isLoading,
+    outdated,
+    payload,
+    isCurrentWorkspaceManager,
+    openModal,
+    closeModal,
+    handleCreate,
+    handleUpdate,
+    navigateToTools,
+  } = useConfigureButton({
+    published,
+    detailNeedUpdate,
+    workflowAppId,
+    icon,
+    name,
+    description,
+    inputs,
+    outputs,
+    handlePublish,
+    onRefreshData,
+  })
 
   return (
     <>
       <Divider type="horizontal" className="h-px bg-divider-subtle" />
       {(!published || !isLoading) && (
-        <div
-          className={cn(
-            'group rounded-lg bg-background-section-burn transition-colors',
-            disabled ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
-            !disabled && !published && 'hover:bg-state-accent-hover',
-          )}
+        <div className={cn(
+          'group rounded-lg bg-background-section-burn transition-colors',
+          disabled || !isCurrentWorkspaceManager ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
+          !disabled && !published && isCurrentWorkspaceManager && 'hover:bg-state-accent-hover',
+        )}
         >
-          <div
-            className="flex items-center justify-start gap-2 p-2 pl-2.5"
-            onClick={() => {
-              if (!disabled && !published) onConfigure()
-            }}
-          >
-            <span
-              className={cn(
-                'relative i-ri-hammer-line size-4 text-text-secondary',
-                !disabled && !published && 'group-hover:text-text-accent',
+          {isCurrentWorkspaceManager
+            ? (
+                <div
+                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
+                  onClick={() => !disabled && !published && openModal()}
+                >
+                  <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+                  <div
+                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    className={cn('shrink grow basis-0 truncate text-text-secondary system-sm-medium', !disabled && !published && 'group-hover:text-text-accent')}
+                  >
+                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                  </div>
+                  {!published && (
+                    <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary system-2xs-medium-uppercase">
+                      {t('common.configureRequired', { ns: 'workflow' })}
+                    </span>
+                  )}
+                </div>
+              )
+            : (
+                <div
+                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
+                >
+                  <RiHammerLine className="h-4 w-4 text-text-tertiary" />
+                  <div
+                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    className="shrink grow basis-0 truncate text-text-tertiary system-sm-medium"
+                  >
+                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                  </div>
+                </div>
               )}
-            />
-            <div
-              title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' }) || ''}
-              className={cn(
-                'shrink grow basis-0 truncate system-sm-medium text-text-secondary',
-                !disabled && !published && 'group-hover:text-text-accent',
-              )}
-            >
-              {t(($) => $['common.workflowAsTool'], { ns: 'workflow' })}
-            </div>
-            {!published && (
-              <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['common.configureRequired'], { ns: 'workflow' })}
-              </span>
-            )}
-          </div>
           {disabledReason && (
             <div className="mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary">
               {disabledReason}
@@ -77,35 +120,40 @@ const WorkflowToolConfigureButton = ({
                 <Button
                   size="small"
                   className="w-[140px]"
-                  onClick={onConfigure}
-                  disabled={disabled}
+                  onClick={openModal}
+                  disabled={!isCurrentWorkspaceManager || disabled}
                 >
-                  {t(($) => $['common.configure'], { ns: 'workflow' })}
-                  {outdated && <StatusDot className="ml-1" status="warning" />}
+                  {t('common.configure', { ns: 'workflow' })}
+                  {outdated && <Indicator className="ml-1" color="yellow" />}
                 </Button>
                 <Button
                   size="small"
                   className="w-[140px]"
-                  onClick={() => router.push(buildIntegrationPath('workflow-tool'))}
+                  onClick={navigateToTools}
                   disabled={disabled}
                 >
-                  {t(($) => $['common.manageInTools'], { ns: 'workflow' })}
-                  <span className="ml-1 i-ri-arrow-right-up-line size-4" />
+                  {t('common.manageInTools', { ns: 'workflow' })}
+                  <RiArrowRightUpLine className="ml-1 h-4 w-4" />
                 </Button>
               </div>
               {outdated && (
                 <div className="mt-1 text-xs leading-[18px] text-text-warning">
-                  {t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })}
+                  {t('common.workflowAsToolTip', { ns: 'workflow' })}
                 </div>
               )}
             </div>
           )}
         </div>
       )}
-      {published && isLoading && (
-        <div className="pt-2">
-          <Loading type="app" />
-        </div>
+      {published && isLoading && <div className="pt-2"><Loading type="app" /></div>}
+      {showModal && (
+        <WorkflowToolModal
+          isAdd={!published}
+          payload={payload}
+          onHide={closeModal}
+          onCreate={handleCreate}
+          onSave={handleUpdate}
+        />
       )}
     </>
   )

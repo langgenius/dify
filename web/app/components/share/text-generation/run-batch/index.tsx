@@ -1,21 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
+import {
+  RiLoader2Line,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { cn } from '@/utils/classnames'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'
 
-type IRunBatchProps = {
+export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void
   isAllFinished: boolean
 }
 
-const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
+const RunBatch: FC<IRunBatchProps> = ({
+  vars,
+  onSend,
+  isAllFinished,
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -39,17 +46,12 @@ const RunBatch: FC<IRunBatchProps> = ({ vars, onSend, isAllFinished }) => {
       <div className="flex justify-end">
         <Button
           variant="primary"
-          className={cn('mt-4 pr-4 pl-3', !isPC && 'grow')}
+          className={cn('mt-4 pl-3 pr-4', !isPC && 'grow')}
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >
-          <Icon
-            className={cn(!isAllFinished && 'animate-spin', 'mr-1 size-4 shrink-0')}
-            aria-hidden="true"
-          />
-          <span className="text-[13px] uppercase">
-            {t(($) => $['generation.run'], { ns: 'share' })}
-          </span>
+          <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 h-4 w-4 shrink-0')} aria-hidden="true" />
+          <span className="text-[13px] uppercase">{t('generation.run', { ns: 'share' })}</span>
         </Button>
       </div>
     </div>

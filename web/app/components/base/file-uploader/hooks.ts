@@ -2,10 +2,13 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { useCallback, useState } from 'react'
+import { useParams } from 'next/navigation'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import {
@@ -15,14 +18,12 @@ import {
   MAX_FILE_UPLOAD_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
-import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
-import { useFileUploadContext } from './upload-context'
 import {
   fileUpload,
   getFileUploadErrorMessage,
@@ -31,15 +32,11 @@ import {
 } from './utils'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
-  const imgSizeLimit =
-    Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
+  const imgSizeLimit = Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
   const docSizeLimit = Number(fileUploadConfig?.file_size_limit) * 1024 * 1024 || FILE_SIZE_LIMIT
-  const audioSizeLimit =
-    Number(fileUploadConfig?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
-  const videoSizeLimit =
-    Number(fileUploadConfig?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
-  const maxFileUploadLimit =
-    Number(fileUploadConfig?.workflow_file_upload_limit) || MAX_FILE_UPLOAD_LIMIT
+  const audioSizeLimit = Number(fileUploadConfig?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
+  const videoSizeLimit = Number(fileUploadConfig?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
+  const maxFileUploadLimit = Number(fileUploadConfig?.workflow_file_upload_limit) || MAX_FILE_UPLOAD_LIMIT
 
   return {
     imgSizeLimit,
@@ -52,374 +49,274 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
 
 export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const fileStore = useFileStore()
   const params = useParams()
-  const pathname = usePathname()
-  const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
-    fileConfig.fileUploadConfig,
-  )
-  const formToken = typeof params.token === 'string' ? params.token : undefined
-  const isHumanInputFormPage = !!formToken && /(?:^|\/)form\/[^/]+$/.test(pathname)
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileConfig.fileUploadConfig)
 
-  const checkSizeLimit = useCallback(
-    (fileType: string, fileSize: number) => {
-      switch (fileType) {
-        case SupportUploadFileTypes.image: {
-          if (fileSize > imgSizeLimit) {
-            toast.error(
-              t(($) => $['fileUploader.uploadFromComputerLimit'], {
-                ns: 'common',
-                type: SupportUploadFileTypes.image,
-                size: formatFileSize(imgSizeLimit),
-              }),
-            )
-            return false
-          }
-          return true
-        }
-        case SupportUploadFileTypes.custom:
-        case SupportUploadFileTypes.document: {
-          if (fileSize > docSizeLimit) {
-            toast.error(
-              t(($) => $['fileUploader.uploadFromComputerLimit'], {
-                ns: 'common',
-                type: SupportUploadFileTypes.document,
-                size: formatFileSize(docSizeLimit),
-              }),
-            )
-            return false
-          }
-          return true
-        }
-        case SupportUploadFileTypes.audio: {
-          if (fileSize > audioSizeLimit) {
-            toast.error(
-              t(($) => $['fileUploader.uploadFromComputerLimit'], {
-                ns: 'common',
-                type: SupportUploadFileTypes.audio,
-                size: formatFileSize(audioSizeLimit),
-              }),
-            )
-            return false
-          }
-          return true
-        }
-        case SupportUploadFileTypes.video: {
-          if (fileSize > videoSizeLimit) {
-            toast.error(
-              t(($) => $['fileUploader.uploadFromComputerLimit'], {
-                ns: 'common',
-                type: SupportUploadFileTypes.video,
-                size: formatFileSize(videoSizeLimit),
-              }),
-            )
-            return false
-          }
-          return true
-        }
-        default: {
-          return true
-        }
-      }
-    },
-    [audioSizeLimit, docSizeLimit, imgSizeLimit, t, videoSizeLimit],
-  )
-
-  const handleAddFile = useCallback(
-    (newFile: FileEntity) => {
-      const { files, setFiles } = fileStore.getState()
-
-      const newFiles = produce(files, (draft) => {
-        draft.push(newFile)
-      })
-      setFiles(newFiles)
-    },
-    [fileStore],
-  )
-
-  const handleUpdateFile = useCallback(
-    (newFile: FileEntity) => {
-      const { files, setFiles } = fileStore.getState()
-
-      const newFiles = produce(files, (draft) => {
-        const index = draft.findIndex((file) => file.id === newFile.id)
-
-        if (index > -1) draft[index] = newFile
-      })
-      setFiles(newFiles)
-    },
-    [fileStore],
-  )
-
-  const handleRemoveFile = useCallback(
-    (fileId: string) => {
-      const { files, setFiles } = fileStore.getState()
-
-      const newFiles = files.filter((file) => file.id !== fileId)
-      setFiles(newFiles)
-    },
-    [fileStore],
-  )
-
-  const handleReUploadFile = useCallback(
-    (fileId: string) => {
-      const { files, setFiles } = fileStore.getState()
-      const index = files.findIndex((file) => file.id === fileId)
-
-      if (index > -1) {
-        const uploadingFile = files[index]!
-        const newFiles = produce(files, (draft) => {
-          draft[index]!.progress = 0
-        })
-        setFiles(newFiles)
-        const uploadParams: Parameters<typeof fileUpload>[0] = {
-          file: uploadingFile!.originalFile!,
-          onProgressCallback: (progress) => {
-            handleUpdateFile({ ...uploadingFile, progress })
-          },
-          onSuccessCallback: (res) => {
-            handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
-          },
-          onErrorCallback: (error?: unknown) => {
-            const errorMessage = getFileUploadErrorMessage(
-              error,
-              t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-              t,
-            )
-            toast.error(errorMessage)
-            handleUpdateFile({ ...uploadingFile, progress: -1 })
-          },
-        }
-
-        if (isHumanInputFormPage) {
-          uploadHumanInputFormLocalFile({
-            formToken: formToken!,
-            ...uploadParams,
+  const checkSizeLimit = useCallback((fileType: string, fileSize: number) => {
+    switch (fileType) {
+      case SupportUploadFileTypes.image: {
+        if (fileSize > imgSizeLimit) {
+          notify({
+            type: 'error',
+            message: t('fileUploader.uploadFromComputerLimit', {
+              ns: 'common',
+              type: SupportUploadFileTypes.image,
+              size: formatFileSize(imgSizeLimit),
+            }),
           })
-        } else {
-          fileUpload(uploadParams, !!params.token, localUploadUrl)
+          return false
         }
+        return true
       }
-    },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
-  )
-
-  const startProgressTimer = useCallback(
-    (fileId: string) => {
-      const timer = setInterval(() => {
-        const files = fileStore.getState().files
-        const file = files.find((file) => file.id === fileId)
-
-        if (file && file.progress < 80 && file.progress >= 0)
-          handleUpdateFile({ ...file, progress: file.progress + 20 })
-        else clearTimeout(timer)
-      }, 200)
-    },
-    [fileStore, handleUpdateFile],
-  )
-  const handleLoadFileFromLink = useCallback(
-    (url: string) => {
-      const allowedFileTypes = fileConfig.allowed_file_types
-
-      const uploadingFile = {
-        id: uuid4(),
-        name: url,
-        type: '',
-        size: 0,
-        progress: 0,
-        transferMethod: TransferMethod.remote_url,
-        supportFileType: '',
-        url,
-        isRemote: true,
+      case SupportUploadFileTypes.custom:
+      case SupportUploadFileTypes.document: {
+        if (fileSize > docSizeLimit) {
+          notify({
+            type: 'error',
+            message: t('fileUploader.uploadFromComputerLimit', {
+              ns: 'common',
+              type: SupportUploadFileTypes.document,
+              size: formatFileSize(docSizeLimit),
+            }),
+          })
+          return false
+        }
+        return true
       }
-      handleAddFile(uploadingFile)
-      startProgressTimer(uploadingFile.id)
+      case SupportUploadFileTypes.audio: {
+        if (fileSize > audioSizeLimit) {
+          notify({
+            type: 'error',
+            message: t('fileUploader.uploadFromComputerLimit', {
+              ns: 'common',
+              type: SupportUploadFileTypes.audio,
+              size: formatFileSize(audioSizeLimit),
+            }),
+          })
+          return false
+        }
+        return true
+      }
+      case SupportUploadFileTypes.video: {
+        if (fileSize > videoSizeLimit) {
+          notify({
+            type: 'error',
+            message: t('fileUploader.uploadFromComputerLimit', {
+              ns: 'common',
+              type: SupportUploadFileTypes.video,
+              size: formatFileSize(videoSizeLimit),
+            }),
+          })
+          return false
+        }
+        return true
+      }
+      default: {
+        return true
+      }
+    }
+  }, [audioSizeLimit, docSizeLimit, imgSizeLimit, notify, t, videoSizeLimit])
 
-      let remoteUpload
-      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
-      else if (remoteUploadUrl)
-        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
-      else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
+  const handleAddFile = useCallback((newFile: FileEntity) => {
+    const {
+      files,
+      setFiles,
+    } = fileStore.getState()
 
-      remoteUpload
-        .then((res) => {
-          const newFile = {
-            ...uploadingFile,
-            type: res.mime_type,
-            size: res.size,
-            progress: 100,
-            supportFileType: getSupportFileType(
-              res.name,
-              res.mime_type,
-              allowedFileTypes?.includes(SupportUploadFileTypes.custom),
-            ),
-            uploadedId: res.id,
-            url: res.url,
-          }
-          if (
-            !isAllowedFileExtension(
-              res.name,
-              res.mime_type,
-              fileConfig.allowed_file_types || [],
-              fileConfig.allowed_file_extensions || [],
-            )
-          ) {
-            toast.error(
-              `${t(($) => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' })} ${newFile.type}`,
-            )
-            handleRemoveFile(uploadingFile.id)
-          }
-          if (!checkSizeLimit(newFile.supportFileType, newFile.size))
-            handleRemoveFile(uploadingFile.id)
-          else handleUpdateFile(newFile)
-        })
-        .catch(() => {
-          toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
-          handleRemoveFile(uploadingFile.id)
-        })
-    },
-    [
-      checkSizeLimit,
-      handleAddFile,
-      handleUpdateFile,
-      t,
-      handleRemoveFile,
-      fileConfig?.allowed_file_types,
-      fileConfig.allowed_file_extensions,
-      startProgressTimer,
-      isHumanInputFormPage,
-      formToken,
-      params.token,
-      remoteUploadUrl,
-    ],
-  )
+    const newFiles = produce(files, (draft) => {
+      draft.push(newFile)
+    })
+    setFiles(newFiles)
+  }, [fileStore])
+
+  const handleUpdateFile = useCallback((newFile: FileEntity) => {
+    const {
+      files,
+      setFiles,
+    } = fileStore.getState()
+
+    const newFiles = produce(files, (draft) => {
+      const index = draft.findIndex(file => file.id === newFile.id)
+
+      if (index > -1)
+        draft[index] = newFile
+    })
+    setFiles(newFiles)
+  }, [fileStore])
+
+  const handleRemoveFile = useCallback((fileId: string) => {
+    const {
+      files,
+      setFiles,
+    } = fileStore.getState()
+
+    const newFiles = files.filter(file => file.id !== fileId)
+    setFiles(newFiles)
+  }, [fileStore])
+
+  const handleReUploadFile = useCallback((fileId: string) => {
+    const {
+      files,
+      setFiles,
+    } = fileStore.getState()
+    const index = files.findIndex(file => file.id === fileId)
+
+    if (index > -1) {
+      const uploadingFile = files[index]
+      const newFiles = produce(files, (draft) => {
+        draft[index].progress = 0
+      })
+      setFiles(newFiles)
+      fileUpload({
+        file: uploadingFile.originalFile!,
+        onProgressCallback: (progress) => {
+          handleUpdateFile({ ...uploadingFile, progress })
+        },
+        onSuccessCallback: (res) => {
+          handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
+        },
+        onErrorCallback: (error?: any) => {
+          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+          notify({ type: 'error', message: errorMessage })
+          handleUpdateFile({ ...uploadingFile, progress: -1 })
+        },
+      }, !!params.token)
+    }
+  }, [fileStore, notify, t, handleUpdateFile, params])
+
+  const startProgressTimer = useCallback((fileId: string) => {
+    const timer = setInterval(() => {
+      const files = fileStore.getState().files
+      const file = files.find(file => file.id === fileId)
+
+      if (file && file.progress < 80 && file.progress >= 0)
+        handleUpdateFile({ ...file, progress: file.progress + 20 })
+      else
+        clearTimeout(timer)
+    }, 200)
+  }, [fileStore, handleUpdateFile])
+  const handleLoadFileFromLink = useCallback((url: string) => {
+    const allowedFileTypes = fileConfig.allowed_file_types
+
+    const uploadingFile = {
+      id: uuid4(),
+      name: url,
+      type: '',
+      size: 0,
+      progress: 0,
+      transferMethod: TransferMethod.remote_url,
+      supportFileType: '',
+      url,
+      isRemote: true,
+    }
+    handleAddFile(uploadingFile)
+    startProgressTimer(uploadingFile.id)
+
+    uploadRemoteFileInfo(url, !!params.token).then((res) => {
+      const newFile = {
+        ...uploadingFile,
+        type: res.mime_type,
+        size: res.size,
+        progress: 100,
+        supportFileType: getSupportFileType(res.name, res.mime_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+        uploadedId: res.id,
+        url: res.url,
+      }
+      if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+        notify({ type: 'error', message: `${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${newFile.type}` })
+        handleRemoveFile(uploadingFile.id)
+      }
+      if (!checkSizeLimit(newFile.supportFileType, newFile.size))
+        handleRemoveFile(uploadingFile.id)
+      else
+        handleUpdateFile(newFile)
+    }).catch(() => {
+      notify({ type: 'error', message: t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }) })
+      handleRemoveFile(uploadingFile.id)
+    })
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
 
   const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
   const handleLoadFileFromLinkError = useCallback(noop, [])
 
   const handleClearFiles = useCallback(() => {
-    const { setFiles } = fileStore.getState()
+    const {
+      setFiles,
+    } = fileStore.getState()
     setFiles([])
   }, [fileStore])
 
-  const handleLocalFileUpload = useCallback(
-    (file: File) => {
-      // Check file upload enabled
-      if (!noNeedToCheckEnable && !fileConfig.enabled) {
-        toast.error(t(($) => $['fileUploader.uploadDisabled'], { ns: 'common' }))
-        return
-      }
-      if (
-        !isAllowedFileExtension(
-          file.name,
-          file.type,
-          fileConfig.allowed_file_types || [],
-          fileConfig.allowed_file_extensions || [],
-        )
-      ) {
-        toast.error(
-          `${t(($) => $['fileUploader.fileExtensionNotSupport'], { ns: 'common' })} ${file.type}`,
-        )
-        return
-      }
-      const allowedFileTypes = fileConfig.allowed_file_types
-      const fileType = getSupportFileType(
-        file.name,
-        file.type,
-        allowedFileTypes?.includes(SupportUploadFileTypes.custom),
-      )
-      if (!checkSizeLimit(fileType, file.size)) return
+  const handleLocalFileUpload = useCallback((file: File) => {
+    // Check file upload enabled
+    if (!noNeedToCheckEnable && !fileConfig.enabled) {
+      notify({ type: 'error', message: t('fileUploader.uploadDisabled', { ns: 'common' }) })
+      return
+    }
+    if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+      notify({ type: 'error', message: `${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}` })
+      return
+    }
+    const allowedFileTypes = fileConfig.allowed_file_types
+    const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
+    if (!checkSizeLimit(fileType, file.size))
+      return
 
-      const reader = new FileReader()
-      const isImage = file.type.startsWith('image')
+    const reader = new FileReader()
+    const isImage = file.type.startsWith('image')
 
-      reader.addEventListener(
-        'load',
-        () => {
-          const uploadingFile = {
-            id: uuid4(),
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            progress: 0,
-            transferMethod: TransferMethod.local_file,
-            supportFileType: getSupportFileType(
-              file.name,
-              file.type,
-              allowedFileTypes?.includes(SupportUploadFileTypes.custom),
-            ),
-            originalFile: file,
-            base64Url: isImage ? (reader.result as string) : '',
-          }
-          handleAddFile(uploadingFile)
-          const uploadParams: Parameters<typeof fileUpload>[0] = {
-            file: uploadingFile.originalFile,
-            onProgressCallback: (progress) => {
-              handleUpdateFile({ ...uploadingFile, progress })
-            },
-            onSuccessCallback: (res) => {
-              handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
-            },
-            onErrorCallback: (error?: unknown) => {
-              const errorMessage = getFileUploadErrorMessage(
-                error,
-                t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-                t,
-              )
-              toast.error(errorMessage)
-              handleUpdateFile({ ...uploadingFile, progress: -1 })
-            },
-          }
+    reader.addEventListener(
+      'load',
+      () => {
+        const uploadingFile = {
+          id: uuid4(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          progress: 0,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+          originalFile: file,
+          base64Url: isImage ? reader.result as string : '',
+        }
+        handleAddFile(uploadingFile)
+        fileUpload({
+          file: uploadingFile.originalFile,
+          onProgressCallback: (progress) => {
+            handleUpdateFile({ ...uploadingFile, progress })
+          },
+          onSuccessCallback: (res) => {
+            handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
+          },
+          onErrorCallback: (error?: any) => {
+            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+            notify({ type: 'error', message: errorMessage })
+            handleUpdateFile({ ...uploadingFile, progress: -1 })
+          },
+        }, !!params.token)
+      },
+      false,
+    )
+    reader.addEventListener(
+      'error',
+      () => {
+        notify({ type: 'error', message: t('fileUploader.uploadFromComputerReadError', { ns: 'common' }) })
+      },
+      false,
+    )
+    reader.readAsDataURL(file)
+  }, [noNeedToCheckEnable, checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
 
-          if (isHumanInputFormPage) {
-            uploadHumanInputFormLocalFile({
-              formToken: formToken!,
-              ...uploadParams,
-            })
-          } else {
-            fileUpload(uploadParams, !!params.token, localUploadUrl)
-          }
-        },
-        false,
-      )
-      reader.addEventListener(
-        'error',
-        () => {
-          toast.error(t(($) => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
-        },
-        false,
-      )
-      reader.readAsDataURL(file)
-    },
-    [
-      noNeedToCheckEnable,
-      checkSizeLimit,
-      t,
-      handleAddFile,
-      handleUpdateFile,
-      isHumanInputFormPage,
-      formToken,
-      params.token,
-      localUploadUrl,
-      fileConfig?.allowed_file_types,
-      fileConfig?.allowed_file_extensions,
-      fileConfig?.enabled,
-    ],
-  )
-
-  const handleClipboardPasteFile = useCallback(
-    (e: ClipboardEvent<HTMLTextAreaElement>) => {
-      const file = e.clipboardData?.files[0]
-      const text = e.clipboardData?.getData('text/plain')
-      if (file && !text) {
-        e.preventDefault()
-        handleLocalFileUpload(file)
-      }
-    },
-    [handleLocalFileUpload],
-  )
+  const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = e.clipboardData?.files[0]
+    const text = e.clipboardData?.getData('text/plain')
+    if (file && !text) {
+      e.preventDefault()
+      handleLocalFileUpload(file)
+    }
+  }, [handleLocalFileUpload])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {
@@ -439,18 +336,16 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     setIsDragActive(false)
   }, [])
 
-  const handleDropFile = useCallback(
-    (e: React.DragEvent<HTMLElement>) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragActive(false)
+  const handleDropFile = useCallback((e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragActive(false)
 
-      const file = e.dataTransfer.files[0]
+    const file = e.dataTransfer.files[0]
 
-      if (file) handleLocalFileUpload(file)
-    },
-    [handleLocalFileUpload],
-  )
+    if (file)
+      handleLocalFileUpload(file)
+  }, [handleLocalFileUpload])
 
   return {
     handleAddFile,

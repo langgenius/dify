@@ -10,15 +10,16 @@ import StructureOutputItem from '@/app/components/workflow/nodes/_base/component
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
 import Split from '../_base/components/split'
-import useMatchSchemaType, {
-  getMatchedSchemaType,
-} from '../_base/components/variable/use-match-schema-type'
+import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import ToolForm from './components/tool-form'
-import useConfig from './hooks/use-config'
+import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.tool'
 
-const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
+const Panel: FC<NodePanelProps<ToolNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const {
     readOnly,
@@ -37,8 +38,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
   } = useConfig(id, data)
 
   const [collapsed, setCollapsed] = React.useState(false)
-  const pipelineId = useStore((s) => s.pipelineId)
-  const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
+  const pipelineId = useStore(s => s.pipelineId)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
   if (isLoading) {
@@ -56,7 +57,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
           {toolInputVarSchema.length > 0 && (
             <Field
               className="px-4"
-              title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
+              title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
             >
               <ToolForm
                 readOnly={readOnly}
@@ -79,7 +80,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
           {toolSettingSchema.length > 0 && (
             <>
               <OutputVars
-                title={t(($) => $[`${i18nPrefix}.settings`], { ns: 'workflow' })}
+                title={t(`${i18nPrefix}.settings`, { ns: 'workflow' })}
                 collapsed={collapsed}
                 onCollapse={setCollapsed}
               >
@@ -103,19 +104,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
             <VarItem
               name="text"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.text`], { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="files"
               type="array[file]"
-              description={t(($) => $[`${i18nPrefix}.outputVars.files.title`], { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="json"
               type="array[object]"
-              description={t(($) => $[`${i18nPrefix}.outputVars.json`], { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
               isIndent={hasObjectOutput}
             />
             {outputSchema.map((outputItem) => {
@@ -123,19 +124,22 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
               // TODO empty object type always match `qa_structured` schema type
               return (
                 <div key={outputItem.name}>
-                  {outputItem.value?.type === 'object' ? (
-                    <StructureOutputItem
-                      rootClassName="code-sm-semibold text-text-secondary"
-                      payload={wrapStructuredVarItem(outputItem, schemaType)}
-                    />
-                  ) : (
-                    <VarItem
-                      name={outputItem.name}
-                      type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
-                      description={outputItem.description}
-                      isIndent={hasObjectOutput}
-                    />
-                  )}
+                  {outputItem.value?.type === 'object'
+                    ? (
+                        <StructureOutputItem
+                          rootClassName="code-sm-semibold text-text-secondary"
+                          payload={wrapStructuredVarItem(outputItem, schemaType)}
+                        />
+                      )
+                    : (
+                        <VarItem
+                          name={outputItem.name}
+
+                          type={`${outputItem.type.toLocaleLowerCase()}${schemaType ? ` (${schemaType})` : ''}`}
+                          description={outputItem.description}
+                          isIndent={hasObjectOutput}
+                        />
+                      )}
                 </div>
               )
             })}

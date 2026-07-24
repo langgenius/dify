@@ -1,15 +1,21 @@
-import type { Klass, LexicalEditor, LexicalNode, SerializedTextNode } from 'lexical'
+import type { EditorConfig, Klass, LexicalEditor, LexicalNode, SerializedTextNode } from 'lexical'
 import { createEditor } from 'lexical'
-import { $createVariableValueBlockNode, VariableValueBlockNode } from '../node'
+import {
+  $createVariableValueBlockNode,
+  $isVariableValueNodeBlock,
+  VariableValueBlockNode,
+} from '../node'
 
 describe('VariableValueBlockNode', () => {
   let editor: LexicalEditor
+  let config: EditorConfig
 
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
       nodes: [VariableValueBlockNode as unknown as Klass<LexicalNode>],
     })
+    config = editor._config
   })
 
   const runInEditor = (callback: () => void) => {
@@ -25,6 +31,22 @@ describe('VariableValueBlockNode', () => {
       expect(cloned).toBeInstanceOf(VariableValueBlockNode)
       expect(cloned).not.toBe(original)
       expect(cloned.getKey()).toBe('node-key')
+    })
+  })
+
+  it('should add block classes in createDOM and disallow text insertion before', () => {
+    runInEditor(() => {
+      const node = new VariableValueBlockNode('hello')
+      const dom = node.createDOM(config)
+
+      expect(dom).toHaveClass('inline-flex')
+      expect(dom).toHaveClass('items-center')
+      expect(dom).toHaveClass('px-0.5')
+      expect(dom).toHaveClass('h-[22px]')
+      expect(dom).toHaveClass('text-text-accent')
+      expect(dom).toHaveClass('rounded-[5px]')
+      expect(dom).toHaveClass('align-middle')
+      expect(node.canInsertTextBefore()).toBe(false)
     })
   })
 
@@ -55,12 +77,16 @@ describe('VariableValueBlockNode', () => {
     })
   })
 
-  it('should create node with helper', () => {
+  it('should create node with helper and support type guard checks', () => {
     runInEditor(() => {
       const node = $createVariableValueBlockNode('{{org_id}}')
 
       expect(node).toBeInstanceOf(VariableValueBlockNode)
       expect(node.getTextContent()).toBe('{{org_id}}')
+      expect($isVariableValueNodeBlock(node)).toBe(true)
+      expect($isVariableValueNodeBlock(null)).toBe(false)
+      expect($isVariableValueNodeBlock(undefined)).toBe(false)
+      expect($isVariableValueNodeBlock({} as LexicalNode)).toBe(false)
     })
   })
 })

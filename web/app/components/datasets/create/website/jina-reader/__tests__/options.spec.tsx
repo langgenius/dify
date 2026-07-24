@@ -25,6 +25,10 @@ describe('Options (jina-reader)', () => {
     vi.clearAllMocks()
   })
 
+  const getCheckboxes = (container: HTMLElement) => {
+    return container.querySelectorAll('[data-testid^="checkbox-"]')
+  }
+
   describe('Rendering', () => {
     it('should render crawlSubPage and useSitemap checkboxes and limit field', () => {
       const payload = createMockCrawlOptions()
@@ -37,9 +41,10 @@ describe('Options (jina-reader)', () => {
 
     it('should render two checkboxes', () => {
       const payload = createMockCrawlOptions()
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes.length).toBe(2)
     })
 
     it('should render limit field with required indicator', () => {
@@ -49,44 +54,50 @@ describe('Options (jina-reader)', () => {
       const requiredIndicator = screen.getByText('*')
       expect(requiredIndicator).toBeInTheDocument()
     })
+
+    it('should render with custom className', () => {
+      const payload = createMockCrawlOptions()
+      const { container } = render(
+        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
+      )
+
+      const rootElement = container.firstChild as HTMLElement
+      expect(rootElement).toHaveClass('custom-class')
+    })
   })
 
   // Props Display Tests
   describe('Props Display', () => {
     it('should display crawl_sub_pages checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[0].querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[0].querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should display use_sitemap checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ use_sitemap: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /useSitemap/i })).toHaveAttribute(
-        'aria-checked',
-        'true',
-      )
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[1].querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display use_sitemap checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ use_sitemap: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /useSitemap/i })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
+
+      const checkboxes = getCheckboxes(container)
+      expect(checkboxes[1].querySelector('svg')).not.toBeInTheDocument()
     })
 
     it('should display limit value in input', () => {
@@ -100,9 +111,10 @@ describe('Options (jina-reader)', () => {
   describe('User Interactions', () => {
     it('should call onChange with updated crawl_sub_pages when checkbox is clicked', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      fireEvent.click(screen.getByRole('checkbox', { name: /crawlSubPage/i }))
+      const checkboxes = getCheckboxes(container)
+      fireEvent.click(checkboxes[0])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,
@@ -112,9 +124,10 @@ describe('Options (jina-reader)', () => {
 
     it('should call onChange with updated use_sitemap when checkbox is clicked', () => {
       const payload = createMockCrawlOptions({ use_sitemap: false })
-      render(<Options payload={payload} onChange={mockOnChange} />)
+      const { container } = render(<Options payload={payload} onChange={mockOnChange} />)
 
-      fireEvent.click(screen.getByRole('checkbox', { name: /useSitemap/i }))
+      const checkboxes = getCheckboxes(container)
+      fireEvent.click(checkboxes[1])
 
       expect(mockOnChange).toHaveBeenCalledWith({
         ...payload,

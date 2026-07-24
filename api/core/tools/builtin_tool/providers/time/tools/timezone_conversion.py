@@ -1,9 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, override
+from typing import Any
 
-import pytz  # type: ignore[import-untyped]
-from sqlalchemy.orm import Session
+import pytz
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -11,10 +10,8 @@ from core.tools.errors import ToolInvokeError
 
 
 class TimezoneConversionTool(BuiltinTool):
-    @override
     def _invoke(
         self,
-        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

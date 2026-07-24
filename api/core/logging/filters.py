@@ -2,9 +2,10 @@
 
 import contextlib
 import logging
-from typing import override
 
-from core.logging.context import get_identity_context, get_request_id, get_trace_id
+import flask
+
+from core.logging.context import get_request_id, get_trace_id
 
 
 class TraceContextFilter(logging.Filter):
@@ -13,7 +14,6 @@ class TraceContextFilter(logging.Filter):
     Integrates with OpenTelemetry when available, falls back to ContextVar-based trace_id.
     """
 
-    @override
     def filter(self, record: logging.LogRecord) -> bool:
         # Get trace context from OpenTelemetry
         trace_id, span_id = self._get_otel_context()
@@ -48,16 +48,47 @@ class TraceContextFilter(logging.Filter):
 
 
 class IdentityContextFilter(logging.Filter):
-    """Add an identity snapshot without invoking authentication or database work.
-
-    Logging can run while other libraries hold internal locks, so this filter must
-    only read primitive ContextVar values populated by authentication boundaries.
+    """
+    Filter that adds user identity context to log records.
+    Extracts tenant_id, user_id, and user_type from Flask-Login current_user.
     """
 
-    @override
     def filter(self, record: logging.LogRecord) -> bool:
-        identity = get_identity_context()
-        record.tenant_id = identity.tenant_id
-        record.user_id = identity.user_id
-        record.user_type = identity.user_type
+        identity = self._extract_identity()
+        record.tenant_id = identity.get("tenant_id", "")
+        record.user_id = identity.get("user_id", "")
+        record.user_type = identity.get("user_type", "")
         return True
+
+    def _extract_identity(self) -> dict[str, str]:
+        """Extract identity from current_user if in request context."""
+        try:
+            if not flask.has_request_context():
+                return {}
+            from flask_login import current_user
+
+            # Check if user is authenticated using the proxy
+            if not current_user.is_authenticated:
+                return {}
+
+            # Access the underlying user object
+            user = current_user
+
+            from models import Account
+            from models.model import EndUser
+
+            identity: dict[str, str] = {}
+
+            if isinstance(user, Account):
+                if user.current_tenant_id:
+                    identity["tenant_id"] = user.current_tenant_id
+                identity["user_id"] = user.id
+                identity["user_type"] = "account"
+            elif isinstance(user, EndUser):
+                identity["tenant_id"] = user.tenant_id
+                identity["user_id"] = user.id
+                identity["user_type"] = user.type or "end_user"
+
+            return identity
+        except Exception:
+            return {}

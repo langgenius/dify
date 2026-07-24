@@ -14,59 +14,51 @@ describe('useIndexStatus', () => {
   it('should return all expected status keys', () => {
     const { result } = renderHook(() => useIndexStatus())
 
-    const expectedKeys = [
-      'queuing',
-      'indexing',
-      'paused',
-      'error',
-      'available',
-      'enabled',
-      'disabled',
-      'archived',
-    ]
+    const expectedKeys = ['queuing', 'indexing', 'paused', 'error', 'available', 'enabled', 'disabled', 'archived']
     const keys = Object.keys(result.current)
     expect(keys).toEqual(expect.arrayContaining(expectedKeys))
   })
 
-  describe('status variants', () => {
-    it('should return warning status for queuing', () => {
+  // Verify each status entry has the correct color
+  describe('colors', () => {
+    it('should return orange color for queuing', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.queuing.status).toBe('warning')
+      expect(result.current.queuing.color).toBe('orange')
     })
 
-    it('should return normal status for indexing', () => {
+    it('should return blue color for indexing', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.indexing.status).toBe('normal')
+      expect(result.current.indexing.color).toBe('blue')
     })
 
-    it('should return warning status for paused', () => {
+    it('should return orange color for paused', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.paused.status).toBe('warning')
+      expect(result.current.paused.color).toBe('orange')
     })
 
-    it('should return error status for error', () => {
+    it('should return red color for error', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.error.status).toBe('error')
+      expect(result.current.error.color).toBe('red')
     })
 
-    it('should return success status for available', () => {
+    it('should return green color for available', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.available.status).toBe('success')
+      expect(result.current.available.color).toBe('green')
     })
 
-    it('should return success status for enabled', () => {
+    it('should return green color for enabled', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.enabled.status).toBe('success')
+      expect(result.current.enabled.color).toBe('green')
     })
 
-    it('should return disabled status for disabled', () => {
+    it('should return gray color for disabled', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.disabled.status).toBe('disabled')
+      expect(result.current.disabled.color).toBe('gray')
     })
 
-    it('should return disabled status for archived', () => {
+    it('should return gray color for archived', () => {
       const { result } = renderHook(() => useIndexStatus())
-      expect(result.current.archived.status).toBe('disabled')
+      expect(result.current.archived.color).toBe('gray')
     })
   })
 
@@ -113,13 +105,14 @@ describe('useIndexStatus', () => {
     })
   })
 
-  it('should return objects with status and text properties for every status', () => {
+  // Verify each entry has both color and text properties
+  it('should return objects with color and text properties for every status', () => {
     const { result } = renderHook(() => useIndexStatus())
 
     for (const key of Object.keys(result.current) as Array<keyof typeof result.current>) {
-      expect(result.current[key]).toHaveProperty('status')
+      expect(result.current[key]).toHaveProperty('color')
       expect(result.current[key]).toHaveProperty('text')
-      expect(typeof result.current[key].status).toBe('string')
+      expect(typeof result.current[key].color).toBe('string')
       expect(typeof result.current[key].text).toBe('string')
     }
   })

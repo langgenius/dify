@@ -1,8 +1,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 enum ActionButtonState {
   Destructive = 'destructive',
@@ -12,28 +12,30 @@ enum ActionButtonState {
   Hover = 'hover',
 }
 
-const actionButtonVariants = cva('action-btn', {
-  variants: {
-    size: {
-      xs: 'action-btn-xs',
-      s: 'action-btn-s',
-      m: 'action-btn-m',
-      l: 'action-btn-l',
-      xl: 'action-btn-xl',
+const actionButtonVariants = cva(
+  'action-btn',
+  {
+    variants: {
+      size: {
+        xs: 'action-btn-xs',
+        s: 'action-btn-s',
+        m: 'action-btn-m',
+        l: 'action-btn-l',
+        xl: 'action-btn-xl',
+      },
+    },
+    defaultVariants: {
+      size: 'm',
     },
   },
-  defaultVariants: {
-    size: 'm',
-  },
-})
+)
 
-type ActionButtonProps = {
+export type ActionButtonProps = {
   size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   state?: ActionButtonState
   styleCss?: CSSProperties
   ref?: React.Ref<HTMLButtonElement>
-} & React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof actionButtonVariants>
+} & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof actionButtonVariants>
 
 function getActionButtonState(state: ActionButtonState) {
   switch (state) {
@@ -50,24 +52,14 @@ function getActionButtonState(state: ActionButtonState) {
   }
 }
 
-const ActionButton = ({
-  className,
-  size,
-  state = ActionButtonState.Default,
-  styleCss,
-  children,
-  ref,
-  disabled,
-  ...props
-}: ActionButtonProps) => {
+const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, disabled, ...props }: ActionButtonProps) => {
   return (
     <button
       type="button"
       className={cn(
         actionButtonVariants({ className, size }),
         getActionButtonState(state),
-        disabled &&
-          'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+        disabled && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
       )}
       disabled={disabled}
       ref={ref}
@@ -81,4 +73,4 @@ const ActionButton = ({
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton
-export { ActionButton, ActionButtonState }
+export { ActionButton, ActionButtonState, actionButtonVariants }

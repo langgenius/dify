@@ -2,41 +2,15 @@ import ssl
 from datetime import timedelta
 from typing import Any
 
-import pytz  # type: ignore[import-untyped]
+import pytz
 from celery import Celery, Task
 from celery.schedules import crontab
-from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
-from extensions.redis_names import normalize_redis_key_prefix
-from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 
-class _CelerySentinelKwargsDict(TypedDict):
-    socket_timeout: float | None
-    password: str | None
-
-
-class CelerySentinelTransportDict(TypedDict, total=False):
-    master_name: str | None
-    sentinel_kwargs: _CelerySentinelKwargsDict
-    global_keyprefix: str
-
-
-class CelerySSLOptionsDict(TypedDict):
-    ssl_cert_reqs: int
-    ssl_ca_certs: str | None
-    ssl_certfile: str | None
-    ssl_keyfile: str | None
-
-
-class CeleryBeatScheduleEntry(TypedDict):
-    task: str
-    schedule: crontab | timedelta
-
-
-def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
+def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Only apply SSL if we're using Redis as broker/backend
     if not dify_config.BROKER_USE_SSL:
@@ -59,41 +33,14 @@ def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
 
     ssl_cert_reqs = cert_reqs_map.get(dify_config.REDIS_SSL_CERT_REQS, ssl.CERT_NONE)
 
-    return CelerySSLOptionsDict(
-        ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS,
-        ssl_certfile=dify_config.REDIS_SSL_CERTFILE,
-        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE,
-    )
+    ssl_options = {
+        "ssl_cert_reqs": ssl_cert_reqs,
+        "ssl_ca_certs": dify_config.REDIS_SSL_CA_CERTS,
+        "ssl_certfile": dify_config.REDIS_SSL_CERTFILE,
+        "ssl_keyfile": dify_config.REDIS_SSL_KEYFILE,
+    }
 
-
-def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[str, Any]:
-    """Get broker transport options (e.g. Redis Sentinel) for Celery connections."""
-    transport_options: CelerySentinelTransportDict | dict[str, Any]
-    if dify_config.CELERY_USE_SENTINEL:
-        transport_options = CelerySentinelTransportDict(
-            master_name=dify_config.CELERY_SENTINEL_MASTER_NAME,
-            sentinel_kwargs=_CelerySentinelKwargsDict(
-                socket_timeout=dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
-                password=dify_config.CELERY_SENTINEL_PASSWORD,
-            ),
-        )
-    else:
-        transport_options = {}
-
-    global_keyprefix = get_celery_redis_global_keyprefix()
-    if global_keyprefix:
-        transport_options["global_keyprefix"] = global_keyprefix
-
-    return transport_options
-
-
-def get_celery_redis_global_keyprefix() -> str | None:
-    """Return the Redis transport prefix for Celery when namespace isolation is enabled."""
-    normalized_prefix = normalize_redis_key_prefix(dify_config.REDIS_KEY_PREFIX)
-    if not normalized_prefix:
-        return None
-    return f"{normalized_prefix}:"
+    return ssl_options
 
 
 def init_app(app: DifyApp) -> Celery:
@@ -106,7 +53,16 @@ def init_app(app: DifyApp) -> Celery:
                 init_request_context()
                 return self.run(*args, **kwargs)
 
-    broker_transport_options = get_celery_broker_transport_options()
+    broker_transport_options = {}
+
+    if dify_config.CELERY_USE_SENTINEL:
+        broker_transport_options = {
+            "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
+            "sentinel_kwargs": {
+                "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
+                "password": dify_config.CELERY_SENTINEL_PASSWORD,
+            },
+        }
 
     celery_app = Celery(
         app.name,
@@ -133,7 +89,7 @@ def init_app(app: DifyApp) -> Celery:
         )
 
     # Apply SSL configuration if enabled
-    ssl_options = get_celery_ssl_options()
+    ssl_options = _get_celery_ssl_options()
     if ssl_options:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,
@@ -148,23 +104,17 @@ def init_app(app: DifyApp) -> Celery:
 
     celery_app.set_default()
     app.extensions["celery"] = celery_app
-    setup_workflow_warm_shutdown_handler()
 
     imports = [
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
-        "tasks.initialize_created_app_rbac_access_task",  # app access initialization
-        "tasks.install_default_plugins_task",  # tenant default plugin installation
-        "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
-        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
-        "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
@@ -234,12 +184,6 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runs_task.clean_workflow_runs_task",
             "schedule": crontab(minute="0", hour="0"),
         }
-    if dify_config.ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK:
-        imports.append("schedule.clean_oauth_access_tokens_task")
-        beat_schedule["clean_oauth_access_tokens_task"] = {
-            "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
-            "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
-        }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {
@@ -260,8 +204,6 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
-    if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
-        imports.append("tasks.enterprise_telemetry_task")
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

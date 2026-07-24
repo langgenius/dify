@@ -1,33 +1,12 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useDSLByCanEdit } from '../use-DSL'
+import { useDSL } from '../use-DSL'
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({ notify: mockNotify }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'success', message, ...options }),
-    ),
-    error: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'error', message, ...options }),
-    ),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'warning', message, ...options }),
-    ),
-    info: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'info', message, ...options }),
-    ),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
 const mockEventEmitter = { emit: vi.fn() }
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
@@ -35,7 +14,7 @@ vi.mock('@/context/event-emitter', () => ({
 
 const mockDoSyncWorkflowDraft = vi.fn()
 vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({ doSyncWorkflowDraft: mockDoSyncWorkflowDraft }),
+  useNodesSyncDraft: () => ({ doSyncWorkflowDraft: mockDoSyncWorkflowDraft }),
 }))
 
 const mockGetState = vi.fn()
@@ -61,14 +40,8 @@ vi.mock('@/app/components/workflow/constants', () => ({
   DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
 }))
 
-describe('useDSLByCanEdit', () => {
-  let mockLink: {
-    href: string
-    download: string
-    click: ReturnType<typeof vi.fn>
-    style: { display: string }
-    remove: ReturnType<typeof vi.fn>
-  }
+describe('useDSL', () => {
+  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn>, style: { display: string }, remove: ReturnType<typeof vi.fn> }
   let originalCreateElement: typeof document.createElement
   let originalAppendChild: typeof document.body.appendChild
   let mockCreateObjectURL: ReturnType<typeof vi.spyOn>
@@ -94,9 +67,7 @@ describe('useDSLByCanEdit', () => {
     }) as typeof document.createElement
 
     originalAppendChild = document.body.appendChild.bind(document.body)
-    document.body.appendChild = vi.fn(
-      <T extends Node>(node: T): T => node,
-    ) as typeof document.body.appendChild
+    document.body.appendChild = vi.fn(<T extends Node>(node: T): T => node) as typeof document.body.appendChild
 
     mockCreateObjectURL = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test-url')
     mockRevokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
@@ -123,7 +94,7 @@ describe('useDSLByCanEdit', () => {
     it('should return early when pipelineId is not set', async () => {
       mockGetState.mockReturnValue({ pipelineId: null, knowledgeName: 'test' })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -133,7 +104,7 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should create and download file', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -143,7 +114,7 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should set correct download filename', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -157,7 +128,7 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should pass blob data to downloadBlob', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -173,14 +144,14 @@ describe('useDSLByCanEdit', () => {
     it('should handle export error', async () => {
       mockExportPipelineConfig.mockRejectedValue(new Error('Export failed'))
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL()
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'app.exportFailed',
         })
@@ -188,7 +159,7 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should pass include parameter', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.handleExportDSL(true)
@@ -207,7 +178,7 @@ describe('useDSLByCanEdit', () => {
     it('should return early when pipelineId is not set', async () => {
       mockGetState.mockReturnValue({ pipelineId: null })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -219,16 +190,14 @@ describe('useDSLByCanEdit', () => {
     it('should call handleExportDSL directly when no secret variables', async () => {
       mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.exportCheck()
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          '/rag/pipelines/test-pipeline-id/workflows/draft',
-        )
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
         expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       })
     })
@@ -237,7 +206,7 @@ describe('useDSLByCanEdit', () => {
       const secretVars = [{ value_type: 'secret', name: 'API_KEY' }]
       mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.exportCheck()
@@ -256,14 +225,14 @@ describe('useDSLByCanEdit', () => {
     it('should handle export check error', async () => {
       mockFetchWorkflowDraft.mockRejectedValue(new Error('Fetch failed'))
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSL())
 
       await act(async () => {
         await result.current.exportCheck()
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'app.exportFailed',
         })

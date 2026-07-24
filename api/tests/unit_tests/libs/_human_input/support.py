@@ -4,9 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from core.workflow.nodes.human_input.entities import FormInputConfig
-from core.workflow.nodes.human_input.enums import TimeoutUnit
-from libs.datetime_utils import naive_utc_now
+from dify_graph.nodes.human_input.entities import FormInput
+from dify_graph.nodes.human_input.enums import TimeoutUnit
 
 
 # Exceptions
@@ -45,12 +44,12 @@ class HumanInputForm:
     tenant_id: str
     app_id: str | None
     form_content: str
-    inputs: list[FormInputConfig]
+    inputs: list[FormInput]
     user_actions: list[dict[str, Any]]
     timeout: int
     timeout_unit: TimeoutUnit
     form_token: str | None = None
-    created_at: datetime = field(default_factory=naive_utc_now)
+    created_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: datetime | None = None
     submitted_at: datetime | None = None
     submitted_data: dict[str, Any] | None = None
@@ -62,7 +61,7 @@ class HumanInputForm:
 
     @property
     def is_expired(self) -> bool:
-        return self.expires_at is not None and naive_utc_now() > self.expires_at
+        return self.expires_at is not None and datetime.utcnow() > self.expires_at
 
     @property
     def is_submitted(self) -> bool:
@@ -71,7 +70,7 @@ class HumanInputForm:
     def mark_submitted(self, inputs: dict[str, Any], action: str) -> None:
         self.submitted_data = inputs
         self.submitted_action = action
-        self.submitted_at = naive_utc_now()
+        self.submitted_at = datetime.utcnow()
 
     def submit(self, inputs: dict[str, Any], action: str) -> None:
         self.mark_submitted(inputs, action)
@@ -88,7 +87,7 @@ class HumanInputForm:
     def to_response_dict(self, *, include_site_info: bool) -> dict[str, Any]:
         inputs_response = [
             {
-                "type": form_input.type.value,
+                "type": form_input.type.name.lower().replace("_", "-"),
                 "output_variable_name": form_input.output_variable_name,
             }
             for form_input in self.inputs
@@ -108,7 +107,7 @@ class FormSubmissionData:
     form_id: str
     inputs: dict[str, Any]
     action: str
-    submitted_at: datetime = field(default_factory=naive_utc_now)
+    submitted_at: datetime = field(default_factory=datetime.utcnow)
 
     @classmethod
     def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:  # type: ignore

@@ -1,167 +1,86 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
+import { RiCloseLine, RiLock2Line } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
+import { Env } from '@/app/components/base/icons/src/vender/line/others'
+import Modal from '@/app/components/base/modal'
+import { cn } from '@/utils/classnames'
 
 export type DSLExportConfirmModalProps = {
-  envList: Pick<EnvironmentVariable, 'name' | 'value'>[]
-  onConfirm: (state: boolean) => void | Promise<void>
+  envList: EnvironmentVariable[]
+  onConfirm: (state: boolean) => void
   onClose: () => void
 }
 
-type DSLExportConfirmContentProps = DSLExportConfirmModalProps & {
-  onExportingChange?: (isExporting: boolean) => void
-}
-
-export const DSLExportConfirmContent = ({
+const DSLExportConfirmModal = ({
   envList = [],
   onConfirm,
   onClose,
-  onExportingChange,
-}: DSLExportConfirmContentProps) => {
+}: DSLExportConfirmModalProps) => {
   const { t } = useTranslation()
 
   const [exportSecrets, setExportSecrets] = useState<boolean>(false)
-  const [isExporting, setIsExporting] = useState(false)
 
-  const submit = useCallback(async () => {
-    if (isExporting) return
-
-    setIsExporting(true)
-    onExportingChange?.(true)
-    try {
-      await onConfirm(exportSecrets)
-      onClose()
-    } finally {
-      setIsExporting(false)
-      onExportingChange?.(false)
-    }
-  }, [exportSecrets, isExporting, onClose, onConfirm, onExportingChange])
+  const submit = () => {
+    onConfirm(exportSecrets)
+    onClose()
+  }
 
   return (
-    <AlertDialogContent className="w-120 max-w-120">
-      <div className="px-6 pt-6">
-        <AlertDialogTitle className="pb-6 title-2xl-semi-bold text-text-primary">
-          {t(($) => $['env.export.title'], { ns: 'workflow' })}
-        </AlertDialogTitle>
-        <div className="relative">
-          <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
-            <thead className="system-xs-medium-uppercase text-text-tertiary">
-              <tr>
-                <td width={220} className="h-7 border-r border-b border-divider-regular pl-3">
-                  {t(($) => $['env.export.name'], { ns: 'workflow' })}
+    <Modal
+      isShow={true}
+      onClose={noop}
+      className={cn('w-[480px] max-w-[480px]')}
+    >
+      <div className="title-2xl-semi-bold relative pb-6 text-text-primary">{t('env.export.title', { ns: 'workflow' })}</div>
+      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+      </div>
+      <div className="relative">
+        <table className="radius-md w-full border-separate border-spacing-0 border border-divider-regular shadow-xs">
+          <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <tr>
+              <td width={220} className="h-7 border-b border-r border-divider-regular pl-3">NAME</td>
+              <td className="h-7 border-b border-divider-regular pl-3">VALUE</td>
+            </tr>
+          </thead>
+          <tbody>
+            {envList.map((env, index) => (
+              <tr key={env.name}>
+                <td className={cn('system-xs-medium h-7 border-r pl-3', index + 1 !== envList.length && 'border-b')}>
+                  <div className="flex w-[200px] items-center gap-1">
+                    <Env className="h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
+                    <div className="truncate text-text-primary">{env.name}</div>
+                    <div className="shrink-0 text-text-tertiary">Secret</div>
+                    <RiLock2Line className="h-3 w-3 shrink-0 text-text-tertiary" />
+                  </div>
                 </td>
-                <td className="h-7 border-b border-divider-regular pl-3">
-                  {t(($) => $['env.export.value'], { ns: 'workflow' })}
+                <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
+                  <div className="system-xs-regular truncate text-text-secondary">{env.value}</div>
                 </td>
               </tr>
-            </thead>
-            <tbody>
-              {envList.map((env, index) => (
-                <tr key={env.name}>
-                  <td
-                    className={cn(
-                      'h-7 border-r border-divider-regular pl-3 system-xs-medium',
-                      index + 1 !== envList.length && 'border-b border-divider-regular',
-                    )}
-                  >
-                    <div className="flex w-50 items-center gap-1">
-                      <span
-                        aria-hidden="true"
-                        className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600"
-                      />
-                      <div className="truncate text-text-primary">{env.name}</div>
-                      <div className="shrink-0 text-text-tertiary">
-                        {t(($) => $['env.export.secret'], { ns: 'workflow' })}
-                      </div>
-                      <span
-                        aria-hidden="true"
-                        className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary"
-                      />
-                    </div>
-                  </td>
-                  <td
-                    className={cn(
-                      'h-7 pl-3',
-                      index + 1 !== envList.length && 'border-b border-divider-regular',
-                    )}
-                  >
-                    <div className="truncate system-xs-regular text-text-secondary">
-                      {env.value}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <label className={cn('mt-4 flex gap-2', !isExporting && 'cursor-pointer')}>
-          <Checkbox
-            className="shrink-0"
-            checked={exportSecrets}
-            disabled={isExporting}
-            onCheckedChange={setExportSecrets}
-          />
-          <span
-            className={cn(
-              'rounded-sm text-left system-sm-medium text-text-primary outline-hidden',
-              isExporting && 'cursor-not-allowed opacity-50',
-            )}
-          >
-            {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
-          </span>
-        </label>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <AlertDialogActions>
-        <AlertDialogCancelButton disabled={isExporting}>
-          {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </AlertDialogCancelButton>
-        <AlertDialogConfirmButton
-          tone="default"
-          loading={isExporting}
-          disabled={isExporting}
-          onClick={submit}
-        >
-          {isExporting
-            ? t(($) => $['operation.exporting'], { ns: 'common' })
-            : exportSecrets
-              ? t(($) => $['env.export.export'], { ns: 'workflow' })
-              : t(($) => $['env.export.ignore'], { ns: 'workflow' })}
-        </AlertDialogConfirmButton>
-      </AlertDialogActions>
-    </AlertDialogContent>
-  )
-}
-
-const DSLExportConfirmModal = (props: DSLExportConfirmModalProps) => {
-  const { envList, onClose } = props
-  const [isExporting, setIsExporting] = useState(false)
-  const isDialogOpen = envList.length > 0
-
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open || isExporting) return
-
-      onClose()
-    },
-    [isExporting, onClose],
-  )
-
-  return (
-    <AlertDialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DSLExportConfirmContent {...props} onExportingChange={setIsExporting} />
-    </AlertDialog>
+      <div className="mt-4 flex gap-2">
+        <Checkbox
+          className="shrink-0"
+          checked={exportSecrets}
+          onCheck={() => setExportSecrets(!exportSecrets)}
+        />
+        <div className="system-sm-medium cursor-pointer text-text-primary" onClick={() => setExportSecrets(!exportSecrets)}>{t('env.export.checkbox', { ns: 'workflow' })}</div>
+      </div>
+      <div className="flex flex-row-reverse pt-6">
+        <Button className="ml-2" variant="primary" onClick={submit}>{exportSecrets ? t('env.export.export', { ns: 'workflow' }) : t('env.export.ignore', { ns: 'workflow' })}</Button>
+        <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+      </div>
+    </Modal>
   )
 }
 

@@ -10,7 +10,10 @@ import { Type } from '../llm/types'
 import TriggerForm from './components/trigger-form'
 import useConfig from './use-config'
 
-const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({ id, data }) => {
+const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
+  id,
+  data,
+}) => {
   const {
     readOnly,
     triggerParameterSchema,
@@ -25,13 +28,11 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({ id, data }) => {
   const disableVariableInsertion = data.type === BlockEnum.TriggerPlugin
 
   // Convert output schema to VarItem format
-  const outputVars = Object.entries(outputSchema.properties || {}).map(
-    ([name, schema]: [string, any]) => ({
-      name,
-      type: schema.type || 'string',
-      description: schema.description || '',
-    }),
-  )
+  const outputVars = Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => ({
+    name,
+    type: schema.type || 'string',
+    description: schema.description || '',
+  }))
 
   return (
     <div className="mt-2">
@@ -57,7 +58,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({ id, data }) => {
       {/* Output Variables - Always show */}
       <OutputVars>
         <>
-          {outputVars.map((varItem) => (
+          {outputVars.map(varItem => (
             <VarItem
               key={varItem.name}
               name={varItem.name}
@@ -68,20 +69,22 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({ id, data }) => {
           ))}
           {Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => (
             <div key={name}>
-              {schema.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName="code-sm-semibold text-text-secondary"
-                  payload={{
-                    schema: {
-                      type: Type.object,
-                      properties: {
-                        [name]: schema,
-                      },
-                      additionalProperties: false,
-                    },
-                  }}
-                />
-              ) : null}
+              {schema.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={{
+                        schema: {
+                          type: Type.object,
+                          properties: {
+                            [name]: schema,
+                          },
+                          additionalProperties: false,
+                        },
+                      }}
+                    />
+                  )
+                : null}
             </div>
           ))}
         </>

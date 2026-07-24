@@ -1,29 +1,38 @@
-import type { TextareaProps } from '@langgenius/dify-ui/textarea'
+import type { TextareaProps } from '../../../textarea'
 import type { LabelProps } from '../label'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
+import Textarea from '../../../textarea'
 import Label from '../label'
 
 type TextAreaFieldProps = {
   label: string
   labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   className?: string
-} & Omit<TextareaProps, 'className' | 'defaultValue' | 'onBlur' | 'onValueChange' | 'value' | 'id'>
+} & Omit<TextareaProps, 'className' | 'onChange' | 'onBlur' | 'value' | 'id'>
 
-const TextAreaField = ({ label, labelOptions, className, ...inputProps }: TextAreaFieldProps) => {
+const TextAreaField = ({
+  label,
+  labelOptions,
+  className,
+  ...inputProps
+}: TextAreaFieldProps) => {
   const field = useFieldContext<string>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
+      <Label
+        htmlFor={field.name}
+        label={label}
+        {...(labelOptions ?? {})}
+      />
       <Textarea
-        {...inputProps}
         id={field.name}
         value={field.state.value}
-        onValueChange={(value) => field.handleChange(value)}
+        onChange={e => field.handleChange(e.target.value)}
         onBlur={field.handleBlur}
+        {...inputProps}
       />
     </div>
   )

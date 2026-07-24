@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand'
-import type { RunFile } from '@/app/components/workflow/types'
+import type {
+  RunFile,
+} from '@/app/components/workflow/types'
 
 export type FormSliceShape = {
   inputs: Record<string, string | number | boolean>
@@ -8,9 +10,9 @@ export type FormSliceShape = {
   setFiles: (files: RunFile[]) => void
 }
 
-export const createFormSlice: StateCreator<FormSliceShape> = (set) => ({
+export const createFormSlice: StateCreator<FormSliceShape> = set => ({
   inputs: {},
-  setInputs: (inputs) => set(() => ({ inputs })),
+  setInputs: inputs => set(() => ({ inputs })),
   files: [],
-  setFiles: (files) => set(() => ({ files })),
+  setFiles: files => set(() => ({ files })),
 })

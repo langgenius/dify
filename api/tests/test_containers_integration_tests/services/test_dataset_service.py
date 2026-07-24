@@ -11,12 +11,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from graphon.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
-from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import RerankingModel, RetrievalModel
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
@@ -63,7 +61,7 @@ class DatasetServiceIntegrationDataFactory:
         name: str = "Test Dataset",
         description: str | None = "Test description",
         provider: str = "vendor",
-        indexing_technique: str | None = IndexTechniqueType.HIGH_QUALITY,
+        indexing_technique: str | None = "high_quality",
         permission: str = DatasetPermissionEnum.ONLY_ME,
         retrieval_model: dict | None = None,
         embedding_model_provider: str | None = None,
@@ -76,7 +74,7 @@ class DatasetServiceIntegrationDataFactory:
             tenant_id=tenant_id,
             name=name,
             description=description,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             indexing_technique=indexing_technique,
             created_by=created_by,
             provider=provider,
@@ -100,14 +98,14 @@ class DatasetServiceIntegrationDataFactory:
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             data_source_info='{"upload_file_id": "upload-file-id"}',
             batch=str(uuid4()),
             name=name,
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
-            indexing_status=IndexingStatus.COMPLETED,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            indexing_status="completed",
+            doc_form="text_model",
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
@@ -137,7 +135,6 @@ class TestDatasetServiceCreateDataset:
             description="Test description",
             indexing_technique=None,
             account=account,
-            session=db_session_with_containers,
         )
 
         # Assert
@@ -158,14 +155,13 @@ class TestDatasetServiceCreateDataset:
             tenant_id=tenant.id,
             name="Economy Dataset",
             description=None,
-            indexing_technique=IndexTechniqueType.ECONOMY,
+            indexing_technique="economy",
             account=account,
-            session=db_session_with_containers,
         )
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == IndexTechniqueType.ECONOMY
+        assert result.indexing_technique == "economy"
         assert result.embedding_model_provider is None
         assert result.embedding_model is None
 
@@ -176,21 +172,20 @@ class TestDatasetServiceCreateDataset:
         embedding_model = DatasetServiceIntegrationDataFactory.create_embedding_model()
 
         # Act
-        with patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager:
+        with patch("services.dataset_service.ModelManager") as mock_model_manager:
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
 
             result = DatasetService.create_empty_dataset(
                 tenant_id=tenant.id,
                 name="High Quality Dataset",
                 description=None,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                indexing_technique="high_quality",
                 account=account,
-                session=db_session_with_containers,
             )
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+        assert result.indexing_technique == "high_quality"
         assert result.embedding_model_provider == embedding_model.provider
         assert result.embedding_model == embedding_model.model_name
         mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
@@ -218,7 +213,6 @@ class TestDatasetServiceCreateDataset:
                 description=None,
                 indexing_technique=None,
                 account=account,
-                session=db_session_with_containers,
             )
 
     def test_create_external_dataset_success(self, db_session_with_containers: Session):
@@ -240,7 +234,6 @@ class TestDatasetServiceCreateDataset:
                 provider="external",
                 external_knowledge_api_id=external_knowledge_api_id,
                 external_knowledge_id=external_knowledge_id,
-                session=db_session_with_containers,
             )
 
         # Assert
@@ -269,7 +262,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_reranking_model_setting") as mock_check_reranking,
         ):
             mock_model_manager.return_value.get_default_model_instance.return_value = embedding_model
@@ -278,10 +271,9 @@ class TestDatasetServiceCreateDataset:
                 tenant_id=tenant.id,
                 name="Dataset With Reranking",
                 description=None,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                indexing_technique="high_quality",
                 account=account,
                 retrieval_model=retrieval_model,
-                session=db_session_with_containers,
             )
 
         # Assert
@@ -303,7 +295,7 @@ class TestDatasetServiceCreateDataset:
 
         # Act
         with (
-            patch("services.dataset_service.ModelManager.for_tenant") as mock_model_manager,
+            patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch("services.dataset_service.DatasetService.check_embedding_model_setting") as mock_check_embedding,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
@@ -312,16 +304,15 @@ class TestDatasetServiceCreateDataset:
                 tenant_id=tenant.id,
                 name="Custom Embedding Dataset",
                 description=None,
-                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+                indexing_technique="high_quality",
                 account=account,
                 embedding_model_provider=embedding_provider,
                 embedding_model_name=embedding_model_name,
-                session=db_session_with_containers,
             )
 
         # Assert
         db_session_with_containers.refresh(result)
-        assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+        assert result.indexing_technique == "high_quality"
         assert result.embedding_model_provider == embedding_provider
         assert result.embedding_model == embedding_model_name
         mock_check_embedding.assert_called_once_with(tenant.id, embedding_provider, embedding_model_name)
@@ -352,7 +343,6 @@ class TestDatasetServiceCreateDataset:
             indexing_technique=None,
             account=account,
             retrieval_model=retrieval_model,
-            session=db_session_with_containers,
         )
 
         # Assert
@@ -372,7 +362,6 @@ class TestDatasetServiceCreateDataset:
             indexing_technique=None,
             account=account,
             permission=DatasetPermissionEnum.ALL_TEAM,
-            session=db_session_with_containers,
         )
 
         # Assert
@@ -398,7 +387,6 @@ class TestDatasetServiceCreateDataset:
                     provider="external",
                     external_knowledge_api_id=external_knowledge_api_id,
                     external_knowledge_id="knowledge-123",
-                    session=db_session_with_containers,
                 )
 
     def test_create_external_dataset_missing_knowledge_id_error(self, db_session_with_containers: Session):
@@ -420,7 +408,6 @@ class TestDatasetServiceCreateDataset:
                     provider="external",
                     external_knowledge_api_id=external_knowledge_api_id,
                     external_knowledge_id=None,
-                    session=db_session_with_containers,
                 )
 
 
@@ -442,9 +429,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         # Act
         with patch("services.dataset_service.current_user", account):
             result = DatasetService.create_empty_rag_pipeline_dataset(
-                tenant_id=tenant.id,
-                rag_pipeline_dataset_create_entity=entity,
-                session=db_session_with_containers,
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
         # Assert
@@ -452,9 +437,8 @@ class TestDatasetServiceCreateRagPipelineDataset:
         created_pipeline = db_session_with_containers.get(Pipeline, result.pipeline_id)
         assert created_dataset is not None
         assert created_dataset.name == entity.name
-        assert created_dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE
+        assert created_dataset.runtime_mode == "rag_pipeline"
         assert created_dataset.created_by == account.id
-        assert created_dataset.maintainer == account.id
         assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
         assert created_pipeline is not None
         assert created_pipeline.name == entity.name
@@ -480,9 +464,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         ):
             mock_generate_name.return_value = generated_name
             result = DatasetService.create_empty_rag_pipeline_dataset(
-                tenant_id=tenant.id,
-                rag_pipeline_dataset_create_entity=entity,
-                session=db_session_with_containers,
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
         # Assert
@@ -520,9 +502,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
             pytest.raises(DatasetNameDuplicateError, match=f"Dataset with name {duplicate_name} already exists"),
         ):
             DatasetService.create_empty_rag_pipeline_dataset(
-                tenant_id=tenant.id,
-                rag_pipeline_dataset_create_entity=entity,
-                session=db_session_with_containers,
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
     def test_create_rag_pipeline_dataset_with_custom_permission(self, db_session_with_containers: Session):
@@ -540,9 +520,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         # Act
         with patch("services.dataset_service.current_user", account):
             result = DatasetService.create_empty_rag_pipeline_dataset(
-                tenant_id=tenant.id,
-                rag_pipeline_dataset_create_entity=entity,
-                session=db_session_with_containers,
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
         # Assert
@@ -569,9 +547,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         # Act
         with patch("services.dataset_service.current_user", account):
             result = DatasetService.create_empty_rag_pipeline_dataset(
-                tenant_id=tenant.id,
-                rag_pipeline_dataset_create_entity=entity,
-                session=db_session_with_containers,
+                tenant_id=tenant.id, rag_pipeline_dataset_create_entity=entity
             )
 
         # Assert
@@ -601,9 +577,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Act / Assert
         with pytest.raises(ValueError, match="Dataset name already exists"):
-            DatasetService.update_dataset(
-                source_dataset.id, {"name": "Existing Dataset"}, account, session=db_session_with_containers
-            )
+            DatasetService.update_dataset(source_dataset.id, {"name": "Existing Dataset"}, account)
 
     def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session):
         """Delete a dataset that already has documents."""
@@ -613,7 +587,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             chunk_structure="text_model",
         )
         DatasetServiceIntegrationDataFactory.create_document(
@@ -622,7 +596,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Act
         with patch("services.dataset_service.dataset_was_deleted") as dataset_deleted_signal:
-            result = DatasetService.delete_dataset(dataset.id, account, session=db_session_with_containers)
+            result = DatasetService.delete_dataset(dataset.id, account)
 
         # Assert
         assert result is True
@@ -643,7 +617,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Act
         with patch("services.dataset_service.dataset_was_deleted") as dataset_deleted_signal:
-            result = DatasetService.delete_dataset(dataset.id, account, session=db_session_with_containers)
+            result = DatasetService.delete_dataset(dataset.id, account)
 
         # Assert
         assert result is True
@@ -664,7 +638,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
 
         # Act
         with patch("services.dataset_service.dataset_was_deleted") as dataset_deleted_signal:
-            result = DatasetService.delete_dataset(dataset.id, account, session=db_session_with_containers)
+            result = DatasetService.delete_dataset(dataset.id, account)
 
         # Assert
         assert result is True
@@ -693,7 +667,7 @@ class TestDatasetServiceRetrievalConfiguration:
         )
 
         # Act
-        result = DatasetService.get_dataset(dataset.id, session=db_session_with_containers)
+        result = DatasetService.get_dataset(dataset.id)
 
         # Assert
         assert result is not None
@@ -709,14 +683,14 @@ class TestDatasetServiceRetrievalConfiguration:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=account.id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             retrieval_model={"search_method": "semantic_search", "top_k": 2, "score_threshold": 0.0},
             embedding_model_provider="openai",
             embedding_model="text-embedding-ada-002",
             collection_binding_id=str(uuid4()),
         )
         update_data = {
-            "indexing_technique": IndexTechniqueType.HIGH_QUALITY,
+            "indexing_technique": "high_quality",
             "retrieval_model": {
                 "search_method": "full_text_search",
                 "top_k": 10,
@@ -725,110 +699,9 @@ class TestDatasetServiceRetrievalConfiguration:
         }
 
         # Act
-        result = DatasetService.update_dataset(dataset.id, update_data, account, session=db_session_with_containers)
+        result = DatasetService.update_dataset(dataset.id, update_data, account)
 
         # Assert
         db_session_with_containers.refresh(dataset)
         assert result.id == dataset.id
         assert dataset.retrieval_model == update_data["retrieval_model"]
-
-
-class TestDocumentServicePauseRecoverRetry:
-    """Tests for pause/recover/retry orchestration using real DB and Redis."""
-
-    def _create_indexing_document(self, db_session_with_containers: Session, indexing_status="indexing"):
-        factory = DatasetServiceIntegrationDataFactory
-        account, tenant = factory.create_account_with_tenant(db_session_with_containers)
-        dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
-        doc = factory.create_document(db_session_with_containers, dataset, account.id)
-        doc.indexing_status = indexing_status
-        db_session_with_containers.commit()
-        return doc, account
-
-    def test_pause_document_success(self, db_session_with_containers: Session):
-        from extensions.ext_redis import redis_client
-        from services.dataset_service import DocumentService
-
-        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="indexing")
-
-        with patch("services.dataset_service.current_user") as mock_user:
-            mock_user.id = account.id
-            DocumentService.pause_document(doc, session=db_session_with_containers)
-
-        db_session_with_containers.refresh(doc)
-        assert doc.is_paused is True
-        assert doc.paused_by == account.id
-        assert doc.paused_at is not None
-
-        cache_key = f"document_{doc.id}_is_paused"
-        assert redis_client.get(cache_key) is not None
-        redis_client.delete(cache_key)
-
-    def test_pause_document_invalid_status_error(self, db_session_with_containers: Session):
-        from services.dataset_service import DocumentService
-        from services.errors.document import DocumentIndexingError
-
-        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="completed")
-
-        with patch("services.dataset_service.current_user") as mock_user:
-            mock_user.id = account.id
-            with pytest.raises(DocumentIndexingError):
-                DocumentService.pause_document(doc, session=db_session_with_containers)
-
-    def test_recover_document_success(self, db_session_with_containers: Session):
-        from extensions.ext_redis import redis_client
-        from services.dataset_service import DocumentService
-
-        doc, account = self._create_indexing_document(db_session_with_containers, indexing_status="indexing")
-
-        # Pause first
-        with patch("services.dataset_service.current_user") as mock_user:
-            mock_user.id = account.id
-            DocumentService.pause_document(doc, session=db_session_with_containers)
-
-        # Recover
-        with patch("services.dataset_service.recover_document_indexing_task") as recover_task:
-            DocumentService.recover_document(doc, session=db_session_with_containers)
-
-        db_session_with_containers.refresh(doc)
-        assert doc.is_paused is False
-        assert doc.paused_by is None
-        assert doc.paused_at is None
-
-        cache_key = f"document_{doc.id}_is_paused"
-        assert redis_client.get(cache_key) is None
-        recover_task.delay.assert_called_once_with(doc.dataset_id, doc.id)
-
-    def test_retry_document_indexing_success(self, db_session_with_containers: Session):
-        from extensions.ext_redis import redis_client
-        from services.dataset_service import DocumentService
-
-        factory = DatasetServiceIntegrationDataFactory
-        account, tenant = factory.create_account_with_tenant(db_session_with_containers)
-        dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
-        doc1 = factory.create_document(db_session_with_containers, dataset, account.id, name="doc1.txt")
-        doc2 = factory.create_document(db_session_with_containers, dataset, account.id, name="doc2.txt")
-        doc2.position = 2
-        doc1.indexing_status = "error"
-        doc2.indexing_status = "error"
-        db_session_with_containers.commit()
-
-        with (
-            patch("services.dataset_service.current_user") as mock_user,
-            patch("services.dataset_service.retry_document_indexing_task") as retry_task,
-        ):
-            mock_user.id = account.id
-            DocumentService.retry_document(dataset.id, [doc1, doc2], session=db_session_with_containers)
-
-        db_session_with_containers.refresh(doc1)
-        db_session_with_containers.refresh(doc2)
-        assert doc1.indexing_status == "waiting"
-        assert doc2.indexing_status == "waiting"
-
-        # Verify redis keys were set
-        assert redis_client.get(f"document_{doc1.id}_is_retried") is not None
-        assert redis_client.get(f"document_{doc2.id}_is_retried") is not None
-        retry_task.delay.assert_called_once_with(dataset.id, [doc1.id, doc2.id], account.id)
-
-        # Cleanup
-        redis_client.delete(f"document_{doc1.id}_is_retried", f"document_{doc2.id}_is_retried")

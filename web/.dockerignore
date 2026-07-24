@@ -1,0 +1,32 @@
+.env
+.env.*
+
+# Logs
+logs
+*.log*
+
+# node
+node_modules
+dist
+build
+coverage
+.husky
+.next
+.pnpm-store
+
+# vscode
+.vscode
+
+# webstorm
+.idea
+*.iml
+*.iws
+*.ipr
+
+
+# Jetbrains
+.idea
+
+# git
+.git
+.gitignore

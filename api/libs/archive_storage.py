@@ -11,23 +11,15 @@ import hashlib
 import logging
 from collections.abc import Generator
 from typing import Any, cast
-from urllib.parse import quote
 
 import boto3
 import orjson
 from botocore.client import Config
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import ClientError
 
 from configs import dify_config
 
 logger = logging.getLogger(__name__)
-
-_OBJECT_NOT_FOUND_ERROR_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
-
-
-def _is_object_not_found_error(error: ClientError) -> bool:
-    error_code = str(error.response.get("Error", {}).get("Code", ""))
-    return error_code in _OBJECT_NOT_FOUND_ERROR_CODES
 
 
 class ArchiveStorageError(Exception):
@@ -145,11 +137,10 @@ class ArchiveStorage:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             return response["Body"].read()
         except ClientError as e:
-            if _is_object_not_found_error(e):
-                raise FileNotFoundError(f"Archive object not found: {key}") from e
-            raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
-        except BotoCoreError as e:
-            raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == "NoSuchKey":
+                raise FileNotFoundError(f"Archive object not found: {key}")
+            raise ArchiveStorageError(f"Failed to download object '{key}': {e}")
 
     def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
         """
@@ -169,11 +160,10 @@ class ArchiveStorage:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             yield from response["Body"].iter_chunks()
         except ClientError as e:
-            if _is_object_not_found_error(e):
-                raise FileNotFoundError(f"Archive object not found: {key}") from e
-            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}") from e
-        except BotoCoreError as e:
-            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}") from e
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == "NoSuchKey":
+                raise FileNotFoundError(f"Archive object not found: {key}")
+            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}")
 
     def object_exists(self, key: str) -> bool:
         """
@@ -184,19 +174,12 @@ class ArchiveStorage:
 
         Returns:
             True if object exists, False otherwise
-
-        Raises:
-            ArchiveStorageError: If storage cannot authoritatively determine object existence
         """
         try:
             self.client.head_object(Bucket=self.bucket, Key=key)
             return True
-        except ClientError as e:
-            if _is_object_not_found_error(e):
-                return False
-            raise ArchiveStorageError(f"Failed to check archive object '{key}': {e}") from e
-        except BotoCoreError as e:
-            raise ArchiveStorageError(f"Failed to check archive object '{key}': {e}") from e
+        except ClientError:
+            return False
 
     def delete_object(self, key: str) -> None:
         """
@@ -212,29 +195,15 @@ class ArchiveStorage:
             self.client.delete_object(Bucket=self.bucket, Key=key)
             logger.debug("Deleted object: %s", key)
         except ClientError as e:
-            if _is_object_not_found_error(e):
-                logger.debug("Archive object was already absent: %s", key)
-                return
-            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}") from e
-        except BotoCoreError as e:
-            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}") from e
+            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}")
 
-    def generate_presigned_url(
-        self,
-        key: str,
-        expires_in: int = 3600,
-        *,
-        filename: str | None = None,
-        content_type: str | None = None,
-    ) -> str:
+    def generate_presigned_url(self, key: str, expires_in: int = 3600) -> str:
         """
         Generate a pre-signed URL for downloading an object.
 
         Args:
             key: Object key (path) within the bucket
             expires_in: URL validity duration in seconds (default: 1 hour)
-            filename: Optional browser download filename
-            content_type: Optional response content type
 
         Returns:
             Pre-signed URL string.
@@ -242,15 +211,10 @@ class ArchiveStorage:
         Raises:
             ArchiveStorageError: If generation fails
         """
-        params = {"Bucket": self.bucket, "Key": key}
-        if filename:
-            params["ResponseContentDisposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
-        if content_type:
-            params["ResponseContentType"] = content_type
         try:
             return self.client.generate_presigned_url(
                 ClientMethod="get_object",
-                Params=params,
+                Params={"Bucket": self.bucket, "Key": key},
                 ExpiresIn=expires_in,
             )
         except ClientError as e:

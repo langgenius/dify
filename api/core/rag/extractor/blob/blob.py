@@ -12,11 +12,11 @@ import mimetypes
 from collections.abc import Generator, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import Path, PurePath
-from typing import Any, override
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-type PathLike = str | PurePath
+PathLike = Union[str, PurePath]
 
 
 class Blob(BaseModel):
@@ -29,7 +29,7 @@ class Blob(BaseModel):
     Inspired by: https://developer.mozilla.org/en-US/docs/Web/API/Blob
     """
 
-    data: bytes | str | None = None  # Raw data
+    data: Union[bytes, str, None] = None  # Raw data
     mimetype: str | None = None  # Not to be confused with a file extension
     encoding: str = "utf-8"  # Use utf-8 as default encoding, if decoding to string
     # Location where the original content was found
@@ -54,39 +54,36 @@ class Blob(BaseModel):
 
     def as_string(self) -> str:
         """Read data as a string."""
-        match self.data:
-            case None if self.path:
-                return Path(str(self.path)).read_text(encoding=self.encoding)
-            case bytes():
-                return self.data.decode(self.encoding)
-            case str():
-                return self.data
-            case _:
-                raise ValueError(f"Unable to get string for blob {self}")
+        if self.data is None and self.path:
+            return Path(str(self.path)).read_text(encoding=self.encoding)
+        elif isinstance(self.data, bytes):
+            return self.data.decode(self.encoding)
+        elif isinstance(self.data, str):
+            return self.data
+        else:
+            raise ValueError(f"Unable to get string for blob {self}")
 
     def as_bytes(self) -> bytes:
         """Read data as bytes."""
-        match self.data:
-            case bytes():
-                return self.data
-            case str():
-                return self.data.encode(self.encoding)
-            case None if self.path:
-                return Path(str(self.path)).read_bytes()
-            case _:
-                raise ValueError(f"Unable to get bytes for blob {self}")
+        if isinstance(self.data, bytes):
+            return self.data
+        elif isinstance(self.data, str):
+            return self.data.encode(self.encoding)
+        elif self.data is None and self.path:
+            return Path(str(self.path)).read_bytes()
+        else:
+            raise ValueError(f"Unable to get bytes for blob {self}")
 
     @contextlib.contextmanager
-    def as_bytes_io(self) -> Generator[BytesIO | BufferedReader, None, None]:
+    def as_bytes_io(self) -> Generator[Union[BytesIO, BufferedReader], None, None]:
         """Read data as a byte stream."""
-        match self.data:
-            case bytes():
-                yield BytesIO(self.data)
-            case None if self.path:
-                with open(str(self.path), "rb") as f:
-                    yield f
-            case _:
-                raise NotImplementedError(f"Unable to convert blob {self}")
+        if isinstance(self.data, bytes):
+            yield BytesIO(self.data)
+        elif self.data is None and self.path:
+            with open(str(self.path), "rb") as f:
+                yield f
+        else:
+            raise NotImplementedError(f"Unable to convert blob {self}")
 
     @classmethod
     def from_path(
@@ -120,7 +117,7 @@ class Blob(BaseModel):
     @classmethod
     def from_data(
         cls,
-        data: str | bytes,
+        data: Union[str, bytes],
         *,
         encoding: str = "utf-8",
         mime_type: str | None = None,
@@ -139,7 +136,6 @@ class Blob(BaseModel):
         """
         return cls(data=data, mimetype=mime_type, encoding=encoding, path=path)
 
-    @override
     def __repr__(self) -> str:
         """Define the blob representation."""
         str_repr = f"Blob {id(self)}"

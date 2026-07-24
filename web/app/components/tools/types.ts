@@ -1,13 +1,9 @@
-import type {
-  DatasourceProviderType,
-  ToolProviderType,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
 import type { VarType } from '../workflow/types'
 
-type LocalizedText<T = string> = {
-  en_US: T
-  zh_Hans: T
-  [key: string]: T
+export enum LOC {
+  tools = 'tools',
+  app = 'app',
 }
 
 export enum AuthType {
@@ -31,20 +27,16 @@ export type Credential = {
   api_key_query_param?: string
 }
 
-export const CollectionType = {
-  all: 'all',
-  builtIn: 'builtin',
-  custom: 'api',
-  model: 'model',
-  workflow: 'workflow',
-  mcp: 'mcp',
-  datasource: 'datasource',
-  trigger: 'trigger',
-} as const
-
-export type CollectionType = (typeof CollectionType)[keyof typeof CollectionType]
-
-export type CollectionProviderType = CollectionType | DatasourceProviderType | ToolProviderType
+export enum CollectionType {
+  all = 'all',
+  builtIn = 'builtin',
+  custom = 'api',
+  model = 'model',
+  workflow = 'workflow',
+  mcp = 'mcp',
+  datasource = 'datasource',
+  trigger = 'trigger',
+}
 
 export type Emoji = {
   background: string
@@ -55,16 +47,15 @@ export type Collection = {
   id: string
   name: string
   author: string
-  description: LocalizedText
+  description: TypeWithI18N
   icon: string | Emoji
   icon_dark?: string | Emoji
-  label: LocalizedText
-  type: CollectionProviderType
+  label: TypeWithI18N
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
-  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server
@@ -87,19 +78,14 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
-  // M3 — user-identity forwarding (MCP). Single selector now drives both
-  // "is forwarding on?" and "which mechanism to use?". Pre-collapse builds
-  // also sent a redundant `forward_user_identity` boolean; the api dropped
-  // it, so the field is gone here too.
-  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }
 
 export type ToolParameter = {
   name: string
-  label: LocalizedText
-  human_description: LocalizedText
+  label: TypeWithI18N
+  human_description: TypeWithI18N
   type: string
   form: string
   llm_description: string
@@ -107,17 +93,17 @@ export type ToolParameter = {
   multiple: boolean
   default: string
   options?: {
-    label: LocalizedText
+    label: TypeWithI18N
     value: string
   }[]
   min?: number
   max?: number
 }
 
-type TriggerParameter = {
+export type TriggerParameter = {
   name: string
-  label: LocalizedText
-  human_description: LocalizedText
+  label: TypeWithI18N
+  human_description: TypeWithI18N
   type: string
   form: string
   llm_description: string
@@ -125,7 +111,7 @@ type TriggerParameter = {
   multiple: boolean
   default: string
   options?: {
-    label: LocalizedText
+    label: TypeWithI18N
     value: string
   }[]
 }
@@ -134,8 +120,8 @@ type TriggerParameter = {
 export type Event = {
   name: string
   author: string
-  label: LocalizedText
-  description: LocalizedText
+  label: TypeWithI18N
+  description: TypeWithI18N
   parameters: TriggerParameter[]
   labels: string[]
   output_schema: Record<string, any>
@@ -144,7 +130,7 @@ export type Event = {
 export type Tool = {
   name: string
   author: string
-  label: LocalizedText
+  label: TypeWithI18N
   description: any
   parameters: ToolParameter[]
   labels: string[]
@@ -153,14 +139,14 @@ export type Tool = {
 
 export type ToolCredential = {
   name: string
-  label: LocalizedText
-  help: LocalizedText | null
-  placeholder: LocalizedText
+  label: TypeWithI18N
+  help: TypeWithI18N | null
+  placeholder: TypeWithI18N
   type: string
   required: boolean
   default: string
   options?: {
-    label: LocalizedText
+    label: TypeWithI18N
     value: string
   }[]
 }
@@ -179,10 +165,10 @@ export type CustomCollectionBackend = {
   labels: string[]
 }
 
-type ParamItem = {
+export type ParamItem = {
   name: string
-  label: LocalizedText
-  human_description: LocalizedText
+  label: TypeWithI18N
+  human_description: TypeWithI18N
   llm_description: string
   type: string
   form: string
@@ -191,7 +177,7 @@ type ParamItem = {
   min?: number
   max?: number
   options?: {
-    label: LocalizedText
+    label: TypeWithI18N
     value: string
   }[]
 }
@@ -221,13 +207,10 @@ export type WorkflowToolProviderOutputParameter = {
 
 export type WorkflowToolProviderOutputSchema = {
   type: string
-  properties: Record<
-    string,
-    {
-      type: string
-      description: string
-    }
-  >
+  properties: Record<string, {
+    type: string
+    description: string
+  }>
 }
 
 export type WorkflowToolProviderRequest = {
@@ -250,8 +233,8 @@ export type WorkflowToolProviderResponse = {
   tool: {
     author: string
     name: string
-    label: LocalizedText
-    description: LocalizedText
+    label: TypeWithI18N
+    description: TypeWithI18N
     labels: string[]
     parameters: ParamItem[]
     output_schema: WorkflowToolProviderOutputSchema

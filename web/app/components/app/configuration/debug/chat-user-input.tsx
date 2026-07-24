@@ -1,30 +1,24 @@
 import type { Inputs } from '@/models/debug'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
+import Select from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
+import { cn } from '@/utils/classnames'
 
-type Props = Readonly<{
+type Props = {
   inputs: Inputs
-}>
+}
 
-const ChatUserInput = ({ inputs }: Props) => {
+const ChatUserInput = ({
+  inputs,
+}: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
-  const debugInputReadonly = !canTestAndRun
+  const { modelConfig, setInputs, readonly } = useContext(ConfigContext)
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -46,115 +40,85 @@ const ChatUserInput = ({ inputs }: Props) => {
     promptVariables.forEach((variable) => {
       const { key, default: defaultValue } = variable
       // Only set default value if the field is empty and a default exists
-      if (
-        defaultValue !== undefined &&
-        defaultValue !== null &&
-        defaultValue !== '' &&
-        (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')
-      ) {
+      if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '' && (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')) {
         newInputs[key] = defaultValue
         hasChanges = true
       }
     })
 
-    if (hasChanges) setInputs(newInputs)
+    if (hasChanges)
+      setInputs(newInputs)
   }, [promptVariables, inputs, setInputs])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
-    if (debugInputReadonly) return
-    if (!(key in promptVariableObj)) return
+    if (!(key in promptVariableObj))
+      return
 
     const newInputs = { ...inputs }
     promptVariables.forEach((input) => {
-      if (input.key === key) newInputs[key] = value
+      if (input.key === key)
+        newInputs[key] = value
     })
     setInputs(newInputs)
   }
 
-  if (!promptVariables.length) return null
+  if (!promptVariables.length)
+    return null
 
   return (
-    <div
-      className={cn(
-        'z-1 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs',
-      )}
-    >
-      <div className="px-4 pt-3 pb-4">
+    <div className={cn('z-[1] rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs')}>
+      <div className="px-4 pb-4 pt-3">
         {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
-          <div key={key} className="mb-4 last-of-type:mb-0">
+          <div
+            key={key}
+            className="mb-4 last-of-type:mb-0"
+          >
             <div>
               {type !== 'checkbox' && (
-                <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
+                <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
                   <div className="truncate">{name || key}</div>
-                  {!required && (
-                    <span className="system-xs-regular text-text-tertiary">
-                      {t(($) => $['panel.optional'], { ns: 'workflow' })}
-                    </span>
-                  )}
+                  {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                 </div>
               )}
               <div className="grow">
                 {type === 'string' && (
                   <Input
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => {
-                      handleInputValueChange(key, e.target.value)
-                    }}
+                    onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length}
-                    readOnly={debugInputReadonly}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'paragraph' && (
                   <Textarea
                     className="h-[120px] grow"
-                    aria-label={name || key}
                     placeholder={name}
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onValueChange={(value) => {
-                      handleInputValueChange(key, value)
-                    }}
-                    readOnly={debugInputReadonly}
+                    onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'select' && (
-                  <Select<string>
-                    value={
-                      typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null
-                    }
-                    disabled={debugInputReadonly}
-                    onValueChange={(nextValue) => {
-                      if (nextValue == null || nextValue === '') return
-                      handleInputValueChange(key, nextValue)
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      {typeof inputs[key] === 'string' && inputs[key] !== ''
-                        ? inputs[key]
-                        : t(($) => $['placeholder.select'], { ns: 'common' })}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(options || []).map((option) => (
-                        <SelectItem key={option} value={option}>
-                          <SelectItemText>{option}</SelectItemText>
-                          <SelectItemIndicator />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    className="w-full"
+                    defaultValue={inputs[key] as string}
+                    onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
+                    items={(options || []).map(i => ({ name: i, value: i }))}
+                    allowSearch={false}
+                    disabled={readonly}
+                  />
                 )}
                 {type === 'number' && (
                   <Input
                     type="number"
                     value={inputs[key] ? `${inputs[key]}` : ''}
-                    onChange={(e) => {
-                      handleInputValueChange(key, e.target.value)
-                    }}
+                    onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                     placeholder={name}
                     autoFocus={index === 0}
                     maxLength={max_length}
-                    readOnly={debugInputReadonly}
+                    readOnly={readonly}
                   />
                 )}
                 {type === 'checkbox' && (
@@ -162,10 +126,8 @@ const ChatUserInput = ({ inputs }: Props) => {
                     name={name || key}
                     value={!!inputs[key]}
                     required={required}
-                    onChange={(value) => {
-                      handleInputValueChange(key, value)
-                    }}
-                    readonly={debugInputReadonly}
+                    onChange={(value) => { handleInputValueChange(key, value) }}
+                    readonly={readonly}
                   />
                 )}
               </div>

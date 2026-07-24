@@ -5,29 +5,17 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    is_admin_or_owner_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
-from extensions.ext_database import db
-from fields.base import ResponseModel
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from libs.helper import dump_response, uuid_value
-from libs.login import login_required
-from models import Account
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from dify_graph.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.errors.validate import CredentialsValidateFailedError
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import uuid_value
+from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
-from services.entities.model_provider_entities import ProviderResponse
 from services.model_provider_service import ModelProviderService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ParserModelList(BaseModel):
@@ -87,74 +75,50 @@ class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
 
-class ModelProviderListResponse(ResponseModel):
-    data: list[ProviderResponse]
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
-class ProviderCredentialsResponse(ResponseModel):
-    credentials: dict[str, Any] | None = None
-
-
-class ModelProviderPaymentCheckoutUrlResponse(ResponseModel):
-    payment_link: str
-
-
-register_schema_models(
-    console_ns,
-    ParserModelList,
-    ParserCredentialId,
-    ParserCredentialCreate,
-    ParserCredentialUpdate,
-    ParserCredentialDelete,
-    ParserCredentialSwitch,
-    ParserCredentialValidate,
-    ParserPreferredProviderType,
-)
-register_response_schema_models(
-    console_ns,
-    SimpleResultResponse,
-    ModelProviderListResponse,
-    ProviderCredentialsResponse,
-    ValidationResultResponse,
-    ModelProviderPaymentCheckoutUrlResponse,
-)
+reg(ParserModelList)
+reg(ParserCredentialId)
+reg(ParserCredentialCreate)
+reg(ParserCredentialUpdate)
+reg(ParserCredentialDelete)
+reg(ParserCredentialSwitch)
+reg(ParserCredentialValidate)
+reg(ParserPreferredProviderType)
 
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserModelList))
-    @console_ns.response(
-        200, "Model providers retrieved successfully", console_ns.models[ModelProviderListResponse.__name__]
-    )
+    @console_ns.expect(console_ns.models[ParserModelList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str):
-        payload = request.args.to_dict(flat=True)
+    def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+        tenant_id = current_tenant_id
+
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.model_type)
 
-        return ModelProviderListResponse(data=provider_list).model_dump(mode="json")
+        return jsonable_encoder({"data": provider_list})
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserCredentialId))
-    @console_ns.response(
-        200,
-        "Provider credentials retrieved successfully",
-        console_ns.models[ProviderCredentialsResponse.__name__],
-    )
+    @console_ns.expect(console_ns.models[ParserCredentialId.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
+    def get(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
+        tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        payload = request.args.to_dict(flat=True)
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = ParserCredentialId.model_validate(payload)
 
         model_provider_service = ModelProviderService()
@@ -162,17 +126,15 @@ class ModelProviderCredentialApi(Resource):
             tenant_id=tenant_id, provider=provider, credential_id=args.credential_id
         )
 
-        return ProviderCredentialsResponse(credentials=credentials).model_dump(mode="json")
+        return {"credentials": credentials}
 
     @console_ns.expect(console_ns.models[ParserCredentialCreate.__name__])
-    @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialCreate.model_validate(payload)
 
@@ -188,17 +150,16 @@ class ModelProviderCredentialApi(Resource):
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
-        return SimpleResultResponse(result="success").model_dump(mode="json"), 201
+        return {"result": "success"}, 201
 
     @console_ns.expect(console_ns.models[ParserCredentialUpdate.__name__])
-    @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    @with_current_tenant_id
-    def put(self, current_tenant_id: str, provider: str):
+    def put(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
+
         payload = console_ns.payload or {}
         args = ParserCredentialUpdate.model_validate(payload)
 
@@ -215,17 +176,15 @@ class ModelProviderCredentialApi(Resource):
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
-        return SimpleResultResponse(result="success").model_dump(mode="json")
+        return {"result": "success"}
 
     @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
-    @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    @with_current_tenant_id
-    def delete(self, current_tenant_id: str, provider: str):
+    def delete(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialDelete.model_validate(payload)
 
@@ -234,20 +193,18 @@ class ModelProviderCredentialApi(Resource):
             tenant_id=current_tenant_id, provider=provider, credential_id=args.credential_id
         )
 
-        return "", 204
+        return {"result": "success"}, 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialSwitch.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialSwitch.model_validate(payload)
 
@@ -257,22 +214,17 @@ class ModelProviderCredentialSwitchApi(Resource):
             provider=provider,
             credential_id=args.credential_id,
         )
-        return SimpleResultResponse(result="success").model_dump(mode="json")
+        return {"result": "success"}
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialValidate.__name__])
-    @console_ns.response(
-        200,
-        "Provider credentials validated successfully",
-        console_ns.models[ValidationResultResponse.__name__],
-    )
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = ParserCredentialValidate.model_validate(payload)
 
@@ -291,10 +243,12 @@ class ModelProviderValidateApi(Resource):
             result = False
             error = str(ex)
 
-        if not result:
-            return ValidationResultResponse(result="error", error=error or "Unknown error").model_dump(mode="json")
+        response = {"result": "success" if result else "error"}
 
-        return ValidationResultResponse(result="success").model_dump(mode="json")
+        if not result:
+            response["error"] = error or "Unknown error"
+
+        return response
 
 
 @console_ns.route("/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>")
@@ -303,9 +257,7 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    @console_ns.response(200, "Model provider icon")
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
-        # response-contract:ignore binary send_file response
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
             tenant_id=tenant_id,
@@ -321,14 +273,15 @@ class ModelProviderIconApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
     @console_ns.expect(console_ns.models[ParserPreferredProviderType.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    def post(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
+
+        tenant_id = current_tenant_id
+
         payload = console_ns.payload or {}
         args = ParserPreferredProviderType.model_validate(payload)
 
@@ -337,29 +290,23 @@ class PreferredProviderTypeUpdateApi(Resource):
             tenant_id=tenant_id, provider=provider, preferred_provider_type=args.preferred_provider_type
         )
 
-        return SimpleResultResponse(result="success").model_dump(mode="json")
+        return {"result": "success"}
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
-    @console_ns.response(
-        200,
-        "Model provider checkout URL retrieved successfully",
-        console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__],
-    )
     @setup_required
     @login_required
     @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, provider: str):
+    def get(self, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
+        current_user, current_tenant_id = current_account_with_tenant()
+        BillingService.is_tenant_owner_or_admin(current_user)
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,
             account_id=current_user.id,
             prefilled_email=current_user.email,
         )
-        return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)
+        return data

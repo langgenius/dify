@@ -11,5 +11,9 @@ type MittProviderProps = {
 export const MittProvider = ({ children }: MittProviderProps) => {
   const mitt = useMitt()
 
-  return <MittContext.Provider value={mitt}>{children}</MittContext.Provider>
+  return (
+    <MittContext.Provider value={mitt}>
+      {children}
+    </MittContext.Provider>
+  )
 }

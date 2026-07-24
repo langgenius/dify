@@ -3,10 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ExternalAPIPanel from '../index'
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
 // Mock external contexts (only mock context providers, not base components)
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
 const mockMutateExternalKnowledgeApis = vi.fn()
@@ -27,21 +23,14 @@ vi.mock('@/context/external-knowledge-api-context', () => ({
   }),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
 vi.mock('../../external-knowledge-api-card', () => ({
-  default: ({
-    api,
-    canManageExternalKnowledgeApi,
-  }: {
-    api: ExternalAPIItem
-    canManageExternalKnowledgeApi: boolean
-  }) => (
-    <div
-      data-testid={`api-card-${api.id}`}
-      data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}
-    >
-      {api.name}
-    </div>
+  default: ({ api }: { api: ExternalAPIItem }) => (
+    <div data-testid={`api-card-${api.id}`}>{api.name}</div>
   ),
 }))
 
@@ -49,7 +38,6 @@ vi.mock('../../external-knowledge-api-card', () => ({
 
 describe('ExternalAPIPanel', () => {
   const defaultProps = {
-    canManageExternalKnowledgeApi: true,
     onClose: vi.fn(),
   }
 
@@ -60,37 +48,33 @@ describe('ExternalAPIPanel', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<ExternalAPIPanel {...defaultProps} />)
+      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
+    })
+
     it('should render panel title and description', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.externalAPIPanelDescription'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
+      expect(screen.getByText('dataset.externalAPIPanelDescription')).toBeInTheDocument()
     })
 
     it('should render documentation link', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
-      expect(docLink)!.toBeInTheDocument()
-      expect(docLink.closest('a'))!.toHaveAttribute(
-        'href',
-        'https://docs.example.com/use-dify/knowledge/external-knowledge-api',
-      )
+      expect(docLink).toBeInTheDocument()
+      expect(docLink.closest('a')).toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
     })
 
     it('should render create button', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
-    })
-
-    it('should hide create button when external knowledge API management is unavailable', () => {
-      render(<ExternalAPIPanel {...defaultProps} canManageExternalKnowledgeApi={false} />)
-      expect(screen.queryByText('dataset.createExternalAPI')).not.toBeInTheDocument()
+      expect(screen.getByText('dataset.createExternalAPI')).toBeInTheDocument()
     })
 
     it('should render close button', () => {
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton =
-        container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
-      expect(closeButton)!.toBeInTheDocument()
+      const closeButton = container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
+      expect(closeButton).toBeInTheDocument()
     })
   })
 
@@ -99,10 +83,9 @@ describe('ExternalAPIPanel', () => {
       mockIsLoading = true
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
       // Loading component should be rendered
-      const loadingElement =
-        container.querySelector('[class*="loading"]') ||
-        container.querySelector('.animate-spin') ||
-        screen.queryByRole('status')
+      const loadingElement = container.querySelector('[class*="loading"]')
+        || container.querySelector('.animate-spin')
+        || screen.queryByRole('status')
       expect(loadingElement || container.textContent).toBeTruthy()
     })
   })
@@ -138,26 +121,22 @@ describe('ExternalAPIPanel', () => {
         },
       ]
       render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByTestId('api-card-api-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('api-card-api-2'))!.toBeInTheDocument()
-      expect(screen.getByTestId('api-card-api-1')).toHaveAttribute(
-        'data-can-manage-external-knowledge-api',
-        'true',
-      )
-      expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Test API 2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('api-card-api-1')).toBeInTheDocument()
+      expect(screen.getByTestId('api-card-api-2')).toBeInTheDocument()
+      expect(screen.getByText('Test API 1')).toBeInTheDocument()
+      expect(screen.getByText('Test API 2')).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onClose when close button is clicked', () => {
       const onClose = vi.fn()
-      render(<ExternalAPIPanel canManageExternalKnowledgeApi={true} onClose={onClose} />)
+      render(<ExternalAPIPanel onClose={onClose} />)
       // Find the close button (ActionButton with close icon)
       const buttons = screen.getAllByRole('button')
-      const closeButton =
-        buttons.find((btn) => btn.querySelector('svg[class*="ri-close"]')) || buttons[0]
-      fireEvent.click(closeButton!)
+      const closeButton = buttons.find(btn => btn.querySelector('svg[class*="ri-close"]'))
+        || buttons[0]
+      fireEvent.click(closeButton)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -183,7 +162,7 @@ describe('ExternalAPIPanel', () => {
       const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
       fireEvent.click(createButton)
 
-      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
       callArgs.onSaveCallback()
 
       expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
@@ -194,7 +173,7 @@ describe('ExternalAPIPanel', () => {
       const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
       fireEvent.click(createButton)
 
-      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+      const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
       callArgs.onCancelCallback()
 
       expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
@@ -216,13 +195,13 @@ describe('ExternalAPIPanel', () => {
         },
       ]
       render(<ExternalAPIPanel {...defaultProps} />)
-      expect(screen.getByTestId('api-card-single-api'))!.toBeInTheDocument()
+      expect(screen.getByTestId('api-card-single-api')).toBeInTheDocument()
     })
 
     it('should render documentation link with correct target', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation').closest('a')
-      expect(docLink)!.toHaveAttribute('target', '_blank')
+      expect(docLink).toHaveAttribute('target', '_blank')
     })
   })
 })

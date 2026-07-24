@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import { cn } from '@langgenius/dify-ui/cn'
+import { cn } from '@/utils/classnames'
 import ChildSegmentList from '../child-segment-list'
 import SegmentCard from '../segment-card'
 import SegmentList from '../segment-list'
@@ -42,15 +42,14 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
   const firstSegment = segments[0]
 
   return (
-    <div
-      className={cn(
-        'flex grow flex-col overflow-x-hidden',
-        isLoadingSegmentList || isLoadingChildSegmentList ? 'overflow-y-hidden' : 'overflow-y-auto',
-      )}
+    <div className={cn(
+      'flex grow flex-col overflow-x-hidden',
+      (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+    )}
     >
       <SegmentCard
         detail={firstSegment}
-        onClick={() => onClickCard(firstSegment!)}
+        onClick={() => onClickCard(firstSegment)}
         loading={isLoadingSegmentList}
         focused={{
           segmentIndex: currSegmentId === firstSegment?.id,
@@ -58,7 +57,7 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
         }}
       />
       <ChildSegmentList
-        parentChunkId={firstSegment?.id!}
+        parentChunkId={firstSegment?.id}
         onDelete={onDeleteChildChunk}
         childChunks={childSegments}
         handleInputChange={handleInputChange}
@@ -79,6 +78,8 @@ type GeneralModeContentProps = {
   embeddingAvailable: boolean
   isLoadingSegmentList: boolean
   segments: SegmentDetailModel[]
+  selectedSegmentIds: string[]
+  onSelected: (segId: string) => void
   onChangeSwitch: (enable: boolean, segId?: string) => Promise<void>
   onDelete: (segId?: string) => Promise<void>
   onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
@@ -94,6 +95,8 @@ export const GeneralModeContent: FC<GeneralModeContentProps> = ({
   embeddingAvailable,
   isLoadingSegmentList,
   segments,
+  selectedSegmentIds,
+  onSelected,
   onChangeSwitch,
   onDelete,
   onClickCard,
@@ -109,6 +112,8 @@ export const GeneralModeContent: FC<GeneralModeContentProps> = ({
       embeddingAvailable={embeddingAvailable}
       isLoading={isLoadingSegmentList}
       items={segments}
+      selectedSegmentIds={selectedSegmentIds}
+      onSelected={onSelected}
       onChangeSwitch={onChangeSwitch}
       onDelete={onDelete}
       onClick={onClickCard}

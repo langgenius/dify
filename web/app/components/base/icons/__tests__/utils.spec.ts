@@ -4,6 +4,12 @@ import { generate, normalizeAttrs } from '../utils'
 
 describe('generate icon base utils', () => {
   describe('normalizeAttrs', () => {
+    it('should normalize class to className', () => {
+      const attrs = { class: 'test-class' }
+      const result = normalizeAttrs(attrs)
+      expect(result).toEqual({ className: 'test-class' })
+    })
+
     it('should normalize style string to style object', () => {
       const attrs = { style: 'color:red;font-size:14px;' }
       const result = normalizeAttrs(attrs)
@@ -27,8 +33,8 @@ describe('generate icon base utils', () => {
         'xmlns-inkscape': 'http...',
         'xmlns-sodipodi': 'http...',
         'xmlns-svg': 'http...',
-        dataName: 'Layer 1',
-        valid: 'value',
+        'dataName': 'Layer 1',
+        'valid': 'value',
       }
       expect(normalizeAttrs(attrs)).toEqual({ valid: 'value' })
     })
@@ -56,7 +62,7 @@ describe('generate icon base utils', () => {
       const { container } = render(generate(node, 'key'))
       // to svg element
       expect(container.firstChild).toHaveClass('container')
-      expect(container.querySelector('span')).toHaveStyle({ color: 'blue' })
+      expect(container.querySelector('span')).toHaveStyle({ color: 'rgb(0, 0, 255)' })
     })
 
     // add not has children

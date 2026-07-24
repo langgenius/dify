@@ -29,8 +29,16 @@ describe('ImageList', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing with empty list', () => {
+      render(<ImageList list={[]} />)
+      expect(screen.getByTestId('image-list')).toBeInTheDocument()
+    })
+
     it('should render images for each item in the list', () => {
-      const list = [createLocalFile({ _id: 'file-1' }), createLocalFile({ _id: 'file-2' })]
+      const list = [
+        createLocalFile({ _id: 'file-1' }),
+        createLocalFile({ _id: 'file-2' }),
+      ]
       render(<ImageList list={list} />)
 
       const images = screen.getAllByRole('img')
@@ -65,7 +73,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1' })]
       render(<ImageList list={list} onRemove={vi.fn()} />)
 
-      expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should not show remove buttons when readonly', () => {
@@ -96,7 +104,7 @@ describe('ImageList', () => {
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
 
-      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+      expect(screen.getByTestId('retry-icon')).toBeInTheDocument()
       expect(screen.queryByText(/\d+\s*%/)).not.toBeInTheDocument()
     })
   })
@@ -142,15 +150,14 @@ describe('ImageList', () => {
       const onReUpload = vi.fn()
       const list = [createLocalFile({ _id: 'file-1', progress: -1 })]
       render(<ImageList list={list} onReUpload={onReUpload} />)
-      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      const retryIcon = screen.getByTestId('retry-icon')
+      await user.click(retryIcon)
       expect(onReUpload).toHaveBeenCalledWith('file-1')
     })
 
     it('should open image preview when clicking a completed image', async () => {
       const user = userEvent.setup()
-      const list = [
-        createRemoteFile({ _id: 'file-1', progress: 100, url: 'https://example.com/img.png' }),
-      ]
+      const list = [createRemoteFile({ _id: 'file-1', progress: 100, url: 'https://example.com/img.png' })]
       render(<ImageList list={list} />)
 
       await user.click(screen.getByRole('img'))
@@ -179,20 +186,14 @@ describe('ImageList', () => {
       expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
 
       // Close preview
-      const closeButton = screen.getByRole('button', { name: 'common.operation.cancel' })
+      const closeButton = screen.getByTestId('image-preview-close-button')
       await user.click(closeButton)
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })
 
     it('should open preview with base64Url for completed local file', async () => {
       const user = userEvent.setup()
-      const list = [
-        createLocalFile({
-          _id: 'file-1',
-          progress: 100,
-          base64Url: 'data:image/png;base64,localdata',
-        }),
-      ]
+      const list = [createLocalFile({ _id: 'file-1', progress: 100, base64Url: 'data:image/png;base64,localdata' })]
       render(<ImageList list={list} />)
 
       await user.click(screen.getByRole('img'))
@@ -261,7 +262,10 @@ describe('ImageList', () => {
 
   describe('Edge Cases', () => {
     it('should handle list with mixed local and remote files', () => {
-      const list = [createLocalFile({ _id: 'local-1' }), createRemoteFile({ _id: 'remote-1' })]
+      const list = [
+        createLocalFile({ _id: 'local-1' }),
+        createRemoteFile({ _id: 'remote-1' }),
+      ]
       render(<ImageList list={list} />)
 
       expect(screen.getAllByRole('img')).toHaveLength(2)

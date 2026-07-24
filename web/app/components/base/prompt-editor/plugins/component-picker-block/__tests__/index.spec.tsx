@@ -1,7 +1,6 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { LexicalEditor } from 'lexical'
 import type {
-  AgentOutputBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -24,17 +23,13 @@ import {
   $createTextNode,
   $getRoot,
   $setSelection,
-  BLUR_COMMAND,
-  FOCUS_COMMAND,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
 import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import { VAR_REFERENCE_CHILD_POPUP_CLASS_NAME } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../../error-message-block'
@@ -61,9 +56,7 @@ beforeAll(() => {
   Range.prototype.getClientRects = vi.fn(() => {
     const rectList = [mockDOMRect] as unknown as DOMRectList
     Object.defineProperty(rectList, 'length', { value: 1 })
-    Object.defineProperty(rectList, 'item', {
-      value: (index: number) => (index === 0 ? mockDOMRect : null),
-    })
+    Object.defineProperty(rectList, 'item', { value: (index: number) => (index === 0 ? mockDOMRect : null) })
     return rectList
   })
   Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
@@ -87,9 +80,7 @@ function makeCurrentBlock(overrides: Partial<CurrentBlockType> = {}): CurrentBlo
   return { show: true, generatorType: GeneratorType.prompt, ...overrides }
 }
 
-function makeErrorMessageBlock(
-  overrides: Partial<ErrorMessageBlockType> = {},
-): ErrorMessageBlockType {
+function makeErrorMessageBlock(overrides: Partial<ErrorMessageBlockType> = {}): ErrorMessageBlockType {
   return { show: true, ...overrides }
 }
 
@@ -154,7 +145,6 @@ const MinimalEditor: React.FC<{
   queryBlock?: QueryBlockType
   variableBlock?: VariableBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
-  agentOutputBlock?: AgentOutputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
@@ -165,21 +155,17 @@ const MinimalEditor: React.FC<{
   queryBlock,
   variableBlock,
   workflowVariableBlock,
-  agentOutputBlock,
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
   captures,
 }) => {
-  const initialConfig = React.useMemo(
-    () => ({
-      namespace: `component-picker-test-${Math.random().toString(16).slice(2)}`,
-      onError: (e: Error) => {
-        throw e
-      },
-    }),
-    [],
-  )
+  const initialConfig = React.useMemo(() => ({
+    namespace: `component-picker-test-${Math.random().toString(16).slice(2)}`,
+    onError: (e: Error) => {
+      throw e
+    },
+  }), [])
 
   return (
     <EventEmitterContextProvider>
@@ -198,7 +184,6 @@ const MinimalEditor: React.FC<{
           queryBlock={queryBlock}
           variableBlock={variableBlock}
           workflowVariableBlock={workflowVariableBlock}
-          agentOutputBlock={agentOutputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
@@ -215,20 +200,14 @@ async function waitForEditor(captures: Captures): Promise<LexicalEditor> {
   return captures.editor as LexicalEditor
 }
 
-async function waitForEventEmitter(
-  captures: Captures,
-): Promise<NonNullable<Captures['eventEmitter']>> {
+async function waitForEventEmitter(captures: Captures): Promise<NonNullable<Captures['eventEmitter']>> {
   await waitFor(() => {
     expect(captures.eventEmitter).not.toBeNull()
   })
   return captures.eventEmitter as NonNullable<Captures['eventEmitter']>
 }
 
-async function setEditorText(
-  editor: LexicalEditor,
-  text: string,
-  selectEnd: boolean,
-): Promise<void> {
+async function setEditorText(editor: LexicalEditor, text: string, selectEnd: boolean): Promise<void> {
   await act(async () => {
     editor.update(() => {
       const root = $getRoot()
@@ -237,7 +216,8 @@ async function setEditorText(
       const textNode = $createTextNode(text)
       paragraph.append(textNode)
       root.append(paragraph)
-      if (selectEnd) textNode.selectEnd()
+      if (selectEnd)
+        textNode.selectEnd()
     })
   })
 }
@@ -247,26 +227,24 @@ function readEditorText(editor: LexicalEditor): string {
 }
 
 function getReactFiberFromDom(dom: Element): ReactFiber | null {
-  const key = Object.keys(dom).find(
-    (k) => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'),
-  )
-  if (!key) return null
+  const key = Object.keys(dom).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'))
+  if (!key)
+    return null
   return (dom as unknown as Record<string, unknown>)[key] as ReactFiber
 }
 
-function findHookRefPointingToElement(
-  root: ReactFiber,
-  element: Element,
-): { current: unknown } | null {
+function findHookRefPointingToElement(root: ReactFiber, element: Element): { current: unknown } | null {
   const visit = (fiber: ReactFiber | null): { current: unknown } | null => {
-    if (!fiber) return null
+    if (!fiber)
+      return null
 
     let hook = fiber.memoizedState as ReactHook | null | undefined
     while (hook) {
       const state = hook.memoizedState
       if (state && typeof state === 'object' && 'current' in state) {
         const ref = state as { current: unknown }
-        if (ref.current === element) return ref
+        if (ref.current === element)
+          return ref
       }
       hook = hook.next
     }
@@ -279,7 +257,7 @@ function findHookRefPointingToElement(
 async function flushNextTick(): Promise<void> {
   // Used to flush 0ms setTimeout work scheduled by renderMenu (refs.setReference guard).
   await act(async () => {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
   })
 }
 
@@ -309,14 +287,14 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     const user = userEvent.setup()
 
     const captures: Captures = { editor: null, eventEmitter: null }
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         contextBlock={makeContextBlock()}
         queryBlock={makeQueryBlock()}
         captures={captures}
-      />,
-    )
+      />
+    ))
     const editor = await waitForEditor(captures)
     const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
 
@@ -349,7 +327,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
   it('does not remove the trigger when selecting an option with an empty key (nodeToRemove && key falsy)', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         variableBlock={makeVariableBlock({
@@ -359,8 +337,8 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
           variables: [{ name: 'empty', value: '' }],
         })}
         captures={captures}
-      />,
-    )
+      />
+    ))
     const editor = await waitForEditor(captures)
 
     await setEditorText(editor, '{', true)
@@ -385,9 +363,13 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
   it('subscribes to EventEmitter and dispatches INSERT_VARIABLE_VALUE_BLOCK_COMMAND only for matching messages', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
-    render(
-      <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-    )
+    render((
+      <MinimalEditor
+        triggerString="{"
+        contextBlock={makeContextBlock()}
+        captures={captures}
+      />
+    ))
 
     const editor = await waitForEditor(captures)
     const eventEmitter = await waitForEventEmitter(captures)
@@ -395,20 +377,14 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
     // Non-object emissions (string) should be ignored by the subscription callback.
     eventEmitter.emit('some-string')
-    expect(dispatchSpy).not.toHaveBeenCalledWith(
-      INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-      expect.any(String),
-    )
+    expect(dispatchSpy).not.toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, expect.any(String))
 
     // Mismatched type should be ignored.
     eventEmitter.emit({ type: 'OTHER', payload: 'x' })
     expect(dispatchSpy).not.toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{x}}')
 
     // Matching type should dispatch with {{payload}} wrapping.
-    eventEmitter.emit({
-      type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND as unknown as string,
-      payload: 'foo',
-    })
+    eventEmitter.emit({ type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND as unknown as string, payload: 'foo' })
     expect(dispatchSpy).toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{foo}}')
   })
 
@@ -416,18 +392,13 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      {
-        nodeId: 'custom-flat',
-        title: 'custom-flat',
-        isFlat: true,
-        vars: [makeWorkflowNodeVar('custom_flat', VarType.string)],
-      },
+      { nodeId: 'custom-flat', title: 'custom-flat', isFlat: true, vars: [makeWorkflowNodeVar('custom_flat', VarType.string)] },
       makeWorkflowVarNode('node-output', 'Node Output', [
         makeWorkflowNodeVar('output', VarType.string),
       ]),
     ])
 
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         workflowVariableBlock={workflowVariableBlock}
@@ -435,8 +406,8 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
         errorMessageBlock={makeErrorMessageBlock()}
         lastRunBlock={makeLastRunBlock()}
         captures={captures}
-      />,
-    )
+      />
+    ))
 
     const editor = await waitForEditor(captures)
     const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
@@ -500,23 +471,19 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
       makeWorkflowVarNode('node-1', 'Node 1', [
-        makeWorkflowNodeVar('sys.query', VarType.object, [
-          makeWorkflowNodeVar('q', VarType.string),
-        ]),
-        makeWorkflowNodeVar('sys.files', VarType.object, [
-          makeWorkflowNodeVar('f', VarType.string),
-        ]),
+        makeWorkflowNodeVar('sys.query', VarType.object, [makeWorkflowNodeVar('q', VarType.string)]),
+        makeWorkflowNodeVar('sys.files', VarType.object, [makeWorkflowNodeVar('f', VarType.string)]),
         makeWorkflowNodeVar('output', VarType.object, [makeWorkflowNodeVar('x', VarType.string)]),
       ]),
     ])
 
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         workflowVariableBlock={workflowVariableBlock}
         captures={captures}
-      />,
-    )
+      />
+    ))
 
     const editor = await waitForEditor(captures)
     const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
@@ -524,9 +491,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     const openPickerAndSelectField = async (variableTitle: string, fieldName: string) => {
       await setEditorText(editor, '{', true)
       await screen.findByPlaceholderText('workflow.common.searchVar')
-      await act(async () => {
-        /* flush effects */
-      })
+      await act(async () => { /* flush effects */ })
 
       const label = document.querySelector(`[title="${variableTitle}"]`)
       expect(label).not.toBeNull()
@@ -550,204 +515,24 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
 
     await openPickerAndSelectField('output', 'x')
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
-      'node-1',
-      'output',
-      'x',
-    ])
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'output', 'x'])
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
-  })
-
-  it('filters workflow variables from slash input and matches child paths', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
-    const user = userEvent.setup()
-
-    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      makeWorkflowVarNode('node-1', 'Node 1', [
-        makeWorkflowNodeVar('payload', VarType.object, [
-          makeWorkflowNodeVar('child_name', VarType.string),
-        ]),
-        makeWorkflowNodeVar('other_value', VarType.string),
-      ]),
-    ])
-
-    render(
-      <MinimalEditor
-        triggerString="/"
-        contextBlock={makeContextBlock()}
-        workflowVariableBlock={workflowVariableBlock}
-        captures={captures}
-      />,
-    )
-
-    const editor = await waitForEditor(captures)
-    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
-
-    await setEditorText(editor, '/child', true)
-    await flushNextTick()
-
-    expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
-    expect(await screen.findByText('payload')).toBeInTheDocument()
-    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
-
-    const label = document.querySelector('[title="payload"]')
-    expect(label).not.toBeNull()
-    const row = (label as HTMLElement).parentElement?.parentElement
-    expect(row).not.toBeNull()
-
-    await user.hover(row as HTMLElement)
-    const childField = await screen.findByText('child_name')
-    fireEvent.mouseDown(childField)
-    await user.unhover(row as HTMLElement)
-
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
-      'node-1',
-      'payload',
-      'child_name',
-    ])
-    await waitFor(() => expect(readEditorText(editor)).not.toContain('/child'))
-  })
-
-  it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
-
-    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      makeWorkflowVarNode('node-1', 'Node 1', [
-        makeWorkflowNodeVar('child_value', VarType.string),
-        makeWorkflowNodeVar('other_value', VarType.string),
-      ]),
-    ])
-
-    render(
-      <MinimalEditor
-        triggerString="/"
-        contextBlock={makeContextBlock()}
-        workflowVariableBlock={workflowVariableBlock}
-        captures={captures}
-      />,
-    )
-
-    const editor = await waitForEditor(captures)
-    await setEditorText(editor, '/c', true)
-    await flushNextTick()
-
-    expect(await screen.findByText('child_value')).toBeInTheDocument()
-    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
-
-    const contextTitle = screen.getByText('common.promptEditor.context.item.title')
-    expect(contextTitle.closest('[tabindex="-1"]')).not.toHaveClass('bg-state-base-hover!')
-
-    await waitFor(() => {
-      expect(readEditorText(editor)).toContain('/c')
-    })
-  })
-
-  it('clears slash trigger state after creating an agent output from the footer action', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
-
-    render(
-      <MinimalEditor
-        triggerString="/"
-        workflowVariableBlock={makeWorkflowVariableBlock({}, [
-          makeWorkflowVarNode('node-1', 'Node 1', [makeWorkflowNodeVar('output', VarType.string)]),
-        ])}
-        agentOutputBlock={{
-          show: true,
-          outputs: [],
-          onChange: vi.fn(),
-        }}
-        captures={captures}
-      />,
-    )
-
-    const editor = await waitForEditor(captures)
-    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
-
-    await setEditorText(editor, '/', true)
-    await flushNextTick()
-
-    const newOutputAction = await screen.findByText('workflow.nodes.agent.outputVars.newOutput')
-    fireEvent.click(newOutputAction)
-
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_AGENT_OUTPUT_BLOCK_COMMAND, undefined)
-    await waitFor(() => {
-      expect(readEditorText(editor)).not.toContain('/')
-      expect(
-        screen.queryByText('workflow.nodes.agent.outputVars.newOutput'),
-      ).not.toBeInTheDocument()
-    })
-
-    const editable = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
-    fireEvent.focus(editable)
-
-    await flushNextTick()
-    expect(screen.queryByText('workflow.nodes.agent.outputVars.newOutput')).not.toBeInTheDocument()
-  })
-
-  it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
-
-    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      makeWorkflowVarNode('node-1', 'Node 1', [
-        makeWorkflowNodeVar('first_value', VarType.string),
-        makeWorkflowNodeVar('second_value', VarType.string),
-      ]),
-    ])
-
-    render(
-      <MinimalEditor
-        triggerString="/"
-        contextBlock={makeContextBlock()}
-        workflowVariableBlock={workflowVariableBlock}
-        captures={captures}
-      />,
-    )
-
-    const editor = await waitForEditor(captures)
-    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
-
-    await setEditorText(editor, '/e', true)
-    await flushNextTick()
-
-    const firstItem = screen.getByText('first_value').closest('[data-selected]')
-    const secondItem = screen.getByText('second_value').closest('[data-selected]')
-
-    expect(firstItem).toHaveAttribute('data-selected', 'true')
-    expect(secondItem).toHaveAttribute('data-selected', 'false')
-
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
-
-    expect(firstItem).toHaveAttribute('data-selected', 'false')
-    expect(secondItem).toHaveAttribute('data-selected', 'true')
-
-    fireEvent.keyDown(document, { key: 'Enter' })
-
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
-      'node-1',
-      'second_value',
-    ])
-    await waitFor(() => expect(readEditorText(editor)).not.toContain('/e'))
   })
 
   it('skips removing the trigger when selection is null (needRemove is null) and still dispatches', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      {
-        nodeId: 'current',
-        title: 'current_prompt',
-        isFlat: true,
-        vars: [makeWorkflowNodeVar('current', VarType.string)],
-      },
+      { nodeId: 'current', title: 'current_prompt', isFlat: true, vars: [makeWorkflowNodeVar('current', VarType.string)] },
     ])
 
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         workflowVariableBlock={workflowVariableBlock}
         captures={captures}
-      />,
-    )
+      />
+    ))
 
     const editor = await waitForEditor(captures)
     const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
@@ -781,27 +566,29 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     vi.useFakeTimers()
 
     const captures: Captures = { editor: null, eventEmitter: null }
-    render(
-      <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-    )
+    render((
+      <MinimalEditor
+        triggerString="{"
+        contextBlock={makeContextBlock()}
+        captures={captures}
+      />
+    ))
 
-    await act(async () => {
-      /* flush effects */
-    })
+    await act(async () => { /* flush effects */ })
     expect(captures.editor).not.toBeNull()
     const editor = captures.editor as LexicalEditor
 
     await setEditorText(editor, '{', true)
     const typeaheadMenu = document.getElementById('typeahead-menu')
     expect(typeaheadMenu).not.toBeNull()
-    expect(typeaheadMenu).toHaveClass('z-50')
 
     const ce = screen.getByTestId(CONTENT_EDITABLE_TEST_ID)
     const fiber = getReactFiberFromDom(ce)
     expect(fiber).not.toBeNull()
     const root = (() => {
       let cur = fiber as ReactFiber
-      while (cur.return) cur = cur.return
+      while (cur.return)
+        cur = cur.return
       return cur
     })()
 
@@ -820,17 +607,19 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
-      makeWorkflowVarNode('node-1', 'Node 1', [makeWorkflowNodeVar('output', VarType.string)]),
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('output', VarType.string),
+      ]),
     ])
 
-    render(
+    render((
       <MinimalEditor
         triggerString="{"
         workflowVariableBlock={workflowVariableBlock}
         contextBlock={makeContextBlock()}
         captures={captures}
-      />,
-    )
+      />
+    ))
 
     const editor = await waitForEditor(captures)
     await setEditorText(editor, '{', true)
@@ -841,219 +630,5 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
     // With a single option group, the only divider should be the workflow-var/options separator.
     expect(document.querySelectorAll('.bg-divider-subtle')).toHaveLength(1)
-  })
-
-  describe('blur/focus menu visibility', () => {
-    it('hides the menu after a 200ms delay when blur-sm command is dispatched', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '{', true)
-      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      act(() => {
-        editor.dispatchCommand(
-          BLUR_COMMAND,
-          new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }),
-        )
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).not.toBeInTheDocument()
-
-      vi.useRealTimers()
-    })
-
-    it('restores menu visibility when focus command is dispatched after blur-sm hides it', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '{', true)
-      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      act(() => {
-        editor.dispatchCommand(
-          BLUR_COMMAND,
-          new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }),
-        )
-      })
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).not.toBeInTheDocument()
-
-      act(() => {
-        editor.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
-      })
-
-      vi.useRealTimers()
-
-      await setEditorText(editor, '{', true)
-      await waitFor(() => {
-        expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-      })
-    })
-
-    it('cancels the blur-sm timer when focus arrives before the 200ms timeout', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '{', true)
-      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      act(() => {
-        editor.dispatchCommand(
-          BLUR_COMMAND,
-          new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }),
-        )
-      })
-
-      act(() => {
-        editor.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
-      })
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useRealTimers()
-    })
-
-    it('cancels a pending blur-sm timer when a subsequent blur-sm targets var-search-input', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '{', true)
-      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      act(() => {
-        editor.dispatchCommand(
-          BLUR_COMMAND,
-          new FocusEvent('blur-sm', { relatedTarget: document.createElement('button') }),
-        )
-      })
-
-      const varInput = document.createElement('input')
-      varInput.classList.add('var-search-input')
-
-      act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: varInput }))
-      })
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useRealTimers()
-    })
-
-    it('does not hide the menu when blur-sm target is var-search-input', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '{', true)
-      expect(await screen.findByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      const target = document.createElement('input')
-      target.classList.add('var-search-input')
-
-      act(() => {
-        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: target }))
-      })
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
-
-      vi.useRealTimers()
-    })
-
-    it('does not hide the menu when focus moves into a variable child popup', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <MinimalEditor
-          triggerString="/"
-          workflowVariableBlock={makeWorkflowVariableBlock({}, [
-            makeWorkflowVarNode('node-1', 'Node 1', [
-              makeWorkflowNodeVar('payload', VarType.object, [
-                makeWorkflowNodeVar('child', VarType.string),
-              ]),
-            ]),
-          ])}
-          captures={captures}
-        />,
-      )
-
-      const editor = await waitForEditor(captures)
-      await setEditorText(editor, '/', true)
-      expect(await screen.findByText('payload')).toBeInTheDocument()
-
-      vi.useFakeTimers()
-
-      const popupTarget = document.createElement('button')
-      const popup = document.createElement('div')
-      popup.classList.add(VAR_REFERENCE_CHILD_POPUP_CLASS_NAME)
-      popup.appendChild(popupTarget)
-      document.body.appendChild(popup)
-
-      act(() => {
-        editor.dispatchCommand(
-          BLUR_COMMAND,
-          new FocusEvent('blur-sm', { relatedTarget: popupTarget }),
-        )
-      })
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-
-      expect(screen.queryByText('payload')).toBeInTheDocument()
-
-      popup.remove()
-      vi.useRealTimers()
-    })
   })
 })

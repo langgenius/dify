@@ -1,15 +1,11 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { fetchInitValidateStatus, fetchSetupStatus, sendForgotPasswordEmail } from '@/service/common'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
 const mockPush = vi.fn()
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -25,9 +21,7 @@ const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
-  mockFetchInitValidateStatus.mockResolvedValue({
-    status: 'finished',
-  } as InitValidateStatusResponse)
+  mockFetchInitValidateStatus.mockResolvedValue({ status: 'finished' } as InitValidateStatusResponse)
 }
 
 describe('ForgotPasswordForm', () => {
@@ -85,9 +79,7 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
+    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
 
     const form = screen.getByRole('button', { name: /login\.sendResetLink/ }).closest('form')
     expect(form).not.toBeNull()
@@ -111,9 +103,7 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
+    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
 
     const button = screen.getByRole('button', { name: /login\.sendResetLink/ })
     fireEvent.click(button)
@@ -138,9 +128,7 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), {
-      target: { value: 'test@example.com' },
-    })
+    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
 
     await waitFor(() => {
@@ -159,9 +147,7 @@ describe('ForgotPasswordForm', () => {
       value: { href: '' },
       writable: true,
     })
-    mockFetchInitValidateStatus.mockResolvedValue({
-      status: 'not_started',
-    } as InitValidateStatusResponse)
+    mockFetchInitValidateStatus.mockResolvedValue({ status: 'not_started' } as InitValidateStatusResponse)
 
     render(<ForgotPasswordForm />)
 

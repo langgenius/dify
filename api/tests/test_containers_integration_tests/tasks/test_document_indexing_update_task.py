@@ -2,13 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
 
 
@@ -34,7 +30,7 @@ class TestDocumentIndexingUpdateTask:
                 "runner_instance": runner_instance,
             }
 
-    def _create_dataset_document_with_segments(self, db_session_with_containers: Session, *, segment_count: int = 2):
+    def _create_dataset_document_with_segments(self, db_session_with_containers, *, segment_count: int = 2):
         fake = Faker()
 
         # Account and tenant
@@ -42,12 +38,12 @@ class TestDocumentIndexingUpdateTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
+        tenant = Tenant(name=fake.company(), status="normal")
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
@@ -65,8 +61,8 @@ class TestDocumentIndexingUpdateTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=64),
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -76,14 +72,14 @@ class TestDocumentIndexingUpdateTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="test_batch",
             name=fake.file_name(),
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="upload_file",
             created_by=account.id,
-            indexing_status=IndexingStatus.WAITING,
+            indexing_status="waiting",
             enabled=True,
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            doc_form="text_model",
         )
         db_session_with_containers.add(document)
         db_session_with_containers.commit()
@@ -102,7 +98,7 @@ class TestDocumentIndexingUpdateTask:
                 word_count=10,
                 tokens=5,
                 index_node_id=node_id,
-                status=SegmentStatus.COMPLETED,
+                status="completed",
                 created_by=account.id,
             )
             db_session_with_containers.add(seg)
@@ -115,7 +111,7 @@ class TestDocumentIndexingUpdateTask:
 
         return dataset, document, node_ids
 
-    def test_cleans_segments_and_reindexes(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_cleans_segments_and_reindexes(self, db_session_with_containers, mock_external_dependencies):
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Act
@@ -125,13 +121,13 @@ class TestDocumentIndexingUpdateTask:
         db_session_with_containers.expire_all()
 
         # Assert document status updated before reindex
-        updated = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
-        assert updated.indexing_status == IndexingStatus.PARSING
+        updated = db_session_with_containers.query(Document).where(Document.id == document.id).first()
+        assert updated.indexing_status == "parsing"
         assert updated.processing_started_at is not None
 
         # Segments should be deleted
-        remaining = db_session_with_containers.scalar(
-            select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+        remaining = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).count()
         )
         assert remaining == 0
 
@@ -139,9 +135,9 @@ class TestDocumentIndexingUpdateTask:
         clean_call = mock_external_dependencies["processor"].clean.call_args
         assert clean_call is not None
         args, kwargs = clean_call
-        # args[0] is a Dataset instance (from another session), so validate by id.
+        # args[0] is a Dataset instance (from another session) — validate by id
         assert getattr(args[0], "id", None) == dataset.id
-        # args[1] should contain our node_ids.
+        # args[1] should contain our node_ids
         assert set(args[1]) == set(node_ids)
         assert kwargs.get("with_keywords") is True
         assert kwargs.get("delete_child_chunks") is True
@@ -154,9 +150,7 @@ class TestDocumentIndexingUpdateTask:
         first = run_docs[0]
         assert getattr(first, "id", None) == document.id
 
-    def test_clean_error_is_logged_and_indexing_continues(
-        self, db_session_with_containers: Session, mock_external_dependencies
-    ):
+    def test_clean_error_is_logged_and_indexing_continues(self, db_session_with_containers, mock_external_dependencies):
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Force clean to raise; task should continue to indexing
@@ -171,12 +165,12 @@ class TestDocumentIndexingUpdateTask:
         mock_external_dependencies["runner_instance"].run.assert_called_once()
 
         # Segments should remain (since clean failed before DB delete)
-        remaining = db_session_with_containers.scalar(
-            select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
+        remaining = (
+            db_session_with_containers.query(DocumentSegment).where(DocumentSegment.document_id == document.id).count()
         )
         assert remaining > 0
 
-    def test_document_not_found_noop(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_document_not_found_noop(self, db_session_with_containers, mock_external_dependencies):
         fake = Faker()
         # Act with non-existent document id
         document_indexing_update_task(dataset_id=fake.uuid4(), document_id=fake.uuid4())

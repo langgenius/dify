@@ -1,26 +1,29 @@
 'use client'
 
-import { useEffect } from 'react'
-import { FullScreenLoading } from '@/app/components/full-screen-loading'
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation'
+import {
+  useEffect,
+  useMemo,
+} from 'react'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter, useSearchParams } from '@/next/navigation'
 
 export default function EducationApply() {
   const router = useRouter()
-  const { enableEducationPlan, isFetchedPlanInfo, isLoadingEducationAccountInfo } =
-    useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const showEducationApplyPage = useMemo(() => {
+    return enableEducationPlan && token
+  }, [enableEducationPlan, token])
 
   useEffect(() => {
-    if (!isFetchedPlanInfo) return
-
-    if (!enableEducationPlan || !token) router.replace('/')
-  }, [enableEducationPlan, isFetchedPlanInfo, router, token])
-
-  if (!isFetchedPlanInfo || !enableEducationPlan || !token || isLoadingEducationAccountInfo)
-    return <FullScreenLoading />
+    if (!showEducationApplyPage)
+      router.replace('/')
+  }, [showEducationApplyPage, router])
 
   return <EducationApplyPage />
 }

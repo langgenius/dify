@@ -2,17 +2,33 @@ import type { PluginDetail } from '../../../../types'
 import type { ModalStates, VersionTarget } from '../../hooks'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { expectLoadingButton } from '@/test/button'
 import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en_US',
+}))
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, title, onCancel, onConfirm, isLoading }: {
+    isShow: boolean
+    title: string
+    onCancel: () => void
+    onConfirm: () => void
+    isLoading: boolean
+  }) => isShow
+    ? (
+        <div data-testid="delete-confirm">
+          <div data-testid="delete-title">{title}</div>
+          <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+          <button data-testid="confirm-ok" onClick={onConfirm} disabled={isLoading}>Confirm</button>
+        </div>
+      )
+    : null,
+}))
+
 vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
-  default: ({
-    repository,
-    release,
-    packageName,
-    onHide,
-  }: {
+  default: ({ repository, release, packageName, onHide }: {
     repository: string
     release: string
     packageName: string
@@ -22,20 +38,13 @@ vi.mock('@/app/components/plugins/plugin-page/plugin-info', () => ({
       <div data-testid="plugin-info-repo">{repository}</div>
       <div data-testid="plugin-info-release">{release}</div>
       <div data-testid="plugin-info-package">{packageName}</div>
-      <button data-testid="plugin-info-close" onClick={onHide}>
-        Close
-      </button>
+      <button data-testid="plugin-info-close" onClick={onHide}>Close</button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
-  default: ({
-    pluginId,
-    onSave,
-    onCancel,
-    isShowDowngradeWarningModal,
-  }: {
+  default: ({ pluginId, onSave, onCancel, isShowDowngradeWarningModal }: {
     pluginId: string
     onSave: () => void
     onCancel: () => void
@@ -44,12 +53,8 @@ vi.mock('@/app/components/plugins/update-plugin/from-market-place', () => ({
     <div data-testid="update-modal">
       <div data-testid="update-plugin-id">{pluginId}</div>
       <div data-testid="update-downgrade-warning">{String(isShowDowngradeWarningModal)}</div>
-      <button data-testid="update-modal-save" onClick={onSave}>
-        Save
-      </button>
-      <button data-testid="update-modal-cancel" onClick={onCancel}>
-        Cancel
-      </button>
+      <button data-testid="update-modal-save" onClick={onSave}>Save</button>
+      <button data-testid="update-modal-cancel" onClick={onCancel}>Cancel</button>
     </div>
   ),
 }))
@@ -225,7 +230,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('delete-confirm')).not.toBeInTheDocument()
     })
 
     it('should render delete confirm when isShowDeleteConfirm is true', () => {
@@ -242,7 +247,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
     })
 
     it('should show correct delete title', () => {
@@ -259,7 +264,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByRole('alertdialog')).toHaveTextContent('plugin.action.delete')
+      expect(screen.getByTestId('delete-title')).toHaveTextContent('plugin.action.delete')
     })
 
     it('should call hideDeleteConfirm when cancel is clicked', () => {
@@ -276,7 +281,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      fireEvent.click(screen.getByTestId('confirm-cancel'))
 
       expect(modalStates.hideDeleteConfirm).toHaveBeenCalled()
     })
@@ -295,7 +300,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      fireEvent.click(screen.getByTestId('confirm-ok'))
 
       expect(mockOnDelete).toHaveBeenCalled()
     })
@@ -314,7 +319,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expectLoadingButton(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
+      expect(screen.getByTestId('confirm-ok')).toBeDisabled()
     })
   })
 
@@ -480,7 +485,7 @@ describe('HeaderModals', () => {
       )
 
       expect(screen.getByTestId('plugin-info')).toBeInTheDocument()
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByTestId('delete-confirm')).toBeInTheDocument()
       expect(screen.getByTestId('update-modal')).toBeInTheDocument()
     })
   })

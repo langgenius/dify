@@ -6,30 +6,30 @@ type OperationsProps = {
   openEditModal: () => void
   onDelete: () => void
   onExport: () => void
-  onClose?: () => void
 }
 
-const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsProps) => {
+const Operations = ({
+  openEditModal,
+  onDelete,
+  onExport,
+}: OperationsProps) => {
   const { t } = useTranslation()
 
   const onClickEdit = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     e.preventDefault()
-    onClose?.()
     openEditModal()
   }
 
   const onClickExport = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     e.preventDefault()
-    onClose?.()
     onExport()
   }
 
   const onClickDelete = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     e.preventDefault()
-    onClose?.()
     onDelete()
   }
 
@@ -40,16 +40,16 @@ const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsPr
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={onClickEdit}
         >
-          <span className="px-1 system-md-regular text-text-secondary">
-            {t(($) => $['operations.editInfo'], { ns: 'datasetPipeline' })}
+          <span className="system-md-regular px-1 text-text-secondary">
+            {t('operations.editInfo', { ns: 'datasetPipeline' })}
           </span>
         </div>
         <div
           className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={onClickExport}
         >
-          <span className="px-1 system-md-regular text-text-secondary">
-            {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
+          <span className="system-md-regular px-1 text-text-secondary">
+            {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
           </span>
         </div>
       </div>
@@ -59,8 +59,8 @@ const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsPr
           className="group flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-destructive-hover"
           onClick={onClickDelete}
         >
-          <span className="px-1 system-md-regular text-text-secondary group-hover:text-text-destructive">
-            {t(($) => $['operation.delete'], { ns: 'common' })}
+          <span className="system-md-regular px-1 text-text-secondary group-hover:text-text-destructive">
+            {t('operation.delete', { ns: 'common' })}
           </span>
         </div>
       </div>

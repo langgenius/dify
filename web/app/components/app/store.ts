@@ -4,6 +4,7 @@ import { create } from 'zustand'
 
 type State = {
   appDetail?: App & Partial<AppSSO>
+  appSidebarExpand: string
   currentLogItem?: IChatItem
   currentLogModalActiveTab: string
   showPromptLogModal: boolean
@@ -14,6 +15,7 @@ type State = {
 
 type Action = {
   setAppDetail: (appDetail?: App & Partial<AppSSO>) => void
+  setAppSidebarExpand: (state: string) => void
   setCurrentLogItem: (item?: IChatItem) => void
   setCurrentLogModalActiveTab: (tab: string) => void
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
@@ -22,31 +24,31 @@ type Action = {
   setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal: boolean) => void
 }
 
-export const useStore = create<State & Action>((set) => ({
+export const useStore = create<State & Action>(set => ({
   appDetail: undefined,
-  setAppDetail: (appDetail) => set(() => ({ appDetail })),
+  setAppDetail: appDetail => set(() => ({ appDetail })),
+  appSidebarExpand: '',
+  setAppSidebarExpand: appSidebarExpand => set(() => ({ appSidebarExpand })),
   currentLogItem: undefined,
   currentLogModalActiveTab: 'DETAIL',
-  setCurrentLogItem: (currentLogItem) => set(() => ({ currentLogItem })),
-  setCurrentLogModalActiveTab: (currentLogModalActiveTab) =>
-    set(() => ({ currentLogModalActiveTab })),
+  setCurrentLogItem: currentLogItem => set(() => ({ currentLogItem })),
+  setCurrentLogModalActiveTab: currentLogModalActiveTab => set(() => ({ currentLogModalActiveTab })),
   showPromptLogModal: false,
-  setShowPromptLogModal: (showPromptLogModal) => set(() => ({ showPromptLogModal })),
+  setShowPromptLogModal: showPromptLogModal => set(() => ({ showPromptLogModal })),
   showAgentLogModal: false,
-  setShowAgentLogModal: (showAgentLogModal) => set(() => ({ showAgentLogModal })),
+  setShowAgentLogModal: showAgentLogModal => set(() => ({ showAgentLogModal })),
   showMessageLogModal: false,
-  setShowMessageLogModal: (showMessageLogModal) =>
-    set(() => {
-      if (showMessageLogModal) {
-        return { showMessageLogModal }
-      } else {
-        return {
-          showMessageLogModal,
-          currentLogModalActiveTab: 'DETAIL',
-        }
+  setShowMessageLogModal: showMessageLogModal => set(() => {
+    if (showMessageLogModal) {
+      return { showMessageLogModal }
+    }
+    else {
+      return {
+        showMessageLogModal,
+        currentLogModalActiveTab: 'DETAIL',
       }
-    }),
+    }
+  }),
   showAppConfigureFeaturesModal: false,
-  setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal) =>
-    set(() => ({ showAppConfigureFeaturesModal })),
+  setShowAppConfigureFeaturesModal: showAppConfigureFeaturesModal => set(() => ({ showAppConfigureFeaturesModal })),
 }))

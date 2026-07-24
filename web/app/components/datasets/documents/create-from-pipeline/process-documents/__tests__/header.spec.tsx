@@ -2,18 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Header from '../header'
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    variant,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-    disabled?: boolean
-    variant: string
-  }) => (
+vi.mock('@/app/components/base/button', () => ({
+  default: ({ children, onClick, disabled, variant }: { children: React.ReactNode, onClick: () => void, disabled?: boolean, variant: string }) => (
     <button data-testid={`btn-${variant}`} onClick={onClick} disabled={disabled}>
       {children}
     </button>
@@ -34,9 +24,7 @@ describe('Header', () => {
 
   it('should render chunk settings title', () => {
     render(<Header {...defaultProps} />)
-    expect(
-      screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings')).toBeInTheDocument()
   })
 
   it('should render reset and preview buttons', () => {

@@ -1,16 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import { RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
+import {
+  RiCollapseDiagonalLine,
+  RiExpandDiagonalLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
-type Props = Readonly<{
+type Props = {
   isExpand: boolean
   onExpandChange: (isExpand: boolean) => void
-}>
+}
 
-const ExpandBtn: FC<Props> = ({ isExpand, onExpandChange }) => {
+const ExpandBtn: FC<Props> = ({
+  isExpand,
+  onExpandChange,
+}) => {
   const handleToggle = useCallback(() => {
     onExpandChange(!isExpand)
   }, [isExpand])
@@ -18,7 +24,7 @@ const ExpandBtn: FC<Props> = ({ isExpand, onExpandChange }) => {
   const Icon = isExpand ? RiCollapseDiagonalLine : RiExpandDiagonalLine
   return (
     <ActionButton onClick={handleToggle}>
-      <Icon className="size-4" />
+      <Icon className="h-4 w-4" />
     </ActionButton>
   )
 }

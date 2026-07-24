@@ -1,7 +1,7 @@
 import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask_restx import marshal
@@ -13,9 +13,9 @@ from controllers.console.app.workflow_draft_variable import (
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     _serialize_full_content,
 )
-from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.variables.types import SegmentType
 from factories.variable_factory import build_segment
-from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
@@ -29,18 +29,15 @@ class TestWorkflowDraftVariableFields:
     def test_serialize_full_content(self):
         """Test that _serialize_full_content uses pre-loaded relationships."""
         # Create mock objects with relationships pre-loaded
-        mock_variable = WorkflowDraftVariable(
-            file_id="test-file-id",
-            variable_file=WorkflowDraftVariableFile(
-                size=100000,
-                length=50,
-                value_type=SegmentType.OBJECT,
-                upload_file_id="test-upload-file-id",
-                tenant_id=str(uuid.uuid4()),
-                app_id=str(uuid.uuid4()),
-                user_id=str(uuid.uuid4()),
-            ),
-        )
+        mock_variable_file = MagicMock(spec=WorkflowDraftVariableFile)
+        mock_variable_file.size = 100000
+        mock_variable_file.length = 50
+        mock_variable_file.value_type = SegmentType.OBJECT
+        mock_variable_file.upload_file_id = "test-upload-file-id"
+
+        mock_variable = MagicMock(spec=WorkflowDraftVariable)
+        mock_variable.file_id = "test-file-id"
+        mock_variable.variable_file = mock_variable_file
 
         # Mock the file helpers
         with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
@@ -87,7 +84,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": conv_var.id,
+                "id": str(conv_var.id),
                 "type": conv_var.get_variable_type().value,
                 "name": "conv_var",
                 "description": "",
@@ -120,7 +117,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value = OrderedDict(
             {
-                "id": sys_var.id,
+                "id": str(sys_var.id),
                 "type": sys_var.get_variable_type().value,
                 "name": "sys_var",
                 "description": "",
@@ -152,7 +149,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": node_var.id,
+                "id": str(node_var.id),
                 "type": node_var.get_variable_type().value,
                 "name": "node_var",
                 "description": "",
@@ -183,22 +180,19 @@ class TestWorkflowDraftVariableFields:
         node_var.id = str(uuid.uuid4())
         node_var.last_edited_at = naive_utc_now()
         variable_file = WorkflowDraftVariableFile(
+            id=str(uuidv7()),
             upload_file_id=str(uuid.uuid4()),
             size=1024,
             length=10,
             value_type=SegmentType.ARRAY_STRING,
-            tenant_id=str(uuidv7()),
-            app_id=str(uuidv7()),
-            user_id=str(uuidv7()),
         )
-        variable_file.id = str(uuidv7())
         node_var.variable_file = variable_file
         node_var.file_id = variable_file.id
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": node_var.id,
-                "type": node_var.get_variable_type(),
+                "id": str(node_var.id),
+                "type": node_var.get_variable_type().value,
                 "name": "node_var",
                 "description": "",
                 "selector": ["test_node", "node_var"],
@@ -241,7 +235,7 @@ class TestWorkflowDraftVariableList:
         node_var.id = str(uuid.uuid4())
         node_var_dict = OrderedDict(
             {
-                "id": node_var.id,
+                "id": str(node_var.id),
                 "type": node_var.get_variable_type().value,
                 "name": "test_var",
                 "description": "",
@@ -316,12 +310,14 @@ def test_workflow_node_variables_fields():
 
 def test_workflow_file_variable_with_signed_url():
     """Test that File type variables include signed URLs in API responses."""
-    from graphon.file import File, FileTransferMethod, FileType
+    from dify_graph.file.enums import FileTransferMethod, FileType
+    from dify_graph.file.models import File
 
     # Create a File object with LOCAL_FILE transfer method (which generates signed URLs)
     test_file = File(
-        file_id="test_file_id",
-        file_type=FileType.IMAGE,
+        id="test_file_id",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_upload_file_id",
         filename="test.jpg",
@@ -372,12 +368,14 @@ def test_workflow_file_variable_with_signed_url():
 
 def test_workflow_file_variable_remote_url():
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
-    from graphon.file import File, FileTransferMethod, FileType
+    from dify_graph.file.enums import FileTransferMethod, FileType
+    from dify_graph.file.models import File
 
     # Create a File object with REMOTE_URL transfer method
     test_file = File(
-        file_id="test_file_id",
-        file_type=FileType.IMAGE,
+        id="test_file_id",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/test.jpg",
         filename="test.jpg",

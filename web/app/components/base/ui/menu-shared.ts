@@ -1,0 +1,7 @@
+export const menuRowClassName = 'mx-1 flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg px-2 outline-none data-[highlighted]:bg-state-base-hover data-[disabled]:cursor-not-allowed data-[disabled]:opacity-30'
+export const menuIndicatorClassName = 'ml-auto flex shrink-0 items-center text-text-accent'
+export const menuGroupLabelClassName = 'px-3 pb-0.5 pt-1 text-text-tertiary system-xs-medium-uppercase'
+export const menuSeparatorClassName = 'my-1 h-px bg-divider-subtle'
+export const menuPopupBaseClassName = 'max-h-[var(--available-height)] overflow-y-auto overflow-x-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 text-sm text-text-secondary shadow-lg outline-none focus:outline-none focus-visible:outline-none backdrop-blur-[5px]'
+export const menuPopupAnimationClassName = 'origin-[var(--transform-origin)] transition-[transform,scale,opacity] data-[ending-style]:scale-95 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none'
+export const menuBackdropClassName = 'fixed inset-0 z-[1002] bg-transparent transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none'

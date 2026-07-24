@@ -1,10 +1,6 @@
-"""Unit tests for controllers.web.forgot_password endpoints."""
-
-from __future__ import annotations
-
 import base64
-from collections.abc import Iterator
-from unittest.mock import ANY, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -14,31 +10,25 @@ from controllers.web.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from models.account import Account
-from models.engine import db
-from services.feature_service import SystemFeatureModel
 
 
 @pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        Account.__table__.create(db.engine)
-        yield app
+def app():
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+    return flask_app
 
 
 @pytest.fixture(autouse=True)
 def _patch_wraps():
-    wraps_features = SystemFeatureModel(enable_email_password_login=True)
+    wraps_features = SimpleNamespace(enable_email_password_login=True)
+    dify_settings = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
     with (
         patch("controllers.console.wraps.db") as mock_db,
-        patch("controllers.console.wraps.dify_config.ENTERPRISE_ENABLED", True),
-        patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+        patch("controllers.console.wraps.dify_config", dify_settings),
         patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
     ):
+        mock_db.session.query.return_value.first.return_value = MagicMock()
         yield
 
 
@@ -47,27 +37,32 @@ class TestForgotPasswordSendEmailApi:
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.web.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
     @patch("controllers.web.forgot_password.extract_remote_ip", return_value="127.0.0.1")
+    @patch("controllers.web.forgot_password.Session")
     def test_should_normalize_email_before_sending(
         self,
+        mock_session_cls,
         mock_extract_ip,
         mock_rate_limit,
         mock_get_account,
         mock_send_mail,
-        app: Flask,
+        app,
     ):
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
         mock_send_mail.return_value = "token-123"
+        mock_session = MagicMock()
+        mock_session_cls.return_value.__enter__.return_value = mock_session
 
-        with app.test_request_context(
-            "/web/forgot-password",
-            method="POST",
-            json={"email": "User@Example.com", "language": "zh-Hans"},
-        ):
-            response = ForgotPasswordSendEmailApi().post()
+        with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
+            with app.test_request_context(
+                "/web/forgot-password",
+                method="POST",
+                json={"email": "User@Example.com", "language": "zh-Hans"},
+            ):
+                response = ForgotPasswordSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
+        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_send_mail.assert_called_once_with(account=mock_account, email="user@example.com", language="zh-Hans")
         mock_extract_ip.assert_called_once()
         mock_rate_limit.assert_called_once_with("127.0.0.1")
@@ -88,7 +83,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app: Flask,
+        app,
     ):
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = {"email": "User@Example.com", "code": "1234"}
@@ -124,7 +119,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app: Flask,
+        app,
     ):
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = {"email": "MixedCase@Example.com", "code": "5678"}
@@ -150,40 +145,44 @@ class TestForgotPasswordCheckApi:
 class TestForgotPasswordResetApi:
     @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.web.forgot_password.Session")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     def test_should_fetch_account_with_fallback(
         self,
         mock_get_reset_data,
         mock_revoke_token,
+        mock_session_cls,
         mock_get_account,
         mock_update_account,
-        database_app: Flask,
+        app,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com", "code": "1234"}
-        account = Account(name="User", email="user@example.com")
-        db.session.add(account)
-        db.session.commit()
-        mock_get_account.return_value = account
+        mock_account = MagicMock()
+        mock_get_account.return_value = mock_account
+        mock_session = MagicMock()
+        mock_session_cls.return_value.__enter__.return_value = mock_session
 
-        with database_app.test_request_context(
-            "/web/forgot-password/resets",
-            method="POST",
-            json={
-                "token": "token-123",
-                "new_password": "ValidPass123!",
-                "password_confirm": "ValidPass123!",
-            },
-        ):
-            response = ForgotPasswordResetApi().post()
+        with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
+            with app.test_request_context(
+                "/web/forgot-password/resets",
+                method="POST",
+                json={
+                    "token": "token-123",
+                    "new_password": "ValidPass123!",
+                    "password_confirm": "ValidPass123!",
+                },
+            ):
+                response = ForgotPasswordResetApi().post()
 
         assert response == {"result": "success"}
-        mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
+        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_update_account.assert_called_once()
         mock_revoke_token.assert_called_once_with("token-123")
 
     @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value")
     @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef")
+    @patch("controllers.web.forgot_password.Session")
     @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
@@ -192,36 +191,36 @@ class TestForgotPasswordResetApi:
         mock_get_account,
         mock_get_reset_data,
         mock_revoke_token,
+        mock_session_cls,
         mock_token_bytes,
         mock_hash_password,
-        database_app: Flask,
+        app,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "user@example.com"}
-        account = Account(name="User", email="user@example.com")
-        db.session.add(account)
-        db.session.commit()
+        account = MagicMock()
         mock_get_account.return_value = account
+        mock_session = MagicMock()
+        mock_session_cls.return_value.__enter__.return_value = mock_session
 
-        with database_app.test_request_context(
-            "/web/forgot-password/resets",
-            method="POST",
-            json={
-                "token": "reset-token",
-                "new_password": "StrongPass123!",
-                "password_confirm": "StrongPass123!",
-            },
-        ):
-            response = ForgotPasswordResetApi().post()
+        with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
+            with app.test_request_context(
+                "/web/forgot-password/resets",
+                method="POST",
+                json={
+                    "token": "reset-token",
+                    "new_password": "StrongPass123!",
+                    "password_confirm": "StrongPass123!",
+                },
+            ):
+                response = ForgotPasswordResetApi().post()
 
         assert response == {"result": "success"}
         mock_get_reset_data.assert_called_once_with("reset-token")
         mock_revoke_token.assert_called_once_with("reset-token")
         mock_token_bytes.assert_called_once_with(16)
         mock_hash_password.assert_called_once_with("StrongPass123!", b"0123456789abcdef")
-        db.session.expire_all()
-        stored_account = db.session.get(Account, account.id)
-        assert stored_account is not None
         expected_password = base64.b64encode(b"hashed-value").decode()
-        assert stored_account.password == expected_password
+        assert account.password == expected_password
         expected_salt = base64.b64encode(b"0123456789abcdef").decode()
-        assert stored_account.password_salt == expected_salt
+        assert account.password_salt == expected_salt
+        mock_session.commit.assert_called_once()

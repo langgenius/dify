@@ -1,25 +1,13 @@
 """Tests for logging context module."""
 
 import uuid
-from contextvars import copy_context
-
-import pytest
 
 from core.logging.context import (
     clear_request_context,
-    get_identity_context,
     get_request_id,
     get_trace_id,
     init_request_context,
-    set_identity_context,
 )
-
-
-@pytest.fixture(autouse=True)
-def _reset_logging_context():
-    clear_request_context()
-    yield
-    clear_request_context()
 
 
 class TestLoggingContext:
@@ -89,41 +77,3 @@ class TestLoggingContext:
 
         # IDs should be different
         assert id1 != id2
-
-    def test_set_identity_context(self):
-        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
-
-        identity = get_identity_context()
-        assert identity.tenant_id == "tenant-1"
-        assert identity.user_id == "user-1"
-        assert identity.user_type == "end_user"
-
-    def test_set_identity_context_replaces_all_fields(self):
-        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="account")
-
-        set_identity_context(user_id="user-2", user_type="end_user")
-
-        assert get_identity_context() == ("", "user-2", "end_user")
-
-    def test_identity_context_is_copied_as_primitive_values(self):
-        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
-        copied_context = copy_context()
-
-        clear_request_context()
-
-        assert get_identity_context() == ("", "", "")
-        assert copied_context.run(get_identity_context) == ("tenant-1", "user-1", "end_user")
-
-    def test_init_clears_existing_identity_context(self):
-        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
-
-        init_request_context()
-
-        assert get_identity_context() == ("", "", "")
-
-    def test_clear_resets_identity_context(self):
-        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
-
-        clear_request_context()
-
-        assert get_identity_context() == ("", "", "")

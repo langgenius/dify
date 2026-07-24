@@ -1,10 +1,9 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
-export const TestRunStep = {
-  dataSource: 'dataSource',
-  documentProcessing: 'documentProcessing',
-} as const
-export type TestRunStep = (typeof TestRunStep)[keyof typeof TestRunStep]
+export enum TestRunStep {
+  dataSource = 'dataSource',
+  documentProcessing = 'documentProcessing',
+}
 
 export type DataSourceOption = {
   label: string

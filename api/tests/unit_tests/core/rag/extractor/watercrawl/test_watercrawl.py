@@ -59,7 +59,7 @@ class TestWaterCrawlExceptions:
 
 
 class TestBaseAPIClient:
-    def test_init_session_builds_expected_headers(self, monkeypatch: pytest.MonkeyPatch):
+    def test_init_session_builds_expected_headers(self, monkeypatch):
         captured = {}
 
         def fake_client(**kwargs):
@@ -73,20 +73,8 @@ class TestBaseAPIClient:
         assert client.session == "session"
         assert captured["headers"]["X-API-Key"] == "k"
         assert captured["headers"]["User-Agent"] == "WaterCrawl-Plugin"
-        assert captured["timeout"] is not None
-        assert captured["timeout"].connect is not None
-        assert captured["timeout"].read is not None
 
-    def test_init_session_uses_bounded_default_timeout(self):
-        # Regression: the session was built with timeout=None, which disables
-        # httpx's timeouts entirely, so a stalled WaterCrawl endpoint would hang
-        # the calling worker forever. Regular requests must keep a bounded timeout.
-        session = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev").session
-
-        assert session._timeout.connect is not None
-        assert session._timeout.read is not None
-
-    def test_request_stream_and_non_stream_paths(self, monkeypatch: pytest.MonkeyPatch):
+    def test_request_stream_and_non_stream_paths(self, monkeypatch):
         class FakeSession:
             def __init__(self):
                 self.request_calls = []
@@ -97,8 +85,8 @@ class TestBaseAPIClient:
                 self.request_calls.append((method, url, params, json, kwargs))
                 return "non-stream-response"
 
-            def build_request(self, method, url, params=None, json=None, timeout=None):
-                req = (method, url, params, json, timeout)
+            def build_request(self, method, url, params=None, json=None):
+                req = (method, url, params, json)
                 self.build_calls.append(req)
                 return req
 
@@ -117,13 +105,8 @@ class TestBaseAPIClient:
         assert client._request("GET", "/v1/items", stream=True) == "stream-response"
         assert fake_session.build_calls
         assert fake_session.send_calls[0][1] is True
-        # the streaming request keeps an unbounded read (the SSE status stream can
-        # stay open for the whole crawl) while still capping the connection
-        stream_timeout = fake_session.build_calls[0][4]
-        assert stream_timeout.read is None
-        assert stream_timeout.connect is not None
 
-    def test_http_method_helpers_delegate_to_request(self, monkeypatch: pytest.MonkeyPatch):
+    def test_http_method_helpers_delegate_to_request(self, monkeypatch):
         monkeypatch.setattr(BaseAPIClient, "init_session", lambda self: MagicMock())
         client = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev")
 
@@ -144,7 +127,7 @@ class TestBaseAPIClient:
 
 
 class TestWaterCrawlAPIClient:
-    def test_process_eventstream_and_download(self, monkeypatch: pytest.MonkeyPatch):
+    def test_process_eventstream_and_download(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
 
         response = MagicMock()
@@ -176,22 +159,6 @@ class TestWaterCrawlAPIClient:
         with pytest.raises(expected_exception):
             client.process_response(_response(status, {"message": "bad", "errors": {"url": ["x"]}}))
 
-    @pytest.mark.parametrize(
-        ("status", "expected_exception"),
-        [
-            (401, WaterCrawlAuthenticationError),
-            (403, WaterCrawlPermissionError),
-            (422, WaterCrawlBadRequestError),
-        ],
-    )
-    def test_process_response_error_statuses_with_non_json_body(self, status: int, expected_exception: type[Exception]):
-        client = WaterCrawlAPIClient(api_key="k")
-        response = _response(status, text="<html>upstream error</html>")
-        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
-
-        with pytest.raises(expected_exception):
-            client.process_response(response)
-
     def test_process_response_204_returns_none(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert client.process_response(_response(204, None)) is None
@@ -201,28 +168,13 @@ class TestWaterCrawlAPIClient:
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
 
-    def test_process_response_json_payload_with_invalid_body_raises_clear_error(self):
-        client = WaterCrawlAPIClient(api_key="k")
-        response = _response(200, text="<html>upstream error</html>")
-        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
-
-        with pytest.raises(ValueError, match="Invalid JSON response from WaterCrawl"):
-            client.process_response(response)
-
-    def test_process_response_accepts_json_content_type_parameters(self):
-        client = WaterCrawlAPIClient(api_key="k")
-
-        response = _response(200, {"ok": True}, content_type="application/json; charset=utf-8")
-
-        assert client.process_response(response) == {"ok": True}
-
     def test_process_response_octet_stream_returns_bytes(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert (
             client.process_response(_response(200, content_type="application/octet-stream", content=b"bin")) == b"bin"
         )
 
-    def test_process_response_event_stream_returns_generator(self, monkeypatch: pytest.MonkeyPatch):
+    def test_process_response_event_stream_returns_generator(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
         generator = (item for item in [{"type": "result", "data": {}}])
         monkeypatch.setattr(client, "process_eventstream", lambda response, download=False: generator)
@@ -241,7 +193,7 @@ class TestWaterCrawlAPIClient:
         with pytest.raises(RuntimeError, match="http error"):
             client.process_response(response)
 
-    def test_endpoint_wrappers(self, monkeypatch: pytest.MonkeyPatch):
+    def test_endpoint_wrappers(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
 
         monkeypatch.setattr(client, "process_response", lambda resp: "processed")
@@ -256,7 +208,7 @@ class TestWaterCrawlAPIClient:
         assert client.download_crawl_request("id") == "processed"
         assert client.get_crawl_request_results("id") == "processed"
 
-    def test_monitor_crawl_request_generator_and_validation(self, monkeypatch: pytest.MonkeyPatch):
+    def test_monitor_crawl_request_generator_and_validation(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
 
         monkeypatch.setattr(client, "process_response", lambda _: (x for x in [{"type": "result", "data": 1}]))
@@ -269,7 +221,7 @@ class TestWaterCrawlAPIClient:
         with pytest.raises(ValueError, match="Generator expected"):
             list(client.monitor_crawl_request("job-1"))
 
-    def test_scrape_url_sync_and_async(self, monkeypatch: pytest.MonkeyPatch):
+    def test_scrape_url_sync_and_async(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
         monkeypatch.setattr(client, "create_crawl_request", lambda **kwargs: {"uuid": "job-1"})
 
@@ -286,27 +238,20 @@ class TestWaterCrawlAPIClient:
         sync_result = client.scrape_url("https://example.com", sync=True)
         assert sync_result == {"url": "https://example.com"}
 
-    def test_download_result_fetches_json_and_closes(self, monkeypatch: pytest.MonkeyPatch):
+    def test_download_result_fetches_json_and_closes(self, monkeypatch):
         client = WaterCrawlAPIClient(api_key="k")
 
         response = _response(200, {"markdown": "body"})
-        captured = {}
-
-        def fake_get(*args, **kwargs):
-            captured.update(kwargs)
-            return response
-
-        monkeypatch.setattr(client_module.httpx, "get", fake_get)
+        monkeypatch.setattr(client_module.httpx, "get", lambda *args, **kwargs: response)
 
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
-        assert captured["timeout"] is not None
         response.close.assert_called_once()
 
 
 class TestWaterCrawlProvider:
-    def test_crawl_url_builds_options_and_min_wait_time(self, monkeypatch: pytest.MonkeyPatch):
+    def test_crawl_url_builds_options_and_min_wait_time(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
         captured_kwargs = {}
 
@@ -345,7 +290,7 @@ class TestWaterCrawlProvider:
         assert captured_kwargs["page_options"]["only_main_content"] is False
         assert captured_kwargs["page_options"]["wait_time"] == 1000
 
-    def test_get_crawl_status_active_and_completed(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_crawl_status_active_and_completed(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
 
         monkeypatch.setattr(
@@ -382,7 +327,7 @@ class TestWaterCrawlProvider:
         assert completed["status"] == "completed"
         assert completed["data"] == [{"url": "u"}]
 
-    def test_get_crawl_url_data_and_scrape(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_crawl_url_data_and_scrape(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
 
         monkeypatch.setattr(provider, "scrape_url", lambda url: {"source_url": url})
@@ -394,7 +339,7 @@ class TestWaterCrawlProvider:
         monkeypatch.setattr(provider, "_get_results", lambda job_id, query_params=None: iter([]))
         assert provider.get_crawl_url_data("job", "u1") is None
 
-    def test_structure_data_validation_and_get_results_pagination(self, monkeypatch: pytest.MonkeyPatch):
+    def test_structure_data_validation_and_get_results_pagination(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
 
         with pytest.raises(ValueError, match="Invalid result object"):
@@ -435,7 +380,7 @@ class TestWaterCrawlProvider:
         assert len(results) == 1
         assert results[0]["source_url"] == "https://a"
 
-    def test_scrape_url_uses_client_and_structure(self, monkeypatch: pytest.MonkeyPatch):
+    def test_scrape_url_uses_client_and_structure(self, monkeypatch):
         provider = WaterCrawlProvider(api_key="k")
         monkeypatch.setattr(
             provider.client, "scrape_url", lambda **kwargs: {"result": {"metadata": {}, "markdown": "m"}, "url": "u"}
@@ -447,7 +392,7 @@ class TestWaterCrawlProvider:
 
 
 class TestWaterCrawlWebExtractor:
-    def test_extract_crawl_and_scrape_modes(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_crawl_and_scrape_modes(self, monkeypatch):
         monkeypatch.setattr(
             "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
             lambda job_id, provider, url, tenant_id: {
@@ -473,7 +418,7 @@ class TestWaterCrawlWebExtractor:
         assert crawl_extractor.extract()[0].page_content == "crawl"
         assert scrape_extractor.extract()[0].page_content == "scrape"
 
-    def test_extract_crawl_returns_empty_when_service_returns_none(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_crawl_returns_empty_when_service_returns_none(self, monkeypatch):
         monkeypatch.setattr(
             "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
             lambda job_id, provider, url, tenant_id: None,

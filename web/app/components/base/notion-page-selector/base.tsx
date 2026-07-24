@@ -1,18 +1,10 @@
 import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
 import type { NotionCredential } from './credential-selector'
-import type {
-  DataSourceNotionPageMap,
-  DataSourceNotionWorkspace,
-  NotionPage,
-} from '@/models/common'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import {
-  useInvalidPreImportNotionPages,
-  usePreImportNotionPages,
-} from '@/service/knowledge/use-import'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import Header from '../../datasets/create/website/base/header'
 import Loading from '../loading'
 import NotionConnector from '../notion-connector'
@@ -41,9 +33,8 @@ const NotionPageSelector = ({
   credentialList,
   onSelectCredential,
 }: NotionPageSelectorProps) => {
-  const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState('')
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
 
   const invalidPreImportNotionPages = useInvalidPreImportNotionPages()
 
@@ -57,160 +48,137 @@ const NotionPageSelector = ({
       }
     })
   }, [credentialList])
-  const [selectedCredentialId, setSelectedCredentialId] = useState(
-    () => notionCredentials[0]?.credentialId ?? '',
-  )
-  const currentCredential = useMemo(() => {
-    return (
-      notionCredentials.find((item) => item.credentialId === selectedCredentialId) ??
-      notionCredentials[0] ??
-      null
-    )
-  }, [notionCredentials, selectedCredentialId])
-  const currentCredentialId = currentCredential?.credentialId ?? ''
+  const [currentCredential, setCurrentCredential] = useState(notionCredentials[0])
 
   useEffect(() => {
-    onSelectCredential?.(currentCredentialId)
-  }, [currentCredentialId, onSelectCredential])
-
-  useEffect(() => {
-    if (!notionCredentials.length) {
-      onSelect([])
-      return
+    const credential = notionCredentials.find(item => item.credentialId === currentCredential?.credentialId)
+    if (!credential) {
+      const firstCredential = notionCredentials[0]
+      invalidPreImportNotionPages({ datasetId, credentialId: firstCredential.credentialId })
+      setCurrentCredential(notionCredentials[0])
+      onSelect([]) // Clear selected pages when changing credential
+      onSelectCredential?.(firstCredential.credentialId)
     }
-
-    if (!selectedCredentialId || selectedCredentialId === currentCredentialId) return
-
-    invalidPreImportNotionPages({ datasetId, credentialId: currentCredentialId })
-    onSelect([])
-  }, [
-    currentCredentialId,
-    datasetId,
-    invalidPreImportNotionPages,
-    notionCredentials.length,
-    onSelect,
-    selectedCredentialId,
-  ])
+    else {
+      onSelectCredential?.(credential?.credentialId || '')
+    }
+  }, [notionCredentials])
 
   const {
     data: notionsPages,
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
-  } = usePreImportNotionPages({ datasetId, credentialId: currentCredentialId })
+  } = usePreImportNotionPages({ datasetId, credentialId: currentCredential.credentialId || '' })
 
-  const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] =
-    useMemo(() => {
-      const selectedPagesId = new Set<string>()
-      const boundPagesId = new Set<string>()
-      const notionWorkspaces = notionsPages?.notion_info || []
-      const pagesMap = notionWorkspaces.reduce(
-        (prev: DataSourceNotionPageMap, cur: DataSourceNotionWorkspace) => {
-          cur.pages.forEach((page) => {
-            if (page.is_bound) {
-              selectedPagesId.add(page.page_id)
-              boundPagesId.add(page.page_id)
-            }
-            prev[page.page_id] = {
-              ...page,
-              workspace_id: cur.workspace_id,
-            }
-          })
+  const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
+    const selectedPagesId = new Set<string>()
+    const boundPagesId = new Set<string>()
+    const notionWorkspaces = notionsPages?.notion_info || []
+    const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, cur: DataSourceNotionWorkspace) => {
+      cur.pages.forEach((page) => {
+        if (page.is_bound) {
+          selectedPagesId.add(page.page_id)
+          boundPagesId.add(page.page_id)
+        }
+        prev[page.page_id] = {
+          ...page,
+          workspace_id: cur.workspace_id,
+        }
+      })
 
-          return prev
-        },
-        {},
-      )
-      return [pagesMap, selectedPagesId, boundPagesId]
-    }, [notionsPages?.notion_info])
+      return prev
+    }, {})
+    return [pagesMap, selectedPagesId, boundPagesId]
+  }, [notionsPages?.notion_info])
 
   const defaultSelectedPagesId = useMemo(() => {
     return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]
   }, [pagesMapAndSelectedPagesId, value])
-  const selectedPagesId = useMemo(() => new Set(defaultSelectedPagesId), [defaultSelectedPagesId])
+  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(() => new Set(defaultSelectedPagesId))
+
+  useEffect(() => {
+    setSelectedPagesId(new Set(defaultSelectedPagesId))
+  }, [defaultSelectedPagesId])
 
   const handleSearchValueChange = useCallback((value: string) => {
     setSearchValue(value)
   }, [])
 
-  const handleSelectCredential = useCallback(
-    (credentialId: string) => {
-      if (credentialId === currentCredentialId) return
+  const handleSelectCredential = useCallback((credentialId: string) => {
+    const credential = notionCredentials.find(item => item.credentialId === credentialId)!
+    invalidPreImportNotionPages({ datasetId, credentialId: credential.credentialId })
+    setCurrentCredential(credential)
+    onSelect([]) // Clear selected pages when changing credential
+    onSelectCredential?.(credential.credentialId)
+  }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
 
-      invalidPreImportNotionPages({ datasetId, credentialId })
-      setSelectedCredentialId(credentialId)
-      onSelect([]) // Clear selected pages when changing credential
-    },
-    [currentCredentialId, datasetId, invalidPreImportNotionPages, onSelect],
-  )
+  const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
 
-  const handleSelectPages = useCallback(
-    (newSelectedPagesId: Set<string>) => {
-      const selectedPages = Array.from(newSelectedPagesId).map(
-        (pageId) => pagesMapAndSelectedPagesId[0][pageId]!,
-      )
+    setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
+    onSelect(selectedPages)
+  }, [pagesMapAndSelectedPagesId, onSelect])
 
-      onSelect(selectedPages)
-    },
-    [pagesMapAndSelectedPagesId, onSelect],
-  )
-
-  const handlePreviewPage = useCallback(
-    (previewPageId: string) => {
-      if (onPreview) onPreview(pagesMapAndSelectedPagesId[0][previewPageId]!)
-    },
-    [pagesMapAndSelectedPagesId, onPreview],
-  )
+  const handlePreviewPage = useCallback((previewPageId: string) => {
+    if (onPreview)
+      onPreview(pagesMapAndSelectedPagesId[0][previewPageId])
+  }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [openIntegrationsSetting])
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [setShowAccountSettingModal])
 
   if (isFetchingNotionPagesError) {
-    return <NotionConnector onSetting={handleConfigureNotion} />
+    return (
+      <NotionConnector
+        onSetting={handleConfigureNotion}
+      />
+    )
   }
 
   return (
     <div className="flex flex-col gap-y-2" data-testid="notion-page-selector-base">
       <Header
         onClickConfiguration={handleConfigureNotion}
-        title={t(($) => $['dataSource.notion.selector.headerTitle'], { ns: 'common' })}
-        buttonText={t(($) => $['dataSource.notion.selector.configure'], { ns: 'common' })}
-        docTitle={t(($) => $['dataSource.notion.selector.docs'], { ns: 'common' })}
+        title="Choose notion pages"
+        buttonText="Configure Notion"
+        docTitle="Notion docs"
         docLink="https://www.notion.so/docs"
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
         <div className="flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2">
           <div className="flex grow items-center gap-x-1">
             <WorkspaceSelector
-              value={currentCredentialId}
+              value={currentCredential.credentialId}
               items={notionCredentials}
               onSelect={handleSelectCredential}
             />
           </div>
-          <SearchInput value={searchValue} onChange={handleSearchValueChange} />
+          <SearchInput
+            value={searchValue}
+            onChange={handleSearchValueChange}
+          />
         </div>
         <div className="overflow-hidden rounded-b-xl">
-          {isFetchingNotionPages ? (
-            <div
-              className="flex h-[296px] items-center justify-center"
-              data-testid="notion-page-selector-loading"
-            >
-              <Loading />
-            </div>
-          ) : (
-            <PageSelector
-              key={currentCredentialId || 'default'}
-              value={selectedPagesId}
-              disabledValue={pagesMapAndSelectedPagesId[2]}
-              searchValue={searchValue}
-              list={notionsPages!.notion_info?.[0]!.pages || []}
-              pagesMap={pagesMapAndSelectedPagesId[0]}
-              onSelect={handleSelectPages}
-              canPreview={canPreview}
-              previewPageId={previewPageId}
-              onPreview={handlePreviewPage}
-            />
-          )}
+          {isFetchingNotionPages
+            ? (
+                <div className="flex h-[296px] items-center justify-center" data-testid="notion-page-selector-loading">
+                  <Loading />
+                </div>
+              )
+            : (
+                <PageSelector
+                  value={selectedPagesId}
+                  disabledValue={pagesMapAndSelectedPagesId[2]}
+                  searchValue={searchValue}
+                  list={notionsPages!.notion_info?.[0].pages || []}
+                  pagesMap={pagesMapAndSelectedPagesId[0]}
+                  onSelect={handleSelectPages}
+                  canPreview={canPreview}
+                  previewPageId={previewPageId}
+                  onPreview={handlePreviewPage}
+                />
+              )}
         </div>
       </div>
     </div>

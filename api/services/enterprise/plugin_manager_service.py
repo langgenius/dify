@@ -1,14 +1,21 @@
+import enum
 import logging
-from typing import override
 
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.entities import PluginCredentialType
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
 logger = logging.getLogger(__name__)
+
+
+class PluginCredentialType(enum.Enum):
+    MODEL = 0  # must be 0 for API contract compatibility
+    TOOL = 1  # must be 1 for API contract compatibility
+
+    def to_number(self):
+        return self.value
 
 
 class CheckCredentialPolicyComplianceRequest(BaseModel):
@@ -16,7 +23,6 @@ class CheckCredentialPolicyComplianceRequest(BaseModel):
     provider: str
     credential_type: PluginCredentialType
 
-    @override
     def model_dump(self, **kwargs):
         data = super().model_dump(**kwargs)
         data["credential_type"] = self.credential_type.to_number()
@@ -64,6 +70,7 @@ class PluginManagerService:
                 "POST",
                 "/pre-uninstall-plugin",
                 json=body.model_dump(),
+                raise_for_status=True,
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         except Exception:

@@ -46,22 +46,11 @@ vi.mock('@/app/components/share/text-generation/run-once', () => ({
     siteInfo,
     onSend,
     onInputsChange,
-  }: {
-    siteInfo: { title: string }
-    onSend: () => void
-    onInputsChange: (inputs: Record<string, unknown>) => void
-  }) => (
+  }: { siteInfo: { title: string }, onSend: () => void, onInputsChange: (inputs: Record<string, unknown>) => void }) => (
     <div data-testid="run-once">
       <span data-testid="site-title">{siteInfo?.title}</span>
-      <button data-testid="send-button" onClick={onSend}>
-        Send
-      </button>
-      <button
-        data-testid="inputs-change-button"
-        onClick={() => onInputsChange({ testInput: 'testValue' })}
-      >
-        Change Inputs
-      </button>
+      <button data-testid="send-button" onClick={onSend}>Send</button>
+      <button data-testid="inputs-change-button" onClick={() => onInputsChange({ testInput: 'testValue' })}>Change Inputs</button>
     </div>
   ),
 }))
@@ -72,44 +61,34 @@ vi.mock('@/app/components/share/text-generation/result', () => ({
     appId,
     onCompleted,
     onRunStart,
-  }: {
-    isWorkflow: boolean
-    appId: string
-    onCompleted: () => void
-    onRunStart: () => void
-  }) => (
+  }: { isWorkflow: boolean, appId: string, onCompleted: () => void, onRunStart: () => void }) => (
     <div data-testid="result-component" data-is-workflow={isWorkflow} data-app-id={appId}>
-      <button data-testid="complete-button" onClick={onCompleted}>
-        Complete
-      </button>
-      <button data-testid="run-start-button" onClick={onRunStart}>
-        Run Start
-      </button>
+      <button data-testid="complete-button" onClick={onCompleted}>Complete</button>
+      <button data-testid="run-start-button" onClick={onRunStart}>Run Start</button>
     </div>
   ),
 }))
 
-const createMockAppData = (overrides: Partial<AppData> = {}): AppData =>
-  ({
-    app_id: 'test-app-id',
-    site: {
-      title: 'Test App Title',
-      description: 'Test App Description',
-      icon: '🚀',
-      icon_type: 'emoji',
-      icon_background: '#FFFFFF',
-      icon_url: '',
-      default_language: 'en',
-      prompt_public: true,
-      copyright: '',
-      privacy_policy: '',
-      custom_disclaimer: '',
-    },
-    custom_config: {
-      remove_webapp_brand: false,
-    },
-    ...overrides,
-  }) as AppData
+const createMockAppData = (overrides: Partial<AppData> = {}): AppData => ({
+  app_id: 'test-app-id',
+  site: {
+    title: 'Test App Title',
+    description: 'Test App Description',
+    icon: '🚀',
+    icon_type: 'emoji',
+    icon_background: '#FFFFFF',
+    icon_url: '',
+    default_language: 'en',
+    prompt_public: true,
+    copyright: '',
+    privacy_policy: '',
+    custom_disclaimer: '',
+  },
+  custom_config: {
+    remove_webapp_brand: false,
+  },
+  ...overrides,
+} as AppData)
 
 describe('TextGeneration', () => {
   beforeEach(() => {
@@ -127,7 +106,12 @@ describe('TextGeneration', () => {
 
   describe('loading state', () => {
     it('renders loading when appData is null', () => {
-      render(<TextGeneration appId="test-app-id" appData={null} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={null}
+        />,
+      )
 
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
@@ -138,7 +122,12 @@ describe('TextGeneration', () => {
         data: null,
       })
 
-      render(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={createMockAppData()}
+        />,
+      )
 
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
@@ -148,7 +137,12 @@ describe('TextGeneration', () => {
     it('renders app title', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         const titles = screen.getAllByText('Test App Title')
@@ -173,7 +167,12 @@ describe('TextGeneration', () => {
         },
       } as unknown as Partial<AppData>)
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText('This is a description')).toBeInTheDocument()
@@ -183,7 +182,12 @@ describe('TextGeneration', () => {
     it('renders RunOnce component', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('run-once')).toBeInTheDocument()
@@ -193,7 +197,12 @@ describe('TextGeneration', () => {
     it('renders Result component', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('result-component')).toBeInTheDocument()
@@ -205,7 +214,13 @@ describe('TextGeneration', () => {
     it('passes isWorkflow=true to Result when isWorkflow prop is true', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} isWorkflow />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+          isWorkflow
+        />,
+      )
 
       await waitFor(() => {
         const resultComponent = screen.getByTestId('result-component')
@@ -216,7 +231,13 @@ describe('TextGeneration', () => {
     it('passes isWorkflow=false to Result when isWorkflow prop is false', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} isWorkflow={false} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+          isWorkflow={false}
+        />,
+      )
 
       await waitFor(() => {
         const resultComponent = screen.getByTestId('result-component')
@@ -229,7 +250,12 @@ describe('TextGeneration', () => {
     it('triggers send when RunOnce sends', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('send-button')).toBeInTheDocument()
@@ -245,7 +271,12 @@ describe('TextGeneration', () => {
     it('shows alert after completion', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('complete-button')).toBeInTheDocument()
@@ -259,11 +290,35 @@ describe('TextGeneration', () => {
     })
   })
 
+  describe('className prop', () => {
+    it('applies custom className', async () => {
+      const appData = createMockAppData()
+
+      const { container } = render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+          className="custom-class"
+        />,
+      )
+
+      await waitFor(() => {
+        const element = container.querySelector('.custom-class')
+        expect(element).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('hook effects', () => {
     it('calls updateAppInfo when appData changes', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(mockUpdateAppInfo).toHaveBeenCalledWith(appData)
@@ -273,7 +328,12 @@ describe('TextGeneration', () => {
     it('calls updateAppParams when tryAppParams changes', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(mockUpdateAppParams).toHaveBeenCalledWith(mockAppParams)
@@ -283,7 +343,12 @@ describe('TextGeneration', () => {
     it('calls useGetTryAppParams with correct appId', () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="my-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="my-app-id"
+          appData={appData}
+        />,
+      )
 
       expect(mockUseGetTryAppParams).toHaveBeenCalledWith('my-app-id')
     })
@@ -293,7 +358,12 @@ describe('TextGeneration', () => {
     it('shows result panel after run starts', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('run-start-button')).toBeInTheDocument()
@@ -309,7 +379,12 @@ describe('TextGeneration', () => {
     it('handles input changes from RunOnce', async () => {
       const appData = createMockAppData()
 
-      render(<TextGeneration appId="test-app-id" appData={appData} />)
+      render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByTestId('inputs-change-button')).toBeInTheDocument()
@@ -326,7 +401,12 @@ describe('TextGeneration', () => {
       mockMediaType = 'mobile'
       const appData = createMockAppData()
 
-      const { container } = render(<TextGeneration appId="test-app-id" appData={appData} />)
+      const { container } = render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         const togglePanel = container.querySelector('.cursor-grab')
@@ -338,7 +418,12 @@ describe('TextGeneration', () => {
       mockMediaType = 'mobile'
       const appData = createMockAppData()
 
-      const { container } = render(<TextGeneration appId="test-app-id" appData={appData} />)
+      const { container } = render(
+        <TextGeneration
+          appId="test-app-id"
+          appData={appData}
+        />,
+      )
 
       await waitFor(() => {
         const togglePanel = container.querySelector('.cursor-grab')

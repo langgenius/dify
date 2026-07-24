@@ -11,15 +11,11 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -31,7 +27,6 @@ from models.model import (
     Message,
     MessageAnnotation,
     Site,
-    load_annotation_reply_config,
 )
 
 
@@ -101,7 +96,6 @@ class TestAppModelValidation:
             "workflow",
             "advanced-chat",
             "agent-chat",
-            "agent",
             "channel",
             "rag-pipeline",
         }
@@ -154,14 +148,13 @@ class TestAppModelValidation:
             description="",
         )
 
-        session = MagicMock()
-        with patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config:
+        # Mock app_model_config property
+        with patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: None)):
             # Act
-            result = app.desc_or_prompt_with_session(session=session)
+            result = app.desc_or_prompt
 
             # Assert
             assert result == ""
-            get_model_config.assert_called_once_with(session=session)
 
     def test_app_is_agent_property_false(self):
         """Test is_agent property returns False when not configured as agent."""
@@ -175,64 +168,13 @@ class TestAppModelValidation:
             created_by=str(uuid4()),
         )
 
-        with patch("models.model.db") as mock_db:
+        # Mock app_model_config to return None
+        with patch.object(App, "app_model_config", new_callable=lambda: property(lambda self: None)):
             # Act
             result = app.is_agent
 
             # Assert
             assert result is False
-            mock_db.session.assert_called_once_with()
-
-    def test_app_is_agent_with_session_updates_legacy_agent_mode(self):
-        app = App(
-            tenant_id=str(uuid4()),
-            name="Test App",
-            mode=AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-            created_by=str(uuid4()),
-        )
-        app.app_model_config_id = "config-1"
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.agent_mode = "agent"
-        app_model_config.agent_mode_dict = {"enabled": True, "strategy": "react"}
-        session = MagicMock()
-        session.get.return_value = app_model_config
-
-        result = app.is_agent_with_session(session=session)
-
-        assert result is True
-        assert app.mode == AppMode.AGENT_CHAT
-        session.get.assert_called_once_with(AppModelConfig, "config-1")
-        session.execute.assert_called_once()
-        session.commit.assert_called_once_with()
-
-    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
-    def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session):
-        app = App(
-            tenant_id=str(uuid4()),
-            name="Test App",
-            mode=AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-            created_by=str(uuid4()),
-        )
-        sqlite_session.add(app)
-        sqlite_session.flush()
-        model_config = AppModelConfig(
-            app_id=app.id,
-            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
-        )
-        sqlite_session.add(model_config)
-        sqlite_session.flush()
-        app.app_model_config_id = model_config.id
-        sqlite_session.commit()
-
-        with Session(sqlite_session.get_bind(), expire_on_commit=False) as migration_session:
-            assert app.is_agent_with_session(session=migration_session) is True
-
-        sqlite_session.expire_all()
-        assert sqlite_session.get(App, app.id).mode == AppMode.AGENT_CHAT
 
     def test_app_mode_compatible_with_agent(self):
         """Test mode_compatible_with_agent property."""
@@ -246,60 +188,13 @@ class TestAppModelValidation:
             created_by=str(uuid4()),
         )
 
-        session = MagicMock()
-        with patch.object(App, "is_agent_with_session", return_value=False) as is_agent:
+        # Mock is_agent to return False
+        with patch.object(App, "is_agent", new_callable=lambda: property(lambda self: False)):
             # Act
-            result = app.mode_compatible_with_agent_with_session(session=session)
+            result = app.mode_compatible_with_agent
 
             # Assert
             assert result == AppMode.CHAT
-            is_agent.assert_called_once_with(session=session)
-
-    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self):
-        """Plugin-backed built-in tools are checked through core PluginService."""
-        # Arrange
-        app = App(
-            tenant_id="tenant-1",
-            name="Test App",
-            mode=AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-            created_by=str(uuid4()),
-        )
-        app_model_config = AppModelConfig(
-            app_id=str(uuid4()),
-            agent_mode=json.dumps(
-                {
-                    "enabled": True,
-                    "strategy": "function_call",
-                    "tools": [
-                        {
-                            "provider_type": "builtin",
-                            "provider_id": "langgenius/openai/openai",
-                            "tool_name": "chat",
-                            "tool_parameters": {},
-                        }
-                    ],
-                    "prompt": None,
-                }
-            ),
-        )
-        session = MagicMock()
-
-        # Act
-        with (
-            patch.object(App, "app_model_config_with_session", return_value=app_model_config) as get_model_config,
-            patch("core.tools.tool_manager.ToolManager.get_hardcoded_provider", side_effect=Exception),
-            patch("core.plugin.plugin_service.PluginService.check_tools_existence", return_value=[False]) as exists,
-        ):
-            result = app.deleted_tools_with_session(session=session)
-
-        # Assert
-        assert result == [{"type": "builtin", "tool_name": "chat", "provider_id": "langgenius/openai/openai"}]
-        get_model_config.assert_called_once_with(session=session)
-        exists.assert_called_once()
-        assert exists.call_args.args[0] == "tenant-1"
-        assert [str(provider_id) for provider_id in exists.call_args.args[1]] == ["langgenius/openai/openai"]
 
 
 class TestAppModelConfig:
@@ -395,69 +290,25 @@ class TestAppModelConfig:
         # Assert
         assert result == questions
 
-    def test_to_dict_uses_injected_annotation_reply(self):
-        config = AppModelConfig(app_id=str(uuid4()))
-        annotation_reply = {"enabled": False}
-
-        with patch.object(
-            AppModelConfig,
-            "annotation_reply_dict",
-            new_callable=PropertyMock,
-            side_effect=AssertionError("annotation_reply_dict should not be accessed"),
-        ):
-            result = config.to_dict(annotation_reply=annotation_reply)
-
-        assert result["annotation_reply"] == annotation_reply
-
-
-class TestAnnotationReplyConfigLoader:
-    def test_load_annotation_reply_config_returns_disabled_when_setting_missing(self):
-        session = MagicMock()
-        session.scalar.return_value = None
-
-        result = load_annotation_reply_config(session, "app-1")
-
-        assert result == {"enabled": False}
-        session.scalar.assert_called_once()
-        stmt = session.scalar.call_args.args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "app_annotation_settings.app_id" in compiled
-        assert stmt.compile().params == {"app_id_1": "app-1"}
-
-    def test_load_annotation_reply_config_returns_embedding_model(self):
-        session = MagicMock()
-        annotation_setting = SimpleNamespace(
-            id="annotation-1",
-            score_threshold=0.7,
-            collection_binding_id="binding-1",
+    def test_app_model_config_annotation_reply_dict_disabled(self):
+        """Test annotation_reply_dict when annotation is disabled."""
+        # Arrange
+        config = AppModelConfig(
+            app_id=str(uuid4()),
+            provider="openai",
+            model_id="gpt-4",
+            created_by=str(uuid4()),
         )
-        collection_binding = SimpleNamespace(provider_name="provider", model_name="embedding")
-        session.scalar.side_effect = [annotation_setting, collection_binding]
 
-        result = load_annotation_reply_config(session, "app-1")
+        # Mock database query to return None
+        with patch("models.model.db.session.query", autospec=True) as mock_query:
+            mock_query.return_value.where.return_value.first.return_value = None
 
-        assert result == {
-            "id": "annotation-1",
-            "enabled": True,
-            "score_threshold": 0.7,
-            "embedding_model": {
-                "embedding_provider_name": "provider",
-                "embedding_model_name": "embedding",
-            },
-        }
-        assert session.scalar.call_count == 2
-        stmt = session.scalar.call_args_list[1].args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "dataset_collection_bindings.id" in compiled
-        assert stmt.compile().params == {"id_1": "binding-1"}
+            # Act
+            result = config.annotation_reply_dict
 
-    def test_load_annotation_reply_config_raises_when_binding_missing(self):
-        session = MagicMock()
-        annotation_setting = SimpleNamespace(collection_binding_id="binding-1")
-        session.scalar.side_effect = [annotation_setting, None]
-
-        with pytest.raises(ValueError, match="Collection binding detail not found"):
-            load_annotation_reply_config(session, "app-1")
+            # Assert
+            assert result == {"enabled": False}
 
 
 class TestConversationModel:
@@ -475,7 +326,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=from_end_user_id,
         )
 
@@ -496,7 +347,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
         )
         conversation._inputs = inputs
@@ -515,7 +366,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
         )
         inputs = {"query": "Hello", "context": "test"}
@@ -534,7 +385,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
             summary="Test summary",
         )
@@ -553,7 +404,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
             summary=None,
         )
@@ -561,67 +412,12 @@ class TestConversationModel:
         # Mock first_message to return a message with query
         mock_message = MagicMock()
         mock_message.query = "First message query"
-        session = MagicMock()
-        with patch.object(Conversation, "first_message_with_session", return_value=mock_message) as get_first_message:
+        with patch.object(Conversation, "first_message", new_callable=lambda: property(lambda self: mock_message)):
             # Act
-            result = conversation.summary_or_query_with_session(session=session)
+            result = conversation.summary_or_query
 
             # Assert
             assert result == "First message query"
-            get_first_message.assert_called_once_with(session=session)
-
-    def test_model_config_uses_caller_session_for_annotation_reply(self):
-        conversation = Conversation(
-            app_id="app-1",
-            app_model_config_id="config-1",
-            mode=AppMode.CHAT,
-            name="Test Conversation",
-            status="normal",
-            from_source=ConversationFromSource.API,
-            from_end_user_id=str(uuid4()),
-            model_id="model-1",
-            model_provider="provider-1",
-        )
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.app_id = "app-1"
-        app_model_config.to_dict.return_value = {}
-        session = MagicMock()
-        session.scalar.return_value = app_model_config
-        annotation_reply = {"enabled": False}
-
-        with patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config:
-            result = conversation.model_config_with_session(session=session)
-
-        load_config.assert_called_once_with(session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-        assert result["model_id"] == "model-1"
-        assert result["provider"] == "provider-1"
-
-    def test_override_model_config_uses_caller_session_for_annotation_reply(self):
-        conversation = Conversation(
-            app_id="app-1",
-            mode=AppMode.CHAT,
-            name="Test Conversation",
-            status="normal",
-            from_source=ConversationFromSource.API,
-            from_end_user_id=str(uuid4()),
-            override_model_configs=json.dumps({"model": {}}),
-        )
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.app_id = "app-1"
-        app_model_config.to_dict.return_value = {}
-        session = MagicMock()
-        annotation_reply = {"enabled": False}
-
-        with (
-            patch.object(AppModelConfig, "from_model_config_dict", return_value=app_model_config),
-            patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
-        ):
-            conversation.model_config_with_session(session=session)
-
-        load_config.assert_called_once_with(session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-        session.scalar.assert_not_called()
 
     def test_conversation_in_debug_mode(self):
         """Test in_debug_mode property."""
@@ -631,7 +427,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
             override_model_configs='{"model": "gpt-4"}',
         )
@@ -652,7 +448,7 @@ class TestConversationModel:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=from_end_user_id,
             dialogue_count=5,
         )
@@ -693,7 +489,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
         )
 
         # Assert
@@ -717,7 +513,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
         )
         message._inputs = inputs
 
@@ -739,7 +535,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
         )
         inputs = {"query": "Hello", "context": "test"}
 
@@ -761,7 +557,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             override_model_configs='{"model": "gpt-4"}',
         )
 
@@ -784,7 +580,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             message_metadata=json.dumps(metadata),
         )
 
@@ -806,7 +602,7 @@ class TestMessageModel:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             message_metadata=None,
         )
 
@@ -833,7 +629,7 @@ class TestMessageModel:
             answer_unit_price=Decimal("0.0002"),
             total_price=Decimal("0.0003"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             status="normal",
         )
         message.id = str(uuid4())
@@ -934,8 +730,6 @@ class TestMessageAnnotation:
         annotation = MessageAnnotation(
             app_id=app_id,
             question="What is AI?",
-            conversation_id=None,
-            message_id=None,
             content="AI stands for Artificial Intelligence.",
             account_id=account_id,
         )
@@ -953,8 +747,6 @@ class TestMessageAnnotation:
         annotation = MessageAnnotation(
             app_id=str(uuid4()),
             question="Test question",
-            conversation_id=None,
-            message_id=None,
             content="Test content",
             account_id=str(uuid4()),
         )
@@ -1157,6 +949,19 @@ class TestSiteModel:
         with pytest.raises(ValueError, match="Custom disclaimer cannot exceed 512 characters"):
             site.custom_disclaimer = long_disclaimer
 
+    def test_site_generate_code(self):
+        """Test Site.generate_code static method."""
+        # Mock database query to return 0 (no existing codes)
+        with patch("models.model.db.session.query", autospec=True) as mock_query:
+            mock_query.return_value.where.return_value.count.return_value = 0
+
+            # Act
+            code = Site.generate_code(8)
+
+            # Assert
+            assert isinstance(code, str)
+            assert len(code) == 8
+
 
 class TestModelIntegration:
     """Test suite for model integration scenarios."""
@@ -1187,7 +992,7 @@ class TestModelIntegration:
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid4()),
         )
         conversation.id = conversation_id
@@ -1202,7 +1007,7 @@ class TestModelIntegration:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
         )
         message.id = message_id
 
@@ -1263,7 +1068,7 @@ class TestModelIntegration:
             message_unit_price=Decimal("0.0001"),
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
-            from_source=ConversationFromSource.API,
+            from_source="api",
         )
         message.id = message_id
 
@@ -1295,8 +1100,6 @@ class TestModelIntegration:
             app_id=app_id,
             question="What is AI?",
             content="AI stands for Artificial Intelligence.",
-            conversation_id=None,
-            message_id=message_id,
             account_id=account_id,
         )
         annotation.id = annotation_id
@@ -1346,3 +1149,314 @@ class TestModelIntegration:
         # Assert
         assert site.app_id == app.id
         assert app.enable_site is True
+
+
+class TestConversationStatusCount:
+    """Test suite for Conversation.status_count property N+1 query fix."""
+
+    def test_status_count_no_messages(self):
+        """Test status_count returns None when conversation has no messages."""
+        # Arrange
+        conversation = Conversation(
+            app_id=str(uuid4()),
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = str(uuid4())
+
+        # Mock the database query to return no messages
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+            mock_scalars.return_value.all.return_value = []
+
+            # Act
+            result = conversation.status_count
+
+            # Assert
+            assert result is None
+
+    def test_status_count_messages_without_workflow_runs(self):
+        """Test status_count when messages have no workflow_run_id."""
+        # Arrange
+        app_id = str(uuid4())
+        conversation_id = str(uuid4())
+
+        conversation = Conversation(
+            app_id=app_id,
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = conversation_id
+
+        # Mock the database query to return no messages with workflow_run_id
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+            mock_scalars.return_value.all.return_value = []
+
+            # Act
+            result = conversation.status_count
+
+            # Assert
+            assert result is None
+
+    def test_status_count_batch_loading_implementation(self):
+        """Test that status_count uses batch loading instead of N+1 queries."""
+        # Arrange
+        from dify_graph.enums import WorkflowExecutionStatus
+
+        app_id = str(uuid4())
+        conversation_id = str(uuid4())
+
+        # Create workflow run IDs
+        workflow_run_id_1 = str(uuid4())
+        workflow_run_id_2 = str(uuid4())
+        workflow_run_id_3 = str(uuid4())
+
+        conversation = Conversation(
+            app_id=app_id,
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = conversation_id
+
+        # Mock messages with workflow_run_id
+        mock_messages = [
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id_1,
+            ),
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id_2,
+            ),
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id_3,
+            ),
+        ]
+
+        # Mock workflow runs with different statuses
+        mock_workflow_runs = [
+            MagicMock(
+                id=workflow_run_id_1,
+                status=WorkflowExecutionStatus.SUCCEEDED.value,
+                app_id=app_id,
+            ),
+            MagicMock(
+                id=workflow_run_id_2,
+                status=WorkflowExecutionStatus.FAILED.value,
+                app_id=app_id,
+            ),
+            MagicMock(
+                id=workflow_run_id_3,
+                status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
+                app_id=app_id,
+            ),
+        ]
+
+        # Track database calls
+        calls_made = []
+
+        def mock_scalars(query):
+            calls_made.append(str(query))
+            mock_result = MagicMock()
+
+            # Return messages for the first query (messages with workflow_run_id)
+            if "messages" in str(query) and "conversation_id" in str(query):
+                mock_result.all.return_value = mock_messages
+            # Return workflow runs for the batch query
+            elif "workflow_runs" in str(query):
+                mock_result.all.return_value = mock_workflow_runs
+            else:
+                mock_result.all.return_value = []
+
+            return mock_result
+
+        # Act & Assert
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
+            result = conversation.status_count
+
+            # Verify only 2 database queries were made (not N+1)
+            assert len(calls_made) == 2, f"Expected 2 queries, got {len(calls_made)}: {calls_made}"
+
+            # Verify the first query gets messages
+            assert "messages" in calls_made[0]
+            assert "conversation_id" in calls_made[0]
+
+            # Verify the second query batch loads workflow runs with proper filtering
+            assert "workflow_runs" in calls_made[1]
+            assert "app_id" in calls_made[1]  # Security filter applied
+            assert "IN" in calls_made[1]  # Batch loading with IN clause
+
+            # Verify correct status counts
+            assert result["success"] == 1  # One SUCCEEDED
+            assert result["failed"] == 1  # One FAILED
+            assert result["partial_success"] == 1  # One PARTIAL_SUCCEEDED
+            assert result["paused"] == 0
+
+    def test_status_count_app_id_filtering(self):
+        """Test that status_count filters workflow runs by app_id for security."""
+        # Arrange
+        app_id = str(uuid4())
+        other_app_id = str(uuid4())
+        conversation_id = str(uuid4())
+        workflow_run_id = str(uuid4())
+
+        conversation = Conversation(
+            app_id=app_id,
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = conversation_id
+
+        # Mock message with workflow_run_id
+        mock_messages = [
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id,
+            ),
+        ]
+
+        calls_made = []
+
+        def mock_scalars(query):
+            calls_made.append(str(query))
+            mock_result = MagicMock()
+
+            if "messages" in str(query):
+                mock_result.all.return_value = mock_messages
+            elif "workflow_runs" in str(query):
+                # Return empty list because no workflow run matches the correct app_id
+                mock_result.all.return_value = []  # Workflow run filtered out by app_id
+            else:
+                mock_result.all.return_value = []
+
+            return mock_result
+
+        # Act
+        with patch("models.model.db.session.scalars", side_effect=mock_scalars, autospec=True):
+            result = conversation.status_count
+
+            # Assert - query should include app_id filter
+            workflow_query = calls_made[1]
+            assert "app_id" in workflow_query
+
+            # Since workflow run has wrong app_id, it shouldn't be included in counts
+            assert result["success"] == 0
+            assert result["failed"] == 0
+            assert result["partial_success"] == 0
+            assert result["paused"] == 0
+
+    def test_status_count_handles_invalid_workflow_status(self):
+        """Test that status_count gracefully handles invalid workflow status values."""
+        # Arrange
+        app_id = str(uuid4())
+        conversation_id = str(uuid4())
+        workflow_run_id = str(uuid4())
+
+        conversation = Conversation(
+            app_id=app_id,
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = conversation_id
+
+        mock_messages = [
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id,
+            ),
+        ]
+
+        # Mock workflow run with invalid status
+        mock_workflow_runs = [
+            MagicMock(
+                id=workflow_run_id,
+                status="invalid_status",  # Invalid status that should raise ValueError
+                app_id=app_id,
+            ),
+        ]
+
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+            # Mock the messages query
+            def mock_scalars_side_effect(query):
+                mock_result = MagicMock()
+                if "messages" in str(query):
+                    mock_result.all.return_value = mock_messages
+                elif "workflow_runs" in str(query):
+                    mock_result.all.return_value = mock_workflow_runs
+                else:
+                    mock_result.all.return_value = []
+                return mock_result
+
+            mock_scalars.side_effect = mock_scalars_side_effect
+
+            # Act - should not raise exception
+            result = conversation.status_count
+
+            # Assert - should handle invalid status gracefully
+            assert result["success"] == 0
+            assert result["failed"] == 0
+            assert result["partial_success"] == 0
+            assert result["paused"] == 0
+
+    def test_status_count_paused(self):
+        """Test status_count includes paused workflow runs."""
+        # Arrange
+        from dify_graph.enums import WorkflowExecutionStatus
+
+        app_id = str(uuid4())
+        conversation_id = str(uuid4())
+        workflow_run_id = str(uuid4())
+
+        conversation = Conversation(
+            app_id=app_id,
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source="api",
+        )
+        conversation.id = conversation_id
+
+        mock_messages = [
+            MagicMock(
+                conversation_id=conversation_id,
+                workflow_run_id=workflow_run_id,
+            ),
+        ]
+
+        mock_workflow_runs = [
+            MagicMock(
+                id=workflow_run_id,
+                status=WorkflowExecutionStatus.PAUSED.value,
+                app_id=app_id,
+            ),
+        ]
+
+        with patch("models.model.db.session.scalars", autospec=True) as mock_scalars:
+
+            def mock_scalars_side_effect(query):
+                mock_result = MagicMock()
+                if "messages" in str(query):
+                    mock_result.all.return_value = mock_messages
+                elif "workflow_runs" in str(query):
+                    mock_result.all.return_value = mock_workflow_runs
+                else:
+                    mock_result.all.return_value = []
+                return mock_result
+
+            mock_scalars.side_effect = mock_scalars_side_effect
+
+            # Act
+            result = conversation.status_count
+
+            # Assert
+            assert result["paused"] == 1

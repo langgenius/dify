@@ -1,6 +1,5 @@
 {
   "allTags": "แท็กทั้งหมด",
-  "clearSelectedTags": "ล้างแท็กที่เลือก: {{tags}}",
   "searchTags": "แท็กค้นหา",
   "tags.agent": "ตัวแทน",
   "tags.business": "ธุรกิจ",

@@ -1,12 +1,11 @@
 import logging
 
 from flask import request
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.controller_schemas import TextToAudioPayload
-from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
-from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.common.schema import register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -16,22 +15,16 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
-    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
-from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_account_with_tenant
-from models.model import InstalledApp
-from services.app_ref_service import AppRefService
+from dify_graph.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
-    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -39,8 +32,15 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
+
+class TextToAudioPayload(BaseModel):
+    message_id: str | None = None
+    voice: str | None = None
+    text: str | None = None
+    streaming: bool | None = Field(default=None, description="Enable streaming response")
+
+
 register_schema_model(console_ns, TextToAudioPayload)
-register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscriptResponse)
 
 
 @console_ns.route(
@@ -48,21 +48,13 @@ register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscript
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(InstalledAppResource):
-    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
+    def post(self, installed_app):
+        app_model = installed_app.app
 
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(
-                app_model=app_model,
-                file=file,
-                session=db.session(),
-                end_user=None,
-            )
+            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -76,8 +68,6 @@ class ChatAudioApi(InstalledAppResource):
             raise UnsupportedAudioTypeError()
         except ProviderNotSupportSpeechToTextServiceError:
             raise ProviderNotSupportSpeechToTextError()
-        except SpeechToTextDisabledServiceError:
-            raise SpeechToTextDisabledError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -99,34 +89,16 @@ class ChatAudioApi(InstalledAppResource):
 )
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    def post(self, installed_app: InstalledApp):
-        app_model = installed_app.app_with_session(session=db.session())
-        if app_model is None:
-            raise AppUnavailableError()
+    def post(self, installed_app):
+        app_model = installed_app.app
         try:
             payload = TextToAudioPayload.model_validate(console_ns.payload or {})
 
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
-            message_ref = None
-            if message_id:
-                current_user, _ = current_account_with_tenant()
-                app_ref = AppRefService.create_app_ref(app_model)
-                message_ref = AppRefService.create_message_ref(
-                    app_ref,
-                    message_id,
-                    account_id=current_user.id,
-                )
 
-            response = AudioService.transcript_tts(
-                app_model=app_model,
-                session=db.session(),
-                text=text,
-                voice=voice,
-                message_ref=message_ref,
-            )
+            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")

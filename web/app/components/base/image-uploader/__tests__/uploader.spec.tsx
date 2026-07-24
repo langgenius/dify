@@ -34,7 +34,13 @@ const renderUploader = (props: Partial<ComponentProps<typeof Uploader>> = {}) =>
   ))
 
   const result = render(
-    <Uploader onUpload={onUpload} closePopover={closePopover} limit={3} disabled={false} {...props}>
+    <Uploader
+      onUpload={onUpload}
+      closePopover={closePopover}
+      limit={3}
+      disabled={false}
+      {...props}
+    >
       {childRenderer}
     </Uploader>,
   )
@@ -65,7 +71,7 @@ describe('Uploader', () => {
     it('should set accept attribute from allowed file extensions', () => {
       renderUploader()
       const input = getInput()
-      const expectedAccept = ALLOW_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(',')
+      const expectedAccept = ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')
 
       expect(input).toHaveAttribute('accept', expectedAccept)
     })

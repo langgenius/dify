@@ -5,10 +5,8 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
@@ -40,12 +38,12 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
 
     try:
         with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
             if not dataset:
                 logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
 
-            document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
+            document = session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
             if not document:
                 logger.error(click.style(f"Document not found: {document_id}", fg="red"))
                 return
@@ -61,7 +59,7 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 return
 
             # Only generate summary index for high_quality indexing technique
-            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
+            if dataset.indexing_technique != "high_quality":
                 logger.info(
                     click.style(
                         f"Skipping summary generation for dataset {dataset_id}: "
@@ -109,12 +107,13 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
         if segment_ids:
             error_message = f"Summary generation failed: {str(e)}"
             with session_factory.create_session() as session:
-                session.execute(
-                    update(DocumentSegment)
-                    .where(
-                        DocumentSegment.id.in_(segment_ids),
-                        DocumentSegment.dataset_id == dataset_id,
-                    )
-                    .values(error=error_message)
+                session.query(DocumentSegment).filter(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                ).update(
+                    {
+                        DocumentSegment.error: error_message,
+                    },
+                    synchronize_session=False,
                 )
                 session.commit()

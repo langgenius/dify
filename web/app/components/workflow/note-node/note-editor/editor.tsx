@@ -9,7 +9,10 @@ import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
-import { memo, useCallback } from 'react'
+import {
+  memo,
+  useCallback,
+} from 'react'
 // import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
 import FormatDetectorPlugin from './plugins/format-detector-plugin'
@@ -19,34 +22,31 @@ type EditorProps = {
   placeholder?: string
   onChange?: (editorState: EditorState) => void
   containerElement: HTMLDivElement | null
-  setHistoryShortcutsEnabled?: (v: boolean) => void
+  setShortcutsEnabled?: (v: boolean) => void
 }
 const Editor = ({
   placeholder = 'write you note...',
   onChange,
   containerElement,
-  setHistoryShortcutsEnabled,
+  setShortcutsEnabled,
 }: EditorProps) => {
-  const handleEditorChange = useCallback(
-    (editorState: EditorState) => {
-      onChange?.(editorState)
-    },
-    [onChange],
-  )
+  const handleEditorChange = useCallback((editorState: EditorState) => {
+    onChange?.(editorState)
+  }, [onChange])
 
   return (
     <div className="relative">
       <RichTextPlugin
-        contentEditable={
+        contentEditable={(
           <div>
             <ContentEditable
-              onFocus={() => setHistoryShortcutsEnabled?.(false)}
-              onBlur={() => setHistoryShortcutsEnabled?.(true)}
+              onFocus={() => setShortcutsEnabled?.(false)}
+              onBlur={() => setShortcutsEnabled?.(true)}
               spellCheck={false}
-              className="size-full text-text-secondary caret-primary-600 outline-hidden"
+              className="h-full w-full text-text-secondary caret-primary-600 outline-none"
             />
           </div>
-        }
+        )}
         placeholder={<Placeholder value={placeholder} compact />}
         ErrorBoundary={LexicalErrorBoundary}
       />

@@ -25,7 +25,15 @@
       ]
     },
     "simpleTypes": {
-      "enum": ["array", "boolean", "integer", "null", "number", "object", "string"]
+      "enum": [
+        "array",
+        "boolean",
+        "integer",
+        "null",
+        "number",
+        "object",
+        "string"
+      ]
     },
     "stringArray": {
       "type": "array",
@@ -36,7 +44,10 @@
       "default": []
     }
   },
-  "type": ["object", "boolean"],
+  "type": [
+    "object",
+    "boolean"
+  ],
   "properties": {
     "$id": {
       "type": "string",

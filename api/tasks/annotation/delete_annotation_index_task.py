@@ -4,9 +4,7 @@ import time
 import click
 from celery import shared_task
 
-from core.db.session_factory import session_factory
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -21,21 +19,19 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
     logger.info(click.style(f"Start delete app annotation index: {app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
-        with session_factory.create_session() as session:
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                collection_binding_id, session, "annotation"
-            )
+        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            collection_binding_id, "annotation"
+        )
 
         dataset = Dataset(
             id=app_id,
             tenant_id=tenant_id,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            indexing_technique="high_quality",
             collection_binding_id=dataset_collection_binding.id,
         )
 
         try:
-            with session_factory.create_session() as session:
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
+            vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
             vector.delete_by_metadata_field("annotation_id", annotation_id)
         except Exception:
             logger.exception("Delete annotation index failed when annotation deleted.")

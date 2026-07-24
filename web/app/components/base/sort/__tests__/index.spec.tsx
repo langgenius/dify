@@ -11,25 +11,29 @@ const mockItems = [
 ]
 
 describe('Sort component — real portal integration', () => {
-  const setup = (props: Partial<React.ComponentProps<typeof Sort>> = {}) => {
+  const setup = (props = {}) => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Sort value="created_at" items={mockItems} onSelect={onSelect} order="" {...props} />,
     )
 
     // helper: returns a non-null HTMLElement or throws with a clear message
     const getTriggerWrapper = (): HTMLElement => {
-      const wrapper = screen.getByRole('button', { name: /appLog\.filter\.sortBy/i })
-      if (!wrapper) throw new Error('Trigger wrapper element not found for "Sort by" label')
+      const labelNode = screen.getByText('appLog.filter.sortBy')
+      // try to find a reasonable wrapper element; prefer '.block' but fallback to any ancestor div
+      const wrapper = labelNode.closest('.block') ?? labelNode.closest('div')
+      if (!wrapper)
+        throw new Error('Trigger wrapper element not found for "Sort by" label')
       return wrapper as HTMLElement
     }
 
     // helper: returns right-side sort button element
     const getSortButton = (): HTMLElement => {
-      return screen.getByRole('button', {
-        name: props.order ? 'appLog.filter.ascending' : 'appLog.filter.descending',
-      })
+      const btn = container.querySelector('.rounded-r-lg')
+      if (!btn)
+        throw new Error('Sort button (rounded-r-lg) not found in rendered container')
+      return btn as HTMLElement
     }
 
     return { user, onSelect, rerender, getTriggerWrapper, getSortButton }
@@ -42,33 +46,35 @@ describe('Sort component — real portal integration', () => {
 
     const sortButton = getSortButton()
     expect(sortButton).toBeInstanceOf(HTMLElement)
-    expect(sortButton.querySelector('.i-ri-sort-asc')).toBeInTheDocument()
+    expect(sortButton.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('opens and closes the menu', async () => {
+  it('opens and closes the tooltip (portal mounts to document.body)', async () => {
     const { user, getTriggerWrapper } = setup()
 
     await user.click(getTriggerWrapper())
-    expect(await screen.findByText('Name')).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toBeInTheDocument()
+    expect(document.body.contains(tooltip)).toBe(true)
 
     // clicking the trigger again should close it
     await user.click(getTriggerWrapper())
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 
   it('renders options and calls onSelect with descending prefix when order is "-"', async () => {
     const { user, onSelect, getTriggerWrapper } = setup({ order: '-' })
 
     await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
+    const tooltip = await screen.findByRole('tooltip')
 
     mockItems.forEach((item) => {
-      expect(within(document.body).getAllByText(item.name).length).toBeGreaterThan(0)
+      expect(within(tooltip).getByText(item.name)).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Name'))
+    await user.click(within(tooltip).getByText('Name'))
     expect(onSelect).toHaveBeenCalledWith('-name')
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 
   it('toggles sorting order: ascending -> descending via right-side button', async () => {
@@ -87,23 +93,26 @@ describe('Sort component — real portal integration', () => {
     const { user, getTriggerWrapper } = setup({ value: 'status' })
 
     await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
+    const tooltip = await screen.findByRole('tooltip')
 
-    const statusRow = screen.getAllByText('Status').at(-1)?.closest('.flex')
-    const nameRow = screen.getByText('Name').closest('.flex')
+    const statusRow = within(tooltip).getByText('Status').closest('.flex')
+    const nameRow = within(tooltip).getByText('Name').closest('.flex')
 
-    if (!statusRow) throw new Error('Status option row not found in menu')
-    if (!nameRow) throw new Error('Name option row not found in menu')
+    if (!statusRow)
+      throw new Error('Status option row not found in menu')
+    if (!nameRow)
+      throw new Error('Name option row not found in menu')
 
-    expect(statusRow.querySelector('.i-ri-check-line')).toBeInTheDocument()
-    expect(nameRow.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
+    expect(statusRow.querySelector('svg')).toBeInTheDocument()
+    expect(nameRow.querySelector('svg')).not.toBeInTheDocument()
   })
 
   it('shows empty selection label when value is unknown', () => {
     setup({ value: 'unknown_value' })
     const label = screen.getByText('appLog.filter.sortBy')
     const valueNode = label.nextSibling
-    if (!valueNode) throw new Error('Expected a sibling node for the selection text')
+    if (!valueNode)
+      throw new Error('Expected a sibling node for the selection text')
     expect(String(valueNode.textContent || '').trim()).toBe('')
   })
 
@@ -111,9 +120,9 @@ describe('Sort component — real portal integration', () => {
     const { user, onSelect, getTriggerWrapper } = setup({ order: undefined })
 
     await user.click(getTriggerWrapper())
-    await screen.findByText('Name')
+    const tooltip = await screen.findByRole('tooltip')
 
-    await user.click(screen.getByText('Name'))
+    await user.click(within(tooltip).getByText('Name'))
 
     expect(onSelect).toHaveBeenCalled()
     expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/name$/))
@@ -122,10 +131,11 @@ describe('Sort component — real portal integration', () => {
   it('clicking outside the open menu closes the portal', async () => {
     const { user, getTriggerWrapper } = setup()
     await user.click(getTriggerWrapper())
-    expect(await screen.findByText('Name')).toBeInTheDocument()
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toBeInTheDocument()
 
     // click outside: body click should close the tooltip
     await user.click(document.body)
-    await waitFor(() => expect(screen.queryByText('Name')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument())
   })
 })

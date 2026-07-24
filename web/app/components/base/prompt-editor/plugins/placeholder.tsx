@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 const Placeholder = ({
   compact,
@@ -15,14 +15,13 @@ const Placeholder = ({
   const { t } = useTranslation()
 
   return (
-    <div
-      className={cn(
-        'pointer-events-none absolute top-0 left-0 size-full text-sm text-components-input-text-placeholder select-none',
-        compact ? 'text-[13px] leading-5' : 'text-sm/6',
-        className,
-      )}
+    <div className={cn(
+      'pointer-events-none absolute left-0 top-0 h-full w-full select-none text-sm text-components-input-text-placeholder',
+      compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+      className,
+    )}
     >
-      {value || t(($) => $['promptEditor.placeholder'], { ns: 'common' })}
+      {value || t('promptEditor.placeholder', { ns: 'common' })}
     </div>
   )
 }

@@ -1,4 +1,6 @@
-import { NodeRunningStatus } from '../types'
+import {
+  NodeRunningStatus,
+} from '../types'
 
 export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch?: boolean) => {
   if (nodeRunningStatus === NodeRunningStatus.Succeeded)
@@ -11,7 +13,8 @@ export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch
     return 'var(--color-workflow-link-line-failure-handle)'
 
   if (nodeRunningStatus === NodeRunningStatus.Running) {
-    if (isFailBranch) return 'var(--color-workflow-link-line-failure-handle)'
+    if (isFailBranch)
+      return 'var(--color-workflow-link-line-failure-handle)'
 
     return 'var(--color-workflow-link-line-handle)'
   }

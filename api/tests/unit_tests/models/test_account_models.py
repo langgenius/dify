@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
 
 from libs.password import compare_password, hash_password, valid_password
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
@@ -99,7 +98,7 @@ class TestAccountModelValidation:
         )
 
         # Assert
-        assert account.status == AccountStatus.ACTIVE
+        assert account.status == "active"
 
     def test_account_get_status_method(self):
         """Test the get_status method returns AccountStatus enum."""
@@ -107,7 +106,7 @@ class TestAccountModelValidation:
         account = Account(
             name="Test User",
             email="test@example.com",
-            status=AccountStatus.PENDING,
+            status="pending",
         )
 
         # Act
@@ -311,6 +310,90 @@ class TestAccountStatusTransitions:
 class TestTenantRelationshipIntegrity:
     """Test suite for tenant relationship integrity."""
 
+    @patch("models.account.db")
+    def test_account_current_tenant_property(self, mock_db):
+        """Test the current_tenant property getter."""
+        # Arrange
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+        )
+        account.id = str(uuid4())
+
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+
+        account._current_tenant = tenant
+
+        # Act
+        result = account.current_tenant
+
+        # Assert
+        assert result == tenant
+
+    @patch("models.account.Session")
+    @patch("models.account.db")
+    def test_account_current_tenant_setter_with_valid_tenant(self, mock_db, mock_session_class):
+        """Test setting current_tenant with a valid tenant relationship."""
+        # Arrange
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+        )
+        account.id = str(uuid4())
+
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+
+        # Mock the session and queries
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+
+        # Mock TenantAccountJoin query result
+        tenant_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+        )
+        mock_session.scalar.return_value = tenant_join
+
+        # Mock Tenant query result
+        mock_session.scalars.return_value.one.return_value = tenant
+
+        # Act
+        account.current_tenant = tenant
+
+        # Assert
+        assert account._current_tenant == tenant
+        assert account.role == TenantAccountRole.OWNER
+
+    @patch("models.account.Session")
+    @patch("models.account.db")
+    def test_account_current_tenant_setter_without_relationship(self, mock_db, mock_session_class):
+        """Test setting current_tenant when no relationship exists."""
+        # Arrange
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+        )
+        account.id = str(uuid4())
+
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+
+        # Mock the session and queries
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+
+        # Mock no TenantAccountJoin found
+        mock_session.scalar.return_value = None
+
+        # Act
+        account.current_tenant = tenant
+
+        # Assert
+        assert account._current_tenant is None
+
     def test_account_current_tenant_id_property(self):
         """Test the current_tenant_id property."""
         # Arrange
@@ -335,38 +418,60 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    def test_set_current_tenant_with_session_uses_caller_session(self):
-        account = Account(name="Test User", email="test@example.com")
+    @patch("models.account.Session")
+    @patch("models.account.db")
+    def test_account_set_tenant_id_method(self, mock_db, mock_session_class):
+        """Test the set_tenant_id method."""
+        # Arrange
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+        )
         account.id = str(uuid4())
+
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.OWNER)
-        session = MagicMock(spec=Session)
-        session.scalar.return_value = join
-        session.scalars.return_value.one.return_value = tenant
 
-        with patch("models.account.Session") as session_class:
-            account.set_current_tenant_with_session(tenant, session=session)
+        tenant_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.ADMIN,
+        )
 
-        session_class.assert_not_called()
-        assert account.current_tenant is tenant
-        assert account.role == TenantAccountRole.OWNER
+        # Mock the session and queries
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.execute.return_value.first.return_value = (tenant, tenant_join)
 
-    def test_set_tenant_id_with_session_uses_caller_session(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.id = str(uuid4())
-        tenant = Tenant(name="Test Tenant")
-        tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.ADMIN)
-        session = MagicMock(spec=Session)
-        session.execute.return_value.first.return_value = (tenant, join)
+        # Act
+        account.set_tenant_id(tenant.id)
 
-        with patch("models.account.Session") as session_class:
-            account.set_tenant_id_with_session(tenant.id, session=session)
-
-        session_class.assert_not_called()
-        assert account.current_tenant is tenant
+        # Assert
+        assert account._current_tenant == tenant
         assert account.role == TenantAccountRole.ADMIN
+
+    @patch("models.account.Session")
+    @patch("models.account.db")
+    def test_account_set_tenant_id_with_no_relationship(self, mock_db, mock_session_class):
+        """Test set_tenant_id when no relationship exists."""
+        # Arrange
+        account = Account(
+            name="Test User",
+            email="test@example.com",
+        )
+        account.id = str(uuid4())
+        tenant_id = str(uuid4())
+
+        # Mock the session and queries
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.execute.return_value.first.return_value = None
+
+        # Act
+        account.set_tenant_id(tenant_id)
+
+        # Assert - should not set tenant when no relationship exists
+        # The method returns early without setting _current_tenant
 
 
 class TestAccountRolePermissions:
@@ -382,15 +487,7 @@ class TestAccountRolePermissions:
         account.role = TenantAccountRole.ADMIN
 
         # Act & Assert
-        with patch("models.account.dify_config.RBAC_ENABLED", False):
-            assert account.is_admin_or_owner
-
-    def test_is_admin_or_owner_with_rbac_enabled(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.role = TenantAccountRole.NORMAL
-
-        with patch("models.account.dify_config.RBAC_ENABLED", True):
-            assert account.is_admin_or_owner
+        assert account.is_admin_or_owner
 
     def test_is_admin_or_owner_with_owner_role(self):
         """Test is_admin_or_owner property with owner role."""
@@ -426,16 +523,8 @@ class TestAccountRolePermissions:
         owner_account.role = TenantAccountRole.OWNER
 
         # Act & Assert
-        with patch("models.account.dify_config.RBAC_ENABLED", False):
-            assert admin_account.is_admin
-            assert not owner_account.is_admin
-
-    def test_is_admin_with_rbac_enabled(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.role = TenantAccountRole.NORMAL
-
-        with patch("models.account.dify_config.RBAC_ENABLED", True):
-            assert account.is_admin
+        assert admin_account.is_admin
+        assert not owner_account.is_admin
 
     def test_has_edit_permission_with_editing_roles(self):
         """Test has_edit_permission property with roles that have edit permission."""
@@ -451,15 +540,7 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            with patch("models.account.dify_config.RBAC_ENABLED", False):
-                assert account.has_edit_permission, f"Role {role} should have edit permission"
-
-    def test_has_edit_permission_with_rbac_enabled(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.role = TenantAccountRole.NORMAL
-
-        with patch("models.account.dify_config.RBAC_ENABLED", True):
-            assert account.has_edit_permission
+            assert account.has_edit_permission, f"Role {role} should have edit permission"
 
     def test_has_edit_permission_without_editing_roles(self):
         """Test has_edit_permission property with roles that don't have edit permission."""
@@ -474,8 +555,7 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            with patch("models.account.dify_config.RBAC_ENABLED", False):
-                assert not account.has_edit_permission, f"Role {role} should not have edit permission"
+            assert not account.has_edit_permission, f"Role {role} should not have edit permission"
 
     def test_is_dataset_editor_property(self):
         """Test is_dataset_editor property."""
@@ -492,21 +572,12 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            with patch("models.account.dify_config.RBAC_ENABLED", False):
-                assert account.is_dataset_editor, f"Role {role} should have dataset edit permission"
+            assert account.is_dataset_editor, f"Role {role} should have dataset edit permission"
 
         # Test normal role doesn't have dataset edit permission
         normal_account = Account(name="Normal User", email="normal@example.com")
         normal_account.role = TenantAccountRole.NORMAL
-        with patch("models.account.dify_config.RBAC_ENABLED", False):
-            assert not normal_account.is_dataset_editor
-
-    def test_is_dataset_editor_with_rbac_enabled(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.role = TenantAccountRole.NORMAL
-
-        with patch("models.account.dify_config.RBAC_ENABLED", True):
-            assert account.is_dataset_editor
+        assert not normal_account.is_dataset_editor
 
     def test_is_dataset_operator_property(self):
         """Test is_dataset_operator property."""
@@ -518,16 +589,8 @@ class TestAccountRolePermissions:
         normal_account.role = TenantAccountRole.NORMAL
 
         # Act & Assert
-        with patch("models.account.dify_config.RBAC_ENABLED", False):
-            assert dataset_operator.is_dataset_operator
-            assert not normal_account.is_dataset_operator
-
-    def test_is_dataset_operator_with_rbac_enabled(self):
-        account = Account(name="Test User", email="test@example.com")
-        account.role = TenantAccountRole.NORMAL
-
-        with patch("models.account.dify_config.RBAC_ENABLED", True):
-            assert account.is_dataset_operator
+        assert dataset_operator.is_dataset_operator
+        assert not normal_account.is_dataset_operator
 
     def test_current_role_property(self):
         """Test current_role property."""
@@ -540,6 +603,73 @@ class TestAccountRolePermissions:
 
         # Assert
         assert current_role == TenantAccountRole.EDITOR
+
+
+class TestAccountGetByOpenId:
+    """Test suite for get_by_openid class method."""
+
+    @patch("models.account.db")
+    def test_get_by_openid_success(self, mock_db):
+        """Test successful retrieval of account by OpenID."""
+        # Arrange
+        provider = "google"
+        open_id = "google_user_123"
+        account_id = str(uuid4())
+
+        mock_account_integrate = MagicMock()
+        mock_account_integrate.account_id = account_id
+
+        mock_account = Account(name="Test User", email="test@example.com")
+        mock_account.id = account_id
+
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where = MagicMock()
+        mock_where.one_or_none.return_value = mock_account_integrate
+        mock_query.where.return_value = mock_where
+        mock_db.session.query.return_value = mock_query
+
+        # Mock the second query for account
+        mock_account_query = MagicMock()
+        mock_account_where = MagicMock()
+        mock_account_where.one_or_none.return_value = mock_account
+        mock_account_query.where.return_value = mock_account_where
+
+        # Setup query to return different results based on model
+        def query_side_effect(model):
+            if model.__name__ == "AccountIntegrate":
+                return mock_query
+            elif model.__name__ == "Account":
+                return mock_account_query
+            return MagicMock()
+
+        mock_db.session.query.side_effect = query_side_effect
+
+        # Act
+        result = Account.get_by_openid(provider, open_id)
+
+        # Assert
+        assert result == mock_account
+
+    @patch("models.account.db")
+    def test_get_by_openid_not_found(self, mock_db):
+        """Test get_by_openid when account integrate doesn't exist."""
+        # Arrange
+        provider = "github"
+        open_id = "github_user_456"
+
+        # Mock the query chain to return None
+        mock_query = MagicMock()
+        mock_where = MagicMock()
+        mock_where.one_or_none.return_value = None
+        mock_query.where.return_value = mock_where
+        mock_db.session.query.return_value = mock_query
+
+        # Act
+        result = Account.get_by_openid(provider, open_id)
+
+        # Assert
+        assert result is None
 
 
 class TestTenantAccountJoinModel:
@@ -651,6 +781,31 @@ class TestTenantModel:
 
         # Assert
         assert tenant.custom_config == '{"feature1": true, "feature2": "value"}'
+
+    @patch("models.account.db")
+    def test_tenant_get_accounts(self, mock_db):
+        """Test getting accounts associated with a tenant."""
+        # Arrange
+        tenant = Tenant(name="Test Workspace")
+        tenant.id = str(uuid4())
+
+        account1 = Account(name="User 1", email="user1@example.com")
+        account1.id = str(uuid4())
+        account2 = Account(name="User 2", email="user2@example.com")
+        account2.id = str(uuid4())
+
+        # Mock the query chain
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = [account1, account2]
+        mock_db.session.scalars.return_value = mock_scalars
+
+        # Act
+        accounts = tenant.get_accounts()
+
+        # Assert
+        assert len(accounts) == 2
+        assert account1 in accounts
+        assert account2 in accounts
 
 
 class TestTenantStatusEnum:

@@ -7,57 +7,14 @@ Service API controller tests.
 """
 
 import uuid
-from collections.abc import Iterator
-from dataclasses import dataclass
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.base import TypeBase
+from models.account import TenantStatus
 from models.model import App, AppMode, EndUser
-
-
-@dataclass(frozen=True)
-class ServiceApiIdentity:
-    """Persisted owner identity for service-API authentication tests."""
-
-    session: Session
-    tenant: Tenant
-    account: Account
-    membership: TenantAccountJoin
-
-
-@pytest.fixture
-def service_api_identity(sqlite_engine: Engine) -> Iterator[ServiceApiIdentity]:
-    """Yield an isolated SQLite session with a real active tenant owner."""
-    TypeBase.metadata.create_all(
-        sqlite_engine,
-        tables=[Account.__table__, Tenant.__table__, TenantAccountJoin.__table__],
-    )
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        tenant = Tenant(name="Service API Workspace")
-        tenant.id = str(uuid.uuid4())
-        account = Account(name="Service API Owner", email=f"owner-{tenant.id}@example.com")
-        account.id = str(uuid.uuid4())
-        membership = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.OWNER,
-        )
-        account._current_tenant = tenant
-        session.add_all([tenant, account, membership])
-        session.commit()
-        yield ServiceApiIdentity(
-            session=session,
-            tenant=tenant,
-            account=account,
-            membership=membership,
-        )
+from tests.unit_tests.conftest import setup_mock_tenant_account_query
 
 
 @pytest.fixture
@@ -149,6 +106,48 @@ def mock_dataset_api_token(mock_tenant_id):
     return token
 
 
+class AuthenticationMocker:
+    """
+    Helper class to set up common authentication mocking patterns.
+
+    Usage:
+        auth_mocker = AuthenticationMocker()
+        with auth_mocker.mock_app_auth(mock_api_token, mock_app_model, mock_tenant):
+            # Test code here
+    """
+
+    @staticmethod
+    def setup_db_queries(mock_db, mock_app, mock_tenant, mock_account=None):
+        """Configure mock_db to return app and tenant in sequence."""
+        mock_db.session.query.return_value.where.return_value.first.side_effect = [
+            mock_app,
+            mock_tenant,
+        ]
+
+        if mock_account:
+            mock_ta = Mock()
+            mock_ta.account_id = mock_account.id
+            setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+
+    @staticmethod
+    def setup_dataset_auth(mock_db, mock_tenant, mock_account):
+        """Configure mock_db for dataset token authentication."""
+        mock_ta = Mock()
+        mock_ta.account_id = mock_account.id
+
+        mock_query = mock_db.session.query.return_value
+        target_mock = mock_query.where.return_value.where.return_value.where.return_value.where.return_value
+        target_mock.one_or_none.return_value = (mock_tenant, mock_ta)
+
+        mock_db.session.query.return_value.where.return_value.first.return_value = mock_account
+
+
+@pytest.fixture
+def auth_mocker():
+    """Provide an AuthenticationMocker instance."""
+    return AuthenticationMocker()
+
+
 @pytest.fixture
 def mock_dataset():
     """Create a mock Dataset model."""
@@ -176,7 +175,7 @@ def mock_document():
     document.name = "test_document.txt"
     document.indexing_status = "completed"
     document.enabled = True
-    document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+    document.doc_form = "text_model"
     return document
 
 
@@ -209,3 +208,11 @@ def mock_child_chunk():
     child_chunk.tenant_id = str(uuid.uuid4())
     child_chunk.content = "Test child chunk content"
     return child_chunk
+
+
+def _unwrap(method):
+    """Walk ``__wrapped__`` chain to get the original function."""
+    fn = method
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+    return fn

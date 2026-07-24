@@ -13,8 +13,6 @@ from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
-from libs.helper import dump_response
-from models.model import App, EndUser
 from services.file_service import FileService
 
 register_schema_models(web_ns, FileResponse)
@@ -33,7 +31,7 @@ class FileApi(WebApiResource):
         }
     )
     @web_ns.response(201, "File uploaded successfully", web_ns.models[FileResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    def post(self, app_model, end_user):
         """Upload a file for use in web applications.
 
         Accepts file uploads for use within web applications, supporting
@@ -75,7 +73,7 @@ class FileApi(WebApiResource):
         try:
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
-                content=file.stream.read(),
+                content=file.read(),
                 mimetype=file.mimetype,
                 user=end_user,
                 source="datasets" if source == "datasets" else None,
@@ -85,4 +83,5 @@ class FileApi(WebApiResource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return dump_response(FileResponse, upload_file), 201
+        response = FileResponse.model_validate(upload_file, from_attributes=True)
+        return response.model_dump(mode="json"), 201

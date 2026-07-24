@@ -1,6 +1,5 @@
 from core.plugin.impl.tool import PluginToolManager
-
-pytest_plugins = ("tests.integration_tests.plugin.__mock.http",)
+from tests.integration_tests.plugin.__mock.http import setup_http_mock
 
 
 def test_fetch_all_plugin_tools(setup_http_mock):

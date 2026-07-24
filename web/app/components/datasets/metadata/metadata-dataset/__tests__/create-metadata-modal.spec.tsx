@@ -1,10 +1,57 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
-import { CreateMetadataModal } from '../create-metadata-modal'
+import CreateMetadataModal from '../create-metadata-modal'
+
+type PortalProps = {
+  children: React.ReactNode
+  open: boolean
+}
+
+type TriggerProps = {
+  children: React.ReactNode
+  onClick: () => void
+}
+
+type ContentProps = {
+  children: React.ReactNode
+  className?: string
+}
+
+type CreateContentProps = {
+  onSave: (data: { type: DataType, name: string }) => void
+  onClose?: () => void
+  onBack?: () => void
+  hasBack?: boolean
+}
+
+// Mock PortalToFollowElem components
+vi.mock('../../../../base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({ children, open }: PortalProps) => (
+    <div data-testid="portal-wrapper" data-open={open}>{children}</div>
+  ),
+  PortalToFollowElemTrigger: ({ children, onClick }: TriggerProps) => (
+    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
+  ),
+  PortalToFollowElemContent: ({ children, className }: ContentProps) => (
+    <div data-testid="portal-content" className={className}>{children}</div>
+  ),
+}))
+
+// Mock CreateContent component
+vi.mock('../create-content', () => ({
+  default: ({ onSave, onClose, onBack, hasBack }: CreateContentProps) => (
+    <div data-testid="create-content">
+      <span data-testid="has-back">{String(hasBack)}</span>
+      <button data-testid="save-btn" onClick={() => onSave({ type: DataType.string, name: 'test' })}>Save</button>
+      <button data-testid="close-btn" onClick={onClose}>Close</button>
+      {hasBack && <button data-testid="back-btn" onClick={onBack}>Back</button>}
+    </div>
+  ),
+}))
 
 describe('CreateMetadataModal', () => {
-  const mockTrigger = <button>Open Modal</button>
+  const mockTrigger = <button data-testid="trigger-button">Open Modal</button>
 
   describe('Rendering', () => {
     it('should render trigger when closed', () => {
@@ -16,8 +63,9 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      // Portal wrapper should exist but closed
+      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
     })
 
     it('should render content when open', () => {
@@ -29,10 +77,8 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(
-        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
-      ).toBeInTheDocument()
+      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
+      expect(screen.getByTestId('create-content')).toBeInTheDocument()
     })
 
     it('should render trigger element', () => {
@@ -44,7 +90,7 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(screen.getByRole('button', { name: 'Open Modal' })).toBeInTheDocument()
+      expect(screen.getByTestId('trigger-button')).toBeInTheDocument()
     })
   })
 
@@ -59,9 +105,7 @@ describe('CreateMetadataModal', () => {
           hasBack
         />,
       )
-      expect(
-        screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
-      ).toBeInTheDocument()
+      expect(screen.getByTestId('has-back')).toHaveTextContent('true')
     })
 
     it('should pass hasBack=undefined when not provided', () => {
@@ -73,9 +117,7 @@ describe('CreateMetadataModal', () => {
           onSave={vi.fn()}
         />,
       )
-      expect(
-        screen.queryByRole('button', { name: 'dataset.metadata.createMetadata.back' }),
-      ).not.toBeInTheDocument()
+      expect(screen.getByTestId('has-back')).toHaveTextContent('undefined')
     })
 
     it('should accept custom popupLeft', () => {
@@ -88,7 +130,7 @@ describe('CreateMetadataModal', () => {
           popupLeft={50}
         />,
       )
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-wrapper')).toBeInTheDocument()
     })
   })
 
@@ -104,9 +146,9 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Open Modal' }))
+      fireEvent.click(screen.getByTestId('portal-trigger'))
 
-      expect(setOpen).toHaveBeenCalledWith(true, expect.any(Object))
+      expect(setOpen).toHaveBeenCalledWith(true)
     })
 
     it('should call onSave when save button is clicked', () => {
@@ -120,13 +162,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.change(
-        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
-        {
-          target: { value: 'test' },
-        },
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      fireEvent.click(screen.getByTestId('save-btn'))
 
       expect(handleSave).toHaveBeenCalledWith({
         type: DataType.string,
@@ -145,7 +181,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      fireEvent.click(screen.getByTestId('close-btn'))
 
       expect(setOpen).toHaveBeenCalledWith(false)
     })
@@ -162,7 +198,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.createMetadata.back' }))
+      fireEvent.click(screen.getByTestId('back-btn'))
 
       expect(setOpen).toHaveBeenCalledWith(false)
     })
@@ -179,7 +215,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'false')
 
       rerender(
         <CreateMetadataModal
@@ -190,11 +226,11 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-wrapper')).toHaveAttribute('data-open', 'true')
     })
 
     it('should handle different trigger elements', () => {
-      const customTrigger = <button>Custom</button>
+      const customTrigger = <div data-testid="custom-trigger">Custom</div>
       render(
         <CreateMetadataModal
           open={false}
@@ -204,7 +240,7 @@ describe('CreateMetadataModal', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: 'Custom' })).toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
   })
 })

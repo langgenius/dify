@@ -6,7 +6,6 @@ import queue
 import pytest
 
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.streaming_utils import _normalize_terminal_events, stream_topic_events
 from core.app.entities.task_entities import StreamEvent
 from models.model import AppMode
 
@@ -54,7 +53,7 @@ class FakeTopic:
         return self._state["subscribed"]
 
 
-def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pytest.MonkeyPatch):
+def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch):
     topic = FakeTopic()
 
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
@@ -77,54 +76,5 @@ def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pyte
     assert next(generator) == StreamEvent.PING.value
     event = next(generator)
     assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
-    with pytest.raises(StopIteration):
-        next(generator)
-
-
-def test_normalize_terminal_events_defaults():
-    assert _normalize_terminal_events(None) == {
-        StreamEvent.WORKFLOW_FINISHED.value,
-        StreamEvent.WORKFLOW_PAUSED.value,
-    }
-
-
-def test_normalize_terminal_events_empty_values():
-    assert _normalize_terminal_events([]) == set({})
-
-
-def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.MonkeyPatch):
-    topic = FakeTopic()
-    times = [1000.0, 1000.0, 1001.0, 1001.0, 1002.0]
-
-    def fake_time():
-        return times.pop(0)
-
-    monkeypatch.setattr("core.app.apps.streaming_utils.time.time", fake_time)
-
-    generator = stream_topic_events(
-        topic=topic,
-        idle_timeout=10.0,
-        ping_interval=1.0,
-    )
-
-    assert next(generator) == StreamEvent.PING.value
-    # next receive yields None -> ping interval triggers
-    assert next(generator) == StreamEvent.PING.value
-
-
-def test_stream_topic_events_can_continue_past_pause():
-    topic = FakeTopic()
-    topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_PAUSED.value}).encode())
-    topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
-
-    generator = stream_topic_events(
-        topic=topic,
-        idle_timeout=1.0,
-        terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
-    )
-
-    assert next(generator) == StreamEvent.PING.value
-    assert next(generator)["event"] == StreamEvent.WORKFLOW_PAUSED.value
-    assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
         next(generator)

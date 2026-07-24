@@ -1,37 +1,40 @@
-import type { ReactElement } from 'react'
 import type { PluginDetail } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import { ReadmeEntrance } from '../entrance'
 import ReadmePanel from '../index'
-import { useReadmePanelStore } from '../store'
+import { ReadmeShowType, useReadmePanelStore } from '../store'
 
-;(
-  globalThis as typeof globalThis & {
-    BASE_UI_ANIMATIONS_DISABLED: boolean
-  }
-).BASE_UI_ANIMATIONS_DISABLED = true
+// ================================
+// Mock external dependencies only
+// ================================
 
+// Mock usePluginReadme hook
 const mockUsePluginReadme = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
-  usePluginReadme: (params: { plugin_unique_identifier: string; language?: string }) =>
-    mockUsePluginReadme(params),
+  usePluginReadme: (params: { plugin_unique_identifier: string, language?: string }) => mockUsePluginReadme(params),
 }))
 
+// Mock useLanguage hook
 let mockLanguage = 'en-US'
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => mockLanguage,
 }))
 
+// Mock DetailHeader component (complex component with many dependencies)
 vi.mock('../../plugin-detail-panel/detail-header', () => ({
-  default: ({ detail, isReadmeView }: { detail: PluginDetail; isReadmeView: boolean }) => (
+  default: ({ detail, isReadmeView }: { detail: PluginDetail, isReadmeView: boolean }) => (
     <div data-testid="detail-header" data-is-readme-view={isReadmeView}>
       {detail.name}
     </div>
   ),
 }))
+
+// ================================
+// Test Data Factories
+// ================================
 
 const createMockPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-plugin-id',
@@ -90,37 +93,36 @@ const createMockPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDe
   ...overrides,
 })
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
+// ================================
+// Test Utilities
+// ================================
+
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
     },
-  })
+  },
+})
 
-const renderWithQueryClient = (ui: ReactElement) => {
+const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
 }
 
-const openReadmePanel = (
-  detail = createMockPluginDetail(),
-  presentation: 'drawer' | 'dialog' = 'drawer',
-) => {
-  useReadmePanelStore.getState().openReadmePanel({
-    detail,
-    presentation,
-    triggerId: 'readme-trigger',
-  })
-  return detail
-}
+// Constants (BUILTIN_TOOLS_ARRAY) tests moved to constants.spec.ts
+// Store (useReadmePanelStore) tests moved to store.spec.ts
+// Entrance (ReadmeEntrance) tests moved to entrance.spec.tsx
 
+// ================================
+// ReadmePanel Component Tests
+// ================================
 describe('ReadmePanel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockLanguage = 'en-US'
-    useReadmePanelStore.setState({ currentPanel: undefined })
     mockUsePluginReadme.mockReturnValue({
       data: null,
       isLoading: false,
@@ -128,118 +130,487 @@ describe('ReadmePanel', () => {
     })
   })
 
-  it('should return null when no readme panel is open', () => {
-    const { container } = renderWithQueryClient(<ReadmePanel />)
+  // ================================
+  // Rendering Tests
+  // ================================
+  describe('Rendering', () => {
+    it('should return null when no plugin detail is set', () => {
+      const { container } = renderWithQueryClient(<ReadmePanel />)
 
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should render drawer presentation with plugin header content', () => {
-    openReadmePanel()
-
-    renderWithQueryClient(<ReadmePanel />)
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('plugin.readmeInfo.title')).toBeInTheDocument()
-    expect(screen.getByTestId('detail-header')).toHaveAttribute('data-is-readme-view', 'true')
-    expect(screen.getByRole('dialog')).toHaveClass('data-[swipe-direction=left]:w-150')
-  })
-
-  it('should render dialog presentation when requested', () => {
-    openReadmePanel(createMockPluginDetail(), 'dialog')
-
-    renderWithQueryClient(<ReadmePanel />)
-
-    expect(screen.getByRole('dialog')).toHaveClass('max-w-200')
-  })
-
-  it('should close the active panel when close button is clicked', () => {
-    openReadmePanel()
-
-    renderWithQueryClient(<ReadmePanel />)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(useReadmePanelStore.getState().currentPanel).toBeUndefined()
-  })
-
-  it('should render loading, error, empty, and readme states from the readme query', () => {
-    openReadmePanel()
-    mockUsePluginReadme.mockReturnValue({
-      data: null,
-      isLoading: true,
-      error: null,
+      expect(container.firstChild).toBeNull()
     })
-    const { rerender } = renderWithQueryClient(<ReadmePanel />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
 
-    mockUsePluginReadme.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: new Error('Failed to fetch'),
-    })
-    rerender(<ReadmePanel />)
-    expect(screen.getByText('plugin.readmeInfo.failedToFetch')).toBeInTheDocument()
+    it('should render portal content when plugin detail is set', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
 
-    mockUsePluginReadme.mockReturnValue({
-      data: { readme: '' },
-      isLoading: false,
-      error: null,
-    })
-    rerender(<ReadmePanel />)
-    expect(screen.getByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
+      renderWithQueryClient(<ReadmePanel />)
 
-    mockUsePluginReadme.mockReturnValue({
-      data: { readme: '# Test Readme Content' },
-      isLoading: false,
-      error: null,
+      expect(screen.getByText('plugin.readmeInfo.title')).toBeInTheDocument()
     })
-    rerender(<ReadmePanel />)
-    expect(screen.getByTestId('markdown-body')).toBeInTheDocument()
+
+    it('should render DetailHeader component', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(screen.getByTestId('detail-header')).toBeInTheDocument()
+      expect(screen.getByTestId('detail-header')).toHaveAttribute('data-is-readme-view', 'true')
+    })
+
+    it('should render close button', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // ActionButton wraps the close icon
+      expect(screen.getByRole('button')).toBeInTheDocument()
+    })
   })
 
-  it('should call usePluginReadme with the plugin identifier and selected language', () => {
-    openReadmePanel(
-      createMockPluginDetail({
+  // ================================
+  // Loading State Tests
+  // ================================
+  describe('Loading State', () => {
+    it('should show loading indicator when isLoading is true', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: null,
+        isLoading: true,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Loading component should be rendered with role="status"
+      expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Error State Tests
+  // ================================
+  describe('Error State', () => {
+    it('should show error message when error occurs', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: null,
+        isLoading: false,
+        error: new Error('Failed to fetch'),
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(screen.getByText('plugin.readmeInfo.failedToFetch')).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // No Readme Available State Tests
+  // ================================
+  describe('No Readme Available', () => {
+    it('should show no readme message when readme is empty', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '' },
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(screen.getByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
+    })
+
+    it('should show no readme message when data is null', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: null,
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(screen.getByText('plugin.readmeInfo.noReadmeAvailable')).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Markdown Content Tests
+  // ================================
+  describe('Markdown Content', () => {
+    it('should render markdown container when readme is available', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '# Test Readme Content' },
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Markdown component container should be rendered
+      // Note: The Markdown component uses dynamic import, so content may load asynchronously
+      const markdownContainer = document.querySelector('.markdown-body')
+      expect(markdownContainer).toBeInTheDocument()
+    })
+
+    it('should not show error or no-readme message when readme is available', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '# Test Readme Content' },
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Should not show error or no-readme message
+      expect(screen.queryByText('plugin.readmeInfo.failedToFetch')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.readmeInfo.noReadmeAvailable')).not.toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Portal Rendering Tests (Drawer Mode)
+  // ================================
+  describe('Portal Rendering - Drawer Mode', () => {
+    it('should render drawer styled container in drawer mode', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '# Test' },
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Drawer mode has specific max-width
+      const drawerContainer = document.querySelector('.max-w-\\[600px\\]')
+      expect(drawerContainer).toBeInTheDocument()
+    })
+
+    it('should have correct drawer positioning classes', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Check for drawer-specific classes
+      const backdrop = document.querySelector('.justify-start')
+      expect(backdrop).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // Portal Rendering Tests (Modal Mode)
+  // ================================
+  describe('Portal Rendering - Modal Mode', () => {
+    it('should render modal styled container in modal mode', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '# Test' },
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Modal mode has different max-width
+      const modalContainer = document.querySelector('.max-w-\\[800px\\]')
+      expect(modalContainer).toBeInTheDocument()
+    })
+
+    it('should have correct modal positioning classes', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Check for modal-specific classes
+      const backdrop = document.querySelector('.items-center.justify-center')
+      expect(backdrop).toBeInTheDocument()
+    })
+  })
+
+  // ================================
+  // User Interactions / Event Handlers
+  // ================================
+  describe('User Interactions', () => {
+    it('should close panel when close button is clicked', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      fireEvent.click(screen.getByRole('button'))
+
+      const { currentPluginDetail } = useReadmePanelStore.getState()
+      expect(currentPluginDetail).toBeUndefined()
+    })
+
+    it('should close panel when backdrop is clicked', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Click on the backdrop (outer div)
+      const backdrop = document.querySelector('.fixed.inset-0')
+      fireEvent.click(backdrop!)
+
+      const { currentPluginDetail } = useReadmePanelStore.getState()
+      expect(currentPluginDetail).toBeUndefined()
+    })
+
+    it('should not close panel when content area is clicked', async () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Click on the content container (should stop propagation)
+      const contentContainer = document.querySelector('.pointer-events-auto')
+      fireEvent.click(contentContainer!)
+
+      await waitFor(() => {
+        const { currentPluginDetail } = useReadmePanelStore.getState()
+        expect(currentPluginDetail).toBeDefined()
+      })
+    })
+
+    it('should not close panel when content area is clicked in modal mode', async () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      // Click on the content container in modal mode (should stop propagation)
+      const contentContainer = document.querySelector('.pointer-events-auto')
+      fireEvent.click(contentContainer!)
+
+      await waitFor(() => {
+        const { currentPluginDetail } = useReadmePanelStore.getState()
+        expect(currentPluginDetail).toBeDefined()
+      })
+    })
+  })
+
+  // ================================
+  // API Call Tests
+  // ================================
+  describe('API Calls', () => {
+    it('should call usePluginReadme with correct parameters', () => {
+      const mockDetail = createMockPluginDetail({
         plugin_unique_identifier: 'custom-plugin@2.0.0',
-      }),
-    )
+      })
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
 
-    renderWithQueryClient(<ReadmePanel />)
+      renderWithQueryClient(<ReadmePanel />)
 
-    expect(mockUsePluginReadme).toHaveBeenCalledWith({
-      plugin_unique_identifier: 'custom-plugin@2.0.0',
-      language: 'en-US',
+      expect(mockUsePluginReadme).toHaveBeenCalledWith({
+        plugin_unique_identifier: 'custom-plugin@2.0.0',
+        language: 'en-US',
+      })
     })
-  })
 
-  it('should pass undefined language for zh-Hans locale', () => {
-    mockLanguage = 'zh-Hans'
-    openReadmePanel(
-      createMockPluginDetail({
+    it('should pass undefined language for zh-Hans locale', () => {
+      // Set language to zh-Hans
+      mockLanguage = 'zh-Hans'
+
+      const mockDetail = createMockPluginDetail({
         plugin_unique_identifier: 'zh-plugin@1.0.0',
-      }),
-    )
+      })
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
 
-    renderWithQueryClient(<ReadmePanel />)
+      renderWithQueryClient(<ReadmePanel />)
 
-    expect(mockUsePluginReadme).toHaveBeenCalledWith({
-      plugin_unique_identifier: 'zh-plugin@1.0.0',
-      language: undefined,
+      // The component should pass undefined for language when zh-Hans
+      expect(mockUsePluginReadme).toHaveBeenCalledWith({
+        plugin_unique_identifier: 'zh-plugin@1.0.0',
+        language: undefined,
+      })
+
+      // Reset language
+      mockLanguage = 'en-US'
+    })
+
+    it('should handle empty plugin_unique_identifier', () => {
+      mockUsePluginReadme.mockReturnValue({
+        data: null,
+        isLoading: false,
+        error: null,
+      })
+
+      const mockDetail = createMockPluginDetail({
+        plugin_unique_identifier: '',
+      })
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(mockUsePluginReadme).toHaveBeenCalledWith({
+        plugin_unique_identifier: '',
+        language: 'en-US',
+      })
     })
   })
 
-  it('should open correctly from ReadmeEntrance through the global host', () => {
-    const detail = createMockPluginDetail()
+  // ================================
+  // Edge Cases
+  // ================================
+  describe('Edge Cases', () => {
+    it('should handle detail with missing declaration', () => {
+      const mockDetail = createMockPluginDetail()
+      // Simulate missing fields
+      delete (mockDetail as Partial<PluginDetail>).declaration
 
-    renderWithQueryClient(
-      <>
-        <ReadmeEntrance pluginDetail={detail} />
-        <ReadmePanel />
-      </>,
-    )
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
 
-    fireEvent.click(screen.getByRole('button', { name: /plugin\.readmeInfo\.needHelpCheckReadme/ }))
+      // This should not throw
+      expect(() => setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)).not.toThrow()
+    })
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    it('should handle rapid open/close operations', async () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+
+      // Rapidly toggle the panel
+      act(() => {
+        setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+        setCurrentPluginDetail()
+        setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+      })
+
+      const { currentPluginDetail } = useReadmePanelStore.getState()
+      expect(currentPluginDetail?.showType).toBe(ReadmeShowType.modal)
+    })
+
+    it('should handle switching between drawer and modal modes', () => {
+      const mockDetail = createMockPluginDetail()
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+
+      // Start with drawer
+      act(() => {
+        setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+      })
+
+      let state = useReadmePanelStore.getState()
+      expect(state.currentPluginDetail?.showType).toBe(ReadmeShowType.drawer)
+
+      // Switch to modal
+      act(() => {
+        setCurrentPluginDetail(mockDetail, ReadmeShowType.modal)
+      })
+
+      state = useReadmePanelStore.getState()
+      expect(state.currentPluginDetail?.showType).toBe(ReadmeShowType.modal)
+    })
+
+    it('should handle undefined detail gracefully', () => {
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+
+      // Set to undefined explicitly
+      act(() => {
+        setCurrentPluginDetail(undefined, ReadmeShowType.drawer)
+      })
+
+      const { currentPluginDetail } = useReadmePanelStore.getState()
+      expect(currentPluginDetail).toBeUndefined()
+    })
+  })
+
+  // ================================
+  // Integration Tests
+  // ================================
+  describe('Integration', () => {
+    it('should work correctly when opened from ReadmeEntrance', () => {
+      const mockDetail = createMockPluginDetail()
+
+      mockUsePluginReadme.mockReturnValue({
+        data: { readme: '# Integration Test' },
+        isLoading: false,
+        error: null,
+      })
+
+      // Render both components
+      const { rerender } = renderWithQueryClient(
+        <>
+          <ReadmeEntrance pluginDetail={mockDetail} />
+          <ReadmePanel />
+        </>,
+      )
+
+      // Initially panel should not show content
+      expect(screen.queryByTestId('detail-header')).not.toBeInTheDocument()
+
+      // Click the entrance button
+      fireEvent.click(screen.getByRole('button'))
+
+      // Re-render to pick up store changes
+      rerender(
+        <QueryClientProvider client={createQueryClient()}>
+          <ReadmeEntrance pluginDetail={mockDetail} />
+          <ReadmePanel />
+        </QueryClientProvider>,
+      )
+
+      // Panel should now show content
+      expect(screen.getByTestId('detail-header')).toBeInTheDocument()
+      // Markdown content renders in a container (dynamic import may not render content synchronously)
+      expect(document.querySelector('.markdown-body')).toBeInTheDocument()
+    })
+
+    it('should display correct plugin information in header', () => {
+      const mockDetail = createMockPluginDetail({
+        name: 'my-awesome-plugin',
+      })
+
+      const { setCurrentPluginDetail } = useReadmePanelStore.getState()
+      setCurrentPluginDetail(mockDetail, ReadmeShowType.drawer)
+
+      renderWithQueryClient(<ReadmePanel />)
+
+      expect(screen.getByText('my-awesome-plugin')).toBeInTheDocument()
+    })
   })
 })

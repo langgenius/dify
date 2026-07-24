@@ -5,8 +5,7 @@ import { WorkflowRunningStatus } from '../../types'
 import { useNodeDataUpdate } from '../use-node-data-update'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 describe('useNodeDataUpdate', () => {
   beforeEach(() => {
@@ -29,7 +28,7 @@ describe('useNodeDataUpdate', () => {
       })
 
       expect(rfState.setNodes).toHaveBeenCalledOnce()
-      const updatedNodes = rfState.setNodes.mock.calls[0]![0]
+      const updatedNodes = rfState.setNodes.mock.calls[0][0]
       expect(updatedNodes.find((n: { id: string }) => n.id === 'node-1').data).toEqual({
         title: 'Node 1',
         value: 'updated',

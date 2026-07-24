@@ -1,34 +1,13 @@
 import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
-import { fireEvent, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { trackEvent } from '@/app/components/base/amplitude'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('../../../app/type-selector', () => ({
   AppTypeIcon: ({ type }: { type: string }) => <div data-testid="app-type-icon">{type}</div>,
 }))
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
 
 const createApp = (overrides?: Partial<App>): App => ({
   can_trial: true,
@@ -37,7 +16,7 @@ const createApp = (overrides?: Partial<App>): App => ({
   copyright: '2024',
   privacy_policy: null,
   custom_disclaimer: null,
-  categories: ['Assistant'],
+  category: 'Assistant',
   position: 1,
   is_listed: true,
   install_count: 0,
@@ -62,7 +41,6 @@ const createApp = (overrides?: Partial<App>): App => ({
 describe('AppCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
-  const mockTrackEvent = vi.mocked(trackEvent)
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
@@ -77,7 +55,6 @@ describe('AppCard', () => {
   }
 
   beforeEach(() => {
-    mockConfig.isCloudEdition = true
     vi.clearAllMocks()
   })
 
@@ -106,49 +83,28 @@ describe('AppCard', () => {
       renderComponent({ app: createApp({ description: 'Very long description text' }) })
 
       const descWrapper = screen.getByText('Very long description text')
-      expect(descWrapper).toHaveClass('line-clamp-2')
-    })
-
-    it('should not render category badges', () => {
-      renderComponent({ app: createApp({ categories: ['Search', 'Productivity'] }) })
-
-      expect(screen.queryByText('Search')).not.toBeInTheDocument()
-      expect(screen.queryByText('Productivity')).not.toBeInTheDocument()
+      expect(descWrapper).toHaveClass('line-clamp-4')
     })
   })
 
   describe('User Interactions', () => {
-    it('should make the app card clickable in explore mode on cloud edition', () => {
+    it('should show create button in explore mode and trigger action', () => {
       renderComponent({
         app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
         canCreate: true,
         isExplore: true,
       })
 
-      const cardButton = screen.getByRole('button', { name: 'Sample App' })
-
-      expect(cardButton).toHaveAttribute('type', 'button')
+      const button = screen.getByText('explore.appCard.addToWorkspace')
+      expect(button).toBeInTheDocument()
+      fireEvent.click(button)
+      expect(onCreate).toHaveBeenCalledTimes(1)
     })
 
-    it('should not render hover action buttons in explore mode', () => {
+    it('should render try button in explore mode', () => {
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
-    })
-
-    it('should make the app card clickable outside cloud edition when create is allowed', () => {
-      mockConfig.isCloudEdition = false
-      renderComponent({ canCreate: true, isExplore: true })
-
-      expect(screen.getByRole('button', { name: 'Sample App' })).toHaveClass('cursor-pointer')
-    })
-
-    it('should not make the app card clickable outside cloud edition when create is not allowed', () => {
-      mockConfig.isCloudEdition = false
-      renderComponent({ canCreate: false, isExplore: true })
-
-      expect(screen.queryByRole('button', { name: 'Sample App' })).not.toBeInTheDocument()
+      expect(screen.getByText('explore.appCard.try')).toBeInTheDocument()
     })
   })
 
@@ -183,55 +139,14 @@ describe('AppCard', () => {
       expect(screen.getByText('Sample App')).toBeInTheDocument()
     })
 
-    it('should call onTry when app card is clicked on cloud edition', () => {
+    it('should call onTry when try button is clicked', () => {
       const app = createApp()
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
+      fireEvent.click(screen.getByText('explore.appCard.try'))
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
-      expect(onCreate).not.toHaveBeenCalled()
-    })
-
-    it('should call onCreate when app card is clicked outside cloud edition', () => {
-      mockConfig.isCloudEdition = false
-
-      renderComponent({ canCreate: true, isExplore: true })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
-
-      expect(onCreate).toHaveBeenCalledTimes(1)
-      expect(onTry).not.toHaveBeenCalled()
-      expect(mockTrackEvent).not.toHaveBeenCalled()
-    })
-
-    it('should call the card action when Enter is pressed on app card', async () => {
-      const user = userEvent.setup()
-      const app = createApp()
-
-      renderComponent({ app, canCreate: true, isExplore: true })
-
-      screen.getByRole('button', { name: 'Sample App' }).focus()
-      await user.keyboard('{Enter}')
-
-      expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
-    })
-
-    it('should track preview event when app card is clicked', () => {
-      const app = createApp()
-
-      renderComponent({ app, canCreate: true, isExplore: true })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Sample App' }))
-
-      expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
-        template_id: app.app_id,
-        template_name: app.app.name,
-        template_mode: app.app.mode,
-        template_categories: app.categories,
-        page: 'explore',
-      })
     })
   })
 })

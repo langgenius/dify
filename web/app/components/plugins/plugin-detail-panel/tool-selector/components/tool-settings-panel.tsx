@@ -1,6 +1,7 @@
 'use client'
+import type { FC } from 'react'
 import type { Node } from 'reactflow'
-import type { TabType } from '../hooks/use-tool-selector'
+import type { TabType } from '../hooks/use-tool-selector-state'
 import type { ReasoningConfigValue } from './reasoning-config-form'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
@@ -34,21 +35,21 @@ type ToolSettingsPanelProps = {
 /**
  * Renders the settings/params tips section
  */
-function ParamsTips() {
+const ParamsTips: FC = () => {
   const { t } = useTranslation()
   return (
     <div className="pb-1">
       <div className="system-xs-regular text-text-tertiary">
-        {t(($) => $['detailPanel.toolSelector.paramsTip1'], { ns: 'plugin' })}
+        {t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}
       </div>
       <div className="system-xs-regular text-text-tertiary">
-        {t(($) => $['detailPanel.toolSelector.paramsTip2'], { ns: 'plugin' })}
+        {t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}
       </div>
     </div>
   )
 }
 
-export function ToolSettingsPanel({
+const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
   value,
   currentProvider,
   nodeId,
@@ -64,7 +65,7 @@ export function ToolSettingsPanel({
   onCurrTypeChange,
   onSettingsFormChange,
   onParamsFormChange,
-}: ToolSettingsPanelProps) {
+}) => {
   const { t } = useTranslation()
 
   // Check if panel should be shown
@@ -72,7 +73,8 @@ export function ToolSettingsPanel({
   const hasParams = paramsFormSchemas.length > 0
   const isTeamAuthorized = currentProvider?.is_team_authorization
 
-  if ((!hasSettings && !hasParams) || !isTeamAuthorized) return null
+  if ((!hasSettings && !hasParams) || !isTeamAuthorized)
+    return null
 
   return (
     <>
@@ -87,17 +89,12 @@ export function ToolSettingsPanel({
           smallItem
           value={currType}
           onChange={(v) => {
-            if (v === 'settings' || v === 'params') onCurrTypeChange(v)
+            if (v === 'settings' || v === 'params')
+              onCurrTypeChange(v)
           }}
           options={[
-            {
-              value: 'settings',
-              text: t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })!,
-            },
-            {
-              value: 'params',
-              text: t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })!,
-            },
+            { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
+            { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
           ]}
         />
       )}
@@ -113,7 +110,7 @@ export function ToolSettingsPanel({
       {userSettingsOnly && (
         <div className="p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['detailPanel.toolSelector.settings'], { ns: 'plugin' })}
+            {t('detailPanel.toolSelector.settings', { ns: 'plugin' })}
           </div>
         </div>
       )}
@@ -122,7 +119,7 @@ export function ToolSettingsPanel({
       {nodeId && reasoningConfigOnly && (
         <div className="mb-1 p-4 pb-1">
           <div className="system-sm-semibold-uppercase text-text-primary">
-            {t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
+            {t('detailPanel.toolSelector.params', { ns: 'plugin' })}
           </div>
           <ParamsTips />
         </div>
@@ -156,3 +153,5 @@ export function ToolSettingsPanel({
     </>
   )
 }
+
+export default ToolSettingsPanel

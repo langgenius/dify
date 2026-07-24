@@ -20,16 +20,14 @@ import type {
 import { useMutation } from '@tanstack/react-query'
 import { groupBy } from 'es-toolkit/compat'
 import { post } from '../base'
-import {
-  createDocument,
-  createFirstDocument,
-  fetchDefaultProcessRule,
-  fetchFileIndexingEstimate,
-} from '../datasets'
+import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
 
 const NAME_SPACE = 'knowledge/create-dataset'
 
-export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) => {
+export const getNotionInfo = (
+  notionPages: NotionPage[],
+  credentialId: string,
+) => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
   const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
     return {
@@ -41,7 +39,7 @@ export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) =
     return {
       credential_id: credentialId,
       workspace_id: workspace.workspaceId,
-      pages: workspace.pages!.map((page) => {
+      pages: workspace.pages.map((page) => {
         const { page_id, page_name, page_icon, type } = page
         return {
           page_id,
@@ -54,17 +52,19 @@ export const getNotionInfo = (notionPages: NotionPage[], credentialId: string) =
   }) as NotionInfo[]
 }
 
-export const getWebsiteInfo = (opts: {
-  websiteCrawlProvider: DataSourceProvider
-  websiteCrawlJobId: string
-  websitePages: CrawlResultItem[]
-  crawlOptions?: CrawlOptions
-}) => {
+export const getWebsiteInfo = (
+  opts: {
+    websiteCrawlProvider: DataSourceProvider
+    websiteCrawlJobId: string
+    websitePages: CrawlResultItem[]
+    crawlOptions?: CrawlOptions
+  },
+) => {
   const { websiteCrawlProvider, websiteCrawlJobId, websitePages, crawlOptions } = opts
   return {
     provider: websiteCrawlProvider,
     job_id: websiteCrawlJobId,
-    urls: websitePages.map((page) => page.source_url),
+    urls: websitePages.map(page => page.source_url),
     only_main_content: crawlOptions?.only_main_content,
   }
 }
@@ -91,13 +91,11 @@ const getFileIndexingEstimateParamsForFile = ({
   processRule,
   dataset_id,
 }: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
-  const fileIds = files.map((file) => file.id).filter((id): id is string => Boolean(id))
-
   return {
     info_list: {
       data_source_type: dataSourceType,
       file_info_list: {
-        file_ids: fileIds,
+        file_ids: files.map(file => file.id) as string[],
       },
     },
     indexing_technique: indexingTechnique,
@@ -215,7 +213,8 @@ export const useCreateFirstDocument = (
   mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
 ) => {
   return useMutation({
-    mutationFn: async (createDocumentReq: CreateDocumentReq) => {
+    mutationFn: async (createDocumentReq: CreateDocumentReq,
+    ) => {
       return createFirstDocument({ body: createDocumentReq })
     },
     ...mutationOptions,

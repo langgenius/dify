@@ -1,5 +1,7 @@
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { memo } from 'react'
+import {
+  memo,
+} from 'react'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -22,8 +24,8 @@ const ResultTab = ({
           {!!data?.files?.length && (
             <div className="flex flex-col gap-2">
               {data?.files.map((item: any) => (
-                <div key={item.varName} className="flex flex-col gap-1 system-xs-regular">
-                  <div className="py-1 text-text-tertiary">{item.varName}</div>
+                <div key={item.varName} className="system-xs-regular flex flex-col gap-1">
+                  <div className="py-1 text-text-tertiary ">{item.varName}</div>
                   <FileList
                     files={item.list}
                     showDeleteAction={false}

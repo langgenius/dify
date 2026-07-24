@@ -1,5 +1,5 @@
 import type { Credential } from '@/app/components/tools/types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import ConfigCredential from '../config-credentials'
@@ -17,6 +17,20 @@ describe('ConfigCredential', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
+    it('should render without crashing', async () => {
+      await act(async () => {
+        render(
+          <ConfigCredential
+            credential={baseCredential}
+            onChange={mockOnChange}
+            onHide={mockOnHide}
+          />,
+        )
+      })
+
+      expect(screen.getByText('tools.createTool.authMethod.title')).toBeInTheDocument()
+    })
+
     it('should render all three auth type options', async () => {
       await act(async () => {
         render(
@@ -29,12 +43,8 @@ describe('ConfigCredential', () => {
       })
 
       expect(screen.getByText('tools.createTool.authMethod.types.none')).toBeInTheDocument()
-      expect(
-        screen.getByText('tools.createTool.authMethod.types.api_key_header'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('tools.createTool.authMethod.types.api_key_query'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.api_key_header')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.authMethod.types.api_key_query')).toBeInTheDocument()
     })
 
     it('should render with positionCenter prop', async () => {
@@ -69,25 +79,6 @@ describe('ConfigCredential', () => {
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       expect(mockOnHide).toHaveBeenCalledTimes(1)
-      expect(mockOnChange).not.toHaveBeenCalled()
-    })
-
-    it('should call onHide when Escape is pressed', async () => {
-      await act(async () => {
-        render(
-          <ConfigCredential
-            credential={baseCredential}
-            onChange={mockOnChange}
-            onHide={mockOnHide}
-          />,
-        )
-      })
-
-      fireEvent.keyDown(document, { key: 'Escape' })
-
-      await waitFor(() => {
-        expect(mockOnHide).toHaveBeenCalledTimes(1)
-      })
       expect(mockOnChange).not.toHaveBeenCalled()
     })
 
@@ -172,12 +163,8 @@ describe('ConfigCredential', () => {
       })
 
       fireEvent.click(screen.getByText('tools.createTool.authMethod.types.api_key_header'))
-      const headerInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.apiKeyPlaceholder',
-      )
-      const valueInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.apiValuePlaceholder',
-      )
+      const headerInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.apiKeyPlaceholder')
+      const valueInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.apiValuePlaceholder')
       fireEvent.change(headerInput, { target: { value: 'X-Auth' } })
       fireEvent.change(valueInput, { target: { value: 'sEcReT' } })
       fireEvent.click(screen.getByText('common.operation.save'))
@@ -311,9 +298,7 @@ describe('ConfigCredential', () => {
       fireEvent.click(screen.getByText('tools.createTool.authMethod.types.api_key_query'))
 
       // Query param input should appear
-      expect(
-        screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder'),
-      ).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder')).toBeInTheDocument()
     })
 
     it('should submit apiKeyQuery credential with default values', async () => {
@@ -350,12 +335,8 @@ describe('ConfigCredential', () => {
 
       fireEvent.click(screen.getByText('tools.createTool.authMethod.types.api_key_query'))
 
-      const queryParamInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.queryParamPlaceholder',
-      )
-      const valueInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.apiValuePlaceholder',
-      )
+      const queryParamInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder')
+      const valueInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.apiValuePlaceholder')
 
       fireEvent.change(queryParamInput, { target: { value: 'api_key' } })
       fireEvent.change(valueInput, { target: { value: 'my-secret-key' } })
@@ -422,14 +403,10 @@ describe('ConfigCredential', () => {
       fireEvent.click(screen.getByText('tools.createTool.authMethod.types.api_key_query'))
 
       // Header prefix options should disappear
-      expect(
-        screen.queryByText('tools.createTool.authHeaderPrefix.types.basic'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('tools.createTool.authHeaderPrefix.types.basic')).not.toBeInTheDocument()
 
       // Query param input should appear
-      expect(
-        screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder'),
-      ).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder')).toBeInTheDocument()
     })
 
     it('should switch from apiKeyQuery to none', async () => {
@@ -480,9 +457,7 @@ describe('ConfigCredential', () => {
       })
 
       // Header inputs should be visible with initial values
-      const headerInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.apiKeyPlaceholder',
-      )
+      const headerInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.apiKeyPlaceholder')
       expect(headerInput).toHaveValue('X-Custom-Header')
     })
 
@@ -504,9 +479,7 @@ describe('ConfigCredential', () => {
       })
 
       // Query param input should be visible with initial value
-      const queryParamInput = screen.getByPlaceholderText(
-        'tools.createTool.authMethod.types.queryParamPlaceholder',
-      )
+      const queryParamInput = screen.getByPlaceholderText('tools.createTool.authMethod.types.queryParamPlaceholder')
       expect(queryParamInput).toHaveValue('apikey')
     })
   })

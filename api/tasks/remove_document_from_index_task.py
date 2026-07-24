@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -26,7 +26,7 @@ def remove_document_from_index_task(document_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+        document = session.query(Document).where(Document.id == document_id).first()
         if not document:
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
@@ -38,7 +38,7 @@ def remove_document_from_index_task(document_id: str):
         indexing_cache_key = f"document_{document.id}_indexing"
 
         try:
-            dataset = document.get_dataset(session=session)
+            dataset = document.dataset
 
             if not dataset:
                 raise Exception("Document has no dataset")
@@ -61,28 +61,20 @@ def remove_document_from_index_task(document_id: str):
                 except Exception as e:
                     logger.warning("Failed to disable summaries for document %s: %s", document.id, str(e))
 
-            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+            index_node_ids = [segment.index_node_id for segment in segments]
             if index_node_ids:
                 try:
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=False,
-                        session=session,
-                    )
+                    index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
                 except Exception:
                     logger.exception("clean dataset %s from index failed", dataset.id)
             # update segment to disable
-            session.execute(
-                update(DocumentSegment)
-                .where(DocumentSegment.document_id == document.id)
-                .values(
-                    enabled=False,
-                    disabled_at=naive_utc_now(),
-                    disabled_by=document.disabled_by,
-                    updated_at=naive_utc_now(),
-                )
+            session.query(DocumentSegment).where(DocumentSegment.document_id == document.id).update(
+                {
+                    DocumentSegment.enabled: False,
+                    DocumentSegment.disabled_at: naive_utc_now(),
+                    DocumentSegment.disabled_by: document.disabled_by,
+                    DocumentSegment.updated_at: naive_utc_now(),
+                }
             )
             session.commit()
 

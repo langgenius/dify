@@ -1,4 +1,7 @@
 from contextvars import ContextVar
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
 
 
 class HiddenValue:
@@ -8,7 +11,7 @@ class HiddenValue:
 _default = HiddenValue()
 
 
-class RecyclableContextVar[T]:
+class RecyclableContextVar(Generic[T]):
     """
     RecyclableContextVar is a wrapper around ContextVar
     It's safe to use in gunicorn with thread recycling, but features like `reset` are not available for now

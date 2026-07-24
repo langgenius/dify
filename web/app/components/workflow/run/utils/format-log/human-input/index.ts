@@ -27,7 +27,8 @@ const formatHumanInputNode = (list: NodeTracing[]): NodeTracing[] => {
   })
 
   // If no human-input nodes, return the list as is
-  if (humanInputNodeIds.size === 0) return list
+  if (humanInputNodeIds.size === 0)
+    return list
 
   // Second pass: filter the list to remove duplicate human-input nodes
   // and keep only the latest one for each node_id
@@ -45,7 +46,8 @@ const formatHumanInputNode = (list: NodeTracing[]): NodeTracing[] => {
         }
       }
       // Skip duplicate human-input nodes
-    } else {
+    }
+    else {
       // Keep all non-human-input nodes
       result.push(item)
     }

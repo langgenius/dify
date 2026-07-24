@@ -4,11 +4,10 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.ext_redis import redis_client
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 
 
@@ -80,8 +79,8 @@ class TestEnableSegmentsToIndexTask:
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            data_source_type="upload_file",
+            indexing_technique="high_quality",
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -93,12 +92,12 @@ class TestEnableSegmentsToIndexTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="test_batch",
             name=fake.file_name(),
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="upload_file",
             created_by=account.id,
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status="completed",
             enabled=True,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
@@ -111,13 +110,7 @@ class TestEnableSegmentsToIndexTask:
         return dataset, document
 
     def _create_test_segments(
-        self,
-        db_session_with_containers: Session,
-        document,
-        dataset,
-        count=3,
-        enabled=False,
-        status=SegmentStatus.COMPLETED,
+        self, db_session_with_containers: Session, document, dataset, count=3, enabled=False, status="completed"
     ):
         """
         Helper method to create test document segments.
@@ -139,6 +132,7 @@ class TestEnableSegmentsToIndexTask:
         for i in range(count):
             text = fake.text(max_nb_chars=200)
             segment = DocumentSegment(
+                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -284,7 +278,7 @@ class TestEnableSegmentsToIndexTask:
         invalid_statuses = [
             ("disabled", {"enabled": False}),
             ("archived", {"archived": True}),
-            ("not_completed", {"indexing_status": IndexingStatus.INDEXING}),
+            ("not_completed", {"indexing_status": "processing"}),
         ]
 
         for _, status_attrs in invalid_statuses:
@@ -453,7 +447,7 @@ class TestEnableSegmentsToIndexTask:
         for segment in segments:
             db_session_with_containers.refresh(segment)
             assert segment.enabled is False
-            assert segment.status == SegmentStatus.ERROR
+            assert segment.status == "error"
             assert segment.error is not None
             assert "Index processing failed" in segment.error
             assert segment.disabled_at is not None

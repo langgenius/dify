@@ -1,12 +1,9 @@
 import importlib
 import types
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.workflow.file_reference import build_file_reference
-from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
-from models.model import Conversation, Message
+from models.model import Message
 
 
 @pytest.fixture(autouse=True)
@@ -84,57 +81,3 @@ def test_image_preview_misspelled_not_replaced():
     out = msg.re_sign_file_url_answer
     # Expect NO replacement, should not rewrite misspelled image-previe URL
     assert out == original
-
-
-def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -> dict[str, object]:
-    mapping: dict[str, object] = {
-        "dify_model_identity": FILE_MODEL_IDENTITY,
-        "transfer_method": FileTransferMethod.LOCAL_FILE,
-        "reference": build_file_reference(record_id=record_id),
-        "type": "document",
-        "filename": "example.txt",
-        "extension": ".txt",
-        "mime_type": "text/plain",
-        "size": 1,
-    }
-    if tenant_id is not None:
-        mapping["tenant_id"] = tenant_id
-    return mapping
-
-
-@pytest.mark.parametrize("owner_cls", [Conversation, Message])
-def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conversation] | type[Message]) -> None:
-    owner = owner_cls(app_id="app-1")
-    owner.inputs = {
-        "file": {
-            "dify_model_identity": FILE_MODEL_IDENTITY,
-            "transfer_method": FileTransferMethod.REMOTE_URL,
-            "type": "document",
-            "url": "https://example.com/report.pdf",
-            "filename": "report.pdf",
-            "extension": ".pdf",
-            "mime_type": "application/pdf",
-            "size": 1,
-        }
-    }
-
-    restored_file = owner.inputs["file"]
-
-    assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
-    assert restored_file.remote_url == "https://example.com/report.pdf"
-
-
-def test_message_inputs_resolve_file_tenant_with_caller_session() -> None:
-    message = Message(app_id="app-1")
-    message.inputs = {"file": _build_local_file_mapping("upload-1")}
-    session = MagicMock()
-    session.scalar.return_value = "tenant-1"
-
-    with patch(
-        "models.model.build_file_from_input_mapping",
-        side_effect=lambda **kwargs: kwargs["tenant_resolver"](),
-    ):
-        inputs = message.inputs_with_session(session=session)
-
-    assert inputs["file"] == "tenant-1"
-    session.scalar.assert_called_once()

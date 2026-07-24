@@ -1,21 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string
   text: string | React.JSX.Element
 }
 
-type ItemProps = Readonly<{
+type ItemProps = {
   className?: string
   isActive: boolean
   onClick: (v: string) => void
   option: Option
   smallItem?: boolean
-}>
-const Item: FC<ItemProps> = ({ className, isActive, onClick, option, smallItem }) => {
+}
+const Item: FC<ItemProps> = ({
+  className,
+  isActive,
+  onClick,
+  option,
+  smallItem,
+}) => {
   return (
     <div
       key={option.value}
@@ -37,14 +43,15 @@ const Item: FC<ItemProps> = ({ className, isActive, onClick, option, smallItem }
       {isActive && (
         <div
           data-testid="tab-active-indicator"
-          className="absolute inset-x-0 bottom-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
-        ></div>
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"
+        >
+        </div>
       )}
     </div>
   )
 }
 
-type Props = Readonly<{
+type Props = {
   className?: string
   value: string
   onChange: (v: string) => void
@@ -52,7 +59,7 @@ type Props = Readonly<{
   noBorderBottom?: boolean
   smallItem?: boolean
   itemClassName?: string
-}>
+}
 
 const TabSlider: FC<Props> = ({
   className,
@@ -66,13 +73,9 @@ const TabSlider: FC<Props> = ({
   return (
     <div
       data-testid="tab-slider"
-      className={cn(
-        className,
-        !noBorderBottom && 'border-b border-divider-subtle',
-        'flex space-x-6',
-      )}
+      className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex space-x-6')}
     >
-      {options.map((option) => (
+      {options.map(option => (
         <Item
           isActive={option.value === value}
           option={option}

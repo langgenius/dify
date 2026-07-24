@@ -2,28 +2,58 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field, computed_field, field_validator
+from flask_restx import fields
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
-from fields.base import ResponseModel
-from libs.helper import build_avatar_url, to_timestamp
+from dify_graph.file import helpers as file_helpers
+
+simple_account_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "email": fields.String,
+}
 
 
-class SimpleAccountResponse(ResponseModel):
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+def _build_avatar_url(avatar: str | None) -> str | None:
+    if avatar is None:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return file_helpers.get_signed_file_url(avatar)
+
+
+class ResponseModel(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
+
+
+class SimpleAccount(ResponseModel):
     id: str
     name: str
     email: str
 
 
-class _AccountAvatarResponseMixin(ResponseModel):
+class _AccountAvatar(ResponseModel):
     avatar: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return build_avatar_url(self.avatar)
+        return _build_avatar_url(self.avatar)
 
 
-class AccountResponse(_AccountAvatarResponseMixin):
+class Account(_AccountAvatar):
     id: str
     name: str
     email: str
@@ -38,10 +68,10 @@ class AccountResponse(_AccountAvatarResponseMixin):
     @field_validator("last_login_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        return _to_timestamp(value)
 
 
-class AccountWithRoleResponse(_AccountAvatarResponseMixin):
+class AccountWithRole(_AccountAvatar):
     id: str
     name: str
     email: str
@@ -49,20 +79,13 @@ class AccountWithRoleResponse(_AccountAvatarResponseMixin):
     last_active_at: int | None = None
     created_at: int | None = None
     role: str
-    roles: list[dict[str, str]] = Field(default_factory=list)
     status: str
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+        return _to_timestamp(value)
 
 
-class AccountWithRoleListResponse(ResponseModel):
-    accounts: list[AccountWithRoleResponse]
-
-
-SimpleAccount = SimpleAccountResponse
-Account = AccountResponse
-AccountWithRole = AccountWithRoleResponse
-AccountWithRoleList = AccountWithRoleListResponse
+class AccountWithRoleList(ResponseModel):
+    accounts: list[AccountWithRole]

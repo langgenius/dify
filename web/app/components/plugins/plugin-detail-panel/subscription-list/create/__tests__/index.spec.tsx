@@ -1,35 +1,48 @@
 import type { SimpleDetail } from '../../../store'
-import type {
-  TriggerOAuthConfig,
-  TriggerProviderApiEntity,
-  TriggerSubscription,
-  TriggerSubscriptionBuilder,
-} from '@/app/components/workflow/block-selector/types'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { TriggerOAuthConfig, TriggerProviderApiEntity, TriggerSubscription, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
-import { CreateSubscriptionButton } from '../index'
-import { CreateButtonType, DEFAULT_METHOD } from '../types'
+import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
+let mockPortalOpenState = false
+
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
+    mockPortalOpenState = open || false
+    return (
+      <div data-testid="portal-elem" data-open={open}>
+        {children}
+      </div>
+    )
+  },
+  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) => (
+    <div data-testid="portal-trigger" onClick={onClick} className={className}>
+      {children}
+    </div>
+  ),
+  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
+    if (!mockPortalOpenState)
+      return null
+    return (
+      <div data-testid="portal-content" className={className}>
+        {children}
+      </div>
+    )
+  },
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: vi.fn(),
+  },
 }))
 
 let mockStoreDetail: SimpleDetail | undefined
 vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined,
-  ) => selector({ detail: mockStoreDetail }),
+  usePluginStore: (selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined) =>
+    selector({ detail: mockStoreDetail }),
 }))
 
 const mockSubscriptions: TriggerSubscription[] = []
@@ -42,10 +55,7 @@ vi.mock('../../use-subscription-list', () => ({
 }))
 
 let mockProviderInfo: { data: TriggerProviderApiEntity | undefined } = { data: undefined }
-let mockOAuthConfig: { data: TriggerOAuthConfig | undefined; refetch: () => void } = {
-  data: undefined,
-  refetch: vi.fn(),
-}
+let mockOAuthConfig: { data: TriggerOAuthConfig | undefined, refetch: () => void } = { data: undefined, refetch: vi.fn() }
 const mockInitiateOAuth = vi.fn()
 
 vi.mock('@/service/use-triggers', () => ({
@@ -63,187 +73,84 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('../common-modal', () => ({
-  CommonCreateModal: ({
-    open,
-    createType,
-    onClose,
-    builder,
-  }: {
-    open?: boolean
+  CommonCreateModal: ({ createType, onClose, builder }: {
     createType: SupportedCreationMethods
     onClose: () => void
     builder?: TriggerSubscriptionBuilder
-  }) => {
-    if (open === false) return null
-
-    return (
-      <div
-        data-testid="common-create-modal"
-        data-create-type={createType}
-        data-has-builder={!!builder}
-      >
-        <button data-testid="close-modal" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    )
-  },
+  }) => (
+    <div
+      data-testid="common-create-modal"
+      data-create-type={createType}
+      data-has-builder={!!builder}
+    >
+      <button data-testid="close-modal" onClick={onClose}>Close</button>
+    </div>
+  ),
 }))
 
 vi.mock('../oauth-client', () => ({
-  OAuthClientSettingsModal: ({
-    open,
-    oauthConfig,
-    onOpenChange,
-    showOAuthCreateModal,
-  }: {
-    open: boolean
+  OAuthClientSettingsModal: ({ oauthConfig, onClose, showOAuthCreateModal }: {
     oauthConfig?: TriggerOAuthConfig
-    onOpenChange: (open: boolean) => void
+    onClose: () => void
     showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
-  }) => {
-    if (!open) return null
-
-    return (
-      <div data-testid="oauth-client-modal" data-has-config={!!oauthConfig}>
-        <button data-testid="close-oauth-modal" onClick={() => onOpenChange(false)}>
-          Close
-        </button>
-        <button
-          data-testid="show-create-modal"
-          onClick={() =>
-            showOAuthCreateModal({
-              id: 'test-builder',
-              name: 'test',
-              provider: 'test-provider',
-              credential_type: TriggerCredentialType.Oauth2,
-              credentials: {},
-              endpoint: 'https://test.com',
-              parameters: {},
-              properties: {},
-              workflows_in_use: 0,
-            })
-          }
-        >
-          Show Create Modal
-        </button>
-      </div>
-    )
-  },
+  }) => (
+    <div
+      data-testid="oauth-client-modal"
+      data-has-config={!!oauthConfig}
+    >
+      <button data-testid="close-oauth-modal" onClick={onClose}>Close</button>
+      <button
+        data-testid="show-create-modal"
+        onClick={() => showOAuthCreateModal({
+          id: 'test-builder',
+          name: 'test',
+          provider: 'test-provider',
+          credential_type: TriggerCredentialTypeEnum.Oauth2,
+          credentials: {},
+          endpoint: 'https://test.com',
+          parameters: {},
+          properties: {},
+          workflows_in_use: 0,
+        })}
+      >
+        Show Create Modal
+      </button>
+    </div>
+  ),
 }))
 
-vi.mock('@langgenius/dify-ui/select', async () => {
-  const React = await import('react')
-
-  const SelectContext = React.createContext<{
-    onOpenChange?: (open: boolean) => void
-    onValueChange?: (value: string) => void
-  }>({})
-
-  const countOptions = (children: React.ReactNode): number => {
-    return React.Children.toArray(children).reduce<number>((count, child) => {
-      if (!React.isValidElement<{ children?: React.ReactNode }>(child)) return count
-
-      return (
-        count +
-        React.Children.toArray(child.props.children).filter((nestedChild) => {
-          return (
-            React.isValidElement<{ value?: string }>(nestedChild) && 'value' in nestedChild.props
-          )
-        }).length
-      )
-    }, 0)
-  }
-
-  return {
-    Select: ({
-      children,
-      value,
-      open,
-      onOpenChange,
-      onValueChange,
-    }: {
-      children: React.ReactNode
-      value: string | null
-      open?: boolean
-      onOpenChange?: (open: boolean) => void
-      onValueChange?: (value: string) => void
-    }) => {
-      const currentValue = value ?? DEFAULT_METHOD
-      const optionsCount = countOptions(children)
-      const containerOpen =
-        currentValue === DEFAULT_METHOD ||
-        (currentValue === SupportedCreationMethods.OAUTH && optionsCount === 1)
-          ? undefined
-          : String(open ?? false)
-
-      return (
-        <SelectContext.Provider value={{ onOpenChange, onValueChange }}>
+vi.mock('@/app/components/base/select/custom', () => ({
+  default: ({ options, value, onChange, CustomTrigger, CustomOption, containerProps }: {
+    options: Array<{ value: string, label: string, show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
+    value: string
+    onChange: (value: string) => void
+    CustomTrigger: () => React.ReactNode
+    CustomOption: (option: { label: string, tag?: React.ReactNode, extra?: React.ReactNode }) => React.ReactNode
+    containerProps?: { open?: boolean }
+  }) => (
+    <div
+      data-testid="custom-select"
+      data-value={value}
+      data-options-count={options?.length || 0}
+      data-container-open={containerProps?.open}
+    >
+      <div data-testid="custom-trigger">{CustomTrigger()}</div>
+      <div data-testid="options-container">
+        {options?.map(option => (
           <div
-            data-testid="custom-select"
-            data-value={currentValue}
-            data-open={String(open ?? false)}
-            data-options-count={optionsCount}
-            data-container-open={containerOpen}
+            key={option.value}
+            data-testid={`option-${option.value}`}
+            onClick={() => onChange(option.value)}
           >
-            {children}
+            {CustomOption(option)}
           </div>
-        </SelectContext.Provider>
-      )
-    },
-    SelectTrigger: ({
-      children,
-      className,
-    }: {
-      children: React.ReactNode
-      render?: React.ReactNode
-      className?: string
-    }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div
-          data-testid="custom-trigger"
-          role="button"
-          aria-label="custom trigger"
-          tabIndex={0}
-          className={className}
-          onClick={() => context.onOpenChange?.(true)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') context.onOpenChange?.(true)
-          }}
-        >
-          {children}
-        </div>
-      )
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="options-container">{children}</div>
-    ),
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
-      return (
-        <div
-          data-testid={`option-${value}`}
-          role="button"
-          aria-label={`option ${value}`}
-          tabIndex={0}
-          onClick={() => context.onValueChange?.(value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') context.onValueChange?.(value)
-          }}
-        >
-          {children}
-        </div>
-      )
-    },
-    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    SelectItemIndicator: () => null,
-  }
-})
+        ))}
+      </div>
+    </div>
+  ),
+}))
 
-const createProviderInfo = (
-  overrides: Partial<TriggerProviderApiEntity> = {},
-): TriggerProviderApiEntity => ({
+const createProviderInfo = (overrides: Partial<TriggerProviderApiEntity> = {}): TriggerProviderApiEntity => ({
   author: 'test-author',
   name: 'test-provider',
   label: { en_US: 'Test Provider', zh_Hans: 'Test Provider' },
@@ -285,7 +192,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialType.ApiKey,
+  credential_type: TriggerCredentialTypeEnum.ApiKey,
   credentials: {},
   endpoint: 'https://test.com',
   parameters: {},
@@ -294,35 +201,28 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   ...overrides,
 })
 
-const createDefaultProps = (
-  overrides: Partial<Parameters<typeof CreateSubscriptionButton>[0]> = {},
-) => ({
+const createDefaultProps = (overrides: Partial<Parameters<typeof CreateSubscriptionButton>[0]> = {}) => ({
   ...overrides,
 })
 
-const getCreateButton = () =>
-  screen.getByRole('button', {
-    name: /pluginTrigger\.subscription\.(createButton|empty\.button)/,
-  })
-
-const setupMocks = (
-  config: {
-    providerInfo?: TriggerProviderApiEntity
-    oauthConfig?: TriggerOAuthConfig
-    storeDetail?: SimpleDetail
-    subscriptions?: TriggerSubscription[]
-  } = {},
-) => {
+const setupMocks = (config: {
+  providerInfo?: TriggerProviderApiEntity
+  oauthConfig?: TriggerOAuthConfig
+  storeDetail?: SimpleDetail
+  subscriptions?: TriggerSubscription[]
+} = {}) => {
   mockProviderInfo = { data: config.providerInfo }
   mockOAuthConfig = { data: config.oauthConfig, refetch: vi.fn() }
   mockStoreDetail = config.storeDetail
   mockSubscriptions.length = 0
-  if (config.subscriptions) mockSubscriptions.push(...config.subscriptions)
+  if (config.subscriptions)
+    mockSubscriptions.push(...config.subscriptions)
 }
 
 describe('CreateSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPortalOpenState = false
     setupMocks()
   })
 
@@ -339,17 +239,29 @@ describe('CreateSubscriptionButton', () => {
       const { container } = render(<CreateSubscriptionButton {...props} />)
 
       // Assert
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should render without crashing when supportedMethods is provided', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      const { container } = render(<CreateSubscriptionButton {...props} />)
+
       // Assert
-      expect(container)!.toBeEmptyDOMElement()
+      expect(container).not.toBeEmptyDOMElement()
     })
 
     it('should render full button by default', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
       const props = createDefaultProps()
 
@@ -357,17 +269,14 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(getCreateButton()).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should render icon button when buttonType is ICON_BUTTON', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
       const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON })
 
@@ -376,7 +285,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const actionButton = screen.getByTestId('custom-trigger')
-      expect(actionButton)!.toBeInTheDocument()
+      expect(actionButton).toBeInTheDocument()
     })
   })
 
@@ -385,9 +294,7 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
       const props = createDefaultProps()
 
@@ -395,29 +302,22 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(getCreateButton()).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should apply shape prop correctly', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
-      const props = createDefaultProps({
-        buttonType: CreateButtonType.ICON_BUTTON,
-        shape: 'circle',
-      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON, shape: 'circle' })
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
   })
 
@@ -427,10 +327,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -444,11 +341,8 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-create-type',
-          SupportedCreationMethods.MANUAL,
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
       })
     })
 
@@ -457,10 +351,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -473,7 +364,7 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(manualOption)
 
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
       })
 
       // Close modal
@@ -505,51 +396,14 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
-      })
-    })
-
-    it('should close dropdown when oauth settings is clicked from option extra action', async () => {
-      // Arrange
-      setupMocks({
-        storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.APIKEY,
-            SupportedCreationMethods.MANUAL,
-          ],
-        }),
-        oauthConfig: createOAuthConfig({ configured: false }),
-      })
-      const props = createDefaultProps()
-
-      // Act
-      render(<CreateSubscriptionButton {...props} />)
-
-      fireEvent.click(screen.getByTestId('custom-trigger'))
-      expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'true')
-
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'pluginTrigger.subscription.addType.options.oauth.clientSettings',
-        }),
-      )
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'false')
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
     })
 
     it('should close OAuthClientSettingsModal and refetch config when closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
-      mockOAuthConfig = {
-        data: createOAuthConfig({ configured: false }),
-        refetch: mockRefetchOAuth,
-      }
+      mockOAuthConfig = { data: createOAuthConfig({ configured: false }), refetch: mockRefetchOAuth }
 
       setupMocks({
         storeDetail: createStoreDetail(),
@@ -571,7 +425,7 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(oauthOption)
 
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
 
       // Close modal
@@ -602,7 +456,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - OAuth mode renders with settings button, use getAllByRole
       const buttons = screen.getAllByRole('button')
-      expect(buttons[0])!.toHaveTextContent('pluginTrigger.subscription.createButton.oauth')
+      expect(buttons[0]).toHaveTextContent('pluginTrigger.subscription.createButton.oauth')
     })
 
     it('should display correct button text for APIKEY method', () => {
@@ -619,8 +473,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
+      expect(screen.getByRole('button')).toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
     })
 
     it('should display correct button text for MANUAL method', () => {
@@ -637,8 +490,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.manual')
+      expect(screen.getByRole('button')).toHaveTextContent('pluginTrigger.subscription.createButton.manual')
     })
 
     it('should display default button text when multiple methods are supported', () => {
@@ -646,10 +498,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -658,8 +507,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.empty.button')
+      expect(screen.getByRole('button')).toHaveTextContent('pluginTrigger.subscription.empty.button')
     })
   })
 
@@ -680,7 +528,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-options-count', '1')
+      expect(customSelect).toHaveAttribute('data-options-count', '1')
     })
 
     it('should show all options when all methods are supported', () => {
@@ -703,7 +551,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-options-count', '3')
+      expect(customSelect).toHaveAttribute('data-options-count', '3')
     })
 
     it('should show custom badge when OAuth custom is enabled and configured', () => {
@@ -726,7 +574,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - Custom badge should appear in the button
       const buttons = screen.getAllByRole('button')
-      expect(buttons[0])!.toHaveTextContent('plugin.auth.custom')
+      expect(buttons[0]).toHaveTextContent('plugin.auth.custom')
     })
 
     it('should not show custom badge when OAuth custom is not configured', () => {
@@ -759,10 +607,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -772,7 +617,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-value', DEFAULT_METHOD)
+      expect(customSelect).toHaveAttribute('data-value', DEFAULT_METHOD)
     })
 
     it('should set methodType to single method when only one supported', () => {
@@ -790,7 +635,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-value', SupportedCreationMethods.MANUAL)
+      expect(customSelect).toHaveAttribute('data-value', SupportedCreationMethods.MANUAL)
     })
   })
 
@@ -814,40 +659,9 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = getCreateButton()
+      const button = screen.getByRole('button')
       fireEvent.click(button)
 
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
-      // Assert - modal should not open
       // Assert - modal should not open
       expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
     })
@@ -864,12 +678,11 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = getCreateButton()
+      const button = screen.getByRole('button')
       fireEvent.click(button)
 
       // Assert - modal should open
-      // Assert - modal should open
-      expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
     })
 
     it('should not call onChooseCreateType for DEFAULT_METHOD or single OAuth', () => {
@@ -887,70 +700,8 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
       // For OAuth mode, there are multiple buttons; get the primary button (first one)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0]!)
+      fireEvent.click(buttons[0])
 
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
-      // Assert - For single OAuth, should not directly create but wait for dropdown
-      // The modal should not immediately open
       // Assert - For single OAuth, should not directly create but wait for dropdown
       // The modal should not immediately open
       expect(screen.queryByTestId('common-create-modal')).not.toBeInTheDocument()
@@ -963,10 +714,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: false }),
       })
@@ -981,7 +729,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
     })
 
@@ -990,10 +738,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1017,10 +762,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.APIKEY,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.APIKEY, SupportedCreationMethods.MANUAL],
         }),
       })
       const props = createDefaultProps()
@@ -1034,11 +776,8 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-create-type',
-          SupportedCreationMethods.APIKEY,
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-create-type', SupportedCreationMethods.APIKEY)
       })
     })
 
@@ -1047,10 +786,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -1064,11 +800,8 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-create-type',
-          SupportedCreationMethods.MANUAL,
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
       })
     })
   })
@@ -1091,17 +824,16 @@ describe('CreateSubscriptionButton', () => {
       // Find the settings div inside the button (p-2 class)
       const buttons = screen.getAllByRole('button')
       const primaryButton = buttons[0]
-      const settingsDiv = primaryButton!.querySelector('.p-2')
+      const settingsDiv = primaryButton.querySelector('.p-2')
 
       // Assert that settings div exists and click it
-      // Assert that settings div exists and click it
-      expect(settingsDiv)!.toBeInTheDocument()
+      expect(settingsDiv).toBeInTheDocument()
       if (settingsDiv) {
         fireEvent.click(settingsDiv)
 
         // Assert
         await waitFor(() => {
-          expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+          expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
         })
       }
     })
@@ -1113,9 +845,7 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail({ provider: 'my-provider' }),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
       const props = createDefaultProps()
 
@@ -1123,8 +853,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - Component renders, which means hook was called
-      // Assert - Component renders, which means hook was called
-      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select')).toBeInTheDocument()
     })
 
     it('should handle OAuth initiation success', async () => {
@@ -1133,7 +862,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialType.Oauth2,
+        credential_type: TriggerCredentialTypeEnum.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1157,10 +886,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1175,29 +901,23 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - modal should open with OAuth type and builder
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-has-builder',
-          'true',
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-has-builder', 'true')
       })
     })
 
     it('should handle OAuth initiation error', async () => {
       // Arrange
-      mockInitiateOAuth.mockImplementation(
-        (_provider: string, callbacks: { onError: () => void }) => {
-          callbacks.onError()
-        },
-      )
+      const Toast = await import('@/app/components/base/toast')
+
+      mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onError: () => void }) => {
+        callbacks.onError()
+      })
 
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1212,7 +932,9 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalled()
+        expect(Toast.default.notify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' }),
+        )
       })
     })
   })
@@ -1223,9 +945,7 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
         subscriptions: undefined,
       })
       const props = createDefaultProps()
@@ -1234,37 +954,6 @@ describe('CreateSubscriptionButton', () => {
       const { container } = render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       expect(container).not.toBeEmptyDOMElement()
     })
 
@@ -1272,9 +961,7 @@ describe('CreateSubscriptionButton', () => {
       // Arrange
       setupMocks({
         storeDetail: undefined,
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
+        providerInfo: createProviderInfo({ supported_creation_methods: [SupportedCreationMethods.MANUAL] }),
       })
       const props = createDefaultProps()
 
@@ -1282,8 +969,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - component should still render
-      // Assert - component should still render
-      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select')).toBeInTheDocument()
     })
 
     it('should handle empty oauthConfig gracefully', () => {
@@ -1301,15 +987,13 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('custom-select'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-select')).toBeInTheDocument()
     })
 
     it('should show max count tooltip when subscriptions reach limit', () => {
       // Arrange
       const maxSubscriptions = Array.from({ length: 10 }, (_, i) =>
-        createSubscription({ id: `sub-${i}` }),
-      )
+        createSubscription({ id: `sub-${i}` }))
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
@@ -1323,8 +1007,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - ActionButton should be in disabled state
-      // Assert - ActionButton should be in disabled state
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
 
     it('should handle showOAuthCreateModal callback from OAuthClientSettingsModal', async () => {
@@ -1346,7 +1029,7 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(oauthOption)
 
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
 
       // Click show create modal button
@@ -1354,15 +1037,9 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - CommonCreateModal should be shown with OAuth type and builder
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-create-type',
-          SupportedCreationMethods.OAUTH,
-        )
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-has-builder',
-          'true',
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-create-type', SupportedCreationMethods.OAUTH)
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-has-builder', 'true')
       })
     })
   })
@@ -1386,8 +1063,8 @@ describe('CreateSubscriptionButton', () => {
       // Assert - settings icon should be present in button, OAuth mode has multiple buttons
       const buttons = screen.getAllByRole('button')
       const primaryButton = buttons[0]
-      const settingsDiv = primaryButton!.querySelector('.p-2')
-      expect(settingsDiv)!.toBeInTheDocument()
+      const settingsDiv = primaryButton.querySelector('.p-2')
+      expect(settingsDiv).toBeInTheDocument()
     })
 
     it('should not render settings icon for non-OAuth methods', () => {
@@ -1404,7 +1081,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - should not have settings divider
-      const button = getCreateButton()
+      const button = screen.getByRole('button')
       const divider = button.querySelector('.bg-text-primary-on-surface')
       expect(divider).not.toBeInTheDocument()
     })
@@ -1412,8 +1089,7 @@ describe('CreateSubscriptionButton', () => {
     it('should apply disabled state when subscription count reaches max', () => {
       // Arrange
       const maxSubscriptions = Array.from({ length: 10 }, (_, i) =>
-        createSubscription({ id: `sub-${i}` }),
-      )
+        createSubscription({ id: `sub-${i}` }))
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
@@ -1427,8 +1103,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - icon button should exist
-      // Assert - icon button should exist
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
 
     it('should apply circle shape class when shape is circle', () => {
@@ -1439,17 +1114,13 @@ describe('CreateSubscriptionButton', () => {
           supported_creation_methods: [SupportedCreationMethods.MANUAL],
         }),
       })
-      const props = createDefaultProps({
-        buttonType: CreateButtonType.ICON_BUTTON,
-        shape: 'circle',
-      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.ICON_BUTTON, shape: 'circle' })
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      // Assert
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
   })
 
@@ -1460,10 +1131,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -1510,12 +1178,30 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - for single non-OAuth, dropdown should be disabled (open = false)
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-container-open', 'false')
+      expect(customSelect).toHaveAttribute('data-container-open', 'false')
     })
   })
 
   // ==================== Button Type Variations ====================
   describe('Button Type Variations', () => {
+    it('should render full button with grow class', () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [SupportedCreationMethods.MANUAL],
+        }),
+      })
+      const props = createDefaultProps({ buttonType: CreateButtonType.FULL_BUTTON })
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      // Assert
+      const button = screen.getByRole('button')
+      expect(button).toHaveClass('w-full')
+    })
+
     it('should render icon button with float-right class', () => {
       // Arrange
       setupMocks({
@@ -1530,8 +1216,26 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
+    })
+  })
+
+  // ==================== Export Verification ====================
+  describe('Export Verification', () => {
+    it('should export CreateButtonType enum', () => {
       // Assert
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(CreateButtonType.FULL_BUTTON).toBe('full-button')
+      expect(CreateButtonType.ICON_BUTTON).toBe('icon-button')
+    })
+
+    it('should export DEFAULT_METHOD constant', () => {
+      // Assert
+      expect(DEFAULT_METHOD).toBe('default')
+    })
+
+    it('should export CreateSubscriptionButton component', () => {
+      // Assert
+      expect(typeof CreateSubscriptionButton).toBe('function')
     })
   })
 
@@ -1543,10 +1247,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -1561,7 +1262,7 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         const modal = screen.getByTestId('common-create-modal')
-        expect(modal)!.toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
+        expect(modal).toHaveAttribute('data-create-type', SupportedCreationMethods.MANUAL)
       })
     })
 
@@ -1570,10 +1271,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
       })
       const props = createDefaultProps()
@@ -1588,7 +1286,7 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         const modal = screen.getByTestId('common-create-modal')
-        expect(modal)!.toHaveAttribute('data-create-type', SupportedCreationMethods.APIKEY)
+        expect(modal).toHaveAttribute('data-create-type', SupportedCreationMethods.APIKEY)
       })
     })
 
@@ -1598,7 +1296,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialType.Oauth2,
+        credential_type: TriggerCredentialTypeEnum.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1622,10 +1320,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1641,7 +1336,7 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         const modal = screen.getByTestId('common-create-modal')
-        expect(modal)!.toHaveAttribute('data-has-builder', 'true')
+        expect(modal).toHaveAttribute('data-has-builder', 'true')
       })
     })
   })
@@ -1670,17 +1365,14 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       await waitFor(() => {
         const modal = screen.getByTestId('oauth-client-modal')
-        expect(modal)!.toHaveAttribute('data-has-config', 'true')
+        expect(modal).toHaveAttribute('data-has-config', 'true')
       })
     })
 
     it('should refetch OAuth config when OAuthClientSettingsModal is closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
-      mockOAuthConfig = {
-        data: createOAuthConfig({ configured: false }),
-        refetch: mockRefetchOAuth,
-      }
+      mockOAuthConfig = { data: createOAuthConfig({ configured: false }), refetch: mockRefetchOAuth }
 
       setupMocks({
         storeDetail: createStoreDetail(),
@@ -1702,7 +1394,7 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(oauthOption)
 
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
 
       // Close modal
@@ -1733,7 +1425,7 @@ describe('CreateSubscriptionButton', () => {
       fireEvent.click(oauthOption)
 
       await waitFor(() => {
-        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('oauth-client-modal')).toBeInTheDocument()
       })
 
       // Click showOAuthCreateModal button
@@ -1741,15 +1433,9 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert - CommonCreateModal should appear with OAuth type and builder
       await waitFor(() => {
-        expect(screen.getByTestId('common-create-modal'))!.toBeInTheDocument()
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-create-type',
-          SupportedCreationMethods.OAUTH,
-        )
-        expect(screen.getByTestId('common-create-modal'))!.toHaveAttribute(
-          'data-has-builder',
-          'true',
-        )
+        expect(screen.getByTestId('common-create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-create-type', SupportedCreationMethods.OAUTH)
+        expect(screen.getByTestId('common-create-modal')).toHaveAttribute('data-has-builder', 'true')
       })
     })
   })
@@ -1759,18 +1445,16 @@ describe('CreateSubscriptionButton', () => {
     it('should not open modal when OAuth callback returns falsy data', async () => {
       // Arrange
       const { openOAuthPopup } = await import('@/hooks/use-oauth')
-      vi.mocked(openOAuthPopup).mockImplementation(
-        (url: string, callback: (data?: unknown) => void) => {
-          callback(undefined) // falsy callback data
-          return null
-        },
-      )
+      vi.mocked(openOAuthPopup).mockImplementation((url: string, callback: (data?: unknown) => void) => {
+        callback(undefined) // falsy callback data
+        return null
+      })
 
       const mockBuilder: TriggerSubscriptionBuilder = {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialType.Oauth2,
+        credential_type: TriggerCredentialTypeEnum.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1778,30 +1462,17 @@ describe('CreateSubscriptionButton', () => {
         workflows_in_use: 0,
       }
 
-      mockInitiateOAuth.mockImplementation(
-        (
-          _provider: string,
-          callbacks: {
-            onSuccess: (response: {
-              authorization_url: string
-              subscription_builder: TriggerSubscriptionBuilder
-            }) => void
-          },
-        ) => {
-          callbacks.onSuccess({
-            authorization_url: 'https://oauth.test.com/authorize',
-            subscription_builder: mockBuilder,
-          })
-        },
-      )
+      mockInitiateOAuth.mockImplementation((_provider: string, callbacks: { onSuccess: (response: { authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }) => void }) => {
+        callbacks.onSuccess({
+          authorization_url: 'https://oauth.test.com/authorize',
+          subscription_builder: mockBuilder,
+        })
+      })
 
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.OAUTH,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.OAUTH, SupportedCreationMethods.MANUAL],
         }),
         oauthConfig: createOAuthConfig({ configured: true }),
       })
@@ -1829,10 +1500,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.APIKEY,
-            SupportedCreationMethods.MANUAL,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.APIKEY, SupportedCreationMethods.MANUAL],
         }),
       })
       const props = createDefaultProps()
@@ -1842,9 +1510,7 @@ describe('CreateSubscriptionButton', () => {
 
       // The methodType will be DEFAULT_METHOD since multiple methods
       // This verifies the render doesn't crash with multiple methods
-      // The methodType will be DEFAULT_METHOD since multiple methods
-      // This verifies the render doesn't crash with multiple methods
-      expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-value', 'default')
+      expect(screen.getByTestId('custom-select')).toHaveAttribute('data-value', 'default')
     })
   })
 
@@ -1865,8 +1531,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - tooltip should be enabled (disabled prop = false for single method)
-      // Assert - tooltip should be enabled (disabled prop = false for single method)
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
 
     it('should disable tooltip when multiple methods and not at max count', () => {
@@ -1874,10 +1539,7 @@ describe('CreateSubscriptionButton', () => {
       setupMocks({
         storeDetail: createStoreDetail(),
         providerInfo: createProviderInfo({
-          supported_creation_methods: [
-            SupportedCreationMethods.MANUAL,
-            SupportedCreationMethods.APIKEY,
-          ],
+          supported_creation_methods: [SupportedCreationMethods.MANUAL, SupportedCreationMethods.APIKEY],
         }),
         subscriptions: [createSubscription()], // Not at max
       })
@@ -1887,8 +1549,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - tooltip should be disabled (neither single method nor at max)
-      // Assert - tooltip should be disabled (neither single method nor at max)
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
   })
 
@@ -1910,8 +1571,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - component renders with max subscriptions
-      // Assert - component renders with max subscriptions
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
 
     it('should show method description when not at max', () => {
@@ -1929,8 +1589,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - component renders without max subscriptions
-      // Assert - component renders without max subscriptions
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
     })
   })
 
@@ -1951,18 +1610,12 @@ describe('CreateSubscriptionButton', () => {
       const { container } = render(<CreateSubscriptionButton {...props} />)
 
       // Assert - should render null when supported methods fallback to empty
-      // Assert - should render null when supported methods fallback to empty
-      expect(container)!.toBeEmptyDOMElement()
+      expect(container).toBeEmptyDOMElement()
     })
 
     it('should handle providerInfo with null supported_creation_methods', () => {
       // Arrange
-      mockProviderInfo = {
-        data: {
-          ...createProviderInfo(),
-          supported_creation_methods: null as unknown as SupportedCreationMethods[],
-        },
-      }
+      mockProviderInfo = { data: { ...createProviderInfo(), supported_creation_methods: null as unknown as SupportedCreationMethods[] } }
       mockOAuthConfig = { data: undefined, refetch: vi.fn() }
       mockStoreDetail = createStoreDetail()
       const props = createDefaultProps()
@@ -1971,8 +1624,7 @@ describe('CreateSubscriptionButton', () => {
       const { container } = render(<CreateSubscriptionButton {...props} />)
 
       // Assert - should render null
-      // Assert - should render null
-      expect(container)!.toBeEmptyDOMElement()
+      expect(container).toBeEmptyDOMElement()
     })
   })
 
@@ -1993,7 +1645,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       const customSelect = screen.getByTestId('custom-select')
-      expect(customSelect)!.toHaveAttribute('data-value', SupportedCreationMethods.APIKEY)
+      expect(customSelect).toHaveAttribute('data-value', SupportedCreationMethods.APIKEY)
     })
   })
 })

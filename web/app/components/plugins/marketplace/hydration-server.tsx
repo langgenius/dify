@@ -24,9 +24,7 @@ async function getDehydratedState(searchParams?: Promise<SearchParams>) {
   const queryClient = getQueryClientServer()
 
   await queryClient.prefetchQuery({
-    queryKey: marketplaceQuery.collections.queryKey({
-      input: { query: getCollectionsParams(params.category) },
-    }),
+    queryKey: marketplaceQuery.collections.queryKey({ input: { query: getCollectionsParams(params.category) } }),
     queryFn: () => getMarketplaceCollectionsAndPlugins(getCollectionsParams(params.category)),
   })
   return dehydrate(queryClient)
@@ -40,5 +38,13 @@ export async function HydrateQueryClient({
   children: React.ReactNode
 }) {
   const dehydratedState = await getDehydratedState(searchParams)
-  return <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
+  // TODO: vinext do not handle hydration boundary well for now.
+  if (!dehydratedState) {
+    return <>{children}</>
+  }
+  return (
+    <HydrationBoundary state={dehydratedState}>
+      {children}
+    </HydrationBoundary>
+  )
 }

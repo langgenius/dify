@@ -1,17 +1,16 @@
 import json
-from typing import override
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from graphon.file import file_manager
-from graphon.model_runtime.entities import (
+from dify_graph.file import file_manager
+from dify_graph.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
-from graphon.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 
 
 class CotChatAgentRunner(CotAgentRunner):
@@ -67,7 +66,6 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return prompt_messages
 
-    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize
@@ -80,18 +78,21 @@ class CotChatAgentRunner(CotAgentRunner):
         if not agent_scratchpad:
             assistant_messages = []
         else:
-            content = ""
+            assistant_message = AssistantPromptMessage(content="")
+            assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
             for unit in agent_scratchpad:
                 if unit.is_final():
-                    content += f"Final Answer: {unit.agent_response}"
+                    assert isinstance(assistant_message.content, str)
+                    assistant_message.content += f"Final Answer: {unit.agent_response}"
                 else:
-                    content += f"Thought: {unit.thought}\n\n"
+                    assert isinstance(assistant_message.content, str)
+                    assistant_message.content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
-                        content += f"Action: {unit.action_str}\n\n"
+                        assistant_message.content += f"Action: {unit.action_str}\n\n"
                     if unit.observation:
-                        content += f"Observation: {unit.observation}\n\n"
+                        assistant_message.content += f"Observation: {unit.observation}\n\n"
 
-            assistant_messages = [AssistantPromptMessage(content=content)]
+            assistant_messages = [assistant_message]
 
         # query messages
         query_messages = self._organize_user_query(self._query, [])

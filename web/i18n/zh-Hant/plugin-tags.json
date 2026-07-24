@@ -1,6 +1,5 @@
 {
   "allTags": "所有標籤",
-  "clearSelectedTags": "清空所選標籤：{{tags}}",
   "searchTags": "搜索標籤",
   "tags.agent": "代理",
   "tags.business": "商",

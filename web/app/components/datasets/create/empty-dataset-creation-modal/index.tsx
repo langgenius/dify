@@ -1,34 +1,42 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
+import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { useRouter } from '@/next/navigation'
+import Modal from '@/app/components/base/modal'
+import { ToastContext } from '@/app/components/base/toast/context'
+
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 
 type IProps = {
   show: boolean
   onHide: () => void
 }
-const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
+
+const EmptyDatasetCreationModal = ({
+  show = false,
+  onHide,
+}: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const router = useRouter()
   const invalidDatasetList = useInvalidDatasetList()
+
   const submit = async () => {
     if (!inputValue) {
-      toast.error(t(($) => $['stepOne.modal.nameNotEmpty'], { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }) })
       return
     }
     if (inputValue.length > 40) {
-      toast.error(t(($) => $['stepOne.modal.nameLengthInvalid'], { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }) })
       return
     }
     try {
@@ -40,53 +48,33 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
       })
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
-    } catch {
-      toast.error(t(($) => $['stepOne.modal.failed'], { ns: 'datasetCreation' }))
+    }
+    catch {
+      notify({ type: 'error', message: t('stepOne.modal.failed', { ns: 'datasetCreation' }) })
     }
   }
+
   return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
+    <Modal
+      isShow={show}
+      onClose={onHide}
+      className={cn(s.modal, '!max-w-[520px]', 'px-8')}
     >
-      <DialogContent className="w-full max-w-[520px]! overflow-hidden! border-none px-8 text-left align-middle">
-        <div className={s.modalHeader}>
-          <div className={s.title}>
-            {t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}
-          </div>
-          <button
-            type="button"
-            className={cn(
-              s.close,
-              'border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-            )}
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
-          />
-        </div>
-        <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
-        <div className={s.form}>
-          <div className={s.label}>
-            {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
-          </div>
-          <Input
-            value={inputValue}
-            placeholder={t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''}
-            onChange={(e) => setInputValue(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-row-reverse">
-          <Button className="ml-2 w-24" variant="primary" onClick={submit}>
-            {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
-          </Button>
-          <Button className="w-24" onClick={onHide}>
-            {t(($) => $['stepOne.modal.cancelButton'], { ns: 'datasetCreation' })}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <div className={s.modalHeader}>
+        <div className={s.title}>{t('stepOne.modal.title', { ns: 'datasetCreation' })}</div>
+        <span className={s.close} onClick={onHide} />
+      </div>
+      <div className={s.tip}>{t('stepOne.modal.tip', { ns: 'datasetCreation' })}</div>
+      <div className={s.form}>
+        <div className={s.label}>{t('stepOne.modal.input', { ns: 'datasetCreation' })}</div>
+        <Input value={inputValue} placeholder={t('stepOne.modal.placeholder', { ns: 'datasetCreation' }) || ''} onChange={e => setInputValue(e.target.value)} />
+      </div>
+      <div className="flex flex-row-reverse">
+        <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('stepOne.modal.confirmButton', { ns: 'datasetCreation' })}</Button>
+        <Button className="w-24" onClick={onHide}>{t('stepOne.modal.cancelButton', { ns: 'datasetCreation' })}</Button>
+      </div>
+    </Modal>
   )
 }
+
 export default EmptyDatasetCreationModal

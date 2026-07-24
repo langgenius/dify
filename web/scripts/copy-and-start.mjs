@@ -8,6 +8,21 @@ import { spawn } from 'node:child_process'
 import { cp, mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 
+// Configuration for directories to copy
+const DIRS_TO_COPY = [
+  {
+    src: path.join('.next', 'static'),
+    dest: path.join('.next', 'standalone', '.next', 'static'),
+  },
+  {
+    src: 'public',
+    dest: path.join('.next', 'standalone', 'public'),
+  },
+]
+
+// Path to the server script
+const SERVER_SCRIPT_PATH = path.join('.next', 'standalone', 'server.js')
+
 // Function to check if a path exists
 const pathExists = async (path) => {
   try {
@@ -15,29 +30,14 @@ const pathExists = async (path) => {
     await stat(path)
     console.debug(`Path exists: ${path}`)
     return true
-  } catch (err) {
+  }
+  catch (err) {
     if (err.code === 'ENOENT') {
       console.warn(`Path does not exist: ${path}`)
       return false
     }
     throw err
   }
-}
-
-const STANDALONE_ROOT_CANDIDATES = [
-  path.join('.next', 'standalone', 'web'),
-  path.join('.next', 'standalone'),
-]
-
-const getStandaloneRoot = async () => {
-  for (const standaloneRoot of STANDALONE_ROOT_CANDIDATES) {
-    const serverScriptPath = path.join(standaloneRoot, 'server.js')
-    if (await pathExists(serverScriptPath)) return standaloneRoot
-  }
-
-  throw new Error(
-    `Unable to find Next standalone server entry. Checked: ${STANDALONE_ROOT_CANDIDATES.join(', ')}`,
-  )
 }
 
 // Function to recursively copy directories
@@ -48,20 +48,9 @@ const copyDir = async (src, dest) => {
 }
 
 // Process each directory copy operation
-const copyAllDirs = async (standaloneRoot) => {
-  const dirsToCopy = [
-    {
-      src: path.join('.next', 'static'),
-      dest: path.join(standaloneRoot, '.next', 'static'),
-    },
-    {
-      src: 'public',
-      dest: path.join(standaloneRoot, 'public'),
-    },
-  ]
-
+const copyAllDirs = async () => {
   console.debug('Starting directory copy operations')
-  for (const { src, dest } of dirsToCopy) {
+  for (const { src, dest } of DIRS_TO_COPY) {
     try {
       // Instead of pre-creating destination directory, we ensure parent directory exists
       const destParent = path.dirname(dest)
@@ -69,11 +58,13 @@ const copyAllDirs = async (standaloneRoot) => {
       await mkdir(destParent, { recursive: true })
       if (await pathExists(src)) {
         await copyDir(src, dest)
-      } else {
+      }
+      else {
         console.error(`Error: ${src} directory does not exist. This is a required build artifact.`)
         process.exit(1)
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error(`Error processing ${src}:`, err.message)
       process.exit(1)
     }
@@ -84,27 +75,28 @@ const copyAllDirs = async (standaloneRoot) => {
 // Run copy operations and start server
 const main = async () => {
   console.debug('Starting copy-and-start script')
-  const standaloneRoot = await getStandaloneRoot()
-  const serverScriptPath = path.join(standaloneRoot, 'server.js')
-
-  await copyAllDirs(standaloneRoot)
+  await copyAllDirs()
 
   // Start server
-  const port = process.env.pnpm_config_port || process.env.PORT || '3000'
-  const host = process.env.pnpm_config_host || process.env.HOSTNAME || '0.0.0.0'
+  const port = process.env.npm_config_port || process.env.PORT || '3000'
+  const host = process.env.npm_config_host || process.env.HOSTNAME || '0.0.0.0'
 
   console.info(`Starting server on ${host}:${port}`)
-  console.debug(`Server script path: ${serverScriptPath}`)
+  console.debug(`Server script path: ${SERVER_SCRIPT_PATH}`)
   console.debug(`Environment variables - PORT: ${port}, HOSTNAME: ${host}`)
 
-  const server = spawn(process.execPath, [serverScriptPath], {
-    env: {
-      ...process.env,
-      PORT: port,
-      HOSTNAME: host,
+  const server = spawn(
+    process.execPath,
+    [SERVER_SCRIPT_PATH],
+    {
+      env: {
+        ...process.env,
+        PORT: port,
+        HOSTNAME: host,
+      },
+      stdio: 'inherit',
     },
-    stdio: 'inherit',
-  })
+  )
 
   server.on('error', (err) => {
     console.error('Failed to start server:', err)

@@ -16,10 +16,7 @@ type ImgProps = {
 
 export const PluginImg = memo<ImgProps>(({ src, pluginInfo }) => {
   const { pluginUniqueIdentifier, pluginId } = pluginInfo || {}
-  const { data: assetData } = usePluginReadmeAsset({
-    plugin_unique_identifier: pluginUniqueIdentifier,
-    file_name: src,
-  })
+  const { data: assetData } = usePluginReadmeAsset({ plugin_unique_identifier: pluginUniqueIdentifier, file_name: src })
   const [blobUrl, setBlobUrl] = useState<string>()
 
   useEffect(() => {
@@ -37,7 +34,8 @@ export const PluginImg = memo<ImgProps>(({ src, pluginInfo }) => {
   }, [assetData])
 
   const imageUrl = useMemo(() => {
-    if (blobUrl) return blobUrl
+    if (blobUrl)
+      return blobUrl
 
     return getMarkdownImageURL(src, pluginId)
   }, [blobUrl, pluginId, src])

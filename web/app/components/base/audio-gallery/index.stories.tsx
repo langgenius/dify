@@ -11,8 +11,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          'List of audio players that render waveform previews and playback controls for each source.',
+        component: 'List of audio players that render waveform previews and playback controls for each source.',
       },
       source: {
         language: 'tsx',

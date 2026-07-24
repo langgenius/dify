@@ -27,8 +27,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Audio playback toggle that streams assistant responses. The story uses a mocked audio player so you can inspect loading and playback states without calling the real API.',
+        component: 'Audio playback toggle that streams assistant responses. The story uses a mocked audio player so you can inspect loading and playback states without calling the real API.',
       },
     },
     nextjs: {
@@ -67,7 +66,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: (args) => <StoryWrapper {...args} />,
+  render: args => <StoryWrapper {...args} />,
   args: {
     id: 'message-1',
     value: 'This is an audio preview for the current assistant response.',

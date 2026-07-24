@@ -7,7 +7,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.simple_prompt_transform import ModelMode
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode, AppModelConfigDict
 
 
@@ -64,7 +64,7 @@ class PromptTemplateConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
         """
         Validate pre_prompt and set defaults for prompt feature
         depending on the config['model']
@@ -75,7 +75,7 @@ class PromptTemplateConfigManager:
         if not config.get("prompt_type"):
             config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE
 
-        prompt_type_vals = list(PromptTemplateEntity.PromptType)
+        prompt_type_vals = [typ.value for typ in PromptTemplateEntity.PromptType]
         if config["prompt_type"] not in prompt_type_vals:
             raise ValueError(f"prompt_type must be in {prompt_type_vals}")
 
@@ -129,7 +129,7 @@ class PromptTemplateConfigManager:
         return config, ["prompt_type", "pre_prompt", "chat_prompt_config", "completion_prompt_config"]
 
     @classmethod
-    def validate_post_prompt_and_set_defaults(cls, config: dict[str, Any]):
+    def validate_post_prompt_and_set_defaults(cls, config: dict):
         """
         Validate post_prompt and set defaults for prompt feature
 

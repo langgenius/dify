@@ -3,21 +3,12 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any, cast
-from unittest.mock import MagicMock
-
-import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import (
-    ToolEntity,
-    ToolIdentity,
-    ToolInvokeMessage,
-    ToolParameter,
-    ToolProviderType,
-)
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 
 
 class DummyCastType:
@@ -34,8 +25,6 @@ class DummyParameter:
     default: Any = None
     options: list[Any] | None = None
     llm_description: str | None = None
-    input_schema: dict[str, Any] | None = None
-    multiple: bool = False
 
 
 class DummyTool(Tool):
@@ -52,7 +41,6 @@ class DummyTool(Tool):
 
     def _invoke(
         self,
-        session: Any,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -112,7 +100,6 @@ def test_invoke_supports_single_message_and_parameter_casting():
 
     messages = list(
         tool.invoke(
-            session=MagicMock(),
             user_id="user-1",
             tool_parameters={"age": "18", "raw": "keep"},
             conversation_id="conv-1",
@@ -132,30 +119,10 @@ def test_invoke_supports_single_message_and_parameter_casting():
     }
 
 
-def test_invoke_preserves_multiple_select_values():
-    tool = _build_tool()
-    parameter = ToolParameter.get_simple_instance(
-        name="choice",
-        llm_description="Choice",
-        typ=ToolParameter.ToolParameterType.SELECT,
-        required=True,
-        options=["a", "b"],
-    )
-    parameter.multiple = True
-    tool.entity.parameters = [parameter]
-
-    list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
-
-    assert tool.last_invocation is not None
-    assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
-    with pytest.raises(ValueError, match="must be a list"):
-        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": "a"})
-
-
 def test_invoke_supports_list_and_generator_results():
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
-    list_messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={}))
+    list_messages = list(tool.invoke(user_id="user-1", tool_parameters={}))
     assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage, None, None]:
@@ -163,7 +130,7 @@ def test_invoke_supports_list_and_generator_results():
         yield tool.create_text_message("g2")
 
     tool.result = _message_generator()
-    generated_messages = list(tool.invoke(session=MagicMock(), user_id="user-2", tool_parameters={}))
+    generated_messages = list(tool.invoke(user_id="user-2", tool_parameters={}))
     assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
@@ -182,27 +149,13 @@ def test_fork_tool_runtime_returns_new_tool_with_copied_entity():
 
 def test_get_runtime_parameters_and_merge_runtime_parameters():
     tool = _build_tool()
-    original = DummyParameter(
-        name="temperature",
-        type=DummyCastType(),
-        form="schema",
-        required=True,
-        default="0.7",
-        input_schema={"type": "string"},
-    )
+    original = DummyParameter(name="temperature", type=DummyCastType(), form="schema", required=True, default="0.7")
     tool.entity.parameters = cast(Any, [original])
 
     default_runtime_parameters = tool.get_runtime_parameters()
     assert default_runtime_parameters == [original]
 
-    override = DummyParameter(
-        name="temperature",
-        type=DummyCastType(),
-        form="llm",
-        required=False,
-        default="0.5",
-        input_schema={"type": "object"},
-    )
+    override = DummyParameter(name="temperature", type=DummyCastType(), form="llm", required=False, default="0.5")
     appended = DummyParameter(name="new_param", type=DummyCastType(), form="form", required=False, default="x")
     tool.runtime_parameter_overrides = [override, appended]
 
@@ -212,126 +165,7 @@ def test_get_runtime_parameters_and_merge_runtime_parameters():
     assert merged[0].form == "llm"
     assert merged[0].required is False
     assert merged[0].default == "0.5"
-    assert merged[0].input_schema == {"type": "object"}
     assert merged[1].name == "new_param"
-    assert merged[0] is not original
-    assert merged[1] is not appended
-    assert original.form == "schema"
-    assert original.required is True
-    assert original.default == "0.7"
-    assert original.input_schema == {"type": "string"}
-
-
-def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
-    tool = _build_tool()
-    query_parameter = ToolParameter.get_simple_instance(
-        name="query",
-        llm_description="Declared query",
-        typ=ToolParameter.ToolParameterType.STRING,
-        required=True,
-    )
-    region_parameter = ToolParameter.get_simple_instance(
-        name="region",
-        llm_description="Search region",
-        typ=ToolParameter.ToolParameterType.SELECT,
-        required=False,
-        options=["global", "cn"],
-    )
-    regions_parameter = ToolParameter.get_simple_instance(
-        name="regions",
-        llm_description="Search regions",
-        typ=ToolParameter.ToolParameterType.SELECT,
-        required=False,
-        options=["global", "cn"],
-    )
-    regions_parameter.multiple = True
-    tags_parameter = ToolParameter.get_simple_instance(
-        name="tags",
-        llm_description="Search tags",
-        typ=ToolParameter.ToolParameterType.DYNAMIC_SELECT,
-        required=False,
-    )
-    tags_parameter.multiple = True
-    hidden_parameter = ToolParameter.get_simple_instance(
-        name="api_key",
-        llm_description="Hidden api key",
-        typ=ToolParameter.ToolParameterType.STRING,
-        required=True,
-    )
-    hidden_parameter.form = ToolParameter.ToolParameterForm.FORM
-    file_parameter = ToolParameter.get_simple_instance(
-        name="attachment",
-        llm_description="Attachment",
-        typ=ToolParameter.ToolParameterType.FILE,
-        required=False,
-    )
-    payload_parameter = ToolParameter(
-        name="payload",
-        label=I18nObject(en_US="payload", zh_Hans="payload"),
-        placeholder=None,
-        human_description=I18nObject(en_US="payload", zh_Hans="payload"),
-        type=ToolParameter.ToolParameterType.OBJECT,
-        form=ToolParameter.ToolParameterForm.LLM,
-        llm_description="Payload",
-        required=False,
-        input_schema={
-            "type": "object",
-            "properties": {"nested": {"type": "string"}},
-        },
-    )
-    tool.entity.parameters = [
-        query_parameter,
-        region_parameter,
-        regions_parameter,
-        tags_parameter,
-        hidden_parameter,
-        file_parameter,
-        payload_parameter,
-    ]
-
-    query_override = ToolParameter.get_simple_instance(
-        name="query",
-        llm_description="Runtime query",
-        typ=ToolParameter.ToolParameterType.STRING,
-        required=True,
-    )
-    tool.runtime_parameter_overrides = [query_override]
-
-    schema = tool.get_llm_parameters_json_schema()
-
-    assert schema == {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Runtime query"},
-            "region": {
-                "type": "string",
-                "description": "Search region",
-                "enum": ["global", "cn"],
-            },
-            "regions": {
-                "type": "array",
-                "items": {"type": "string", "enum": ["global", "cn"]},
-                "description": "Search regions",
-            },
-            "tags": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Search tags",
-            },
-            "payload": {
-                "type": "object",
-                "properties": {"nested": {"type": "string"}},
-                "description": "Payload",
-            },
-        },
-        "required": ["query"],
-    }
-
-    schema["properties"]["payload"]["properties"]["nested"]["type"] = "number"
-    assert payload_parameter.input_schema == {
-        "type": "object",
-        "properties": {"nested": {"type": "string"}},
-    }
 
 
 def test_message_factory_helpers():
@@ -374,4 +208,4 @@ def test_message_factory_helpers():
 
 def test_base_abstract_invoke_placeholder_returns_none():
     tool = _build_tool()
-    assert Tool._invoke(tool, session=MagicMock(), user_id="u", tool_parameters={}) is None
+    assert Tool._invoke(tool, user_id="u", tool_parameters={}) is None

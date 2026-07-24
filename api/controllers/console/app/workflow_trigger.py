@@ -1,36 +1,35 @@
 import logging
-from datetime import datetime
 
 from flask import request
-from flask_restx import Resource
-from pydantic import BaseModel, field_validator
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import get_or_create_model
 from extensions.ext_database import db
-from fields.base import ResponseModel
-from libs.helper import dump_response
-from libs.login import login_required
+from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
+from libs.login import current_user, login_required
 from models.enums import AppTriggerStatus
-from models.model import App, AppMode
+from models.model import Account, App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 from .. import console_ns
 from ..app.wraps import get_app_model
-from ..wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    edit_permission_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-)
+from ..wraps import account_initialization_required, edit_permission_required, setup_required
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+trigger_model = get_or_create_model("WorkflowTrigger", trigger_fields)
+
+triggers_list_fields_copy = triggers_list_fields.copy()
+triggers_list_fields_copy["data"] = fields.List(fields.Nested(trigger_model))
+triggers_list_model = get_or_create_model("WorkflowTriggerList", triggers_list_fields_copy)
+
+webhook_trigger_model = get_or_create_model("WebhookTrigger", webhook_trigger_fields)
 
 
 class Parser(BaseModel):
@@ -42,52 +41,10 @@ class ParserEnable(BaseModel):
     enable_trigger: bool
 
 
-class WorkflowTriggerResponse(ResponseModel):
-    id: str
-    trigger_type: str
-    title: str
-    node_id: str
-    provider_name: str
-    icon: str
-    status: str
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
-    @field_validator("id", "trigger_type", "title", "node_id", "provider_name", "icon", "status", mode="before")
-    @classmethod
-    def _normalize_string_fields(cls, value: object) -> str:
-        if isinstance(value, str):
-            return value
-        return str(value)
-
-
-class WorkflowTriggerListResponse(ResponseModel):
-    data: list[WorkflowTriggerResponse]
-
-
-class WebhookTriggerResponse(ResponseModel):
-    id: str
-    webhook_id: str
-    webhook_url: str
-    webhook_debug_url: str
-    node_id: str
-    created_at: datetime | None = None
-
-    @field_validator("id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", mode="before")
-    @classmethod
-    def _normalize_string_fields(cls, value: object) -> str:
-        if isinstance(value, str):
-            return value
-        return str(value)
-
-
-register_schema_models(
-    console_ns,
-    Parser,
-    ParserEnable,
-    WorkflowTriggerResponse,
-    WorkflowTriggerListResponse,
-    WebhookTriggerResponse,
+console_ns.schema_model(
+    ParserEnable.__name__, ParserEnable.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
@@ -95,34 +52,33 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.doc(params=query_params_from_model(Parser))
+    @console_ns.expect(console_ns.models[Parser.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=AppMode.WORKFLOW)
+    @marshal_with(webhook_trigger_model)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(request.args.to_dict(flat=True))
+        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         node_id = args.node_id
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine) as session:
             # Get webhook trigger for this app and node
-            webhook_trigger = session.scalar(
-                select(WorkflowWebhookTrigger)
+            webhook_trigger = (
+                session.query(WorkflowWebhookTrigger)
                 .where(
                     WorkflowWebhookTrigger.app_id == app_model.id,
                     WorkflowWebhookTrigger.node_id == node_id,
                 )
-                .limit(1)
+                .first()
             )
 
             if not webhook_trigger:
                 raise NotFound("Webhook trigger not found for this node")
 
-            return dump_response(WebhookTriggerResponse, webhook_trigger)
+            return webhook_trigger
 
 
 @console_ns.route("/apps/<uuid:app_id>/triggers")
@@ -132,19 +88,20 @@ class AppTriggersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
-    @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=AppMode.WORKFLOW)
-    def get(self, current_tenant_id: str, app_model: App):
+    @marshal_with(triggers_list_model)
+    def get(self, app_model: App):
         """Get app triggers list"""
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        assert isinstance(current_user, Account)
+        assert current_user.current_tenant_id is not None
+
+        with Session(db.engine) as session:
             # Get all triggers for this app using select API
             triggers = (
                 session.execute(
                     select(AppTrigger)
                     .where(
-                        AppTrigger.tenant_id == current_tenant_id,
+                        AppTrigger.tenant_id == current_user.current_tenant_id,
                         AppTrigger.app_id == app_model.id,
                     )
                     .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
@@ -161,7 +118,7 @@ class AppTriggersApi(Resource):
             else:
                 trigger.icon = ""  # type: ignore
 
-        return dump_response(WorkflowTriggerListResponse, {"data": triggers})
+        return {"data": triggers}
 
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
@@ -171,21 +128,21 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
-    @with_current_tenant_id
     @get_app_model(mode=AppMode.WORKFLOW)
-    def post(self, current_tenant_id: str, app_model: App):
+    @marshal_with(trigger_model)
+    def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)
 
+        assert current_user.current_tenant_id is not None
+
         trigger_id = args.trigger_id
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine) as session:
             # Find the trigger using select
             trigger = session.execute(
                 select(AppTrigger).where(
                     AppTrigger.id == trigger_id,
-                    AppTrigger.tenant_id == current_tenant_id,
+                    AppTrigger.tenant_id == current_user.current_tenant_id,
                     AppTrigger.app_id == app_model.id,
                 )
             ).scalar_one_or_none()
@@ -196,6 +153,9 @@ class AppTriggerEnableApi(Resource):
             # Update status based on enable_trigger boolean
             trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
 
+            session.commit()
+            session.refresh(trigger)
+
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         if trigger.trigger_type == "trigger-plugin":
@@ -203,4 +163,4 @@ class AppTriggerEnableApi(Resource):
         else:
             trigger.icon = ""  # type: ignore
 
-        return dump_response(WorkflowTriggerResponse, trigger)
+        return trigger

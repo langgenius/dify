@@ -57,12 +57,11 @@ class MCPServerParameterType(StrEnum):
     OBJECT = auto()
 
 
-class PluginParameterAutoGenerateType(StrEnum):
-    PROMPT_INSTRUCTION = auto()
-
-
 class PluginParameterAutoGenerate(BaseModel):
-    type: PluginParameterAutoGenerateType
+    class Type(StrEnum):
+        PROMPT_INSTRUCTION = auto()
+
+    type: Type
 
 
 class PluginParameterTemplate(BaseModel):
@@ -117,31 +116,29 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
-                match value:
-                    case None:
-                        return False
-                    case str():
-                        # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
-                        # and also '0' for False and '1' for True
-                        match value.lower():
-                            case "true" | "yes" | "y" | "1":
-                                return True
-                            case "false" | "no" | "n" | "0":
-                                return False
-                            case _:
-                                return bool(value)
-                    case _:
-                        return value if isinstance(value, bool) else bool(value)
+                if value is None:
+                    return False
+                elif isinstance(value, str):
+                    # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                    # and also '0' for False and '1' for True
+                    match value.lower():
+                        case "true" | "yes" | "y" | "1":
+                            return True
+                        case "false" | "no" | "n" | "0":
+                            return False
+                        case _:
+                            return bool(value)
+                else:
+                    return value if isinstance(value, bool) else bool(value)
 
             case PluginParameterType.NUMBER:
-                match value:
-                    case int() | float():
-                        return value
-                    case str() if value:
-                        if "." in value:
-                            return float(value)
-                        else:
-                            return int(value)
+                if isinstance(value, int | float):
+                    return value
+                elif isinstance(value, str) and value:
+                    if "." in value:
+                        return float(value)
+                    else:
+                        return int(value)
             case PluginParameterType.SYSTEM_FILES | PluginParameterType.FILES:
                 if not isinstance(value, list):
                     return [value]
@@ -194,7 +191,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
     except ValueError:
         raise
     except Exception:
-        raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
+        raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
 
 
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):

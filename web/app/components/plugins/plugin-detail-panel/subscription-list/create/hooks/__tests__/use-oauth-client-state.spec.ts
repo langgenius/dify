@@ -1,10 +1,7 @@
-import type {
-  TriggerOAuthConfig,
-  TriggerSubscriptionBuilder,
-} from '@/app/components/workflow/block-selector/types'
+import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
   AuthorizationStatusEnum,
   ClientTypeEnum,
@@ -28,31 +25,19 @@ function createMockOAuthConfig(overrides: Partial<TriggerOAuthConfig> = {}): Tri
       client_secret: 'default-client-secret',
     },
     oauth_client_schema: [
-      {
-        name: 'client_id',
-        type: 'text-input' as unknown,
-        required: true,
-        label: { 'en-US': 'Client ID' } as unknown,
-      },
-      {
-        name: 'client_secret',
-        type: 'secret-input' as unknown,
-        required: true,
-        label: { 'en-US': 'Client Secret' } as unknown,
-      },
+      { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+      { name: 'client_secret', type: 'secret-input' as unknown, required: true, label: { 'en-US': 'Client Secret' } as unknown },
     ] as TriggerOAuthConfig['oauth_client_schema'],
     ...overrides,
   }
 }
 
-function createMockSubscriptionBuilder(
-  overrides: Partial<TriggerSubscriptionBuilder> = {},
-): TriggerSubscriptionBuilder {
+function createMockSubscriptionBuilder(overrides: Partial<TriggerSubscriptionBuilder> = {}): TriggerSubscriptionBuilder {
   return {
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialType.Oauth2,
+    credential_type: TriggerCredentialTypeEnum.Oauth2,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},
@@ -88,25 +73,14 @@ vi.mock('@/service/use-triggers', () => ({
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
-  openOAuthPopup: (url: string, callback: (data: unknown) => void) =>
-    mockOpenOAuthPopup(url, callback),
+  openOAuthPopup: (url: string, callback: (data: unknown) => void) => mockOpenOAuthPopup(url, callback),
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: (params: unknown) => mockToastNotify(params),
+  },
 }))
 
 // ============================================================================
@@ -154,7 +128,7 @@ describe('useOAuthClientState', () => {
   const defaultParams = {
     oauthConfig: createMockOAuthConfig(),
     providerName: 'test-provider',
-    onOpenChange: vi.fn(),
+    onClose: vi.fn(),
     showOAuthCreateModal: vi.fn(),
   }
 
@@ -175,12 +149,10 @@ describe('useOAuthClientState', () => {
 
     it('should default to Custom client type when system_configured is false', () => {
       const config = createMockOAuthConfig({ system_configured: false })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       expect(result.current.clientType).toBe(ClientTypeEnum.Custom)
     })
@@ -207,28 +179,24 @@ describe('useOAuthClientState', () => {
           client_secret: 'my-secret',
         },
       })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       expect(result.current.oauthClientSchema).toHaveLength(2)
-      expect(result.current.oauthClientSchema[0]!.default).toBe('my-client-id')
-      expect(result.current.oauthClientSchema[1]!.default).toBe('my-secret')
+      expect(result.current.oauthClientSchema[0].default).toBe('my-client-id')
+      expect(result.current.oauthClientSchema[1].default).toBe('my-secret')
     })
 
     it('should return empty array when oauth_client_schema is empty', () => {
       const config = createMockOAuthConfig({
         oauth_client_schema: [],
       })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       expect(result.current.oauthClientSchema).toEqual([])
     })
@@ -237,12 +205,10 @@ describe('useOAuthClientState', () => {
       const config = createMockOAuthConfig({
         params: undefined as unknown as TriggerOAuthConfig['params'],
       })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       expect(result.current.oauthClientSchema).toEqual([])
     })
@@ -254,33 +220,19 @@ describe('useOAuthClientState', () => {
           client_secret: '', // empty
         },
         oauth_client_schema: [
-          {
-            name: 'client_id',
-            type: 'text-input' as unknown,
-            required: true,
-            label: {} as unknown,
-            default: 'original-default',
-          },
-          {
-            name: 'extra_field',
-            type: 'text-input' as unknown,
-            required: false,
-            label: {} as unknown,
-            default: 'extra-default',
-          },
+          { name: 'client_id', type: 'text-input' as unknown, required: true, label: {} as unknown, default: 'original-default' },
+          { name: 'extra_field', type: 'text-input' as unknown, required: false, label: {} as unknown, default: 'extra-default' },
         ] as TriggerOAuthConfig['oauth_client_schema'],
       })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       // client_id should be overridden
-      expect(result.current.oauthClientSchema[0]!.default).toBe('only-client-id')
+      expect(result.current.oauthClientSchema[0].default).toBe('only-client-id')
       // extra_field should keep original default since key not in params
-      expect(result.current.oauthClientSchema[1]!.default).toBe('extra-default')
+      expect(result.current.oauthClientSchema[1].default).toBe('extra-default')
     })
   })
 
@@ -343,25 +295,26 @@ describe('useOAuthClientState', () => {
         result.current.handleRemove()
       })
 
-      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockDeleteOAuth).toHaveBeenCalledWith(
+        'test-provider',
+        expect.any(Object),
+      )
     })
 
-    it('should call onOpenChange and show success toast on success', () => {
+    it('should call onClose and show success toast on success', () => {
       mockDeleteOAuth.mockImplementation((provider, { onSuccess }) => onSuccess())
 
-      const onOpenChange = vi.fn()
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          onOpenChange,
-        }),
-      )
+      const onClose = vi.fn()
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        onClose,
+      }))
 
       act(() => {
         result.current.handleRemove()
       })
 
-      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(onClose).toHaveBeenCalled()
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'pluginTrigger.modal.oauth.remove.success',
@@ -409,12 +362,10 @@ describe('useOAuthClientState', () => {
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
 
       const config = createMockOAuthConfig({ system_configured: false })
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: config,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: config,
+      }))
 
       // Mock the form ref
       const mockFormRef = {
@@ -438,22 +389,20 @@ describe('useOAuthClientState', () => {
       )
     })
 
-    it('should show success toast and call onOpenChange when needAuth is false', () => {
+    it('should show success toast and call onClose when needAuth is false', () => {
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
-      const onOpenChange = vi.fn()
+      const onClose = vi.fn()
 
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          onOpenChange,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        onClose,
+      }))
 
       act(() => {
         result.current.handleSave(false)
       })
 
-      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(onClose).toHaveBeenCalled()
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'pluginTrigger.modal.oauth.save.success',
@@ -475,7 +424,10 @@ describe('useOAuthClientState', () => {
         result.current.handleSave(true)
       })
 
-      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
+      expect(mockInitiateOAuth).toHaveBeenCalledWith(
+        'test-provider',
+        expect.any(Object),
+      )
     })
   })
 
@@ -534,8 +486,8 @@ describe('useOAuthClientState', () => {
       })
     })
 
-    it('should call onOpenChange and showOAuthCreateModal on callback success', () => {
-      const onOpenChange = vi.fn()
+    it('should call onClose and showOAuthCreateModal on callback success', () => {
+      const onClose = vi.fn()
       const showOAuthCreateModal = vi.fn()
       const builder = createMockSubscriptionBuilder()
 
@@ -550,19 +502,17 @@ describe('useOAuthClientState', () => {
         callback({ success: true })
       })
 
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          onOpenChange,
-          showOAuthCreateModal,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        onClose,
+        showOAuthCreateModal,
+      }))
 
       act(() => {
         result.current.handleSave(true)
       })
 
-      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(onClose).toHaveBeenCalled()
       expect(showOAuthCreateModal).toHaveBeenCalledWith(builder)
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'success',
@@ -571,7 +521,7 @@ describe('useOAuthClientState', () => {
     })
 
     it('should not call callbacks when OAuth callback returns falsy', () => {
-      const onOpenChange = vi.fn()
+      const onClose = vi.fn()
       const showOAuthCreateModal = vi.fn()
 
       mockConfigureOAuth.mockImplementation((params, { onSuccess }) => onSuccess())
@@ -585,19 +535,17 @@ describe('useOAuthClientState', () => {
         callback(null)
       })
 
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          onOpenChange,
-          showOAuthCreateModal,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        onClose,
+        showOAuthCreateModal,
+      }))
 
       act(() => {
         result.current.handleSave(true)
       })
 
-      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
       expect(showOAuthCreateModal).not.toHaveBeenCalled()
     })
   })
@@ -736,24 +684,20 @@ describe('useOAuthClientState', () => {
 
   describe('Edge Cases', () => {
     it('should handle undefined oauthConfig', () => {
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          oauthConfig: undefined,
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        oauthConfig: undefined,
+      }))
 
       expect(result.current.clientType).toBe(ClientTypeEnum.Custom)
       expect(result.current.oauthClientSchema).toEqual([])
     })
 
     it('should handle empty providerName', () => {
-      const { result } = renderHook(() =>
-        useOAuthClientState({
-          ...defaultParams,
-          providerName: '',
-        }),
-      )
+      const { result } = renderHook(() => useOAuthClientState({
+        ...defaultParams,
+        providerName: '',
+      }))
 
       // Should not throw
       expect(result.current.clientType).toBe(ClientTypeEnum.Default)

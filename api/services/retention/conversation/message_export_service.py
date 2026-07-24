@@ -228,7 +228,7 @@ class AppMessageExportService:
                     Message.conversation_id,
                     Message.query,
                     Message.answer,
-                    Message._inputs,
+                    Message._inputs,  # pyright: ignore[reportPrivateUsage]
                     Message.message_metadata,
                     Message.created_at,
                 )

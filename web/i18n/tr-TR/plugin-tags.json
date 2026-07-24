@@ -1,6 +1,5 @@
 {
   "allTags": "Tüm Etiketler",
-  "clearSelectedTags": "Seçili etiketleri temizle: {{tags}}",
   "searchTags": "Arama Etiketleri",
   "tags.agent": "Aracı",
   "tags.business": "İş",
@@ -12,9 +11,9 @@
   "tags.medical": "Tıbbi",
   "tags.news": "Haberler",
   "tags.other": "Diğer",
-  "tags.productivity": "Verimlilik",
+  "tags.productivity": "Verimli -lik",
   "tags.rag": "PAÇAVRA",
-  "tags.search": "Ara",
+  "tags.search": "Aramak",
   "tags.social": "Sosyal",
   "tags.travel": "Seyahat",
   "tags.utilities": "Yardımcı program",

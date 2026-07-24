@@ -1,12 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import Footer from '../footer'
 
 // Configurable mock for search params
 let mockSearchParams = new URLSearchParams()
 const mockReplace = vi.fn()
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
   useSearchParams: () => mockSearchParams,
 }))
@@ -21,13 +22,7 @@ let capturedActiveTab: string | undefined
 let capturedDslUrl: string | undefined
 
 vi.mock('../create-options/create-from-dsl-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-    activeTab,
-    dslUrl,
-  }: {
+  default: ({ show, onClose, onSuccess, activeTab, dslUrl }: {
     show: boolean
     onClose: () => void
     onSuccess: () => void
@@ -36,16 +31,14 @@ vi.mock('../create-options/create-from-dsl-modal', () => ({
   }) => {
     capturedActiveTab = activeTab
     capturedDslUrl = dslUrl
-    return show ? (
-      <div data-testid="dsl-modal">
-        <button data-testid="close-modal" onClick={onClose}>
-          Close
-        </button>
-        <button data-testid="success-modal" onClick={onSuccess}>
-          Success
-        </button>
-      </div>
-    ) : null
+    return show
+      ? (
+          <div data-testid="dsl-modal">
+            <button data-testid="close-modal" onClick={onClose}>Close</button>
+            <button data-testid="success-modal" onClick={onSuccess}>Success</button>
+          </div>
+        )
+      : null
   },
   CreateFromDSLModalTab: {
     FROM_URL: 'FROM_URL',
@@ -64,6 +57,11 @@ describe('Footer', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<Footer />)
+      expect(screen.getByText(/importDSL/i)).toBeInTheDocument()
+    })
+
     it('should render import button with icon', () => {
       const { container } = render(<Footer />)
       const button = screen.getByRole('button')
@@ -120,10 +118,24 @@ describe('Footer', () => {
   })
 
   describe('Layout', () => {
-    it('should have backdrop blur-sm effect', () => {
+    it('should have proper container classes', () => {
+      const { container } = render(<Footer />)
+      const footerDiv = container.firstChild as HTMLElement
+      expect(footerDiv).toHaveClass('absolute', 'bottom-0', 'left-0', 'right-0', 'z-10')
+    })
+
+    it('should have backdrop blur effect', () => {
       const { container } = render(<Footer />)
       const footerDiv = container.firstChild as HTMLElement
       expect(footerDiv).toHaveClass('backdrop-blur-[6px]')
+    })
+  })
+
+  describe('Memoization', () => {
+    it('should be memoized with React.memo', () => {
+      const { rerender } = render(<Footer />)
+      rerender(<Footer />)
+      expect(screen.getByText(/importDSL/i)).toBeInTheDocument()
     })
   })
 

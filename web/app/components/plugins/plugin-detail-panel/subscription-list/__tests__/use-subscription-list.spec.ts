@@ -13,9 +13,8 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined,
-  ) => selector({ detail: mockDetail }),
+  usePluginStore: (selector: (state: { detail: SimpleDetail | undefined }) => SimpleDetail | undefined) =>
+    selector({ detail: mockDetail }),
 }))
 
 beforeEach(() => {

@@ -6,7 +6,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import RuleDetail from '../rule-detail'
 
 vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
-  FieldInfo: ({ label, displayedValue }: { label: string; displayedValue: string }) => (
+  FieldInfo: ({ label, displayedValue }: { label: string, displayedValue: string }) => (
     <div data-testid="field-info">
       <span data-testid="field-label">{label}</span>
       <span data-testid="field-value">{displayedValue}</span>
@@ -23,18 +23,17 @@ describe('RuleDetail', () => {
     vi.clearAllMocks()
   })
 
-  const makeSourceData = (overrides: Partial<ProcessRuleResponse> = {}): ProcessRuleResponse =>
-    ({
-      mode: ProcessMode.general,
-      rules: {
-        segmentation: { separator: '\n', max_tokens: 500, chunk_overlap: 50 },
-        pre_processing_rules: [
-          { id: 'remove_extra_spaces', enabled: true },
-          { id: 'remove_urls_emails', enabled: false },
-        ],
-      },
-      ...overrides,
-    }) as ProcessRuleResponse
+  const makeSourceData = (overrides: Partial<ProcessRuleResponse> = {}): ProcessRuleResponse => ({
+    mode: ProcessMode.general,
+    rules: {
+      segmentation: { separator: '\n', max_tokens: 500, chunk_overlap: 50 },
+      pre_processing_rules: [
+        { id: 'remove_extra_spaces', enabled: true },
+        { id: 'remove_urls_emails', enabled: false },
+      ],
+    },
+    ...overrides,
+  } as ProcessRuleResponse)
 
   it('should render mode, segment length, text cleaning, index mode, and retrieval fields', () => {
     render(
@@ -59,7 +58,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0]!.textContent).toContain('embedding.custom')
+    expect(values[0].textContent).toContain('embedding.custom')
   })
 
   it('should display hierarchical mode with parent mode label', () => {
@@ -79,7 +78,7 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0]!.textContent).toContain('embedding.hierarchical')
+    expect(values[0].textContent).toContain('embedding.hierarchical')
   })
 
   it('should display "-" when no sourceData mode', () => {
@@ -91,36 +90,56 @@ describe('RuleDetail', () => {
     )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[0]!.textContent).toBe('-')
+    expect(values[0].textContent).toBe('-')
   })
 
   it('should display segment length for general mode', () => {
-    render(<RuleDetail sourceData={makeSourceData()} indexingType="high_quality" />)
+    render(
+      <RuleDetail
+        sourceData={makeSourceData()}
+        indexingType="high_quality"
+      />,
+    )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[1]!.textContent).toBe('500')
+    expect(values[1].textContent).toBe('500')
   })
 
   it('should display enabled pre-processing rules', () => {
-    render(<RuleDetail sourceData={makeSourceData()} indexingType="high_quality" />)
+    render(
+      <RuleDetail
+        sourceData={makeSourceData()}
+        indexingType="high_quality"
+      />,
+    )
 
     const values = screen.getAllByTestId('field-value')
     // Only remove_extra_spaces is enabled
-    expect(values[2]!.textContent).toContain('stepTwo.removeExtraSpaces')
+    expect(values[2].textContent).toContain('stepTwo.removeExtraSpaces')
   })
 
   it('should display economical index mode', () => {
-    render(<RuleDetail sourceData={makeSourceData()} indexingType="economy" />)
+    render(
+      <RuleDetail
+        sourceData={makeSourceData()}
+        indexingType="economy"
+      />,
+    )
 
     const values = screen.getAllByTestId('field-value')
     // Index mode field is 4th (index 3)
-    expect(values[3]!.textContent).toContain('stepTwo.economical')
+    expect(values[3].textContent).toContain('stepTwo.economical')
   })
 
   it('should display qualified index mode for high_quality', () => {
-    render(<RuleDetail sourceData={makeSourceData()} indexingType="high_quality" />)
+    render(
+      <RuleDetail
+        sourceData={makeSourceData()}
+        indexingType="high_quality"
+      />,
+    )
 
     const values = screen.getAllByTestId('field-value')
-    expect(values[3]!.textContent).toContain('stepTwo.qualified')
+    expect(values[3].textContent).toContain('stepTwo.qualified')
   })
 })

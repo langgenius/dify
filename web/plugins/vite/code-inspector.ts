@@ -2,7 +2,7 @@ import type { Plugin } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
-import { injectClientSnippet, normalizeViteModuleId } from './utils.ts'
+import { injectClientSnippet, normalizeViteModuleId } from './utils'
 
 type CodeInspectorPluginOptions = {
   injectTarget: string
@@ -26,12 +26,16 @@ export const createCodeInspectorPlugin = ({
 }
 
 const getInspectorRuntimeSnippet = (runtimeFile: string): string => {
-  if (!fs.existsSync(runtimeFile)) return ''
+  if (!fs.existsSync(runtimeFile))
+    return ''
 
   const raw = fs.readFileSync(runtimeFile, 'utf-8')
 
   // Strip the helper component default export to avoid duplicate default exports after injection.
-  return raw.replace(/\s*export default function CodeInspectorEmptyElement\(\)\s*\{[\s\S]*$/, '')
+  return raw.replace(
+    /\s*export default function CodeInspectorEmptyElement\(\)\s*\{[\s\S]*$/,
+    '',
+  )
 }
 
 export const createForceInspectorClientInjectionPlugin = ({
@@ -50,13 +54,16 @@ export const createForceInspectorClientInjectionPlugin = ({
     apply: 'serve',
     enforce: 'pre',
     transform(code, id) {
-      if (!clientSnippet) return null
+      if (!clientSnippet)
+        return null
 
       const cleanId = normalizeViteModuleId(id)
-      if (cleanId !== injectTarget) return null
+      if (cleanId !== injectTarget)
+        return null
 
       const nextCode = injectClientSnippet(code, 'code-inspector-component', clientSnippet)
-      if (nextCode === code) return null
+      if (nextCode === code)
+        return null
 
       return { code: nextCode, map: null }
     },

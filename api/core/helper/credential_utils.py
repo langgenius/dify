@@ -2,29 +2,25 @@
 Credential utility functions for checking credential existence and policy compliance.
 """
 
-from configs import dify_config
-from core.entities import PluginCredentialType
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 
 def is_credential_exists(credential_id: str, credential_type: "PluginCredentialType") -> bool:
     """
     Check if the credential still exists in the database.
 
-    Uses the configured SQLAlchemy session factory instead of Flask-SQLAlchemy's
-    ``db.engine`` because workflow graph node construction may run without an
-    active Flask application context.
-
     :param credential_id: The credential ID to check
     :param credential_type: The type of credential (MODEL or TOOL)
     :return: True if credential exists, False otherwise
     """
     from sqlalchemy import select
+    from sqlalchemy.orm import Session
 
-    from core.db import session_factory
+    from extensions.ext_database import db
     from models.provider import ProviderCredential, ProviderModelCredential
     from models.tools import BuiltinToolProvider
 
-    with session_factory.create_session() as session:
+    with Session(db.engine) as session:
         if credential_type == PluginCredentialType.MODEL:
             # Check both pre-defined and custom model credentials using a single UNION query
             stmt = (
@@ -41,16 +37,6 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
             )
 
         return False
-
-
-def runtime_check_credential_policy_compliance(
-    credential_id: str, provider: str, credential_type: "PluginCredentialType", check_existence: bool = True
-) -> None:
-    if dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
-        return
-    check_credential_policy_compliance(
-        credential_id=credential_id, provider=provider, credential_type=credential_type, check_existence=check_existence
-    )
 
 
 def check_credential_policy_compliance(

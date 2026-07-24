@@ -1,7 +1,6 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
-import { render } from '@/test/console/render'
 import SecretKeyModal from '../secret-key-modal'
 
 async function renderModal(ui: React.ReactElement) {
@@ -28,14 +27,13 @@ const mockCurrentWorkspace = vi.fn().mockReturnValue({
 const mockIsCurrentWorkspaceManager = vi.fn().mockReturnValue(true)
 const mockIsCurrentWorkspaceEditor = vi.fn().mockReturnValue(true)
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
     currentWorkspace: mockCurrentWorkspace(),
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
-  }))
-})
+  }),
+}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -85,13 +83,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 describe('SecretKeyModal', () => {
   const defaultProps = {
     isShow: true,
-    canManage: true,
     onClose: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Suppress expected React act() warnings from modal transitions and async API state updates.
+    // Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
@@ -127,7 +124,7 @@ describe('SecretKeyModal', () => {
 
     it('should render the close icon', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid')
+      const closeIcon = document.body.querySelector('svg.cursor-pointer')
       expect(closeIcon).toBeInTheDocument()
     })
   })
@@ -161,12 +158,7 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for app', () => {
     const apiKeys = [
-      {
-        id: 'key-1',
-        token: 'sk-abc123def456ghi789',
-        created_at: 1700000000,
-        last_used_at: 1700100000,
-      },
+      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
       { id: 'key-2', token: 'sk-xyz987wvu654tsr321', created_at: 1700050000, last_used_at: null },
     ]
 
@@ -194,26 +186,19 @@ describe('SecretKeyModal', () => {
       expect(screen.getByText('appApi.never')).toBeInTheDocument()
     })
 
-    it('should render delete button for permitted users', async () => {
+    it('should render delete button for managers', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
       const buttons = screen.getAllByRole('button')
       expect(buttons.length).toBeGreaterThanOrEqual(2)
-      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
+      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
       expect(deleteIcon).toBeInTheDocument()
     })
 
-    it('should render delete button when canManage is true even if the workspace role is not manager', async () => {
+    it('should not render delete button for non-managers', async () => {
       mockIsCurrentWorkspaceManager.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
-      expect(deleteIcon).toBeInTheDocument()
-    })
-
-    it('should not render delete button when canManage is false even if the workspace role is manager', async () => {
-      mockIsCurrentWorkspaceManager.mockReturnValue(true)
-      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" canManage={false} />)
-      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
-      expect(deleteIcon).not.toBeInTheDocument()
+      const actionButtons = screen.getAllByRole('button')
+      expect(actionButtons.length).toBeGreaterThan(0)
     })
 
     it('should render table headers', async () => {
@@ -226,12 +211,7 @@ describe('SecretKeyModal', () => {
 
   describe('API keys list for dataset', () => {
     const datasetKeys = [
-      {
-        id: 'dk-1',
-        token: 'dk-abc123def456ghi789',
-        created_at: 1700000000,
-        last_used_at: 1700100000,
-      },
+      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
     ]
 
     beforeEach(() => {
@@ -250,7 +230,7 @@ describe('SecretKeyModal', () => {
       const onClose = vi.fn()
       await renderModal(<SecretKeyModal {...defaultProps} onClose={onClose} />)
 
-      const closeIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid')
+      const closeIcon = document.body.querySelector('svg.cursor-pointer')
       expect(closeIcon).toBeInTheDocument()
 
       await act(async () => {
@@ -310,51 +290,6 @@ describe('SecretKeyModal', () => {
       })
     })
 
-    it('should place the generated key backdrop above the API keys modal', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      mockAppApiKeysData.mockReturnValue({
-        data: [
-          {
-            id: 'key-1',
-            token: 'sk-abc123def456ghi789',
-            created_at: 1700000000,
-            last_used_at: null,
-          },
-        ],
-      })
-      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-
-      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
-      await act(async () => {
-        await user.click(createButton)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
-      })
-
-      const parentDialog = screen
-        .getByText('appApi.apiKeyModal.apiSecretKeyTips')
-        .closest('[role="dialog"]')
-      const generatedKeyDialog = screen
-        .getByText('appApi.apiKeyModal.generateTips')
-        .closest('[role="dialog"]')
-      const backdrops = document.body.querySelectorAll('.bg-background-overlay')
-      const generatedKeyBackdrop = backdrops[1]
-
-      expect(parentDialog).toBeInTheDocument()
-      expect(generatedKeyDialog).toBeInTheDocument()
-      expect(backdrops).toHaveLength(2)
-      expect(
-        parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    })
-
     it('should invalidate app API keys after creating', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
@@ -384,51 +319,32 @@ describe('SecretKeyModal', () => {
     })
 
     it('should disable create button when no workspace', async () => {
-      mockCurrentWorkspace.mockReturnValue({ id: '', name: '' })
+      mockCurrentWorkspace.mockReturnValue(null)
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen
-        .getByText('appApi.apiKeyModal.createNewSecretKey')
-        .closest('button')
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
       expect(createButton).toBeDisabled()
     })
 
-    it('should keep create button enabled when canManage is true even if the workspace role is not editor', async () => {
+    it('should disable create button when not editor', async () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
-      const createButton = screen
-        .getByText('appApi.apiKeyModal.createNewSecretKey')
-        .closest('button')
-      expect(createButton).not.toBeDisabled()
-    })
-
-    it('should disable create button when canManage is false even if the workspace role is editor', async () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(true)
-      await renderModal(<SecretKeyModal {...defaultProps} canManage={false} />)
-
-      const createButton = screen
-        .getByText('appApi.apiKeyModal.createNewSecretKey')
-        .closest('button')
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey').closest('button')
       expect(createButton).toBeDisabled()
     })
   })
 
   describe('delete key', () => {
     const apiKeys = [
-      {
-        id: 'key-1',
-        token: 'sk-abc123def456ghi789',
-        created_at: 1700000000,
-        last_used_at: 1700100000,
-      },
+      { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
     ]
 
     beforeEach(() => {
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
     })
 
-    it('should render delete button for permitted users', async () => {
+    it('should render delete button for managers', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = screen.getAllByRole('button')
@@ -448,10 +364,10 @@ describe('SecretKeyModal', () => {
       expect(actionContainers.length).toBeGreaterThan(0)
     })
 
-    it('should have delete button visible for permitted users', async () => {
+    it('should have delete button visible for managers', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      const deleteIcon = document.body.querySelector('.i-ri-delete-bin-line')
+      const deleteIcon = document.body.querySelector('svg[class*="h-4"][class*="w-4"]')
       const deleteButton = deleteIcon?.closest('button')
       expect(deleteButton).toBeInTheDocument()
     })
@@ -561,42 +477,11 @@ describe('SecretKeyModal', () => {
 
       expect(mockDelAppApikey).not.toHaveBeenCalled()
     })
-
-    it('should close confirm dialog when Escape is pressed', async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-
-      const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
-      await act(async () => {
-        await user.click(deleteButton!)
-        vi.runAllTimers()
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('appApi.actionMsg.deleteConfirmTitle')).toBeInTheDocument()
-      })
-      await flushTransitions()
-
-      await act(async () => {
-        fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-        vi.runAllTimers()
-      })
-
-      await waitFor(() => {
-        expect(screen.queryByText('appApi.actionMsg.deleteConfirmTitle')).not.toBeInTheDocument()
-      })
-    })
   })
 
   describe('delete key for dataset', () => {
     const datasetKeys = [
-      {
-        id: 'dk-1',
-        token: 'dk-abc123def456ghi789',
-        created_at: 1700000000,
-        last_used_at: 1700100000,
-      },
+      { id: 'dk-1', token: 'dk-abc123def456ghi789', created_at: 1700000000, last_used_at: 1700100000 },
     ]
 
     beforeEach(() => {
@@ -664,12 +549,7 @@ describe('SecretKeyModal', () => {
   describe('token truncation', () => {
     it('should truncate token correctly', async () => {
       const apiKeys = [
-        {
-          id: 'key-1',
-          token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890',
-          created_at: 1700000000,
-          last_used_at: null,
-        },
+        { id: 'key-1', token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890', created_at: 1700000000, last_used_at: null },
       ]
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
 

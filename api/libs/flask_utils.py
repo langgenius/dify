@@ -1,9 +1,11 @@
 import contextvars
-from collections.abc import Generator  # Changed from Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from flask import Flask, g
+
+T = TypeVar("T")
 
 if TYPE_CHECKING:
     from models import Account, EndUser
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 def preserve_flask_contexts(
     flask_app: Flask,
     context_vars: contextvars.Context,
-) -> Generator[None, None, None]:  # Changed from Iterator[None]
+) -> Iterator[None]:
     """
     A context manager that handles:
     1. flask-login's UserProxy copy

@@ -1,14 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, TypedDict
-
-
-class AuthCredentials(TypedDict):
-    auth_type: str
-    config: dict[str, Any]
 
 
 class ApiKeyAuthBase(ABC):
-    def __init__(self, credentials: AuthCredentials):
+    def __init__(self, credentials: dict):
         self.credentials = credentials
 
     @abstractmethod

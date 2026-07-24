@@ -2,11 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useLocale } from '@/context/i18n'
 import ToolCallItem from '../tool-call'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
@@ -16,10 +15,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: BlockEnum }) => <div data-testid="block-icon" data-type={type} />,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en'),
 }))
 
 const mockToolCall = {
@@ -46,17 +41,6 @@ describe('ToolCallItem', () => {
     expect(screen.getByTestId('block-icon')).toHaveAttribute('data-type', BlockEnum.Tool)
   })
 
-  it('should fallback to locale key with underscores when hyphenated key is missing', () => {
-    vi.mocked(useLocale).mockReturnValueOnce('en-US')
-    const fallbackLocaleToolCall = {
-      ...mockToolCall,
-      tool_label: { en_US: 'Fallback Label' },
-    }
-
-    render(<ToolCallItem toolCall={fallbackLocaleToolCall} isLLM={false} />)
-    expect(screen.getByText('Fallback Label')).toBeInTheDocument()
-  })
-
   it('should format time correctly', () => {
     render(<ToolCallItem toolCall={mockToolCall} isLLM={false} />)
     expect(screen.getByText('1.500 s')).toBeInTheDocument()
@@ -70,17 +54,13 @@ describe('ToolCallItem', () => {
     expect(screen.getByText('1 m 5.000 s')).toBeInTheDocument()
   })
 
-  it('should format token count in K units', () => {
+  it('should format token count correctly', () => {
     render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={1200} />)
     expect(screen.getByText('1.2K tokens')).toBeInTheDocument()
-  })
 
-  it('should format token count without unit for small values', () => {
     render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={800} />)
     expect(screen.getByText('800 tokens')).toBeInTheDocument()
-  })
 
-  it('should format token count in M units', () => {
     render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={1200000} />)
     expect(screen.getByText('1.2M tokens')).toBeInTheDocument()
   })
@@ -120,7 +100,7 @@ describe('ToolCallItem', () => {
     fireEvent.click(screen.getByText('LLM'))
 
     const titles = screen.getAllByTestId('code-editor-title')
-    const titleTexts = titles.map((t) => t.textContent)
+    const titleTexts = titles.map(t => t.textContent)
 
     expect(titleTexts).toContain('INPUT')
     expect(titleTexts).toContain('OUTPUT')

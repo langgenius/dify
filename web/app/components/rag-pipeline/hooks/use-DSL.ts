@@ -1,53 +1,61 @@
-import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback, useState } from 'react'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { useToastContext } from '@/app/components/base/toast/context'
+import {
+  DSL_EXPORT_CHECK,
+} from '@/app/components/workflow/constants'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
-import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
-
-const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+export const useDSL = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
-  const handleExportDSL = useCallback(
-    async (include = false) => {
-      const { pipelineId, knowledgeName } = workflowStore.getState()
-      if (!pipelineId) return
-      if (exporting) return
-      try {
-        setExporting(true)
-        await doSyncWorkflowDraft()
-        const { data } = await exportPipelineConfig({
-          pipelineId,
-          include,
-        })
-        const file = new Blob([data], { type: 'application/yaml' })
-        downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
-      } finally {
-        setExporting(false)
-      }
-    },
-    [t, doSyncWorkflowDraft, exporting, exportPipelineConfig, workflowStore],
-  )
+
+  const handleExportDSL = useCallback(async (include = false) => {
+    const { pipelineId, knowledgeName } = workflowStore.getState()
+    if (!pipelineId)
+      return
+
+    if (exporting)
+      return
+
+    try {
+      setExporting(true)
+      await doSyncWorkflowDraft()
+      const { data } = await exportPipelineConfig({
+        pipelineId,
+        include,
+      })
+      const file = new Blob([data], { type: 'application/yaml' })
+      downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
+    }
+    catch {
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+    }
+    finally {
+      setExporting(false)
+    }
+  }, [notify, t, doSyncWorkflowDraft, exporting, exportPipelineConfig, workflowStore])
+
   const exportCheck = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
-    if (!pipelineId) return
+    if (!pipelineId)
+      return
     try {
       const workflowDraft = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
-      )
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
         handleExportDSL()
         return
@@ -58,18 +66,14 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           data: list,
         },
       } as any)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [eventEmitter, handleExportDSL, t, workflowStore])
+    catch {
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+    }
+  }, [eventEmitter, handleExportDSL, notify, t, workflowStore])
+
   return {
     exportCheck,
     handleExportDSL,
   }
-}
-
-export const useDSLByCanEdit = (canEdit: boolean) => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return useDSLBase(doSyncWorkflowDraft)
 }

@@ -1,9 +1,12 @@
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type MailBodyInputProps = {
   readOnly?: boolean
@@ -39,22 +42,19 @@ const MailBodyInput = ({
       workflowVariableBlock={{
         show: true,
         variables: nodesOutputVars || [],
-        workflowNodesMap: availableNodes.reduce(
-          (acc, node) => {
-            acc[node.id] = {
-              title: node.data.title,
-              type: node.data.type,
+        workflowNodesMap: availableNodes.reduce((acc, node) => {
+          acc[node.id] = {
+            title: node.data.title,
+            type: node.data.type,
+          }
+          if (node.data.type === BlockEnum.Start) {
+            acc.sys = {
+              title: t('blocks.start', { ns: 'workflow' }),
+              type: BlockEnum.Start,
             }
-            if (node.data.type === BlockEnum.Start) {
-              acc.sys = {
-                title: t(($) => $['blocks.start'], { ns: 'workflow' }),
-                type: BlockEnum.Start,
-              }
-            }
-            return acc
-          },
-          {} as Record<string, Pick<Node['data'], 'title' | 'type'>>,
-        ),
+          }
+          return acc
+        }, {} as Record<string, Pick<Node['data'], 'title' | 'type'>>),
       }}
       placeholder={<Placeholder hideBadge />}
       onChange={onChange}

@@ -1,4 +1,3 @@
-import type { HumanInputFieldValue } from './field-renderer'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 
@@ -12,7 +11,7 @@ export type UnsubmittedHumanInputContentProps = {
   showEmailTip?: boolean
   isEmailDebugMode?: boolean
   showDebugModeTip?: boolean
-  onSubmit?: (formToken: string, data: HumanInputFormSubmitData) => Promise<void>
+  onSubmit?: (formToken: string, data: { inputs: Record<string, string>, action: string }) => Promise<void>
 }
 
 export type SubmittedHumanInputContentProps = {
@@ -21,17 +20,12 @@ export type SubmittedHumanInputContentProps = {
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
-  onSubmit?: (formToken: string, data: HumanInputFormSubmitData) => Promise<void>
-}
-
-export type HumanInputFormSubmitData = {
-  inputs: Record<string, unknown>
-  action: string
+  onSubmit?: (formToken: string, data: { inputs: Record<string, string>, action: string }) => Promise<void>
 }
 
 export type ContentItemProps = {
   content: string
   formInputFields: FormInputItem[]
-  inputs: Record<string, HumanInputFieldValue>
-  onInputChange: (name: string, value: HumanInputFieldValue) => void
+  inputs: Record<string, string>
+  onInputChange: (name: string, value: string) => void
 }

@@ -1,146 +1,37 @@
-"""Controller decorators for console app resources.
-
-`get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
-scoped session. Trial app handlers compose `get_app_model_with_trial` under
-`controllers.common.session.with_session` and always reuse that request session.
-"""
-
 from collections.abc import Callable
 from functools import wraps
-from typing import cast, overload
+from typing import ParamSpec, TypeVar, Union
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from configs import dify_config
-from controllers.common.session import with_session
-from controllers.common.wraps import RBACPermission, RBACResourceScope, enforce_rbac_access
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
-from models import App, AppMode, TrialApp
-from models.agent import AgentScope
-from services.recommended_app_service import RecommendedAppService
+from models import App, AppMode
 
-__all__ = [
-    "agent_manage_required_for_agent_app",
-    "get_app_model",
-    "get_app_model_with_trial",
-    "with_session",
-]
+P = ParamSpec("P")
+R = TypeVar("R")
+P1 = ParamSpec("P1")
+R1 = TypeVar("R1")
 
 
-def _load_app_model(session: Session, app_id: str) -> App | None:
-    """Load the tenant-scoped app row with the request session owned by `with_session`."""
+def _load_app_model(app_id: str) -> App | None:
     _, current_tenant_id = current_account_with_tenant()
-    app_model = session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+    app_model = (
+        db.session.query(App)
+        .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
+        .first()
     )
     return app_model
 
 
-def _load_app_model_from_scoped_session(app_id: str) -> App | None:
-    """Load the app row for legacy handlers that have not adopted request session injection yet."""
-    _, current_tenant_id = current_account_with_tenant()
-    app_model = db.session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-    )
+def _load_app_model_with_trial(app_id: str) -> App | None:
+    app_model = db.session.query(App).where(App.id == app_id, App.status == "normal").first()
     return app_model
 
 
-def _load_app_model_with_trial(session: Session, app_id: str) -> App | None:
-    """Load a normal app through its trial registration without applying current-tenant scope."""
-    app_model = session.scalar(
-        select(App).join(TrialApp, TrialApp.app_id == App.id).where(App.id == app_id, App.status == "normal").limit(1)
-    )
-    return app_model
-
-
-def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """Gate generic app management routes that target an Agent App.
-
-    A hidden workflow-only backing App only reuses the App runtime and is not
-    part of the general app management plane, so generic routes reject it
-    outright. Managing a roster Agent App mutates the roster Agent behind it
-    (rename/icon sync, archive, API enablement), so it additionally requires
-    workspace ``agent.manage`` on top of the route's existing App permission
-    checks when RBAC is enabled. A no-op for non-agent Apps. Must be placed
-    above ``get_app_model`` so the ``app_id`` path parameter is still present.
-    """
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-        raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
-        if raw_app_id is not None:
-            app_model = _load_app_model_from_scoped_session(str(raw_app_id))
-            binding = (
-                app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
-                if app_model is not None
-                else None
-            )
-            if binding is not None:
-                if binding.scope == AgentScope.WORKFLOW_ONLY:
-                    raise AppNotFoundError()
-                if dify_config.RBAC_ENABLED:
-                    current_user, current_tenant_id = current_account_with_tenant()
-                    enforce_rbac_access(
-                        tenant_id=current_tenant_id,
-                        account_id=current_user.id,
-                        resource_type=RBACResourceScope.WORKSPACE,
-                        scene=RBACPermission.AGENT_MANAGE,
-                        resource_required=False,
-                    )
-        return view(*args, **kwargs)
-
-    return decorated
-
-
-def _get_injected_session(args: tuple[object, ...]) -> Session | None:
-    """Return the request session inserted by `with_session`, if this handler has been migrated."""
-    if len(args) < 2:
-        return None
-
-    candidate = args[1]
-    if isinstance(candidate, Session):
-        return candidate
-
-    if hasattr(candidate, "scalar") and hasattr(candidate, "commit") and hasattr(candidate, "rollback"):
-        return cast(Session, candidate)
-
-    return None
-
-
-@overload
-def get_app_model[**P, R](
-    view: Callable[P, R],
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R]: ...
-
-
-@overload
-def get_app_model[**P, R](
-    view: None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
-
-
-def get_app_model[**P, R](
-    view: Callable[P, R] | None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    """Inject the App model for handlers that receive an `app_id` path parameter.
-
-    New handlers may compose `@with_session` above this decorator so the app row
-    is loaded through the same request-scoped session used by the controller.
-    Existing handlers continue to work through `db.session` until migrated.
-    """
-
-    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    def decorator(view_func: Callable[P1, R1]):
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        def decorated_view(*args: P1.args, **kwargs: P1.kwargs):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 
@@ -149,11 +40,7 @@ def get_app_model[**P, R](
 
             del kwargs["app_id"]
 
-            session = _get_injected_session(args)
-            if session is None:
-                app_model = _load_app_model_from_scoped_session(app_id)
-            else:
-                app_model = _load_app_model(session, app_id)
+            app_model = _load_app_model(app_id)
 
             if not app_model:
                 raise AppNotFoundError()
@@ -182,32 +69,10 @@ def get_app_model[**P, R](
         return decorator(view)
 
 
-@overload
-def get_app_model_with_trial[**P, R](
-    view: Callable[P, R],
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R]: ...
-
-
-@overload
-def get_app_model_with_trial[**P, R](
-    view: None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
-
-
-def get_app_model_with_trial[**P, R](
-    view: Callable[P, R] | None = None,
-    *,
-    mode: AppMode | list[AppMode] | None = None,
-) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    """Inject a trial-registered or recommended App using the Session supplied by `with_session`."""
-
-    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+def get_app_model_with_trial(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        def decorated_view(*args: P.args, **kwargs: P.kwargs):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 
@@ -216,12 +81,7 @@ def get_app_model_with_trial[**P, R](
 
             del kwargs["app_id"]
 
-            session = _get_injected_session(args)
-            if session is None:
-                raise RuntimeError("get_app_model_with_trial requires @with_session")
-            app_model = _load_app_model_with_trial(session, app_id)
-            if app_model is None:
-                app_model = RecommendedAppService.get_app(app_id, session=session)
+            app_model = _load_app_model_with_trial(app_id)
 
             if not app_model:
                 raise AppNotFoundError()

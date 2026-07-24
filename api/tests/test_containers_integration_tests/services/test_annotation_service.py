@@ -6,11 +6,9 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from models import Account
-from models.enums import ConversationFromSource, InvokeFrom
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
-from services.app_ref_service import AnnotationRef, AppRef
-from services.app_service import AppService, CreateAppParams
+from services.app_service import AppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -82,26 +80,25 @@ class TestAnnotationService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
         # Setup app creation arguments
-        app_args = CreateAppParams(
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            mode="chat",
-            icon_type="emoji",
-            icon="🤖",
-            icon_background="#FF6B6B",
-            api_rph=100,
-            api_rpm=10,
-        )
+        app_args = {
+            "name": fake.company(),
+            "description": fake.text(max_nb_chars=100),
+            "mode": "chat",
+            "icon_type": "emoji",
+            "icon": "🤖",
+            "icon_background": "#FF6B6B",
+            "api_rph": 100,
+            "api_rpm": 10,
+        }
 
         # Create app
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app = app_service.create_app(tenant.id, app_args, account)
 
         # Setup current_user mock
         self._mock_current_user(mock_external_service_dependencies, account.id, tenant.id)
@@ -119,10 +116,6 @@ class TestAnnotationService:
             mock_external_service_dependencies["current_user"],
             tenant_id,
         )
-
-    @staticmethod
-    def _annotation_ref(app, annotation_id: str) -> AnnotationRef:
-        return AnnotationRef(app=AppRef(tenant_id=app.tenant_id, app_id=app.id), annotation_id=annotation_id)
 
     def _create_test_conversation(self, db_session_with_containers: Session, app, account, fake):
         """
@@ -143,8 +136,8 @@ class TestAnnotationService:
             system_instruction="",
             system_instruction_tokens=0,
             status="normal",
-            invoke_from=InvokeFrom.EXPLORE,
-            from_source=ConversationFromSource.CONSOLE,
+            invoke_from="console",
+            from_source="console",
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -181,8 +174,8 @@ class TestAnnotationService:
             provider_response_latency=0,
             total_price=0,
             currency="USD",
-            invoke_from=InvokeFrom.EXPLORE,
-            from_source=ConversationFromSource.CONSOLE,
+            invoke_from="console",
+            from_source="console",
             from_end_user_id=None,
             from_account_id=account.id,
         )
@@ -207,9 +200,7 @@ class TestAnnotationService:
         }
 
         # Insert annotation directly
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
         # Verify annotation was created correctly
         assert annotation.app_id == app.id
@@ -243,7 +234,7 @@ class TestAnnotationService:
         }
 
         with pytest.raises(ValueError):
-            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, db_session_with_containers)
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
     def test_insert_app_annotation_directly_app_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -265,9 +256,7 @@ class TestAnnotationService:
 
         # Try to insert annotation with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.insert_app_annotation_directly(
-                annotation_args, non_existent_app_id, session=db_session_with_containers
-            )
+            AppAnnotationService.insert_app_annotation_directly(annotation_args, non_existent_app_id)
 
     def test_update_app_annotation_directly_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -283,20 +272,14 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            original_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(original_args, app.id)
 
         # Update the annotation
         updated_args = {
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(
-            updated_args,
-            self._annotation_ref(app, annotation.id),
-            db_session_with_containers,
-        )
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id)
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
@@ -334,9 +317,7 @@ class TestAnnotationService:
         }
 
         # Insert annotation from message
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(annotation_args, app.id)
 
         # Verify annotation was created correctly
         assert annotation.app_id == app.id
@@ -369,9 +350,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        initial_annotation = AppAnnotationService.up_insert_app_annotation_from_message(
-            initial_args, app.id, session=db_session_with_containers
-        )
+        initial_annotation = AppAnnotationService.up_insert_app_annotation_from_message(initial_args, app.id)
 
         # Update the annotation
         updated_args = {
@@ -379,9 +358,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.up_insert_app_annotation_from_message(
-            updated_args, app.id, session=db_session_with_containers
-        )
+        updated_annotation = AppAnnotationService.up_insert_app_annotation_from_message(updated_args, app.id)
 
         # Verify annotation was updated correctly (same ID)
         assert updated_annotation.id == initial_annotation.id
@@ -414,9 +391,7 @@ class TestAnnotationService:
 
         # Try to insert annotation with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.up_insert_app_annotation_from_message(
-                annotation_args, non_existent_app_id, session=db_session_with_containers
-            )
+            AppAnnotationService.up_insert_app_annotation_from_message(annotation_args, non_existent_app_id)
 
     def test_get_annotation_list_by_app_id_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -434,14 +409,12 @@ class TestAnnotationService:
                 "question": f"Question {i}: {fake.sentence()}",
                 "answer": f"Answer {i}: {fake.text(max_nb_chars=200)}",
             }
-            annotation = AppAnnotationService.insert_app_annotation_directly(
-                annotation_args, app.id, session=db_session_with_containers
-            )
+            annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
             annotations.append(annotation)
 
         # Get annotation list
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword="", session=db_session_with_containers
+            app.id, page=1, limit=10, keyword=""
         )
 
         # Verify results
@@ -468,18 +441,18 @@ class TestAnnotationService:
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
-        AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id, db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
         # Create another annotation without the keyword
         other_args = {
             "question": "Different question without special term",
             "answer": "Different answer without special content",
         }
 
-        AppAnnotationService.insert_app_annotation_directly(other_args, app.id, db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(other_args, app.id)
 
         # Search with keyword
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword=unique_keyword, session=db_session_with_containers
+            app.id, page=1, limit=10, keyword=unique_keyword
         )
 
         # Verify only matching annotations are returned
@@ -506,34 +479,30 @@ class TestAnnotationService:
             "question": "Question with 50% discount",
             "answer": "Answer about 50% discount offer",
         }
-        AppAnnotationService.insert_app_annotation_directly(annotation_with_percent, app.id, db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_percent, app.id)
 
         annotation_with_underscore = {
             "question": "Question with test_data",
             "answer": "Answer about test_data value",
         }
-        AppAnnotationService.insert_app_annotation_directly(
-            annotation_with_underscore, app.id, session=db_session_with_containers
-        )
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_underscore, app.id)
 
         annotation_with_backslash = {
             "question": "Question with path\\to\\file",
             "answer": "Answer about path\\to\\file location",
         }
-        AppAnnotationService.insert_app_annotation_directly(
-            annotation_with_backslash, app.id, session=db_session_with_containers
-        )
+        AppAnnotationService.insert_app_annotation_directly(annotation_with_backslash, app.id)
 
         # Create annotation that should NOT match (contains % but as part of different text)
         annotation_no_match = {
             "question": "Question with 100% different",
             "answer": "Answer about 100% different content",
         }
-        AppAnnotationService.insert_app_annotation_directly(annotation_no_match, app.id, db_session_with_containers)
+        AppAnnotationService.insert_app_annotation_directly(annotation_no_match, app.id)
 
         # Test 1: Search with % character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword="50%", session=db_session_with_containers
+            app.id, page=1, limit=10, keyword="50%"
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -541,7 +510,7 @@ class TestAnnotationService:
 
         # Test 2: Search with _ character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword="test_data", session=db_session_with_containers
+            app.id, page=1, limit=10, keyword="test_data"
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -549,7 +518,7 @@ class TestAnnotationService:
 
         # Test 3: Search with \ character - should find exact match only
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword="path\\to\\file", session=db_session_with_containers
+            app.id, page=1, limit=10, keyword="path\\to\\file"
         )
         assert total == 1
         assert len(annotation_list) == 1
@@ -557,7 +526,7 @@ class TestAnnotationService:
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app.id, page=1, limit=10, keyword="50%", session=db_session_with_containers
+            app.id, page=1, limit=10, keyword="50%"
         )
         # Should only find the 50% annotation, not the 100% one
         assert total == 1
@@ -577,9 +546,7 @@ class TestAnnotationService:
 
         # Try to get annotation list with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.get_annotation_list_by_app_id(
-                non_existent_app_id, page=1, limit=10, keyword="", session=db_session_with_containers
-            )
+            AppAnnotationService.get_annotation_list_by_app_id(non_existent_app_id, page=1, limit=10, keyword="")
 
     def test_delete_app_annotation_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -595,13 +562,11 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
         annotation_id = annotation.id
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(self._annotation_ref(app, annotation_id), db_session_with_containers)
+        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
 
@@ -614,26 +579,22 @@ class TestAnnotationService:
         # Note: In this test, no annotation setting exists, so task should not be called
         mock_external_service_dependencies["delete_task"].delay.assert_not_called()
 
-    def test_delete_app_annotation_annotation_not_found_for_wrong_app(
+    def test_delete_app_annotation_app_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test deletion of app annotation when the annotation does not belong to the supplied app ref.
+        Test deletion of app annotation when app is not found.
         """
         fake = Faker()
         non_existent_app_id = fake.uuid4()
         annotation_id = fake.uuid4()
-        app_ref = AnnotationRef(
-            app=AppRef(tenant_id=fake.uuid4(), app_id=non_existent_app_id),
-            annotation_id=annotation_id,
-        )
 
         # Mock random current user to avoid dependency issues
         self._mock_current_user(mock_external_service_dependencies, fake.uuid4(), fake.uuid4())
 
-        # Try to delete annotation with a ref that cannot match any annotation row
-        with pytest.raises(NotFound, match="Annotation not found"):
-            AppAnnotationService.delete_app_annotation(app_ref, db_session_with_containers)
+        # Try to delete annotation with non-existent app
+        with pytest.raises(NotFound, match="App not found"):
+            AppAnnotationService.delete_app_annotation(non_existent_app_id, annotation_id)
 
     def test_delete_app_annotation_annotation_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -647,10 +608,7 @@ class TestAnnotationService:
 
         # Try to delete non-existent annotation
         with pytest.raises(NotFound, match="Annotation not found"):
-            AppAnnotationService.delete_app_annotation(
-                self._annotation_ref(app, non_existent_annotation_id),
-                db_session_with_containers,
-            )
+            AppAnnotationService.delete_app_annotation(app.id, non_existent_annotation_id)
 
     def test_enable_app_annotation_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -751,9 +709,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
         # Add some hit histories
         for i in range(3):
@@ -765,17 +721,13 @@ class TestAnnotationService:
                 query=f"Query {i}: {fake.sentence()}",
                 user_id=account.id,
                 message_id=fake.uuid4(),
-                from_source=ConversationFromSource.CONSOLE,
+                from_source="console",
                 score=0.8 + (i * 0.1),
-                session=db_session_with_containers,
             )
 
         # Get hit histories
         hit_histories, total = AppAnnotationService.get_annotation_hit_histories(
-            self._annotation_ref(app, annotation.id),
-            page=1,
-            limit=10,
-            session=db_session_with_containers,
+            app.id, annotation.id, page=1, limit=10
         )
 
         # Verify results
@@ -802,9 +754,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
         # Get initial hit count
         initial_hit_count = annotation.hit_count
@@ -822,9 +772,8 @@ class TestAnnotationService:
             query=query,
             user_id=account.id,
             message_id=message_id,
-            from_source=ConversationFromSource.CONSOLE,
+            from_source="console",
             score=score,
-            session=db_session_with_containers,
         )
 
         # Verify hit count was incremented
@@ -864,14 +813,10 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        created_annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        created_annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
         # Get annotation by ID
-        retrieved_annotation = AppAnnotationService.get_annotation_by_id(
-            created_annotation.id, session=db_session_with_containers
-        )
+        retrieved_annotation = AppAnnotationService.get_annotation_by_id(created_annotation.id)
 
         # Verify annotation was retrieved correctly
         assert retrieved_annotation is not None
@@ -914,7 +859,7 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage)
 
         # Verify result structure
         assert "job_id" in result
@@ -954,7 +899,7 @@ class TestAnnotationService:
             mock_pd.read_csv.return_value = mock_df
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage)
 
         # Verify error result
         assert "error_msg" in result
@@ -1000,7 +945,7 @@ class TestAnnotationService:
             ].get_features.return_value.annotation_quota_limit.size = 0
 
             # Batch import annotations
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage, db_session_with_containers)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file_storage)
 
         # Verify error result
         assert "error_msg" in result
@@ -1042,7 +987,7 @@ class TestAnnotationService:
         db_session_with_containers.commit()
 
         # Get annotation setting
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
 
         # Verify result structure
         assert result["enabled"] is True
@@ -1061,7 +1006,7 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Get annotation setting (no setting exists)
-        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, db_session_with_containers)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
 
         # Verify result structure
         assert result["enabled"] is False
@@ -1106,9 +1051,7 @@ class TestAnnotationService:
             "score_threshold": 0.9,
         }
 
-        result = AppAnnotationService.update_app_annotation_setting(
-            app.id, annotation_setting.id, update_args, session=db_session_with_containers
-        )
+        result = AppAnnotationService.update_app_annotation_setting(app.id, annotation_setting.id, update_args)
 
         # Verify result structure
         assert result["enabled"] is True
@@ -1137,13 +1080,11 @@ class TestAnnotationService:
                 "question": f"Question {i}: {fake.sentence()}",
                 "answer": f"Answer {i}: {fake.text(max_nb_chars=200)}",
             }
-            annotation = AppAnnotationService.insert_app_annotation_directly(
-                annotation_args, app.id, session=db_session_with_containers
-            )
+            annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
             annotations.append(annotation)
 
         # Export annotation list
-        exported_annotations = AppAnnotationService.export_annotation_list_by_app_id(app.id, db_session_with_containers)
+        exported_annotations = AppAnnotationService.export_annotation_list_by_app_id(app.id)
 
         # Verify results
         assert len(exported_annotations) == 3
@@ -1170,7 +1111,7 @@ class TestAnnotationService:
 
         # Try to export annotation list with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.export_annotation_list_by_app_id(non_existent_app_id, db_session_with_containers)
+            AppAnnotationService.export_annotation_list_by_app_id(non_existent_app_id)
 
     def test_insert_app_annotation_directly_with_setting_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1214,9 +1155,7 @@ class TestAnnotationService:
         }
 
         # Insert annotation directly
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
 
         # Verify annotation was created correctly
         assert annotation.app_id == app.id
@@ -1275,9 +1214,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            original_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(original_args, app.id)
 
         # Reset mock to clear previous calls
         mock_external_service_dependencies["update_task"].delay.reset_mock()
@@ -1287,11 +1224,7 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(
-            updated_args,
-            self._annotation_ref(app, annotation.id),
-            db_session_with_containers,
-        )
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id)
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
@@ -1354,16 +1287,14 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        annotation = AppAnnotationService.insert_app_annotation_directly(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
         annotation_id = annotation.id
 
         # Reset mock to clear previous calls
         mock_external_service_dependencies["delete_task"].delay.reset_mock()
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(self._annotation_ref(app, annotation_id), db_session_with_containers)
+        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
         deleted_annotation = (
@@ -1426,9 +1357,7 @@ class TestAnnotationService:
         }
 
         # Insert annotation from message
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(
-            annotation_args, app.id, session=db_session_with_containers
-        )
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(annotation_args, app.id)
 
         # Verify annotation was created correctly
         assert annotation.app_id == app.id

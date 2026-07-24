@@ -44,7 +44,6 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import base64
-import logging
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -54,9 +53,9 @@ from sqlalchemy.exc import IntegrityError
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.rag.embedding.cached_embedding import CacheEmbedding
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
-from graphon.model_runtime.errors.invoke import (
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeConnectionError,
     InvokeRateLimitError,
@@ -135,12 +134,12 @@ class TestCacheEmbeddingDocuments:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
         texts = ["Python is a programming language"]
 
         # Mock database query to return no cached embedding (cache miss)
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model invocation
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
@@ -157,6 +156,7 @@ class TestCacheEmbeddingDocuments:
             # Verify model was invoked with correct parameters
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=texts,
+                user="test-user",
                 input_type=EmbeddingInputType.DOCUMENT,
             )
 
@@ -204,7 +204,7 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -241,7 +241,7 @@ class TestCacheEmbeddingDocuments:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # Mock database to return cached embedding (cache hit)
-            mock_session.scalar.return_value = mock_cached_embedding
+            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
 
             # Act
             result = cache_embedding.embed_documents(texts)
@@ -314,7 +314,19 @@ class TestCacheEmbeddingDocuments:
                 mock_hash.side_effect = generate_hash
 
                 # Mock database to return cached embedding only for first text (hash_1)
-                mock_session.scalar.side_effect = [mock_cached_embedding, None, None]
+                call_count = [0]
+
+                def mock_filter_by(**kwargs):
+                    call_count[0] += 1
+                    mock_query = Mock()
+                    # First call (hash_1) returns cached, others return None
+                    if call_count[0] == 1:
+                        mock_query.first.return_value = mock_cached_embedding
+                    else:
+                        mock_query.first.return_value = None
+                    return mock_query
+
+                mock_session.query.return_value.filter_by = mock_filter_by
                 mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
                 # Act
@@ -381,7 +393,7 @@ class TestCacheEmbeddingDocuments:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [
@@ -407,7 +419,7 @@ class TestCacheEmbeddingDocuments:
             assert len(calls[1].kwargs["texts"]) == 10
             assert len(calls[2].kwargs["texts"]) == 5
 
-    def test_embed_documents_nan_handling(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
+    def test_embed_documents_nan_handling(self, mock_model_instance):
         """Test handling of NaN values in embeddings.
 
         Verifies:
@@ -444,10 +456,10 @@ class TestCacheEmbeddingDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
-            with caplog.at_level(logging.WARNING, logger="core.rag.embedding.cached_embedding"):
+            with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
                 # Act
                 result = cache_embedding.embed_documents(texts)
 
@@ -462,8 +474,8 @@ class TestCacheEmbeddingDocuments:
                 assert result[1] is None
 
                 # Verify warning was logged
-                assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) >= 1
-                assert any("Normalized embedding is nan" in record.message for record in caplog.records)
+                mock_logger.warning.assert_called_once()
+                assert "Normalized embedding is nan" in str(mock_logger.warning.call_args)
 
     def test_embed_documents_api_connection_error(self, mock_model_instance):
         """Test handling of API connection errors during embedding.
@@ -478,7 +490,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model to raise connection error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeConnectionError("Failed to connect to API")
@@ -504,7 +516,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model to raise rate limit error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeRateLimitError("Rate limit exceeded")
@@ -528,7 +540,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model to raise authorization error
             mock_model_instance.invoke_text_embedding.side_effect = InvokeAuthorizationError("Invalid API key")
@@ -553,7 +565,7 @@ class TestCacheEmbeddingDocuments:
         texts = ["Test text"]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = sample_embedding_result
 
             # Mock database commit to raise IntegrityError
@@ -600,7 +612,7 @@ class TestCacheEmbeddingQuery:
         - Correct return value
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
         query = "What is Python?"
 
         # Create embedding result
@@ -639,6 +651,7 @@ class TestCacheEmbeddingQuery:
             # Verify model was invoked with QUERY input type
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
+                user="test-user",
                 input_type=EmbeddingInputType.QUERY,
             )
 
@@ -873,7 +886,7 @@ class TestEmbeddingModelSwitching:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_3_small.invoke_text_embedding.return_value = result_3_small
@@ -1036,7 +1049,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1089,7 +1102,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1175,7 +1188,7 @@ class TestEmbeddingDimensionValidation:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             model_instance_ada.invoke_text_embedding.return_value = result_ada
             model_instance_cohere.invoke_text_embedding.return_value = result_cohere
@@ -1273,7 +1286,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1316,7 +1329,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1364,7 +1377,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1416,7 +1429,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1472,7 +1485,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1540,7 +1553,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1555,16 +1568,25 @@ class TestEmbeddingEdgeCases:
                 norm = np.linalg.norm(emb)
                 assert abs(norm - 1.0) < 0.01
 
-    def test_embed_query_uses_bound_model_instance(self, mock_model_instance):
-        """Test query embedding using the provided model instance.
+    def test_embed_query_with_user_context(self, mock_model_instance):
+        """Test query embedding with user context parameter.
 
         Verifies:
-        - Embedding generation works with the injected model instance
-        - Query input type is preserved
-        - No extra binding step is required at call time
+        - User parameter is passed correctly to model
+        - User context is used for tracking/logging
+        - Embedding generation works with user context
+
+        Context:
+        --------
+        The user parameter is important for:
+        1. Usage tracking per user
+        2. Rate limiting per user
+        3. Audit logging
+        4. Personalization (in some models)
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        user_id = "user-12345"
+        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
         query = "What is machine learning?"
 
         # Create embedding
@@ -1598,20 +1620,24 @@ class TestEmbeddingEdgeCases:
             assert isinstance(result, list)
             assert len(result) == 1536
 
+            # Verify user parameter was passed to model
             mock_model_instance.invoke_text_embedding.assert_called_once_with(
                 texts=[query],
+                user=user_id,
                 input_type=EmbeddingInputType.QUERY,
             )
 
-    def test_embed_documents_uses_bound_model_instance(self, mock_model_instance):
-        """Test document embedding using the provided model instance.
+    def test_embed_documents_with_user_context(self, mock_model_instance):
+        """Test document embedding with user context parameter.
 
         Verifies:
-        - Batch processing uses the injected model instance
-        - Document input type is preserved
+        - User parameter is passed correctly for document embeddings
+        - Batch processing maintains user context
+        - User tracking works across batches
         """
         # Arrange
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        user_id = "user-67890"
+        cache_embedding = CacheEmbedding(mock_model_instance, user=user_id)
         texts = ["Document 1", "Document 2"]
 
         # Create embeddings
@@ -1638,7 +1664,7 @@ class TestEmbeddingEdgeCases:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_text_embedding.return_value = embedding_result
 
             # Act
@@ -1647,8 +1673,10 @@ class TestEmbeddingEdgeCases:
             # Assert
             assert len(result) == 2
 
+            # Verify user parameter was passed
             mock_model_instance.invoke_text_embedding.assert_called_once()
             call_args = mock_model_instance.invoke_text_embedding.call_args
+            assert call_args.kwargs["user"] == user_id
             assert call_args.kwargs["input_type"] == EmbeddingInputType.DOCUMENT
 
 
@@ -1717,7 +1745,7 @@ class TestEmbeddingCachePerformance:
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
             # First call: cache miss
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             usage = EmbeddingUsage(
                 tokens=5,
@@ -1745,7 +1773,7 @@ class TestEmbeddingCachePerformance:
             assert len(result1) == 1
 
             # Arrange - Second call: cache hit
-            mock_session.scalar.return_value = mock_cached_embedding
+            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
 
             # Act - Second call (cache hit)
             result2 = cache_embedding.embed_documents([text])
@@ -1805,7 +1833,7 @@ class TestEmbeddingCachePerformance:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             # Mock model to return appropriate batch results
             batch_results = [

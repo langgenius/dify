@@ -10,13 +10,11 @@ const useHideLogic = (onClose: () => void) => {
   } = useFoldAnimInto(onClose)
 
   const [isInstalling, doSetIsInstalling] = useState(false)
-  const setIsInstalling = useCallback(
-    (isInstalling: boolean) => {
-      if (!isInstalling) clearCountDown()
-      doSetIsInstalling(isInstalling)
-    },
-    [clearCountDown],
-  )
+  const setIsInstalling = useCallback((isInstalling: boolean) => {
+    if (!isInstalling)
+      clearCountDown()
+    doSetIsInstalling(isInstalling)
+  }, [clearCountDown])
 
   const foldAnimInto = useCallback(() => {
     if (isInstalling) {
@@ -34,7 +32,6 @@ const useHideLogic = (onClose: () => void) => {
   return {
     modalClassName,
     foldAnimInto,
-    foldIntoTaskTrigger: doFoldAnimInto,
     setIsInstalling,
     handleStartToInstall,
   }

@@ -3,15 +3,15 @@ import re
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 
 from core.schemas.registry import SchemaRegistry
 
 logger = logging.getLogger(__name__)
 
 # Type aliases for better clarity
-type SchemaType = dict[str, Any] | list[Any] | str | int | float | bool | None
-type SchemaDict = dict[str, Any]
+SchemaType = Union[dict[str, Any], list[Any], str, int, float, bool, None]
+SchemaDict = dict[str, Any]
 
 # Pre-compiled pattern for better performance
 _DIFY_SCHEMA_PATTERN = re.compile(r"^https://dify\.ai/schemas/(v\d+)/(.+)\.json$")
@@ -54,7 +54,7 @@ class QueueItem:
 
     current: Any
     parent: Any | None
-    key: str | int | None
+    key: Union[str, int] | None
     depth: int
     ref_path: set[str]
 
@@ -125,11 +125,10 @@ class SchemaResolver:
 
     def _process_queue_item(self, queue: deque, item: QueueItem) -> None:
         """Process a single queue item"""
-        match item.current:
-            case dict():
-                self._process_dict(queue, item)
-            case list():
-                self._process_list(queue, item)
+        if isinstance(item.current, dict):
+            self._process_dict(queue, item)
+        elif isinstance(item.current, list):
+            self._process_list(queue, item)
 
     def _process_dict(self, queue: deque, item: QueueItem) -> None:
         """Process a dictionary item"""
@@ -255,7 +254,7 @@ def resolve_dify_schema_refs(
     return resolver.resolve(schema)
 
 
-def _remove_metadata_fields(schema: dict[str, Any]) -> dict[str, Any]:
+def _remove_metadata_fields(schema: dict) -> dict:
     """
     Remove metadata fields from schema that shouldn't be included in resolved output
 
@@ -304,23 +303,22 @@ def _has_dify_refs_recursive(schema: SchemaType) -> bool:
     Returns:
         True if any Dify $ref is found, False otherwise
     """
-    match schema:
-        case dict():
-            # Check if this dict has a $ref field
-            ref_uri = schema.get("$ref")
-            if ref_uri and _is_dify_schema_ref(ref_uri):
+    if isinstance(schema, dict):
+        # Check if this dict has a $ref field
+        ref_uri = schema.get("$ref")
+        if ref_uri and _is_dify_schema_ref(ref_uri):
+            return True
+
+        # Check nested values
+        for value in schema.values():
+            if _has_dify_refs_recursive(value):
                 return True
 
-            # Check nested values
-            for value in schema.values():
-                if _has_dify_refs_recursive(value):
-                    return True
-
-        case list():
-            # Check each item in the list
-            for item in schema:
-                if _has_dify_refs_recursive(item):
-                    return True
+    elif isinstance(schema, list):
+        # Check each item in the list
+        for item in schema:
+            if _has_dify_refs_recursive(item):
+                return True
 
     # Primitive types don't contain refs
     return False

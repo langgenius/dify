@@ -56,7 +56,7 @@ after
         assert extractor.remove_images(with_images) == "before  after"
         assert extractor.remove_hyperlinks(with_links) == "OpenAI"
 
-    def test_parse_tups_reads_file_and_applies_options(self, tmp_path: Path):
+    def test_parse_tups_reads_file_and_applies_options(self, tmp_path):
         markdown_file = tmp_path / "doc.md"
         markdown_file.write_text("# Header\nText with [link](https://example.com) and ![[img.png]]", encoding="utf-8")
 
@@ -74,7 +74,7 @@ after
         assert "[link]" not in tups[1][1]
         assert "img.png" not in tups[1][1]
 
-    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=True)
 
         calls: list[str | None] = []
@@ -99,7 +99,7 @@ after
         assert len(tups) == 2
         assert calls == [None, "bad-encoding", "utf-8"]
 
-    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch):
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=False)
 
         def raise_decode(self, encoding=None):
@@ -110,7 +110,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
 
         def raise_other(self, encoding=None):
@@ -121,7 +121,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch):
         extractor = MarkdownExtractor(file_path="dummy_path")
         monkeypatch.setattr(extractor, "parse_tups", lambda _: [(None, "plain"), ("Header", "value")])
 

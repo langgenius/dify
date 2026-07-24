@@ -3,20 +3,15 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import {
-  SkeletonContainer,
-  SkeletonPoint,
-  SkeletonRectangle,
-  SkeletonRow,
-} from '@/app/components/base/skeleton'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { FULL_DOC_PREVIEW_LENGTH } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import { ChunkContainer, QAPreview } from '../../../chunk'
 import PreviewDocumentPicker from '../../../common/document-picker/preview-document-picker'
 import SummaryLabel from '../../../documents/detail/completed/common/summary-label'
@@ -34,13 +29,13 @@ type PreviewPanelProps = {
   parentChildConfig: ParentChildConfig
   isSetting?: boolean
   // Picker
-  pickerFiles: Array<{ id: string; name: string; extension: string }>
-  pickerValue: { id: string; name: string; extension: string }
+  pickerFiles: Array<{ id: string, name: string, extension: string }>
+  pickerValue: { id: string, name: string, extension: string }
   // Mutation state
   isIdle: boolean
   isPending: boolean
   // Actions
-  onPickerChange: (selected: { id: string; name: string }) => void
+  onPickerChange: (selected: { id: string, name: string }) => void
 }
 
 export const PreviewPanel: FC<PreviewPanelProps> = ({
@@ -59,40 +54,32 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   const { t } = useTranslation()
 
   return (
-    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop}>
+    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
       <PreviewContainer
-        header={
-          <PreviewHeader title={t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}>
+        header={(
+          <PreviewHeader title={t('stepTwo.preview', { ns: 'datasetCreation' })}>
             <div className="flex items-center gap-1">
               <PreviewDocumentPicker
-                files={
-                  pickerFiles as Array<Required<{ id: string; name: string; extension: string }>>
-                }
+                files={pickerFiles as Array<Required<{ id: string, name: string, extension: string }>>}
                 onChange={onPickerChange}
                 value={isSetting ? pickerFiles[0] : pickerValue}
               />
               {currentDocForm !== ChunkingMode.qa && (
                 <Badge
-                  text={
-                    t(($) => $['stepTwo.previewChunkCount'], {
-                      ns: 'datasetCreation',
-                      count: estimate?.total_segments || 0,
-                    }) as string
-                  }
+                  text={t('stepTwo.previewChunkCount', {
+                    ns: 'datasetCreation',
+                    count: estimate?.total_segments || 0,
+                  }) as string}
                 />
               )}
             </div>
           </PreviewHeader>
-        }
-        className={cn(
-          'relative flex h-full w-1/2 shrink-0 p-4 pr-0',
-          isMobile && 'w-full max-w-[524px]',
         )}
+        className={cn('relative flex h-full w-1/2 shrink-0 p-4 pr-0', isMobile && 'w-full max-w-[524px]')}
         mainClassName="space-y-6"
       >
         {/* QA Preview */}
-        {currentDocForm === ChunkingMode.qa &&
-          estimate?.qa_preview &&
+        {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
           estimate.qa_preview.map((item, index) => (
             <ChunkContainer
               key={item.question}
@@ -101,11 +88,11 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
             >
               <QAPreview qa={item} />
             </ChunkContainer>
-          ))}
+          ))
+        )}
 
         {/* Text Preview */}
-        {currentDocForm === ChunkingMode.text &&
-          estimate?.preview &&
+        {currentDocForm === ChunkingMode.text && estimate?.preview && (
           estimate.preview.map((item, index) => (
             <ChunkContainer
               key={item.content}
@@ -115,17 +102,16 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
               {item.content}
               {item.summary && <SummaryLabel summary={item.summary} />}
             </ChunkContainer>
-          ))}
+          ))
+        )}
 
         {/* Parent-Child Preview */}
-        {currentDocForm === ChunkingMode.parentChild &&
-          estimate?.preview &&
+        {currentDocForm === ChunkingMode.parentChild && estimate?.preview && (
           estimate.preview.map((item, index) => {
             const indexForLabel = index + 1
-            const childChunks =
-              parentChildConfig.chunkForContext === 'full-doc'
-                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
-                : item.child_chunks
+            const childChunks = parentChildConfig.chunkForContext === 'full-doc'
+              ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
+              : item.child_chunks
             return (
               <ChunkContainer
                 key={item.content}
@@ -150,15 +136,16 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
                 {item.summary && <SummaryLabel summary={item.summary} />}
               </ChunkContainer>
             )
-          })}
+          })
+        )}
 
         {/* Idle State */}
         {isIdle && (
-          <div className="flex size-full items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-3">
               <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
               <p className="text-sm text-text-tertiary">
-                {t(($) => $['stepTwo.previewChunkTip'], { ns: 'datasetCreation' })}
+                {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
               </p>
             </div>
           </div>

@@ -2,18 +2,23 @@ import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, render, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ToastContext } from '@/app/components/base/toast/context'
+
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
 
 // Mock notify function
 const mockNotify = vi.fn()
+const mockClose = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: (message: string) => mockNotify({ type: 'error', message }),
-  },
-}))
+vi.mock('use-context-selector', async () => {
+  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
+  return {
+    ...actual,
+    useContext: vi.fn(() => ({ notify: mockNotify, close: mockClose })),
+  }
+})
 
 // Mock upload service
 const mockUpload = vi.fn()
@@ -36,6 +41,13 @@ vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
   useFileSupportTypes: () => ({ data: mockSupportTypes }),
 }))
+
+// Mock i18n
+// Mock locale
+vi.mock('@/context/i18n', () => ({
+  useLocale: () => 'en-US',
+}))
+
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
@@ -50,7 +62,11 @@ vi.mock('@/app/components/base/file-uploader/utils', () => ({
 }))
 
 const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
+  return ({ children }: { children: ReactNode }) => (
+    <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+      {children}
+    </ToastContext.Provider>
+  )
 }
 
 describe('useFileUpload', () => {
@@ -73,9 +89,10 @@ describe('useFileUpload', () => {
 
   describe('initialization', () => {
     it('should initialize with default values', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.dragging).toBe(false)
       expect(result.current.hideUpload).toBe(false)
@@ -86,12 +103,11 @@ describe('useFileUpload', () => {
 
     it('should set hideUpload true when not batch upload and has files', () => {
       const { result } = renderHook(
-        () =>
-          useFileUpload({
-            ...defaultOptions,
-            supportBatchUpload: false,
-            fileList: [{ fileID: 'file-1', file: {} as CustomFile, progress: 100 }],
-          }),
+        () => useFileUpload({
+          ...defaultOptions,
+          supportBatchUpload: false,
+          fileList: [{ fileID: 'file-1', file: {} as CustomFile, progress: 100 }],
+        }),
         { wrapper: createWrapper() },
       )
 
@@ -99,17 +115,19 @@ describe('useFileUpload', () => {
     })
 
     it('should compute acceptTypes correctly', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.acceptTypes).toEqual(['.pdf', '.docx', '.txt', '.md'])
     })
 
     it('should compute supportTypesShowNames correctly', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       expect(result.current.supportTypesShowNames).toContain('PDF')
       expect(result.current.supportTypesShowNames).toContain('DOCX')
@@ -120,11 +138,10 @@ describe('useFileUpload', () => {
 
     it('should set batch limit to 1 when not batch upload', () => {
       const { result } = renderHook(
-        () =>
-          useFileUpload({
-            ...defaultOptions,
-            supportBatchUpload: false,
-          }),
+        () => useFileUpload({
+          ...defaultOptions,
+          supportBatchUpload: false,
+        }),
         { wrapper: createWrapper() },
       )
 
@@ -135,9 +152,10 @@ describe('useFileUpload', () => {
 
   describe('selectHandle', () => {
     it('should trigger click on file input', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       const mockClick = vi.fn()
       const mockInput = { click: mockClick } as unknown as HTMLInputElement
@@ -154,9 +172,10 @@ describe('useFileUpload', () => {
     })
 
     it('should do nothing when file input ref is null', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       expect(() => {
         act(() => {
@@ -169,9 +188,10 @@ describe('useFileUpload', () => {
   describe('handlePreview', () => {
     it('should call onPreview when file has id', () => {
       const onPreview = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onPreview }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onPreview }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = { id: 'file-123', name: 'test.pdf', size: 1024 } as CustomFile
 
@@ -184,9 +204,10 @@ describe('useFileUpload', () => {
 
     it('should not call onPreview when file has no id', () => {
       const onPreview = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onPreview }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onPreview }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = { name: 'test.pdf', size: 1024 } as CustomFile
 
@@ -201,9 +222,10 @@ describe('useFileUpload', () => {
   describe('removeFile', () => {
     it('should call onFileListUpdate with filtered list', () => {
       const onFileListUpdate = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileListUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileListUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       act(() => {
         result.current.removeFile('file-to-remove')
@@ -213,9 +235,10 @@ describe('useFileUpload', () => {
     })
 
     it('should clear file input value', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       const mockInput = { value: 'some-file' } as HTMLInputElement
       Object.defineProperty(result.current.fileUploaderRef, 'current', {
@@ -236,9 +259,10 @@ describe('useFileUpload', () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id' })
 
       const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, prepareFileList }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -256,14 +280,13 @@ describe('useFileUpload', () => {
 
     it('should limit files to batch count', () => {
       const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
-
-      const files = Array.from(
-        { length: 10 },
-        (_, i) => new File(['content'], `file${i}.pdf`, { type: 'application/pdf' }),
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, prepareFileList }),
+        { wrapper: createWrapper() },
       )
+
+      const files = Array.from({ length: 10 }, (_, i) =>
+        new File(['content'], `file${i}.pdf`, { type: 'application/pdf' }))
 
       const event = {
         target: { files },
@@ -275,15 +298,16 @@ describe('useFileUpload', () => {
 
       // Should be called with at most batch_count_limit files
       if (prepareFileList.mock.calls.length > 0) {
-        const calledFiles = prepareFileList.mock.calls[0]![0]
+        const calledFiles = prepareFileList.mock.calls[0][0]
         expect(calledFiles.length).toBeLessThanOrEqual(mockFileUploadConfig.batch_count_limit)
       }
     })
 
     it('should reject invalid file types', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.exe', { type: 'application/x-msdownload' })
       const event = {
@@ -294,18 +318,19 @@ describe('useFileUpload', () => {
         result.current.fileChangeHandle(event)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
 
     it('should reject files exceeding size limit', () => {
-      const { result } = renderHook(() => useFileUpload(defaultOptions), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload(defaultOptions),
+        { wrapper: createWrapper() },
+      )
 
       // Create a file larger than the limit (15MB)
-      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.pdf', {
-        type: 'application/pdf',
-      })
+      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' })
 
       const event = {
         target: { files: [largeFile] },
@@ -315,14 +340,17 @@ describe('useFileUpload', () => {
         result.current.fileChangeHandle(event)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
 
     it('should handle null files', () => {
       const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, prepareFileList }),
+        { wrapper: createWrapper() },
+      )
 
       const event = {
         target: { files: null },
@@ -338,7 +366,11 @@ describe('useFileUpload', () => {
 
   describe('drag and drop handlers', () => {
     const TestDropzone = ({ options }: { options: typeof defaultOptions }) => {
-      const { dropRef, dragRef, dragging } = useFileUpload(options)
+      const {
+        dropRef,
+        dragRef,
+        dragging,
+      } = useFileUpload(options)
 
       return (
         <div>
@@ -353,9 +385,9 @@ describe('useFileUpload', () => {
     it('should set dragging true on dragenter', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={defaultOptions} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -372,9 +404,9 @@ describe('useFileUpload', () => {
     it('should handle dragover event', async () => {
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={defaultOptions} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -385,15 +417,15 @@ describe('useFileUpload', () => {
         dropzone.dispatchEvent(dragOverEvent)
       })
 
-      expect(dropzone)!.toBeInTheDocument()
+      expect(dropzone).toBeInTheDocument()
     })
 
     it('should set dragging false on dragleave from drag overlay', async () => {
       const { getByTestId, queryByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={defaultOptions} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -422,9 +454,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -432,17 +464,13 @@ describe('useFileUpload', () => {
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: [
-              {
-                getAsFile: () => mockFile,
-                webkitGetAsEntry: () => null,
-              },
-            ],
+            items: [{
+              getAsFile: () => mockFile,
+              webkitGetAsEntry: () => null,
+            }],
           },
         })
         dropzone.dispatchEvent(dropEvent)
@@ -458,18 +486,16 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
       const dropzone = getByTestId('dropzone')
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', { value: null })
         dropzone.dispatchEvent(dropEvent)
       })
@@ -483,11 +509,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
-            <TestDropzone
-              options={{ ...defaultOptions, supportBatchUpload: false, prepareFileList }}
-            />
-          </>,
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
+            <TestDropzone options={{ ...defaultOptions, supportBatchUpload: false, prepareFileList }} />
+          </ToastContext.Provider>,
         ),
       )
 
@@ -498,12 +522,10 @@ describe('useFileUpload', () => {
       ]
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: files.map((f) => ({
+            items: files.map(f => ({
               getAsFile: () => f,
               webkitGetAsEntry: () => null,
             })),
@@ -514,7 +536,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const calledFiles = prepareFileList.mock.calls[0]![0]
+          const calledFiles = prepareFileList.mock.calls[0][0]
           expect(calledFiles.length).toBe(1)
         }
       })
@@ -527,30 +549,26 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
       const dropzone = getByTestId('dropzone')
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: [
-              {
-                getAsFile: () => mockFile,
-                webkitGetAsEntry: () => ({
-                  isFile: true,
-                  isDirectory: false,
-                  file: (callback: (file: File) => void) => callback(mockFile),
-                }),
-              },
-            ],
+            items: [{
+              getAsFile: () => mockFile,
+              webkitGetAsEntry: () => ({
+                isFile: true,
+                isDirectory: false,
+                file: (callback: (file: File) => void) => callback(mockFile),
+              }),
+            }],
           },
         })
         dropzone.dispatchEvent(dropEvent)
@@ -568,9 +586,9 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
@@ -578,48 +596,34 @@ describe('useFileUpload', () => {
 
       await act(async () => {
         let callCount = 0
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: [
-              {
-                getAsFile: () => null,
-                webkitGetAsEntry: () => ({
-                  isFile: false,
-                  isDirectory: true,
-                  name: 'folder',
-                  createReader: () => ({
-                    readEntries: (
-                      callback: (
-                        entries: Array<{
-                          isFile: boolean
-                          isDirectory: boolean
-                          name?: string
-                          file?: (cb: (f: File) => void) => void
-                        }>,
-                      ) => void,
-                    ) => {
-                      // First call returns file entry, second call returns empty (signals end)
-                      if (callCount === 0) {
-                        callCount++
-                        callback([
-                          {
-                            isFile: true,
-                            isDirectory: false,
-                            name: 'nested.pdf',
-                            file: (cb: (f: File) => void) => cb(mockFile),
-                          },
-                        ])
-                      } else {
-                        callback([])
-                      }
-                    },
-                  }),
+            items: [{
+              getAsFile: () => null,
+              webkitGetAsEntry: () => ({
+                isFile: false,
+                isDirectory: true,
+                name: 'folder',
+                createReader: () => ({
+                  readEntries: (callback: (entries: Array<{ isFile: boolean, isDirectory: boolean, name?: string, file?: (cb: (f: File) => void) => void }>) => void) => {
+                    // First call returns file entry, second call returns empty (signals end)
+                    if (callCount === 0) {
+                      callCount++
+                      callback([{
+                        isFile: true,
+                        isDirectory: false,
+                        name: 'nested.pdf',
+                        file: (cb: (f: File) => void) => cb(mockFile),
+                      }])
+                    }
+                    else {
+                      callback([])
+                    }
+                  },
                 }),
-              },
-            ],
+              }),
+            }],
           },
         })
         dropzone.dispatchEvent(dropEvent)
@@ -635,42 +639,38 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
       const dropzone = getByTestId('dropzone')
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: [
-              {
-                getAsFile: () => null,
-                webkitGetAsEntry: () => ({
-                  isFile: false,
-                  isDirectory: true,
-                  name: 'empty-folder',
-                  createReader: () => ({
-                    readEntries: (callback: (entries: never[]) => void) => {
-                      callback([])
-                    },
-                  }),
+            items: [{
+              getAsFile: () => null,
+              webkitGetAsEntry: () => ({
+                isFile: false,
+                isDirectory: true,
+                name: 'empty-folder',
+                createReader: () => ({
+                  readEntries: (callback: (entries: never[]) => void) => {
+                    callback([])
+                  },
                 }),
-              },
-            ],
+              }),
+            }],
           },
         })
         dropzone.dispatchEvent(dropEvent)
       })
 
       // Should not prepare file list if no valid files
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 100))
     })
 
     it('should handle entry that is neither file nor directory', async () => {
@@ -678,36 +678,32 @@ describe('useFileUpload', () => {
 
       const { getByTestId } = await act(async () =>
         render(
-          <>
+          <ToastContext.Provider value={{ notify: mockNotify, close: mockClose }}>
             <TestDropzone options={{ ...defaultOptions, prepareFileList }} />
-          </>,
+          </ToastContext.Provider>,
         ),
       )
 
       const dropzone = getByTestId('dropzone')
 
       await act(async () => {
-        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & {
-          dataTransfer: DataTransfer | null
-        }
+        const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as Event & { dataTransfer: DataTransfer | null }
         Object.defineProperty(dropEvent, 'dataTransfer', {
           value: {
-            items: [
-              {
-                getAsFile: () => null,
-                webkitGetAsEntry: () => ({
-                  isFile: false,
-                  isDirectory: false,
-                }),
-              },
-            ],
+            items: [{
+              getAsFile: () => null,
+              webkitGetAsEntry: () => ({
+                isFile: false,
+                isDirectory: false,
+              }),
+            }],
           },
         })
         dropzone.dispatchEvent(dropEvent)
       })
 
       // Should not throw and should handle gracefully
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 100))
     })
   })
 
@@ -716,9 +712,10 @@ describe('useFileUpload', () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id', name: 'test.pdf' })
       const onFileUpdate = vi.fn()
 
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -744,9 +741,10 @@ describe('useFileUpload', () => {
 
       const onFileUpdate = vi.fn()
 
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -778,9 +776,10 @@ describe('useFileUpload', () => {
       mockUpload.mockRejectedValue(new Error('Upload failed'))
       const onFileUpdate = vi.fn()
 
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -792,7 +791,9 @@ describe('useFileUpload', () => {
       })
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' }),
+        )
       })
     })
 
@@ -800,9 +801,10 @@ describe('useFileUpload', () => {
       mockUpload.mockResolvedValue({ id: 'uploaded-id', name: 'test.pdf' })
       const onFileUpdate = vi.fn()
 
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -825,9 +827,10 @@ describe('useFileUpload', () => {
       mockUpload.mockRejectedValue(new Error('Upload failed'))
       const onFileUpdate = vi.fn()
 
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, onFileUpdate }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, onFileUpdate }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -856,18 +859,15 @@ describe('useFileUpload', () => {
       }))
 
       const { result } = renderHook(
-        () =>
-          useFileUpload({
-            ...defaultOptions,
-            fileList: existingFiles,
-          }),
+        () => useFileUpload({
+          ...defaultOptions,
+          fileList: existingFiles,
+        }),
         { wrapper: createWrapper() },
       )
 
-      const files = Array.from(
-        { length: 5 },
-        (_, i) => new File(['content'], `new-${i}.pdf`, { type: 'application/pdf' }),
-      )
+      const files = Array.from({ length: 5 }, (_, i) =>
+        new File(['content'], `new-${i}.pdf`, { type: 'application/pdf' }))
 
       const event = {
         target: { files },
@@ -877,7 +877,9 @@ describe('useFileUpload', () => {
         result.current.fileChangeHandle(event)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
   })
 
@@ -886,9 +888,10 @@ describe('useFileUpload', () => {
       mockUpload.mockResolvedValue({ id: 'file-id' })
 
       const prepareFileList = vi.fn()
-      const { result } = renderHook(() => useFileUpload({ ...defaultOptions, prepareFileList }), {
-        wrapper: createWrapper(),
-      })
+      const { result } = renderHook(
+        () => useFileUpload({ ...defaultOptions, prepareFileList }),
+        { wrapper: createWrapper() },
+      )
 
       const mockFile = new File(['content'], 'test.pdf', { type: 'application/pdf' })
       const event = {
@@ -901,7 +904,7 @@ describe('useFileUpload', () => {
 
       await waitFor(() => {
         if (prepareFileList.mock.calls.length > 0) {
-          const files = prepareFileList.mock.calls[0]![0]
+          const files = prepareFileList.mock.calls[0][0]
           expect(files[0].progress).toBe(PROGRESS_NOT_STARTED)
         }
       })

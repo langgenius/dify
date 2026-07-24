@@ -1,16 +1,8 @@
 from collections.abc import Mapping
-from typing import override
 
 from pydantic import TypeAdapter
 
 from extensions.ext_logging import get_request_id
-
-# NOTE: Avoid renaming exception classes in this file, since
-# the `_handle_plugin_daemon_error` in api/core/plugin/impl/base.py
-# build exception instances based on the class name.
-#
-# Renaming of exception classes could result in incorrect exception
-# being raised.
 
 
 class PluginDaemonError(Exception):
@@ -19,7 +11,6 @@ class PluginDaemonError(Exception):
     def __init__(self, description: str):
         self.description = description
 
-    @override
     def __str__(self) -> str:
         # returns the class name and description
         return f"req_id: {get_request_id()} {self.__class__.__name__}: {self.description}"
@@ -47,18 +38,6 @@ class PluginDaemonNotFoundError(PluginDaemonInternalError):
 
 class PluginDaemonBadRequestError(PluginDaemonClientSideError):
     description: str = "Bad Request"
-
-
-class PluginRuntimeError(PluginDaemonInternalError):
-    """A plugin runtime failed before it could return a valid plugin response."""
-
-    lambda_request_id: str | None
-
-    def __init__(self, description: str, lambda_request_id: str | None = None) -> None:
-        self.lambda_request_id = lambda_request_id
-        if lambda_request_id:
-            description = description.replace(f"RequestId: {lambda_request_id} Error: ", "", 1)
-        super().__init__(description)
 
 
 class PluginInvokeError(PluginDaemonClientSideError, ValueError):
@@ -92,10 +71,6 @@ class PluginInvokeError(PluginDaemonClientSideError, ValueError):
             f"error type: {self.get_error_type()}, "
             f"error details: {self.get_error_message()}"
         )
-
-
-class PluginLLMPollingUnsupportedError(PluginInvokeError):
-    """Plugin-backed LLM polling is unavailable for the requested model."""
 
 
 class PluginUniqueIdentifierError(PluginDaemonClientSideError):

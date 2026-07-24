@@ -2,7 +2,6 @@ from typing import Literal
 
 from flask import request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 
 from configs import dify_config
 from controllers.fastopenapi import console_router
@@ -13,7 +12,7 @@ from services.account_service import RegisterService, TenantService
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
-from .wraps import mark_setup_completed, only_edition_self_hosted
+from .wraps import only_edition_self_hosted
 
 
 class SetupRequestPayload(BaseModel):
@@ -79,7 +78,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     if get_setup_status():
         raise AlreadySetupError()
 
-    tenant_count = TenantService.get_tenant_count(session=db.session())
+    tenant_count = TenantService.get_tenant_count()
     if tenant_count > 0:
         raise AlreadySetupError()
 
@@ -94,15 +93,13 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
         password=payload.password,
         ip_address=extract_remote_ip(request),
         language=payload.language,
-        session=db.session(),
     )
-    mark_setup_completed()
 
     return SetupResponse(result="success")
 
 
 def get_setup_status() -> DifySetup | bool | None:
     if dify_config.EDITION == "SELF_HOSTED":
-        return db.session.scalar(select(DifySetup).limit(1))
+        return db.session.query(DifySetup).first()
 
     return True

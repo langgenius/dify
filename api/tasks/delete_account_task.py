@@ -1,7 +1,6 @@
 import logging
 
 from celery import shared_task
-from sqlalchemy import select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="dataset")
 def delete_account_task(account_id):
     with session_factory.create_session() as session:
-        account = session.scalar(select(Account).where(Account.id == account_id).limit(1))
+        account = session.query(Account).where(Account.id == account_id).first()
         try:
             if dify_config.BILLING_ENABLED:
                 BillingService.delete_account(account_id)

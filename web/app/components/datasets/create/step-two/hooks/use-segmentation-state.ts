@@ -1,10 +1,4 @@
-import type {
-  ParentMode,
-  PreProcessingRule,
-  ProcessRule,
-  Rules,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { ParentMode, PreProcessingRule, ProcessRule, Rules, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { useCallback, useRef, useState } from 'react'
 import { env } from '@/env'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
@@ -41,7 +35,7 @@ export const defaultParentChildConfig: ParentChildConfig = {
   },
 }
 
-type UseSegmentationStateOptions = {
+export type UseSegmentationStateOptions = {
   initialSegmentationType?: ProcessMode
   initialSummaryIndexSetting?: SummaryIndexSettingType
 }
@@ -63,12 +57,8 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   // Pre-processing rules
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
-  const [summaryIndexSetting, setSummaryIndexSetting] = useState<
-    SummaryIndexSettingType | undefined
-  >(initialSummaryIndexSetting)
-  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(
-    initialSummaryIndexSetting,
-  )
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
+  const summaryIndexSettingRef = useRef<SummaryIndexSettingType | undefined>(initialSummaryIndexSetting)
   const handleSummaryIndexSettingChange = useCallback((payload: SummaryIndexSettingType) => {
     setSummaryIndexSetting((prev) => {
       const newSetting = { ...prev, ...payload }
@@ -78,23 +68,23 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   }, [])
 
   // Parent-child config
-  const [parentChildConfig, setParentChildConfig] =
-    useState<ParentChildConfig>(defaultParentChildConfig)
+  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
   // Escaped segment identifier setter
   const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
     if (value) {
       doSetSegmentIdentifier(escape(value))
-    } else {
+    }
+    else {
       doSetSegmentIdentifier(canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER)
     }
   }, [])
 
   // Rule toggle handler
   const toggleRule = useCallback((id: string) => {
-    setRules((prev) =>
-      prev.map((rule) => (rule.id === id ? { ...rule, enabled: !rule.enabled } : rule)),
-    )
+    setRules(prev => prev.map(rule =>
+      rule.id === id ? { ...rule, enabled: !rule.enabled } : rule,
+    ))
   }, [])
 
   // Reset to defaults
@@ -109,108 +99,100 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
   }, [defaultConfig, setSegmentIdentifier])
 
   // Apply config from document detail
-  const applyConfigFromRules = useCallback(
-    (rulesConfig: Rules, isHierarchical: boolean) => {
-      const separator = rulesConfig.segmentation.separator
-      const max = rulesConfig.segmentation.max_tokens
-      const chunkOverlap = rulesConfig.segmentation.chunk_overlap
+  const applyConfigFromRules = useCallback((rulesConfig: Rules, isHierarchical: boolean) => {
+    const separator = rulesConfig.segmentation.separator
+    const max = rulesConfig.segmentation.max_tokens
+    const chunkOverlap = rulesConfig.segmentation.chunk_overlap
 
-      setSegmentIdentifier(separator)
-      setMaxChunkLength(max)
-      setOverlap(chunkOverlap!)
-      setRules(rulesConfig.pre_processing_rules)
-      setDefaultConfig(rulesConfig)
+    setSegmentIdentifier(separator)
+    setMaxChunkLength(max)
+    setOverlap(chunkOverlap!)
+    setRules(rulesConfig.pre_processing_rules)
+    setDefaultConfig(rulesConfig)
 
-      if (isHierarchical) {
-        setParentChildConfig({
-          chunkForContext: rulesConfig.parent_mode || 'paragraph',
-          parent: {
-            delimiter: escape(rulesConfig.segmentation.separator),
-            maxLength: rulesConfig.segmentation.max_tokens,
-          },
-          child: {
-            delimiter: escape(rulesConfig.subchunk_segmentation!.separator),
-            maxLength: rulesConfig.subchunk_segmentation!.max_tokens,
-          },
-        })
-      }
-    },
-    [setSegmentIdentifier],
-  )
+    if (isHierarchical) {
+      setParentChildConfig({
+        chunkForContext: rulesConfig.parent_mode || 'paragraph',
+        parent: {
+          delimiter: escape(rulesConfig.segmentation.separator),
+          maxLength: rulesConfig.segmentation.max_tokens,
+        },
+        child: {
+          delimiter: escape(rulesConfig.subchunk_segmentation!.separator),
+          maxLength: rulesConfig.subchunk_segmentation!.max_tokens,
+        },
+      })
+    }
+  }, [setSegmentIdentifier])
 
   // Get process rule for API
-  const getProcessRule = useCallback(
-    (docForm: ChunkingMode): ProcessRule => {
-      if (docForm === ChunkingMode.parentChild) {
-        return {
-          rules: {
-            pre_processing_rules: rules,
-            segmentation: {
-              separator: unescape(parentChildConfig.parent.delimiter),
-              max_tokens: parentChildConfig.parent.maxLength,
-            },
-            parent_mode: parentChildConfig.chunkForContext,
-            subchunk_segmentation: {
-              separator: unescape(parentChildConfig.child.delimiter),
-              max_tokens: parentChildConfig.child.maxLength,
-            },
-          },
-          mode: 'hierarchical',
-          summary_index_setting: summaryIndexSettingRef.current,
-        } as ProcessRule
-      }
-
+  const getProcessRule = useCallback((docForm: ChunkingMode): ProcessRule => {
+    if (docForm === ChunkingMode.parentChild) {
       return {
         rules: {
           pre_processing_rules: rules,
           segmentation: {
-            separator: unescape(segmentIdentifier),
-            max_tokens: maxChunkLength,
-            chunk_overlap: overlap,
+            separator: unescape(parentChildConfig.parent.delimiter),
+            max_tokens: parentChildConfig.parent.maxLength,
+          },
+          parent_mode: parentChildConfig.chunkForContext,
+          subchunk_segmentation: {
+            separator: unescape(parentChildConfig.child.delimiter),
+            max_tokens: parentChildConfig.child.maxLength,
           },
         },
-        mode: segmentationType,
+        mode: 'hierarchical',
         summary_index_setting: summaryIndexSettingRef.current,
       } as ProcessRule
-    },
-    [rules, parentChildConfig, segmentIdentifier, maxChunkLength, overlap, segmentationType],
-  )
+    }
+
+    return {
+      rules: {
+        pre_processing_rules: rules,
+        segmentation: {
+          separator: unescape(segmentIdentifier),
+          max_tokens: maxChunkLength,
+          chunk_overlap: overlap,
+        },
+      },
+      mode: segmentationType,
+      summary_index_setting: summaryIndexSettingRef.current,
+    } as ProcessRule
+  }, [rules, parentChildConfig, segmentIdentifier, maxChunkLength, overlap, segmentationType])
 
   // Update parent config field
-  const updateParentConfig = useCallback(
-    (field: 'delimiter' | 'maxLength', value: string | number) => {
-      setParentChildConfig((prev) => {
-        let newValue: string | number
-        if (field === 'delimiter') newValue = value ? escape(value as string) : ''
-        else newValue = value
-        return {
-          ...prev,
-          parent: { ...prev.parent, [field]: newValue },
-        }
-      })
-    },
-    [],
-  )
+  const updateParentConfig = useCallback((field: 'delimiter' | 'maxLength', value: string | number) => {
+    setParentChildConfig((prev) => {
+      let newValue: string | number
+      if (field === 'delimiter')
+        newValue = value ? escape(value as string) : ''
+      else
+        newValue = value
+      return {
+        ...prev,
+        parent: { ...prev.parent, [field]: newValue },
+      }
+    })
+  }, [])
 
   // Update child config field
-  const updateChildConfig = useCallback(
-    (field: 'delimiter' | 'maxLength', value: string | number) => {
-      setParentChildConfig((prev) => {
-        let newValue: string | number
-        if (field === 'delimiter') newValue = value ? escape(value as string) : ''
-        else newValue = value
-        return {
-          ...prev,
-          child: { ...prev.child, [field]: newValue },
-        }
-      })
-    },
-    [],
-  )
+  const updateChildConfig = useCallback((field: 'delimiter' | 'maxLength', value: string | number) => {
+    setParentChildConfig((prev) => {
+      let newValue: string | number
+      if (field === 'delimiter')
+        newValue = value ? escape(value as string) : ''
+      else
+        newValue = value
+      return {
+        ...prev,
+        child: { ...prev.child, [field]: newValue },
+      }
+    })
+  }, [])
 
   // Set chunk for context mode
   const setChunkForContext = useCallback((mode: ParentMode) => {
-    setParentChildConfig((prev) => ({ ...prev, chunkForContext: mode }))
+    setParentChildConfig(prev => ({ ...prev, chunkForContext: mode }))
   }, [])
 
   return {
@@ -248,3 +230,5 @@ export const useSegmentationState = (options: UseSegmentationStateOptions = {}) 
     getProcessRule,
   }
 }
+
+export type SegmentationState = ReturnType<typeof useSegmentationState>

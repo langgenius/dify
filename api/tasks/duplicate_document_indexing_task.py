@@ -15,7 +15,6 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,7 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
     with session_factory.create_session() as session:
         try:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
             if dataset is None:
                 logger.info(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
@@ -92,7 +91,6 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
             try:
                 if features.billing.enabled:
                     vector_space = features.vector_space
-                    assert vector_space is not None
                     count = len(document_ids)
                     if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                         raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
@@ -113,8 +111,8 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     ).all()
                 )
                 for document in documents:
-                    if document is not None:
-                        document.indexing_status = IndexingStatus.ERROR
+                    if document:
+                        document.indexing_status = "error"
                         document.error = str(e)
                         document.stopped_at = naive_utc_now()
                         session.add(document)
@@ -138,39 +136,28 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     select(DocumentSegment).where(DocumentSegment.document_id == document.id)
                 ).all()
                 if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                    index_node_ids = [segment.index_node_id for segment in segments]
 
                     # delete from vector index
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=True,
-                        session=session,
-                    )
+                    index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
                     segment_ids = [segment.id for segment in segments]
-                    if segment_ids:
-                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                        session.execute(segment_delete_stmt)
+                    segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                    session.execute(segment_delete_stmt)
                     session.commit()
 
-                document.indexing_status = IndexingStatus.PARSING
+                document.indexing_status = "parsing"
                 document.processing_started_at = naive_utc_now()
                 session.add(document)
-            # Do not keep segment deletions or parsing status changes open during extraction.
             session.commit()
 
             indexing_runner = IndexingRunner()
-            indexing_runner.run(list(documents), session)
-            session.commit()
+            indexing_runner.run(list(documents))
             end_at = time.perf_counter()
             logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except DocumentIsPausedError as ex:
-            session.rollback()
             logger.info(click.style(str(ex), fg="yellow"))
         except Exception:
-            session.rollback()
             logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
 
 

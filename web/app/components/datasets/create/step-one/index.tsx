@@ -3,7 +3,6 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiFolder6Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo } from 'react'
@@ -15,7 +14,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
+import { cn } from '@/utils/classnames'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'
@@ -49,27 +48,17 @@ type IStepOneProps = {
 
 // Helper function to check if notion is authenticated
 function checkNotionAuth(authedDataSourceList: DataSourceAuth[]): boolean {
-  const notionSource = authedDataSourceList.find((item) => item.provider === 'notion_datasource')
+  const notionSource = authedDataSourceList.find(item => item.provider === 'notion_datasource')
   return Boolean(notionSource && notionSource.credentials_list.length > 0)
 }
 
 // Helper function to get notion credential list
 function getNotionCredentialList(authedDataSourceList: DataSourceAuth[]) {
-  return (
-    authedDataSourceList.find((item) => item.provider === 'notion_datasource')?.credentials_list ||
-    []
-  )
+  return authedDataSourceList.find(item => item.provider === 'notion_datasource')?.credentials_list || []
 }
 
 // Lookup table for checking multiple items by data source type
-const MULTIPLE_ITEMS_CHECK: Record<
-  DataSourceType,
-  (props: {
-    files: FileItem[]
-    notionPages: NotionPage[]
-    websitePages: CrawlResultItem[]
-  }) => boolean
-> = {
+const MULTIPLE_ITEMS_CHECK: Record<DataSourceType, (props: { files: FileItem[], notionPages: NotionPage[], websitePages: CrawlResultItem[] }) => boolean> = {
   [DataSourceType.FILE]: ({ files }) => files.length > 1,
   [DataSourceType.NOTION]: ({ notionPages }) => notionPages.length > 1,
   [DataSourceType.WEB]: ({ websitePages }) => websitePages.length > 1,
@@ -98,7 +87,7 @@ const StepOne = ({
   authedDataSourceList,
 }: IStepOneProps) => {
   const { t } = useTranslation()
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const { plan, enableBilling } = useProviderContext()
 
   // Preview state management
@@ -118,10 +107,7 @@ const StepOne = ({
   const [showModal, { setTrue: openModal, setFalse: closeModal }] = useBoolean(false)
 
   // Plan upgrade modal state
-  const [
-    isShowPlanUpgradeModal,
-    { setTrue: showPlanUpgradeModal, setFalse: hidePlanUpgradeModal },
-  ] = useBoolean(false)
+  const [isShowPlanUpgradeModal, { setTrue: showPlanUpgradeModal, setFalse: hidePlanUpgradeModal }] = useBoolean(false)
 
   // Computed values
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
@@ -131,42 +117,32 @@ const StepOne = ({
     ? (inCreatePageDataSourceType ?? DataSourceType.FILE)
     : (dataset?.data_source_type ?? DataSourceType.FILE)
 
-  const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
+  const allFileLoaded = files.length > 0 && files.every(file => file.file.id)
   const hasNotion = notionPages.length > 0
-  const shouldCheckVectorSpace = enableBilling && (allFileLoaded || hasNotion)
-  const { data: vectorSpace, isFetching: isFetchingVectorSpacePlan } =
-    useCurrentPlanVectorSpace(shouldCheckVectorSpace)
-  const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
-  const isVectorSpaceFull =
-    !!vectorSpace && vectorSpace.limit > 0 && vectorSpace.size >= vectorSpace.limit
+  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotion) && isVectorSpaceFull && enableBilling
   const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
 
-  const isNotionAuthed = useMemo(
-    () => checkNotionAuth(authedDataSourceList),
-    [authedDataSourceList],
-  )
-  const notionCredentialList = useMemo(
-    () => getNotionCredentialList(authedDataSourceList),
-    [authedDataSourceList],
-  )
+  const isNotionAuthed = useMemo(() => checkNotionAuth(authedDataSourceList), [authedDataSourceList])
+  const notionCredentialList = useMemo(() => getNotionCredentialList(authedDataSourceList), [authedDataSourceList])
 
   const fileNextDisabled = useMemo(() => {
-    if (!files.length) return true
-    if (files.some((file) => !file.file.id)) return true
-    if (isCheckingVectorSpace) return true
+    if (!files.length)
+      return true
+    if (files.some(file => !file.file.id))
+      return true
     return isShowVectorSpaceFull
-  }, [files, isCheckingVectorSpace, isShowVectorSpaceFull])
+  }, [files, isShowVectorSpaceFull])
 
   // Clear previews when switching data source type
-  const handleClearPreviews = useCallback(
-    (newType: DataSourceType) => {
-      if (newType !== DataSourceType.FILE) hideFilePreview()
-      if (newType !== DataSourceType.NOTION) hideNotionPagePreview()
-      if (newType !== DataSourceType.WEB) hideWebsitePreview()
-    },
-    [hideFilePreview, hideNotionPagePreview, hideWebsitePreview],
-  )
+  const handleClearPreviews = useCallback((newType: DataSourceType) => {
+    if (newType !== DataSourceType.FILE)
+      hideFilePreview()
+    if (newType !== DataSourceType.NOTION)
+      hideNotionPagePreview()
+    if (newType !== DataSourceType.WEB)
+      hideWebsitePreview()
+  }, [hideFilePreview, hideNotionPagePreview, hideWebsitePreview])
 
   // Handle step change with batch upload check
   const onStepChange = useCallback(() => {
@@ -178,18 +154,10 @@ const StepOne = ({
       }
     }
     doOnStepChange()
-  }, [
-    dataSourceType,
-    doOnStepChange,
-    files,
-    supportBatchUpload,
-    notionPages,
-    showPlanUpgradeModal,
-    websitePages,
-  ])
+  }, [dataSourceType, doOnStepChange, files, supportBatchUpload, notionPages, showPlanUpgradeModal, websitePages])
 
   return (
-    <div className="size-full overflow-x-auto">
+    <div className="h-full w-full overflow-x-auto">
       <div className="flex h-full w-full min-w-[1440px]">
         {/* Left Panel - Form */}
         <div className="relative h-full w-1/2 overflow-y-auto">
@@ -198,7 +166,7 @@ const StepOne = ({
               {shouldShowDataSourceTypeList && (
                 <>
                   <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
-                    {t(($) => $['steps.one'], { ns: 'datasetCreation' })}
+                    {t('steps.one', { ns: 'datasetCreation' })}
                   </div>
                   <DataSourceTypeSelector
                     currentType={dataSourceType}
@@ -214,9 +182,7 @@ const StepOne = ({
                 <>
                   <FileUploader
                     fileList={files}
-                    titleClassName={
-                      !shouldShowDataSourceTypeList ? 'mt-[30px] mb-[44px]! text-lg!' : undefined
-                    }
+                    titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg' : undefined}
                     prepareFileList={updateFileList}
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}
@@ -241,16 +207,12 @@ const StepOne = ({
               {/* Notion Data Source */}
               {dataSourceType === DataSourceType.NOTION && (
                 <>
-                  {!isNotionAuthed && (
-                    <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
-                      <NotionConnector onSetting={onSetting} />
-                    </div>
-                  )}
+                  {!isNotionAuthed && <NotionConnector onSetting={onSetting} />}
                   {isNotionAuthed && (
                     <>
                       <div className="mb-8 w-[640px]">
                         <NotionPageSelector
-                          value={notionPages.map((page) => page.page_id)}
+                          value={notionPages.map(page => page.page_id)}
                           onSelect={updateNotionPages}
                           onPreview={showNotionPagePreview}
                           credentialList={notionCredentialList}
@@ -308,7 +270,7 @@ const StepOne = ({
                     onClick={openModal}
                   >
                     <RiFolder6Line className="mr-1 size-4" />
-                    {t(($) => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
+                    {t('stepOne.emptyDatasetCreation', { ns: 'datasetCreation' })}
                   </span>
                 </>
               )}

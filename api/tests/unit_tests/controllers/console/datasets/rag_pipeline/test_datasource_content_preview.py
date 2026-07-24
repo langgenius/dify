@@ -1,8 +1,7 @@
-from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
@@ -12,10 +11,10 @@ from models import Account
 from models.dataset import Pipeline
 
 
-def make_account() -> Account:
-    account = Account(name="Test User", email="user@example.com")
-    account.id = "account-1"
-    return account
+def unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
 
 
 class TestDataSourceContentPreviewApi:
@@ -26,7 +25,7 @@ class TestDataSourceContentPreviewApi:
             "credential_id": "cred-1",
         }
 
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -34,7 +33,7 @@ class TestDataSourceContentPreviewApi:
 
         pipeline = MagicMock(spec=Pipeline)
         node_id = "node-1"
-        account = make_account()
+        account = MagicMock(spec=Account)
 
         preview_result = {"content": "preview data"}
 
@@ -45,11 +44,15 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
+                account,
+            ),
+            patch(
                 "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, node_id)
+            response, status = method(api, pipeline, node_id)
 
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
@@ -63,7 +66,26 @@ class TestDataSourceContentPreviewApi:
         assert status == 200
         assert response == preview_result
 
-    def test_post_invalid_payload(self, app: Flask):
+    def test_post_forbidden_non_account_user(self, app):
+        api = DataSourceContentPreviewApi()
+        method = unwrap(api.post)
+
+        payload = self._valid_payload()
+
+        pipeline = MagicMock(spec=Pipeline)
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
+                MagicMock(),  # NOT Account
+            ),
+        ):
+            with pytest.raises(Forbidden):
+                method(api, pipeline, "node-1")
+
+    def test_post_invalid_payload(self, app):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -73,16 +95,20 @@ class TestDataSourceContentPreviewApi:
         }
 
         pipeline = MagicMock(spec=Pipeline)
-        account = make_account()
+        account = MagicMock(spec=Account)
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
+                account,
+            ),
         ):
             with pytest.raises(ValueError):
-                method(api, account, pipeline, "node-1")
+                method(api, pipeline, "node-1")
 
-    def test_post_without_credential_id(self, app: Flask):
+    def test_post_without_credential_id(self, app):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -93,7 +119,7 @@ class TestDataSourceContentPreviewApi:
         }
 
         pipeline = MagicMock(spec=Pipeline)
-        account = make_account()
+        account = MagicMock(spec=Account)
 
         service_instance = MagicMock()
         service_instance.run_datasource_node_preview.return_value = {"ok": True}
@@ -102,11 +128,15 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
+                account,
+            ),
+            patch(
                 "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, account, pipeline, "node-1")
+            response, status = method(api, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()
         assert status == 200

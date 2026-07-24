@@ -1,24 +1,28 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
-import { Button } from '@langgenius/dify-ui/button'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  RiAddLine,
+  RiDeleteBinLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { jsonToCSV } from 'react-papaparse'
+import {
+  useCSVDownloader,
+} from 'react-papaparse'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import CustomPopover from '@/app/components/base/popover'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+
+import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
+import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
 import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
@@ -26,119 +30,37 @@ import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-mo
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 
-type Props = Readonly<{
+type Props = {
   appId: string
   onAdd: (payload: AnnotationItemBasic) => void
   onAdded: () => void
   controlUpdateList: number
-}>
-
-type OperationsMenuProps = {
-  list: AnnotationItemBasic[]
-  onClose: () => void
-  onBulkImport: () => void
-  onClearAll: () => void
-  onExportJsonl: () => void
 }
 
-const buildAnnotationJsonlRecords = (list: AnnotationItemBasic[]) =>
-  list.map((item: AnnotationItemBasic) => {
-    return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
-  })
-
-const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) => {
-  const content = buildAnnotationJsonlRecords(list).join('\n')
-  const file = new Blob([content], { type: 'application/jsonl' })
-  downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
-}
-
-const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
-  const content = jsonToCSV([
-    locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-    ...list.map((item) => [item.question, item.answer]),
-  ])
-  const file = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
-  downloadBlob({ data: file, fileName: `annotations-${locale}.csv` })
-}
-
-const OperationsMenu: FC<OperationsMenuProps> = ({
-  list,
-  onClose,
-  onBulkImport,
-  onClearAll,
-  onExportJsonl,
+const HeaderOptions: FC<Props> = ({
+  appId,
+  onAdd,
+  onAdded,
+  controlUpdateList,
 }) => {
   const { t } = useTranslation()
   const locale = useLocale()
+  const { CSVDownloader, Type } = useCSVDownloader()
+  const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0
 
-  return (
-    <>
-      <DropdownMenuItem
-        className="gap-2"
-        onClick={() => {
-          onClose()
-          onBulkImport()
-        }}
-      >
-        <span
-          aria-hidden
-          className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary"
-        />
-        {t(($) => $['table.header.bulkImport'], { ns: 'appAnnotation' })}
-      </DropdownMenuItem>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger className="gap-2">
-          <span
-            aria-hidden
-            className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary"
-          />
-          {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent
-          placement="left-start"
-          sideOffset={4}
-          popupClassName="min-w-[100px]"
-        >
-          <DropdownMenuItem
-            disabled={annotationUnavailable}
-            onClick={() => {
-              onClose()
-              downloadAnnotationCsv(list, locale)
-            }}
-          >
-            CSV
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={annotationUnavailable}
-            onClick={() => {
-              onClose()
-              onExportJsonl()
-            }}
-          >
-            JSONL
-          </DropdownMenuItem>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-      <DropdownMenuItem
-        variant="destructive"
-        className="gap-2"
-        onClick={() => {
-          onClose()
-          onClearAll()
-        }}
-      >
-        <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-        {t(($) => $['table.header.clearAll'], { ns: 'appAnnotation' })}
-      </DropdownMenuItem>
-    </>
+  const listTransformer = (list: AnnotationItemBasic[]) => list.map(
+    (item: AnnotationItemBasic) => {
+      const dataString = `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
+      return dataString
+    },
   )
-}
 
-const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const [list, setList] = useState<AnnotationItemBasic[]>([])
+  const JSONLOutput = () => {
+    const content = listTransformer(list).join('\n')
+    const file = new Blob([content], { type: 'application/jsonl' })
+    downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
+  }
 
   const fetchList = React.useCallback(async () => {
     const { data }: any = await fetchExportAnnotationList(appId)
@@ -149,30 +71,91 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
     fetchList()
   }, [fetchList])
   useEffect(() => {
-    if (controlUpdateList) fetchList()
+    if (controlUpdateList)
+      fetchList()
   }, [controlUpdateList, fetchList])
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
-  const handleShowBulkImportModal = React.useCallback(() => {
-    setShowBulkImportModal(true)
-  }, [])
-  const handleClearAll = React.useCallback(() => {
+  const handleClearAll = () => {
     setShowClearConfirm(true)
-  }, [])
-  const handleExportJsonl = React.useCallback(() => {
-    downloadAnnotationJsonl(list, locale)
-  }, [list, locale])
+  }
   const handleConfirmed = async () => {
     try {
       await clearAllAnnotations(appId)
       onAdded()
-    } catch (e) {
+    }
+    catch (e) {
       console.error(`failed to clear all annotations, ${e}`)
-    } finally {
+    }
+    finally {
       setShowClearConfirm(false)
     }
+  }
+  const Operations = () => {
+    return (
+      <div className="w-full py-1">
+        <button
+          type="button"
+          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
+          onClick={() => {
+            setShowBulkImportModal(true)
+          }}
+        >
+          <FilePlus02 className="h-4 w-4 text-text-tertiary" />
+          <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
+        </button>
+        <Menu as="div" className="relative h-full w-full">
+          <MenuButton className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+            <FileDownload02 className="h-4 w-4 text-text-tertiary" />
+            <span className="system-sm-regular grow text-left text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
+            <ChevronRight className="h-[14px] w-[14px] shrink-0 text-text-tertiary" />
+          </MenuButton>
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <MenuItems
+              className={cn(
+                'absolute left-1 top-[1px] z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
+              )}
+            >
+              <CSVDownloader
+                type={Type.Link}
+                filename={`annotations-${locale}`}
+                bom={true}
+                data={[
+                  locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+                  ...list.map(item => [item.question, item.answer]),
+                ]}
+              >
+                <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+                  <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
+                </button>
+              </CSVDownloader>
+              <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
+                <span className="system-sm-regular grow text-left text-text-secondary">JSONL</span>
+              </button>
+            </MenuItems>
+          </Transition>
+        </Menu>
+        <button
+          type="button"
+          onClick={handleClearAll}
+          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          <RiDeleteBinLine className="h-4 w-4" />
+          <span className="system-sm-regular grow text-left">
+            {t('table.header.clearAll', { ns: 'appAnnotation' })}
+          </span>
+        </button>
+      </div>
+    )
   }
 
   const [showAddModal, setShowAddModal] = React.useState(false)
@@ -180,30 +163,21 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   return (
     <div className="flex space-x-2">
       <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
-        <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
+        <RiAddLine className="mr-0.5 h-4 w-4" />
+        <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
-      <DropdownMenu
-        modal={false}
-        open={isOperationsMenuOpen}
-        onOpenChange={setIsOperationsMenuOpen}
-      >
-        <DropdownMenuTrigger
-          aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-          className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
-        >
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[155px]">
-          <OperationsMenu
-            list={list}
-            onClose={() => setIsOperationsMenuOpen(false)}
-            onBulkImport={handleShowBulkImportModal}
-            onClearAll={handleClearAll}
-            onExportJsonl={handleExportJsonl}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <CustomPopover
+        htmlContent={<Operations />}
+        position="br"
+        trigger="click"
+        btnElement={
+          <RiMoreFill className="h-4 w-4" />
+        }
+        btnClassName="btn btn-secondary btn-medium w-8 p-0"
+        className="!z-20 h-fit !w-[155px]"
+        popupClassName="!w-full !overflow-visible"
+        manualClose
+      />
       {showAddModal && (
         <AddAnnotationModal
           isShow={showAddModal}
@@ -212,21 +186,25 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         />
       )}
 
-      {showBulkImportModal && (
-        <BatchAddModal
-          appId={appId}
-          isShow={showBulkImportModal}
-          onCancel={() => setShowBulkImportModal(false)}
-          onAdded={onAdded}
-        />
-      )}
-      {showClearConfirm && (
-        <ClearAllAnnotationsConfirmModal
-          isShow={showClearConfirm}
-          onHide={() => setShowClearConfirm(false)}
-          onConfirm={handleConfirmed}
-        />
-      )}
+      {
+        showBulkImportModal && (
+          <BatchAddModal
+            appId={appId}
+            isShow={showBulkImportModal}
+            onCancel={() => setShowBulkImportModal(false)}
+            onAdded={onAdded}
+          />
+        )
+      }
+      {
+        showClearConfirm && (
+          <ClearAllAnnotationsConfirmModal
+            isShow={showClearConfirm}
+            onHide={() => setShowClearConfirm(false)}
+            onConfirm={handleConfirmed}
+          />
+        )
+      }
     </div>
   )
 }

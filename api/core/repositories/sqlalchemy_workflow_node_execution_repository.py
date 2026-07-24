@@ -7,7 +7,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, override
+from typing import Any, TypeVar, Union
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -17,12 +17,13 @@ from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
-from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from dify_graph.entities import WorkflowNodeExecution
+from dify_graph.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_storage import storage
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
@@ -62,8 +63,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        tenant_id: str,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
@@ -72,24 +72,24 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            tenant_id: Tenant that owns the workflow node execution
-            user: Account or EndUser used for creator attribution
+            user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
-        match session_factory:
-            case Engine():
-                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-            case sessionmaker():
-                self._session_factory = session_factory
-            case _:
-                raise ValueError(
-                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-                )
+        if isinstance(session_factory, Engine):
+            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+        elif isinstance(session_factory, sessionmaker):
+            self._session_factory = session_factory
+        else:
+            raise ValueError(
+                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+            )
 
+        # Extract tenant_id from user
+        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("tenant_id is required")
+            raise ValueError("User must have a tenant_id or current_tenant_id")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -146,7 +146,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
-            node_type=db_model.node_type,
+            node_type=NodeType(db_model.node_type),
             title=db_model.title,
             inputs=inputs,
             process_data=process_data,
@@ -298,7 +298,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             content=value_json.encode("utf-8"),
             mimetype="application/json",
             user=self._user,
-            tenant_id=self._tenant_id,
         )
         offload = WorkflowNodeExecutionOffload(
             id=uuidv7(),
@@ -314,7 +313,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             offload=offload,
         )
 
-    @override
     def save(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update a NodeExecution domain entity to the database.
@@ -401,7 +399,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if db_model.node_execution_id:
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
-    @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
         domain_model = execution
         with self._session_factory(expire_on_commit=False) as session:
@@ -521,29 +518,29 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             return db_models
 
-    @override
-    def get_by_workflow_execution(
+    def get_by_workflow_run(
         self,
-        workflow_execution_id: str,
+        workflow_run_id: str,
         order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecution]:
         """
-        Retrieve all node executions for a workflow execution.
+        Retrieve all NodeExecution instances for a specific workflow run.
 
         This method always queries the database to ensure complete and ordered results,
         but updates the cache with any retrieved executions.
 
         Args:
-            workflow_execution_id: The workflow execution identifier
+            workflow_run_id: The workflow run ID
             order_config: Optional configuration for ordering results
                 order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
                 order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
-            A list of node execution instances
+            A list of NodeExecution instances
         """
-        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, order_config, triggered_from)
+        # Get the database models using the new method
+        db_models = self.get_db_models_by_workflow_run(workflow_run_id, order_config, triggered_from)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)
@@ -555,7 +552,10 @@ def _deterministic_json_dump(value: Mapping[str, Any]) -> str:
     return json.dumps(value, sort_keys=True)
 
 
-def _find_first[T](seq: Sequence[T], pred: Callable[[T], bool]) -> T | None:
+_T = TypeVar("_T")
+
+
+def _find_first(seq: Sequence[_T], pred: Callable[[_T], bool]) -> _T | None:
     filtered = [i for i in seq if pred(i)]
     if filtered:
         return filtered[0]

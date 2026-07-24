@@ -1,0 +1,12 @@
+.modal {
+  padding: 24px 32px !important;
+  width: 400px !important;
+}
+
+.emailsInput {
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity)) !important;
+}
+
+.emailBackground {
+  background-color: white !important;
+}

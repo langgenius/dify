@@ -1,22 +1,46 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import PremiumBadge, { PremiumBadgeButton } from '../index'
+import PremiumBadge from '../index'
 
 describe('PremiumBadge', () => {
-  it('renders informational content without button semantics', () => {
+  it('renders with default props', () => {
     render(<PremiumBadge>Premium</PremiumBadge>)
-
-    expect(screen.getByText('Premium')).toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    const badge = screen.getByText('Premium')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveClass('premium-badge-m')
+    expect(badge).toHaveClass('premium-badge-blue')
   })
 
-  it('exposes interactive content as a button', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    render(<PremiumBadgeButton onClick={onClick}>Upgrade</PremiumBadgeButton>)
+  it('renders with custom size and color', () => {
+    render(
+      <PremiumBadge size="s" color="indigo">
+        Premium
+      </PremiumBadge>,
+    )
+    const badge = screen.getByText('Premium')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveClass('premium-badge-s')
+    expect(badge).toHaveClass('premium-badge-indigo')
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Upgrade' }))
+  it('applies allowHover class when allowHover is true', () => {
+    render(
+      <PremiumBadge allowHover>
+        Premium
+      </PremiumBadge>,
+    )
+    const badge = screen.getByText('Premium')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveClass('allowHover')
+  })
 
-    expect(onClick).toHaveBeenCalledOnce()
+  it('applies custom styles', () => {
+    render(
+      <PremiumBadge styleCss={{ backgroundColor: 'red' }}>
+        Premium
+      </PremiumBadge>,
+    )
+    const badge = screen.getByText('Premium')
+    expect(badge).toBeInTheDocument()
+    expect(badge).toHaveStyle('background-color: rgb(255, 0, 0)') // Note: React converts 'red' to 'rgb(255, 0, 0)'
   })
 })

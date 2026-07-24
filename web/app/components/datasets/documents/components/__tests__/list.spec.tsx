@@ -1,12 +1,14 @@
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+
 import { useDocumentSort } from '../document-list/hooks'
 import DocumentList from '../list'
 
 // Mock hooks used by DocumentList
 const mockHandleSort = vi.fn()
+const mockOnSelectAll = vi.fn()
+const mockOnSelectOne = vi.fn()
 const mockClearSelection = vi.fn()
 const mockHandleAction = vi.fn(() => vi.fn())
 const mockHandleBatchReIndex = vi.fn()
@@ -15,13 +17,6 @@ const mockShowEditModal = vi.fn()
 const mockHideEditModal = vi.fn()
 const mockHandleSave = vi.fn()
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
 vi.mock('../document-list/hooks', () => ({
   useDocumentSort: vi.fn(() => ({
     sortField: null,
@@ -29,6 +24,10 @@ vi.mock('../document-list/hooks', () => ({
     handleSort: mockHandleSort,
   })),
   useDocumentSelection: vi.fn(() => ({
+    isAllSelected: false,
+    isSomeSelected: false,
+    onSelectAll: mockOnSelectAll,
+    onSelectOne: mockOnSelectOne,
     hasErrorDocumentsSelected: false,
     downloadableSelectedIds: [],
     clearSelection: mockClearSelection,
@@ -58,41 +57,29 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock child components that are complex
 vi.mock('../document-list/components', () => ({
-  DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail; index: number }) => (
+  DocumentTableRow: ({ doc, index }: { doc: SimpleDocumentDetail, index: number }) => (
     <tr data-testid={`doc-row-${doc.id}`}>
       <td>{index + 1}</td>
       <td>{doc.name}</td>
     </tr>
   ),
   renderTdValue: (val: string) => val || '-',
-  SortHeader: ({
-    field,
-    label,
-    onSort,
-  }: {
-    field: string
-    label: string
-    onSort: (f: string) => void
-  }) => (
-    <button data-testid={`sort-${field}`} onClick={() => onSort(field)}>
-      {label}
-    </button>
+  SortHeader: ({ field, label, onSort }: { field: string, label: string, onSort: (f: string) => void }) => (
+    <button data-testid={`sort-${field}`} onClick={() => onSort(field)}>{label}</button>
   ),
 }))
 
 vi.mock('../../detail/completed/common/batch-action', () => ({
-  default: ({ selectedIds, onCancel }: { selectedIds: string[]; onCancel: () => void }) => (
+  default: ({ selectedIds, onCancel }: { selectedIds: string[], onCancel: () => void }) => (
     <div data-testid="batch-action">
       <span data-testid="selected-count">{selectedIds.length}</span>
-      <button data-testid="cancel-selection" onClick={onCancel}>
-        Cancel
-      </button>
+      <button data-testid="cancel-selection" onClick={onCancel}>Cancel</button>
     </div>
   ),
 }))
 
 vi.mock('../../rename-modal', () => ({
-  default: ({ name, onClose }: { name: string; onClose: () => void }) => (
+  default: ({ name, onClose }: { name: string, onClose: () => void }) => (
     <div data-testid="rename-modal">
       <span>{name}</span>
       <button onClick={onClose}>Close</button>
@@ -141,14 +128,6 @@ const defaultProps = {
   onSortChange: vi.fn(),
 }
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 describe('DocumentList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -165,11 +144,11 @@ describe('DocumentList', () => {
     })
 
     it('should render select-all area when embeddingAvailable is true', () => {
-      render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
+      const { container } = render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
 
-      expect(
-        screen.getByRole('checkbox', { name: 'common.operation.selectAll' }),
-      ).toBeInTheDocument()
+      // Checkbox component renders inside the first td
+      const firstTd = container.querySelector('thead td')
+      expect(firstTd?.textContent).toContain('#')
     })
 
     it('should still render # column when embeddingAvailable is false', () => {
@@ -191,19 +170,6 @@ describe('DocumentList', () => {
 
       expect(screen.getByTestId('doc-row-a')).toBeInTheDocument()
       expect(screen.getByTestId('doc-row-b')).toBeInTheDocument()
-    })
-
-    it('should call onSelectedIdChange when select-all is clicked', () => {
-      const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
-      const onSelectedIdChange = vi.fn()
-
-      render(
-        <DocumentList {...defaultProps} documents={docs} onSelectedIdChange={onSelectedIdChange} />,
-      )
-
-      fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
-
-      expect(onSelectedIdChange).toHaveBeenCalledWith(['a', 'b'])
     })
   })
 

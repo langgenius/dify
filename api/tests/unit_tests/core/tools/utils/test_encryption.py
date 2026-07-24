@@ -1,13 +1,10 @@
 import copy
-from types import SimpleNamespace
-from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
+from core.entities.provider_entities import BasicProviderConfig
 from core.helper.provider_encryption import ProviderConfigEncrypter
-from core.tools.utils.encryption import create_tool_provider_encrypter
 
 
 # ---------------------------
@@ -16,13 +13,13 @@ from core.tools.utils.encryption import create_tool_provider_encrypter
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
 
-    def get(self) -> Any | None:
+    def get(self):
         return None
 
-    def set(self, config: Any) -> None:
+    def set(self, config):
         pass
 
-    def delete(self) -> None:
+    def delete(self):
         pass
 
 
@@ -31,7 +28,7 @@ def secret_field() -> BasicProviderConfig:
     """A SECRET_INPUT field named 'password'."""
     return BasicProviderConfig(
         name="password",
-        type=ProviderConfigType.SECRET_INPUT,
+        type=BasicProviderConfig.Type.SECRET_INPUT,
     )
 
 
@@ -40,7 +37,7 @@ def normal_field() -> BasicProviderConfig:
     """A TEXT_INPUT field named 'username'."""
     return BasicProviderConfig(
         name="username",
-        type=ProviderConfigType.TEXT_INPUT,
+        type=BasicProviderConfig.Type.TEXT_INPUT,
     )
 
 
@@ -182,35 +179,3 @@ def test_decrypt_swallow_exception_and_keep_original(encrypter_obj):
         out = encrypter_obj.decrypt({"password": "ENC_ERR"})
 
     assert out["password"] == "ENC_ERR"
-
-
-def test_create_tool_provider_encrypter_builds_cache_and_encrypter():
-    basic_config = BasicProviderConfig(name="key", type=ProviderConfigType.TEXT_INPUT)
-    credential_schema_item = SimpleNamespace(to_basic_provider_config=lambda: basic_config)
-    controller = SimpleNamespace(
-        provider_type=SimpleNamespace(value="builtin"),
-        entity=SimpleNamespace(identity=SimpleNamespace(name="provider-a")),
-        get_credentials_schema=lambda: [credential_schema_item],
-    )
-
-    cache_instance = Mock()
-    encrypter_instance = Mock()
-
-    with patch(
-        "core.tools.utils.encryption.SingletonProviderCredentialsCache", return_value=cache_instance
-    ) as cache_cls:
-        with patch("core.tools.utils.encryption.ProviderConfigEncrypter", return_value=encrypter_instance) as enc_cls:
-            encrypter, cache = create_tool_provider_encrypter("tenant-1", controller)
-
-    assert encrypter is encrypter_instance
-    assert cache is cache_instance
-    cache_cls.assert_called_once_with(
-        tenant_id="tenant-1",
-        provider_type="builtin",
-        provider_identity="provider-a",
-    )
-    enc_cls.assert_called_once_with(
-        tenant_id="tenant-1",
-        config=[basic_config],
-        provider_config_cache=cache_instance,
-    )

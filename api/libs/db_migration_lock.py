@@ -14,15 +14,9 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-import redis
-from redis.cluster import RedisCluster
 from redis.exceptions import LockNotOwnedError, RedisError
-from redis.lock import Lock
-
-if TYPE_CHECKING:
-    from extensions.ext_redis import RedisClientWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -44,21 +38,21 @@ class DbMigrationAutoRenewLock:
       primary error/exit code.
     """
 
-    _redis_client: redis.Redis | RedisCluster | RedisClientWrapper
+    _redis_client: Any
     _name: str
     _ttl_seconds: float
     _renew_interval_seconds: float
     _log_context: str | None
     _logger: logging.Logger
 
-    _lock: Lock | None
+    _lock: Any
     _stop_event: threading.Event | None
     _thread: threading.Thread | None
     _acquired: bool
 
     def __init__(
         self,
-        redis_client: redis.Redis | RedisCluster | RedisClientWrapper,
+        redis_client: Any,
         name: str,
         ttl_seconds: float = 60,
         renew_interval_seconds: float | None = None,
@@ -103,10 +97,7 @@ class DbMigrationAutoRenewLock:
                 timeout=self._ttl_seconds,
                 thread_local=False,
             )
-        lock = self._lock
-        if lock is None:
-            raise RuntimeError("Redis lock initialization failed.")
-        acquired = bool(lock.acquire(*args, **kwargs))
+        acquired = bool(self._lock.acquire(*args, **kwargs))
         self._acquired = acquired
         if acquired:
             self._start_heartbeat()
@@ -136,7 +127,7 @@ class DbMigrationAutoRenewLock:
         )
         self._thread.start()
 
-    def _heartbeat_loop(self, lock: Lock, stop_event: threading.Event) -> None:
+    def _heartbeat_loop(self, lock: Any, stop_event: threading.Event) -> None:
         while not stop_event.wait(self._renew_interval_seconds):
             try:
                 lock.reacquire()

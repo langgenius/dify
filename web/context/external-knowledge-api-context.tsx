@@ -2,7 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
-import { createContext, use, useCallback, useMemo } from 'react'
+import { createContext, useCallback, useContext, useMemo } from 'react'
 import { useExternalKnowledgeApiList } from '@/service/knowledge/use-dataset'
 
 type ExternalKnowledgeApiContextType = {
@@ -11,35 +11,24 @@ type ExternalKnowledgeApiContextType = {
   isLoading: boolean
 }
 
-const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(
-  undefined,
-)
+const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(undefined)
 
-type ExternalKnowledgeApiProviderProps = {
+export type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
-  enabled?: boolean
 }
 
-export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({
-  children,
-  enabled = true,
-}) => {
-  const { data, refetch, isLoading } = useExternalKnowledgeApiList({ enabled })
+export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
+  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
 
   const mutateExternalKnowledgeApis = useCallback(() => {
-    if (!enabled) return Promise.resolve(undefined)
+    return refetch().then(res => res.data)
+  }, [refetch])
 
-    return refetch().then((res) => res.data)
-  }, [enabled, refetch])
-
-  const contextValue = useMemo<ExternalKnowledgeApiContextType>(
-    () => ({
-      externalKnowledgeApiList: data?.data || [],
-      mutateExternalKnowledgeApis,
-      isLoading,
-    }),
-    [data, mutateExternalKnowledgeApis, isLoading],
-  )
+  const contextValue = useMemo<ExternalKnowledgeApiContextType>(() => ({
+    externalKnowledgeApiList: data?.data || [],
+    mutateExternalKnowledgeApis,
+    isLoading,
+  }), [data, mutateExternalKnowledgeApis, isLoading])
 
   return (
     <ExternalKnowledgeApiContext.Provider value={contextValue}>
@@ -49,7 +38,7 @@ export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps>
 }
 
 export const useExternalKnowledgeApi = () => {
-  const context = use(ExternalKnowledgeApiContext)
+  const context = useContext(ExternalKnowledgeApiContext)
   if (context === undefined)
     throw new Error('useExternalKnowledgeApi must be used within a ExternalKnowledgeApiProvider')
 

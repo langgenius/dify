@@ -1,6 +1,5 @@
 {
   "allTags": "सभी टैग",
-  "clearSelectedTags": "चुने गए टैग साफ़ करें: {{tags}}",
   "searchTags": "खोज टैग",
   "tags.agent": "एजेंट",
   "tags.business": "व्यवसाय",

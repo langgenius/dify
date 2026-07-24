@@ -14,9 +14,9 @@ describe('SuggestedQuestions', () => {
   const mockOnSend = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.clearAllMocks();
     // Use 'as Mock' instead of 'as any'
-    ;(useChatContext as Mock).mockReturnValue({
+    (useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: false,
     })
@@ -35,8 +35,8 @@ describe('SuggestedQuestions', () => {
 
     const questions = screen.getAllByTestId('suggested-question')
     expect(questions).toHaveLength(2)
-    expect(questions[0])!.toHaveTextContent('What is Dify?')
-    expect(questions[1])!.toHaveTextContent('How to use it?')
+    expect(questions[0]).toHaveTextContent('What is Dify?')
+    expect(questions[1]).toHaveTextContent('How to use it?')
   })
 
   it('should call onSend when a question is clicked', async () => {
@@ -44,7 +44,7 @@ describe('SuggestedQuestions', () => {
     render(<SuggestedQuestions item={mockItem} />)
 
     const questions = screen.getAllByTestId('suggested-question')
-    await user.click(questions[0]!)
+    await user.click(questions[0])
 
     expect(mockOnSend).toHaveBeenCalledWith('What is Dify?')
   })
@@ -59,16 +59,14 @@ describe('SuggestedQuestions', () => {
     expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
 
     // Use 'as IChatItem' instead of 'as any'
-    render(
-      <SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />,
-    )
+    render(<SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />)
     expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
   })
 
   it('should be disabled and not call onSend when readonly is true', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup();
     // Use 'as Mock' instead of 'as any'
-    ;(useChatContext as Mock).mockReturnValue({
+    (useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: true,
     })
@@ -76,10 +74,10 @@ describe('SuggestedQuestions', () => {
     render(<SuggestedQuestions item={mockItem} />)
 
     const questions = screen.getAllByTestId('suggested-question')
-    expect(questions[0])!.toHaveClass('pointer-events-none')
-    expect(questions[0])!.toHaveClass('opacity-50')
+    expect(questions[0]).toHaveClass('pointer-events-none')
+    expect(questions[0]).toHaveClass('opacity-50')
 
-    await user.click(questions[0]!)
+    await user.click(questions[0])
     expect(mockOnSend).not.toHaveBeenCalled()
   })
 })

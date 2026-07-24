@@ -1,20 +1,19 @@
 import base64
 import logging
 import pickle
-from typing import Any, cast, override
+from typing import Any, cast
 
 import numpy as np
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_manager import ModelInstance
 from core.rag.embedding.embedding_base import Embeddings
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from models.dataset import Embedding
 
@@ -22,10 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, model_instance: ModelInstance):
+    def __init__(self, model_instance: ModelInstance, user: str | None = None):
         self._model_instance = model_instance
+        self._user = user
 
-    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
         # use doc embedding cache or store if not exists
@@ -33,14 +32,14 @@ class CacheEmbedding(Embeddings):
         embedding_queue_indices = []
         for i, text in enumerate(texts):
             hash = helper.generate_text_hash(text)
-            embedding = db.session.scalar(
-                select(Embedding)
-                .where(
-                    Embedding.model_name == self._model_instance.model_name,
-                    Embedding.hash == hash,
-                    Embedding.provider_name == self._model_instance.provider,
+            embedding = (
+                db.session.query(Embedding)
+                .filter_by(
+                    model_name=self._model_instance.model_name,
+                    hash=hash,
+                    provider_name=self._model_instance.provider,
                 )
-                .limit(1)
+                .first()
             )
             if embedding:
                 text_embeddings[i] = embedding.get_embedding()
@@ -66,7 +65,7 @@ class CacheEmbedding(Embeddings):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
-                        texts=batch_texts, input_type=EmbeddingInputType.DOCUMENT
+                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT
                     )
 
                     for vector in embedding_result.embeddings:
@@ -107,22 +106,21 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    @override
-    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
         multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
         embedding_queue_indices = []
         for i, multimodel_document in enumerate(multimodel_documents):
             file_id = multimodel_document["file_id"]
-            embedding = db.session.scalar(
-                select(Embedding)
-                .where(
-                    Embedding.model_name == self._model_instance.model_name,
-                    Embedding.hash == file_id,
-                    Embedding.provider_name == self._model_instance.provider,
+            embedding = (
+                db.session.query(Embedding)
+                .filter_by(
+                    model_name=self._model_instance.model_name,
+                    hash=file_id,
+                    provider_name=self._model_instance.provider,
                 )
-                .limit(1)
+                .first()
             )
             if embedding:
                 multimodel_embeddings[i] = embedding.get_embedding()
@@ -149,6 +147,7 @@ class CacheEmbedding(Embeddings):
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
                         multimodel_documents=batch_multimodel_documents,
+                        user=self._user,
                         input_type=EmbeddingInputType.DOCUMENT,
                     )
 
@@ -191,7 +190,6 @@ class CacheEmbedding(Embeddings):
 
         return multimodel_embeddings
 
-    @override
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
@@ -204,7 +202,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
-                texts=[text], input_type=EmbeddingInputType.QUERY
+                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]
@@ -235,8 +233,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
-    @override
-    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]
@@ -248,7 +245,7 @@ class CacheEmbedding(Embeddings):
             return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_multimodal_embedding(
-                multimodel_documents=[multimodel_document], input_type=EmbeddingInputType.QUERY
+                multimodel_documents=[multimodel_document], user=self._user, input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]

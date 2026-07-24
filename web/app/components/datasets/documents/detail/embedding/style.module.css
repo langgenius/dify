@@ -1,0 +1,59 @@
+.progressBar {
+  @apply absolute top-0 h-4;
+}
+.barPaused {
+  background: linear-gradient(
+    270deg,
+    rgba(208, 213, 221, 0.8) -2.21%,
+    rgba(208, 213, 221, 0.5) 100%
+  );
+}
+.barProcessing {
+  background: linear-gradient(
+    90deg,
+    rgba(41, 112, 255, 0.9) 0%,
+    rgba(21, 94, 239, 0.9) 100%
+  );
+}
+.opBtn {
+  @apply w-fit h-6 text-xs px-2 py-1 text-gray-700 rounded-md !important;
+}
+.opIcon {
+  @apply mr-1 stroke-current text-gray-700 w-3 h-3;
+}
+.progressContainer {
+  @apply relative flex mb-2 h-4 rounded-md w-full;
+}
+.progressBgItem {
+  @apply flex-1 border-r border-r-white first:rounded-l-md;
+}
+.progressBgItem:nth-last-child(2) {
+  @apply rounded-r-md;
+}
+.progressData {
+  @apply w-full flex items-center text-xs text-gray-700;
+}
+.previewTip {
+  @apply pb-1 pt-12 text-gray-900 text-sm font-medium;
+}
+.embeddingStatus {
+  @apply flex items-center justify-between text-gray-900 font-medium text-base mb-3;
+}
+.commonIcon {
+  @apply w-3 h-3 mr-1 inline-block align-middle;
+}
+.highIcon {
+  mask-image: url(../../assets/star.svg);
+  @apply bg-orange-500;
+}
+.economyIcon {
+  background-color: #444ce7;
+  mask-image: url(../../assets/normal.svg);
+}
+.tokens {
+  @apply text-xs font-medium px-1;
+}
+.price {
+  color: #f79009;
+  @apply text-xs font-medium;
+}

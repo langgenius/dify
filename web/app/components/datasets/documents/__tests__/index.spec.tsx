@@ -1,10 +1,9 @@
 import type { DocumentListResponse } from '@/models/datasets'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
-import { render } from '@/test/console/render'
 import { useDocumentsPageState } from '../hooks/use-documents-page-state'
 import Documents from '../index'
 
@@ -14,7 +13,7 @@ type MockState = Parameters<MockSelector>[0]
 
 // Mock Next.js router
 const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: vi.fn(),
@@ -34,8 +33,6 @@ vi.mock('@/context/dataset-detail', () => ({
         embedding_available: true,
         data_source_type: DataSourceType.FILE,
         runtime_mode: 'rag',
-        created_by: 'test-user',
-        permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
       },
     }
     return selector(mockState as MockState)
@@ -47,39 +44,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'professional' },
   })),
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createWorkspaceStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
 
 // Mock document service hooks
 const mockInvalidDocumentList = vi.fn()
@@ -214,7 +178,7 @@ vi.mock('../components/documents-header', () => ({
       <span data-testid="header-embedding-available">{String(embeddingAvailable)}</span>
       <input
         data-testid="search-input"
-        onChange={(e) => onInputChange(e.target.value)}
+        onChange={e => onInputChange(e.target.value)}
         placeholder="Search documents"
       />
       <button data-testid="add-document-btn" onClick={onAddDocument}>
@@ -234,11 +198,7 @@ vi.mock('../components/documents-header', () => ({
 }))
 
 vi.mock('../components/empty-element', () => ({
-  default: ({
-    canAdd,
-    onClick,
-    type,
-  }: {
+  default: ({ canAdd, onClick, type }: {
     canAdd: boolean
     onClick: () => void
     type: 'sync' | 'upload'
@@ -318,8 +278,6 @@ describe('Documents', () => {
           embedding_available: true,
           data_source_type: DataSourceType.FILE,
           runtime_mode: 'rag',
-          created_by: 'test-user',
-          permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
         },
       }
       return selector(mockState as MockState)
@@ -327,6 +285,11 @@ describe('Documents', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<Documents {...defaultProps} />)
+      expect(screen.getByTestId('documents-header')).toBeInTheDocument()
+    })
+
     it('should render DocumentsHeader with correct props', () => {
       render(<Documents {...defaultProps} />)
       expect(screen.getByTestId('header-dataset-id')).toHaveTextContent('test-dataset-id')
@@ -391,22 +354,18 @@ describe('Documents', () => {
     })
 
     it('should render sync type empty element for Notion data source', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.NOTION,
-              runtime_mode: 'rag',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = {
+          dataset: {
+            id: 'test-dataset-id',
+            name: 'Test Dataset',
+            embedding_available: true,
+            data_source_type: DataSourceType.NOTION,
+            runtime_mode: 'rag',
+          },
+        }
+        return selector(mockState as MockState)
+      })
       vi.mocked(useDocumentList).mockReturnValueOnce({
         data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
         isLoading: false,
@@ -499,49 +458,39 @@ describe('Documents', () => {
     })
 
     it('should navigate to pipeline create page when dataset is rag_pipeline mode', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag_pipeline',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = {
+          dataset: {
+            id: 'test-dataset-id',
+            name: 'Test Dataset',
+            embedding_available: true,
+            data_source_type: DataSourceType.FILE,
+            runtime_mode: 'rag_pipeline',
+          },
+        }
+        return selector(mockState as MockState)
+      })
 
       render(<Documents {...defaultProps} />)
 
       screen.getByTestId('add-document-btn').click()
 
-      expect(mockPush).toHaveBeenCalledWith(
-        '/datasets/test-dataset-id/documents/create-from-pipeline',
-      )
+      expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/documents/create-from-pipeline')
     })
 
     it('should navigate from empty element add button', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: true,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag',
-              created_by: 'test-user',
-              permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = {
+          dataset: {
+            id: 'test-dataset-id',
+            name: 'Test Dataset',
+            embedding_available: true,
+            data_source_type: DataSourceType.FILE,
+            runtime_mode: 'rag',
+          },
+        }
+        return selector(mockState as MockState)
+      })
       vi.mocked(useDocumentList).mockReturnValueOnce({
         data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
         isLoading: false,
@@ -610,9 +559,7 @@ describe('Documents', () => {
 
       render(<Documents {...defaultProps} />)
 
-      const payload = vi
-        .mocked(useDocumentList)
-        .mock.calls.find(([options]) => options.query.status === 'indexing')?.[0]
+      const payload = vi.mocked(useDocumentList).mock.calls.at(-1)?.[0]
       const refetchInterval = payload?.refetchInterval
       expect(typeof refetchInterval).toBe('function')
       if (typeof refetchInterval !== 'function')
@@ -659,12 +606,10 @@ describe('Documents', () => {
 
   describe('Edge Cases and Error Handling', () => {
     it('should handle undefined dataset gracefully', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = { dataset: undefined }
-          return selector(mockState as MockState)
-        },
-      )
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = { dataset: undefined }
+        return selector(mockState as MockState)
+      })
 
       render(<Documents {...defaultProps} />)
 
@@ -696,20 +641,18 @@ describe('Documents', () => {
     })
 
     it('should handle embedding not available', () => {
-      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
-        (selector: MockSelector) => {
-          const mockState = {
-            dataset: {
-              id: 'test-dataset-id',
-              name: 'Test Dataset',
-              embedding_available: false,
-              data_source_type: DataSourceType.FILE,
-              runtime_mode: 'rag',
-            },
-          }
-          return selector(mockState as MockState)
-        },
-      )
+      vi.mocked(useDatasetDetailContextWithSelector).mockImplementation((selector: MockSelector) => {
+        const mockState = {
+          dataset: {
+            id: 'test-dataset-id',
+            name: 'Test Dataset',
+            embedding_available: false,
+            data_source_type: DataSourceType.FILE,
+            runtime_mode: 'rag',
+          },
+        }
+        return selector(mockState as MockState)
+      })
 
       render(<Documents {...defaultProps} />)
 

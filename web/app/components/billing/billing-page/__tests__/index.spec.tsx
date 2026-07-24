@@ -1,45 +1,31 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Billing from '../index'
 
 let currentBillingUrl: string | null = 'https://billing'
 let fetching = false
 let isManager = true
 let enableBilling = true
-let billingUrlEnabled = false
 
 const refetchMock = vi.fn()
 const openAsyncWindowMock = vi.fn()
 
-type BillingUrlCallback = () => Promise<string | null>
-type BillingWindowOptions = {
-  immediateUrl: string | null
-  features: string
-  onError: (err: Error) => void
-}
-type OpenAsyncWindowCall = [BillingUrlCallback, BillingWindowOptions]
-
 vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: (enabled: boolean) => {
-    billingUrlEnabled = enabled
-    return {
-      data: currentBillingUrl,
-      isFetching: fetching,
-      refetch: refetchMock,
-    }
-  },
+  useBillingUrl: () => ({
+    data: currentBillingUrl,
+    isFetching: fetching,
+    refetch: refetchMock,
+  }),
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => openAsyncWindowMock,
 }))
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
     isCurrentWorkspaceManager: isManager,
-  }))
-})
+  }),
+}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -58,35 +44,19 @@ describe('Billing', () => {
     fetching = false
     isManager = true
     enableBilling = true
-    billingUrlEnabled = false
     refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
-  it('hides the billing action from non-manager members', () => {
+  it('hides the billing action when user is not manager or billing is disabled', () => {
     isManager = false
-
     render(<Billing />)
+    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
 
-    expect(
-      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
-    ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
-  })
-
-  it('shows the billing action to managers without billing permission keys', () => {
-    render(<Billing />)
-
-    expect(screen.getByRole('button', { name: /billing\.viewBillingTitle/ })).toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(true)
-  })
-
-  it('hides the billing action when billing is disabled', () => {
+    vi.clearAllMocks()
+    isManager = true
     enableBilling = false
     render(<Billing />)
-    expect(
-      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
-    ).not.toBeInTheDocument()
-    expect(billingUrlEnabled).toBe(false)
+    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
   })
 
   it('opens the billing window with the immediate url when the button is clicked', async () => {
@@ -96,7 +66,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
+    const [, options] = openAsyncWindowMock.mock.calls[0]
     expect(options).toMatchObject({
       immediateUrl: currentBillingUrl,
       features: 'noopener,noreferrer',
@@ -112,7 +82,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
+    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
 
     // Execute the async callback passed to openAsyncWindow
     const result = await asyncCallback()
@@ -128,7 +98,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
+    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
 
     // Execute the async callback when url is null
     const result = await asyncCallback()
@@ -143,7 +113,7 @@ describe('Billing', () => {
     fireEvent.click(actionButton)
 
     await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0] as OpenAsyncWindowCall
+    const [, options] = openAsyncWindowMock.mock.calls[0]
 
     // Execute the onError callback
     const testError = new Error('Test error')
@@ -158,6 +128,6 @@ describe('Billing', () => {
     render(<Billing />)
 
     const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    expect(actionButton)!.toBeDisabled()
+    expect(actionButton).toBeDisabled()
   })
 })

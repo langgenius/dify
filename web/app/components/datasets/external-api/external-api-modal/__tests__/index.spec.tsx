@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked service
 import { createExternalAPI } from '@/service/datasets'
+
 import AddExternalAPIModal from '../index'
 
 // Mock API service
@@ -11,16 +12,10 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: {
-    notify: (args: unknown) => mockNotify(args),
-  },
-  toast: {
-    success: (message: string) => mockNotify({ type: 'success', message }),
-    error: (message: string) => mockNotify({ type: 'error', message }),
-    warning: (message: string) => mockNotify({ type: 'warning', message }),
-    info: (message: string) => mockNotify({ type: 'info', message }),
-  },
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
 }))
 
 describe('AddExternalAPIModal', () => {
@@ -43,39 +38,44 @@ describe('AddExternalAPIModal', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<AddExternalAPIModal {...defaultProps} />)
+      expect(screen.getByText('dataset.createExternalAPI')).toBeInTheDocument()
+    })
+
     it('should render create title when not in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={false} />)
-      expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.createExternalAPI')).toBeInTheDocument()
     })
 
     it('should render edit title when in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={true} data={initialData} />)
-      expect(screen.getByText('dataset.editExternalAPIFormTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.editExternalAPIFormTitle')).toBeInTheDocument()
     })
 
     it('should render form fields', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
-      expect(screen.getByLabelText(/name/i))!.toBeInTheDocument()
-      expect(screen.getByLabelText(/api endpoint/i))!.toBeInTheDocument()
-      expect(screen.getByLabelText(/api key/i))!.toBeInTheDocument()
+      expect(screen.getByLabelText(/name/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/api endpoint/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/api key/i)).toBeInTheDocument()
     })
 
     it('should render cancel and save buttons', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
-      expect(screen.getByText('dataset.externalAPIForm.cancel'))!.toBeInTheDocument()
-      expect(screen.getByText('dataset.externalAPIForm.save'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalAPIForm.cancel')).toBeInTheDocument()
+      expect(screen.getByText('dataset.externalAPIForm.save')).toBeInTheDocument()
     })
 
     it('should render encryption notice', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
-      expect(screen.getByText('PKCS1_OAEP'))!.toBeInTheDocument()
+      expect(screen.getByText('PKCS1_OAEP')).toBeInTheDocument()
     })
 
     it('should render close button', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
       // Close button is rendered in a portal
       const closeButton = document.body.querySelector('.action-btn')
-      expect(closeButton)!.toBeInTheDocument()
+      expect(closeButton).toBeInTheDocument()
     })
   })
 
@@ -93,11 +93,9 @@ describe('AddExternalAPIModal', () => {
           datasetBindings={datasetBindings}
         />,
       )
-      expect(screen.getByText('dataset.editExternalAPIFormWarning.front'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.editExternalAPIFormWarning.front')).toBeInTheDocument()
       // Verify the count is displayed in the warning section
-      const warningElement = screen.getByText(
-        'dataset.editExternalAPIFormWarning.front',
-      ).parentElement
+      const warningElement = screen.getByText('dataset.editExternalAPIFormWarning.front').parentElement
       expect(warningElement?.textContent).toContain('2')
     })
 
@@ -120,22 +118,22 @@ describe('AddExternalAPIModal', () => {
 
       const nameInput = screen.getByLabelText(/name/i)
       fireEvent.change(nameInput, { target: { value: 'New API Name' } })
-      expect(nameInput)!.toHaveValue('New API Name')
+      expect(nameInput).toHaveValue('New API Name')
     })
 
     it('should initialize form with data in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={true} data={initialData} />)
 
-      expect(screen.getByLabelText(/name/i))!.toHaveValue('Test API')
-      expect(screen.getByLabelText(/api endpoint/i))!.toHaveValue('https://api.example.com')
-      expect(screen.getByLabelText(/api key/i))!.toHaveValue('test-key-12345')
+      expect(screen.getByLabelText(/name/i)).toHaveValue('Test API')
+      expect(screen.getByLabelText(/api endpoint/i)).toHaveValue('https://api.example.com')
+      expect(screen.getByLabelText(/api key/i)).toHaveValue('test-key-12345')
     })
 
     it('should disable save button when form has empty inputs', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
 
       const saveButton = screen.getByText('dataset.externalAPIForm.save').closest('button')
-      expect(saveButton)!.toBeDisabled()
+      expect(saveButton).toBeDisabled()
     })
 
     it('should enable save button when all fields are filled', () => {
@@ -298,7 +296,7 @@ describe('AddExternalAPIModal', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
       })
     })
 
@@ -330,14 +328,16 @@ describe('AddExternalAPIModal', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
       fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'success' }),
+        )
       })
     })
 
@@ -357,13 +357,13 @@ describe('AddExternalAPIModal', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
       })
 
       // There are multiple cancel buttons, find the one in the confirm dialog
       const cancelButtons = screen.getAllByRole('button', { name: /cancel/i })
       const confirmDialogCancelButton = cancelButtons[cancelButtons.length - 1]
-      fireEvent.click(confirmDialogCancelButton!)
+      fireEvent.click(confirmDialogCancelButton)
 
       await waitFor(() => {
         // Confirm button should be gone after canceling
@@ -398,7 +398,7 @@ describe('AddExternalAPIModal', () => {
   describe('Edge Cases', () => {
     it('should handle undefined data in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={true} data={undefined} />)
-      expect(screen.getByLabelText(/name/i))!.toHaveValue('')
+      expect(screen.getByLabelText(/name/i)).toHaveValue('')
     })
 
     it('should handle null datasetBindings', () => {
@@ -416,11 +416,8 @@ describe('AddExternalAPIModal', () => {
     it('should render documentation link in encryption notice', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
       const link = screen.getByRole('link', { name: 'PKCS1_OAEP' })
-      expect(link)!.toHaveAttribute(
-        'href',
-        'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html',
-      )
-      expect(link)!.toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('href', 'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html')
+      expect(link).toHaveAttribute('target', '_blank')
     })
   })
 })

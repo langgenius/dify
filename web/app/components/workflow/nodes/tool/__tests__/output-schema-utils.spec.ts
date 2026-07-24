@@ -1,5 +1,9 @@
 import { VarType } from '@/app/components/workflow/types'
-import { normalizeJsonSchemaType, pickItemSchema, resolveVarType } from '../output-schema-utils'
+import {
+  normalizeJsonSchemaType,
+  pickItemSchema,
+  resolveVarType,
+} from '../output-schema-utils'
 
 // Mock the getMatchedSchemaType dependency
 vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
@@ -32,45 +36,43 @@ describe('output-schema-utils', () => {
     })
 
     it('should handle oneOf schema', () => {
-      expect(
-        normalizeJsonSchemaType({
-          oneOf: [{ type: 'string' }, { type: 'null' }],
-        }),
-      ).toBe('string')
+      expect(normalizeJsonSchemaType({
+        oneOf: [
+          { type: 'string' },
+          { type: 'null' },
+        ],
+      })).toBe('string')
     })
 
     it('should handle anyOf schema', () => {
-      expect(
-        normalizeJsonSchemaType({
-          anyOf: [{ type: 'number' }, { type: 'null' }],
-        }),
-      ).toBe('number')
+      expect(normalizeJsonSchemaType({
+        anyOf: [
+          { type: 'number' },
+          { type: 'null' },
+        ],
+      })).toBe('number')
     })
 
     it('should handle allOf schema', () => {
-      expect(
-        normalizeJsonSchemaType({
-          allOf: [{ type: 'object' }],
-        }),
-      ).toBe('object')
+      expect(normalizeJsonSchemaType({
+        allOf: [
+          { type: 'object' },
+        ],
+      })).toBe('object')
     })
 
     it('should infer object type from properties', () => {
-      expect(
-        normalizeJsonSchemaType({
-          properties: {
-            name: { type: 'string' },
-          },
-        }),
-      ).toBe('object')
+      expect(normalizeJsonSchemaType({
+        properties: {
+          name: { type: 'string' },
+        },
+      })).toBe('object')
     })
 
     it('should infer array type from items', () => {
-      expect(
-        normalizeJsonSchemaType({
-          items: { type: 'string' },
-        }),
-      ).toBe('array')
+      expect(normalizeJsonSchemaType({
+        items: { type: 'string' },
+      })).toBe('array')
     })
 
     it('should return undefined for empty schema', () => {
@@ -224,23 +226,6 @@ describe('output-schema-utils', () => {
           items: { type: 'string' },
         })
         expect(result.type).toBe(VarType.arrayString)
-      })
-    })
-
-    describe('Dify compact types (workflow-as-tool output_schema)', () => {
-      it('should resolve array[string] to arrayString (issue #34428)', () => {
-        const result = resolveVarType({ type: 'array[string]' })
-        expect(result.type).toBe(VarType.arrayString)
-      })
-
-      it('should resolve Array[string] case-insensitively', () => {
-        const result = resolveVarType({ type: 'Array[string]' })
-        expect(result.type).toBe(VarType.arrayString)
-      })
-
-      it('should resolve array[object] to arrayObject', () => {
-        const result = resolveVarType({ type: 'array[object]' })
-        expect(result.type).toBe(VarType.arrayObject)
       })
     })
 

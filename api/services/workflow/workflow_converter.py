@@ -1,9 +1,6 @@
 import json
 from typing import Any, TypedDict
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -18,15 +15,16 @@ from core.app.apps.completion.app_config_manager import CompletionAppConfigManag
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from dify_graph.file.models import FileUploadConfig
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.nodes import NodeType
+from dify_graph.variables.input_entities import VariableEntity
 from events.app_event import app_was_created
-from graphon.file import FileUploadConfig
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes import BuiltinNodeTypes
-from graphon.variables.input_entities import VariableEntity
+from extensions.ext_database import db
 from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import App, AppMode, AppModelConfig, IconType, load_annotation_reply_config
+from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
 
 
@@ -36,31 +34,13 @@ class _NodeType(TypedDict):
     data: dict[str, Any]
 
 
-class _EdgeType(TypedDict):
-    id: str
-    source: str
-    target: str
-
-
-class WorkflowGraph(TypedDict):
-    nodes: list[_NodeType]
-    edges: list[_EdgeType]
-
-
 class WorkflowConverter:
     """
     App Convert to Workflow Mode
     """
 
     def convert_to_workflow(
-        self,
-        app_model: App,
-        account: Account,
-        name: str,
-        icon_type: str,
-        icon: str,
-        icon_background: str,
-        session: Session,
+        self, app_model: App, account: Account, name: str, icon_type: str, icon: str, icon_background: str
     ):
         """
         Convert app to workflow
@@ -80,14 +60,11 @@ class WorkflowConverter:
         :return: new App instance
         """
         # convert app model config
-        app_model_config = (
-            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
-        )
-        if not app_model_config:
+        if not app_model.app_model_config:
             raise ValueError("App model config is required")
 
         workflow = self.convert_app_model_config_to_workflow(
-            app_model=app_model, app_model_config=app_model_config, account_id=account.id, session=session
+            app_model=app_model, app_model_config=app_model.app_model_config, account_id=account.id
         )
 
         # create new app
@@ -95,7 +72,7 @@ class WorkflowConverter:
         new_app.tenant_id = app_model.tenant_id
         new_app.name = name or app_model.name + "(workflow)"
         new_app.mode = AppMode.ADVANCED_CHAT if app_model.mode == AppMode.CHAT else AppMode.WORKFLOW
-        new_app.icon_type = IconType(icon_type) if icon_type else app_model.icon_type
+        new_app.icon_type = icon_type or app_model.icon_type
         new_app.icon = icon or app_model.icon
         new_app.icon_background = icon_background or app_model.icon_background
         new_app.enable_site = app_model.enable_site
@@ -105,22 +82,18 @@ class WorkflowConverter:
         new_app.is_demo = False
         new_app.is_public = app_model.is_public
         new_app.created_by = account.id
-        new_app.maintainer = account.id
         new_app.updated_by = account.id
-        session.add(new_app)
-        session.flush()
+        db.session.add(new_app)
+        db.session.flush()
 
         workflow.app_id = new_app.id
-        session.commit()
+        db.session.commit()
 
-        app_was_created.send(new_app, account=account, session=session)
-        session.commit()
+        app_was_created.send(new_app, account=account)
 
         return new_app
 
-    def convert_app_model_config_to_workflow(
-        self, app_model: App, app_model_config: AppModelConfig, account_id: str, session: Session
-    ):
+    def convert_app_model_config_to_workflow(self, app_model: App, app_model_config: AppModelConfig, account_id: str):
         """
         Convert app model config to workflow mode
         :param app_model: App instance
@@ -131,12 +104,10 @@ class WorkflowConverter:
         new_app_mode = self._get_new_app_mode(app_model)
 
         # convert app model config
-        app_config = self._convert_to_app_config(
-            app_model=app_model, app_model_config=app_model_config, session=session
-        )
+        app_config = self._convert_to_app_config(app_model=app_model, app_model_config=app_model_config)
 
         # init workflow graph
-        graph: WorkflowGraph = {"nodes": [], "edges": []}
+        graph: dict[str, Any] = {"nodes": [], "edges": []}
 
         # Convert list:
         # - variables -> start
@@ -159,7 +130,6 @@ class WorkflowConverter:
                 app_model=app_model,
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables,
-                session=session,
             )
 
             for http_request_node in http_request_nodes:
@@ -187,38 +157,34 @@ class WorkflowConverter:
 
         graph = self._append_node(graph, llm_node)
 
+        if new_app_mode == AppMode.WORKFLOW:
+            # convert to end node by app mode
+            end_node = self._convert_to_end_node()
+            graph = self._append_node(graph, end_node)
+        else:
+            answer_node = self._convert_to_answer_node()
+            graph = self._append_node(graph, answer_node)
+
         app_model_config_dict = app_config.app_model_config_dict
 
-        match new_app_mode:
-            case AppMode.WORKFLOW:
-                end_node = self._convert_to_end_node()
-                graph = self._append_node(graph, end_node)
-                features = {
-                    "text_to_speech": app_model_config_dict.get("text_to_speech"),
-                    "file_upload": app_model_config_dict.get("file_upload"),
-                    "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
-                }
-            case AppMode.ADVANCED_CHAT:
-                answer_node = self._convert_to_answer_node()
-                graph = self._append_node(graph, answer_node)
-                features = {
-                    "opening_statement": app_model_config_dict.get("opening_statement"),
-                    "suggested_questions": app_model_config_dict.get("suggested_questions"),
-                    "suggested_questions_after_answer": app_model_config_dict.get("suggested_questions_after_answer"),
-                    "speech_to_text": app_model_config_dict.get("speech_to_text"),
-                    "text_to_speech": app_model_config_dict.get("text_to_speech"),
-                    "file_upload": app_model_config_dict.get("file_upload"),
-                    "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
-                    "retriever_resource": app_model_config_dict.get("retriever_resource"),
-                }
-            case _:
-                answer_node = self._convert_to_answer_node()
-                graph = self._append_node(graph, answer_node)
-                features = {
-                    "text_to_speech": app_model_config_dict.get("text_to_speech"),
-                    "file_upload": app_model_config_dict.get("file_upload"),
-                    "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
-                }
+        # features
+        if new_app_mode == AppMode.ADVANCED_CHAT:
+            features = {
+                "opening_statement": app_model_config_dict.get("opening_statement"),
+                "suggested_questions": app_model_config_dict.get("suggested_questions"),
+                "suggested_questions_after_answer": app_model_config_dict.get("suggested_questions_after_answer"),
+                "speech_to_text": app_model_config_dict.get("speech_to_text"),
+                "text_to_speech": app_model_config_dict.get("text_to_speech"),
+                "file_upload": app_model_config_dict.get("file_upload"),
+                "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
+                "retriever_resource": app_model_config_dict.get("retriever_resource"),
+            }
+        else:
+            features = {
+                "text_to_speech": app_model_config_dict.get("text_to_speech"),
+                "file_upload": app_model_config_dict.get("file_upload"),
+                "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
+            }
 
         # create workflow record
         workflow = Workflow(
@@ -233,46 +199,27 @@ class WorkflowConverter:
             conversation_variables=[],
         )
 
-        session.add(workflow)
-        session.commit()
+        db.session.add(workflow)
+        db.session.commit()
 
         return workflow
 
-    def _convert_to_app_config(
-        self, app_model: App, app_model_config: AppModelConfig, *, session: Session
-    ) -> EasyUIBasedAppConfig:
+    def _convert_to_app_config(self, app_model: App, app_model_config: AppModelConfig) -> EasyUIBasedAppConfig:
         app_mode_enum = AppMode.value_of(app_model.mode)
         app_config: EasyUIBasedAppConfig
-        effective_mode = (
-            AppMode.AGENT_CHAT
-            if app_model.is_agent_with_session(session=session) and app_mode_enum != AppMode.AGENT_CHAT
-            else app_mode_enum
-        )
-        match effective_mode:
-            case AppMode.AGENT_CHAT:
-                app_model.mode = AppMode.AGENT_CHAT
-                annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-                app_config = AgentChatAppConfigManager.get_app_config(
-                    app_model=app_model,
-                    app_model_config=app_model_config,
-                    annotation_reply=annotation_reply,
-                )
-            case AppMode.CHAT:
-                annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-                app_config = ChatAppConfigManager.get_app_config(
-                    app_model=app_model,
-                    app_model_config=app_model_config,
-                    annotation_reply=annotation_reply,
-                )
-            case AppMode.COMPLETION:
-                annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-                app_config = CompletionAppConfigManager.get_app_config(
-                    app_model=app_model,
-                    app_model_config=app_model_config,
-                    annotation_reply=annotation_reply,
-                )
-            case _:
-                raise ValueError("Invalid app mode")
+        if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
+            app_model.mode = AppMode.AGENT_CHAT
+            app_config = AgentChatAppConfigManager.get_app_config(
+                app_model=app_model, app_model_config=app_model_config
+            )
+        elif app_mode_enum == AppMode.CHAT:
+            app_config = ChatAppConfigManager.get_app_config(app_model=app_model, app_model_config=app_model_config)
+        elif app_mode_enum == AppMode.COMPLETION:
+            app_config = CompletionAppConfigManager.get_app_config(
+                app_model=app_model, app_model_config=app_model_config
+            )
+        else:
+            raise ValueError("Invalid app mode")
 
         return app_config
 
@@ -287,17 +234,13 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "START",
-                "type": BuiltinNodeTypes.START,
+                "type": NodeType.START,
                 "variables": [jsonable_encoder(v) for v in variables],
             },
         }
 
     def _convert_to_http_request_node(
-        self,
-        app_model: App,
-        variables: list[VariableEntity],
-        external_data_variables: list[ExternalDataVariableEntity],
-        session: Session,
+        self, app_model: App, variables: list[VariableEntity], external_data_variables: list[ExternalDataVariableEntity]
     ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
@@ -325,7 +268,7 @@ class WorkflowConverter:
 
             # get api_based_extension
             api_based_extension = self._get_api_based_extension(
-                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id, session=session
+                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id
             )
 
             # decrypt api_key
@@ -353,7 +296,7 @@ class WorkflowConverter:
                 "position": None,
                 "data": {
                     "title": f"HTTP REQUEST {api_based_extension.name}",
-                    "type": BuiltinNodeTypes.HTTP_REQUEST,
+                    "type": NodeType.HTTP_REQUEST,
                     "method": "post",
                     "url": api_based_extension.api_endpoint,
                     "authorization": {"type": "api-key", "config": {"type": "bearer", "api_key": api_key}},
@@ -371,7 +314,7 @@ class WorkflowConverter:
                 "position": None,
                 "data": {
                     "title": f"Parse {api_based_extension.name} Response",
-                    "type": BuiltinNodeTypes.CODE,
+                    "type": NodeType.CODE,
                     "variables": [{"variable": "response_json", "value_selector": [http_request_node["id"], "body"]}],
                     "code_language": "python3",
                     "code": "import json\n\ndef main(response_json: str) -> str:\n    response_body = json.loads("
@@ -411,7 +354,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "KNOWLEDGE RETRIEVAL",
-                "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                "type": NodeType.KNOWLEDGE_RETRIEVAL,
                 "query_variable_selector": query_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
@@ -442,7 +385,7 @@ class WorkflowConverter:
         self,
         original_app_mode: AppMode,
         new_app_mode: AppMode,
-        graph: WorkflowGraph,
+        graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
@@ -459,9 +402,9 @@ class WorkflowConverter:
         :param external_data_variable_node_mapping: external data variable node mapping
         """
         # fetch start and knowledge retrieval node
-        start_node = next(filter(lambda n: n["data"]["type"] == BuiltinNodeTypes.START, graph["nodes"]))
+        start_node = next(filter(lambda n: n["data"]["type"] == NodeType.START, graph["nodes"]))
         knowledge_retrieval_node = next(
-            filter(lambda n: n["data"]["type"] == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, graph["nodes"]), None
+            filter(lambda n: n["data"]["type"] == NodeType.KNOWLEDGE_RETRIEVAL, graph["nodes"]), None
         )
 
         role_prefix = None
@@ -580,7 +523,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "LLM",
-                "type": BuiltinNodeTypes.LLM,
+                "type": NodeType.LLM,
                 "model": {
                     "provider": model_config.provider,
                     "name": model_config.model,
@@ -635,7 +578,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "END",
-                "type": BuiltinNodeTypes.END,
+                "type": NodeType.END,
                 "outputs": [{"variable": "result", "value_selector": ["llm", "text"]}],
             },
         }
@@ -649,10 +592,10 @@ class WorkflowConverter:
         return {
             "id": "answer",
             "position": None,
-            "data": {"title": "ANSWER", "type": BuiltinNodeTypes.ANSWER, "answer": "{{#llm.text#}}"},
+            "data": {"title": "ANSWER", "type": NodeType.ANSWER, "answer": "{{#llm.text#}}"},
         }
 
-    def _create_edge(self, source: str, target: str) -> _EdgeType:
+    def _create_edge(self, source: str, target: str):
         """
         Create Edge
         :param source: source node id
@@ -661,7 +604,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: WorkflowGraph, node: _NodeType):
+    def _append_node(self, graph: dict[str, Any], node: _NodeType):
         """
         Append Node to Graph
 
@@ -685,17 +628,17 @@ class WorkflowConverter:
         else:
             return AppMode.ADVANCED_CHAT
 
-    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str, session: Session):
+    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str):
         """
         Get API Based Extension
         :param tenant_id: tenant id
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = session.scalar(
-            select(APIBasedExtension)
+        api_based_extension = (
+            db.session.query(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
-            .limit(1)
+            .first()
         )
 
         if not api_based_extension:

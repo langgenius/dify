@@ -1,54 +1,33 @@
 import { IS_CE_EDITION } from '@/config'
 
-type ConversationField = {
+export type ConversationField = {
   id: string
-  value: unknown
+  value: any
 }
 
 declare global {
-  // oxlint-disable-next-line typescript/consistent-type-definitions
+  // eslint-disable-next-line ts/consistent-type-definitions
   interface Window {
     zE?: (
       command: string,
       value: string,
-      payload?: ConversationField[] | string | string[] | (() => unknown),
-      callback?: () => unknown,
+      payload?: ConversationField[] | string | string[] | (() => any),
+      callback?: () => any,
     ) => void
   }
 }
 
-export const setZendeskConversationFields = (
-  fields: ConversationField[],
-  callback?: () => unknown,
-) => {
+export const setZendeskConversationFields = (fields: ConversationField[], callback?: () => any) => {
   if (!IS_CE_EDITION && window.zE)
     window.zE('messenger:set', 'conversationFields', fields, callback)
 }
 
-type OpenZendeskWindowOptions = {
-  interval?: number
-  retries?: number
+export const setZendeskWidgetVisibility = (visible: boolean) => {
+  if (!IS_CE_EDITION && window.zE)
+    window.zE('messenger', visible ? 'show' : 'hide')
 }
 
-const openZendeskWindowOnce = () => {
-  if (IS_CE_EDITION || !window.zE) return false
-
-  window.zE('messenger', 'show')
-  window.zE('messenger', 'open')
-  return true
-}
-
-export const openZendeskWindow = ({
-  interval = 100,
-  retries = 20,
-}: OpenZendeskWindowOptions = {}) => {
-  if (IS_CE_EDITION) return
-
-  if (openZendeskWindowOnce()) return
-
-  let attempts = 0
-  const timer = window.setInterval(() => {
-    attempts += 1
-    if (openZendeskWindowOnce() || attempts >= retries) window.clearInterval(timer)
-  }, interval)
+export const toggleZendeskWindow = (open: boolean) => {
+  if (!IS_CE_EDITION && window.zE)
+    window.zE('messenger', open ? 'open' : 'close')
 }

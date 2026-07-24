@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from collections.abc import Mapping
@@ -6,7 +7,6 @@ from datetime import datetime
 from typing import Any
 
 from flask import Request, Response
-from pydantic import TypeAdapter
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse
@@ -28,8 +28,6 @@ from models.provider_ids import TriggerProviderID
 from services.trigger.trigger_provider_service import TriggerProviderService
 
 logger = logging.getLogger(__name__)
-
-_request_logs_adapter: TypeAdapter[list[RequestLog]] = TypeAdapter(list[RequestLog])
 
 
 class TriggerSubscriptionBuilderService:
@@ -121,7 +119,9 @@ class TriggerSubscriptionBuilderService:
             if not subscription_builder.name:
                 raise ValueError("Subscription builder name is required")
 
-            credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
+            credential_type = CredentialType.of(
+                subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value
+            )
             if credential_type == CredentialType.UNAUTHORIZED:
                 # manually create
                 TriggerProviderService.add_trigger_subscription(
@@ -319,7 +319,9 @@ class TriggerSubscriptionBuilderService:
                 raise ValueError("Subscription builder name is required")
 
             # Build
-            credential_type = CredentialType.of(subscription_builder.credential_type or CredentialType.UNAUTHORIZED)
+            credential_type = CredentialType.of(
+                subscription_builder.credential_type or CredentialType.UNAUTHORIZED.value
+            )
             if credential_type == CredentialType.UNAUTHORIZED:
                 # manually create
                 TriggerProviderService.add_trigger_subscription(
@@ -396,7 +398,7 @@ class TriggerSubscriptionBuilderService:
         cache_key = cls.encode_cache_key(endpoint_id)
         subscription_cache = redis_client.get(cache_key)
         if subscription_cache:
-            return SubscriptionBuilder.model_validate_json(subscription_cache)
+            return SubscriptionBuilder.model_validate(json.loads(subscription_cache))
 
         return None
 
@@ -421,16 +423,12 @@ class TriggerSubscriptionBuilderService:
         )
 
         key = f"trigger:subscription:builder:logs:{endpoint_id}"
-        logs = _request_logs_adapter.validate_json(redis_client.get(key) or b"[]")
-        logs.append(log)
+        logs = json.loads(redis_client.get(key) or "[]")
+        logs.append(log.model_dump(mode="json"))
 
         # Keep last N logs
         logs = logs[-cls.__VALIDATION_REQUEST_CACHE_COUNT__ :]
-        redis_client.setex(
-            key,
-            cls.__VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__,
-            _request_logs_adapter.dump_json(logs),
-        )
+        redis_client.setex(key, cls.__VALIDATION_REQUEST_CACHE_EXPIRE_SECONDS__, json.dumps(logs, default=str))
 
     @classmethod
     def list_logs(cls, endpoint_id: str) -> list[RequestLog]:
@@ -439,7 +437,7 @@ class TriggerSubscriptionBuilderService:
         logs_json = redis_client.get(key)
         if not logs_json:
             return []
-        return _request_logs_adapter.validate_json(logs_json)
+        return [RequestLog.model_validate(log) for log in json.loads(logs_json)]
 
     @classmethod
     def process_builder_validation_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:

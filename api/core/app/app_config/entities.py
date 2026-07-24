@@ -1,14 +1,13 @@
+from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.entities import MetadataFilteringCondition
-from graphon.file import FileUploadConfig
-from graphon.model_runtime.entities.llm_entities import LLMMode
-from graphon.model_runtime.entities.message_entities import PromptMessageRole
-from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
+from dify_graph.file import FileUploadConfig
+from dify_graph.model_runtime.entities.llm_entities import LLMMode
+from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
+from dify_graph.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
 
@@ -111,11 +110,55 @@ class ExternalDataVariableEntity(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+SupportedComparisonOperator = Literal[
+    # for string or array
+    "contains",
+    "not contains",
+    "start with",
+    "end with",
+    "is",
+    "is not",
+    "empty",
+    "not empty",
+    "in",
+    "not in",
+    # for number
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    # for time
+    "before",
+    "after",
+]
+
+
 class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class Condition(BaseModel):
+    """
+    Condition detail
+    """
+
+    name: str
+    comparison_operator: SupportedComparisonOperator
+    value: str | Sequence[str] | None | int | float = None
+
+
+class MetadataFilteringCondition(BaseModel):
+    """
+    Metadata Filtering Condition.
+    """
+
+    logical_operator: Literal["and", "or"] | None = "and"
+    conditions: list[Condition] | None = Field(default=None, deprecated=True)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
@@ -151,8 +194,8 @@ class DatasetRetrieveConfigEntity(BaseModel):
     top_k: int | None = None
     score_threshold: float | None = 0.0
     rerank_mode: str | None = "reranking_model"
-    reranking_model: RerankingModelDict | None = None
-    weights: WeightsDict | None = None
+    reranking_model: dict | None = None
+    weights: dict | None = None
     reranking_enabled: bool | None = True
     metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
     metadata_model_config: ModelConfig | None = None
@@ -237,9 +280,7 @@ class EasyUIBasedAppConfig(AppConfig):
     """
 
     app_model_config_from: EasyUIBasedAppModelConfigFrom
-    # Optional: an Agent App has no legacy app_model_config row, so the id may be
-    # absent (persistence then stores NULL for the conversation's id).
-    app_model_config_id: str | None = None
+    app_model_config_id: str
     app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity

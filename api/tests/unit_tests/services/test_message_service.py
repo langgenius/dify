@@ -1,12 +1,9 @@
-import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, EndUser, Message
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -70,8 +67,6 @@ class TestMessageServiceFactory:
         message.query = query
         message.answer = answer
         message.created_at = created_at or datetime.now()
-        message.user_feedback_with_session.return_value = None
-        message.admin_feedback_with_session.return_value = None
         return message
 
 
@@ -92,7 +87,7 @@ class TestMessageServicePaginationByFirstId:
         return TestMessageServiceFactory()
 
     # Test 01: No user provided
-    def test_pagination_by_first_id_no_user(self, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_no_user(self, factory):
         """Test pagination returns empty result when no user is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -104,7 +99,6 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
-            session=MagicMock(),
         )
 
         # Assert
@@ -114,7 +108,7 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
 
     # Test 02: No conversation_id provided
-    def test_pagination_by_first_id_no_conversation(self, factory: TestMessageServiceFactory):
+    def test_pagination_by_first_id_no_conversation(self, factory):
         """Test pagination returns empty result when no conversation_id is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -127,7 +121,6 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="",
             first_id=None,
             limit=10,
-            session=MagicMock(),
         )
 
         # Assert
@@ -137,12 +130,9 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
 
     # Test 03: Basic pagination without first_id (desc order)
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_without_first_id_desc(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_without_first_id_desc(self, mock_conversation_service, mock_db, factory):
         """Test basic pagination without first_id in descending order."""
         # Arrange
         app = factory.create_app_mock()
@@ -160,7 +150,12 @@ class TestMessageServicePaginationByFirstId:
             for i in range(5)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -170,7 +165,6 @@ class TestMessageServicePaginationByFirstId:
             first_id=None,
             limit=10,
             order="desc",
-            session=mock_db.session,
         )
 
         # Assert
@@ -181,12 +175,9 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[0].id == "msg-000"
 
     # Test 04: Basic pagination without first_id (asc order)
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_without_first_id_asc(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_without_first_id_asc(self, mock_conversation_service, mock_db, factory):
         """Test basic pagination without first_id in ascending order."""
         # Arrange
         app = factory.create_app_mock()
@@ -204,7 +195,12 @@ class TestMessageServicePaginationByFirstId:
             for i in range(5)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -214,7 +210,6 @@ class TestMessageServicePaginationByFirstId:
             first_id=None,
             limit=10,
             order="asc",
-            session=mock_db.session,
         )
 
         # Assert
@@ -225,12 +220,9 @@ class TestMessageServicePaginationByFirstId:
         assert result.data[4].id == "msg-000"
 
     # Test 05: Pagination with first_id
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_with_first_id(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, factory):
         """Test pagination with first_id to get messages before a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -253,8 +245,31 @@ class TestMessageServicePaginationByFirstId:
             for i in range(5)
         ]
 
-        mock_db.session.scalar.return_value = first_message
-        mock_db.session.scalars.return_value.all.return_value = history_messages
+        # Setup query mocks
+        mock_query_first = MagicMock()
+        mock_query_history = MagicMock()
+
+        query_calls = []
+
+        def query_side_effect(*args):
+            if args[0] == Message:
+                query_calls.append(args)
+                if len(query_calls) == 1:
+                    return mock_query_first
+                else:
+                    return mock_query_history
+
+        mock_db.session.query.side_effect = [mock_query_first, mock_query_history]
+
+        # Setup first message query
+        mock_query_first.where.return_value = mock_query_first
+        mock_query_first.first.return_value = first_message
+
+        # Setup history messages query
+        mock_query_history.where.return_value = mock_query_history
+        mock_query_history.order_by.return_value = mock_query_history
+        mock_query_history.limit.return_value = mock_query_history
+        mock_query_history.all.return_value = history_messages
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -264,19 +279,18 @@ class TestMessageServicePaginationByFirstId:
             first_id="msg-005",
             limit=10,
             order="desc",
-            session=mock_db.session,
         )
 
         # Assert
         assert len(result.data) == 5
         assert result.has_more is False
+        mock_query_first.where.assert_called_once()
+        mock_query_history.where.assert_called_once()
 
     # Test 06: First message not found
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_first_message_not_exists(
-        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_first_message_not_exists(self, mock_conversation_service, mock_db, factory):
         """Test error handling when first_id doesn't exist."""
         # Arrange
         app = factory.create_app_mock()
@@ -285,7 +299,10 @@ class TestMessageServicePaginationByFirstId:
 
         mock_conversation_service.get_conversation.return_value = conversation
 
-        mock_db.session.scalar.return_value = None  # Message not found
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = None  # Message not found
 
         # Act & Assert
         with pytest.raises(FirstMessageNotExistsError):
@@ -295,16 +312,12 @@ class TestMessageServicePaginationByFirstId:
                 conversation_id="conv-001",
                 first_id="nonexistent-msg",
                 limit=10,
-                session=mock_db.session,
             )
 
     # Test 07: Has_more flag when results exceed limit
-    @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_has_more_true(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, factory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()
@@ -322,7 +335,12 @@ class TestMessageServicePaginationByFirstId:
             for i in range(11)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -331,7 +349,6 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
-            session=mock_db.session,
         )
 
         # Assert
@@ -342,9 +359,7 @@ class TestMessageServicePaginationByFirstId:
     # Test 08: Empty conversation
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_empty_conversation(
-        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_first_id_empty_conversation(self, mock_conversation_service, mock_db, factory):
         """Test pagination with conversation that has no messages."""
         # Arrange
         app = factory.create_app_mock()
@@ -353,7 +368,12 @@ class TestMessageServicePaginationByFirstId:
 
         mock_conversation_service.get_conversation.return_value = conversation
 
-        mock_db.session.scalars.return_value.all.return_value = []
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = []
 
         # Act
         result = MessageService.pagination_by_first_id(
@@ -362,7 +382,6 @@ class TestMessageServicePaginationByFirstId:
             conversation_id="conv-001",
             first_id=None,
             limit=10,
-            session=mock_db.session,
         )
 
         # Assert
@@ -388,7 +407,7 @@ class TestMessageServicePaginationByLastId:
         return TestMessageServiceFactory()
 
     # Test 09: No user provided
-    def test_pagination_by_last_id_no_user(self, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_no_user(self, factory):
         """Test pagination returns empty result when no user is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -399,7 +418,6 @@ class TestMessageServicePaginationByLastId:
             user=None,
             last_id=None,
             limit=10,
-            session=MagicMock(),
         )
 
         # Assert
@@ -410,7 +428,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 10: Basic pagination without last_id
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_without_last_id(self, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_without_last_id(self, mock_db, factory):
         """Test basic pagination without last_id."""
         # Arrange
         app = factory.create_app_mock()
@@ -424,7 +442,12 @@ class TestMessageServicePaginationByLastId:
             for i in range(5)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_last_id(
@@ -432,7 +455,6 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id=None,
             limit=10,
-            session=mock_db.session,
         )
 
         # Assert
@@ -442,7 +464,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 11: Pagination with last_id
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_last_id(self, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_with_last_id(self, mock_db, factory):
         """Test pagination with last_id to get messages after a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -462,8 +484,22 @@ class TestMessageServicePaginationByLastId:
             for i in range(6, 10)
         ]
 
-        mock_db.session.scalar.return_value = last_message
-        mock_db.session.scalars.return_value.all.return_value = new_messages
+        # Setup base query mock that returns itself for chaining
+        mock_base_query = MagicMock()
+        mock_db.session.query.return_value = mock_base_query
+
+        # First where() call for last_id lookup
+        mock_query_last = MagicMock()
+        mock_query_last.first.return_value = last_message
+
+        # Second where() call for history messages
+        mock_query_history = MagicMock()
+        mock_query_history.order_by.return_value = mock_query_history
+        mock_query_history.limit.return_value = mock_query_history
+        mock_query_history.all.return_value = new_messages
+
+        # Setup where() to return different mocks on consecutive calls
+        mock_base_query.where.side_effect = [mock_query_last, mock_query_history]
 
         # Act
         result = MessageService.pagination_by_last_id(
@@ -471,7 +507,6 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id="msg-005",
             limit=10,
-            session=mock_db.session,
         )
 
         # Assert
@@ -480,13 +515,16 @@ class TestMessageServicePaginationByLastId:
 
     # Test 12: Last message not found
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_last_message_not_exists(self, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_last_message_not_exists(self, mock_db, factory):
         """Test error handling when last_id doesn't exist."""
         # Arrange
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
 
-        mock_db.session.scalar.return_value = None  # Message not found
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = None  # Message not found
 
         # Act & Assert
         with pytest.raises(LastMessageNotExistsError):
@@ -495,15 +533,12 @@ class TestMessageServicePaginationByLastId:
                 user=user,
                 last_id="nonexistent-msg",
                 limit=10,
-                session=mock_db.session,
             )
 
     # Test 13: Pagination with conversation_id filter
     @patch("services.message_service.ConversationService")
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_conversation_filter(
-        self, mock_db, mock_conversation_service, factory: TestMessageServiceFactory
-    ):
+    def test_pagination_by_last_id_with_conversation_filter(self, mock_db, mock_conversation_service, factory):
         """Test pagination filtered by conversation_id."""
         # Arrange
         app = factory.create_app_mock()
@@ -521,7 +556,12 @@ class TestMessageServicePaginationByLastId:
             for i in range(5)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_last_id(
@@ -530,17 +570,18 @@ class TestMessageServicePaginationByLastId:
             last_id=None,
             limit=10,
             conversation_id="conv-001",
-            session=mock_db.session,
         )
 
         # Assert
         assert len(result.data) == 5
         assert result.has_more is False
+        # Verify conversation_id was used in query
+        mock_query.where.assert_called()
         mock_conversation_service.get_conversation.assert_called_once()
 
     # Test 14: Pagination with include_ids filter
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_include_ids(self, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_with_include_ids(self, mock_db, factory):
         """Test pagination filtered by include_ids."""
         # Arrange
         app = factory.create_app_mock()
@@ -552,7 +593,12 @@ class TestMessageServicePaginationByLastId:
             factory.create_message_mock(message_id="msg-003"),
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_last_id(
@@ -561,7 +607,6 @@ class TestMessageServicePaginationByLastId:
             last_id=None,
             limit=10,
             include_ids=["msg-001", "msg-003"],
-            session=mock_db.session,
         )
 
         # Assert
@@ -571,7 +616,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 15: Has_more flag when results exceed limit
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_has_more_true(self, mock_db, factory: TestMessageServiceFactory):
+    def test_pagination_by_last_id_has_more_true(self, mock_db, factory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()
@@ -586,7 +631,12 @@ class TestMessageServicePaginationByLastId:
             for i in range(11)
         ]
 
-        mock_db.session.scalars.return_value.all.return_value = messages
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = messages
 
         # Act
         result = MessageService.pagination_by_last_id(
@@ -594,7 +644,6 @@ class TestMessageServicePaginationByLastId:
             user=user,
             last_id=None,
             limit=10,
-            session=mock_db.session,
         )
 
         # Assert
@@ -619,7 +668,7 @@ class TestMessageServiceUtilities:
 
     # Test 17: attach_message_extra_contents with messages
     @patch("services.message_service._create_execution_extra_content_repository")
-    def test_attach_message_extra_contents_with_messages(self, mock_create_repo, factory: TestMessageServiceFactory):
+    def test_attach_message_extra_contents_with_messages(self, mock_create_repo, factory):
         """Test attach_message_extra_contents correctly attaches content."""
         # Arrange
         messages = [factory.create_message_mock(message_id="msg-1"), factory.create_message_mock(message_id="msg-2")]
@@ -645,9 +694,7 @@ class TestMessageServiceUtilities:
 
     # Test 18: attach_message_extra_contents with index out of bounds
     @patch("services.message_service._create_execution_extra_content_repository")
-    def test_attach_message_extra_contents_index_out_of_bounds(
-        self, mock_create_repo, factory: TestMessageServiceFactory
-    ):
+    def test_attach_message_extra_contents_index_out_of_bounds(self, mock_create_repo, factory):
         """Test attach_message_extra_contents handles missing content lists."""
         # Arrange
         messages = [factory.create_message_mock(message_id="msg-1")]
@@ -688,24 +735,28 @@ class TestMessageServiceGetMessage:
 
     # Test 20: get_message success for EndUser
     @patch("services.message_service.db")
-    def test_get_message_end_user_success(self, mock_db, factory: TestMessageServiceFactory):
+    def test_get_message_end_user_success(self, mock_db, factory):
         """Test get_message returns message for EndUser."""
         # Arrange
         app = factory.create_app_mock()
         user = factory.create_end_user_mock(user_id="end-user-123")
         message = factory.create_message_mock()
 
-        mock_db.session.scalar.return_value = message
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = message
 
-        # Act,
-        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
+        # Act
+        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123")
 
         # Assert
         assert result == message
+        mock_query.where.assert_called_once()
 
     # Test 21: get_message success for Account (Admin)
     @patch("services.message_service.db")
-    def test_get_message_account_success(self, mock_db, factory: TestMessageServiceFactory):
+    def test_get_message_account_success(self, mock_db, factory):
         """Test get_message returns message for Account."""
         # Arrange
         from models import Account
@@ -715,27 +766,33 @@ class TestMessageServiceGetMessage:
         user.id = "account-123"
         message = factory.create_message_mock()
 
-        mock_db.session.scalar.return_value = message
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = message
 
-        # Act,
-        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
+        # Act
+        result = MessageService.get_message(app_model=app, user=user, message_id="msg-123")
 
         # Assert
         assert result == message
 
     # Test 22: get_message not found
     @patch("services.message_service.db")
-    def test_get_message_not_found(self, mock_db, factory: TestMessageServiceFactory):
+    def test_get_message_not_found(self, mock_db, factory):
         """Test get_message raises MessageNotExistsError when not found."""
         # Arrange
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
 
-        mock_db.session.scalar.return_value = None
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = None
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            MessageService.get_message(app_model=app, user=user, message_id="msg-123", session=mock_db.session)
+            MessageService.get_message(app_model=app, user=user, message_id="msg-123")
 
 
 class TestMessageServiceFeedback:
@@ -749,14 +806,13 @@ class TestMessageServiceFeedback:
     # Test 23: create_feedback - new feedback for EndUser
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_new_end_user(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
+    def test_create_feedback_new_end_user(self, mock_get_message, mock_db, factory):
         """Test creating new feedback for an end user."""
         # Arrange
         app = factory.create_app_mock()
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
         message.user_feedback = None
-        message.user_feedback_with_session.return_value = None
         mock_get_message.return_value = message
 
         # Act
@@ -764,22 +820,21 @@ class TestMessageServiceFeedback:
             app_model=app,
             message_id="msg-123",
             user=user,
-            rating=FeedbackRating.LIKE,
+            rating="like",
             content="Good answer",
-            session=mock_db.session,
         )
 
         # Assert
-        assert result.rating == FeedbackRating.LIKE
+        assert result.rating == "like"
         assert result.content == "Good answer"
-        assert result.from_source == FeedbackFromSource.USER
+        assert result.from_source == "user"
         mock_db.session.add.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
     # Test 24: create_feedback - update feedback for Account
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_update_account(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
+    def test_create_feedback_update_account(self, mock_get_message, mock_db, factory):
         """Test updating existing feedback for an account."""
         # Arrange
         from models import Account, MessageFeedback
@@ -790,7 +845,6 @@ class TestMessageServiceFeedback:
         message = factory.create_message_mock()
         feedback = MagicMock(spec=MessageFeedback)
         message.admin_feedback = feedback
-        message.admin_feedback_with_session.return_value = feedback
         mock_get_message.return_value = message
 
         # Act
@@ -798,21 +852,20 @@ class TestMessageServiceFeedback:
             app_model=app,
             message_id="msg-123",
             user=user,
-            rating=FeedbackRating.DISLIKE,
+            rating="dislike",
             content="Bad answer",
-            session=mock_db.session,
         )
 
         # Assert
         assert result == feedback
-        assert feedback.rating == FeedbackRating.DISLIKE
+        assert feedback.rating == "dislike"
         assert feedback.content == "Bad answer"
         mock_db.session.commit.assert_called_once()
 
     # Test 25: create_feedback - delete feedback (rating is None)
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_delete(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
+    def test_create_feedback_delete(self, mock_get_message, mock_db, factory):
         """Test deleting feedback by passing rating=None."""
         # Arrange
         app = factory.create_app_mock()
@@ -820,7 +873,6 @@ class TestMessageServiceFeedback:
         message = factory.create_message_mock()
         feedback = MagicMock()
         message.user_feedback = feedback
-        message.user_feedback_with_session.return_value = feedback
         mock_get_message.return_value = message
 
         # Act
@@ -830,7 +882,6 @@ class TestMessageServiceFeedback:
             user=user,
             rating=None,
             content=None,
-            session=mock_db.session,
         )
 
         # Assert
@@ -840,20 +891,28 @@ class TestMessageServiceFeedback:
 
     # Test 26: get_all_messages_feedbacks
     @patch("services.message_service.db")
-    def test_get_all_messages_feedbacks(self, mock_db, factory: TestMessageServiceFactory):
+    def test_get_all_messages_feedbacks(self, mock_db, factory):
         """Test get_all_messages_feedbacks returns list of dicts."""
         # Arrange
         app = factory.create_app_mock()
         feedback = MagicMock()
         feedback.to_dict.return_value = {"id": "fb-1"}
 
-        mock_db.session.scalars.return_value.all.return_value = [feedback]
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.all.return_value = [feedback]
 
-        # Act,
-        result = MessageService.get_all_messages_feedbacks(app_model=app, page=1, limit=10, session=mock_db.session)
+        # Act
+        result = MessageService.get_all_messages_feedbacks(app_model=app, page=1, limit=10)
 
         # Assert
         assert result == [{"id": "fb-1"}]
+        mock_query.limit.assert_called_with(10)
+        mock_query.offset.assert_called_with(0)
 
 
 class TestMessageServiceSuggestedQuestions:
@@ -865,19 +924,15 @@ class TestMessageServiceSuggestedQuestions:
         return TestMessageServiceFactory()
 
     # Test 27: get_suggested_questions_after_answer - user is None
-    def test_get_suggested_questions_user_none(self, factory: TestMessageServiceFactory):
+    def test_get_suggested_questions_user_none(self, factory):
         app = factory.create_app_mock()
         with pytest.raises(ValueError, match="user cannot be None"):
             MessageService.get_suggested_questions_after_answer(
-                app_model=app,
-                user=None,
-                message_id="msg-123",
-                invoke_from=MagicMock(),
-                session=MagicMock(),
+                app_model=app, user=None, message_id="msg-123", invoke_from=MagicMock()
             )
 
     # Test 28: get_suggested_questions_after_answer - Advanced Chat success
-    @patch("services.message_service.ModelManager.for_tenant")
+    @patch("services.message_service.ModelManager")
     @patch("services.message_service.WorkflowService")
     @patch("services.message_service.AdvancedChatAppConfigManager")
     @patch("services.message_service.TokenBufferMemory")
@@ -895,7 +950,7 @@ class TestMessageServiceSuggestedQuestions:
         mock_config_manager,
         mock_workflow_service,
         mock_model_manager,
-        factory: TestMessageServiceFactory,
+        factory,
     ):
         """Test successful suggested questions generation in Advanced Chat mode."""
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -917,11 +972,7 @@ class TestMessageServiceSuggestedQuestions:
 
         # Act
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=user,
-            message_id="msg-123",
-            invoke_from=InvokeFrom.WEB_APP,
-            session=MagicMock(),
+            app_model=app, user=user, message_id="msg-123", invoke_from=InvokeFrom.WEB_APP
         )
 
         # Assert
@@ -931,7 +982,7 @@ class TestMessageServiceSuggestedQuestions:
 
     # Test 29: get_suggested_questions_after_answer - Chat app success (no override)
     @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager.for_tenant")
+    @patch("services.message_service.ModelManager")
     @patch("services.message_service.TokenBufferMemory")
     @patch("services.message_service.LLMGenerator")
     @patch("services.message_service.TraceQueueManager")
@@ -939,18 +990,18 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_success(
         self,
-        mock_conversation_service: MagicMock,
-        mock_get_message: MagicMock,
-        mock_trace_manager: MagicMock,
-        mock_llm_gen: MagicMock,
-        mock_memory: MagicMock,
-        mock_model_manager: MagicMock,
-        mock_db: MagicMock,
-        factory: TestMessageServiceFactory,
+        mock_conversation_service,
+        mock_get_message,
+        mock_trace_manager,
+        mock_llm_gen,
+        mock_memory,
+        mock_model_manager,
+        mock_db,
+        factory,
     ):
         """Test successful suggested questions generation in basic Chat mode."""
         # Arrange
-        app = factory.create_app_mock(mode=AppMode.CHAT)
+        app = factory.create_app_mock(mode=AppMode.CHAT.value)
         user = factory.create_end_user_mock()
         message = factory.create_message_mock()
         mock_get_message.return_value = message
@@ -963,267 +1014,22 @@ class TestMessageServiceSuggestedQuestions:
         app_model_config.suggested_questions_after_answer_dict = {"enabled": True}
         app_model_config.model_dict = {"provider": "openai", "name": "gpt-4"}
 
-        mock_db.session.scalar.return_value = app_model_config
+        mock_query = MagicMock()
+        mock_db.session.query.return_value = mock_query
+        mock_query.where.return_value = mock_query
+        mock_query.first.return_value = app_model_config
 
         mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
 
         # Act
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=user,
-            message_id="msg-123",
-            invoke_from=MagicMock(),
-            session=mock_db.session,
+            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
         )
 
         # Assert
         assert result == ["Q1?"]
+        mock_query.first.assert_called_once()
         mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once()
-
-    @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager.for_tenant")
-    @patch("services.message_service.TokenBufferMemory")
-    @patch("services.message_service.LLMGenerator")
-    @patch("services.message_service.TraceQueueManager")
-    @patch.object(MessageService, "get_message")
-    @patch("services.message_service.ConversationService")
-    def test_get_suggested_questions_chat_app_uses_frontend_model_and_prompt(
-        self,
-        mock_conversation_service: MagicMock,
-        mock_get_message: MagicMock,
-        mock_trace_manager: MagicMock,
-        mock_llm_gen: MagicMock,
-        mock_memory: MagicMock,
-        mock_model_manager: MagicMock,
-        mock_db: MagicMock,
-        factory: TestMessageServiceFactory,
-    ):
-        """Test suggested question generation uses frontend configured model and prompt."""
-        from core.app.entities.app_invoke_entities import InvokeFrom
-
-        app = factory.create_app_mock(mode=AppMode.CHAT)
-        app.tenant_id = "tenant-123"
-        user = factory.create_end_user_mock()
-        message = factory.create_message_mock()
-        mock_get_message.return_value = message
-
-        conversation = MagicMock()
-        conversation.override_model_configs = None
-        mock_conversation_service.get_conversation.return_value = conversation
-
-        app_model_config = MagicMock()
-        app_model_config.suggested_questions_after_answer_dict = {
-            "enabled": True,
-            "prompt": "custom prompt",
-            "model": {
-                "provider": "openai",
-                "name": "gpt-4o-mini",
-                "completion_params": {"max_tokens": 2048, "temperature": 0.1},
-            },
-        }
-        mock_db.session.scalar.return_value = app_model_config
-
-        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
-        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=user,
-            message_id="msg-123",
-            invoke_from=InvokeFrom.WEB_APP,
-            session=mock_db.session,
-        )
-
-        assert result == ["Q1?"]
-        mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
-            tenant_id="tenant-123",
-            model_type=ModelType.LLM,
-        )
-        mock_memory.assert_called_once_with(
-            conversation=conversation,
-            model_instance=mock_model_manager.return_value.get_default_model_instance.return_value,
-        )
-        mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once_with(
-            tenant_id="tenant-123",
-            histories="histories",
-            instruction_prompt="custom prompt",
-            model_config={
-                "provider": "openai",
-                "name": "gpt-4o-mini",
-                "completion_params": {"max_tokens": 2048, "temperature": 0.1},
-            },
-        )
-
-    @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager.for_tenant")
-    @patch("services.message_service.TokenBufferMemory")
-    @patch("services.message_service.LLMGenerator")
-    @patch("services.message_service.TraceQueueManager")
-    @patch.object(MessageService, "get_message")
-    @patch("services.message_service.ConversationService")
-    def test_get_suggested_questions_chat_app_invalid_frontend_model_fallback_to_default(
-        self,
-        mock_conversation_service: MagicMock,
-        mock_get_message: MagicMock,
-        mock_trace_manager: MagicMock,
-        mock_llm_gen: MagicMock,
-        mock_memory: MagicMock,
-        mock_model_manager: MagicMock,
-        mock_db: MagicMock,
-        factory: TestMessageServiceFactory,
-    ):
-        """Test invalid frontend configured model falls back to tenant default model."""
-        app = factory.create_app_mock(mode=AppMode.CHAT)
-        app.tenant_id = "tenant-123"
-        user = factory.create_end_user_mock()
-        message = factory.create_message_mock()
-        mock_get_message.return_value = message
-
-        conversation = MagicMock()
-        conversation.override_model_configs = None
-        mock_conversation_service.get_conversation.return_value = conversation
-
-        app_model_config = MagicMock()
-        app_model_config.suggested_questions_after_answer_dict = {
-            "enabled": True,
-            "model": {"provider": "openai", "name": "invalid-model"},
-        }
-        mock_db.session.scalar.return_value = app_model_config
-
-        mock_model_manager.return_value.get_model_instance.side_effect = ValueError("invalid model")
-        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
-        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=user,
-            message_id="msg-123",
-            invoke_from=MagicMock(),
-            session=mock_db.session,
-        )
-
-        assert result == ["Q1?"]
-        mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
-            tenant_id="tenant-123",
-            model_type=ModelType.LLM,
-        )
-        mock_model_manager.return_value.get_model_instance.assert_not_called()
-
-    @patch("services.message_service.db")
-    @patch("services.message_service.ModelManager.for_tenant")
-    @patch("services.message_service.TokenBufferMemory")
-    @patch("services.message_service.LLMGenerator")
-    @patch("services.message_service.TraceQueueManager")
-    @patch.object(MessageService, "get_message")
-    @patch("services.message_service.ConversationService")
-    def test_get_suggested_questions_chat_app_uses_compatible_override_model_config(
-        self,
-        mock_conversation_service: MagicMock,
-        mock_get_message: MagicMock,
-        mock_trace_manager: MagicMock,
-        mock_llm_gen: MagicMock,
-        mock_memory: MagicMock,
-        mock_model_manager: MagicMock,
-        mock_db: MagicMock,
-        factory: TestMessageServiceFactory,
-    ):
-        """Test legacy override configs are normalized before suggested questions reads them."""
-        app = factory.create_app_mock(mode=AppMode.CHAT)
-        app.tenant_id = "tenant-123"
-        user = factory.create_end_user_mock()
-        message = factory.create_message_mock()
-        mock_get_message.return_value = message
-
-        conversation = MagicMock()
-        conversation.override_model_configs = json.dumps(
-            {
-                "speech_to_text": {"enabled": False},
-                "text_to_speech": {"enabled": False},
-                "retriever_resource": {"enabled": False},
-                "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": "chat"},
-                "user_input_form": [],
-                "dataset_query_variable": "",
-                "pre_prompt": "",
-                "agent_mode": {
-                    "enabled": False,
-                    "max_iteration": 5,
-                    "strategy": "function_call",
-                    "tools": [],
-                },
-                "prompt_type": "simple",
-                "chat_prompt_config": {},
-                "completion_prompt_config": {},
-                "dataset_configs": {"retrieval_model": "single", "datasets": {"datasets": []}},
-                "file_upload": {
-                    "image": {
-                        "detail": "high",
-                        "enabled": False,
-                        "number_limits": 3,
-                        "transfer_methods": ["remote_url", "local_file"],
-                    }
-                },
-                "suggested_questions_after_answer": {
-                    "enabled": True,
-                    "prompt": "legacy prompt",
-                },
-            }
-        )
-        conversation.model_config = {
-            "opening_statement": None,
-            "suggested_questions": [],
-            "suggested_questions_after_answer": {
-                "enabled": True,
-                "prompt": "legacy prompt",
-            },
-            "speech_to_text": {"enabled": False},
-            "text_to_speech": {"enabled": False},
-            "retriever_resource": {"enabled": False},
-            "annotation_reply": {"enabled": False},
-            "more_like_this": {"enabled": False},
-            "sensitive_word_avoidance": {"enabled": False, "type": "", "config": {}},
-            "external_data_tools": [],
-            "model": {"provider": "openai", "name": "gpt-4o-mini", "mode": "chat"},
-            "user_input_form": [],
-            "dataset_query_variable": "",
-            "pre_prompt": "",
-            "agent_mode": {"enabled": False, "strategy": "function_call", "tools": [], "prompt": None},
-            "prompt_type": "simple",
-            "chat_prompt_config": {},
-            "completion_prompt_config": {},
-            "dataset_configs": {"retrieval_model": "single", "datasets": {"datasets": []}},
-            "file_upload": {
-                "image": {
-                    "detail": "high",
-                    "enabled": False,
-                    "number_limits": 3,
-                    "transfer_methods": ["remote_url", "local_file"],
-                }
-            },
-            "model_id": None,
-            "provider": None,
-        }
-        conversation.model_config_with_session.return_value = conversation.model_config
-        mock_conversation_service.get_conversation.return_value = conversation
-
-        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
-        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
-
-        result = MessageService.get_suggested_questions_after_answer(
-            app_model=app,
-            user=user,
-            message_id="msg-123",
-            invoke_from=MagicMock(),
-            session=mock_db.session,
-        )
-
-        assert result == ["Q1?"]
-        mock_db.session.scalar.assert_not_called()
-        mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once_with(
-            tenant_id="tenant-123",
-            histories="histories",
-            instruction_prompt="legacy prompt",
-            model_config=None,
-        )
 
     # Test 30: get_suggested_questions_after_answer - Disabled Error
     @patch("services.message_service.WorkflowService")
@@ -1231,12 +1037,7 @@ class TestMessageServiceSuggestedQuestions:
     @patch.object(MessageService, "get_message")
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_disabled_error(
-        self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_config_manager,
-        mock_workflow_service,
-        factory: TestMessageServiceFactory,
+        self, mock_conversation_service, mock_get_message, mock_config_manager, mock_workflow_service, factory
     ):
         """Test SuggestedQuestionsAfterAnswerDisabledError is raised when feature is disabled."""
         # Arrange
@@ -1254,9 +1055,5 @@ class TestMessageServiceSuggestedQuestions:
         # Act & Assert
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=app,
-                user=user,
-                message_id="msg-123",
-                invoke_from=MagicMock(),
-                session=MagicMock(),
+                app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
             )

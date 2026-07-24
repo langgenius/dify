@@ -1,31 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
-import {
-  NumberField,
-  NumberFieldControls,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from '@langgenius/dify-ui/number-field'
 import * as React from 'react'
+import Input from '@/app/components/base/input'
+import { InputNumber } from '@/app/components/base/input-number'
+import { cn } from '@/utils/classnames'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 
-type Props = Readonly<{
+type Props = {
   className?: string
-  label: string
   type: DataType
   value: any
   onChange: (value: any) => void
   readOnly?: boolean
-}>
+}
 
 const InputCombined: FC<Props> = ({
   className: configClassName,
-  label,
   type,
   value,
   onChange,
@@ -33,35 +24,36 @@ const InputCombined: FC<Props> = ({
 }) => {
   const className = cn('h-6 grow p-0.5 text-xs')
   if (type === DataType.time) {
-    return <Datepicker label={label} className={className} value={value} onChange={onChange} />
+    return (
+      <Datepicker
+        className={className}
+        value={value}
+        onChange={onChange}
+      />
+    )
   }
 
   if (type === DataType.number) {
     return (
       <div className="grow text-[0]">
-        <NumberField
-          className="min-w-0"
+        <InputNumber
+          className={cn(className, 'rounded-l-md')}
           value={value}
+          onChange={onChange}
+          size="regular"
+          controlWrapClassName="overflow-hidden"
+          controlClassName="pt-0 pb-0"
           readOnly={readOnly}
-          onValueChange={(value) => onChange(value ?? 0)}
-        >
-          <NumberFieldGroup>
-            <NumberFieldInput aria-label={label} className={cn(className, 'rounded-l-md')} />
-            <NumberFieldControls className="overflow-hidden">
-              <NumberFieldIncrement className="py-0" />
-              <NumberFieldDecrement className="py-0" />
-            </NumberFieldControls>
-          </NumberFieldGroup>
-        </NumberField>
+        />
       </div>
     )
   }
   return (
     <Input
-      aria-label={label}
-      className={cn(configClassName, className, 'rounded-md')}
+      wrapperClassName={configClassName}
+      className={cn(className, 'rounded-md')}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={e => onChange(e.target.value)}
       readOnly={readOnly}
     />
   )

@@ -1,5 +1,6 @@
 function escape(input: string): string {
-  if (!input || typeof input !== 'string') return ''
+  if (!input || typeof input !== 'string')
+    return ''
 
   const res = input
     // .replaceAll('\\', '\\\\') // This would add too many backslashes
@@ -10,7 +11,7 @@ function escape(input: string): string {
     .replaceAll('\r', '\\r')
     .replaceAll('\t', '\\t')
     .replaceAll('\v', '\\v')
-    .replaceAll("'", "\\'")
+    .replaceAll('\'', '\\\'')
   return res
 }
 

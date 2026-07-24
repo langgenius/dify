@@ -7,10 +7,8 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from factories import variable_factory
-from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import (
+from dify_graph.file import File, FileTransferMethod, FileType
+from dify_graph.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -19,8 +17,8 @@ from graphon.variables import (
     SecretVariable,
     StringVariable,
 )
-from graphon.variables.exc import VariableError
-from graphon.variables.segments import (
+from dify_graph.variables.exc import VariableError
+from dify_graph.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -35,7 +33,9 @@ from graphon.variables.segments import (
     Segment,
     StringSegment,
 )
-from graphon.variables.types import SegmentType
+from dify_graph.variables.types import SegmentType
+from factories import variable_factory
+from factories.variable_factory import TypeMismatchError, build_segment, build_segment_with_type
 
 
 def test_string_variable():
@@ -200,19 +200,6 @@ def test_variable_cannot_large_than_200_kb():
         )
 
 
-def test_conversation_variable_description_cannot_exceed_255_chars():
-    with pytest.raises(VariableError, match="description of variable 'test_text' is too long"):
-        variable_factory.build_conversation_variable_from_mapping(
-            {
-                "id": str(uuid4()),
-                "value_type": "string",
-                "name": "test_text",
-                "value": "value",
-                "description": "a" * 256,
-            }
-        )
-
-
 def test_array_none_variable():
     var = variable_factory.build_segment([None, None, None, None])
     assert isinstance(var, ArrayAnySegment)
@@ -239,9 +226,9 @@ def test_build_segment_none_type_properties():
 def test_build_segment_array_file_single_file():
     """Test building ArrayFileSegment from list with single file."""
     file = File(
-        file_id="test_file_id",
+        id="test_file_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
         filename="test-file",
@@ -259,9 +246,9 @@ def test_build_segment_array_file_single_file():
 def test_build_segment_array_file_multiple_files():
     """Test building ArrayFileSegment from list with multiple files."""
     file1 = File(
-        file_id="test_file_id_1",
+        id="test_file_id_1",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file1.png",
         filename="test-file1",
@@ -270,9 +257,9 @@ def test_build_segment_array_file_multiple_files():
         size=1000,
     )
     file2 = File(
-        file_id="test_file_id_2",
+        id="test_file_id_2",
         tenant_id="test_tenant_id",
-        file_type=FileType.DOCUMENT,
+        type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_relation_id",
         filename="test-file2",
@@ -317,9 +304,9 @@ def test_build_segment_array_any_with_nested_arrays():
 def test_build_segment_array_any_mixed_with_files():
     """Test building ArrayAnySegment from list with files and other types."""
     file = File(
-        file_id="test_file_id",
+        id="test_file_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
         filename="test-file",
@@ -346,9 +333,9 @@ def test_build_segment_array_any_all_none_values():
 def test_build_segment_array_file_properties():
     """Test ArrayFileSegment properties and methods."""
     file1 = File(
-        file_id="test_file_id_1",
+        id="test_file_id_1",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file1.png",
         filename="test-file1",
@@ -357,9 +344,9 @@ def test_build_segment_array_file_properties():
         size=1000,
     )
     file2 = File(
-        file_id="test_file_id_2",
+        id="test_file_id_2",
         tenant_id="test_tenant_id",
-        file_type=FileType.DOCUMENT,
+        type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file2.txt",
         filename="test-file2",
@@ -406,9 +393,9 @@ def test_build_segment_edge_cases():
 def test_build_segment_file_array_with_different_file_types():
     """Test ArrayFileSegment with different file types."""
     image_file = File(
-        file_id="image_id",
+        id="image_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/image.png",
         filename="image",
@@ -418,9 +405,9 @@ def test_build_segment_file_array_with_different_file_types():
     )
 
     video_file = File(
-        file_id="video_id",
+        id="video_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.VIDEO,
+        type=FileType.VIDEO,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="video_relation_id",
         filename="video",
@@ -430,9 +417,9 @@ def test_build_segment_file_array_with_different_file_types():
     )
 
     audio_file = File(
-        file_id="audio_id",
+        id="audio_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.AUDIO,
+        type=FileType.AUDIO,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="audio_relation_id",
         filename="audio",
@@ -468,9 +455,9 @@ def _generate_file(draw) -> File:
     if transfer_method == FileTransferMethod.REMOTE_URL:
         url = "https://test.example.com/test-file"
         file = File(
-            file_id="test_file_id",
+            id="test_file_id",
             tenant_id="test_tenant_id",
-            file_type=file_type,
+            type=file_type,
             transfer_method=transfer_method,
             remote_url=url,
             related_id=None,
@@ -483,9 +470,9 @@ def _generate_file(draw) -> File:
         relation_id = draw(st.uuids(version=4))
 
         file = File(
-            file_id="test_file_id",
+            id="test_file_id",
             tenant_id="test_tenant_id",
-            file_type=file_type,
+            type=file_type,
             transfer_method=transfer_method,
             related_id=str(relation_id),
             filename=filename,
@@ -531,9 +518,9 @@ def test_build_segment_type_for_scalar():
         expected_type: SegmentType
 
     file = File(
-        file_id="test_file_id",
+        id="test_file_id",
         tenant_id="test_tenant_id",
-        file_type=FileType.IMAGE,
+        type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://test.example.com/test-file.png",
         filename="test-file",
@@ -588,9 +575,9 @@ class TestBuildSegmentWithType:
     def test_file_type(self):
         """Test building a file segment with correct type."""
         test_file = File(
-            file_id="test_file_id",
+            id="test_file_id",
             tenant_id="test_tenant_id",
-            file_type=FileType.IMAGE,
+            type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://test.example.com/test-file.png",
             filename="test-file",
@@ -850,7 +837,7 @@ class TestBuildSegmentValueErrors:
             self.ValueErrorTestCase(
                 name="frozenset_type",
                 description="frozenset (unsupported type)",
-                test_value=frozenset((1, 2, 3)),
+                test_value=frozenset([1, 2, 3]),
             ),
             self.ValueErrorTestCase(
                 name="memoryview_type",

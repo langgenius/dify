@@ -1,17 +1,19 @@
 'use client'
+import type { OffsetOptions } from '@floating-ui/react'
+import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import type { ToolPickerScope } from '@/app/components/workflow/block-selector/tool-picker'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
+import Textarea from '@/app/components/base/textarea'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { ReadmeEntrance } from '../../../readme-panel/entrance'
-import { ToolTrigger } from './tool-trigger'
+import ToolTrigger from './tool-trigger'
 
 type ToolBaseFormProps = {
   value?: ToolValue
   currentProvider?: ToolWithProvider
+  offset?: OffsetOptions
   scope?: string
   selectedTools?: ToolValue[]
   isShowChooseTool: boolean
@@ -21,17 +23,13 @@ type ToolBaseFormProps = {
   onPanelShowStateChange?: (state: boolean) => void
   onSelectTool: (tool: ToolDefaultValue) => void
   onSelectMultipleTool: (tools: ToolDefaultValue[]) => void
-  onDescriptionChange: (value: string) => void
+  onDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
 }
 
-function resolveToolPickerScope(scope?: string): ToolPickerScope {
-  if (scope === 'plugins' || scope === 'custom' || scope === 'workflow') return scope
-  return 'all'
-}
-
-export function ToolBaseForm({
+const ToolBaseForm: FC<ToolBaseFormProps> = ({
   value,
   currentProvider,
+  offset = 4,
   scope,
   selectedTools,
   isShowChooseTool,
@@ -42,14 +40,15 @@ export function ToolBaseForm({
   onSelectTool,
   onSelectMultipleTool,
   onDescriptionChange,
-}: ToolBaseFormProps) {
+}) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex flex-col gap-3 px-4 py-2">
+      {/* Tool picker */}
       <div className="flex flex-col gap-1">
-        <div className="flex h-6 items-center justify-between system-sm-semibold text-text-secondary">
-          {t(($) => $['detailPanel.toolSelector.toolLabel'], { ns: 'plugin' })}
+        <div className="system-sm-semibold flex h-6 items-center justify-between text-text-secondary">
+          {t('detailPanel.toolSelector.toolLabel', { ns: 'plugin' })}
           {currentProvider?.plugin_unique_identifier && (
             <ReadmeEntrance
               pluginDetail={currentProvider as unknown as PluginDetail}
@@ -60,40 +59,40 @@ export function ToolBaseForm({
         </div>
         <ToolPicker
           placement="bottom"
-          sideOffset={4}
-          trigger={
+          offset={offset}
+          trigger={(
             <ToolTrigger
               open={panelShowState || isShowChooseTool}
               value={value}
               provider={currentProvider}
             />
-          }
+          )}
           isShow={panelShowState || isShowChooseTool}
-          onShowChange={hasTrigger ? onPanelShowStateChange || onShowChange : onShowChange}
+          onShowChange={hasTrigger ? (onPanelShowStateChange || (() => {})) : onShowChange}
           disabled={false}
           supportAddCustomTool
           onSelect={onSelectTool}
           onSelectMultiple={onSelectMultipleTool}
-          scope={resolveToolPickerScope(scope)}
+          scope={scope}
           selectedTools={selectedTools}
         />
       </div>
 
+      {/* Description */}
       <div className="flex flex-col gap-1">
-        <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-          {t(($) => $['detailPanel.toolSelector.descriptionLabel'], { ns: 'plugin' })}
+        <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+          {t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}
         </div>
         <Textarea
           className="resize-none"
-          aria-label={t(($) => $['detailPanel.toolSelector.descriptionLabel'], { ns: 'plugin' })}
-          placeholder={t(($) => $['detailPanel.toolSelector.descriptionPlaceholder'], {
-            ns: 'plugin',
-          })}
+          placeholder={t('detailPanel.toolSelector.descriptionPlaceholder', { ns: 'plugin' })}
           value={value?.extra?.description || ''}
-          onValueChange={onDescriptionChange}
+          onChange={onDescriptionChange}
           disabled={!value?.provider_name}
         />
       </div>
     </div>
   )
 }
+
+export default ToolBaseForm

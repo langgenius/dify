@@ -1,41 +1,43 @@
 import type { MockedFunction } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { SystemFeatures } from '@/types/feature'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
-import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { defaultSystemFeatures } from '@/types/feature'
 import Form from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-    target,
-    rel,
-  }: {
-    children: React.ReactNode
-    href: string
-    className?: string
-    target?: string
-    rel?: string
-  }) => (
+type SystemFeaturesOverrides = Partial<Omit<SystemFeatures, 'branding'>> & {
+  branding?: Partial<SystemFeatures['branding']>
+}
+
+const buildSystemFeatures = (overrides: SystemFeaturesOverrides = {}): SystemFeatures => ({
+  ...defaultSystemFeatures,
+  ...overrides,
+  branding: {
+    ...defaultSystemFeatures.branding,
+    ...overrides.branding,
+  },
+})
+
+vi.mock('next/link', () => ({
+  default: ({ children, href, className, target, rel }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string }) => (
     <a href={href} className={className} target={target} rel={rel}>
       {children}
     </a>
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(),
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: vi.fn(),
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -44,8 +46,8 @@ vi.mock('@/service/use-common', () => ({
 
 type UseSendMailResult = ReturnType<typeof useSendMail>
 
+const mockUseGlobalPublicStore = useGlobalPublicStore as unknown as MockedFunction<typeof useGlobalPublicStore>
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
 
 const renderForm = ({
@@ -55,22 +57,22 @@ const renderForm = ({
   brandingEnabled?: boolean
   isPending?: boolean
 } = {}) => {
+  mockUseGlobalPublicStore.mockReturnValue({
+    systemFeatures: buildSystemFeatures({
+      branding: { enabled: brandingEnabled },
+    }),
+  })
   mockUseLocale.mockReturnValue('en-US')
   mockUseSendMail.mockReturnValue({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
-    systemFeatures: { branding: { enabled: brandingEnabled } },
-  })
+  return render(<Form onSuccess={mockOnSuccess} />)
 }
 
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -120,24 +122,6 @@ describe('InputMail Form', () => {
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')
       })
-    })
-  })
-
-  // Navigation between registration and login keeps the original destination.
-  describe('Registration Navigation', () => {
-    it('should preserve the current query when navigating to sign in', () => {
-      mockUseSearchParams.mockReturnValue(
-        new URLSearchParams(
-          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-        ) as unknown as ReturnType<typeof useSearchParams>,
-      )
-
-      renderForm()
-
-      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toHaveAttribute(
-        'href',
-        '/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-      )
     })
   })
 

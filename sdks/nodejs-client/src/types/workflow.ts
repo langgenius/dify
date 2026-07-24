@@ -1,12 +1,12 @@
-import type { DifyRequestFile, JsonObject, ResponseMode, StreamEvent } from './common'
+import type { StreamEvent } from "./common";
 
 export type WorkflowRunRequest = {
-  inputs?: JsonObject
-  user: string
-  response_mode?: ResponseMode
-  files?: DifyRequestFile[] | null
-}
+  inputs?: Record<string, unknown>;
+  user: string;
+  response_mode?: "blocking" | "streaming";
+  files?: Array<Record<string, unknown>> | null;
+};
 
-export type WorkflowRunResponse = JsonObject
+export type WorkflowRunResponse = Record<string, unknown>;
 
-export type WorkflowStreamEvent = StreamEvent<JsonObject>
+export type WorkflowStreamEvent = StreamEvent<Record<string, unknown>>;

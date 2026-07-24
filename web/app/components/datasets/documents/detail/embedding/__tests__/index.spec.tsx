@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ProcessMode } from '@/models/datasets'
 import * as datasetsService from '@/service/datasets'
 import * as useDataset from '@/service/knowledge/use-dataset'
@@ -13,54 +14,49 @@ import { IndexingType } from '../../../../create/step-two'
 import { DocumentContext } from '../../context'
 import EmbeddingDetail from '../index'
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
+const { mockNotify, mockClose } = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+  mockClose: vi.fn(),
+}))
 
 vi.mock('@/service/datasets')
 vi.mock('@/service/knowledge/use-dataset')
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
-}))
+vi.mock('@/app/components/base/toast/context', async () => {
+  const { createContext } = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
+  return {
+    ToastContext: createContext({
+      notify: mockNotify,
+      close: mockClose,
+    }),
+  }
+})
 
 const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 const mockUseProcessRule = vi.mocked(useDataset.useProcessRule)
 
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  })
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, gcTime: 0 },
+    mutations: { retry: false },
+  },
+})
 
-const createWrapper = (
-  contextValue: DocumentContextValue = { datasetId: 'ds1', documentId: 'doc1' },
-) => {
-  const queryClient = createConsoleQueryClient()
+const createWrapper = (contextValue: DocumentContextValue = { datasetId: 'ds1', documentId: 'doc1' }) => {
+  const queryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <>
-        <DocumentContext.Provider value={contextValue}>{children}</DocumentContext.Provider>
-      </>
+      <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
+        <DocumentContext.Provider value={contextValue}>
+          {children}
+        </DocumentContext.Provider>
+      </ToastContext.Provider>
     </QueryClientProvider>
   )
 }
 
-const mockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+const mockIndexingStatus = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
   id: 'doc1',
   indexing_status: 'indexing',
   completed_segments: 50,
@@ -106,12 +102,23 @@ describe('EmbeddingDetail', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', async () => {
+      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
+
+      render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
+
+      await waitFor(() => {
+        expect(screen.getByText(/embedding\.processing/i)).toBeInTheDocument()
+      })
+    })
+
     it('should render with provided datasetId and documentId props', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 
-      render(<EmbeddingDetail {...defaultProps} datasetId="custom-ds" documentId="custom-doc" />, {
-        wrapper: createWrapper({ datasetId: '', documentId: '' }),
-      })
+      render(
+        <EmbeddingDetail {...defaultProps} datasetId="custom-ds" documentId="custom-doc" />,
+        { wrapper: createWrapper({ datasetId: '', documentId: '' }) },
+      )
 
       await waitFor(() => {
         expect(mockFetchIndexingStatus).toHaveBeenCalledWith({
@@ -147,9 +154,7 @@ describe('EmbeddingDetail', () => {
     })
 
     it('should show completed status', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(
-        mockIndexingStatus({ indexing_status: 'completed' }),
-      )
+      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({ indexing_status: 'completed' }))
 
       render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -181,12 +186,10 @@ describe('EmbeddingDetail', () => {
 
   describe('Progress Display', () => {
     it('should display segment progress', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(
-        mockIndexingStatus({
-          completed_segments: 50,
-          total_segments: 100,
-        }),
-      )
+      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({
+        completed_segments: 50,
+        total_segments: 100,
+      }))
 
       render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -275,9 +278,10 @@ describe('EmbeddingDetail', () => {
     it('should display qualified index mode', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 
-      render(<EmbeddingDetail {...defaultProps} indexingType={IndexingType.QUALIFIED} />, {
-        wrapper: createWrapper(),
-      })
+      render(
+        <EmbeddingDetail {...defaultProps} indexingType={IndexingType.QUALIFIED} />,
+        { wrapper: createWrapper() },
+      )
 
       await waitFor(() => {
         expect(screen.getByText(/stepTwo\.qualified/i)).toBeInTheDocument()
@@ -287,9 +291,10 @@ describe('EmbeddingDetail', () => {
     it('should display economical index mode', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 
-      render(<EmbeddingDetail {...defaultProps} indexingType={IndexingType.ECONOMICAL} />, {
-        wrapper: createWrapper(),
-      })
+      render(
+        <EmbeddingDetail {...defaultProps} indexingType={IndexingType.ECONOMICAL} />,
+        { wrapper: createWrapper() },
+      )
 
       await waitFor(() => {
         expect(screen.getByText(/stepTwo\.economical/i)).toBeInTheDocument()
@@ -305,17 +310,15 @@ describe('EmbeddingDetail', () => {
         .mockResolvedValueOnce(mockIndexingStatus({ indexing_status: 'indexing' }))
         .mockResolvedValueOnce(mockIndexingStatus({ indexing_status: 'completed' }))
 
-      render(<EmbeddingDetail {...defaultProps} detailUpdate={detailUpdate} />, {
-        wrapper: createWrapper(),
-      })
+      render(
+        <EmbeddingDetail {...defaultProps} detailUpdate={detailUpdate} />,
+        { wrapper: createWrapper() },
+      )
 
       // Wait for the terminal status to trigger detailUpdate
-      await waitFor(
-        () => {
-          expect(mockFetchIndexingStatus).toHaveBeenCalled()
-        },
-        { timeout: 5000 },
-      )
+      await waitFor(() => {
+        expect(mockFetchIndexingStatus).toHaveBeenCalled()
+      }, { timeout: 5000 })
     })
   })
 
@@ -339,9 +342,7 @@ describe('EmbeddingDetail', () => {
     it('should render skeleton component', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 
-      const { container } = render(<EmbeddingDetail {...defaultProps} />, {
-        wrapper: createWrapper(),
-      })
+      const { container } = render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
 
       // EmbeddingSkeleton should be rendered - check for the skeleton wrapper element
       await waitFor(() => {

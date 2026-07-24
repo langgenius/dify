@@ -3,12 +3,10 @@ import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { useWorkflowVariables, useWorkflowVariableType } from '../use-workflow-variables'
 
 vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
+  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
 vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
-)
+  (await import('../../__tests__/service-mock-factory')).createToolServiceMock())
 
 const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({
   mockToNodeAvailableVars: vi.fn((_args: Record<string, unknown>) => [] as unknown[]),
@@ -50,7 +48,7 @@ describe('useWorkflowVariables', () => {
       })
 
       expect(mockToNodeAvailableVars).toHaveBeenCalledOnce()
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
+      const args = mockToNodeAvailableVars.mock.calls[0][0]
       expect(args.isChatMode).toBe(true)
       expect(args.conversationVariables).toHaveLength(1)
       expect(args.environmentVariables).toHaveLength(1)
@@ -70,7 +68,7 @@ describe('useWorkflowVariables', () => {
         hideEnv: true,
       })
 
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
+      const args = mockToNodeAvailableVars.mock.calls[0][0]
       expect(args.environmentVariables).toEqual([])
     })
 
@@ -87,7 +85,7 @@ describe('useWorkflowVariables', () => {
         filterVar: () => true,
       })
 
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
+      const args = mockToNodeAvailableVars.mock.calls[0][0]
       expect(args.conversationVariables).toEqual([])
     })
   })
@@ -122,6 +120,11 @@ describe('useWorkflowVariableType', () => {
     ]
   })
 
+  it('should return a function', () => {
+    const { result } = renderWorkflowHook(() => useWorkflowVariableType())
+    expect(typeof result.current).toBe('function')
+  })
+
   it('should call getCurrentVariableType with the correct node', () => {
     mockGetVarType.mockReturnValue('string')
 
@@ -138,7 +141,7 @@ describe('useWorkflowVariableType', () => {
     const { result } = renderWorkflowHook(() => useWorkflowVariableType())
     result.current({ nodeId: 'n2', valueSelector: ['n2', 'item'] })
 
-    const args = mockGetVarType.mock.calls[0]![0]
+    const args = mockGetVarType.mock.calls[0][0]
     expect(args.parentNode).toBeDefined()
     expect((args.parentNode as { id: string }).id).toBe('iter-1')
   })

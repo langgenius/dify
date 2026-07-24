@@ -1,22 +1,22 @@
-from typing import Any, cast, override
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
-from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
-from core.rag.entities import DocumentContext, RetrievalSourceMetadata
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
+from extensions.ext_database import db
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
-default_retrieval_model: DefaultRetrievalModelDict = {
+default_retrieval_model: dict[str, Any] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -39,7 +39,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     dataset_id: str
     user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
-    inputs: dict[str, Any]
+    inputs: dict
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -56,18 +56,16 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             **kwargs,
         )
 
-    @override
-    def _run(self, session: Session, query: str) -> str:
+    def _run(self, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
-        dataset = session.scalar(dataset_stmt)
+        dataset = db.session.scalar(dataset_stmt)
 
         if not dataset:
             return ""
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_query(query, dataset.id, session)
+            hit_callback.on_query(query, dataset.id)
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-            session,
             [dataset.id],
             query,
             self.tenant_id,
@@ -84,7 +82,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                session=session,
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,
@@ -128,9 +125,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if metadata_condition and not document_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
+            retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
             retrieval_resource_list: list[RetrievalSourceMetadata] = []
-            if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+            if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
                     retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
@@ -161,15 +158,14 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 else:
                     documents = []
                 for hit_callback in self.hit_callbacks:
-                    hit_callback.on_tool_end(documents, session)
+                    hit_callback.on_tool_end(documents)
                 document_score_list = {}
-                if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
+                if dataset.indexing_technique != "economy":
                     for item in documents:
                         if item.metadata is not None and item.metadata.get("score"):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
                 document_context_list: list[DocumentContext] = []
-                with Session(bind=session.get_bind()) as format_session:
-                    records = RetrievalService.format_retrieval_documents(format_session, documents)
+                records = RetrievalService.format_retrieval_documents(documents)
                 if records:
                     for record in records:
                         segment = record.segment
@@ -195,13 +191,13 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = session.get(Dataset, segment.dataset_id)
+                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = session.scalar(dataset_document_stmt)
+                            document = db.session.scalar(dataset_document_stmt)
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,

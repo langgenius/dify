@@ -9,7 +9,10 @@ type PartnerProps = {
   text: string
 }
 
-const Partner: FC<PartnerProps> = ({ className, text }) => {
+const Partner: FC<PartnerProps> = ({
+  className,
+  text,
+}) => {
   const { theme } = useTheme()
 
   return (

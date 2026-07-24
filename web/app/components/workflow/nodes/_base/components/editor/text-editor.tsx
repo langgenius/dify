@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import Base from './base'
 
-type Props = Readonly<{
+type Props = {
   value: string
   onChange: (value: string) => void
   title: React.JSX.Element | string
@@ -15,7 +15,7 @@ type Props = Readonly<{
   placeholder?: string
   readonly?: boolean
   isInNode?: boolean
-}>
+}
 
 const TextEditor: FC<Props> = ({
   value,
@@ -28,7 +28,10 @@ const TextEditor: FC<Props> = ({
   readonly,
   isInNode,
 }) => {
-  const [isFocus, { setTrue: setIsFocus, setFalse: setIsNotFocus }] = useBoolean(false)
+  const [isFocus, {
+    setTrue: setIsFocus,
+    setFalse: setIsNotFocus,
+  }] = useBoolean(false)
 
   const handleBlur = useCallback(() => {
     setIsNotFocus()
@@ -47,10 +50,10 @@ const TextEditor: FC<Props> = ({
       >
         <textarea
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
           onFocus={setIsFocus}
           onBlur={handleBlur}
-          className="h-full w-full resize-none border-none bg-transparent px-3 text-[13px] leading-[18px] font-normal text-gray-900 placeholder:text-gray-300 focus:outline-hidden"
+          className="h-full w-full resize-none border-none bg-transparent px-3 text-[13px] font-normal leading-[18px] text-gray-900 placeholder:text-gray-300 focus:outline-none"
           placeholder={placeholder}
           readOnly={readonly}
         />

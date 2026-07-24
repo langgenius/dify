@@ -35,9 +35,3 @@ class InvalidAccountDeletionCodeError(BaseHTTPException):
     error_code = "invalid_account_deletion_code"
     description = "Invalid account deletion code."
     code = 400
-
-
-class InvalidMemberRoleError(BaseHTTPException):
-    error_code = "invalid_role"
-    description = "Invalid role."
-    code = 400

@@ -1,17 +1,14 @@
 import type { FormData, InputFieldFormProps } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import Toast from '@/app/components/base/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 import InputFieldForm from '../index'
 import { createInputFieldSchema, TEXT_MAX_LENGTH } from '../schema'
 
-const createMockEvent = <T,>(value: T) =>
-  ({ value }) as unknown as Parameters<
-    NonNullable<NonNullable<ReturnType<typeof useConfigurations>[number]['listeners']>['onChange']>
-  >[0]
+const createMockEvent = <T,>(value: T) => ({ value }) as unknown as Parameters<NonNullable<NonNullable<ReturnType<typeof useConfigurations>[number]['listeners']>['onChange']>>[0]
 
 const mockFileUploadConfig = {
   image_file_size_limit: 10,
@@ -48,9 +45,7 @@ const createFormData = (overrides?: Partial<FormData>): FormData => ({
   ...overrides,
 })
 
-const createInputFieldFormProps = (
-  overrides?: Partial<InputFieldFormProps>,
-): InputFieldFormProps => ({
+const createInputFieldFormProps = (overrides?: Partial<InputFieldFormProps>): InputFieldFormProps => ({
   initialData: createFormData(),
   supportFile: false,
   onCancel: vi.fn(),
@@ -59,19 +54,22 @@ const createInputFieldFormProps = (
   ...overrides,
 })
 
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
+const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: 0,
     },
-  })
+  },
+})
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createConsoleQueryClient()
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  const queryClient = createTestQueryClient()
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
@@ -83,11 +81,9 @@ const renderHookWithProviders = <TResult,>(hook: () => TResult) => {
 }
 
 // Silence expected console.error from form submit preventDefault
-const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
-  toastErrorSpy.mockClear()
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('InputFieldForm', () => {
@@ -96,6 +92,14 @@ describe('InputFieldForm', () => {
   })
 
   describe('Rendering', () => {
+    it('should render form without crashing', () => {
+      const props = createInputFieldFormProps()
+
+      const { container } = renderWithProviders(<InputFieldForm {...props} />)
+
+      expect(container.querySelector('form')).toBeInTheDocument()
+    })
+
     it('should render cancel button', () => {
       const props = createInputFieldFormProps()
 
@@ -206,7 +210,12 @@ describe('InputFieldForm', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(toastErrorSpy).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            message: expect.any(String),
+          }),
+        )
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })
@@ -292,7 +301,10 @@ describe('InputFieldForm', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalledWith(expect.any(Object), undefined)
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.any(Object),
+          undefined,
+        )
       })
     })
   })
@@ -317,9 +329,7 @@ describe('InputFieldForm', () => {
       }
 
       await waitFor(() => {
-        expect(
-          screen.queryByText(/appDebug.variableConfig.showAllSettings/i),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByText(/appDebug.variableConfig.showAllSettings/i)).not.toBeInTheDocument()
       })
     })
   })
@@ -497,7 +507,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const typeConfig = result.current.find((config) => config.variable === 'type')
+      const typeConfig = result.current.find(config => config.variable === 'type')
       expect(typeConfig).toBeDefined()
       expect(typeConfig?.required).toBe(true)
     })
@@ -514,7 +524,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const variableConfig = result.current.find((config) => config.variable === 'variable')
+      const variableConfig = result.current.find(config => config.variable === 'variable')
       expect(variableConfig).toBeDefined()
       expect(variableConfig?.required).toBe(true)
     })
@@ -531,7 +541,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const labelConfig = result.current.find((config) => config.variable === 'label')
+      const labelConfig = result.current.find(config => config.variable === 'label')
       expect(labelConfig).toBeDefined()
       expect(labelConfig?.required).toBe(false)
     })
@@ -548,7 +558,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const requiredConfig = result.current.find((config) => config.variable === 'required')
+      const requiredConfig = result.current.find(config => config.variable === 'required')
       expect(requiredConfig).toBeDefined()
     })
 
@@ -564,7 +574,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const typeConfig = result.current.find((config) => config.variable === 'type')
+      const typeConfig = result.current.find(config => config.variable === 'type')
       expect(typeConfig?.supportFile).toBe(true)
     })
   })
@@ -582,14 +592,11 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const typeConfig = result.current.find((config) => config.variable === 'type')
+      const typeConfig = result.current.find(config => config.variable === 'type')
       typeConfig?.listeners?.onChange?.(createMockEvent(PipelineInputVarType.singleFile))
 
       expect(mockSetFieldValue).toHaveBeenCalledWith('allowedFileUploadMethods', expect.any(Array))
-      expect(mockSetFieldValue).toHaveBeenCalledWith(
-        'allowedTypesAndExtensions',
-        expect.any(Object),
-      )
+      expect(mockSetFieldValue).toHaveBeenCalledWith('allowedTypesAndExtensions', expect.any(Object))
     })
 
     it('should call setFieldValue when type changes to multiFiles', () => {
@@ -604,13 +611,13 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const typeConfig = result.current.find((config) => config.variable === 'type')
+      const typeConfig = result.current.find(config => config.variable === 'type')
       typeConfig?.listeners?.onChange?.(createMockEvent(PipelineInputVarType.multiFiles))
 
       expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', expect.any(Number))
     })
 
-    it('should set label from variable name on blur-sm when label is empty', () => {
+    it('should set label from variable name on blur when label is empty', () => {
       const mockGetFieldValue = vi.fn().mockReturnValue('')
       const mockSetFieldValue = vi.fn()
 
@@ -622,13 +629,13 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const variableConfig = result.current.find((config) => config.variable === 'variable')
+      const variableConfig = result.current.find(config => config.variable === 'variable')
       variableConfig?.listeners?.onBlur?.(createMockEvent('test_variable'))
 
       expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'test_variable')
     })
 
-    it('should not set label from variable name on blur-sm when label is not empty', () => {
+    it('should not set label from variable name on blur when label is not empty', () => {
       const mockGetFieldValue = vi.fn().mockReturnValue('Existing Label')
       const mockSetFieldValue = vi.fn()
 
@@ -640,7 +647,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const variableConfig = result.current.find((config) => config.variable === 'variable')
+      const variableConfig = result.current.find(config => config.variable === 'variable')
       variableConfig?.listeners?.onBlur?.(createMockEvent('test_variable'))
 
       expect(mockSetFieldValue).not.toHaveBeenCalled()
@@ -658,7 +665,7 @@ describe('useConfigurations', () => {
         }),
       )
 
-      const labelConfig = result.current.find((config) => config.variable === 'label')
+      const labelConfig = result.current.find(config => config.variable === 'label')
       labelConfig?.listeners?.onBlur?.(createMockEvent(''))
 
       expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'original_var')
@@ -703,7 +710,7 @@ describe('useHiddenConfigurations', () => {
         useHiddenConfigurations({ options: undefined }),
       )
 
-      const defaultConfigs = result.current.filter((config) => config.variable === 'default')
+      const defaultConfigs = result.current.filter(config => config.variable === 'default')
       expect(defaultConfigs.length).toBeGreaterThan(0)
     })
 
@@ -712,7 +719,7 @@ describe('useHiddenConfigurations', () => {
         useHiddenConfigurations({ options: undefined }),
       )
 
-      const tooltipsConfig = result.current.find((config) => config.variable === 'tooltips')
+      const tooltipsConfig = result.current.find(config => config.variable === 'tooltips')
       expect(tooltipsConfig).toBeDefined()
       expect(tooltipsConfig?.showConditions).toEqual([])
     })
@@ -722,9 +729,7 @@ describe('useHiddenConfigurations', () => {
         useHiddenConfigurations({ options: undefined }),
       )
 
-      const placeholderConfigs = result.current.filter(
-        (config) => config.variable === 'placeholder',
-      )
+      const placeholderConfigs = result.current.filter(config => config.variable === 'placeholder')
       expect(placeholderConfigs.length).toBeGreaterThan(0)
     })
 
@@ -733,7 +738,7 @@ describe('useHiddenConfigurations', () => {
         useHiddenConfigurations({ options: undefined }),
       )
 
-      const unitConfig = result.current.find((config) => config.variable === 'unit')
+      const unitConfig = result.current.find(config => config.variable === 'unit')
       expect(unitConfig).toBeDefined()
       expect(unitConfig?.showConditions).toContainEqual({
         variable: 'type',
@@ -747,7 +752,7 @@ describe('useHiddenConfigurations', () => {
       )
 
       const uploadMethodConfigs = result.current.filter(
-        (config) => config.variable === 'allowedFileUploadMethods',
+        config => config.variable === 'allowedFileUploadMethods',
       )
       expect(uploadMethodConfigs.length).toBe(2) // One for singleFile, one for multiFiles
     })
@@ -758,9 +763,8 @@ describe('useHiddenConfigurations', () => {
       )
 
       const maxLengthConfig = result.current.find(
-        (config) =>
-          config.variable === 'maxLength' &&
-          config.showConditions?.some((c) => c.value === PipelineInputVarType.multiFiles),
+        config => config.variable === 'maxLength'
+          && config.showConditions?.some(c => c.value === PipelineInputVarType.multiFiles),
       )
       expect(maxLengthConfig).toBeDefined()
     })
@@ -770,12 +774,13 @@ describe('useHiddenConfigurations', () => {
     it('should generate select options from provided options array', () => {
       const options = ['Option A', 'Option B', 'Option C']
 
-      const { result } = renderHookWithProviders(() => useHiddenConfigurations({ options }))
+      const { result } = renderHookWithProviders(() =>
+        useHiddenConfigurations({ options }),
+      )
 
       const selectConfig = result.current.find(
-        (config) =>
-          config.variable === 'default' &&
-          config.showConditions?.some((c) => c.value === PipelineInputVarType.select),
+        config => config.variable === 'default'
+          && config.showConditions?.some(c => c.value === PipelineInputVarType.select),
       )
       expect(selectConfig?.options).toBeDefined()
       expect(selectConfig?.options?.length).toBe(4) // 3 options + 1 "no default" option
@@ -784,14 +789,15 @@ describe('useHiddenConfigurations', () => {
     it('should include "no default selected" option', () => {
       const options = ['Option A']
 
-      const { result } = renderHookWithProviders(() => useHiddenConfigurations({ options }))
+      const { result } = renderHookWithProviders(() =>
+        useHiddenConfigurations({ options }),
+      )
 
       const selectConfig = result.current.find(
-        (config) =>
-          config.variable === 'default' &&
-          config.showConditions?.some((c) => c.value === PipelineInputVarType.select),
+        config => config.variable === 'default'
+          && config.showConditions?.some(c => c.value === PipelineInputVarType.select),
       )
-      const noDefaultOption = selectConfig?.options?.find((opt) => opt.value === '')
+      const noDefaultOption = selectConfig?.options?.find(opt => opt.value === '')
       expect(noDefaultOption).toBeDefined()
     })
 
@@ -801,9 +807,8 @@ describe('useHiddenConfigurations', () => {
       )
 
       const selectConfig = result.current.find(
-        (config) =>
-          config.variable === 'default' &&
-          config.showConditions?.some((c) => c.value === PipelineInputVarType.select),
+        config => config.variable === 'default'
+          && config.showConditions?.some(c => c.value === PipelineInputVarType.select),
       )
       expect(selectConfig?.options).toEqual([])
     })
@@ -816,9 +821,8 @@ describe('useHiddenConfigurations', () => {
       )
 
       const maxLengthConfig = result.current.find(
-        (config) =>
-          config.variable === 'maxLength' &&
-          config.showConditions?.some((c) => c.value === PipelineInputVarType.multiFiles),
+        config => config.variable === 'maxLength'
+          && config.showConditions?.some(c => c.value === PipelineInputVarType.multiFiles),
       )
       expect(maxLengthConfig?.description).toBeDefined()
     })
@@ -834,9 +838,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Common Schema Validation', () => {
     it('should validate required variable field', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = { variable: '', label: 'Test', required: true, type: 'text-input' }
 
       const result = schema.safeParse(invalidData)
@@ -845,9 +847,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should validate variable max length', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'a'.repeat(100),
         label: 'Test',
@@ -862,9 +862,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should validate variable does not start with number', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: '123var',
         label: 'Test',
@@ -879,9 +877,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should validate variable format (alphanumeric and underscore)', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'var-name',
         label: 'Test',
@@ -896,9 +892,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should accept valid variable name', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'valid_var_123',
         label: 'Test',
@@ -913,9 +907,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should validate required label field', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'test_var',
         label: '',
@@ -932,9 +924,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Text Input Schema', () => {
     it('should validate maxLength within bounds', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -949,9 +939,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should reject maxLength exceeding TEXT_MAX_LENGTH', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'test_var',
         label: 'Test',
@@ -966,9 +954,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should reject maxLength less than 1', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'test_var',
         label: 'Test',
@@ -983,9 +969,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should allow optional default value', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.textInput, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1003,9 +987,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Paragraph Schema', () => {
     it('should validate paragraph type similar to textInput', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.paragraph, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.paragraph, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1022,9 +1004,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Number Schema', () => {
     it('should allow optional default number', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.number, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.number, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1039,9 +1019,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should allow optional unit', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.number, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.number, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1058,9 +1036,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Select Schema', () => {
     it('should require non-empty options array', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'test_var',
         label: 'Test',
@@ -1075,9 +1051,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should accept valid options array', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1092,9 +1066,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should reject duplicate options', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.select, mockT, { maxFileUploadLimit: 10 })
       const invalidData = {
         variable: 'test_var',
         label: 'Test',
@@ -1111,9 +1083,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Single File Schema', () => {
     it('should validate allowedFileUploadMethods', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.singleFile, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.singleFile, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1131,9 +1101,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should validate allowedTypesAndExtensions', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.singleFile, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.singleFile, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1155,9 +1123,7 @@ describe('createInputFieldSchema', () => {
   describe('Multi Files Schema', () => {
     it('should validate maxLength within file upload limit', () => {
       const maxFileUploadLimit = 10
-      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, mockT, {
-        maxFileUploadLimit,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, mockT, { maxFileUploadLimit })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1177,9 +1143,7 @@ describe('createInputFieldSchema', () => {
 
     it('should reject maxLength exceeding file upload limit', () => {
       const maxFileUploadLimit = 10
-      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, mockT, {
-        maxFileUploadLimit,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, mockT, { maxFileUploadLimit })
       const invalidData = {
         variable: 'test_var',
         label: 'Test',
@@ -1200,9 +1164,7 @@ describe('createInputFieldSchema', () => {
 
   describe('Default Schema', () => {
     it('should validate checkbox type with common schema', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.checkbox, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.checkbox, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1216,9 +1178,7 @@ describe('createInputFieldSchema', () => {
     })
 
     it('should allow passthrough of additional fields', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.checkbox, mockT, {
-        maxFileUploadLimit: 10,
-      })
+      const schema = createInputFieldSchema(PipelineInputVarType.checkbox, mockT, { maxFileUploadLimit: 10 })
       const validData = {
         variable: 'test_var',
         label: 'Test',
@@ -1325,8 +1285,19 @@ describe('InitialFields', () => {
     vi.clearAllMocks()
   })
 
+  describe('Rendering', () => {
+    it('should render InitialFields component without crashing', () => {
+      const initialData = createFormData()
+      const props = createInputFieldFormProps({ initialData })
+
+      const { container } = renderWithProviders(<InputFieldForm {...props} />)
+
+      expect(container.querySelector('form')).toBeInTheDocument()
+    })
+  })
+
   describe('getFieldValue and setFieldValue Callbacks', () => {
-    it('should trigger getFieldValue when variable name blur-sm event fires with empty label', async () => {
+    it('should trigger getFieldValue when variable name blur event fires with empty label', async () => {
       const initialData = createFormData({
         variable: '',
         label: '', // Empty label to trigger the condition
@@ -1345,7 +1316,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should not update label when it already has a value on variable blur-sm', async () => {
+    it('should not update label when it already has a value on variable blur', async () => {
       const initialData = createFormData({
         variable: '',
         label: 'Existing Label', // Label already has value
@@ -1364,7 +1335,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should trigger setFieldValue when display name blur-sm event fires with empty value', async () => {
+    it('should trigger setFieldValue when display name blur event fires with empty value', async () => {
       const initialData = createFormData({
         variable: 'original_var',
         label: 'Some Label',
@@ -1382,7 +1353,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should keep label value when display name blur-sm event fires with non-empty value', async () => {
+    it('should keep label value when display name blur event fires with non-empty value', async () => {
       const initialData = createFormData({
         variable: 'test_var',
         label: 'Original Label',

@@ -1,9 +1,12 @@
 import type { VariablePayload } from '../types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import {
+  RiErrorWarningFill,
+  RiMoreLine,
+} from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
-import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
 import VariableIcon from './variable-icon'
@@ -24,14 +27,8 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isShowNodeLabel = !(
-    isENV(variables) ||
-    isConversationVar(variables) ||
-    isGlobalVar(variables) ||
-    isRagVariableVar(variables)
-  )
-
-  const badge = (
+  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+  return (
     <div
       className={cn(
         'inline-flex h-6 max-w-full items-center space-x-0.5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 shadow-xs',
@@ -39,38 +36,51 @@ const VariableLabel = ({
       )}
       onClick={onClick}
       ref={ref}
-      {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
-      {isShowNodeLabel && <VariableNodeLabel nodeType={nodeType} nodeTitle={nodeTitle} />}
-      {notShowFullPath && (
-        <>
-          <span className="i-ri-more-line size-3 shrink-0 text-text-secondary" />
-          <div className="shrink-0 system-xs-regular text-divider-deep">/</div>
-        </>
+      {isShowNodeLabel && (
+        <VariableNodeLabel
+          nodeType={nodeType}
+          nodeTitle={nodeTitle}
+        />
       )}
-      <VariableIcon variables={variables} className={varColorClassName} />
+      {
+        notShowFullPath && (
+          <>
+            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
+            <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
+          </>
+        )
+      }
+      <VariableIcon
+        variables={variables}
+        className={varColorClassName}
+      />
       <VariableName
         variables={variables}
         className={cn(varColorClassName)}
         notShowFullPath={notShowFullPath}
       />
-      {!!variableType && (
-        <div className="shrink-0 system-xs-regular text-text-tertiary">
-          {capitalize(variableType)}
-        </div>
-      )}
-      {!!errorMsg && <Warning className="size-3 shrink-0 text-text-warning" />}
-      {rightSlot}
+      {
+        !!variableType && (
+          <div className="system-xs-regular shrink-0 text-text-tertiary">
+            {capitalize(variableType)}
+          </div>
+        )
+      }
+      {
+        !!errorMsg && (
+          <Tooltip
+            popupContent={errorMsg}
+            asChild
+          >
+            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
+          </Tooltip>
+        )
+      }
+      {
+        rightSlot
+      }
     </div>
-  )
-
-  if (!errorMsg) return badge
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={badge} />
-      <TooltipContent>{errorMsg}</TooltipContent>
-    </Tooltip>
   )
 }
 

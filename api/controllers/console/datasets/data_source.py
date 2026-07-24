@@ -1,46 +1,39 @@
 import json
 from collections.abc import Generator
-from datetime import datetime
 from typing import Any, Literal, cast
-from uuid import UUID
 
 from flask import request
-from flask_restx import Resource
-from pydantic import BaseModel, Field, field_serializer
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.common.fields import SimpleResultResponse, TextContentResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
+from controllers.common.schema import get_or_create_model, register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
-from core.entities.knowledge_entities import IndexingEstimate
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
-from fields.base import ResponseModel
+from fields.data_source_fields import (
+    integrate_fields,
+    integrate_icon_fields,
+    integrate_list_fields,
+    integrate_notion_info_list_fields,
+    integrate_page_fields,
+    integrate_workspace_fields,
+)
 from libs.datetime_utils import naive_utc_now
-from libs.helper import dump_response, to_timestamp
-from libs.login import login_required
-from models import Account, DataSourceOauthBinding, Document
+from libs.login import current_account_with_tenant, login_required
+from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 from .. import console_ns
-from ..wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
+from ..wraps import account_initialization_required, setup_required
 
 
 class NotionEstimatePayload(BaseModel):
@@ -53,80 +46,56 @@ class NotionEstimatePayload(BaseModel):
 class DataSourceNotionListQuery(BaseModel):
     dataset_id: str | None = Field(default=None, description="Dataset ID")
     credential_id: str = Field(..., description="Credential ID", min_length=1)
+    datasource_parameters: dict[str, Any] | None = Field(default=None, description="Datasource parameters JSON string")
 
 
 class DataSourceNotionPreviewQuery(BaseModel):
     credential_id: str = Field(..., description="Credential ID", min_length=1)
 
 
-class DataSourceIntegrateIconResponse(ResponseModel):
-    type: str | None = None
-    url: str | None = None
-    emoji: str | None = None
+register_schema_model(console_ns, NotionEstimatePayload)
 
 
-class DataSourceIntegratePageResponse(ResponseModel):
-    page_name: str
-    page_id: str
-    page_icon: DataSourceIntegrateIconResponse | None
-    parent_id: str
-    type: str
+integrate_icon_model = get_or_create_model("DataSourceIntegrateIcon", integrate_icon_fields)
 
+integrate_page_fields_copy = integrate_page_fields.copy()
+integrate_page_fields_copy["page_icon"] = fields.Nested(integrate_icon_model, allow_null=True)
+integrate_page_model = get_or_create_model("DataSourceIntegratePage", integrate_page_fields_copy)
 
-class DataSourceIntegrateWorkspaceResponse(ResponseModel):
-    workspace_name: str | None
-    workspace_id: str | None
-    workspace_icon: str | None
-    pages: list[DataSourceIntegratePageResponse]
-    total: int
+integrate_workspace_fields_copy = integrate_workspace_fields.copy()
+integrate_workspace_fields_copy["pages"] = fields.List(fields.Nested(integrate_page_model))
+integrate_workspace_model = get_or_create_model("DataSourceIntegrateWorkspace", integrate_workspace_fields_copy)
 
+integrate_fields_copy = integrate_fields.copy()
+integrate_fields_copy["source_info"] = fields.Nested(integrate_workspace_model)
+integrate_model = get_or_create_model("DataSourceIntegrate", integrate_fields_copy)
 
-class DataSourceIntegrateResponse(ResponseModel):
-    id: str | None
-    provider: str
-    created_at: datetime | int | None
-    is_bound: bool
-    disabled: bool | None
-    link: str
-    source_info: DataSourceIntegrateWorkspaceResponse | None
+integrate_list_fields_copy = integrate_list_fields.copy()
+integrate_list_fields_copy["data"] = fields.List(fields.Nested(integrate_model))
+integrate_list_model = get_or_create_model("DataSourceIntegrateList", integrate_list_fields_copy)
 
-    @field_serializer("created_at")
-    def serialize_created_at(self, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
+notion_page_fields = {
+    "page_name": fields.String,
+    "page_id": fields.String,
+    "page_icon": fields.Nested(integrate_icon_model, allow_null=True),
+    "is_bound": fields.Boolean,
+    "parent_id": fields.String,
+    "type": fields.String,
+}
+notion_page_model = get_or_create_model("NotionIntegratePage", notion_page_fields)
 
+notion_workspace_fields = {
+    "workspace_name": fields.String,
+    "workspace_id": fields.String,
+    "workspace_icon": fields.String,
+    "pages": fields.List(fields.Nested(notion_page_model)),
+}
+notion_workspace_model = get_or_create_model("NotionIntegrateWorkspace", notion_workspace_fields)
 
-class DataSourceIntegrateListResponse(ResponseModel):
-    data: list[DataSourceIntegrateResponse]
-
-
-class NotionIntegratePageResponse(ResponseModel):
-    page_name: str
-    page_id: str
-    page_icon: DataSourceIntegrateIconResponse | None
-    parent_id: str | None
-    type: str
-    is_bound: bool
-
-
-class NotionIntegrateWorkspaceResponse(ResponseModel):
-    workspace_name: str | None
-    workspace_id: str | None
-    workspace_icon: str | None
-    pages: list[NotionIntegratePageResponse]
-
-
-class NotionIntegrateInfoListResponse(ResponseModel):
-    notion_info: list[NotionIntegrateWorkspaceResponse]
-
-
-register_schema_models(console_ns, NotionEstimatePayload)
-register_response_schema_models(
-    console_ns,
-    DataSourceIntegrateListResponse,
-    IndexingEstimate,
-    NotionIntegrateInfoListResponse,
-    SimpleResultResponse,
-    TextContentResponse,
+integrate_notion_info_list_fields_copy = integrate_notion_info_list_fields.copy()
+integrate_notion_info_list_fields_copy["notion_info"] = fields.List(fields.Nested(notion_workspace_model))
+integrate_notion_info_list_model = get_or_create_model(
+    "NotionIntegrateInfoList", integrate_notion_info_list_fields_copy
 )
 
 
@@ -138,9 +107,10 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str) -> tuple[dict[str, Any], int]:
+    @marshal_with(integrate_list_model)
+    def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         # get workspace data source integrates
         data_source_integrates = db.session.scalars(
             select(DataSourceOauthBinding).where(
@@ -182,23 +152,17 @@ class DataSourceApi(Resource):
                         "link": f"{base_url}{data_source_oauth_base_path}/{provider}",
                     }
                 )
-        return dump_response(DataSourceIntegrateListResponse, {"data": integrate_data}), 200
+        return {"data": integrate_data}, 200
 
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @with_current_tenant_id
-    @with_session
-    def patch(
-        self, session: Session, current_tenant_id: str, binding_id: UUID, action: Literal["enable", "disable"]
-    ) -> tuple[dict[str, str], int]:
-        binding_id_str = str(binding_id)
-        data_source_binding = session.scalar(
-            select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.id == binding_id_str, DataSourceOauthBinding.tenant_id == current_tenant_id
-            )
-        )
+    def patch(self, binding_id, action: Literal["enable", "disable"]):
+        binding_id = str(binding_id)
+        with Session(db.engine) as session:
+            data_source_binding = session.execute(
+                select(DataSourceOauthBinding).filter_by(id=binding_id)
+            ).scalar_one_or_none()
         if data_source_binding is None:
             raise NotFound("Data source binding not found.")
         # enable binding
@@ -207,6 +171,8 @@ class DataSourceApi(Resource):
                 if data_source_binding.disabled:
                     data_source_binding.disabled = False
                     data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
                 else:
                     raise ValueError("Data source is not disabled.")
             # disable binding
@@ -214,6 +180,8 @@ class DataSourceApi(Resource):
                 if not data_source_binding.disabled:
                     data_source_binding.disabled = True
                     data_source_binding.updated_at = naive_utc_now()
+                    db.session.add(data_source_binding)
+                    db.session.commit()
                 else:
                     raise ValueError("Data source is disabled.")
         return {"result": "success"}, 200
@@ -224,13 +192,15 @@ class DataSourceNotionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.doc(params=query_params_from_model(DataSourceNotionListQuery))
-    @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, current_tenant_id: str, current_user: Account) -> tuple[dict[str, Any], int]:
-        query = DataSourceNotionListQuery.model_validate(request.args.to_dict(flat=True))
+    @marshal_with(integrate_notion_info_list_model)
+    def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        query = DataSourceNotionListQuery.model_validate(request.args.to_dict())
+
+        # Get datasource_parameters from query string (optional, for GitHub and other datasources)
+        datasource_parameters = query.datasource_parameters or {}
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
@@ -241,85 +211,85 @@ class DataSourceNotionListApi(Resource):
         if not credential:
             raise NotFound("Credential not found.")
         exist_page_ids = []
-        # import notion in the exist dataset
-        if query.dataset_id:
-            dataset = DatasetService.get_dataset(query.dataset_id, session)
-            if not dataset:
-                raise NotFound("Dataset not found.")
-            if dataset.data_source_type != "notion_import":
-                raise ValueError("Dataset is not notion type.")
+        with Session(db.engine) as session:
+            # import notion in the exist dataset
+            if query.dataset_id:
+                dataset = DatasetService.get_dataset(query.dataset_id)
+                if not dataset:
+                    raise NotFound("Dataset not found.")
+                if dataset.data_source_type != "notion_import":
+                    raise ValueError("Dataset is not notion type.")
 
-            documents = session.scalars(
-                select(Document).where(
-                    Document.dataset_id == query.dataset_id,
-                    Document.tenant_id == current_tenant_id,
-                    Document.data_source_type == "notion_import",
-                    Document.enabled.is_(True),
-                )
-            ).all()
-            if documents:
-                for document in documents:
-                    data_source_info = json.loads(document.data_source_info)
-                    exist_page_ids.append(data_source_info["notion_page_id"])
-        # get all authorized pages
-        from core.datasource.datasource_manager import DatasourceManager
+                documents = session.scalars(
+                    select(Document).filter_by(
+                        dataset_id=query.dataset_id,
+                        tenant_id=current_tenant_id,
+                        data_source_type="notion_import",
+                        enabled=True,
+                    )
+                ).all()
+                if documents:
+                    for document in documents:
+                        data_source_info = json.loads(document.data_source_info)
+                        exist_page_ids.append(data_source_info["notion_page_id"])
+            # get all authorized pages
+            from core.datasource.datasource_manager import DatasourceManager
 
-        datasource_runtime = DatasourceManager.get_datasource_runtime(
-            provider_id="langgenius/notion_datasource/notion_datasource",
-            datasource_name="notion_datasource",
-            tenant_id=current_tenant_id,
-            datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
-        )
-        datasource_provider_service = DatasourceProviderService()
-        if credential:
-            datasource_runtime.runtime.credentials = credential
-        datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-        online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
-            datasource_runtime.get_online_document_pages(
-                user_id=current_user.id,
-                datasource_parameters={},
-                provider_type=datasource_runtime.datasource_provider_type(),
+            datasource_runtime = DatasourceManager.get_datasource_runtime(
+                provider_id="langgenius/notion_datasource/notion_datasource",
+                datasource_name="notion_datasource",
+                tenant_id=current_tenant_id,
+                datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             )
-        )
-        try:
-            pages = []
-            workspace_info = {}
-            for message in online_document_result:
-                result = message.result
-                for info in result:
-                    workspace_info = {
-                        "workspace_id": info.workspace_id,
-                        "workspace_name": info.workspace_name,
-                        "workspace_icon": info.workspace_icon,
-                    }
-                    for page in info.pages:
-                        page_info = {
-                            "page_id": page.page_id,
-                            "page_name": page.page_name,
-                            "type": page.type,
-                            "parent_id": page.parent_id,
-                            "is_bound": page.page_id in exist_page_ids,
-                            "page_icon": page.page_icon,
+            datasource_provider_service = DatasourceProviderService()
+            if credential:
+                datasource_runtime.runtime.credentials = credential
+            datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+            online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+                datasource_runtime.get_online_document_pages(
+                    user_id=current_user.id,
+                    datasource_parameters=datasource_parameters,
+                    provider_type=datasource_runtime.datasource_provider_type(),
+                )
+            )
+            try:
+                pages = []
+                workspace_info = {}
+                for message in online_document_result:
+                    result = message.result
+                    for info in result:
+                        workspace_info = {
+                            "workspace_id": info.workspace_id,
+                            "workspace_name": info.workspace_name,
+                            "workspace_icon": info.workspace_icon,
                         }
-                        pages.append(page_info)
-        except Exception as e:
-            raise e
-        notion_info = [{**workspace_info, "pages": pages}] if workspace_info else []
-        return dump_response(NotionIntegrateInfoListResponse, {"notion_info": notion_info}), 200
+                        for page in info.pages:
+                            page_info = {
+                                "page_id": page.page_id,
+                                "page_name": page.page_name,
+                                "type": page.type,
+                                "parent_id": page.parent_id,
+                                "is_bound": page.page_id in exist_page_ids,
+                                "page_icon": page.page_icon,
+                            }
+                            pages.append(page_info)
+            except Exception as e:
+                raise e
+            return {"notion_info": {**workspace_info, "pages": pages}}, 200
 
 
-@console_ns.route("/notion/pages/<uuid:page_id>/<string:page_type>/preview")
-class DataSourceNotionPreviewApi(Resource):
-    """Preview one authorized Notion page through the datasource credential."""
-
+@console_ns.route(
+    "/notion/pages/<uuid:page_id>/<string:page_type>/preview",
+    "/datasets/notion-indexing-estimate",
+)
+class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
-    @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, page_id: UUID, page_type: str) -> tuple[dict[str, str], int]:
-        query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict(flat=True))
+    def get(self, page_id, page_type):
+        _, current_tenant_id = current_account_with_tenant()
+
+        query = DataSourceNotionPreviewQuery.model_validate(request.args.to_dict())
 
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
@@ -329,11 +299,11 @@ class DataSourceNotionPreviewApi(Resource):
             plugin_id="langgenius/notion_datasource",
         )
 
-        page_id_str = str(page_id)
+        page_id = str(page_id)
 
         extractor = NotionExtractor(
             notion_workspace_id="",
-            notion_obj_id=page_id_str,
+            notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),
             tenant_id=current_tenant_id,
@@ -342,19 +312,13 @@ class DataSourceNotionPreviewApi(Resource):
         text_docs = extractor.extract()
         return {"content": "\n".join([doc.page_content for doc in text_docs])}, 200
 
-
-@console_ns.route("/datasets/notion-indexing-estimate")
-class DataSourceNotionIndexingEstimateApi(Resource):
-    """Estimate indexing work for selected Notion pages."""
-
     @setup_required
     @login_required
     @account_initialization_required
     @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, current_tenant_id: str) -> tuple[dict[str, Any], int]:
+    def post(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
         # validate args
@@ -381,14 +345,13 @@ class DataSourceNotionIndexingEstimateApi(Resource):
                 extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
         response = indexing_runner.indexing_estimate(
-            tenant_id=current_tenant_id,
-            extract_settings=extract_settings,
-            tmp_processing_rule=args["process_rule"],
-            doc_form=args["doc_form"],
-            doc_language=args["doc_language"],
-            session=session,
+            current_tenant_id,
+            extract_settings,
+            args["process_rule"],
+            args["doc_form"],
+            args["doc_language"],
         )
-        return dump_response(IndexingEstimate, response), 200
+        return response.model_dump(), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
@@ -396,16 +359,13 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
-    @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID) -> tuple[dict[str, str], int]:
+    def get(self, dataset_id):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        documents = DocumentService.get_document_by_dataset_id(dataset_id_str, session)
+        documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
             document_indexing_sync_task.delay(dataset_id_str, document.id)
         return {"result": "success"}, 200
@@ -416,17 +376,14 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
-    @with_session(write=False)
-    def get(self, session: Session, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, str], int]:
+    def get(self, dataset_id, document_id):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        document = DocumentService.get_document(dataset_id_str, document_id_str, session=session)
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
         if document is None:
             raise NotFound("Document not found.")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)

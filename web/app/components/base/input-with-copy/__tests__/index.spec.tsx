@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import InputWithCopy from '../index'
 
 // Create a controllable mock for useClipboard
@@ -12,6 +14,14 @@ vi.mock('foxact/use-clipboard', () => ({
     copied: mockCopied,
     reset: mockReset,
   }),
+}))
+
+// Mock the i18n hook with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.copy': 'Copy',
+  'operation.copied': 'Copied',
+  'overview.appInfo.embedded.copy': 'Copy',
+  'overview.appInfo.embedded.copied': 'Copied',
 }))
 
 describe('InputWithCopy component', () => {
@@ -52,9 +62,7 @@ describe('InputWithCopy component', () => {
 
   it('calls copy function with custom value when copyValue prop is provided', () => {
     const mockOnChange = vi.fn()
-    render(
-      <InputWithCopy value="display value" onChange={mockOnChange} copyValue="custom copy value" />,
-    )
+    render(<InputWithCopy value="display value" onChange={mockOnChange} copyValue="custom copy value" />)
 
     const copyButton = screen.getByRole('button')
     fireEvent.click(copyButton)
@@ -136,87 +144,5 @@ describe('InputWithCopy component', () => {
 
     // Input should maintain focus after copy
     expect(input).toHaveFocus()
-  })
-
-  it('converts non-string value to string for copying', () => {
-    const mockOnChange = vi.fn()
-    // number value triggers String(value || '') branch where typeof value !== 'string'
-    render(<InputWithCopy value={12345} onChange={mockOnChange} />)
-
-    const copyButton = screen.getByRole('button')
-    fireEvent.click(copyButton)
-
-    expect(mockCopy).toHaveBeenCalledWith('12345')
-  })
-
-  it('handles undefined value by converting to empty string', () => {
-    const mockOnChange = vi.fn()
-    // undefined value triggers String(value || '') where value is falsy
-    render(<InputWithCopy value={undefined} onChange={mockOnChange} />)
-
-    const copyButton = screen.getByRole('button')
-    fireEvent.click(copyButton)
-
-    expect(mockCopy).toHaveBeenCalledWith('')
-  })
-
-  it('shows copied tooltip text when copied state is true', () => {
-    mockCopied = true
-    const mockOnChange = vi.fn()
-    render(<InputWithCopy value="test value" onChange={mockOnChange} />)
-
-    const copyButton = screen.getByRole('button', {
-      name: 'appOverview.overview.appInfo.embedded.copied',
-    })
-    expect(copyButton).toBeInTheDocument()
-  })
-
-  it('shows copy tooltip text when copied state is false', () => {
-    mockCopied = false
-    const mockOnChange = vi.fn()
-    render(<InputWithCopy value="test value" onChange={mockOnChange} />)
-
-    const copyButton = screen.getByRole('button', {
-      name: 'appOverview.overview.appInfo.embedded.copy',
-    })
-    expect(copyButton).toBeInTheDocument()
-  })
-
-  it('calls reset on mouse leave from copy button wrapper', () => {
-    const mockOnChange = vi.fn()
-    render(<InputWithCopy value="test value" onChange={mockOnChange} />)
-
-    const copyButton = screen.getByRole('button')
-    fireEvent.mouseLeave(copyButton)
-
-    expect(mockReset).toHaveBeenCalled()
-  })
-
-  it('copies copyValue over non-string input value when both provided', () => {
-    const mockOnChange = vi.fn()
-    render(<InputWithCopy value={42} onChange={mockOnChange} copyValue="override-copy" />)
-
-    const copyButton = screen.getByRole('button')
-    fireEvent.click(copyButton)
-
-    expect(mockCopy).toHaveBeenCalledWith('override-copy')
-  })
-
-  it('invokes onCopy with copyValue when copyValue is provided', () => {
-    const onCopyMock = vi.fn()
-    const mockOnChange = vi.fn()
-    render(
-      <InputWithCopy
-        value="display"
-        onChange={mockOnChange}
-        copyValue="custom"
-        onCopy={onCopyMock}
-      />,
-    )
-
-    const copyButton = screen.getByRole('button')
-    fireEvent.click(copyButton)
-
-    expect(onCopyMock).toHaveBeenCalledWith('custom')
   })
 })

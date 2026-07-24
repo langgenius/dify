@@ -19,68 +19,71 @@ describe('TopKItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () =>
-    screen.getByLabelText('appDebug.datasetConfig.top_k', {
-      selector: 'input[type="range"]',
-    })
-
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(
-        screen.getByText('appDebug.datasetConfig.top_k', { selector: 'span' }),
-      ).toBeInTheDocument()
+      expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
     })
 
     it('should render tooltip trigger', () => {
-      render(<TopKItem {...defaultProps} />)
+      const { container } = render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
+      // Tooltip trigger icon should be rendered
+      expect(container.querySelector('[data-state]')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(getSlider()).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('slider')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(<TopKItem {...defaultProps} className="custom-cls" />)
+
+      expect(container.firstChild).toHaveClass('custom-cls')
+    })
+
     it('should disable controls when enable is false', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(getSlider()).toBeDisabled()
+      expect(screen.getByRole('spinbutton')).toBeDisabled()
+      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
   describe('Value Limits', () => {
     it('should use step of 1', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('2')
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('step', '1')
     })
 
     it('should use minimum of 1', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('min', '1')
     })
 
     it('should use maximum from env (10)', () => {
       render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('max', '10')
     })
 
     it('should render slider with max >= 5 so no scaling is applied', () => {
       render(<TopKItem {...defaultProps} />)
-      const slider = getSlider()
+      const slider = screen.getByRole('slider')
 
       // max=10 >= 5 so slider shows raw values
-      expect(slider).toHaveAttribute('max', '10')
+      expect(slider).toHaveAttribute('aria-valuemax', '10')
     })
 
     it('should not render a switch (no hasSwitch prop)', () => {
@@ -116,9 +119,9 @@ describe('TopKItem', () => {
     it('should call onChange with integer value when slider changes', async () => {
       const user = userEvent.setup()
       render(<TopKItem {...defaultProps} value={2} />)
-      const slider = getSlider()
+      const slider = screen.getByRole('slider')
 
-      slider.focus()
+      await user.click(slider)
       await user.keyboard('{ArrowRight}')
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('top_k', 3)

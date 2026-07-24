@@ -8,10 +8,20 @@ export enum VarKindType {
 }
 
 // Generic resource variable inputs
-export type ResourceVarInputs = Record<
-  string,
-  {
-    type: VarKindType
-    value?: string | ValueSelector | any
-  }
->
+export type ResourceVarInputs = Record<string, {
+  type: VarKindType
+  value?: string | ValueSelector | any
+}>
+
+// Base resource interface
+export type BaseResource = {
+  name: string
+  [key: string]: any
+}
+
+// Base resource provider interface
+export type BaseResourceProvider = {
+  plugin_id?: string
+  name: string
+  [key: string]: any
+}

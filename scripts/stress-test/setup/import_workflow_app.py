@@ -11,11 +11,7 @@ import httpx
 from common import Logger, config_helper  # type: ignore[import]
 
 
-def is_successful_import_response(response_data: dict[str, object]) -> bool:
-    return response_data.get("status") != "failed" and bool(response_data.get("app_id"))
-
-
-def import_workflow_app() -> bool:
+def import_workflow_app() -> None:
     """Import workflow app from DSL file and save app_id."""
 
     log = Logger("ImportApp")
@@ -26,14 +22,14 @@ def import_workflow_app() -> bool:
     if not access_token:
         log.error("No access token found in config")
         log.info("Please run login_admin.py first to get access token")
-        return False
+        return
 
     # Read workflow DSL file
     dsl_path = Path(__file__).parent / "dsl" / "workflow_llm.yml"
 
     if not dsl_path.exists():
         log.error(f"DSL file not found: {dsl_path}")
-        return False
+        return
 
     with open(dsl_path) as f:
         yaml_content = f.read()
@@ -61,14 +57,14 @@ def import_workflow_app() -> bool:
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
-        **config_helper.console_auth_headers(),
+        "authorization": f"Bearer {access_token}",
         "content-type": "application/json",
         "sec-ch-ua": '"Not;A=Brand";v="99", "Google Chrome";v="139", "Chromium";v="139"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
     }
 
-    cookies = config_helper.console_auth_cookies()
+    cookies = {"locale": "en-US"}
 
     try:
         # Make the import request
@@ -83,56 +79,50 @@ def import_workflow_app() -> bool:
             if response.status_code == 200:
                 response_data = response.json()
 
-                if is_successful_import_response(response_data):
+                # Check import status
+                if response_data.get("status") == "completed":
                     app_id = response_data.get("app_id")
-                    if response_data.get("status") != "completed":
-                        log.warning(f"Import status: {response_data.get('status')}")
+
+                    if app_id:
+                        log.success("Workflow app imported successfully!")
+                        log.key_value("App ID", app_id)
+                        log.key_value("App Mode", response_data.get("app_mode"))
+                        log.key_value("DSL Version", response_data.get("imported_dsl_version"))
+
+                        # Save app_id to config
+                        app_config = {
+                            "app_id": app_id,
+                            "app_mode": response_data.get("app_mode"),
+                            "app_name": "workflow_llm",
+                            "dsl_version": response_data.get("imported_dsl_version"),
+                        }
+
+                        if config_helper.write_config("app_config", app_config):
+                            log.info(f"App config saved to: {config_helper.get_config_path('benchmark_state')}")
+                    else:
+                        log.error("Import completed but no app_id received")
                         log.debug(f"Response: {json.dumps(response_data, indent=2)}")
-                    log.success("Workflow app imported successfully!")
-                    log.key_value("App ID", app_id)
-                    log.key_value("App Mode", response_data.get("app_mode"))
-                    log.key_value("DSL Version", response_data.get("imported_dsl_version"))
-
-                    # Save app_id to config
-                    app_config = {
-                        "app_id": app_id,
-                        "app_mode": response_data.get("app_mode"),
-                        "app_name": "workflow_llm",
-                        "dsl_version": response_data.get("imported_dsl_version"),
-                    }
-
-                    if config_helper.write_config("app_config", app_config):
-                        log.info(f"App config saved to: {config_helper.get_config_path('benchmark_state')}")
-                        return True
-                    return False
 
                 elif response_data.get("status") == "failed":
                     log.error("Import failed")
                     log.error(f"Error: {response_data.get('error')}")
-                    return False
                 else:
-                    log.error("Import response did not include app_id")
+                    log.warning(f"Import status: {response_data.get('status')}")
                     log.debug(f"Response: {json.dumps(response_data, indent=2)}")
-                    return False
 
             elif response.status_code == 401:
                 log.error("Import failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
-                return False
             else:
                 log.error(f"Import failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
-                return False
 
     except httpx.ConnectError:
         log.error("Could not connect to Dify API at http://localhost:5001")
         log.info("Make sure the API server is running with: ./dev/start-api")
-        return False
     except Exception as e:
         log.error(f"An error occurred: {e}")
-        return False
 
 
 if __name__ == "__main__":
-    if not import_workflow_app():
-        sys.exit(1)
+    import_workflow_app()

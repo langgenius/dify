@@ -10,27 +10,16 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
 const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
 // Mock next/link
-vi.mock('@/next/link', () => ({
-  default: function MockLink({
-    children,
-    href,
-    ...props
-  }: {
-    children: React.ReactNode
-    href: string
-  }) {
-    return (
-      <a href={href} {...props}>
-        {children}
-      </a>
-    )
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href, ...props }: { children: React.ReactNode, href: string }) {
+    return <a href={href} {...props}>{children}</a>
   },
 }))
 
@@ -77,9 +66,7 @@ vi.mock('@/hooks/use-api-access-url', () => ({
  * Uses deterministic counter-based IDs to avoid flaky tests
  */
 let documentIdCounter = 0
-const createMockDocument = (
-  overrides: Partial<InitialDocumentDetail> = {},
-): InitialDocumentDetail => ({
+const createMockDocument = (overrides: Partial<InitialDocumentDetail> = {}): InitialDocumentDetail => ({
   id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
@@ -94,9 +81,7 @@ const createMockDocument = (
 /**
  * Creates a mock IndexingStatusResponse for testing
  */
-const createMockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+const createMockIndexingStatus = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
   id: `doc-${Math.random().toString(36).slice(2, 9)}`,
   indexing_status: 'waiting' as DocumentIndexingStatus,
   processing_started_at: Date.now(),
@@ -115,15 +100,13 @@ const createMockIndexingStatus = (
 /**
  * Creates default props for EmbeddingProcess component
  */
-const createDefaultProps = (
-  overrides: Partial<{
-    datasetId: string
-    batchId: string
-    documents: InitialDocumentDetail[]
-    indexingType: IndexingType
-    retrievalMethod: RETRIEVE_METHOD
-  }> = {},
-) => ({
+const createDefaultProps = (overrides: Partial<{
+  datasetId: string
+  batchId: string
+  documents: InitialDocumentDetail[]
+  indexingType: IndexingType
+  retrievalMethod: RETRIEVE_METHOD
+}> = {}) => ({
   datasetId: 'dataset-123',
   batchId: 'batch-456',
   documents: [createMockDocument({ id: 'doc-1', name: 'test-doc.pdf' })],
@@ -158,6 +141,28 @@ describe('EmbeddingProcess', () => {
   })
 
   describe('Rendering', () => {
+    // Tests basic rendering functionality
+    it('should render without crashing', () => {
+      const props = createDefaultProps()
+
+      render(<EmbeddingProcess {...props} />)
+
+      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+    })
+
+    it('should render RuleDetail component with correct props', () => {
+      const props = createDefaultProps({
+        indexingType: IndexingType.ECONOMICAL,
+        retrievalMethod: RETRIEVE_METHOD.fullText,
+      })
+
+      render(<EmbeddingProcess {...props} />)
+
+      // Assert - RuleDetail renders FieldInfo components with translated text
+      // Check that the component renders without error
+      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+    })
+
     it('should render API reference link with correct URL', () => {
       const props = createDefaultProps()
 
@@ -187,9 +192,7 @@ describe('EmbeddingProcess', () => {
 
       render(<EmbeddingProcess {...props} />)
 
-      expect(
-        screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade')).not.toBeInTheDocument()
     })
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
@@ -199,9 +202,7 @@ describe('EmbeddingProcess', () => {
 
       render(<EmbeddingProcess {...props} />)
 
-      expect(
-        screen.getByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.documentProcessingPriorityUpgrade')).toBeInTheDocument()
     })
 
     it('should not show upgrade banner when plan is team', () => {
@@ -211,9 +212,7 @@ describe('EmbeddingProcess', () => {
 
       render(<EmbeddingProcess {...props} />)
 
-      expect(
-        screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade')).not.toBeInTheDocument()
     })
 
     it('should show upgrade banner for professional plan', () => {
@@ -223,9 +222,7 @@ describe('EmbeddingProcess', () => {
 
       render(<EmbeddingProcess {...props} />)
 
-      expect(
-        screen.getByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.documentProcessingPriorityUpgrade')).toBeInTheDocument()
     })
   })
 
@@ -325,11 +322,7 @@ describe('EmbeddingProcess', () => {
     it('should show completed status when all documents have error status', async () => {
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
-        createMockIndexingStatus({
-          id: 'doc-1',
-          indexing_status: 'error',
-          error: 'Processing failed',
-        }),
+        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'error', error: 'Processing failed' }),
       ]
       const props = createDefaultProps({ documents: [doc1] })
 
@@ -502,14 +495,14 @@ describe('EmbeddingProcess', () => {
 
       // Assert - call count should not increase significantly after completion
       // Note: Due to React Strict Mode, there might be double renders
-      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(
-        callCountAfterComplete + 1,
-      )
+      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(callCountAfterComplete + 1)
     })
 
     it('should stop polling when all documents have errors', async () => {
       const doc1 = createMockDocument({ id: 'doc-1' })
-      mockIndexingStatusData = [createMockIndexingStatus({ id: 'doc-1', indexing_status: 'error' })]
+      mockIndexingStatusData = [
+        createMockIndexingStatus({ id: 'doc-1', indexing_status: 'error' }),
+      ]
       const props = createDefaultProps({ documents: [doc1] })
 
       render(<EmbeddingProcess {...props} />)
@@ -548,9 +541,7 @@ describe('EmbeddingProcess', () => {
       vi.advanceTimersByTime(5000)
 
       // Assert - should not poll significantly more after paused state
-      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(
-        callCountAfterPaused + 1,
-      )
+      expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(callCountAfterPaused + 1)
     })
 
     it('should cleanup timeout on unmount', async () => {
@@ -795,9 +786,7 @@ describe('EmbeddingProcess', () => {
       const props = createDefaultProps({ documents: [] })
 
       // Suppress console errors for expected error
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(Function.prototype as () => void)
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(Function.prototype as () => void)
 
       // Act & Assert - explicitly assert the error behavior
       expect(() => {
@@ -876,6 +865,58 @@ describe('EmbeddingProcess', () => {
 
       // Assert - should show processing (since one is still indexing)
       expect(screen.getByText('datasetDocuments.embedding.processing')).toBeInTheDocument()
+    })
+  })
+
+  // Props Variations Tests
+  describe('Props Variations', () => {
+    // Tests for different prop combinations
+    it('should handle undefined indexingType', () => {
+      const props = createDefaultProps({ indexingType: undefined })
+
+      render(<EmbeddingProcess {...props} />)
+
+      // Assert - component renders without crashing
+      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+    })
+
+    it('should handle undefined retrievalMethod', () => {
+      const props = createDefaultProps({ retrievalMethod: undefined })
+
+      render(<EmbeddingProcess {...props} />)
+
+      // Assert - component renders without crashing
+      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+    })
+
+    it('should pass different indexingType values', () => {
+      const indexingTypes = [IndexingType.QUALIFIED, IndexingType.ECONOMICAL]
+
+      indexingTypes.forEach((indexingType) => {
+        const props = createDefaultProps({ indexingType })
+
+        const { unmount } = render(<EmbeddingProcess {...props} />)
+
+        // Assert - RuleDetail renders and shows appropriate text based on indexingType
+        expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+
+        unmount()
+      })
+    })
+
+    it('should pass different retrievalMethod values', () => {
+      const retrievalMethods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid]
+
+      retrievalMethods.forEach((retrievalMethod) => {
+        const props = createDefaultProps({ retrievalMethod })
+
+        const { unmount } = render(<EmbeddingProcess {...props} />)
+
+        // Assert - RuleDetail renders and shows appropriate text based on retrievalMethod
+        expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
+
+        unmount()
+      })
     })
   })
 
@@ -1036,9 +1077,7 @@ describe('EmbeddingProcess', () => {
       })
 
       // Assert - upgrade banner should not be present
-      expect(
-        screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('billing.plansCommon.documentProcessingPriorityUpgrade')).not.toBeInTheDocument()
     })
   })
 })

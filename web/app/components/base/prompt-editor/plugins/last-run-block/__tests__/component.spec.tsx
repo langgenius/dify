@@ -23,7 +23,11 @@ const renderComponent = (props?: {
   withNode?: boolean
   onParentClick?: () => void
 }) => {
-  const { isSelected = false, withNode = true, onParentClick } = props ?? {}
+  const {
+    isSelected = false,
+    withNode = true,
+    onParentClick,
+  } = props ?? {}
 
   mockUseSelectOrDelete.mockReturnValue(createHookReturn(isSelected))
 
@@ -37,9 +41,9 @@ const renderComponent = (props?: {
         nodes: withNode ? [CustomTextNode, LastRunBlockNode] : [CustomTextNode],
       }}
     >
-      <button type="button" onClick={onParentClick}>
+      <div onClick={onParentClick}>
         <LastRunBlockComponent nodeKey="last-run-node" />
-      </button>
+      </div>
     </LexicalComposer>,
   )
 }
@@ -50,10 +54,21 @@ describe('LastRunBlockComponent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render the last run label when selected', () => {
-      renderComponent({ isSelected: true })
+    it('should render last run label and apply selected classes when selected', () => {
+      const { container } = renderComponent({ isSelected: true })
+      const wrapper = container.querySelector('.group\\/wrap')
 
       expect(screen.getByText('last_run')).toBeInTheDocument()
+      expect(wrapper).toHaveClass('border-state-accent-solid')
+      expect(wrapper).toHaveClass('bg-state-accent-hover')
+    })
+
+    it('should apply default classes when not selected', () => {
+      const { container } = renderComponent({ isSelected: false })
+      const wrapper = container.querySelector('.group\\/wrap')
+
+      expect(wrapper).toHaveClass('border-components-panel-border-subtle')
+      expect(wrapper).toHaveClass('bg-components-badge-white-to-dark')
     })
   })
 

@@ -1,13 +1,6 @@
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 
 type DSLConfirmModalProps = {
   versions?: {
@@ -17,61 +10,42 @@ type DSLConfirmModalProps = {
   onCancel: () => void
   onConfirm: () => void
   confirmDisabled?: boolean
-  confirmLoading?: boolean
 }
-
-function DSLConfirmModal({
+const DSLConfirmModal = ({
   versions = { importedVersion: '', systemVersion: '' },
   onCancel,
   onConfirm,
   confirmDisabled = false,
-  confirmLoading = false,
-}: DSLConfirmModalProps) {
+}: DSLConfirmModalProps) => {
   const { t } = useTranslation()
 
   return (
-    <AlertDialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !confirmLoading) onCancel()
-      }}
+    <Modal
+      isShow
+      onClose={() => onCancel()}
+      className="w-[480px]"
     >
-      <AlertDialogContent className="w-[480px] overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
-          </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
-            <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
-            <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
-            <br />
-            <div>
-              {t(($) => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
-              <span className="system-md-medium">{versions.importedVersion}</span>
-            </div>
-            <div>
-              {t(($) => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
-              <span className="system-md-medium">{versions.systemVersion}</span>
-            </div>
-          </AlertDialogDescription>
+      <div className="flex flex-col items-start gap-2 self-stretch pb-4">
+        <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+        <div className="system-md-regular flex grow flex-col text-text-secondary">
+          <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+          <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
+          <br />
+          <div>
+            {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
+            <span className="system-md-medium">{versions.importedVersion}</span>
+          </div>
+          <div>
+            {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
+            <span className="system-md-medium">{versions.systemVersion}</span>
+          </div>
         </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary" disabled={confirmLoading}>
-            {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            onClick={onConfirm}
-            disabled={confirmDisabled}
-            loading={confirmLoading}
-          >
-            {t(($) => $['newApp.Confirm'], { ns: 'app' })}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
-      </AlertDialogContent>
-    </AlertDialog>
+      </div>
+      <div className="flex items-start justify-end gap-2 self-stretch pt-6">
+        <Button variant="secondary" onClick={() => onCancel()}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+        <Button variant="primary" destructive onClick={onConfirm} disabled={confirmDisabled}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+      </div>
+    </Modal>
   )
 }
 

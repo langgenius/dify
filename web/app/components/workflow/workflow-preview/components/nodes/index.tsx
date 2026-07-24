@@ -8,7 +8,9 @@ const CustomNode = (props: NodeProps) => {
 
   return (
     <>
-      <BaseNode {...props}>{NodeComponent && <NodeComponent />}</BaseNode>
+      <BaseNode {...props}>
+        { NodeComponent && <NodeComponent /> }
+      </BaseNode>
     </>
   )
 }

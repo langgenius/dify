@@ -1,83 +1,69 @@
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
-import {
-  createCodeInspectorPlugin,
-  createForceInspectorClientInjectionPlugin,
-} from './plugins/vite/code-inspector.ts'
-import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
-import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
-import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
+import react from '@vitejs/plugin-react'
+import vinext from 'vinext'
+import { defineConfig } from 'vite'
+import Inspect from 'vite-plugin-inspect'
+import tsconfigPaths from 'vite-tsconfig-paths'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
+import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
 
-const projectRoot = fileURLToPath(new URL('.', import.meta.url))
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 const isCI = !!process.env.CI
-const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
+const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
-  const isStorybook =
-    process.env.STORYBOOK === 'true' ||
-    process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
+  const isStorybook = process.env.STORYBOOK === 'true'
+    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
-    plugins: lazyPlugins(async () => {
-      const { default: react } = await import('@vitejs/plugin-react')
-
-      if (isTest) {
-        return [
-          nextStaticImageTestPlugin({ projectRoot }),
+    plugins: isTest
+      ? [
+          tsconfigPaths(),
           react(),
           {
             // Stub .mdx files so components importing them can be unit-tested
             name: 'mdx-stub',
             enforce: 'pre',
-            transform(_: string, id: string) {
-              if (id.endsWith('.mdx')) return { code: 'export default () => null', map: null }
+            transform(_, id) {
+              if (id.endsWith('.mdx'))
+                return { code: 'export default () => null', map: null }
             },
           },
         ]
-      }
-
-      if (isStorybook) return [react()]
-
-      const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
-        await Promise.all([
-          import('@tailwindcss/vite'),
-          import('vinext'),
-          import('vite-plugin-inspect'),
-        ])
-
-      return [
-        Inspect(),
-        createCodeInspectorPlugin({
-          injectTarget: rootClientInjectTarget,
-        }),
-        createForceInspectorClientInjectionPlugin({
-          injectTarget: rootClientInjectTarget,
-          projectRoot,
-        }),
-        tailwindcss(),
-        react(),
-        vinext({ react: false }),
-        customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
-        // reactGrabOpenFilePlugin({
-        //   injectTarget: rootClientInjectTarget,
-        //   projectRoot,
-        // }),
-      ]
-    }),
+      : isStorybook
+        ? [
+            tsconfigPaths(),
+            react(),
+          ]
+        : [
+            Inspect(),
+            createCodeInspectorPlugin({
+              injectTarget: browserInitializerInjectTarget,
+            }),
+            createForceInspectorClientInjectionPlugin({
+              injectTarget: browserInitializerInjectTarget,
+              projectRoot,
+            }),
+            vinext(),
+            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            // reactGrabOpenFilePlugin({
+            //   injectTarget: browserInitializerInjectTarget,
+            //   projectRoot,
+            // }),
+          ],
     resolve: {
-      tsconfigPaths: true,
-      alias: [
-        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
-        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
-      ],
+      alias: {
+        '~@': projectRoot,
+      },
     },
 
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            exclude: ['nuqs'],
           },
           server: {
             port: 3000,
@@ -91,14 +77,12 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
-      pool: 'threads',
-      environment: 'happy-dom',
+      environment: 'jsdom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        exclude: ['**/__mocks__/**'],
       },
     },
   }

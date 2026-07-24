@@ -10,28 +10,25 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-)
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowType
-from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.nodes.end.end_node import EndNode
-from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.human_input_node import HumanInputNode
-from graphon.nodes.start.entities import StartNodeData
-from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from dify_graph.enums import WorkflowType
+from dify_graph.graph import Graph
+from dify_graph.graph_engine.command_channels.in_memory_channel import InMemoryChannel
+from dify_graph.graph_engine.graph_engine import GraphEngine
+from dify_graph.nodes.end.end_node import EndNode
+from dify_graph.nodes.end.entities import EndNodeData
+from dify_graph.nodes.human_input.entities import HumanInputNodeData, UserAction
+from dify_graph.nodes.human_input.enums import HumanInputFormStatus
+from dify_graph.nodes.human_input.human_input_node import HumanInputNode
+from dify_graph.nodes.start.entities import StartNodeData
+from dify_graph.nodes.start.start_node import StartNode
+from dify_graph.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -42,7 +39,7 @@ def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
+    form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = False
@@ -55,7 +52,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     repo = MagicMock(spec=HumanInputFormRepository)
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
-    form_entity.submission_token = "test-form-token"
+    form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
     form_entity.submitted = True
@@ -68,8 +65,8 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
 
 
 def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
-    variable_pool = VariablePool.from_bootstrap(
-        system_variables=build_system_variables(
+    variable_pool = VariablePool(
+        system_variables=SystemVariable(
             workflow_execution_id=workflow_execution_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -103,8 +100,8 @@ def _build_graph(
 
     start_data = StartNodeData(title="start", variables=[])
     start_node = StartNode(
-        node_id="start",
-        data=start_data,
+        id="start",
+        config={"id": "start", "data": start_data.model_dump()},
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
@@ -114,19 +111,15 @@ def _build_graph(
         form_content="Awaiting human input",
         inputs=[],
         user_actions=[
-            UserActionConfig(id="continue", title="Continue"),
+            UserAction(id="continue", title="Continue"),
         ],
     )
-    hitl_callback = DifyHITLCallback(
-        form_repository=form_repository,
-        node_data=human_data,
-    )
     human_node = HumanInputNode(
-        node_id="human",
-        data=human_data,
+        id="human",
+        config={"id": "human", "data": human_data.model_dump()},
         graph_init_params=params,
         graph_runtime_state=runtime_state,
-        hitl_callback=hitl_callback,
+        form_repository=form_repository,
     )
 
     end_data = EndNodeData(
@@ -135,8 +128,8 @@ def _build_graph(
         desc=None,
     )
     end_node = EndNode(
-        node_id="end",
-        data=end_data,
+        id="end",
+        config={"id": "end", "data": end_data.model_dump()},
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
@@ -180,7 +173,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
     def setup_test_data(self, db_session_with_containers: Session):
         tenant = Tenant(
             name="Test Tenant",
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -189,7 +182,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -209,7 +202,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             tenant_id=tenant.id,
             name="Test App",
             description="",
-            mode=AppMode.WORKFLOW,
+            mode=AppMode.WORKFLOW.value,
             icon_type=IconType.EMOJI.value,
             icon="rocket",
             icon_background="#4ECDC4",
@@ -267,14 +260,12 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         execution_repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=self.session.get_bind(),
-            tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=self.session.get_bind(),
-            tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

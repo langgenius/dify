@@ -41,18 +41,18 @@ describe('More', () => {
     expect(screen.queryByTestId('more-tps')).not.toBeInTheDocument()
   })
 
-  it('should omit the timestamp separator when time is empty', () => {
-    render(<More more={{ ...mockMoreData, time: '' }} />)
-
-    expect(screen.queryByTestId('more-time')).not.toBeInTheDocument()
-    expect(screen.queryByText('·')).not.toBeInTheDocument()
-  })
-
   it('should render nothing inside container if more prop is missing', () => {
     render(<More more={undefined} />)
     const containerDiv = screen.getByTestId('more-container')
     expect(containerDiv).toBeInTheDocument()
     expect(containerDiv.children.length).toBe(0)
+  })
+
+  it('should apply group-hover opacity classes', () => {
+    render(<More more={mockMoreData} />)
+    const container = screen.getByTestId('more-container')
+    expect(container).toHaveClass('opacity-0')
+    expect(container).toHaveClass('group-hover:opacity-100')
   })
 
   it('should correctly format large token counts', () => {

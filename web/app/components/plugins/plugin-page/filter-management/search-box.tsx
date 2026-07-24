@@ -8,7 +8,10 @@ type SearchBoxProps = {
   onChange: (query: string) => void
 }
 
-const SearchBox: React.FC<SearchBoxProps> = ({ searchQuery, onChange }) => {
+const SearchBox: React.FC<SearchBoxProps> = ({
+  searchQuery,
+  onChange,
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -17,7 +20,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({ searchQuery, onChange }) => {
       className="bg-components-input-bg-normal"
       showLeftIcon
       value={searchQuery}
-      placeholder={t(($) => $.search, { ns: 'plugin' })}
+      placeholder={t('search', { ns: 'plugin' })}
       onChange={(e) => {
         onChange(e.target.value)
       }}

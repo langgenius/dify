@@ -2,7 +2,6 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any
 
 from configs import dify_config
 
@@ -21,7 +20,7 @@ class SMTPClient:
         self.use_tls = use_tls
         self.opportunistic_tls = opportunistic_tls
 
-    def send(self, mail: dict[str, Any]):
+    def send(self, mail: dict):
         smtp: smtplib.SMTP | None = None
         local_host = dify_config.SMTP_LOCAL_HOSTNAME
         try:

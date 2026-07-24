@@ -4,6 +4,7 @@ import type { DataSourceItem } from '@/app/components/workflow/block-selector/ty
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { describe, expect, it, vi } from 'vitest'
 import { PipelineInputVarType } from '@/models/pipeline'
+
 import { createRagPipelineSliceSlice } from '../index'
 
 vi.mock('@/app/components/workflow/block-selector/utils', () => ({
@@ -18,11 +19,7 @@ const unusedGet = vi.fn() as unknown as SliceCreatorParams[1]
 const unusedApi = vi.fn() as unknown as SliceCreatorParams[2]
 
 function createSlice(mockSet = vi.fn()) {
-  return createRagPipelineSliceSlice(
-    mockSet as unknown as SliceCreatorParams[0],
-    unusedGet,
-    unusedApi,
-  )
+  return createRagPipelineSliceSlice(mockSet as unknown as SliceCreatorParams[0], unusedGet, unusedApi)
 }
 
 describe('createRagPipelineSliceSlice', () => {
@@ -92,7 +89,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       expect(mockSet).toHaveBeenCalledWith(expect.any(Function))
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ showInputFieldPanel: true })
     })
@@ -103,7 +100,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setShowInputFieldPanel(false)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ showInputFieldPanel: false })
     })
@@ -116,7 +113,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setShowInputFieldPreviewPanel(true)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ showInputFieldPreviewPanel: true })
     })
@@ -127,7 +124,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setShowInputFieldPreviewPanel(false)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ showInputFieldPreviewPanel: false })
     })
@@ -141,7 +138,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setInputFieldEditPanelProps(props)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ inputFieldEditPanelProps: props })
     })
@@ -152,7 +149,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setInputFieldEditPanelProps(null)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ inputFieldEditPanelProps: null })
     })
@@ -166,7 +163,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setNodesDefaultConfigs(configs)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ nodesDefaultConfigs: configs })
     })
@@ -177,7 +174,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setNodesDefaultConfigs({})
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ nodesDefaultConfigs: {} })
     })
@@ -188,18 +185,12 @@ describe('createRagPipelineSliceSlice', () => {
       mockSet.mockClear()
       const slice = createSlice(mockSet)
       const variables: RAGPipelineVariables = [
-        {
-          type: PipelineInputVarType.textInput,
-          variable: 'var1',
-          label: 'Var 1',
-          required: true,
-          belong_to_node_id: 'node-1',
-        },
+        { type: PipelineInputVarType.textInput, variable: 'var1', label: 'Var 1', required: true, belong_to_node_id: 'node-1' },
       ]
 
       slice.setRagPipelineVariables(variables)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ ragPipelineVariables: variables })
     })
@@ -210,7 +201,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setRagPipelineVariables([])
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ ragPipelineVariables: [] })
     })
@@ -227,7 +218,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setDataSourceList(dataSourceList)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result.dataSourceList).toHaveLength(2)
       expect(result.dataSourceList![0]).toEqual({ name: 'source1', key: 'key1', transformed: true })
@@ -240,7 +231,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setDataSourceList([])
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result.dataSourceList).toEqual([])
     })
@@ -253,7 +244,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setIsPreparingDataSource(true)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ isPreparingDataSource: true })
     })
@@ -264,7 +255,7 @@ describe('createRagPipelineSliceSlice', () => {
 
       slice.setIsPreparingDataSource(false)
 
-      const setterFn = mockSet.mock.calls[0]![0] as () => Partial<RagPipelineSliceShape>
+      const setterFn = mockSet.mock.calls[0][0] as () => Partial<RagPipelineSliceShape>
       const result = setterFn()
       expect(result).toEqual({ isPreparingDataSource: false })
     })
@@ -291,5 +282,17 @@ describe('RagPipelineSliceShape type', () => {
     expect(slice).toHaveProperty('setDataSourceList')
     expect(slice).toHaveProperty('isPreparingDataSource')
     expect(slice).toHaveProperty('setIsPreparingDataSource')
+  })
+
+  it('should have all setters as functions', () => {
+    const slice = createSlice()
+
+    expect(typeof slice.setShowInputFieldPanel).toBe('function')
+    expect(typeof slice.setShowInputFieldPreviewPanel).toBe('function')
+    expect(typeof slice.setInputFieldEditPanelProps).toBe('function')
+    expect(typeof slice.setNodesDefaultConfigs).toBe('function')
+    expect(typeof slice.setRagPipelineVariables).toBe('function')
+    expect(typeof slice.setDataSourceList).toBe('function')
+    expect(typeof slice.setIsPreparingDataSource).toBe('function')
   })
 })

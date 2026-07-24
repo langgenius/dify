@@ -10,7 +10,6 @@ This module tests all aspects of the content moderation system including:
 - Configuration validation
 """
 
-from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -29,7 +28,7 @@ class TestKeywordsModeration:
     """Test suite for custom keyword-based content moderation."""
 
     @pytest.fixture
-    def keywords_config(self) -> dict[str, Any]:
+    def keywords_config(self) -> dict:
         """
         Fixture providing a standard keywords moderation configuration.
 
@@ -49,7 +48,7 @@ class TestKeywordsModeration:
         }
 
     @pytest.fixture
-    def keywords_moderation(self, keywords_config: dict[str, Any]) -> KeywordsModeration:
+    def keywords_moderation(self, keywords_config: dict) -> KeywordsModeration:
         """
         Fixture providing a KeywordsModeration instance.
 
@@ -65,7 +64,7 @@ class TestKeywordsModeration:
             config=keywords_config,
         )
 
-    def test_validate_config_success(self, keywords_config: dict[str, Any]):
+    def test_validate_config_success(self, keywords_config: dict):
         """Test successful validation of keywords moderation configuration."""
         # Should not raise any exception
         KeywordsModeration.validate_config("test-tenant", keywords_config)
@@ -275,7 +274,7 @@ class TestOpenAIModeration:
     """Test suite for OpenAI-based content moderation."""
 
     @pytest.fixture
-    def openai_config(self) -> dict[str, Any]:
+    def openai_config(self) -> dict:
         """
         Fixture providing OpenAI moderation configuration.
 
@@ -294,7 +293,7 @@ class TestOpenAIModeration:
         }
 
     @pytest.fixture
-    def openai_moderation(self, openai_config: dict[str, Any]) -> OpenAIModeration:
+    def openai_moderation(self, openai_config: dict) -> OpenAIModeration:
         """
         Fixture providing an OpenAIModeration instance.
 
@@ -310,7 +309,7 @@ class TestOpenAIModeration:
             config=openai_config,
         )
 
-    def test_validate_config_success(self, openai_config: dict[str, Any]):
+    def test_validate_config_success(self, openai_config: dict):
         """Test successful validation of OpenAI moderation configuration."""
         # Should not raise any exception
         OpenAIModeration.validate_config("test-tenant", openai_config)
@@ -325,7 +324,7 @@ class TestOpenAIModeration:
         with pytest.raises(ValueError, match="At least one of inputs_config or outputs_config must be enabled"):
             OpenAIModeration.validate_config("test-tenant", config)
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_inputs_no_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
         """Test input moderation when OpenAI API returns no violations."""
         # Mock the model manager and instance
@@ -342,7 +341,7 @@ class TestOpenAIModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Content flagged by OpenAI moderation."
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_inputs_with_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
         """Test input moderation when OpenAI API detects violations."""
         # Mock the model manager to return violation
@@ -359,7 +358,7 @@ class TestOpenAIModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Content flagged by OpenAI moderation."
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_inputs_query_included(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
         """Test that query is included in moderation check with special key."""
         mock_instance = MagicMock()
@@ -386,7 +385,7 @@ class TestOpenAIModeration:
         assert "u" in moderated_text
         assert "e" in moderated_text
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_inputs_disabled(self, mock_model_manager: Mock):
         """Test input moderation when inputs_config is disabled."""
         config = {
@@ -401,7 +400,7 @@ class TestOpenAIModeration:
         # Should not call the API when disabled
         mock_model_manager.assert_not_called()
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_outputs_no_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
         """Test output moderation when OpenAI API returns no violations."""
         mock_instance = MagicMock()
@@ -415,7 +414,7 @@ class TestOpenAIModeration:
         assert result.action == ModerationAction.DIRECT_OUTPUT
         assert result.preset_response == "Response blocked by moderation."
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_outputs_with_violation(self, mock_model_manager: Mock, openai_moderation: OpenAIModeration):
         """Test output moderation when OpenAI API detects violations."""
         mock_instance = MagicMock()
@@ -428,7 +427,7 @@ class TestOpenAIModeration:
         assert result.flagged is True
         assert result.action == ModerationAction.DIRECT_OUTPUT
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_moderation_for_outputs_disabled(self, mock_model_manager: Mock):
         """Test output moderation when outputs_config is disabled."""
         config = {
@@ -442,7 +441,7 @@ class TestOpenAIModeration:
         assert result.flagged is False
         mock_model_manager.assert_not_called()
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_model_manager_called_with_correct_params(
         self, mock_model_manager: Mock, openai_moderation: OpenAIModeration
     ):
@@ -630,7 +629,7 @@ class TestPresetManagement:
         assert result.flagged is True
         assert result.preset_response == "Custom output blocked message"
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_preset_response_in_inputs(self, mock_model_manager: Mock):
         """Test preset response is properly returned for OpenAI input violations."""
         mock_instance = MagicMock()
@@ -651,7 +650,7 @@ class TestPresetManagement:
         assert result.flagged is True
         assert result.preset_response == "OpenAI input blocked"
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_preset_response_in_outputs(self, mock_model_manager: Mock):
         """Test preset response is properly returned for OpenAI output violations."""
         mock_instance = MagicMock()
@@ -990,7 +989,7 @@ class TestOpenAIModerationAdvanced:
     - Performance considerations
     """
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_api_timeout_handling(self, mock_model_manager: Mock):
         """
         Test graceful handling of OpenAI API timeouts.
@@ -1013,7 +1012,7 @@ class TestOpenAIModerationAdvanced:
         with pytest.raises(TimeoutError):
             moderation.moderation_for_inputs({"text": "test"}, "")
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_api_rate_limit_handling(self, mock_model_manager: Mock):
         """
         Test handling of OpenAI API rate limit errors.
@@ -1036,7 +1035,7 @@ class TestOpenAIModerationAdvanced:
         with pytest.raises(Exception, match="Rate limit exceeded"):
             moderation.moderation_for_inputs({"text": "test"}, "")
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_with_multiple_input_fields(self, mock_model_manager: Mock):
         """
         Test OpenAI moderation with multiple input fields.
@@ -1080,7 +1079,7 @@ class TestOpenAIModerationAdvanced:
         assert "u" in moderated_text
         assert "e" in moderated_text
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_empty_text_handling(self, mock_model_manager: Mock):
         """
         Test OpenAI moderation with empty text inputs.
@@ -1104,7 +1103,7 @@ class TestOpenAIModerationAdvanced:
         assert result.flagged is False
         mock_instance.invoke_moderation.assert_called_once()
 
-    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager.for_tenant", autospec=True)
+    @patch("core.moderation.openai_moderation.openai_moderation.ModelManager", autospec=True)
     def test_openai_model_instance_fetched_on_each_call(self, mock_model_manager: Mock):
         """
         Test that ModelManager fetches a fresh model instance on each call.

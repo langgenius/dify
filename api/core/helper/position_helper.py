@@ -2,6 +2,7 @@ import os
 from collections import OrderedDict
 from collections.abc import Callable
 from functools import lru_cache
+from typing import TypeVar
 
 from configs import dify_config
 from core.tools.utils.yaml_utils import load_yaml_file_cached
@@ -64,7 +65,10 @@ def pin_position_map(original_position_map: dict[str, int], pin_list: list[str])
     return position_map
 
 
-def is_filtered[T](
+T = TypeVar("T")
+
+
+def is_filtered(
     include_set: set[str],
     exclude_set: set[str],
     data: T,
@@ -93,11 +97,11 @@ def is_filtered[T](
     return False
 
 
-def sort_by_position_map[T](
+def sort_by_position_map(
     position_map: dict[str, int],
     data: list[T],
     name_func: Callable[[T], str],
-) -> list[T]:
+):
     """
     Sort the objects by the position map.
     If the name of the object is not in the position map, it will be put at the end.
@@ -112,11 +116,11 @@ def sort_by_position_map[T](
     return sorted(data, key=lambda x: position_map.get(name_func(x), float("inf")))
 
 
-def sort_to_dict_by_position_map[T](
+def sort_to_dict_by_position_map(
     position_map: dict[str, int],
     data: list[T],
     name_func: Callable[[T], str],
-) -> OrderedDict[str, T]:
+):
     """
     Sort the objects into a ordered dict by the position map.
     If the name of the object is not in the position map, it will be put at the end.

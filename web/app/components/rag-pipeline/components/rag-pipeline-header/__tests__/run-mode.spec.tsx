@@ -1,37 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RunMode } from '../run-mode'
+
+import RunMode from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: () => void
-        options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean }
-      }
-    >(),
-)
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (
-      hotkey: string,
-      callback: () => void,
-      options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean },
-    ) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
-
-let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
+let mockWorkflowRunningData: { task_id: string, result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowRun: () => ({
@@ -40,6 +17,10 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),
+}))
+
+vi.mock('@/app/components/workflow/shortcuts-name', () => ({
+  default: ({ keys }: { keys: string[] }) => <span data-testid="shortcuts">{keys.join('+')}</span>,
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -58,13 +39,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) =>
-    selector({
-      accessControl: { canRun: true },
-    }),
-}))
-
 vi.mock('@/app/components/workflow/types', () => ({
   WorkflowRunningStatus: { Running: 'running' },
 }))
@@ -79,8 +53,8 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
+vi.mock('@/utils/classnames', () => ({
+  cn: (...args: unknown[]) => args.filter(a => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@remixicon/react', () => ({
@@ -99,7 +73,6 @@ describe('RunMode', () => {
     vi.clearAllMocks()
     mockWorkflowRunningData = undefined
     mockIsPreparingDataSource = false
-    hotkeyRegistrations.clear()
   })
 
   describe('Idle state', () => {
@@ -122,9 +95,9 @@ describe('RunMode', () => {
     })
 
     it('should render keyboard shortcuts', () => {
-      const { container } = render(<RunMode />)
+      render(<RunMode />)
 
-      expect(container.querySelectorAll('kbd')).toHaveLength(2)
+      expect(screen.getByTestId('shortcuts')).toBeInTheDocument()
     })
 
     it('should call start run when button clicked', () => {
@@ -133,20 +106,6 @@ describe('RunMode', () => {
       fireEvent.click(screen.getByText('pipeline.common.testRun'))
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
-    })
-
-    it('should run through the enabled application shortcut', () => {
-      render(<RunMode />)
-
-      const registration = hotkeyRegistrations.get('Alt+R')
-      registration?.callback()
-
-      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
-      expect(registration?.options).toEqual({
-        enabled: true,
-        ignoreInputs: true,
-        preventDefault: true,
-      })
     })
   })
 

@@ -3,9 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import Footer from '../footer'
 
 // Factory for Footer props
-const createFooterProps = (
-  overrides: Partial<YearAndMonthPickerFooterProps> = {},
-): YearAndMonthPickerFooterProps => ({
+const createFooterProps = (overrides: Partial<YearAndMonthPickerFooterProps> = {}): YearAndMonthPickerFooterProps => ({
   handleYearMonthCancel: vi.fn(),
   handleYearMonthConfirm: vi.fn(),
   ...overrides,

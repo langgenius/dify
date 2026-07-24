@@ -1,29 +1,26 @@
-import type { DatasetListItemResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ActionItem, KnowledgeSearchResult } from './types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { consoleQuery } from '@/service/client'
+import type { DataSet } from '@/models/datasets'
+import { fetchDatasets } from '@/service/datasets'
+import { cn } from '@/utils/classnames'
 import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
 
-function getKnowledgeResults(datasets: DatasetListItemResponse[]): KnowledgeSearchResult[] {
+const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
   return datasets.map((dataset) => {
-    const path = isExternalProvider(dataset.provider)
-      ? `/datasets/${dataset.id}/hitTesting`
-      : `/datasets/${dataset.id}/documents`
+    const path = isExternalProvider(dataset.provider) ? `/datasets/${dataset.id}/hitTesting` : `/datasets/${dataset.id}/documents`
     return {
       id: dataset.id,
       title: dataset.name,
-      description: dataset.description ?? undefined,
+      description: dataset.description,
       type: 'knowledge' as const,
       path,
       icon: (
-        <div
-          className={cn(
-            'flex shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-2.5',
-            !dataset.embedding_available && 'opacity-50 hover:opacity-100',
-          )}
+        <div className={cn(
+          'flex shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-2.5',
+          !dataset.embedding_available && 'opacity-50 hover:opacity-100',
+        )}
         >
           <Folder className="h-5 w-5 text-[#444CE7]" />
         </div>
@@ -38,19 +35,23 @@ export const knowledgeAction: ActionItem = {
   shortcut: '@kb',
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
-  source: 'remote',
-}
-
-export function knowledgeSearchQueryOptions(searchTerm: string) {
-  return consoleQuery.datasets.get.queryOptions({
-    input: {
-      query: {
-        page: 1,
-        limit: 10,
-        keyword: searchTerm,
-      },
-    },
-    retry: false,
-    select: (response) => getKnowledgeResults(response.data),
-  })
+  // action,
+  search: async (_, searchTerm = '', _locale) => {
+    try {
+      const response = await fetchDatasets({
+        url: '/datasets',
+        params: {
+          page: 1,
+          limit: 10,
+          keyword: searchTerm,
+        },
+      })
+      const datasets = response?.data || []
+      return parser(datasets)
+    }
+    catch (error) {
+      console.warn('Knowledge search failed:', error)
+      return []
+    }
+  },
 }

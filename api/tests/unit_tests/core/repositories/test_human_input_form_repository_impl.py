@@ -14,25 +14,22 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
-from core.workflow.human_input_adapter import (
+from dify_graph.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
-    MemberRecipient,
-)
-from core.workflow.nodes.human_input.entities import (
     FormDefinition,
-    UserActionConfig,
+    MemberRecipient,
+    UserAction,
 )
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from dify_graph.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
     HumanInputFormRecipient,
     RecipientType,
-    StandaloneWebAppRecipientPayload,
 )
 
 
@@ -92,9 +89,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                include_bound_group=False,
+                whole_workspace=False,
                 items=[
-                    MemberRecipient(reference_id="member-1"),
+                    MemberRecipient(user_id="member-1"),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -128,9 +125,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                include_bound_group=False,
+                whole_workspace=False,
                 items=[
-                    MemberRecipient(reference_id="missing-member"),
+                    MemberRecipient(user_id="missing-member"),
                     ExternalRecipient(email="external@example.com"),
                 ],
             ),
@@ -159,7 +156,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                include_bound_group=True,
+                whole_workspace=True,
                 items=[],
             ),
         )
@@ -185,7 +182,7 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                include_bound_group=False,
+                whole_workspace=False,
                 items=[
                     ExternalRecipient(email="external@example.com"),
                     ExternalRecipient(email="external@example.com"),
@@ -215,9 +212,9 @@ class TestHumanInputFormRepositoryImplHelpers:
             form_id="form-id",
             delivery_id="delivery-id",
             recipients_config=EmailRecipients(
-                include_bound_group=False,
+                whole_workspace=False,
                 items=[
-                    MemberRecipient(reference_id="member-1"),
+                    MemberRecipient(user_id="member-1"),
                     ExternalRecipient(email="shared@example.com"),
                 ],
             ),
@@ -246,7 +243,7 @@ class TestHumanInputFormRepositoryImplHelpers:
         method = EmailDeliveryMethod(
             config=EmailDeliveryConfig(
                 recipients=EmailRecipients(
-                    include_bound_group=True,
+                    whole_workspace=True,
                     items=[ExternalRecipient(email="external@example.com")],
                 ),
                 subject="subject",
@@ -273,9 +270,9 @@ def _make_form_definition() -> str:
     return FormDefinition(
         form_content="hello",
         inputs=[],
-        user_actions=[UserActionConfig(id="submit", title="Submit")],
+        user_actions=[UserAction(id="submit", title="Submit")],
         rendered_content="<p>hello</p>",
-        expiration_time=naive_utc_now(),
+        expiration_time=datetime.utcnow(),
     ).model_dump_json()
 
 
@@ -289,7 +286,6 @@ class _DummyForm:
     form_definition: str
     rendered_content: str
     expiration_time: datetime
-    conversation_id: str | None = None
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
     created_at: datetime = dataclasses.field(default_factory=naive_utc_now)
     selected_action_id: str | None = None
@@ -308,9 +304,6 @@ class _DummyRecipient:
     recipient_type: RecipientType
     access_token: str
     form: _DummyForm | None = None
-    recipient_payload: str = dataclasses.field(
-        default_factory=lambda: StandaloneWebAppRecipientPayload().model_dump_json()
-    )
 
 
 class _FakeScalarResult:
@@ -428,22 +421,22 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, [recipient]])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
 
-        entity = repo.get_form(form.node_id)
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
 
         assert entity is not None
         assert entity.id == form.id
-        assert entity.submission_token == "token-123"
+        assert entity.web_app_token == "token-123"
         assert len(entity.recipients) == 1
         assert entity.recipients[0].token == "token-123"
 
     def test_get_form_returns_none_when_missing(self, monkeypatch: pytest.MonkeyPatch):
         session = _FakeSession(scalars_results=[None])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id="run-1")
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
 
-        assert repo.get_form("node-1") is None
+        assert repo.get_form("run-1", "node-1") is None
 
     def test_get_form_returns_unsubmitted_state(self, monkeypatch: pytest.MonkeyPatch):
         form = _DummyForm(
@@ -458,9 +451,9 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, []])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
 
-        entity = repo.get_form(form.node_id)
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
 
         assert entity is not None
         assert entity.submitted is False
@@ -483,9 +476,9 @@ class TestHumanInputFormRepositoryImplPublicMethods:
         )
         session = _FakeSession(scalars_results=[form, []])
         _patch_repo_session_factory(monkeypatch, session)
-        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id", workflow_execution_id=form.workflow_run_id)
+        repo = HumanInputFormRepositoryImpl(tenant_id="tenant-id")
 
-        entity = repo.get_form(form.node_id)
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
 
         assert entity is not None
         assert entity.submitted is True

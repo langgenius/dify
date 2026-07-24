@@ -1,12 +1,9 @@
 import os
-from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -37,8 +34,6 @@ os.environ.setdefault("STORAGE_TYPE", "opendal")
 
 from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 
 
 def _patch_redis_clients_on_loaded_modules():
@@ -118,29 +113,6 @@ def _unit_test_engine():
     engine.dispose()
 
 
-@pytest.fixture
-def sqlite_engine() -> Iterator[Engine]:
-    """Create an isolated in-memory SQLite engine for tests that need a disposable database."""
-
-    engine = create_engine("sqlite:///:memory:")
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def sqlite_session(request: pytest.FixtureRequest, sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield a SQLite session after creating the model tables passed through ``request.param``."""
-
-    models: tuple[type[TypeBase], ...] = request.param
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with session_factory() as session:
-        yield session
-
-
 @pytest.fixture(autouse=True)
 def _configure_session_factory(_unit_test_engine):
     try:
@@ -149,45 +121,36 @@ def _configure_session_factory(_unit_test_engine):
         configure_session_factory(_unit_test_engine, expire_on_commit=False)
 
 
-def persist_service_api_tenant_owner(session: Session, tenant: Tenant, owner: Account) -> TenantAccountJoin:
-    """Persist the owner identity resolved by service-API app authentication.
-
-    The legacy name is retained temporarily for consumers on independent
-    conversion branches, but this helper no longer fabricates an execute result.
+def setup_mock_tenant_account_query(mock_db, mock_tenant, mock_account):
     """
-    membership = TenantAccountJoin(
-        tenant_id=tenant.id,
-        account_id=owner.id,
-        role=TenantAccountRole.OWNER,
-    )
-    owner._current_tenant = tenant
-    session.add_all([tenant, owner, membership])
-    session.commit()
-    return membership
+    Helper to set up the mock DB query chain for tenant/account authentication.
+
+    This configures the mock to return (tenant, account) for the join query used
+    by validate_app_token and validate_dataset_token decorators.
+
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_account: Mock account object to return
+    """
+    query = mock_db.session.query.return_value
+    join_chain = query.join.return_value.join.return_value
+    where_chain = join_chain.where.return_value
+    where_chain.one_or_none.return_value = (mock_tenant, mock_account)
 
 
-def persist_service_api_dataset_owner(
-    session: Session,
-    tenant: Tenant,
-    tenant_account_join: TenantAccountJoin,
-) -> None:
-    """Persist the tenant-owner mapping resolved by dataset-token authentication."""
-    session.add_all([tenant, tenant_account_join])
-    session.commit()
+def setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta):
+    """
+    Helper to set up the mock DB query chain for dataset tenant authentication.
 
+    This configures the mock to return (tenant, tenant_account) for the where chain
+    query used by validate_dataset_token decorator.
 
-def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: object, mock_owner: object) -> None:
-    """Stub the legacy owner query; SQLite-backed tests use ``persist_service_api_tenant_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
-
-
-def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
-    mock_tenant: object,
-    mock_tenant_account_join: object,
-) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
-        mock_tenant,
-        mock_tenant_account_join,
-    )
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_ta: Mock tenant account object to return
+    """
+    query = mock_db.session.query.return_value
+    where_chain = query.where.return_value.where.return_value.where.return_value.where.return_value
+    where_chain.one_or_none.return_value = (mock_tenant, mock_ta)

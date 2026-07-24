@@ -4,53 +4,39 @@ import type { KnipConfig } from 'knip'
  * @see https://knip.dev/reference/configuration
  */
 const config: KnipConfig = {
-  compilers: {
-    mdx: true,
-  },
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
-    'tsslint.config.ts',
-    'dev-proxy.config.ts',
-    'plugins/eslint/index.js',
   ],
-  project: [
-    '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
-    '!**/__mocks__/**!',
-    '!**/__tests__/**!',
-    '!**/*.stories.{js,jsx,ts,tsx,mdx}!',
-    '!.storybook/**!',
-    '!plugins/**!',
-    '!test/**!',
-    '!vitest.setup.ts!',
+  ignore: [
+    'i18n/**',
+    'public/**',
   ],
-  ignore: ['public/**'],
-  ignoreFiles: [
-    'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
-    'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
-    'i18n-config/locale-resources/*.ts',
+  ignoreBinaries: [
+    'only-allow',
   ],
-  ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding', 'eslint'],
-  /// keep-sorted
+  ignoreDependencies: [
+    '@iconify-json/*',
+
+    '@storybook/addon-onboarding',
+
+    '@tsslint/compat-eslint',
+    '@tsslint/config',
+  ],
   rules: {
-    // TODO: fix these warnings
-    // Unlisted binaries (1)
-    // vp      package.json
-    binaries: 'warn',
-    catalog: 'error',
+    files: 'warn',
     dependencies: 'error',
-    devDependencies: 'warn',
-    duplicates: 'error',
-    enumMembers: 'error',
-    exports: 'error',
-    files: 'error',
-    namespaceMembers: 'error',
-    nsExports: 'error',
-    nsTypes: 'error',
+    devDependencies: 'error',
     optionalPeerDependencies: 'error',
-    types: 'error',
-    unlisted: 'error',
-    unresolved: 'error',
+    unlisted: 'warn',
+    unresolved: 'warn',
+    exports: 'warn',
+    nsExports: 'warn',
+    classMembers: 'warn',
+    types: 'warn',
+    nsTypes: 'warn',
+    enumMembers: 'warn',
+    duplicates: 'warn',
   },
 }
 

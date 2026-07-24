@@ -1,4 +1,7 @@
-import type { FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import type {
+  FormSchema,
+  TypeWithI18N,
+} from '@/app/components/base/form/types'
 import type { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 export type DataSourceCredential = {

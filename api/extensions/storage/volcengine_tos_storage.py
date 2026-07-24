@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from typing import override
 
 import tos
 
@@ -28,13 +27,11 @@ class VolcengineTosStorage(BaseStorage):
             region=dify_config.VOLCENGINE_TOS_REGION,
         )
 
-    @override
     def save(self, filename, data):
         if not self.bucket_name:
             raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
         self.client.put_object(bucket=self.bucket_name, key=filename, content=data)
 
-    @override
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
             raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
@@ -43,7 +40,6 @@ class VolcengineTosStorage(BaseStorage):
             raise TypeError(f"Expected bytes, got {type(data).__name__}")
         return data
 
-    @override
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
             raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
@@ -51,13 +47,11 @@ class VolcengineTosStorage(BaseStorage):
         while chunk := response.read(4096):
             yield chunk
 
-    @override
     def download(self, filename, target_filepath):
         if not self.bucket_name:
             raise ValueError("VOLCENGINE_TOS_BUCKET_NAME is not set")
         self.client.get_object_to_file(bucket=self.bucket_name, key=filename, file_path=target_filepath)
 
-    @override
     def exists(self, filename):
         if not self.bucket_name:
             return False
@@ -66,7 +60,6 @@ class VolcengineTosStorage(BaseStorage):
             return False
         return True
 
-    @override
     def delete(self, filename: str):
         if not self.bucket_name:
             return

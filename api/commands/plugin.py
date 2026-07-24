@@ -1,30 +1,24 @@
 import json
 import logging
-import time
-from typing import Any, cast
+from typing import Any
 
 import click
 from pydantic import TypeAdapter
-from sqlalchemy import delete, func, select
-from sqlalchemy.engine import CursorResult
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
-from core.plugin.plugin_service import PluginService
-from core.tools.utils.system_encryption import encrypt_system_params
+from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from extensions.ext_database import db
 from models import Tenant
-from models.account import TenantPluginAutoUpgradeCategory, TenantPluginAutoUpgradeStrategy
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.plugin.data_migration import PluginDataMigration
-from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_migration import PluginMigration
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -48,21 +42,20 @@ def setup_system_tool_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_params(client_params_dict)
+        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(ToolOAuthSystemClient).where(
-                ToolOAuthSystemClient.provider == provider_name,
-                ToolOAuthSystemClient.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
+    deleted_count = (
+        db.session.query(ToolOAuthSystemClient)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -98,21 +91,20 @@ def setup_system_trigger_oauth_client(provider, client_params):
 
         click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
         click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
-        oauth_client_params = encrypt_system_params(client_params_dict)
+        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
         click.echo(click.style("Client params encrypted successfully.", fg="green"))
     except Exception as e:
         click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
         return
 
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(TriggerOAuthSystemClient).where(
-                TriggerOAuthSystemClient.provider == provider_name,
-                TriggerOAuthSystemClient.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
+    deleted_count = (
+        db.session.query(TriggerOAuthSystemClient)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -147,15 +139,14 @@ def setup_datasource_oauth_client(provider, client_params):
         return
 
     click.echo(click.style(f"Ready to delete existing oauth client params: {provider_name}", fg="yellow"))
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(DatasourceOauthParamConfig).where(
-                DatasourceOauthParamConfig.provider == provider_name,
-                DatasourceOauthParamConfig.plugin_id == plugin_id,
-            )
-        ),
-    ).rowcount
+    deleted_count = (
+        db.session.query(DatasourceOauthParamConfig)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
     if deleted_count > 0:
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
@@ -189,21 +180,19 @@ def transform_datasource_credentials(environment: str):
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
         if environment == "online":
-            notion_package_identifier = plugin_migration._fetch_latest_package_identifier(notion_plugin_id)
-            firecrawl_package_identifier = plugin_migration._fetch_latest_package_identifier(firecrawl_plugin_id)
-            jina_package_identifier = plugin_migration._fetch_latest_package_identifier(jina_plugin_id)
+            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
         else:
-            notion_package_identifier = None
-            firecrawl_package_identifier = None
-            jina_package_identifier = None
+            notion_plugin_unique_identifier = None
+            firecrawl_plugin_unique_identifier = None
+            jina_plugin_unique_identifier = None
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
 
         # deal notion credentials
         deal_notion_count = 0
-        notion_credentials = db.session.scalars(
-            select(DataSourceOauthBinding).where(DataSourceOauthBinding.provider == "notion")
-        ).all()
+        notion_credentials = db.session.query(DataSourceOauthBinding).filter_by(provider="notion").all()
         if notion_credentials:
             notion_credentials_tenant_mapping: dict[str, list[DataSourceOauthBinding]] = {}
             for notion_credential in notion_credentials:
@@ -212,7 +201,7 @@ def transform_datasource_credentials(environment: str):
                     notion_credentials_tenant_mapping[tenant_id] = []
                 notion_credentials_tenant_mapping[tenant_id].append(notion_credential)
             for tenant_id, notion_tenant_credentials in notion_credentials_tenant_mapping.items():
-                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
                 if not tenant:
                     continue
                 try:
@@ -220,9 +209,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if notion_plugin_id not in installed_plugins_ids:
-                        if notion_package_identifier:
+                        if notion_plugin_unique_identifier:
                             # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_plugin_unique_identifier])
                     auth_count = 0
                     for notion_tenant_credential in notion_tenant_credentials:
                         auth_count += 1
@@ -261,9 +250,7 @@ def transform_datasource_credentials(environment: str):
                 db.session.commit()
         # deal firecrawl credentials
         deal_firecrawl_count = 0
-        firecrawl_credentials = db.session.scalars(
-            select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.provider == "firecrawl")
-        ).all()
+        firecrawl_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="firecrawl").all()
         if firecrawl_credentials:
             firecrawl_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
             for firecrawl_credential in firecrawl_credentials:
@@ -272,7 +259,7 @@ def transform_datasource_credentials(environment: str):
                     firecrawl_credentials_tenant_mapping[tenant_id] = []
                 firecrawl_credentials_tenant_mapping[tenant_id].append(firecrawl_credential)
             for tenant_id, firecrawl_tenant_credentials in firecrawl_credentials_tenant_mapping.items():
-                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
                 if not tenant:
                     continue
                 try:
@@ -280,9 +267,9 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if firecrawl_plugin_id not in installed_plugins_ids:
-                        if firecrawl_package_identifier:
+                        if firecrawl_plugin_unique_identifier:
                             # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
+                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_plugin_unique_identifier])
 
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
@@ -325,9 +312,7 @@ def transform_datasource_credentials(environment: str):
                 db.session.commit()
         # deal jina credentials
         deal_jina_count = 0
-        jina_credentials = db.session.scalars(
-            select(DataSourceApiKeyAuthBinding).where(DataSourceApiKeyAuthBinding.provider == "jinareader")
-        ).all()
+        jina_credentials = db.session.query(DataSourceApiKeyAuthBinding).filter_by(provider="jinareader").all()
         if jina_credentials:
             jina_credentials_tenant_mapping: dict[str, list[DataSourceApiKeyAuthBinding]] = {}
             for jina_credential in jina_credentials:
@@ -336,7 +321,7 @@ def transform_datasource_credentials(environment: str):
                     jina_credentials_tenant_mapping[tenant_id] = []
                 jina_credentials_tenant_mapping[tenant_id].append(jina_credential)
             for tenant_id, jina_tenant_credentials in jina_credentials_tenant_mapping.items():
-                tenant = db.session.scalar(select(Tenant).where(Tenant.id == tenant_id))
+                tenant = db.session.query(Tenant).filter_by(id=tenant_id).first()
                 if not tenant:
                     continue
                 try:
@@ -344,10 +329,10 @@ def transform_datasource_credentials(environment: str):
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
                     if jina_plugin_id not in installed_plugins_ids:
-                        if jina_package_identifier:
+                        if jina_plugin_unique_identifier:
                             # install jina plugin
-                            logger.debug("Installing Jina plugin %s", jina_package_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
+                            logger.debug("Installing Jina plugin %s", jina_plugin_unique_identifier)
+                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_plugin_unique_identifier])
 
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:
@@ -404,111 +389,6 @@ def migrate_data_for_plugin():
     PluginDataMigration.migrate()
 
     click.echo(click.style("Migrate data for plugin completed.", fg="green"))
-
-
-def _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit: int | None = None):
-    category_count = len(TenantPluginAutoUpgradeCategory)
-    stmt = (
-        select(TenantPluginAutoUpgradeStrategy.tenant_id)
-        .group_by(TenantPluginAutoUpgradeStrategy.tenant_id)
-        .having(func.count(func.distinct(TenantPluginAutoUpgradeStrategy.category)) < category_count)
-        .order_by(TenantPluginAutoUpgradeStrategy.tenant_id)
-    )
-
-    if limit is not None:
-        stmt = stmt.limit(limit)
-
-    return stmt
-
-
-def _count_auto_upgrade_strategy_tenant_ids(limit: int | None) -> int:
-    candidate_stmt = _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit).subquery()
-    return db.session.scalar(select(func.count()).select_from(candidate_stmt)) or 0
-
-
-def _iter_auto_upgrade_strategy_tenant_ids(limit: int | None):
-    stmt = _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit).execution_options(yield_per=1000)
-    yield from db.session.scalars(stmt)
-
-
-@click.command(
-    "backfill-plugin-auto-upgrade",
-    help="Backfill category-scoped plugin auto-upgrade strategies and normalize plugin lists.",
-)
-@click.option("--tenant-id", multiple=True, help="Tenant ID to backfill. Can be passed multiple times.")
-@click.option("--limit", type=int, default=None, help="Maximum number of candidate tenants to process.")
-@click.option("--batch-size", type=int, default=500, show_default=True, help="Progress reporting batch size.")
-@click.option("--dry-run", is_flag=True, help="Only print candidate tenant count.")
-def backfill_plugin_auto_upgrade(
-    tenant_id: tuple[str, ...],
-    limit: int | None,
-    batch_size: int,
-    dry_run: bool,
-):
-    """
-    Backfill historical auto-upgrade strategies after the category column exists.
-
-    Missing category rows are created from the tenant's tool/default row. Pure default
-    strategies become latest for model plugins and fix-only for all other categories.
-    Tenants with include/exclude plugin IDs are split
-    by installed plugin category using plugin daemon metadata.
-    """
-    start_at = time.perf_counter()
-    candidate_count = len(tenant_id) if tenant_id else _count_auto_upgrade_strategy_tenant_ids(limit)
-    click.echo(click.style(f"Found {candidate_count} candidate tenants.", fg="yellow"))
-
-    if dry_run:
-        elapsed = time.perf_counter() - start_at
-        click.echo(click.style(f"Dry run completed. elapsed={elapsed:.2f}s", fg="green"))
-        return
-
-    tenant_ids = list(tenant_id) if tenant_id else _iter_auto_upgrade_strategy_tenant_ids(limit)
-
-    backfilled_count = 0
-    created_count = 0
-    normalized_count = 0
-    skipped_count = 0
-    failed_count = 0
-    for index, current_tenant_id in enumerate(tenant_ids, start=1):
-        try:
-            result = PluginAutoUpgradeService.backfill_strategy_categories(
-                current_tenant_id,
-                session=db.session(),
-            )
-        except Exception as e:
-            failed_count += 1
-            click.echo(click.style(f"Failed tenant {current_tenant_id}: {str(e)}", fg="red"))
-            continue
-
-        if result.created_count > 0:
-            backfilled_count += 1
-            created_count += result.created_count
-        elif not result.normalized:
-            skipped_count += 1
-        if result.normalized:
-            normalized_count += 1
-
-        if batch_size > 0 and index % batch_size == 0:
-            click.echo(
-                click.style(
-                    f"Processed {index}/{candidate_count} tenants. "
-                    f"backfilled={backfilled_count}, created_rows={created_count}, "
-                    f"normalized={normalized_count}, skipped={skipped_count}, failed={failed_count}, "
-                    f"elapsed={time.perf_counter() - start_at:.2f}s",
-                    fg="yellow",
-                )
-            )
-
-    elapsed = time.perf_counter() - start_at
-    click.echo(
-        click.style(
-            f"Backfill plugin auto-upgrade strategy categories completed. "
-            f"backfilled={backfilled_count}, created_rows={created_count}, "
-            f"normalized={normalized_count}, skipped={skipped_count}, failed={failed_count}, "
-            f"elapsed={elapsed:.2f}s",
-            fg="green",
-        )
-    )
 
 
 @click.command("extract-plugins", help="Extract plugins.")
@@ -579,6 +459,9 @@ def install_rag_pipeline_plugins(input_file, output_file, workers):
     """
     click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
     plugin_migration = PluginMigration()
-    with session_factory.create_session() as session:
-        plugin_migration.install_rag_pipeline_plugins(input_file, output_file, workers, session=session)
+    plugin_migration.install_rag_pipeline_plugins(
+        input_file,
+        output_file,
+        workers,
+    )
     click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))

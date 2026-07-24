@@ -1,0 +1,89 @@
+.progressContainer {
+  @apply relative pb-4 w-full;
+  border-bottom: 0.5px solid #EAECF0;
+}
+.sourceItem {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 0 4px;
+  height: 24px;
+  background: #EFF4FF;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sourceItem .info .name {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #101828;
+}
+.sourceItem.success .info .name {
+  color: #05603A;
+}
+.sourceItem .percent {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #344054;
+  z-index: 1;
+}
+.sourceItem .error {
+  color: #D92D20;
+}
+.sourceItem .success {
+  color: #05603A;
+}
+
+.commonIcon {
+  @apply w-3 h-3 mr-1 inline-block align-middle;
+}
+.highIcon {
+  mask-image: url(../assets/star.svg);
+  @apply bg-orange-500;
+}
+.economyIcon {
+  background-color: #444ce7;
+  mask-image: url(../assets/normal.svg);
+}
+.tokens {
+  @apply text-xs font-medium px-1;
+}
+.price {
+  color: #f79009;
+  @apply text-xs font-medium;
+}
+
+.unknownFileIcon {
+  background-image: url(../assets/unknown.svg);
+}
+.csv {
+  background-image: url(../assets/csv.svg);
+}
+.docx {
+  background-image: url(../assets/docx.svg);
+}
+.xlsx,
+.xls {
+  background-image: url(../assets/xlsx.svg);
+}
+.pdf {
+  background-image: url(../assets/pdf.svg);
+}
+.html,
+.htm {
+  background-image: url(../assets/html.svg);
+}
+.md,
+.markdown {
+  background-image: url(../assets/md.svg);
+}
+.txt {
+  background-image: url(../assets/txt.svg);
+}
+.json {
+  background-image: url(../assets/json.svg);
+}

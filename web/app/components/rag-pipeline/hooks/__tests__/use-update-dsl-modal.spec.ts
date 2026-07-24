@@ -13,42 +13,19 @@ class MockFileReader {
 }
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 
-const toastMocks = vi.hoisted(() => {
-  const call = vi.fn()
-  return {
-    call,
-    api: vi.fn((message: unknown, options?: Record<string, unknown>) =>
-      call({ message, ...options }),
-    ),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(toastMocks.api, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'success', message, ...options }),
-    ),
-    error: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'error', message, ...options }),
-    ),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'warning', message, ...options }),
-    ),
-    info: vi.fn((message: string, options?: Record<string, unknown>) =>
-      toastMocks.call({ type: 'info', message, ...options }),
-    ),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
+const mockNotify = vi.fn()
 const mockEmit = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
+
+vi.mock('use-context-selector', () => ({
+  useContext: () => ({ notify: mockNotify }),
+}))
+
+vi.mock('@/app/components/base/toast/context', () => ({
+  ToastContext: {},
+}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -211,7 +188,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     })
 
     it('should call onImport on successful import', async () => {
@@ -282,7 +259,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }))
     })
 
     it('should switch to version mismatch modal on PENDING status', async () => {
@@ -350,7 +327,6 @@ describe('useUpdateDSLModal', () => {
         id: 'import-id',
         status: DSLImportStatus.FAILED,
         pipeline_id: 'test-pipeline-id',
-        error: 'Missing rag_pipeline data in YAML content',
       })
 
       const { result } = renderUpdateDSLModal()
@@ -362,10 +338,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Missing rag_pipeline data in YAML content',
-      })
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when importDSL throws', async () => {
@@ -380,35 +353,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should notify response error when importDSL rejects with a response body', async () => {
-      mockImportDSL.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Missing rag_pipeline data in YAML content',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
-
-      const { result } = renderUpdateDSLModal()
-      act(() => {
-        result.current.handleFile(createFile())
-      })
-
-      await act(async () => {
-        await (result.current.handleImport as unknown as AsyncFn)()
-      })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Missing rag_pipeline data in YAML content',
-      })
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when pipeline_id is missing on success', async () => {
@@ -427,7 +372,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.handleImport as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
   })
 
@@ -486,7 +431,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
@@ -510,7 +455,6 @@ describe('useUpdateDSLModal', () => {
       mockImportDSLConfirm.mockResolvedValue({
         status: DSLImportStatus.FAILED,
         pipeline_id: 'test-pipeline-id',
-        error: 'Import information expired or does not exist',
       })
 
       const { result } = renderUpdateDSLModal()
@@ -520,10 +464,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Import information expired or does not exist',
-      })
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when confirm throws exception', async () => {
@@ -536,33 +477,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
-    })
-
-    it('should notify response error when confirm rejects with a response body', async () => {
-      mockImportDSLConfirm.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Import information expired or does not exist',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
-
-      const { result } = renderUpdateDSLModal()
-      await setupPendingState(result)
-
-      await act(async () => {
-        await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
-      })
-
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Import information expired or does not exist',
-      })
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should notify error when confirm succeeds but pipeline_id is missing', async () => {
@@ -578,7 +493,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {
@@ -594,7 +509,9 @@ describe('useUpdateDSLModal', () => {
 
   describe('optional onImport', () => {
     it('should work without onImport callback', async () => {
-      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }))
+      const { result } = renderHook(() =>
+        useUpdateDSLModal({ onCancel: mockOnCancel }),
+      )
 
       act(() => {
         result.current.handleFile(createFile())

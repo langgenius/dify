@@ -7,7 +7,6 @@ This test file covers the methods not fully tested in test_embedding_service.py:
 """
 
 import base64
-import logging
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -16,8 +15,8 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from core.rag.embedding.cached_embedding import CacheEmbedding
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey
+from dify_graph.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from models.dataset import Embedding
 
 
@@ -29,7 +28,6 @@ class TestCacheEmbeddingMultimodalDocuments:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "vision-embedding-model"
-        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
 
@@ -64,15 +62,13 @@ class TestCacheEmbeddingMultimodalDocuments:
             usage=usage,
         )
 
-    def test_embed_single_multimodal_document_cache_miss(
-        self, mock_model_instance, sample_multimodal_result: EmbeddingResult
-    ):
+    def test_embed_single_multimodal_document_cache_miss(self, mock_model_instance, sample_multimodal_result):
         """Test embedding a single multimodal document when cache is empty."""
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
         documents = [{"file_id": "file123", "content": "test content"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = sample_multimodal_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -117,7 +113,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -137,7 +133,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         mock_cached_embedding.get_embedding.return_value = normalized_cached
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = mock_cached_embedding
+            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
 
             result = cache_embedding.embed_multimodal_documents(documents)
 
@@ -183,7 +179,18 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.side_effect = [mock_cached_embedding, None, None]
+            call_count = [0]
+
+            def mock_filter_by(**kwargs):
+                call_count[0] += 1
+                mock_query = Mock()
+                if call_count[0] == 1:
+                    mock_query.first.return_value = mock_cached_embedding
+                else:
+                    mock_query.first.return_value = None
+                return mock_query
+
+            mock_session.query.return_value.filter_by = mock_filter_by
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -191,7 +198,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             assert len(result) == 3
             assert result[0] == normalized_cached
 
-    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
+    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance):
         """Test handling of NaN values in multimodal embeddings."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         documents = [{"file_id": "valid"}, {"file_id": "nan"}]
@@ -216,17 +223,17 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
-            with caplog.at_level(logging.WARNING, logger="core.rag.embedding.cached_embedding"):
+            with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
                 result = cache_embedding.embed_multimodal_documents(documents)
 
                 assert len(result) == 2
                 assert result[0] is not None
                 assert result[1] is None
 
-                assert any(record.levelno == logging.WARNING for record in caplog.records)
+                mock_logger.warning.assert_called_once()
 
     def test_embed_multimodal_documents_large_batch(self, mock_model_instance):
         """Test embedding large batch of multimodal documents respecting MAX_CHUNKS."""
@@ -257,7 +264,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
             batch_results = [create_batch_result(10), create_batch_result(10), create_batch_result(5)]
             mock_model_instance.invoke_multimodal_embedding.side_effect = batch_results
@@ -273,7 +280,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         documents = [{"file_id": "file123"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_multimodal_embedding.side_effect = Exception("API Error")
 
             with pytest.raises(Exception) as exc_info:
@@ -290,7 +297,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         documents = [{"file_id": "file123"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.scalar.return_value = None
+            mock_session.query.return_value.filter_by.return_value.first.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = sample_multimodal_result
 
             mock_session.commit.side_effect = IntegrityError("Duplicate key", None, None)
@@ -309,14 +316,13 @@ class TestCacheEmbeddingMultimodalQuery:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "vision-embedding-model"
-        model_instance.model_name = "vision-embedding-model"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
 
     def test_embed_multimodal_query_cache_miss(self, mock_model_instance):
         """Test embedding multimodal query when Redis cache is empty."""
-        cache_embedding = CacheEmbedding(mock_model_instance)
+        cache_embedding = CacheEmbedding(mock_model_instance, user="test-user")
         document = {"file_id": "file123"}
 
         vector = np.random.randn(1536)
@@ -461,12 +467,11 @@ class TestCacheEmbeddingQueryErrors:
         """Create a mock ModelInstance for testing."""
         model_instance = Mock()
         model_instance.model = "text-embedding-ada-002"
-        model_instance.model_name = "text-embedding-ada-002"
         model_instance.provider = "openai"
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
 
-    def test_embed_query_api_error_debug_mode(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
+    def test_embed_query_api_error_debug_mode(self, mock_model_instance):
         """Test handling of API errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
@@ -478,14 +483,14 @@ class TestCacheEmbeddingQueryErrors:
             with patch("core.rag.embedding.cached_embedding.dify_config") as mock_config:
                 mock_config.DEBUG = True
 
-                with caplog.at_level(logging.ERROR, logger="core.rag.embedding.cached_embedding"):
+                with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
                     with pytest.raises(RuntimeError) as exc_info:
                         cache_embedding.embed_query(query)
 
                     assert "API Error" in str(exc_info.value)
-                    assert any(record.levelno == logging.ERROR for record in caplog.records)
+                    mock_logger.exception.assert_called()
 
-    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
+    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance):
         """Test handling of Redis set errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
@@ -517,23 +522,34 @@ class TestCacheEmbeddingQueryErrors:
             with patch("core.rag.embedding.cached_embedding.dify_config") as mock_config:
                 mock_config.DEBUG = True
 
-                with caplog.at_level(logging.ERROR, logger="core.rag.embedding.cached_embedding"):
+                with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
                     with pytest.raises(RuntimeError):
                         cache_embedding.embed_query(query)
 
-                    assert any(record.levelno == logging.ERROR for record in caplog.records)
+                    mock_logger.exception.assert_called()
 
 
 class TestCacheEmbeddingInitialization:
     """Test suite for CacheEmbedding initialization."""
 
-    def test_initialization_sets_model_instance(self):
-        """Test CacheEmbedding initialization stores the provided model instance."""
+    def test_initialization_with_user(self):
+        """Test CacheEmbedding initialization with user parameter."""
         model_instance = Mock()
         model_instance.model = "test-model"
-        model_instance.model_name = "test-model"
+        model_instance.provider = "test-provider"
+
+        cache_embedding = CacheEmbedding(model_instance, user="test-user")
+
+        assert cache_embedding._model_instance == model_instance
+        assert cache_embedding._user == "test-user"
+
+    def test_initialization_without_user(self):
+        """Test CacheEmbedding initialization without user parameter."""
+        model_instance = Mock()
+        model_instance.model = "test-model"
         model_instance.provider = "test-provider"
 
         cache_embedding = CacheEmbedding(model_instance)
 
         assert cache_embedding._model_instance == model_instance
+        assert cache_embedding._user is None

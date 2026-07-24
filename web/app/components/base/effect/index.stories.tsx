@@ -7,8 +7,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Blurred circular glow used as a decorative background accent. Combine with relatively positioned containers.',
+        component: 'Blurred circular glow used as a decorative background accent. Combine with relatively positioned containers.',
       },
       source: {
         language: 'tsx',
@@ -29,8 +28,8 @@ type Story = StoryObj<typeof meta>
 export const Playground: Story = {
   render: () => (
     <div className="relative h-40 w-72 overflow-hidden rounded-2xl border border-divider-subtle bg-background-default-subtle">
-      <Effect className="top-6 left-8" />
-      <Effect className="bg-util-colors-purple-brand-purple-brand-500 top-14 right-10" />
+      <Effect className="left-8 top-6" />
+      <Effect className="bg-util-colors-purple-brand-purple-brand-500 right-10 top-14" />
       <div className="absolute inset-x-0 bottom-4 flex justify-center text-xs text-text-secondary">
         Accent glow
       </div>

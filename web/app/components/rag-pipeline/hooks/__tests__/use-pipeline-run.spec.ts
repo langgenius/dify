@@ -3,7 +3,8 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { usePipelineRunByCanEdit } from '../use-pipeline-run'
+
+import { usePipelineRun } from '../use-pipeline-run'
 
 const mockStoreGetState = vi.fn()
 const mockGetViewport = vi.fn()
@@ -29,7 +30,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const mockDoSyncWorkflowDraft = vi.fn()
 vi.mock('../use-nodes-sync-draft', () => ({
-  useNodesSyncDraftByCanEdit: () => ({
+  useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
 }))
@@ -90,7 +91,7 @@ vi.mock('@/types/common', () => ({
   },
 }))
 
-describe('usePipelineRunByCanEdit', () => {
+describe('usePipelineRun', () => {
   const mockSetNodes = vi.fn()
   const mockGetNodes = vi.fn()
   const mockSetBackupDraft = vi.fn()
@@ -114,10 +115,7 @@ describe('usePipelineRunByCanEdit', () => {
     })
 
     mockGetNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: { type: 'start', selected: true, _runningStatus: WorkflowRunningStatus.Running },
-      },
+      { id: 'node-1', data: { type: 'start', selected: true, _runningStatus: WorkflowRunningStatus.Running } },
     ])
 
     mockGetViewport.mockReturnValue({ x: 0, y: 0, zoom: 1 })
@@ -149,35 +147,35 @@ describe('usePipelineRunByCanEdit', () => {
 
   describe('hook initialization', () => {
     it('should return handleBackupDraft function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       expect(result.current.handleBackupDraft).toBeDefined()
       expect(typeof result.current.handleBackupDraft).toBe('function')
     })
 
     it('should return handleLoadBackupDraft function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       expect(result.current.handleLoadBackupDraft).toBeDefined()
       expect(typeof result.current.handleLoadBackupDraft).toBe('function')
     })
 
     it('should return handleRun function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       expect(result.current.handleRun).toBeDefined()
       expect(typeof result.current.handleRun).toBe('function')
     })
 
     it('should return handleStopRun function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       expect(result.current.handleStopRun).toBeDefined()
       expect(typeof result.current.handleStopRun).toBe('function')
     })
 
     it('should return handleRestoreFromPublishedWorkflow function', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       expect(result.current.handleRestoreFromPublishedWorkflow).toBeDefined()
       expect(typeof result.current.handleRestoreFromPublishedWorkflow).toBe('function')
@@ -186,7 +184,7 @@ describe('usePipelineRunByCanEdit', () => {
 
   describe('handleBackupDraft', () => {
     it('should backup draft when no backup exists', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
         result.current.handleBackupDraft()
@@ -207,7 +205,7 @@ describe('usePipelineRunByCanEdit', () => {
         setWorkflowRunningData: mockSetWorkflowRunningData,
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
         result.current.handleBackupDraft()
@@ -236,7 +234,7 @@ describe('usePipelineRunByCanEdit', () => {
         setWorkflowRunningData: mockSetWorkflowRunningData,
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
         result.current.handleLoadBackupDraft()
@@ -262,7 +260,7 @@ describe('usePipelineRunByCanEdit', () => {
         setWorkflowRunningData: mockSetWorkflowRunningData,
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
         result.current.handleLoadBackupDraft()
@@ -274,7 +272,7 @@ describe('usePipelineRunByCanEdit', () => {
 
   describe('handleStopRun', () => {
     it('should call stop workflow run service', () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
         result.current.handleStopRun('task-123')
@@ -298,12 +296,10 @@ describe('usePipelineRunByCanEdit', () => {
         rag_pipeline_variables: [{ variable: 'input', type: 'text-input' }],
       }
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
+        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
       })
 
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
@@ -324,12 +320,10 @@ describe('usePipelineRunByCanEdit', () => {
         rag_pipeline_variables: [],
       }
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
+        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
       })
 
       expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ key: 'ENV', value: 'value' }])
@@ -346,17 +340,13 @@ describe('usePipelineRunByCanEdit', () => {
         rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
       }
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
+        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
       })
 
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
-        { variable: 'query', type: 'text-input' },
-      ])
+      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ variable: 'query', type: 'text-input' }])
     })
 
     it('should handle empty environment and rag pipeline variables', () => {
@@ -370,12 +360,10 @@ describe('usePipelineRunByCanEdit', () => {
         rag_pipeline_variables: undefined,
       }
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
-        )
+        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
       })
 
       expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
@@ -385,7 +373,7 @@ describe('usePipelineRunByCanEdit', () => {
 
   describe('handleRun', () => {
     it('should sync workflow draft before running', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -395,7 +383,7 @@ describe('usePipelineRunByCanEdit', () => {
     })
 
     it('should reset node selection and running status', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -405,7 +393,7 @@ describe('usePipelineRunByCanEdit', () => {
     })
 
     it('should clear history workflow data', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -415,7 +403,7 @@ describe('usePipelineRunByCanEdit', () => {
     })
 
     it('should set initial running data', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -434,7 +422,7 @@ describe('usePipelineRunByCanEdit', () => {
     })
 
     it('should call ssePost with correct URL', async () => {
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: { query: 'test' } })
@@ -455,7 +443,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onWorkflowStarted })
@@ -477,7 +465,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onWorkflowFinished })
@@ -499,7 +487,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onError })
@@ -521,7 +509,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onNodeStarted })
@@ -542,7 +530,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onNodeFinished })
@@ -563,7 +551,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onIterationStart })
@@ -584,7 +572,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onIterationNext })
@@ -605,7 +593,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onIterationFinish })
@@ -626,7 +614,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onLoopStart })
@@ -647,7 +635,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onLoopNext })
@@ -668,7 +656,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onLoopFinish })
@@ -689,7 +677,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onNodeRetry })
@@ -710,7 +698,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, { onAgentLog })
@@ -730,7 +718,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -750,7 +738,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })
@@ -771,12 +759,10 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
-        await result.current.handleRun({ inputs: {} }, {
-          onData: customCallback,
-        } as unknown as Parameters<typeof result.current.handleRun>[1])
+        await result.current.handleRun({ inputs: {} }, { onData: customCallback } as unknown as Parameters<typeof result.current.handleRun>[1])
       })
 
       expect(capturedCallbacks.onData).toBeDefined()
@@ -789,7 +775,7 @@ describe('usePipelineRunByCanEdit', () => {
         capturedCallbacks = callbacks
       })
 
-      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+      const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
         await result.current.handleRun({ inputs: {} })

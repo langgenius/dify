@@ -1,33 +1,22 @@
 'use client'
 import type { TFunction } from 'i18next'
 import type { FC, ReactNode } from 'react'
-import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useEffect, useRef, useState } from 'react'
+import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useDocLink } from '@/context/i18n'
-import { useInvalidateMCPServerDetail } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
 import { useMCPServiceCardState } from './hooks/use-mcp-service-card'
 
 // Sub-components
@@ -39,16 +28,11 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-1">
-      <StatusDot status={serverActivated ? 'success' : 'warning'} />
-      <div
-        className={cn(
-          'system-xs-semibold-uppercase',
-          serverActivated ? 'text-text-success' : 'text-text-warning',
-        )}
-      >
+      <Indicator color={serverActivated ? 'green' : 'yellow'} />
+      <div className={cn('system-xs-semibold-uppercase', serverActivated ? 'text-text-success' : 'text-text-warning')}>
         {serverActivated
-          ? t(($) => $['overview.status.running'], { ns: 'appOverview' })
-          : t(($) => $['overview.status.disable'], { ns: 'appOverview' })}
+          ? t('overview.status.running', { ns: 'appOverview' })
+          : t('overview.status.disable', { ns: 'appOverview' })}
       </div>
     </div>
   )
@@ -57,7 +41,7 @@ const StatusIndicator: FC<StatusIndicatorProps> = ({ serverActivated }) => {
 type ServerURLSectionProps = {
   serverURL: string
   serverPublished: boolean
-  canManageMCP: boolean
+  isCurrentWorkspaceManager: boolean
   genLoading: boolean
   onRegenerate: () => void
 }
@@ -65,55 +49,36 @@ type ServerURLSectionProps = {
 const ServerURLSection: FC<ServerURLSectionProps> = ({
   serverURL,
   serverPublished,
-  canManageMCP,
+  isCurrentWorkspaceManager,
   genLoading,
   onRegenerate,
 }) => {
   const { t } = useTranslation()
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="pb-1 system-xs-medium text-text-tertiary">
-        {t(($) => $['mcp.server.url'], { ns: 'tools' })}
+      <div className="system-xs-medium pb-1 text-text-tertiary">
+        {t('mcp.server.url', { ns: 'tools' })}
       </div>
       <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
         <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-          <div className="truncate text-xs font-medium text-text-secondary">{serverURL}</div>
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
+            {serverURL}
+          </div>
         </div>
         {serverPublished && (
           <>
-            <CopyFeedback content={serverURL} className="size-6!" />
-            <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    className={cn(
-                      'rounded-md p-1 outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
-                      canManageMCP
-                        ? 'cursor-pointer hover:bg-state-base-hover'
-                        : 'cursor-not-allowed',
-                    )}
-                    aria-label={
-                      t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' }) || ''
-                    }
-                    disabled={!canManageMCP}
-                    onClick={onRegenerate}
-                  >
-                    <span
-                      className={cn(
-                        'i-ri-loop-left-line',
-                        'size-4 text-text-tertiary hover:text-text-secondary',
-                        genLoading && 'animate-spin',
-                      )}
-                    />
-                  </button>
-                }
-              />
-              <TooltipContent>
-                {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
-              </TooltipContent>
-            </Tooltip>
+            <CopyFeedback content={serverURL} className="!size-6" />
+            <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
+            {isCurrentWorkspaceManager && (
+              <Tooltip popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
+                <div
+                  className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                  onClick={onRegenerate}
+                >
+                  <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                </div>
+              </Tooltip>
+            )}
           </>
         )}
       </div>
@@ -128,29 +93,16 @@ type TriggerModeOverlayProps = {
 const TriggerModeOverlay: FC<TriggerModeOverlayProps> = ({ triggerModeMessage }) => {
   if (triggerModeMessage) {
     return (
-      <Popover>
-        <PopoverTrigger
-          openOnHover
-          aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : 'Disabled'}
-          render={
-            <button
-              type="button"
-              className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
-            />
-          }
-        />
-        <PopoverContent
-          placement="right"
-          popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-        >
-          {triggerModeMessage}
-        </PopoverContent>
-      </Popover>
+      <Tooltip
+        popupContent={triggerModeMessage}
+        popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+        position="right"
+      >
+        <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
+      </Tooltip>
     )
   }
-  return (
-    <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
-  )
+  return <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
 }
 
 // Helper function for tooltip content
@@ -171,23 +123,24 @@ function getTooltipContent({
   t,
   docLink,
 }: TooltipContentParams): ReactNode {
-  if (!toggleDisabled) return ''
+  if (!toggleDisabled)
+    return ''
 
-  if (appUnpublished) return t(($) => $['mcp.server.publishTip'], { ns: 'tools' })
+  if (appUnpublished)
+    return t('mcp.server.publishTip', { ns: 'tools' })
 
   if (missingStartNode) {
     return (
       <>
         <div className="mb-1 text-xs font-normal text-text-secondary">
-          {t(($) => $['overview.appInfo.enableTooltip.description'], { ns: 'appOverview' })}
+          {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
         </div>
-        <button
-          type="button"
-          className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+        <div
+          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
           onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
         >
-          {t(($) => $['overview.appInfo.enableTooltip.learnMore'], { ns: 'appOverview' })}
-        </button>
+          {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+        </div>
       </>
     )
   }
@@ -196,7 +149,7 @@ function getTooltipContent({
 }
 
 // Main component
-type IAppCardProps = {
+export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
   triggerModeDisabled?: boolean
   triggerModeMessage?: ReactNode
@@ -210,12 +163,6 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appId = appInfo.id
-  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
-  const invalidateMCPServerDetailRef = useRef(invalidateMCPServerDetail)
-
-  useEffect(() => {
-    invalidateMCPServerDetailRef.current = invalidateMCPServerDetail
-  }, [invalidateMCPServerDetail])
 
   const {
     genLoading,
@@ -224,7 +171,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
     serverActivated,
     serverURL,
     detail,
-    canManageMCP,
+    isCurrentWorkspaceManager,
     toggleDisabled,
     isMinimalState,
     appUnpublished,
@@ -244,27 +191,6 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   const [pendingStatus, setPendingStatus] = useState<boolean | null>(null)
   const activated = pendingStatus ?? serverActivated
 
-  const emitMcpServerUpdate = async (data: Record<string, unknown>) => {
-    try {
-      const { webSocketClient } =
-        await import('@/app/components/workflow/collaboration/core/websocket-manager')
-      const socket = webSocketClient.getSocket(appId)
-      if (!socket) return
-
-      const timestamp = Date.now()
-      socket.emit('collaboration_event', {
-        type: 'mcp_server_update',
-        data: {
-          ...data,
-          timestamp,
-        },
-        timestamp,
-      })
-    } catch (error) {
-      console.error('MCP collaboration event emit failed:', error)
-    }
-  }
-
   const onChangeStatus = async (state: boolean) => {
     setPendingStatus(state)
     const result = await handleStatusChange(state)
@@ -272,14 +198,6 @@ const MCPServiceCard: FC<IAppCardProps> = ({
       // Server modal was opened instead, clear pending status
       setPendingStatus(null)
     }
-
-    if (result.activated !== state) return
-
-    // Emit collaboration event to notify other clients of MCP server status change
-    void emitMcpServerUpdate({
-      action: 'statusChanged',
-      status: state ? 'active' : 'inactive',
-    })
   }
 
   const onServerModalHide = () => {
@@ -289,34 +207,12 @@ const MCPServiceCard: FC<IAppCardProps> = ({
   }
 
   const onConfirmRegenerate = () => {
+    handleGenCode()
     closeConfirmDelete()
-
-    void (async () => {
-      await handleGenCode()
-
-      // Emit collaboration event to notify other clients of MCP server code changes
-      await emitMcpServerUpdate({
-        action: 'codeRegenerated',
-      })
-    })()
   }
 
-  // Listen for collaborative MCP server updates from other clients
-  useEffect(() => {
-    if (!appId) return
-
-    const unsubscribe = collaborationManager.onMcpServerUpdate((_update: CollaborationUpdate) => {
-      try {
-        invalidateMCPServerDetailRef.current(appId)
-      } catch (error) {
-        console.error('MCP server update failed:', error)
-      }
-    })
-
-    return unsubscribe
-  }, [appId])
-
-  if (isLoading) return null
+  if (isLoading)
+    return null
 
   const tooltipContent = getTooltipContent({
     toggleDisabled,
@@ -329,80 +225,40 @@ const MCPServiceCard: FC<IAppCardProps> = ({
 
   return (
     <>
-      <div
-        className={cn(
-          'w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight',
-          isMinimalState && 'h-12',
-        )}
-      >
-        <div
-          className={cn(
-            'relative rounded-xl bg-background-default',
-            triggerModeDisabled && 'opacity-60',
+      <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight', isMinimalState && 'h-12')}>
+        <div className={cn('relative rounded-xl bg-background-default', triggerModeDisabled && 'opacity-60')}>
+          {triggerModeDisabled && (
+            <TriggerModeOverlay triggerModeMessage={triggerModeMessage} />
           )}
-        >
-          {triggerModeDisabled && <TriggerModeOverlay triggerModeMessage={triggerModeMessage} />}
-          <div
-            className={cn(
-              'flex w-full flex-col items-start justify-center gap-3 self-stretch p-3',
-              isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle',
-            )}
-          >
+          <div className={cn('flex w-full flex-col items-start justify-center gap-3 self-stretch p-3', isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle')}>
             <div className="flex w-full items-center gap-3 self-stretch">
               <div className="flex grow items-center">
                 <div className="mr-2 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
-                  <Mcp className="size-4 text-text-primary-on-surface" />
+                  <Mcp className="h-4 w-4 text-text-primary-on-surface" />
                 </div>
                 <div className="group w-full">
-                  <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
-                    {t(($) => $['mcp.server.title'], { ns: 'tools' })}
+                  <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
+                    {t('mcp.server.title', { ns: 'tools' })}
                   </div>
                 </div>
               </div>
               <StatusIndicator serverActivated={serverActivated} />
-              {toggleDisabled && tooltipContent ? (
-                <Popover>
-                  <PopoverTrigger
-                    openOnHover
-                    nativeButton={false}
-                    aria-label={
-                      typeof tooltipContent === 'string'
-                        ? tooltipContent
-                        : t(($) => $['overview.appInfo.enableTooltip.description'], {
-                            ns: 'appOverview',
-                          })
-                    }
-                    render={
-                      <div>
-                        <Switch
-                          checked={activated}
-                          onCheckedChange={onChangeStatus}
-                          disabled={toggleDisabled}
-                        />
-                      </div>
-                    }
-                  />
-                  <PopoverContent
-                    placement="right"
-                    sideOffset={24}
-                    popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-                  >
-                    {tooltipContent}
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Switch
-                  checked={activated}
-                  onCheckedChange={onChangeStatus}
-                  disabled={toggleDisabled}
-                />
-              )}
+              <Tooltip
+                popupContent={tooltipContent}
+                position="right"
+                popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
+                offset={24}
+              >
+                <div>
+                  <Switch value={activated} onChange={onChangeStatus} disabled={toggleDisabled} />
+                </div>
+              </Tooltip>
             </div>
             {!isMinimalState && (
               <ServerURLSection
                 serverURL={serverURL}
                 serverPublished={serverPublished}
-                canManageMCP={canManageMCP}
+                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
                 genLoading={genLoading}
                 onRegenerate={openConfirmDelete}
               />
@@ -416,12 +272,10 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 variant="ghost"
                 onClick={openServerModal}
               >
-                <div className="flex items-center justify-center gap-px">
-                  <span className="i-ri-edit-line size-3.5" />
-                  <div className="px-[3px] system-xs-medium text-text-tertiary">
-                    {serverPublished
-                      ? t(($) => $['mcp.server.edit'], { ns: 'tools' })
-                      : t(($) => $['mcp.server.addDescription'], { ns: 'tools' })}
+                <div className="flex items-center justify-center gap-[1px]">
+                  <RiEditLine className="h-3.5 w-3.5" />
+                  <div className="system-xs-medium px-[3px] text-text-tertiary">
+                    {serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}
                   </div>
                 </div>
               </Button>
@@ -441,26 +295,16 @@ const MCPServiceCard: FC<IAppCardProps> = ({
         />
       )}
 
-      <AlertDialog open={showConfirmDelete} onOpenChange={(open) => !open && closeConfirmDelete()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['mcp.server.reGen'], { ns: 'tools' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onConfirmRegenerate}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showConfirmDelete && (
+        <Confirm
+          type="warning"
+          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+          content={t('mcp.server.reGen', { ns: 'tools' })}
+          isShow={showConfirmDelete}
+          onConfirm={onConfirmRegenerate}
+          onCancel={closeConfirmDelete}
+        />
+      )}
     </>
   )
 }

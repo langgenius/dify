@@ -2,9 +2,7 @@
 Unit tests for Service API File Preview endpoint
 """
 
-import logging
 import uuid
-from typing import Protocol, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,12 +10,6 @@ import pytest
 from controllers.service_api.app.error import FileAccessDeniedError, FileNotFoundError
 from controllers.service_api.app.file_preview import FilePreviewApi
 from models.model import App, EndUser, Message, MessageFile, UploadFile
-
-
-class _FilePreviewLogRecord(Protocol):
-    file_id: str
-    app_id: str
-    error: str
 
 
 class TestFilePreviewApi:
@@ -74,7 +66,7 @@ class TestFilePreviewApi:
         return message
 
     def test_validate_file_ownership_success(
-        self, file_preview_api: FilePreviewApi, mock_app, mock_upload_file, mock_message_file, mock_message
+        self, file_preview_api, mock_app, mock_upload_file, mock_message_file, mock_message
     ):
         """Test successful file ownership validation"""
         file_id = str(uuid.uuid4())
@@ -87,13 +79,10 @@ class TestFilePreviewApi:
         mock_message_file.message_id = mock_message.id
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock scalar() for MessageFile and Message queries
-            mock_db.session.scalar.side_effect = [
+            # Mock database queries
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
-            ]
-            # Mock get() for UploadFile and App PK lookups
-            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -105,14 +94,14 @@ class TestFilePreviewApi:
             assert result_message_file == mock_message_file
             assert result_upload_file == mock_upload_file
 
-    def test_validate_file_ownership_file_not_found(self, file_preview_api: FilePreviewApi):
+    def test_validate_file_ownership_file_not_found(self, file_preview_api):
         """Test file ownership validation when MessageFile not found"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock MessageFile not found via scalar()
-            mock_db.session.scalar.return_value = None
+            # Mock MessageFile not found
+            mock_db.session.query.return_value.where.return_value.first.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
@@ -120,14 +109,14 @@ class TestFilePreviewApi:
 
             assert "File not found in message context" in str(exc_info.value)
 
-    def test_validate_file_ownership_access_denied(self, file_preview_api: FilePreviewApi, mock_message_file):
+    def test_validate_file_ownership_access_denied(self, file_preview_api, mock_message_file):
         """Test file ownership validation when Message not owned by app"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock MessageFile found but Message not owned by app via scalar()
-            mock_db.session.scalar.side_effect = [
+            # Mock MessageFile found but Message not owned by app
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 None,  # Message query - not found (access denied)
             ]
@@ -138,21 +127,18 @@ class TestFilePreviewApi:
 
             assert "not owned by requesting app" in str(exc_info.value)
 
-    def test_validate_file_ownership_upload_file_not_found(
-        self, file_preview_api: FilePreviewApi, mock_message_file, mock_message
-    ):
+    def test_validate_file_ownership_upload_file_not_found(self, file_preview_api, mock_message_file, mock_message):
         """Test file ownership validation when UploadFile not found"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock scalar() for MessageFile and Message
-            mock_db.session.scalar.side_effect = [
+            # Mock MessageFile and Message found but UploadFile not found
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query - found
                 mock_message,  # Message query - found
+                None,  # UploadFile query - not found
             ]
-            # Mock get() for UploadFile - not found
-            mock_db.session.get.return_value = None
 
             # Execute and assert exception
             with pytest.raises(FileNotFoundError) as exc_info:
@@ -161,7 +147,7 @@ class TestFilePreviewApi:
             assert "Upload file record not found" in str(exc_info.value)
 
     def test_validate_file_ownership_tenant_mismatch(
-        self, file_preview_api: FilePreviewApi, mock_app, mock_upload_file, mock_message_file, mock_message
+        self, file_preview_api, mock_app, mock_upload_file, mock_message_file, mock_message
     ):
         """Test file ownership validation with tenant mismatch"""
         file_id = str(uuid.uuid4())
@@ -175,13 +161,10 @@ class TestFilePreviewApi:
         mock_message_file.message_id = mock_message.id
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock scalar() for MessageFile and Message queries
-            mock_db.session.scalar.side_effect = [
+            # Mock database queries
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
-            ]
-            # Mock get() for UploadFile and App PK lookups
-            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -192,7 +175,7 @@ class TestFilePreviewApi:
 
             assert "tenant mismatch" in str(exc_info.value)
 
-    def test_validate_file_ownership_invalid_input(self, file_preview_api: FilePreviewApi):
+    def test_validate_file_ownership_invalid_input(self, file_preview_api):
         """Test file ownership validation with invalid input"""
 
         # Test with empty file_id
@@ -205,7 +188,7 @@ class TestFilePreviewApi:
             file_preview_api._validate_file_ownership("file_id", "")
         assert "Invalid file or app identifier" in str(exc_info.value)
 
-    def test_build_file_response_basic(self, file_preview_api: FilePreviewApi, mock_upload_file):
+    def test_build_file_response_basic(self, file_preview_api, mock_upload_file):
         """Test basic file response building"""
         mock_generator = Mock()
 
@@ -217,7 +200,7 @@ class TestFilePreviewApi:
         assert response.headers["Content-Length"] == str(mock_upload_file.size)
         assert "Cache-Control" in response.headers
 
-    def test_build_file_response_as_attachment(self, file_preview_api: FilePreviewApi, mock_upload_file):
+    def test_build_file_response_as_attachment(self, file_preview_api, mock_upload_file):
         """Test file response building with attachment flag"""
         mock_generator = Mock()
 
@@ -228,7 +211,7 @@ class TestFilePreviewApi:
         assert mock_upload_file.name in response.headers["Content-Disposition"]
         assert response.headers["Content-Type"] == "application/octet-stream"
 
-    def test_build_file_response_html_forces_attachment(self, file_preview_api: FilePreviewApi, mock_upload_file):
+    def test_build_file_response_html_forces_attachment(self, file_preview_api, mock_upload_file):
         """Test HTML files are forced to download"""
         mock_generator = Mock()
         mock_upload_file.mime_type = "text/html"
@@ -241,7 +224,7 @@ class TestFilePreviewApi:
         assert response.headers["Content-Type"] == "application/octet-stream"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
-    def test_build_file_response_audio_video(self, file_preview_api: FilePreviewApi, mock_upload_file):
+    def test_build_file_response_audio_video(self, file_preview_api, mock_upload_file):
         """Test file response building for audio/video files"""
         mock_generator = Mock()
         mock_upload_file.mime_type = "video/mp4"
@@ -251,7 +234,7 @@ class TestFilePreviewApi:
         # Check Range support for media files
         assert response.headers["Accept-Ranges"] == "bytes"
 
-    def test_build_file_response_no_size(self, file_preview_api: FilePreviewApi, mock_upload_file):
+    def test_build_file_response_no_size(self, file_preview_api, mock_upload_file):
         """Test file response building when size is unknown"""
         mock_generator = Mock()
         mock_upload_file.size = 0  # Unknown size
@@ -263,14 +246,7 @@ class TestFilePreviewApi:
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_get_method_integration(
-        self,
-        mock_storage,
-        file_preview_api: FilePreviewApi,
-        mock_app,
-        mock_end_user,
-        mock_upload_file,
-        mock_message_file,
-        mock_message,
+        self, mock_storage, file_preview_api, mock_app, mock_end_user, mock_upload_file, mock_message_file, mock_message
     ):
         """Test the full GET method integration (without decorator)"""
         file_id = str(uuid.uuid4())
@@ -286,13 +262,10 @@ class TestFilePreviewApi:
         mock_storage.load.return_value = mock_generator
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock scalar() for MessageFile and Message queries
-            mock_db.session.scalar.side_effect = [
+            # Mock database queries
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
-            ]
-            # Mock get() for UploadFile and App PK lookups
-            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -312,13 +285,7 @@ class TestFilePreviewApi:
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_storage_error_handling(
-        self,
-        mock_storage,
-        file_preview_api: FilePreviewApi,
-        mock_app,
-        mock_upload_file,
-        mock_message_file,
-        mock_message,
+        self, mock_storage, file_preview_api, mock_app, mock_upload_file, mock_message_file, mock_message
     ):
         """Test storage error handling in the core logic"""
         file_id = str(uuid.uuid4())
@@ -334,13 +301,10 @@ class TestFilePreviewApi:
         mock_storage.load.side_effect = Exception("Storage error")
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock scalar() for MessageFile and Message queries
-            mock_db.session.scalar.side_effect = [
+            # Mock database queries for validation
+            mock_db.session.query.return_value.where.return_value.first.side_effect = [
                 mock_message_file,  # MessageFile query
                 mock_message,  # Message query
-            ]
-            # Mock get() for UploadFile and App PK lookups
-            mock_db.session.get.side_effect = [
                 mock_upload_file,  # UploadFile query
                 mock_app,  # App query for tenant validation
             ]
@@ -356,31 +320,25 @@ class TestFilePreviewApi:
 
             assert "Storage error" in str(exc_info.value)
 
-    def test_validate_file_ownership_unexpected_error_logging(
-        self, file_preview_api: FilePreviewApi, caplog: pytest.LogCaptureFixture
-    ):
+    @patch("controllers.service_api.app.file_preview.logger")
+    def test_validate_file_ownership_unexpected_error_logging(self, mock_logger, file_preview_api):
         """Test that unexpected errors are logged properly"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
 
         with patch("controllers.service_api.app.file_preview.db") as mock_db:
-            # Mock database scalar to raise unexpected exception
-            mock_db.session.scalar.side_effect = Exception("Unexpected database error")
+            # Mock database query to raise unexpected exception
+            mock_db.session.query.side_effect = Exception("Unexpected database error")
 
             # Execute and assert exception
-            with caplog.at_level(logging.ERROR, logger="controllers.service_api.app.file_preview"):
-                with pytest.raises(FileAccessDeniedError) as exc_info:
-                    file_preview_api._validate_file_ownership(file_id, app_id)
+            with pytest.raises(FileAccessDeniedError) as exc_info:
+                file_preview_api._validate_file_ownership(file_id, app_id)
 
             # Verify error message
             assert "File access validation failed" in str(exc_info.value)
 
-            # Verify logging was called with the structured context fields. The ``extra`` keys
-            # are attached to the LogRecord as attributes, so they are not in ``caplog.text``.
-            assert len(caplog.records) == 1
-            log_record = caplog.records[0]
-            assert log_record.getMessage() == "Unexpected error during file ownership validation"
-            record = cast(_FilePreviewLogRecord, log_record)
-            assert record.file_id == file_id
-            assert record.app_id == app_id
-            assert record.error == "Unexpected database error"
+            # Verify logging was called
+            mock_logger.exception.assert_called_once_with(
+                "Unexpected error during file ownership validation",
+                extra={"file_id": file_id, "app_id": app_id, "error": "Unexpected database error"},
+            )

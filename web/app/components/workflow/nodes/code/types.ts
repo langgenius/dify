@@ -6,13 +6,15 @@ export enum CodeLanguage {
   json = 'json',
 }
 
-export type OutputVar = Record<
-  string,
-  {
-    type: VarType
-    children: null // support nest in the future,
-  }
->
+export type OutputVar = Record<string, {
+  type: VarType
+  children: null // support nest in the future,
+}>
+
+export type CodeDependency = {
+  name: string
+  version?: string
+}
 
 export type CodeNodeType = CommonNodeType & {
   variables: Variable[]

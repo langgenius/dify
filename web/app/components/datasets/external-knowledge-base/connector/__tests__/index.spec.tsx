@@ -7,7 +7,7 @@ import ExternalKnowledgeBaseConnector from '../index'
 
 const mockRouterBack = vi.fn()
 const mockReplace = vi.fn()
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     back: mockRouterBack,
     replace: mockReplace,
@@ -21,19 +21,12 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
 }))
 
-const mockToastSuccess = vi.hoisted(() => vi.fn())
-const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      success: mockToastSuccess,
-      error: mockToastError,
-    },
-  }
-})
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+  }),
+}))
 
 // Mock modal context
 vi.mock('@/context/modal-context', () => ({
@@ -109,9 +102,7 @@ async function fillFormAndSubmit(user: ReturnType<typeof userEvent.setup>) {
 
   // Wait for button to be enabled
   await waitFor(() => {
-    const connectButton = screen
-      .getByText('dataset.externalKnowledgeForm.connect')
-      .closest('button')
+    const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
     expect(connectButton).not.toBeDisabled()
   })
 
@@ -145,9 +136,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should render connect button disabled initially', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
-      const connectButton = screen
-        .getByText('dataset.externalKnowledgeForm.connect')
-        .closest('button')
+      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
       expect(connectButton).toBeDisabled()
     })
   })
@@ -173,9 +162,10 @@ describe('ExternalKnowledgeBaseConnector', () => {
       })
 
       // Verify success notification
-      expect(mockToastSuccess).toHaveBeenCalledWith(
-        'dataset.externalKnowledgeForm.connectedSuccess',
-      )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'External Knowledge Base Connected Successfully',
+      })
 
       // Verify navigation back
       expect(mockRouterBack).toHaveBeenCalledTimes(1)
@@ -214,7 +204,10 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify error notification
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedFailed')
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Failed to connect External Knowledge Base',
+        })
       })
 
       // Verify no navigation
@@ -233,7 +226,10 @@ describe('ExternalKnowledgeBaseConnector', () => {
       await fillFormAndSubmit(user)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedFailed')
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Failed to connect External Knowledge Base',
+        })
       })
 
       expect(mockRouterBack).not.toHaveBeenCalled()
@@ -260,15 +256,11 @@ describe('ExternalKnowledgeBaseConnector', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen
-          .getByText('dataset.externalKnowledgeForm.connect')
-          .closest('button')
+        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen
-        .getByText('dataset.externalKnowledgeForm.connect')
-        .closest('button')
+      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
       await user.click(connectButton!)
 
       // Button should show loading (the real Button component has loading prop)
@@ -280,9 +272,10 @@ describe('ExternalKnowledgeBaseConnector', () => {
       resolvePromise({ id: 'new-id' })
 
       await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith(
-          'dataset.externalKnowledgeForm.connectedSuccess',
-        )
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'External Knowledge Base Connected Successfully',
+        })
       })
     })
   })
@@ -295,9 +288,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'Test' } })
 
-      const connectButton = screen
-        .getByText('dataset.externalKnowledgeForm.connect')
-        .closest('button')
+      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
       expect(connectButton).toBeDisabled()
     })
 
@@ -307,9 +298,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const knowledgeIdInput = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
-      const connectButton = screen
-        .getByText('dataset.externalKnowledgeForm.connect')
-        .closest('button')
+      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
       expect(connectButton).toBeDisabled()
     })
 
@@ -323,9 +312,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen
-          .getByText('dataset.externalKnowledgeForm.connect')
-          .closest('button')
+        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
         expect(connectButton).not.toBeDisabled()
       })
     })
@@ -338,9 +325,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
-      const descriptionInput = screen.getByPlaceholderText(
-        'dataset.externalKnowledgeDescriptionPlaceholder',
-      )
+      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder')
 
       await user.type(nameInput, 'My Knowledge Base')
       await user.type(descriptionInput, 'My Description')
@@ -353,9 +338,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       const user = userEvent.setup()
       render(<ExternalKnowledgeBaseConnector />)
 
-      const cancelButton = screen
-        .getByText('dataset.externalKnowledgeForm.cancel')
-        .closest('button')
+      const cancelButton = screen.getByText('dataset.externalKnowledgeForm.cancel').closest('button')
       await user.click(cancelButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
@@ -366,7 +349,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
       render(<ExternalKnowledgeBaseConnector />)
 
       const buttons = screen.getAllByRole('button')
-      const backButton = buttons.find((btn) => btn.classList.contains('rounded-full'))
+      const backButton = buttons.find(btn => btn.classList.contains('rounded-full'))
       await user.click(backButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')

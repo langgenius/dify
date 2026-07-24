@@ -1,4 +1,4 @@
-import type { CommonEdgeType, CommonNodeType, Edge, Node, WorkflowRunningData } from '../types'
+import type { CommonEdgeType, CommonNodeType, Edge, Node, ToolWithProvider, WorkflowRunningData } from '../types'
 import type { NodeTracing } from '@/types/workflow'
 import { Position } from 'reactflow'
 import { CUSTOM_NODE } from '../constants'
@@ -13,9 +13,7 @@ export function resetFixtureCounters() {
 }
 
 export function createNode(
-  overrides: Omit<Partial<Node>, 'data'> & {
-    data?: Partial<CommonNodeType> & Record<string, unknown>
-  } = {},
+  overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},
 ): Node {
   const id = overrides.id ?? `node-${++nodeIdCounter}`
   const { data: dataOverrides, ...rest } = overrides
@@ -37,34 +35,16 @@ export function createNode(
   } as Node
 }
 
-export function createStartNode(
-  overrides: Omit<Partial<Node>, 'data'> & {
-    data?: Partial<CommonNodeType> & Record<string, unknown>
-  } = {},
-): Node {
+export function createStartNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Start, title: 'Start', desc: '', ...overrides.data },
   })
 }
 
-export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(
-  defaults: T,
-) {
-  return (overrides: Partial<T> = {}): T => ({
-    ...defaults,
-    ...overrides,
-  })
-}
-
 export function createTriggerNode(
-  triggerType:
-    | BlockEnum.TriggerSchedule
-    | BlockEnum.TriggerWebhook
-    | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
-  overrides: Omit<Partial<Node>, 'data'> & {
-    data?: Partial<CommonNodeType> & Record<string, unknown>
-  } = {},
+  triggerType: BlockEnum.TriggerSchedule | BlockEnum.TriggerWebhook | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
+  overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},
 ): Node {
   return createNode({
     ...overrides,
@@ -72,38 +52,24 @@ export function createTriggerNode(
   })
 }
 
-export function createIterationNode(
-  overrides: Omit<Partial<Node>, 'data'> & {
-    data?: Partial<CommonNodeType> & Record<string, unknown>
-  } = {},
-): Node {
+export function createIterationNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Iteration, title: 'Iteration', desc: '', ...overrides.data },
   })
 }
 
-export function createLoopNode(
-  overrides: Omit<Partial<Node>, 'data'> & {
-    data?: Partial<CommonNodeType> & Record<string, unknown>
-  } = {},
-): Node {
+export function createLoopNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Loop, title: 'Loop', desc: '', ...overrides.data },
   })
 }
 
-export function createEdge(
-  overrides: Omit<Partial<Edge>, 'data'> & {
-    data?: Partial<CommonEdgeType> & Record<string, unknown>
-  } = {},
-): Edge {
+export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Partial<CommonEdgeType> & Record<string, unknown> } = {}): Edge {
   const { data: dataOverrides, ...rest } = overrides
   return {
-    id:
-      overrides.id ??
-      `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}-${++edgeIdCounter}`,
+    id: overrides.id ?? `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}-${++edgeIdCounter}`,
     source: 'source-node',
     target: 'target-node',
     data: {
@@ -113,6 +79,34 @@ export function createEdge(
     } as CommonEdgeType,
     ...rest,
   } as Edge
+}
+
+export function createLinearGraph(nodeCount: number): { nodes: Node[], edges: Edge[] } {
+  const nodes: Node[] = []
+  const edges: Edge[] = []
+
+  for (let i = 0; i < nodeCount; i++) {
+    const type = i === 0 ? BlockEnum.Start : BlockEnum.Code
+    nodes.push(createNode({
+      id: `n${i}`,
+      position: { x: i * 300, y: 0 },
+      data: { type, title: `Node ${i}`, desc: '' },
+    }))
+    if (i > 0) {
+      edges.push(createEdge({
+        id: `e-n${i - 1}-n${i}`,
+        source: `n${i - 1}`,
+        target: `n${i}`,
+        sourceHandle: 'source',
+        targetHandle: 'target',
+        data: {
+          sourceType: i === 1 ? BlockEnum.Start : BlockEnum.Code,
+          targetType: BlockEnum.Code,
+        },
+      }))
+    }
+  }
+  return { nodes, edges }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +130,9 @@ export function createWorkflowRunningData(
   }
 }
 
-export function createNodeTracing(overrides?: Partial<NodeTracing>): NodeTracing {
+export function createNodeTracing(
+  overrides?: Partial<NodeTracing>,
+): NodeTracing {
   const nodeId = overrides?.node_id ?? 'node-1'
   return {
     id: `trace-${nodeId}`,
@@ -159,3 +155,28 @@ export function createNodeTracing(overrides?: Partial<NodeTracing>): NodeTracing
     ...overrides,
   }
 }
+
+export function createToolWithProvider(
+  overrides?: Partial<ToolWithProvider>,
+): ToolWithProvider {
+  return {
+    id: 'tool-provider-1',
+    name: 'test-tool',
+    author: 'test',
+    description: { en_US: 'Test tool', zh_Hans: '测试工具' },
+    icon: '/icon.svg',
+    icon_dark: '/icon-dark.svg',
+    label: { en_US: 'Test Tool', zh_Hans: '测试工具' },
+    type: 'builtin',
+    team_credentials: {},
+    is_team_authorization: false,
+    allow_delete: true,
+    labels: [],
+    tools: [],
+    meta: { version: '0.0.1' },
+    plugin_id: 'plugin-1',
+    ...overrides,
+  }
+}
+
+export { BlockEnum, NodeRunningStatus }

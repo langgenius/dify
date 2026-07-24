@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,7 +12,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from dify_graph.model_runtime.entities.model_entities import ModelType
 
 
 class ProviderQuotaType(StrEnum):
@@ -88,7 +88,7 @@ class SystemConfiguration(BaseModel):
     enabled: bool
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: dict[str, Any] | None = Field(default=None)
+    credentials: dict | None = None
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -96,7 +96,7 @@ class CustomProviderConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    credentials: dict[str, Any]
+    credentials: dict
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_credentials: list[CredentialConfiguration] = []
@@ -109,11 +109,11 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict[str, Any] | None
+    credentials: dict | None
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
-    unadded_to_model_list: bool = False
+    unadded_to_model_list: bool | None = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -145,7 +145,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
 
     id: str
     name: str
-    credentials: dict[str, Any]
+    credentials: dict
     credential_source_type: str | None = None
     credential_id: str | None = None
 
@@ -165,35 +165,34 @@ class ModelSettings(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
-class ProviderConfigType(StrEnum):
-    SECRET_INPUT = CommonParameterType.SECRET_INPUT
-    TEXT_INPUT = CommonParameterType.TEXT_INPUT
-    SELECT = CommonParameterType.SELECT
-    BOOLEAN = CommonParameterType.BOOLEAN
-    APP_SELECTOR = CommonParameterType.APP_SELECTOR
-    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
-    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
-
-    @classmethod
-    def value_of(cls, value: str) -> ProviderConfigType:
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid mode value {value}")
-
-
 class BasicProviderConfig(BaseModel):
     """
     Base model class for common provider settings like credentials
     """
 
-    type: ProviderConfigType = Field(..., description="The type of the credentials")
+    class Type(StrEnum):
+        SECRET_INPUT = CommonParameterType.SECRET_INPUT
+        TEXT_INPUT = CommonParameterType.TEXT_INPUT
+        SELECT = CommonParameterType.SELECT
+        BOOLEAN = CommonParameterType.BOOLEAN
+        APP_SELECTOR = CommonParameterType.APP_SELECTOR
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+
+        @classmethod
+        def value_of(cls, value: str) -> ProviderConfig.Type:
+            """
+            Get value of given mode.
+
+            :param value: mode value
+            :return: mode
+            """
+            for mode in cls:
+                if mode.value == value:
+                    return mode
+            raise ValueError(f"invalid mode value {value}")
+
+    type: Type = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
 
 
@@ -210,7 +209,7 @@ class ProviderConfig(BasicProviderConfig):
     required: bool = False
     default: Union[int, str, float, bool] | None = None
     options: list[Option] | None = None
-    multiple: bool = False
+    multiple: bool | None = False
     label: I18nObject | None = None
     help: I18nObject | None = None
     url: str | None = None

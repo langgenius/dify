@@ -2,9 +2,19 @@ import type { HistoryBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { noop } from 'es-toolkit/function'
-import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
-import { memo, useEffect } from 'react'
-import { $createHistoryBlockNode, HistoryBlockNode } from './node'
+import {
+  $insertNodes,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+} from 'lexical'
+import {
+  memo,
+  useEffect,
+} from 'react'
+import {
+  $createHistoryBlockNode,
+  HistoryBlockNode,
+} from './node'
 
 export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
 export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
@@ -14,48 +24,55 @@ export type RoleName = {
   assistant: string
 }
 
-const HistoryBlock = memo(
-  ({
-    history = { user: '', assistant: '' },
-    onEditRole = noop,
-    onInsert,
-    onDelete,
-  }: HistoryBlockType) => {
-    const [editor] = useLexicalComposerContext()
+export type HistoryBlockProps = {
+  roleName: RoleName
+  onEditRole: () => void
+  onInsert?: () => void
+  onDelete?: () => void
+}
 
-    useEffect(() => {
-      if (!editor.hasNodes([HistoryBlockNode]))
-        throw new Error('HistoryBlockPlugin: HistoryBlock not registered on editor')
+const HistoryBlock = memo(({
+  history = { user: '', assistant: '' },
+  onEditRole = noop,
+  onInsert,
+  onDelete,
+}: HistoryBlockType) => {
+  const [editor] = useLexicalComposerContext()
 
-      return mergeRegister(
-        editor.registerCommand(
-          INSERT_HISTORY_BLOCK_COMMAND,
-          () => {
-            const historyBlockNode = $createHistoryBlockNode(history, onEditRole)
+  useEffect(() => {
+    if (!editor.hasNodes([HistoryBlockNode]))
+      throw new Error('HistoryBlockPlugin: HistoryBlock not registered on editor')
 
-            $insertNodes([historyBlockNode])
+    return mergeRegister(
+      editor.registerCommand(
+        INSERT_HISTORY_BLOCK_COMMAND,
+        () => {
+          const historyBlockNode = $createHistoryBlockNode(history, onEditRole)
 
-            if (onInsert) onInsert()
+          $insertNodes([historyBlockNode])
 
-            return true
-          },
-          COMMAND_PRIORITY_EDITOR,
-        ),
-        editor.registerCommand(
-          DELETE_HISTORY_BLOCK_COMMAND,
-          () => {
-            if (onDelete) onDelete()
+          if (onInsert)
+            onInsert()
 
-            return true
-          },
-          COMMAND_PRIORITY_EDITOR,
-        ),
-      )
-    }, [editor, history, onEditRole, onInsert, onDelete])
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        DELETE_HISTORY_BLOCK_COMMAND,
+        () => {
+          if (onDelete)
+            onDelete()
 
-    return null
-  },
-)
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+  }, [editor, history, onEditRole, onInsert, onDelete])
+
+  return null
+})
 HistoryBlock.displayName = 'HistoryBlock'
 
 export { HistoryBlock }

@@ -1,29 +1,30 @@
-import type { DataSet, DataSetListResponse } from '@/models/datasets'
-import type { useDatasetList } from '@/service/knowledge/use-dataset'
+import type { DataSet } from '@/models/datasets'
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Datasets from '../datasets'
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+// Mock useFormatTimeFromNow hook
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: (timestamp: number) => new Date(timestamp).toLocaleDateString(),
   }),
 }))
 
+// Mock useKnowledge hook
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: () => 'High Quality',
   }),
 }))
 
+// Mock service hooks - will be overridden in individual tests
 const mockFetchNextPage = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
@@ -43,14 +44,20 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     hasNextPage: false,
     isFetching: false,
     isFetchingNextPage: false,
-    isLoading: false,
-    isPlaceholderData: false,
   })),
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
+// Mock app context - will be overridden in tests
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn(() => true),
+}))
+
+// Mock useDatasetCardState hook
 vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
+    tags: [],
+    setTags: vi.fn(),
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
@@ -65,33 +72,9 @@ vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   }),
 }))
 
+// Mock RenameDatasetModal
 vi.mock('../../rename-modal', () => ({
   default: () => null,
-}))
-
-vi.mock('../dataset-card', () => ({
-  default: ({
-    dataset,
-    stepByStepTourActionMenuHighlightPart,
-    stepByStepTourActionMenuOpen,
-    stepByStepTourCardTarget,
-  }: {
-    dataset: DataSet
-    stepByStepTourActionMenuHighlightPart?: string
-    stepByStepTourActionMenuOpen?: boolean
-    stepByStepTourCardTarget?: string
-  }) => (
-    <article data-testid={`dataset-card-${dataset.id}`}>
-      {dataset.name}
-      <span data-testid={`dataset-card-target-${dataset.id}`}>{stepByStepTourCardTarget}</span>
-      <span data-testid={`dataset-card-menu-open-${dataset.id}`}>
-        {String(stepByStepTourActionMenuOpen)}
-      </span>
-      <span data-testid={`dataset-card-highlight-${dataset.id}`}>
-        {stepByStepTourActionMenuHighlightPart}
-      </span>
-    </article>
-  ),
 }))
 
 function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
@@ -131,11 +114,13 @@ function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
   } as DataSet
 }
 
+// Store IntersectionObserver callbacks for testing
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 const mockUnobserve = vi.fn()
 
+// Custom IntersectionObserver mock
 class MockIntersectionObserver {
   constructor(callback: IntersectionObserverCallback) {
     intersectionObserverCallback = callback
@@ -151,41 +136,18 @@ class MockIntersectionObserver {
 }
 
 describe('Datasets', () => {
-  const createDatasetListData = (
-    pages: Array<Pick<DataSetListResponse, 'data'> & Partial<Omit<DataSetListResponse, 'data'>>> = [
-      {
-        data: [
-          createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
-          createMockDataset({ id: 'dataset-2', name: 'Dataset 2' }),
-        ],
-      },
-    ],
-  ) =>
-    ({
-      pages: pages.map((page, index) => ({
-        has_more: false,
-        limit: page.data.length,
-        page: index + 1,
-        total: page.data.length,
-        ...page,
-      })),
-      pageParams: pages.map((_, index) => index + 1),
-    }) as unknown as ReturnType<typeof useDatasetList>['data']
-
   const defaultProps = {
-    datasetList: createDatasetListData(),
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    isFetching: false,
-    isFetchingNextPage: false,
-    isLoading: false,
-    isPlaceholderData: false,
+    tags: [],
+    keywords: '',
+    includeAll: false,
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     intersectionObserverCallback = null
     document.title = ''
+
+    // Setup IntersectionObserver mock
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   })
 
@@ -194,9 +156,24 @@ describe('Datasets', () => {
   })
 
   describe('Rendering', () => {
-    it('should not render NewDatasetCard in dataset list', () => {
+    it('should render without crashing', () => {
       render(<Datasets {...defaultProps} />)
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
+    })
 
+    it('should render NewDatasetCard when user is editor', async () => {
+      const { useSelector } = await import('@/context/app-context')
+      vi.mocked(useSelector).mockReturnValue(true)
+
+      render(<Datasets {...defaultProps} />)
+      expect(screen.getByText(/createDataset/)).toBeInTheDocument()
+    })
+
+    it('should NOT render NewDatasetCard when user is NOT editor', async () => {
+      const { useSelector } = await import('@/context/app-context')
+      vi.mocked(useSelector).mockReturnValue(false)
+
+      render(<Datasets {...defaultProps} />)
       expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
     })
 
@@ -206,46 +183,42 @@ describe('Datasets', () => {
       expect(screen.getByText('Dataset 2')).toBeInTheDocument()
     })
 
-    it('should pass step-by-step tour targets to the first dataset card only', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          stepByStepTourActionMenuOpen
-          stepByStepTourActionMenuHighlightPart={
-            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
-          }
-          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
-        />,
-      )
-
-      expect(screen.getByTestId('dataset-card-target-dataset-1')).toHaveTextContent(
-        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard,
-      )
-      expect(screen.getByTestId('dataset-card-menu-open-dataset-1')).toHaveTextContent('true')
-      expect(screen.getByTestId('dataset-card-highlight-dataset-1')).toHaveTextContent(
-        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
-      )
-      expect(screen.getByTestId('dataset-card-target-dataset-2')).toBeEmptyDOMElement()
-      expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
-      expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
-    })
-
-    it('should render empty element when there are no datasets', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([{ data: [], total: 0 }])}
-          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
-        />,
-      )
-
-      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
-    })
-
     it('should render anchor div for infinite scroll', () => {
       render(<Datasets {...defaultProps} />)
       const anchor = document.querySelector('.h-0')
       expect(anchor).toBeInTheDocument()
+    })
+  })
+
+  describe('Props', () => {
+    it('should pass tags to useDatasetList', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      render(<Datasets {...defaultProps} tags={['tag-1', 'tag-2']} />)
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tag_ids: ['tag-1', 'tag-2'],
+        }),
+      )
+    })
+
+    it('should pass keywords to useDatasetList', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      render(<Datasets {...defaultProps} keywords="search term" />)
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          keyword: 'search term',
+        }),
+      )
+    })
+
+    it('should pass includeAll to useDatasetList', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      render(<Datasets {...defaultProps} includeAll={true} />)
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include_all: true,
+        }),
+      )
     })
   })
 
@@ -259,95 +232,111 @@ describe('Datasets', () => {
   })
 
   describe('Loading States', () => {
-    it('should show dataset card skeletons while initial dataset list is loading', () => {
-      render(
-        <Datasets {...defaultProps} datasetList={undefined} isFetching={true} isLoading={true} />,
-      )
+    it('should show Loading component when isFetchingNextPage is true', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: true,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
-      expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
-      expect(screen.queryByText('Dataset 1')).not.toBeInTheDocument()
+      render(<Datasets {...defaultProps} />)
+      // Loading component renders a div with loading classes
+      const nav = screen.getByRole('navigation')
+      expect(nav).toBeInTheDocument()
     })
 
-    it('should not show dataset card skeletons after an empty dataset list has loaded', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([{ data: [] }])}
-          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
-        />,
-      )
+    it('should NOT show Loading component when isFetchingNextPage is false', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
-      expect(screen.queryByRole('status', { name: /common\.loading/ })).not.toBeInTheDocument()
-      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
-    })
-
-    it('should show dataset card skeletons when placeholder data is empty and the next query is fetching', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([{ data: [] }])}
-          isFetching={true}
-          isPlaceholderData={true}
-        />,
-      )
-
-      expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
-    })
-
-    it('should keep rendered dataset cards when placeholder data has results during refetch', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([
-            { data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] },
-          ])}
-          isFetching={true}
-          isPlaceholderData={true}
-        />,
-      )
-
-      expect(screen.queryByRole('status', { name: /common\.loading/ })).not.toBeInTheDocument()
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-    })
-
-    it('should show Loading component when isFetchingNextPage is true', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isFetchingNextPage={true} />)
-      expect(screen.getByRole('navigation')).toBeInTheDocument()
-    })
-
-    it('should NOT show Loading component when isFetchingNextPage is false', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isFetchingNextPage={false} />)
+      render(<Datasets {...defaultProps} />)
       expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
   })
 
   describe('DatasetList null handling', () => {
-    it('should handle null datasetList gracefully', () => {
-      render(<Datasets {...defaultProps} datasetList={null} />)
+    it('should handle null datasetList gracefully', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: null,
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
       expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
 
-    it('should handle undefined datasetList gracefully', () => {
-      render(<Datasets {...defaultProps} datasetList={undefined} />)
+    it('should handle undefined datasetList gracefully', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: undefined,
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
       expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
 
-    it('should handle empty pages array', () => {
-      render(<Datasets {...defaultProps} datasetList={createDatasetListData([])} />)
+    it('should handle empty pages array', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
       expect(screen.getByRole('navigation')).toBeInTheDocument()
     })
   })
 
   describe('IntersectionObserver', () => {
-    it('should setup IntersectionObserver on mount', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
+    it('should setup IntersectionObserver on mount', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
+      render(<Datasets {...defaultProps} />)
+
+      // Should observe the anchor element
       expect(mockObserve).toHaveBeenCalled()
     })
 
-    it('should call fetchNextPage when isIntersecting, hasNextPage, and not isFetching', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
+    it('should call fetchNextPage when isIntersecting, hasNextPage, and not isFetching', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
+      render(<Datasets {...defaultProps} />)
+
+      // Simulate intersection
       if (intersectionObserverCallback) {
         intersectionObserverCallback(
           [{ isIntersecting: true } as IntersectionObserverEntry],
@@ -358,8 +347,17 @@ describe('Datasets', () => {
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
     })
 
-    it('should NOT call fetchNextPage when isIntersecting is false', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} />)
+    it('should NOT call fetchNextPage when isIntersecting is false', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
 
       if (intersectionObserverCallback) {
         intersectionObserverCallback(
@@ -371,7 +369,16 @@ describe('Datasets', () => {
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
-    it('should NOT call fetchNextPage when hasNextPage is false', () => {
+    it('should NOT call fetchNextPage when hasNextPage is false', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false, // No more pages
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
       render(<Datasets {...defaultProps} />)
 
       if (intersectionObserverCallback) {
@@ -384,8 +391,17 @@ describe('Datasets', () => {
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
-    it('should NOT call fetchNextPage when isFetching is true', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isFetching={true} />)
+    it('should NOT call fetchNextPage when isFetching is true', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: true, // Already fetching
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
 
       if (intersectionObserverCallback) {
         intersectionObserverCallback(
@@ -397,24 +413,22 @@ describe('Datasets', () => {
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
 
-    it('should NOT call fetchNextPage when placeholder data is showing', () => {
-      render(<Datasets {...defaultProps} hasNextPage={true} isPlaceholderData={true} />)
+    it('should disconnect observer on unmount', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [] }] },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: true,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      const { unmount } = render(<Datasets {...defaultProps} />)
 
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
-    })
-
-    it('should disconnect observer on unmount', () => {
-      const { unmount } = render(<Datasets {...defaultProps} hasNextPage={true} />)
-
+      // Unmount the component
       unmount()
 
+      // disconnect should be called during cleanup
       expect(mockDisconnect).toHaveBeenCalled()
     })
   })
@@ -423,30 +437,37 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass(
-        'relative',
-        'grid',
-        'grow',
-        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-        'content-start',
-        'gap-3',
-        'px-8',
-        'pt-2',
-      )
+      expect(nav).toHaveClass('grid', 'grow', 'gap-3', 'px-12')
     })
   })
 
   describe('Edge Cases', () => {
-    it('should handle multiple pages of data', () => {
-      render(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([
+    it('should handle empty tags array', () => {
+      render(<Datasets {...defaultProps} tags={[]} />)
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
+    })
+
+    it('should handle empty keywords', () => {
+      render(<Datasets {...defaultProps} keywords="" />)
+      expect(screen.getByRole('navigation')).toBeInTheDocument()
+    })
+
+    it('should handle multiple pages of data', async () => {
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: {
+          pages: [
             { data: [createMockDataset({ id: 'ds-1', name: 'Page 1 Dataset' })] },
             { data: [createMockDataset({ id: 'ds-2', name: 'Page 2 Dataset' })] },
-          ])}
-        />,
-      )
+          ],
+        },
+        fetchNextPage: mockFetchNextPage,
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<Datasets {...defaultProps} />)
       expect(screen.getByText('Page 1 Dataset')).toBeInTheDocument()
       expect(screen.getByText('Page 2 Dataset')).toBeInTheDocument()
     })

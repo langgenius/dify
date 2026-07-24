@@ -1,14 +1,7 @@
-import type {
-  Dependency,
-  GitHubItemAndMarketPlaceDependency,
-  PackageDependency,
-  Plugin,
-  VersionInfo,
-} from '../../../../types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../../types'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { PluginCategoryEnum } from '../../../../types'
 import InstallMulti from '../install-multi'
 
@@ -63,6 +56,11 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
+// Mock useGlobalPublicStore
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: () => ({}),
+}))
+
 // Mock pluginInstallLimit (imported by the useInstallMultiState hook via @/ path)
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({
   pluginInstallLimit: () => ({ canInstall: true }),
@@ -70,110 +68,99 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
 
 // Mock child components
 vi.mock('../../item/github-item', () => ({
-  default: vi
-    .fn()
-    .mockImplementation(
-      ({
-        checked,
-        onCheckedChange,
-        dependency,
-        onFetchedPayload,
-      }: {
-        checked: boolean
-        onCheckedChange: () => void
-        dependency: GitHubItemAndMarketPlaceDependency
-        onFetchedPayload: (plugin: Plugin) => void
-      }) => {
-        // Simulate successful fetch - use ref to avoid dependency
-        const fetchedRef = React.useRef(false)
-        React.useEffect(() => {
-          if (fetchedRef.current) return
-          fetchedRef.current = true
-          const mockPlugin: Plugin = {
-            type: 'plugin',
-            org: 'test-org',
-            name: 'GitHub Plugin',
-            plugin_id: 'github-plugin-id',
-            version: '1.0.0',
-            latest_version: '1.0.0',
-            latest_package_identifier: 'github-pkg-id',
-            icon: 'icon.png',
-            verified: true,
-            label: { 'en-US': 'GitHub Plugin' },
-            brief: { 'en-US': 'Brief' },
-            description: { 'en-US': 'Description' },
-            introduction: 'Intro',
-            repository: 'https://github.com/test/plugin',
-            category: PluginCategoryEnum.tool,
-            install_count: 100,
-            endpoint: { settings: [] },
-            tags: [],
-            badges: [],
-            verification: { authorized_category: 'community' },
-            from: 'github',
-          }
-          onFetchedPayload(mockPlugin)
-        }, [onFetchedPayload])
+  default: vi.fn().mockImplementation(({
+    checked,
+    onCheckedChange,
+    dependency,
+    onFetchedPayload,
+  }: {
+    checked: boolean
+    onCheckedChange: () => void
+    dependency: GitHubItemAndMarketPlaceDependency
+    onFetchedPayload: (plugin: Plugin) => void
+  }) => {
+    // Simulate successful fetch - use ref to avoid dependency
+    const fetchedRef = React.useRef(false)
+    React.useEffect(() => {
+      if (fetchedRef.current)
+        return
+      fetchedRef.current = true
+      const mockPlugin: Plugin = {
+        type: 'plugin',
+        org: 'test-org',
+        name: 'GitHub Plugin',
+        plugin_id: 'github-plugin-id',
+        version: '1.0.0',
+        latest_version: '1.0.0',
+        latest_package_identifier: 'github-pkg-id',
+        icon: 'icon.png',
+        verified: true,
+        label: { 'en-US': 'GitHub Plugin' },
+        brief: { 'en-US': 'Brief' },
+        description: { 'en-US': 'Description' },
+        introduction: 'Intro',
+        repository: 'https://github.com/test/plugin',
+        category: PluginCategoryEnum.tool,
+        install_count: 100,
+        endpoint: { settings: [] },
+        tags: [],
+        badges: [],
+        verification: { authorized_category: 'community' },
+        from: 'github',
+      }
+      onFetchedPayload(mockPlugin)
+    }, [onFetchedPayload])
 
-        return (
-          <div data-testid="github-item" onClick={onCheckedChange}>
-            <span data-testid="github-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-            <span data-testid="github-item-repo">{dependency.value.repo}</span>
-          </div>
-        )
-      },
-    ),
+    return (
+      <div data-testid="github-item" onClick={onCheckedChange}>
+        <span data-testid="github-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+        <span data-testid="github-item-repo">{dependency.value.repo}</span>
+      </div>
+    )
+  }),
 }))
 
 vi.mock('../../item/marketplace-item', () => ({
-  default: vi
-    .fn()
-    .mockImplementation(
-      ({
-        checked,
-        onCheckedChange,
-        payload,
-        version,
-        _versionInfo,
-      }: {
-        checked: boolean
-        onCheckedChange: () => void
-        payload: Plugin
-        version: string
-        _versionInfo: VersionInfo
-      }) => (
-        <div data-testid="marketplace-item" onClick={onCheckedChange}>
-          <span data-testid="marketplace-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-          <span data-testid="marketplace-item-name">{payload?.name || 'Loading'}</span>
-          <span data-testid="marketplace-item-version">{version}</span>
-        </div>
-      ),
-    ),
+  default: vi.fn().mockImplementation(({
+    checked,
+    onCheckedChange,
+    payload,
+    version,
+    _versionInfo,
+  }: {
+    checked: boolean
+    onCheckedChange: () => void
+    payload: Plugin
+    version: string
+    _versionInfo: VersionInfo
+  }) => (
+    <div data-testid="marketplace-item" onClick={onCheckedChange}>
+      <span data-testid="marketplace-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+      <span data-testid="marketplace-item-name">{payload?.name || 'Loading'}</span>
+      <span data-testid="marketplace-item-version">{version}</span>
+    </div>
+  )),
 }))
 
 vi.mock('../../item/package-item', () => ({
-  default: vi
-    .fn()
-    .mockImplementation(
-      ({
-        checked,
-        onCheckedChange,
-        payload,
-        _isFromMarketPlace,
-        _versionInfo,
-      }: {
-        checked: boolean
-        onCheckedChange: () => void
-        payload: PackageDependency
-        _isFromMarketPlace: boolean
-        _versionInfo: VersionInfo
-      }) => (
-        <div data-testid="package-item" onClick={onCheckedChange}>
-          <span data-testid="package-item-checked">{checked ? 'checked' : 'unchecked'}</span>
-          <span data-testid="package-item-name">{payload.value.manifest.name}</span>
-        </div>
-      ),
-    ),
+  default: vi.fn().mockImplementation(({
+    checked,
+    onCheckedChange,
+    payload,
+    _isFromMarketPlace,
+    _versionInfo,
+  }: {
+    checked: boolean
+    onCheckedChange: () => void
+    payload: PackageDependency
+    _isFromMarketPlace: boolean
+    _versionInfo: VersionInfo
+  }) => (
+    <div data-testid="package-item" onClick={onCheckedChange}>
+      <span data-testid="package-item-checked">{checked ? 'checked' : 'unchecked'}</span>
+      <span data-testid="package-item-name">{payload.value.manifest.name}</span>
+    </div>
+  )),
 }))
 
 vi.mock('../../../base/loading-error', () => ({
@@ -225,33 +212,32 @@ const createGitHubDependency = (index: number): GitHubItemAndMarketPlaceDependen
   },
 })
 
-const createPackageDependency = (index: number) =>
-  ({
-    type: 'package',
-    value: {
-      unique_identifier: `package-plugin-${index}-uid`,
-      manifest: {
-        plugin_unique_identifier: `package-plugin-${index}-uid`,
-        version: '1.0.0',
-        author: 'test-author',
-        icon: 'icon.png',
-        name: `Package Plugin ${index}`,
-        category: PluginCategoryEnum.tool,
-        label: { 'en-US': `Package Plugin ${index}` },
-        description: { 'en-US': 'Test package plugin' },
-        created_at: '2024-01-01',
-        resource: {},
-        plugins: [],
-        verified: true,
-        endpoint: { settings: [], endpoints: [] },
-        model: null,
-        tags: [],
-        agent_strategy: null,
-        meta: { version: '1.0.0' },
-        trigger: {},
-      },
+const createPackageDependency = (index: number) => ({
+  type: 'package',
+  value: {
+    unique_identifier: `package-plugin-${index}-uid`,
+    manifest: {
+      plugin_unique_identifier: `package-plugin-${index}-uid`,
+      version: '1.0.0',
+      author: 'test-author',
+      icon: 'icon.png',
+      name: `Package Plugin ${index}`,
+      category: PluginCategoryEnum.tool,
+      label: { 'en-US': `Package Plugin ${index}` },
+      description: { 'en-US': 'Test package plugin' },
+      created_at: '2024-01-01',
+      resource: {},
+      plugins: [],
+      verified: true,
+      endpoint: { settings: [], endpoints: [] },
+      model: null,
+      tags: [],
+      agent_strategy: null,
+      meta: { version: '1.0.0' },
+      trigger: {},
     },
-  }) as unknown as PackageDependency
+  },
+} as unknown as PackageDependency)
 
 // ==================== InstallMulti Component Tests ====================
 describe('InstallMulti Component', () => {
@@ -271,11 +257,17 @@ describe('InstallMulti Component', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<InstallMulti {...defaultProps} />)
+
+      expect(screen.getByTestId('package-item')).toBeInTheDocument()
+    })
+
     it('should render PackageItem for package type dependency', () => {
       render(<InstallMulti {...defaultProps} />)
 
-      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
-      expect(screen.getByTestId('package-item-name'))!.toHaveTextContent('Package Plugin 0')
+      expect(screen.getByTestId('package-item')).toBeInTheDocument()
+      expect(screen.getByTestId('package-item-name')).toHaveTextContent('Package Plugin 0')
     })
 
     it('should render GithubItem for github type dependency', async () => {
@@ -287,9 +279,9 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
-      expect(screen.getByTestId('github-item-repo'))!.toHaveTextContent('test-org/plugin-0')
+      expect(screen.getByTestId('github-item-repo')).toHaveTextContent('test-org/plugin-0')
     })
 
     it('should render MarketplaceItem for marketplace type dependency', async () => {
@@ -301,21 +293,24 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
       })
     })
 
     it('should render multiple items for mixed dependency types', async () => {
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [createPackageDependency(0), createGitHubDependency(1)] as Dependency[],
+        allPlugins: [
+          createPackageDependency(0),
+          createGitHubDependency(1),
+        ] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
     })
 
@@ -333,7 +328,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.queryByTestId('github-item')).toBeInTheDocument()
       })
     })
   })
@@ -360,22 +355,20 @@ describe('InstallMulti Component', () => {
 
       render(<InstallMulti {...propsWithSelected} />)
 
-      expect(screen.getByTestId('package-item-checked'))!.toHaveTextContent('checked')
+      expect(screen.getByTestId('package-item-checked')).toHaveTextContent('checked')
     })
 
     it('should show unchecked state when plugin is not selected', () => {
       render(<InstallMulti {...defaultProps} />)
 
-      expect(screen.getByTestId('package-item-checked'))!.toHaveTextContent('unchecked')
+      expect(screen.getByTestId('package-item-checked')).toHaveTextContent('unchecked')
     })
   })
 
   // ==================== useImperativeHandle Tests ====================
   describe('Imperative Handle', () => {
     it('should expose selectAllPlugins function', async () => {
-      const ref: {
-        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
-      } = { current: null }
+      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
 
       render(<InstallMulti {...defaultProps} ref={ref} />)
 
@@ -391,9 +384,7 @@ describe('InstallMulti Component', () => {
     })
 
     it('should expose deSelectAllPlugins function', async () => {
-      const ref: {
-        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
-      } = { current: null }
+      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
 
       render(<InstallMulti {...defaultProps} ref={ref} />)
 
@@ -436,7 +427,7 @@ describe('InstallMulti Component', () => {
       // The getVersionInfo function returns hasInstalled, installedVersion, toInstallVersion
       // These are passed to child components
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
     })
   })
@@ -452,7 +443,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
 
       // The onFetchedPayload callback should have been called by the mock
@@ -471,7 +462,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
       })
     })
   })
@@ -494,7 +485,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
     })
 
@@ -507,7 +498,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithMarketplace} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
     })
   })
@@ -518,8 +509,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       // Package plugins are initialized immediately
-      // Package plugins are initialized immediately
-      expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+      expect(screen.getByTestId('package-item')).toBeInTheDocument()
     })
 
     it('should update plugins when GitHub plugin is fetched', async () => {
@@ -531,7 +521,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...githubProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
     })
   })
@@ -563,7 +553,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
     })
 
@@ -578,9 +568,7 @@ describe('InstallMulti Component', () => {
 
       // Component should render
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('marketplace-item') || screen.queryByTestId('loading-error'),
-        ).toBeTruthy()
+        expect(screen.queryByTestId('marketplace-item') || screen.queryByTestId('loading-error')).toBeTruthy()
       })
     })
   })
@@ -588,14 +576,15 @@ describe('InstallMulti Component', () => {
   // ==================== selectAllPlugins Edge Cases ====================
   describe('selectAllPlugins Edge Cases', () => {
     it('should skip plugins that are not loaded', async () => {
-      const ref: {
-        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
-      } = { current: null }
+      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
 
       // Use mixed plugins where some might not be loaded
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [createPackageDependency(0), createMarketplaceDependency(1)] as Dependency[],
+        allPlugins: [
+          createPackageDependency(0),
+          createMarketplaceDependency(1),
+        ] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} ref={ref} />)
@@ -624,12 +613,11 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
       })
 
       // Version should be displayed
-      // Version should be displayed
-      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-item-version')).toBeInTheDocument()
     })
   })
 
@@ -678,7 +666,8 @@ describe('InstallMulti Component', () => {
       await waitFor(() => {
         // Either loading error or marketplace item should be present
         expect(
-          screen.queryByTestId('loading-error') || screen.queryByTestId('marketplace-item'),
+          screen.queryByTestId('loading-error')
+          || screen.queryByTestId('marketplace-item'),
         ).toBeTruthy()
       })
     })
@@ -697,7 +686,8 @@ describe('InstallMulti Component', () => {
       // Component should handle error gracefully
       await waitFor(() => {
         expect(
-          screen.queryByTestId('loading-error') || screen.queryByTestId('marketplace-item'),
+          screen.queryByTestId('loading-error')
+          || screen.queryByTestId('marketplace-item'),
         ).toBeTruthy()
       })
     })
@@ -709,18 +699,14 @@ describe('InstallMulti Component', () => {
 
       const marketplaceProps = {
         ...defaultProps,
-        allPlugins: [
-          createMarketplaceDependency(0),
-          createMarketplaceDependency(1),
-        ] as Dependency[],
+        allPlugins: [createMarketplaceDependency(0), createMarketplaceDependency(1)] as Dependency[],
       }
 
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
         // Component should render
-        // Component should render
-        expect(document.body)!.toBeInTheDocument()
+        expect(document.body).toBeInTheDocument()
       })
     })
   })
@@ -731,7 +717,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
 
       // The getVersionInfo callback should return correct structure
@@ -752,10 +738,10 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
 
-      expect(screen.getByTestId('github-item-checked'))!.toHaveTextContent('checked')
+      expect(screen.getByTestId('github-item-checked')).toHaveTextContent('checked')
     })
 
     it('should show checked state for marketplace item when selected', async () => {
@@ -769,7 +755,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
       })
 
       // The checked prop should be passed to the item
@@ -785,19 +771,17 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...propsWithoutSelected} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('github-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('github-item')).toBeInTheDocument()
       })
 
-      expect(screen.getByTestId('github-item-checked'))!.toHaveTextContent('unchecked')
+      expect(screen.getByTestId('github-item-checked')).toHaveTextContent('unchecked')
     })
   })
 
   // ==================== Plugin Not Loaded Scenario ====================
   describe('Plugin Not Loaded', () => {
     it('should skip undefined plugins in selectAllPlugins', async () => {
-      const ref: {
-        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
-      } = { current: null }
+      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
 
       // Create a scenario where some plugins might not be loaded
       const mixedProps = {
@@ -829,14 +813,17 @@ describe('InstallMulti Component', () => {
     it('should filter plugins based on canInstall when selecting', async () => {
       const mixedProps = {
         ...defaultProps,
-        allPlugins: [createPackageDependency(0), createPackageDependency(1)] as Dependency[],
+        allPlugins: [
+          createPackageDependency(0),
+          createPackageDependency(1),
+        ] as Dependency[],
       }
 
       render(<InstallMulti {...mixedProps} />)
 
       const packageItems = screen.getAllByTestId('package-item')
       await act(async () => {
-        fireEvent.click(packageItems[0]!)
+        fireEvent.click(packageItems[0])
       })
 
       // onSelect should be called with filtered plugin count
@@ -855,12 +842,11 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...marketplaceProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('marketplace-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('marketplace-item')).toBeInTheDocument()
       })
 
       // The version should be displayed (from dependency or plugin)
-      // The version should be displayed (from dependency or plugin)
-      expect(screen.getByTestId('marketplace-item-version'))!.toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-item-version')).toBeInTheDocument()
     })
   })
 
@@ -870,7 +856,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
       })
 
       // The component should pass versionInfo to items
@@ -882,7 +868,7 @@ describe('InstallMulti Component', () => {
       render(<InstallMulti {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('package-item'))!.toBeInTheDocument()
+        expect(screen.getByTestId('package-item')).toBeInTheDocument()
         expect(defaultProps.onLoadedAllPlugin).toHaveBeenCalled()
       })
     })
@@ -914,7 +900,10 @@ describe('InstallMulti Component', () => {
     it('should handle multiple GitHub plugin fetches', async () => {
       const multiGithub = {
         ...defaultProps,
-        allPlugins: [createGitHubDependency(0), createGitHubDependency(1)] as Dependency[],
+        allPlugins: [
+          createGitHubDependency(0),
+          createGitHubDependency(1),
+        ] as Dependency[],
       }
 
       render(<InstallMulti {...multiGithub} />)
@@ -929,9 +918,7 @@ describe('InstallMulti Component', () => {
   // ==================== canInstall false scenario ====================
   describe('canInstall False Scenario', () => {
     it('should skip plugins that cannot be installed in selectAllPlugins', async () => {
-      const ref: {
-        current: { selectAllPlugins: () => void; deSelectAllPlugins: () => void } | null
-      } = { current: null }
+      const ref: { current: { selectAllPlugins: () => void, deSelectAllPlugins: () => void } | null } = { current: null }
 
       const multiplePlugins = {
         ...defaultProps,

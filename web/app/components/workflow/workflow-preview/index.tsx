@@ -1,9 +1,18 @@
 'use client'
 
-import type { EdgeChange, NodeChange, Viewport } from 'reactflow'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useState } from 'react'
+import type {
+  EdgeChange,
+  NodeChange,
+  Viewport,
+} from 'reactflow'
+import type {
+  Edge,
+  Node,
+} from '@/app/components/workflow/types'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import ReactFlow, {
   applyEdgeChanges,
   applyNodeChanges,
@@ -12,13 +21,21 @@ import ReactFlow, {
   ReactFlowProvider,
   SelectionMode,
 } from 'reactflow'
-import { CUSTOM_EDGE, CUSTOM_NODE } from '@/app/components/workflow/constants'
+import {
+  CUSTOM_EDGE,
+  CUSTOM_NODE,
+  ITERATION_CHILDREN_Z_INDEX,
+} from '@/app/components/workflow/constants'
 import CustomConnectionLine from '@/app/components/workflow/custom-connection-line'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
-import { initialEdges, initialNodes } from '@/app/components/workflow/utils/workflow-init'
+import {
+  initialEdges,
+  initialNodes,
+} from '@/app/components/workflow/utils/workflow-init'
+import { cn } from '@/utils/classnames'
 import CustomEdge from './components/custom-edge'
 import CustomNode from './components/nodes'
 import IterationStartNode from './components/nodes/iteration-start'
@@ -57,16 +74,22 @@ const WorkflowPreview = ({
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodesData((nds) => applyNodeChanges(changes, nds)),
+    (changes: NodeChange[]) => setNodesData(nds => applyNodeChanges(changes, nds)),
     [],
   )
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdgesData((eds) => applyEdgeChanges(changes, eds)),
+    (changes: EdgeChange[]) => setEdgesData(eds => applyEdgeChanges(changes, eds)),
     [],
   )
 
   return (
-    <div id="workflow-container" className={cn('relative size-full', className)}>
+    <div
+      id="workflow-container"
+      className={cn(
+        'relative h-full w-full',
+        className,
+      )}
+    >
       <>
         <MiniMap
           pannable
@@ -76,12 +99,9 @@ const WorkflowPreview = ({
             height: 72,
           }}
           maskColor="var(--color-workflow-minimap-bg)"
-          className={cn(
-            'absolute! bottom-14! z-9 m-0! h-[72px]! w-[102px]! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!',
-            miniMapToRight ? 'right-4!' : 'left-4!',
-          )}
+          className={cn('!absolute !bottom-14 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px] !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5', miniMapToRight ? '!right-4' : '!left-4')}
         />
-        <div className="absolute bottom-4 left-4 z-9 mt-1 flex items-center gap-2">
+        <div className="absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>
@@ -93,10 +113,11 @@ const WorkflowPreview = ({
         edges={edgesData}
         onEdgesChange={onEdgesChange}
         connectionLineComponent={CustomConnectionLine}
+        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={false}
+        nodesDraggable
         nodesConnectable={false}
         nodesFocusable={false}
         edgesFocusable={false}

@@ -1,9 +1,6 @@
-from typing import Any
-
-
 class OpeningStatementConfigManager:
     @classmethod
-    def convert(cls, config: dict[str, Any]) -> tuple[str, list[str]]:
+    def convert(cls, config: dict) -> tuple[str, list]:
         """
         Convert model config to model config
 
@@ -18,7 +15,7 @@ class OpeningStatementConfigManager:
         return opening_statement, suggested_questions_list
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for opening statement feature
 

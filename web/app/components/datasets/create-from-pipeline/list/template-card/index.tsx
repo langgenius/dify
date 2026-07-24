@@ -1,21 +1,13 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import Confirm from '@/app/components/base/confirm'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {
@@ -36,20 +28,21 @@ type TemplateCardProps = {
   type: 'customized' | 'built-in'
 }
 
-const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
+const TemplateCard = ({
+  pipeline,
+  showMoreOperations = true,
+  type,
+}: TemplateCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(
-    {
-      template_id: pipeline.id,
-      type,
-    },
-    false,
-  )
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
+    template_id: pipeline.id,
+    type,
+  }, false)
   const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useInvalidDatasetList()
@@ -57,7 +50,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+      Toast.notify({
+        type: 'error',
+        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+      })
       return
     }
     const request = {
@@ -65,7 +61,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+        Toast.notify({
+          type: 'success',
+          message: t('creation.successTip', { ns: 'datasetPipeline' }),
+        })
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
@@ -77,20 +76,13 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+        Toast.notify({
+          type: 'error',
+          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+        })
       },
     })
-  }, [
-    getPipelineTemplateInfo,
-    createDataset,
-    t,
-    handleCheckPluginDependencies,
-    push,
-    invalidDatasetList,
-    pipeline.name,
-    pipeline.id,
-    type,
-  ])
+  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)
@@ -111,15 +103,22 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
-    if (isExporting) return
+    if (isExporting)
+      return
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
+        Toast.notify({
+          type: 'success',
+          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
+        })
       },
       onError: () => {
-        toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
+        Toast.notify({
+          type: 'error',
+          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
+        })
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
@@ -161,53 +160,39 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         handleDelete={handleDelete}
       />
       {showEditModal && (
-        <Dialog
-          open={showEditModal}
-          onOpenChange={(open) => {
-            if (!open) closeEditModal()
-          }}
+        <Modal
+          isShow={showEditModal}
+          onClose={closeEditModal}
+          className="max-w-[520px] p-0"
         >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
-            <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
-          </DialogContent>
-        </Dialog>
+          <EditPipelineInfo
+            pipeline={pipeline}
+            onClose={closeEditModal}
+          />
+        </Modal>
       )}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['deletePipeline.title'], { ns: 'datasetPipeline' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['deletePipeline.content'], { ns: 'datasetPipeline' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showDeleteConfirm && (
+        <Confirm
+          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
+          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
+          isShow={showDeleteConfirm}
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+        />
+      )}
       {showDetailModal && (
-        <Dialog
-          open={showDetailModal}
-          onOpenChange={(open) => {
-            if (!open) closeDetailsModal()
-          }}
+        <Modal
+          isShow={showDetailModal}
+          onClose={closeDetailsModal}
+          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
         >
-          <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
-            <Details
-              id={pipeline.id}
-              type={type}
-              onClose={closeDetailsModal}
-              onApplyTemplate={handleUseTemplate}
-            />
-          </DialogContent>
-        </Dialog>
+          <Details
+            id={pipeline.id}
+            type={type}
+            onClose={closeDetailsModal}
+            onApplyTemplate={handleUseTemplate}
+          />
+        </Modal>
       )}
     </div>
   )

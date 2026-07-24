@@ -1,4 +1,5 @@
 import type {
+  AnnotationsCountResponse,
   ChatConversationFullDetailResponse,
   ChatConversationsRequest,
   ChatConversationsResponse,
@@ -10,21 +11,15 @@ import type {
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
 import { get } from './base'
-import { consoleClient } from './client'
 
 const NAME_SPACE = 'log'
 
 // ============ Annotations Count ============
 
 export const useAnnotationsCount = (appId: string) => {
-  return useQuery({
+  return useQuery<AnnotationsCountResponse>({
     queryKey: [NAME_SPACE, 'annotations-count', appId],
-    queryFn: () =>
-      consoleClient.apps.byAppId.annotations.count.get({
-        params: {
-          app_id: appId,
-        },
-      }),
+    queryFn: () => get<AnnotationsCountResponse>(`/apps/${appId}/annotations/count`),
     enabled: !!appId,
   })
 }
@@ -54,8 +49,7 @@ type CompletionConversationsParams = {
 export const useCompletionConversations = ({ appId, params }: CompletionConversationsParams) => {
   return useQuery<CompletionConversationsResponse>({
     queryKey: [NAME_SPACE, 'completion-conversations', appId, params],
-    queryFn: () =>
-      get<CompletionConversationsResponse>(`/apps/${appId}/completion-conversations`, { params }),
+    queryFn: () => get<CompletionConversationsResponse>(`/apps/${appId}/completion-conversations`, { params }),
     enabled: !!appId,
   })
 }
@@ -65,10 +59,7 @@ export const useCompletionConversations = ({ appId, params }: CompletionConversa
 export const useChatConversationDetail = (appId?: string, conversationId?: string) => {
   return useQuery<ChatConversationFullDetailResponse>({
     queryKey: [NAME_SPACE, 'chat-conversation-detail', appId, conversationId],
-    queryFn: () =>
-      get<ChatConversationFullDetailResponse>(
-        `/apps/${appId}/chat-conversations/${conversationId}`,
-      ),
+    queryFn: () => get<ChatConversationFullDetailResponse>(`/apps/${appId}/chat-conversations/${conversationId}`),
     enabled: !!appId && !!conversationId,
   })
 }
@@ -78,10 +69,7 @@ export const useChatConversationDetail = (appId?: string, conversationId?: strin
 export const useCompletionConversationDetail = (appId?: string, conversationId?: string) => {
   return useQuery<CompletionConversationFullDetailResponse>({
     queryKey: [NAME_SPACE, 'completion-conversation-detail', appId, conversationId],
-    queryFn: () =>
-      get<CompletionConversationFullDetailResponse>(
-        `/apps/${appId}/completion-conversations/${conversationId}`,
-      ),
+    queryFn: () => get<CompletionConversationFullDetailResponse>(`/apps/${appId}/completion-conversations/${conversationId}`),
     enabled: !!appId && !!conversationId,
   })
 }
@@ -108,10 +96,7 @@ type WorkflowPausedDetailsParams = {
   enabled?: boolean
 }
 
-export const useWorkflowPausedDetails = ({
-  workflowRunId,
-  enabled = true,
-}: WorkflowPausedDetailsParams) => {
+export const useWorkflowPausedDetails = ({ workflowRunId, enabled = true }: WorkflowPausedDetailsParams) => {
   return useQuery<WorkflowPausedDetailsResponse>({
     queryKey: [NAME_SPACE, 'workflow-paused-details', workflowRunId],
     queryFn: () => get<WorkflowPausedDetailsResponse>(`/workflow/${workflowRunId}/pause-details`),

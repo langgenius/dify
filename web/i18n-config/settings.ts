@@ -1,5 +1,5 @@
 import type { InitOptions } from 'i18next'
-import { defaultNS, namespaces } from './resources'
+import { namespaces } from './resources'
 
 export function getInitOptions(): InitOptions {
   return {
@@ -7,8 +7,6 @@ export function getInitOptions(): InitOptions {
     load: 'currentOnly',
     fallbackLng: 'en-US',
     partialBundledLanguages: true,
-    defaultNS,
-    enableSelector: 'optimize',
     keySeparator: false,
     ns: namespaces,
     interpolation: {

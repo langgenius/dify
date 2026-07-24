@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime
 from functools import cached_property
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -19,50 +19,9 @@ from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
-from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
+from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
-
-TriggerJsonObject = dict[str, object]
-TriggerCredentials = dict[str, str]
-
-
-class WorkflowTriggerLogDict(TypedDict):
-    id: str
-    tenant_id: str
-    app_id: str
-    workflow_id: str
-    workflow_run_id: str | None
-    root_node_id: str | None
-    trigger_metadata: Any
-    trigger_type: str
-    trigger_data: Any
-    inputs: Any
-    outputs: Any
-    status: str
-    error: str | None
-    queue_name: str
-    celery_task_id: str | None
-    retry_count: int
-    elapsed_time: float | None
-    total_tokens: int | None
-    created_by_role: str
-    created_by: str
-    created_at: str | None
-    triggered_at: str | None
-    finished_at: str | None
-
-
-class WorkflowSchedulePlanDict(TypedDict):
-    id: str
-    app_id: str
-    node_id: str
-    tenant_id: str
-    cron_expression: str
-    timezone: str
-    next_run_at: str | None
-    created_at: str
-    updated_at: str
 
 
 class TriggerSubscription(TypeBase):
@@ -92,30 +51,18 @@ class TriggerSubscription(TypeBase):
         String(255), nullable=False, comment="Provider identifier (e.g., plugin_id/provider_name)"
     )
     endpoint_id: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription endpoint")
-    parameters: Mapped[TriggerJsonObject] = mapped_column(
-        sa.JSON, nullable=False, comment="Subscription parameters JSON"
-    )
-    properties: Mapped[TriggerJsonObject] = mapped_column(
-        sa.JSON, nullable=False, comment="Subscription properties JSON"
-    )
+    parameters: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription parameters JSON")
+    properties: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False, comment="Subscription properties JSON")
 
-    credentials: Mapped[TriggerCredentials] = mapped_column(
+    credentials: Mapped[dict[str, Any]] = mapped_column(
         sa.JSON, nullable=False, comment="Subscription credentials JSON"
     )
-    credential_type: Mapped[CredentialType] = mapped_column(
-        EnumText(CredentialType, length=50), nullable=False, comment="oauth or api_key"
-    )
+    credential_type: Mapped[str] = mapped_column(String(50), nullable=False, comment="oauth or api_key")
     credential_expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="OAuth token expiration timestamp, -1 for never"
     )
     expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
-    )
-    visibility: Mapped[PermissionEnum] = mapped_column(
-        EnumText(PermissionEnum, length=40),
-        nullable=False,
-        server_default=sa.text("'all_team_members'"),
-        default=PermissionEnum.ALL_TEAM,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -125,7 +72,7 @@ class TriggerSubscription(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -152,7 +99,7 @@ class TriggerSubscription(TypeBase):
             endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
             parameters=self.parameters,
             properties=self.properties,
-            credential_type=self.credential_type,
+            credential_type=CredentialType(self.credential_type),
             credentials=self.credentials,
             workflows_in_use=-1,
         )
@@ -180,7 +127,7 @@ class TriggerOAuthSystemClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -210,13 +157,13 @@ class TriggerOAuthTenantClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
     @property
-    def oauth_params(self) -> Mapping[str, object]:
-        return cast(TriggerJsonObject, json.loads(self.encrypted_oauth_params or "{}"))
+    def oauth_params(self) -> Mapping[str, Any]:
+        return cast(Mapping[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
 class WorkflowTriggerLog(TypeBase):
@@ -280,7 +227,7 @@ class WorkflowTriggerLog(TypeBase):
 
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
     retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     elapsed_time: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
@@ -303,7 +250,7 @@ class WorkflowTriggerLog(TypeBase):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
-    def to_dict(self) -> WorkflowTriggerLogDict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses"""
         return {
             "id": self.id,
@@ -370,7 +317,7 @@ class WorkflowWebhookTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -430,7 +377,7 @@ class WorkflowPluginTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -479,7 +426,7 @@ class AppTrigger(TypeBase):
         DateTime,
         nullable=False,
         default=naive_utc_now(),
-        onupdate=naive_utc_now(),
+        server_onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -534,7 +481,7 @@ class WorkflowSchedulePlan(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
-    def to_dict(self) -> WorkflowSchedulePlanDict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation"""
         return {
             "id": self.id,

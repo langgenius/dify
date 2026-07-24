@@ -1,25 +1,37 @@
+import type { ReactNode } from 'react'
 import * as React from 'react'
-import { ConsoleContextProviders, ConsoleRuntimeProviders } from '@/app/(commonLayout)/providers'
+import { AppInitializer } from '@/app/components/app-initializer'
+import AmplitudeProvider from '@/app/components/base/amplitude'
+import GA, { GaType } from '@/app/components/base/ga'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
-import MaintenanceNotice from '@/app/components/header/maintenance-notice'
+import { AppContextProvider } from '@/context/app-context-provider'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { ModalContextProvider } from '@/context/modal-context-provider'
+import { ProviderContextProvider } from '@/context/provider-context-provider'
 import Header from './header'
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
+const Layout = ({ children }: { children: ReactNode }) => {
   return (
-    <React.Fragment>
-      <ConsoleRuntimeProviders>
-        <div className="flex h-full flex-col overflow-hidden bg-background-body">
-          <MaintenanceNotice />
-          <ConsoleContextProviders>
-            <HeaderWrapper>
-              <Header />
-            </HeaderWrapper>
-            <div className="relative flex h-0 min-h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
-              {children}
-            </div>
-          </ConsoleContextProviders>
-        </div>
-      </ConsoleRuntimeProviders>
-    </React.Fragment>
+    <>
+      <GA gaType={GaType.admin} />
+      <AmplitudeProvider />
+      <AppInitializer>
+        <AppContextProvider>
+          <EventEmitterContextProvider>
+            <ProviderContextProvider>
+              <ModalContextProvider>
+                <HeaderWrapper>
+                  <Header />
+                </HeaderWrapper>
+                <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
+                  {children}
+                </div>
+              </ModalContextProvider>
+            </ProviderContextProvider>
+          </EventEmitterContextProvider>
+        </AppContextProvider>
+      </AppInitializer>
+    </>
   )
 }
+export default Layout

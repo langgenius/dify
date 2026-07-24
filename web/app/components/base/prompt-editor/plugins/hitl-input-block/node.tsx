@@ -1,4 +1,4 @@
-import type { NodeKey, SerializedLexicalNode } from 'lexical'
+import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType } from '../../types'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
@@ -21,7 +21,7 @@ export type HITLNodeProps = {
   readonly?: boolean
 }
 
-type SerializedNode = SerializedLexicalNode & HITLNodeProps
+export type SerializedNode = SerializedLexicalNode & HITLNodeProps
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string
@@ -37,7 +37,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __ragVariables?: Var[]
   __readonly?: boolean
 
-  override isIsolated(): boolean {
+  isIsolated(): boolean {
     return true // This is necessary for drag-and-drop to work correctly
   }
 
@@ -45,7 +45,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return true // This is necessary for drag-and-drop to work correctly
   }
 
-  static override getType(): string {
+  static getType(): string {
     return 'hitl-input-block'
   }
 
@@ -109,12 +109,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return self.__readonly || false
   }
 
-  setReadonly(readonly?: boolean): void {
-    const self = this.getWritable()
-    self.__readonly = readonly
-  }
-
-  static override clone(node: HITLInputNode): HITLInputNode {
+  static clone(node: HITLInputNode): HITLInputNode {
     return new HITLInputNode(
       node.__variableName,
       node.__nodeId,
@@ -132,7 +127,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     )
   }
 
-  override isInline(): boolean {
+  isInline(): boolean {
     return true
   }
 
@@ -167,23 +162,17 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     this.__readonly = readonly
   }
 
-  override createDOM(): HTMLElement {
+  createDOM(): HTMLElement {
     const div = document.createElement('div')
-    div.classList.add(
-      'inline-flex',
-      'w-[calc(100%-1px)]',
-      'items-center',
-      'align-middle',
-      'support-drag',
-    )
+    div.classList.add('inline-flex', 'w-[calc(100%-1px)]', 'items-center', 'align-middle', 'support-drag')
     return div
   }
 
-  override updateDOM(): false {
+  updateDOM(): false {
     return false
   }
 
-  override decorate(): React.JSX.Element {
+  decorate(): React.JSX.Element {
     return (
       <HILTInputBlockComponent
         nodeKey={this.getKey()}
@@ -203,7 +192,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     )
   }
 
-  static override importJSON(serializedNode: SerializedNode): HITLInputNode {
+  static importJSON(serializedNode: SerializedNode): HITLInputNode {
     const node = $createHITLInputNode(
       serializedNode.variableName,
       serializedNode.nodeId,
@@ -222,7 +211,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  exportJSON(): SerializedNode {
     return {
       type: 'hitl-input-block',
       version: 1,
@@ -241,7 +230,7 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
     }
   }
 
-  override getTextContent(): string {
+  getTextContent(): string {
     return `{{#$output.${this.getVariableName()}#}}`
   }
 }
@@ -274,4 +263,10 @@ export function $createHITLInputNode(
     ragVariables,
     readonly,
   )
+}
+
+export function $isHITLInputNode(
+  node: HITLInputNode | LexicalNode | null | undefined,
+): node is HITLInputNode {
+  return node instanceof HITLInputNode
 }

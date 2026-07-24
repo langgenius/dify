@@ -1,25 +1,19 @@
-"""Unit coverage for console app controller contracts and response mapping."""
+"""
+Additional tests to improve coverage for low-coverage modules in controllers/console/app.
+Target: increase coverage for files with <75% coverage.
+"""
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
-from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
-from pydantic import ValidationError
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.console import console_ns
 from controllers.console.app import (
     annotation as annotation_module,
-)
-from controllers.console.app import (
-    app as app_module,
 )
 from controllers.console.app import (
     completion as completion_module,
@@ -60,55 +54,37 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
-from models import App, Site
-from models.account import Account, AccountStatus
-from models.engine import db
-from models.enums import CustomizeTokenStrategy
-from models.trigger import WorkflowWebhookTrigger
-from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-
-APP_ID = "11111111-1111-1111-1111-111111111111"
-TENANT_ID = "22222222-2222-2222-2222-222222222222"
-USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
-def _make_account() -> Account:
-    account = Account(
-        name="tester",
-        email="tester@example.com",
-        status=AccountStatus.ACTIVE,
-    )
-    account.id = USER_ID
-    return account
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
 
 
-def _make_app(
-    app_id: str = APP_ID,
-    *,
-    tenant_id: str = TENANT_ID,
-    icon_type: app_module.IconType | None = None,
-) -> App:
-    app = App()
-    app.id = app_id
-    app.tenant_id = tenant_id
-    app.icon_type = icon_type
-    return app
+class _ConnContext:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, _query, _args):
+        return self._rows
 
 
-@pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        Site.__table__.create(db.engine)
-        WorkflowWebhookTrigger.__table__.create(db.engine)
-        yield app
-
-
+# ========== Completion Tests ==========
 class TestCompletionEndpoints:
+    """Tests for completion API endpoints."""
+
     def test_completion_create_payload(self):
+        """Test completion creation payload."""
         payload = CompletionMessagePayload(inputs={"prompt": "test"}, model_config={})
         assert payload.inputs == {"prompt": "test"}
 
@@ -122,10 +98,17 @@ class TestCompletionEndpoints:
         )
         assert payload.query == "hi"
 
-    def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+    def test_completion_api_success(self, app, monkeypatch):
         api = completion_module.CompletionMessageApi()
-        method = unwrap(api.post)
+        method = _unwrap(api.post)
 
+        class DummyAccount:
+            pass
+
+        dummy_account = DummyAccount()
+
+        monkeypatch.setattr(completion_module, "current_user", dummy_account)
+        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -137,20 +120,25 @@ class TestCompletionEndpoints:
             lambda response: {"result": response},
         )
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
+        with app.test_request_context(
+            "/",
+            json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            resp = method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            resp = method(app_model=MagicMock(id="app-1"))
 
         assert resp == {"result": {"text": "ok"}}
 
-    def test_completion_api_conversation_not_exists(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_completion_api_conversation_not_exists(self, app, monkeypatch):
         api = completion_module.CompletionMessageApi()
-        method = unwrap(api.post)
+        method = _unwrap(api.post)
 
+        class DummyAccount:
+            pass
+
+        dummy_account = DummyAccount()
+
+        monkeypatch.setattr(completion_module, "current_user", dummy_account)
+        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
@@ -159,123 +147,68 @@ class TestCompletionEndpoints:
             ),
         )
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-            pytest.raises(NotFound),
+        with app.test_request_context(
+            "/",
+            json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            with pytest.raises(NotFound):
+                method(app_model=MagicMock(id="app-1"))
 
-    def test_completion_api_provider_not_initialized(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_completion_api_provider_not_initialized(self, app, monkeypatch):
         api = completion_module.CompletionMessageApi()
-        method = unwrap(api.post)
+        method = _unwrap(api.post)
 
+        class DummyAccount:
+            pass
+
+        dummy_account = DummyAccount()
+
+        monkeypatch.setattr(completion_module, "current_user", dummy_account)
+        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
             lambda **_kwargs: (_ for _ in ()).throw(completion_module.ProviderTokenNotInitError("x")),
         )
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-            pytest.raises(completion_module.ProviderNotInitializeError),
+        with app.test_request_context(
+            "/",
+            json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            with pytest.raises(completion_module.ProviderNotInitializeError):
+                method(app_model=MagicMock(id="app-1"))
 
-    def test_completion_api_quota_exceeded(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
-    ) -> None:
+    def test_completion_api_quota_exceeded(self, app, monkeypatch):
         api = completion_module.CompletionMessageApi()
-        method = unwrap(api.post)
+        method = _unwrap(api.post)
 
+        class DummyAccount:
+            pass
+
+        dummy_account = DummyAccount()
+
+        monkeypatch.setattr(completion_module, "current_user", dummy_account)
+        monkeypatch.setattr(completion_module, "Account", DummyAccount)
         monkeypatch.setattr(
             completion_module.AppGenerateService,
             "generate",
             lambda **_kwargs: (_ for _ in ()).throw(completion_module.QuotaExceededError()),
         )
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-            pytest.raises(completion_module.ProviderQuotaExceededError),
+        with app.test_request_context(
+            "/",
+            json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            method(api, session, _make_account(), app_model=MagicMock(id=APP_ID))
+            with pytest.raises(completion_module.ProviderQuotaExceededError):
+                method(app_model=MagicMock(id="app-1"))
 
 
-class TestAppEndpoints:
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        api = app_module.AppApi()
-        method = unwrap(api.put)
-        payload = {
-            "name": "Updated App",
-            "description": "Updated description",
-            "icon": "🤖",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetailWithSite, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1", method="PUT", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app(icon_type=app_module.IconType.EMOJI))
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app.call_args.args[1]["icon_type"] is None
-
-    def test_update_app_payload_should_reject_empty_icon_type(self):
-        with pytest.raises(ValidationError):
-            app_module.UpdateAppPayload.model_validate(
-                {
-                    "name": "Updated App",
-                    "description": "Updated description",
-                    "icon_type": "",
-                    "icon": "🤖",
-                    "icon_background": "#FFFFFF",
-                }
-            )
-
-    def test_app_icon_post_should_forward_icon_type(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
-        api = app_module.AppIconApi()
-        method = unwrap(api.post)
-        payload = {
-            "icon": "https://example.com/icon.png",
-            "icon_type": "image",
-            "icon_background": "#FFFFFF",
-        }
-        app_service = MagicMock()
-        app_service.update_app_icon.return_value = _make_app()
-        response_model = MagicMock()
-        response_model.model_dump.return_value = {"id": "app-1"}
-
-        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
-
-        with (
-            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-        ):
-            response = method(api, MagicMock(spec=Session), app_model=_make_app())
-
-        assert response == {"id": "app-1"}
-        assert app_service.update_app_icon.call_args.args[1:] == (
-            payload["icon"],
-            payload["icon_background"],
-            app_module.IconType.IMAGE,
-        )
-
-
+# ========== OpsTrace Tests ==========
 class TestOpsTraceEndpoints:
+    """Tests for ops_trace endpoint."""
+
     def test_ops_trace_query_basic(self):
+        """Test ops_trace query."""
         query = TraceProviderQuery(tracing_provider="langfuse")
         assert query.tracing_provider == "langfuse"
 
@@ -283,9 +216,9 @@ class TestOpsTraceEndpoints:
         payload = TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"})
         assert payload.tracing_config["api_key"] == "k"
 
-    def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_trace_app_config_get_empty(self, app, monkeypatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = unwrap(api.get)
+        method = _unwrap(api.get)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -294,13 +227,13 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, app_model=MagicMock(id="app-1"))
+            result = method(app_id="app-1")
 
         assert result == {"has_not_configured": True}
 
-    def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_trace_app_config_post_invalid(self, app, monkeypatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = unwrap(api.post)
+        method = _unwrap(api.post)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -313,11 +246,11 @@ class TestOpsTraceEndpoints:
             json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
         ):
             with pytest.raises(BadRequest):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(app_id="app-1")
 
-    def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_trace_app_config_delete_not_found(self, app, monkeypatch):
         api = ops_trace_module.TraceAppConfigApi()
-        method = unwrap(api.delete)
+        method = _unwrap(api.delete)
 
         monkeypatch.setattr(
             ops_trace_module.OpsService,
@@ -327,91 +260,93 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(api, app_model=MagicMock(id="app-1"))
+                method(app_id="app-1")
 
 
+# ========== Site Tests ==========
 class TestSiteEndpoints:
-    @staticmethod
-    def _add_site(session: Session) -> Site:
-        site = Site(
-            app_id=APP_ID,
-            title="My Site",
-            description="Test site",
-            default_language="en-US",
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            code="test-code",
-        )
-        session.add(site)
-        session.commit()
-        return site
+    """Tests for site endpoint."""
 
     def test_site_response_structure(self):
-        payload = AppSiteUpdatePayload(
-            title="My Site",
-            description="Test site",
-            input_placeholder="Ask me anything",
-        )
+        """Test site response structure."""
+        payload = AppSiteUpdatePayload(title="My Site", description="Test site")
         assert payload.title == "My Site"
-        assert payload.input_placeholder == "Ask me anything"
 
     def test_site_default_language_validation(self):
         payload = AppSiteUpdatePayload(default_language="en-US")
         assert payload.default_language == "en-US"
 
-    def test_app_site_update_post(
-        self,
-        database_app: Flask,
-    ) -> None:
+    def test_app_site_update_post(self, app, monkeypatch):
         api = site_module.AppSite()
-        method = unwrap(api.post)
-        site = self._add_site(db.session)
+        method = _unwrap(api.post)
 
-        with database_app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
-            result = method(api, db.session, _make_account(), app_model=_make_app())
+        site = MagicMock()
+        query = MagicMock()
+        query.where.return_value.first.return_value = site
+        monkeypatch.setattr(
+            site_module.db,
+            "session",
+            MagicMock(query=lambda *_args, **_kwargs: query, commit=lambda: None),
+        )
+        monkeypatch.setattr(
+            site_module,
+            "current_account_with_tenant",
+            lambda: (SimpleNamespace(id="u1"), "t1"),
+        )
+        monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
-        db.session.refresh(site)
-        assert isinstance(result, dict)
-        assert result["title"] == "My Site"
-        assert result["input_placeholder"] == "Ask me anything"
-        assert site.input_placeholder == "Ask me anything"
+        with app.test_request_context("/", json={"title": "My Site"}):
+            result = method(app_model=SimpleNamespace(id="app-1"))
 
-    def test_app_site_access_token_reset(
-        self,
-        database_app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+        assert result is site
+
+    def test_app_site_access_token_reset(self, app, monkeypatch):
         api = site_module.AppSiteAccessTokenReset()
-        method = unwrap(api.post)
-        site = self._add_site(db.session)
+        method = _unwrap(api.post)
+
+        site = MagicMock()
+        query = MagicMock()
+        query.where.return_value.first.return_value = site
+        monkeypatch.setattr(
+            site_module.db,
+            "session",
+            MagicMock(query=lambda *_args, **_kwargs: query, commit=lambda: None),
+        )
         monkeypatch.setattr(site_module.Site, "generate_code", lambda *_args, **_kwargs: "code")
+        monkeypatch.setattr(
+            site_module,
+            "current_account_with_tenant",
+            lambda: (SimpleNamespace(id="u1"), "t1"),
+        )
+        monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
-        with database_app.test_request_context("/"):
-            result = method(api, db.session, _make_account(), app_model=_make_app())
+        with app.test_request_context("/"):
+            result = method(app_model=SimpleNamespace(id="app-1"))
 
-        db.session.refresh(site)
-        assert isinstance(result, dict)
-        assert result["access_token"] == "code"
-        assert site.code == "code"
+        assert result is site
 
 
+# ========== Workflow Tests ==========
 class TestWorkflowEndpoints:
+    """Tests for workflow endpoints."""
+
     def test_workflow_copy_payload(self):
+        """Test workflow copy payload."""
         payload = SyncDraftWorkflowPayload(graph={}, features={})
         assert payload.graph == {}
-        assert payload.model_dump()["is_collaborative"] is False
-
-    def test_workflow_sync_payload_accepts_collaboration_marker(self):
-        payload = SyncDraftWorkflowPayload.model_validate({"graph": {}, "features": {}, "_is_collaborative": True})
-        assert payload.is_collaborative is True
-        assert payload.model_dump()["is_collaborative"] is True
 
     def test_workflow_mode_query(self):
+        """Test workflow mode query."""
         payload = AdvancedChatWorkflowRunPayload(inputs={}, query="hi")
         assert payload.query == "hi"
 
 
+# ========== Workflow App Log Tests ==========
 class TestWorkflowAppLogEndpoints:
+    """Tests for workflow app log endpoints."""
+
     def test_workflow_app_log_query(self):
+        """Test workflow app log query."""
         query = WorkflowAppLogQuery(keyword="test", page=1, limit=20)
         assert query.keyword == "test"
 
@@ -419,13 +354,23 @@ class TestWorkflowAppLogEndpoints:
         query = WorkflowAppLogQuery(detail="true")
         assert query.detail is True
 
-    def test_workflow_app_log_api_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_app_log_api_get(self, app, monkeypatch):
         api = workflow_app_log_module.WorkflowAppLogApi()
-        method = unwrap(api.get)
+        method = _unwrap(api.get)
 
-        def fake_get_paginate(self, *, session: Session, **_kwargs):
-            assert session.get_bind() is db.engine
-            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        monkeypatch.setattr(workflow_app_log_module, "db", SimpleNamespace(engine=MagicMock()))
+
+        class DummySession:
+            def __enter__(self):
+                return "session"
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(workflow_app_log_module, "Session", lambda *args, **kwargs: DummySession())
+
+        def fake_get_paginate(self, **_kwargs):
+            return {"items": [], "total": 0}
 
         monkeypatch.setattr(
             workflow_app_log_module.WorkflowAppService,
@@ -433,28 +378,42 @@ class TestWorkflowAppLogEndpoints:
             fake_get_paginate,
         )
 
-        with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, app_model=_make_app("app-1"))
+        with app.test_request_context("/?page=1&limit=20"):
+            result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
+        assert result == {"items": [], "total": 0}
 
 
+# ========== Workflow Draft Variable Tests ==========
 class TestWorkflowDraftVariableEndpoints:
+    """Tests for workflow draft variable endpoints."""
+
     def test_workflow_variable_creation(self):
+        """Test workflow variable creation."""
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
-    def test_workflow_variable_collection_get(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_variable_collection_get(self, app, monkeypatch):
         api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
-        method = unwrap(api.get)
+        method = _unwrap(api.get)
+
+        monkeypatch.setattr(workflow_draft_variable_module, "db", SimpleNamespace(engine=MagicMock()))
+
+        class DummySession:
+            def __enter__(self):
+                return "session"
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
 
         class DummyDraftService:
-            def __init__(self, session: Session):
+            def __init__(self, session):
                 self.session = session
 
             def list_variables_without_values(self, **_kwargs):
-                assert self.session.get_bind() is db.engine
                 return {"items": [], "total": 0}
+
+        monkeypatch.setattr(workflow_draft_variable_module, "Session", lambda *args, **kwargs: DummySession())
 
         class DummyWorkflowService:
             def is_workflow_exist(self, *args, **kwargs):
@@ -463,14 +422,18 @@ class TestWorkflowDraftVariableEndpoints:
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowDraftVariableService", DummyDraftService)
         monkeypatch.setattr(workflow_draft_variable_module, "WorkflowService", DummyWorkflowService)
 
-        with database_app.test_request_context("/?page=1&limit=20"):
-            result = method(api, _make_account(), app_model=_make_app("app-1"))
+        with app.test_request_context("/?page=1&limit=20"):
+            result = method(app_model=SimpleNamespace(id="app-1"))
 
         assert result == {"items": [], "total": 0}
 
 
+# ========== Workflow Statistic Tests ==========
 class TestWorkflowStatisticEndpoints:
+    """Tests for workflow statistic endpoints."""
+
     def test_workflow_statistic_time_range(self):
+        """Test workflow statistic time range query."""
         query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
         assert query.start == "2024-01-01"
 
@@ -479,19 +442,17 @@ class TestWorkflowStatisticEndpoints:
         assert query.start is None
         assert query.end is None
 
-    def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(
-            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
-        monkeypatch.setattr(
-            repository,
-            "get_daily_runs_statistics",
-            lambda **_kwargs: [{"date": "2024-01-01"}],
-        )
+    def test_workflow_daily_runs_statistic(self, app, monkeypatch):
+        monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: repository,
+            lambda *_args, **_kwargs: SimpleNamespace(get_daily_runs_statistics=lambda **_kw: [{"date": "2024-01-01"}]),
+        )
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
         )
         monkeypatch.setattr(
             workflow_statistic_module,
@@ -500,28 +461,26 @@ class TestWorkflowStatisticEndpoints:
         )
 
         api = workflow_statistic_module.WorkflowDailyRunsStatistic()
-        method = unwrap(api.get)
+        method = _unwrap(api.get)
 
-        with database_app.test_request_context("/"):
-            account = _make_account()
-            account.timezone = "UTC"
-            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
+        with app.test_request_context("/"):
+            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
-    def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        repository = DifyAPISQLAlchemyWorkflowRunRepository(
-            session_maker=sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
-        monkeypatch.setattr(
-            repository,
-            "get_daily_terminals_statistics",
-            lambda **_kwargs: [{"date": "2024-01-02"}],
-        )
+    def test_workflow_daily_terminals_statistic(self, app, monkeypatch):
+        monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
             "create_api_workflow_run_repository",
-            lambda *_args, **_kwargs: repository,
+            lambda *_args, **_kwargs: SimpleNamespace(
+                get_daily_terminals_statistics=lambda **_kw: [{"date": "2024-01-02"}]
+            ),
+        )
+        monkeypatch.setattr(
+            workflow_statistic_module,
+            "current_account_with_tenant",
+            lambda: (SimpleNamespace(timezone="UTC"), "t1"),
         )
         monkeypatch.setattr(
             workflow_statistic_module,
@@ -530,55 +489,67 @@ class TestWorkflowStatisticEndpoints:
         )
 
         api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
-        method = unwrap(api.get)
+        method = _unwrap(api.get)
 
-        with database_app.test_request_context("/"):
-            account = _make_account()
-            account.timezone = "UTC"
-            response = method(api, account, app_model=_make_app("app-1", tenant_id="t1"))
+        with app.test_request_context("/"):
+            response = method(app_model=SimpleNamespace(tenant_id="t1", id="app-1"))
 
         assert response.get_json() == {"data": [{"date": "2024-01-02"}]}
 
 
+# ========== Workflow Trigger Tests ==========
 class TestWorkflowTriggerEndpoints:
+    """Tests for workflow trigger endpoints."""
+
     def test_webhook_trigger_payload(self):
+        """Test webhook trigger payload."""
         payload = Parser(node_id="node-1")
         assert payload.node_id == "node-1"
 
         enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
         assert enable_payload.enable_trigger is True
 
-    def test_webhook_trigger_api_get(
-        self,
-        database_app: Flask,
-    ) -> None:
+    def test_webhook_trigger_api_get(self, app, monkeypatch):
         api = workflow_trigger_module.WebhookTriggerApi()
-        method = unwrap(api.get)
-        trigger = WorkflowWebhookTrigger(
-            app_id=APP_ID,
-            node_id="node-1",
-            tenant_id=TENANT_ID,
-            webhook_id="webhook-1",
-            created_by=USER_ID,
-        )
-        db.session.add(trigger)
-        db.session.commit()
+        method = _unwrap(api.get)
 
-        with database_app.test_request_context("/?node_id=node-1"):
-            result = method(api, app_model=_make_app())
+        monkeypatch.setattr(workflow_trigger_module, "db", SimpleNamespace(engine=MagicMock()))
 
-        assert isinstance(result, dict)
-        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
-        assert result["webhook_id"] == "webhook-1"
+        trigger = MagicMock()
+        session = MagicMock()
+        session.query.return_value.where.return_value.first.return_value = trigger
+
+        class DummySession:
+            def __enter__(self):
+                return session
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(workflow_trigger_module, "Session", lambda *_args, **_kwargs: DummySession())
+
+        with app.test_request_context("/?node_id=node-1"):
+            result = method(app_model=SimpleNamespace(id="app-1"))
+
+        assert result is trigger
 
 
+# ========== Wraps Tests ==========
 class TestWrapsEndpoints:
+    """Tests for wraps utility functions."""
+
     def test_get_app_model_context(self):
+        """Test get_app_model wrapper context."""
+        # These are decorator functions, so we test their availability
         assert hasattr(wraps_module, "get_app_model")
 
 
+# ========== MCP Server Tests ==========
 class TestMCPServerEndpoints:
+    """Tests for MCP server endpoints."""
+
     def test_mcp_server_connection(self):
+        """Test MCP server connection."""
         payload = MCPServerCreatePayload(parameters={"url": "http://localhost:3000"})
         assert payload.parameters["url"] == "http://localhost:3000"
 
@@ -587,14 +558,22 @@ class TestMCPServerEndpoints:
         assert payload.status == "active"
 
 
+# ========== Error Handling Tests ==========
 class TestErrorHandling:
+    """Tests for error handling in various endpoints."""
+
     def test_annotation_list_query_validation(self):
+        """Test annotation list query validation."""
         with pytest.raises(ValueError):
             annotation_module.AnnotationListQuery(page=0)
 
 
+# ========== Integration-like Tests ==========
 class TestPayloadIntegration:
+    """Integration tests for payload handling."""
+
     def test_multiple_payload_types(self):
+        """Test handling of multiple payload types."""
         payloads = [
             annotation_module.AnnotationReplyPayload(
                 score_threshold=0.5, embedding_provider_name="openai", embedding_model_name="text-embedding-3-small"

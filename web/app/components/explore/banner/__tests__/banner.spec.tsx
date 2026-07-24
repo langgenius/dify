@@ -1,394 +1,458 @@
+import type * as React from 'react'
 import type { Banner as BannerType } from '@/models/app'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
-import * as React from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
-import { Banner } from '../banner'
+import Banner from '../banner'
 
-const mockTrackEvent = vi.fn()
-const mockScrollTo = vi.fn()
-let mockSelectedIndex = 0
-let mockAutoplayPlaying = true
-const mockCarouselListeners = new Set<() => void>()
-const mockAutoplayListeners = {
-  play: new Set<() => void>(),
-  stop: new Set<() => void>(),
-}
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'account-123',
-    name: 'Evan',
-  },
+const mockUseGetBanners = vi.fn()
+
+vi.mock('@/service/use-explore', () => ({
+  useGetBanners: (...args: unknown[]) => mockUseGetBanners(...args),
 }))
 
-const emitAutoplay = (event: 'play' | 'stop') => {
-  mockAutoplayListeners[event].forEach((listener) => listener())
-}
-
-const mockAutoplay = {
-  isPlaying: () => mockAutoplayPlaying,
-  play: vi.fn(() => {
-    mockAutoplayPlaying = true
-    emitAutoplay('play')
-  }),
-  stop: vi.fn(() => {
-    mockAutoplayPlaying = false
-    emitAutoplay('stop')
-  }),
-}
-
-const mockApi = {
-  plugins: () => ({ autoplay: mockAutoplay }),
-  scrollTo: mockScrollTo,
-  on: vi.fn((event: string, listener: () => void) => {
-    if (event === 'autoplay:play') mockAutoplayListeners.play.add(listener)
-    if (event === 'autoplay:stop') mockAutoplayListeners.stop.add(listener)
-    return mockApi
-  }),
-  off: vi.fn((event: string, listener: () => void) => {
-    if (event === 'autoplay:play') mockAutoplayListeners.play.delete(listener)
-    if (event === 'autoplay:stop') mockAutoplayListeners.stop.delete(listener)
-    return mockApi
-  }),
-}
-
-const setMockSelectedIndex = (index: number) => {
-  mockSelectedIndex = index
-  mockCarouselListeners.forEach((listener) => listener())
-}
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+vi.mock('@/context/i18n', () => ({
+  useLocale: () => 'en-US',
 }))
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      i18n: { language: 'en-US' },
-      t: withSelectorKey((key: string, opts?: Record<string, unknown>) => {
-        if (key === 'banner.greeting') return `Welcome back, ${opts?.name}👋`
-        if (key === 'banner.tagline') return 'What if… this is where your next idea begins.'
-        return key
-      }),
-    }),
-  }
-})
 
 vi.mock('@/app/components/base/carousel', () => ({
   Carousel: Object.assign(
-    ({
-      children,
-      className,
-      opts: _opts,
-      plugins: _plugins,
-      ...props
-    }: React.HTMLAttributes<HTMLDivElement> & { opts?: unknown; plugins?: unknown }) => (
-      <div role="region" data-testid="carousel" className={className} {...props}>
+    ({ children, onMouseEnter, onMouseLeave, className }: {
+      children: React.ReactNode
+      onMouseEnter?: () => void
+      onMouseLeave?: () => void
+      className?: string
+    }) => (
+      <div
+        data-testid="carousel"
+        className={className}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
         {children}
       </div>
     ),
     {
-      Content: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-        <div data-testid="carousel-content" {...props}>
-          {children}
-        </div>
+      Content: ({ children }: { children: React.ReactNode }) => (
+        <div data-testid="carousel-content">{children}</div>
       ),
-      Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-        <div role="group" data-testid="carousel-item" {...props}>
-          {children}
-        </div>
+      Item: ({ children }: { children: React.ReactNode }) => (
+        <div data-testid="carousel-item">{children}</div>
       ),
       Plugin: {
         Autoplay: (config: Record<string, unknown>) => ({ type: 'autoplay', ...config }),
-        Fade: () => ({ type: 'fade' }),
       },
     },
   ),
-  useCarousel: () => {
-    const selectedIndex = React.useSyncExternalStore(
-      (listener) => {
-        mockCarouselListeners.add(listener)
-        return () => mockCarouselListeners.delete(listener)
-      },
-      () => mockSelectedIndex,
-    )
-
-    return { api: mockApi, selectedIndex }
-  },
+  useCarousel: () => ({
+    api: {
+      scrollTo: vi.fn(),
+      slideNodes: () => [],
+    },
+    selectedIndex: 0,
+  }),
 }))
 
 vi.mock('../banner-item', () => ({
-  BannerItem: ({
-    banner,
-    sort,
-    language,
-    accountId,
-  }: {
+  BannerItem: ({ banner, autoplayDelay, isPaused }: {
     banner: BannerType
-    sort: number
-    language: string
-    accountId?: string
+    autoplayDelay: number
+    isPaused?: boolean
   }) => (
-    <article
+    <div
       data-testid="banner-item"
       data-banner-id={banner.id}
-      data-sort={sort}
-      data-language={language}
-      data-account-id={accountId}
+      data-autoplay-delay={autoplayDelay}
+      data-is-paused={isPaused}
     >
+      BannerItem:
+      {' '}
       {banner.content.title}
-    </article>
+    </div>
   ),
 }))
 
-const createMockBanner = (
-  id: string,
-  status: string = 'enabled',
-  title: string = 'Test Banner',
-): BannerType =>
-  ({
-    id,
-    status,
-    link: 'https://example.com',
-    content: {
-      category: 'Featured',
-      title,
-      description: 'Test description',
-      'img-src': `https://example.com/image-${id}.png`,
-    },
-  }) as BannerType
+const createMockBanner = (id: string, status: string = 'enabled', title: string = 'Test Banner'): BannerType => ({
+  id,
+  status,
+  link: 'https://example.com',
+  content: {
+    'category': 'Featured',
+    title,
+    'description': 'Test description',
+    'img-src': 'https://example.com/image.png',
+  },
+} as BannerType)
 
 describe('Banner', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    cleanup()
     vi.clearAllMocks()
-    mockSelectedIndex = 0
-    mockAutoplayPlaying = true
-    mockCarouselListeners.clear()
-    mockAutoplayListeners.play.clear()
-    mockAutoplayListeners.stop.clear()
-    mockConsoleState.userProfile = { id: 'account-123', name: 'Evan' }
+    vi.useRealTimers()
   })
 
-  afterEach(cleanup)
+  describe('loading state', () => {
+    it('renders loading state when isLoading is true', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: null,
+        isLoading: true,
+        isError: false,
+      })
 
-  it('renders the greeting shell without a carousel when no enabled banner exists', () => {
-    render(<Banner banners={[createMockBanner('1', 'disabled')]} />)
+      render(<Banner />)
 
-    expect(screen.getByText('Welcome back, Evan👋')).toBeInTheDocument()
-    expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
-    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+      const loadingWrapper = document.querySelector('[style*="min-height"]')
+      expect(loadingWrapper).toBeInTheDocument()
+    })
+
+    it('shows loading indicator with correct minimum height', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: null,
+        isLoading: true,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const loadingWrapper = document.querySelector('[style*="min-height: 168px"]')
+      expect(loadingWrapper).toBeInTheDocument()
+    })
   })
 
-  it('labels the carousel and renders only enabled banners', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'disabled', 'Hidden banner'),
-          createMockBanner('3', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('error state', () => {
+    it('returns null when isError is true', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: true,
+      })
 
-    expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'pagination.pageNumber' })).toBeInTheDocument()
-    expect(screen.getAllByTestId('banner-item')).toHaveLength(2)
-    expect(screen.queryByText('Hidden banner')).not.toBeInTheDocument()
+      const { container } = render(<Banner />)
+
+      expect(container.firstChild).toBeNull()
+    })
   })
 
-  it('keeps only the active slide exposed to assistive technology and keyboard focus', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('empty state', () => {
+    it('returns null when banners array is empty', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isError: false,
+      })
 
-    const [firstSlide, secondSlide] = screen.getAllByTestId('carousel-item')
-    expect(firstSlide).toHaveAttribute('aria-hidden', 'false')
-    expect(firstSlide).not.toHaveAttribute('inert')
-    expect(secondSlide).toHaveAttribute('aria-hidden', 'true')
-    expect(secondSlide).toHaveAttribute('inert')
+      const { container } = render(<Banner />)
+
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('returns null when all banners are disabled', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'disabled'),
+          createMockBanner('2', 'disabled'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
+
+      const { container } = render(<Banner />)
+
+      expect(container.firstChild).toBeNull()
+    })
+
+    it('returns null when data is undefined', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: false,
+      })
+
+      const { container } = render(<Banner />)
+
+      expect(container.firstChild).toBeNull()
+    })
   })
 
-  it('keeps one shared control set mounted while selecting a banner', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('successful render', () => {
+    it('renders carousel when enabled banners exist', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
 
-    expect(screen.getAllByRole('button')).toHaveLength(2)
-    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
-    secondBannerButton.focus()
-    fireEvent.click(secondBannerButton)
-    expect(mockScrollTo).toHaveBeenCalledWith(1)
+      render(<Banner />)
 
-    act(() => setMockSelectedIndex(1))
-    expect(secondBannerButton).toHaveFocus()
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+      expect(screen.getByTestId('carousel')).toBeInTheDocument()
+    })
+
+    it('renders only enabled banners', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'enabled', 'Enabled Banner 1'),
+          createMockBanner('2', 'disabled', 'Disabled Banner'),
+          createMockBanner('3', 'enabled', 'Enabled Banner 2'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const bannerItems = screen.getAllByTestId('banner-item')
+      expect(bannerItems).toHaveLength(2)
+      expect(screen.getByText('BannerItem: Enabled Banner 1')).toBeInTheDocument()
+      expect(screen.getByText('BannerItem: Enabled Banner 2')).toBeInTheDocument()
+      expect(screen.queryByText('BannerItem: Disabled Banner')).not.toBeInTheDocument()
+    })
+
+    it('passes correct autoplayDelay to BannerItem', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-autoplay-delay', '5000')
+    })
+
+    it('renders carousel with correct class', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(screen.getByTestId('carousel')).toHaveClass('rounded-2xl')
+    })
   })
 
-  it('keeps autoplay running when pointer selection does not move focus', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('hover behavior', () => {
+    it('sets isPaused to true on mouse enter', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
 
-    fireEvent.click(screen.getByRole('button', { name: '02 Second banner' }))
+      render(<Banner />)
 
-    expect(mockAutoplay.stop).not.toHaveBeenCalled()
-    expect(mockScrollTo).toHaveBeenCalledWith(1)
+      const carousel = screen.getByTestId('carousel')
+      fireEvent.mouseEnter(carousel)
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'true')
+    })
+
+    it('sets isPaused to false on mouse leave', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const carousel = screen.getByTestId('carousel')
+
+      fireEvent.mouseEnter(carousel)
+      fireEvent.mouseLeave(carousel)
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'false')
+    })
   })
 
-  it('keeps current-page selection idempotent', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('resize behavior', () => {
+    it('pauses animation during resize', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
 
-    fireEvent.click(screen.getByRole('button', { name: '01 First banner' }))
+      render(<Banner />)
 
-    expect(mockAutoplay.stop).not.toHaveBeenCalled()
-    expect(mockScrollTo).not.toHaveBeenCalled()
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'true')
+    })
+
+    it('resumes animation after resize debounce delay', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+
+      const bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'false')
+    })
+
+    it('resets debounce timer on multiple resize events', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(30)
+      })
+
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(30)
+      })
+
+      let bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'true')
+
+      act(() => {
+        vi.advanceTimersByTime(20)
+      })
+
+      bannerItem = screen.getByTestId('banner-item')
+      expect(bannerItem).toHaveAttribute('data-is-paused', 'false')
+    })
   })
 
-  it('does not control an inactive autoplay plugin during manual selection', () => {
-    mockAutoplayPlaying = false
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('cleanup', () => {
+    it('removes resize event listener on unmount', () => {
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener')
 
-    fireEvent.click(screen.getByRole('button', { name: '02 Second banner' }))
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
 
-    expect(mockAutoplay.stop).not.toHaveBeenCalled()
-    expect(mockAutoplay.play).not.toHaveBeenCalled()
-    expect(mockScrollTo).toHaveBeenCalledWith(1)
+      const { unmount } = render(<Banner />)
+      unmount()
+
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+      removeEventListenerSpy.mockRestore()
+    })
+
+    it('clears resize timer on unmount', () => {
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      const { unmount } = render(<Banner />)
+
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      unmount()
+
+      expect(clearTimeoutSpy).toHaveBeenCalled()
+      clearTimeoutSpy.mockRestore()
+    })
   })
 
-  it('updates the live region when Embla stops and restarts automatic rotation', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('hook calls', () => {
+    it('calls useGetBanners with correct locale', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [],
+        isLoading: false,
+        isError: false,
+      })
 
-    act(() => mockAutoplay.stop())
-    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
-    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'polite')
-    act(() => mockAutoplay.play())
-    expect(mockAutoplay.play).toHaveBeenCalledOnce()
-    expect(screen.getByTestId('carousel-content')).toHaveAttribute('aria-live', 'off')
+      render(<Banner />)
+
+      expect(mockUseGetBanners).toHaveBeenCalledWith('en-US')
+    })
   })
 
-  it('pauses rotation while keyboard focus is within the pagination controls', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('multiple banners', () => {
+    it('renders all enabled banners in carousel items', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'enabled', 'Banner 1'),
+          createMockBanner('2', 'enabled', 'Banner 2'),
+          createMockBanner('3', 'enabled', 'Banner 3'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
 
-    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
-    fireEvent.focus(secondBannerButton)
-    expect(mockAutoplay.stop).toHaveBeenCalledOnce()
+      render(<Banner />)
 
-    fireEvent.blur(secondBannerButton)
-    expect(mockAutoplay.play).toHaveBeenCalledOnce()
+      const carouselItems = screen.getAllByTestId('carousel-item')
+      expect(carouselItems).toHaveLength(3)
+    })
+
+    it('preserves banner order', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'enabled', 'First Banner'),
+          createMockBanner('2', 'enabled', 'Second Banner'),
+          createMockBanner('3', 'enabled', 'Third Banner'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      const bannerItems = screen.getAllByTestId('banner-item')
+      expect(bannerItems[0]).toHaveAttribute('data-banner-id', '1')
+      expect(bannerItems[1]).toHaveAttribute('data-banner-id', '2')
+      expect(bannerItems[2]).toHaveAttribute('data-banner-id', '3')
+    })
   })
 
-  it('does not resume an autoplay plugin that was already inactive before focus', () => {
-    mockAutoplayPlaying = false
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
+  describe('React.memo behavior', () => {
+    it('renders as memoized component', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
 
-    const secondBannerButton = screen.getByRole('button', { name: '02 Second banner' })
-    fireEvent.focus(secondBannerButton)
-    fireEvent.blur(secondBannerButton)
+      const { rerender } = render(<Banner />)
 
-    expect(mockAutoplay.stop).not.toHaveBeenCalled()
-    expect(mockAutoplay.play).not.toHaveBeenCalled()
-  })
+      rerender(<Banner />)
 
-  it('does not render rotation controls for one banner', () => {
-    render(<Banner banners={[createMockBanner('1', 'enabled', 'Only banner')]} />)
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  })
-
-  it('tracks each enabled banner impression once as selection changes', () => {
-    render(
-      <Banner
-        banners={[
-          createMockBanner('1', 'enabled', 'First banner'),
-          createMockBanner('2', 'enabled', 'Second banner'),
-        ]}
-      />,
-    )
-
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'explore_banner_impression',
-      expect.objectContaining({ banner_id: '1', sort: 1 }),
-    )
-
-    act(() => setMockSelectedIndex(1))
-    expect(mockTrackEvent).toHaveBeenCalledWith(
-      'explore_banner_impression',
-      expect.objectContaining({ banner_id: '2', sort: 2 }),
-    )
-
-    act(() => setMockSelectedIndex(0))
-    expect(mockTrackEvent).toHaveBeenCalledTimes(2)
-  })
-
-  it('passes tracking context to each banner item', () => {
-    render(<Banner banners={[createMockBanner('1')]} />)
-
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-sort', '1')
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-language', 'en-US')
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-account-id', 'account-123')
-  })
-
-  it('does not track impressions without an account id', () => {
-    mockConsoleState.userProfile = { id: '', name: '' }
-    render(<Banner banners={[createMockBanner('1')]} />)
-
-    expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(screen.getByTestId('carousel')).toBeInTheDocument()
+    })
   })
 })

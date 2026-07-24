@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BatchAction from '../batch-action'
 
@@ -16,6 +16,12 @@ describe('BatchAction', () => {
   }
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      const { container } = render(<BatchAction {...defaultProps} />)
+
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
     it('should display selected count', () => {
       render(<BatchAction {...defaultProps} />)
 
@@ -99,21 +105,6 @@ describe('BatchAction', () => {
         expect(mockOnBatchDelete).toHaveBeenCalledTimes(1)
       })
     })
-
-    it('should close delete confirmation when cancel is clicked', async () => {
-      const mockOnBatchDelete = vi.fn()
-      render(<BatchAction {...defaultProps} onBatchDelete={mockOnBatchDelete} />)
-
-      fireEvent.click(screen.getByText(/batchAction\.delete/i))
-      const dialog = await screen.findByRole('alertdialog')
-
-      fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-
-      await waitFor(() => {
-        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-      })
-      expect(mockOnBatchDelete).not.toHaveBeenCalled()
-    })
   })
 
   // Optional props tests
@@ -182,6 +173,13 @@ describe('BatchAction', () => {
       fireEvent.click(screen.getByText(/batchAction\.reIndex/i))
 
       expect(mockOnBatchReIndex).toHaveBeenCalledTimes(1)
+    })
+
+    it('should apply custom className', () => {
+      const { container } = render(<BatchAction {...defaultProps} className="custom-class" />)
+
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveClass('custom-class')
     })
   })
 

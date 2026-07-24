@@ -13,24 +13,9 @@ import operator
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum, auto
-from typing import Any, TypedDict
-
-from pydantic import TypeAdapter
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
-_metadata_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
-
-
-class StorageStatisticsDict(TypedDict):
-    total_files: int
-    active_files: int
-    archived_files: int
-    deleted_files: int
-    total_size: int
-    versions_count: int
-    oldest_file: str | None
-    newest_file: str | None
 
 
 class FileStatus(StrEnum):
@@ -65,7 +50,7 @@ class FileMetadata:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FileMetadata:
+    def from_dict(cls, data: dict) -> FileMetadata:
         """Create instance from dictionary"""
         data = data.copy()
         data["created_at"] = datetime.fromisoformat(data["created_at"])
@@ -395,7 +380,7 @@ class FileLifecycleManager:
             logger.exception("Failed to cleanup old versions")
             return 0
 
-    def get_storage_statistics(self) -> StorageStatisticsDict:
+    def get_storage_statistics(self) -> dict[str, Any]:
         """Get storage statistics
 
         Returns:
@@ -404,16 +389,16 @@ class FileLifecycleManager:
         try:
             metadata_dict = self._load_metadata()
 
-            stats = StorageStatisticsDict(
-                total_files=len(metadata_dict),
-                active_files=0,
-                archived_files=0,
-                deleted_files=0,
-                total_size=0,
-                versions_count=0,
-                oldest_file=None,
-                newest_file=None,
-            )
+            stats: dict[str, Any] = {
+                "total_files": len(metadata_dict),
+                "active_files": 0,
+                "archived_files": 0,
+                "deleted_files": 0,
+                "total_size": 0,
+                "versions_count": 0,
+                "oldest_file": None,
+                "newest_file": None,
+            }
 
             oldest_date = None
             newest_date = None
@@ -448,18 +433,9 @@ class FileLifecycleManager:
 
         except Exception:
             logger.exception("Failed to get storage statistics")
-            return StorageStatisticsDict(
-                total_files=0,
-                active_files=0,
-                archived_files=0,
-                deleted_files=0,
-                total_size=0,
-                versions_count=0,
-                oldest_file=None,
-                newest_file=None,
-            )
+            return {}
 
-    def _create_version_backup(self, filename: str, metadata: dict[str, Any]):
+    def _create_version_backup(self, filename: str, metadata: dict):
         """Create version backup"""
         try:
             # Read current file content
@@ -479,15 +455,15 @@ class FileLifecycleManager:
         try:
             if self._storage.exists(self._metadata_file):
                 metadata_content = self._storage.load_once(self._metadata_file)
-                result = _metadata_adapter.validate_json(metadata_content)
-                return result or {}
+                result = json.loads(metadata_content.decode("utf-8"))
+                return dict(result) if result else {}
             else:
                 return {}
         except Exception as e:
             logger.warning("Failed to load metadata: %s", e)
             return {}
 
-    def _save_metadata(self, metadata_dict: dict[str, Any]):
+    def _save_metadata(self, metadata_dict: dict):
         """Save metadata file"""
         try:
             metadata_content = json.dumps(metadata_dict, indent=2, ensure_ascii=False)

@@ -1,7 +1,6 @@
 import json
 import uuid
 from collections import defaultdict, deque
-from typing import Any
 
 import pytest
 
@@ -61,7 +60,7 @@ class _FakeStreams:
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
 
-    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict, *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
         self._seq[key] += 1
         eid = f"{self._seq[key]}-0"
@@ -72,7 +71,7 @@ class _FakeStreams:
         # no-op for tests
         return None
 
-    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict, block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])
@@ -89,7 +88,7 @@ class _FakeStreams:
 
 
 @pytest.fixture
-def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
+def _patch_get_channel_streams(monkeypatch):
     from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
     fake = _FakeStreams()
@@ -108,8 +107,8 @@ def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def _patch_get_channel_pubsub(monkeypatch: pytest.MonkeyPatch):
-    from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
+def _patch_get_channel_pubsub(monkeypatch):
+    from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 
     store: dict[str, deque[bytes]] = defaultdict(deque)
     client = _FakeRedisClient(store)
@@ -163,7 +162,7 @@ def test_streams_full_flow_prepublish_and_replay():
 
 
 @pytest.mark.usefixtures("_patch_get_channel_pubsub")
-def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPatch):
+def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch):
     # Speed up any potential timer if it accidentally triggers
     monkeypatch.setattr("services.app_generate_service.SSE_TASK_START_FALLBACK_MS", 50)
 

@@ -3,7 +3,7 @@ import type { LocalFileSliceShape } from './slices/local-file'
 import type { OnlineDocumentSliceShape } from './slices/online-document'
 import type { OnlineDriveSliceShape } from './slices/online-drive'
 import type { WebsiteCrawlSliceShape } from './slices/website-crawl'
-import { use } from 'react'
+import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
 import { DataSourceContext } from './provider'
 import { createCommonSlice } from './slices/common'
@@ -12,11 +12,11 @@ import { createOnlineDocumentSlice } from './slices/online-document'
 import { createOnlineDriveSlice } from './slices/online-drive'
 import { createWebsiteCrawlSlice } from './slices/website-crawl'
 
-export type DataSourceShape = CommonShape &
-  LocalFileSliceShape &
-  OnlineDocumentSliceShape &
-  WebsiteCrawlSliceShape &
-  OnlineDriveSliceShape
+export type DataSourceShape = CommonShape
+  & LocalFileSliceShape
+  & OnlineDocumentSliceShape
+  & WebsiteCrawlSliceShape
+  & OnlineDriveSliceShape
 
 export const createDataSourceStore = () => {
   return createStore<DataSourceShape>((...args) => ({
@@ -29,15 +29,17 @@ export const createDataSourceStore = () => {
 }
 
 export const useDataSourceStoreWithSelector = <T>(selector: (state: DataSourceShape) => T): T => {
-  const store = use(DataSourceContext)
-  if (!store) throw new Error('Missing DataSourceContext.Provider in the tree')
+  const store = useContext(DataSourceContext)
+  if (!store)
+    throw new Error('Missing DataSourceContext.Provider in the tree')
 
   return useStore(store, selector)
 }
 
 export const useDataSourceStore = () => {
-  const store = use(DataSourceContext)
-  if (!store) throw new Error('Missing DataSourceContext.Provider in the tree')
+  const store = useContext(DataSourceContext)
+  if (!store)
+    throw new Error('Missing DataSourceContext.Provider in the tree')
 
   return store
 }

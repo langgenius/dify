@@ -15,7 +15,9 @@ type Params = {
   flowType: FlowType
 }
 
-const useFLow = ({ flowType }: Params) => {
+const useFLow = ({
+  flowType,
+}: Params) => {
   return {
     useInvalidateConversationVarValues: curry(useInvalidateConversationVarValuesInner)(flowType),
     useInvalidateSysVarValues: curry(useInvalidateSysVarValuesInner)(flowType),

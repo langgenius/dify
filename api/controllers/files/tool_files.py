@@ -1,5 +1,4 @@
 from urllib.parse import quote
-from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -8,10 +7,11 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ToolFileQuery(BaseModel):
@@ -21,7 +21,9 @@ class ToolFileQuery(BaseModel):
     as_attachment: bool = Field(default=False, description="Download as attachment")
 
 
-register_schema_models(files_ns, ToolFileQuery)
+files_ns.schema_model(
+    ToolFileQuery.__name__, ToolFileQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
 
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")
@@ -46,19 +48,17 @@ class ToolFileApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, file_id: UUID, extension: str):
-        file_id_str = str(file_id)
+    def get(self, file_id, extension):
+        file_id = str(file_id)
 
         args = ToolFileQuery.model_validate(request.args.to_dict())
-        if not verify_tool_file_signature(
-            file_id=file_id_str, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign
-        ):
+        if not verify_tool_file_signature(file_id=file_id, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign):
             raise Forbidden("Invalid request.")
 
         try:
             tool_file_manager = ToolFileManager()
             stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
-                file_id_str,
+                file_id,
             )
 
             if not stream or not tool_file:
@@ -70,25 +70,22 @@ class ToolFileApi(Resource):
         except Exception:
             raise UnsupportedFileTypeError()
 
-        mime_type = tool_file.mime_type
-        filename = tool_file.filename
-
         response = Response(
             stream,
-            mimetype=mime_type,
+            mimetype=tool_file.mimetype,
             direct_passthrough=True,
             headers={},
         )
         if tool_file.size > 0:
             response.headers["Content-Length"] = str(tool_file.size)
-        if args.as_attachment and filename:
-            encoded_filename = quote(filename)
+        if args.as_attachment:
+            encoded_filename = quote(tool_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         enforce_download_for_html(
             response,
-            mime_type=mime_type,
-            filename=filename,
+            mime_type=tool_file.mimetype,
+            filename=tool_file.name,
             extension=extension,
         )
 

@@ -35,8 +35,8 @@ type NestedTranslation = {
 type AnalysisResult = {
   file: string
   missingKeys: string[]
-  changedValues: { key: string; oldValue: TranslationValue; newValue: TranslationValue }[]
-  newKeys: { key: string; value: TranslationValue }[]
+  changedValues: { key: string, oldValue: TranslationValue, newValue: TranslationValue }[]
+  newKeys: { key: string, value: TranslationValue }[]
 }
 
 /**
@@ -51,10 +51,12 @@ function flattenObject(obj: NestedTranslation, prefix = ''): FlatTranslation {
 
     if (typeof value === 'string') {
       result[newKey] = value
-    } else if (Array.isArray(value)) {
+    }
+    else if (Array.isArray(value)) {
       // Preserve arrays as-is
       result[newKey] = value as string[]
-    } else if (typeof value === 'object' && value !== null) {
+    }
+    else if (typeof value === 'object' && value !== null) {
       Object.assign(result, flattenObject(value as NestedTranslation, newKey))
     }
   }
@@ -70,7 +72,8 @@ function valuesEqual(a: TranslationValue, b: TranslationValue): boolean {
     return a === b
   }
   if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false
+    if (a.length !== b.length)
+      return false
     return a.every((item, index) => item === b[index])
   }
   return false
@@ -81,7 +84,7 @@ function valuesEqual(a: TranslationValue, b: TranslationValue): boolean {
  */
 function formatValue(value: TranslationValue): string {
   if (Array.isArray(value)) {
-    return `[${value.map((v) => `"${v}"`).join(', ')}]`
+    return `[${value.map(v => `"${v}"`).join(', ')}]`
   }
   return `"${value}"`
 }
@@ -97,15 +100,17 @@ function parseTsContent(content: string): NestedTranslation {
     .trim()
 
   // Remove trailing semicolon if present
-  if (cleaned.endsWith(';')) cleaned = cleaned.slice(0, -1)
+  if (cleaned.endsWith(';'))
+    cleaned = cleaned.slice(0, -1)
 
   // Use Function constructor to safely evaluate the object literal
   // This handles JS object syntax like unquoted keys, template literals, etc.
   try {
-    // oxlint-disable-next-line no-new-func
+    // eslint-disable-next-line no-new-func
     const fn = new Function(`return (${cleaned})`)
     return fn() as NestedTranslation
-  } catch (e) {
+  }
+  catch (e) {
     console.error('Failed to parse TS content:', e)
     console.error('Content preview:', cleaned.slice(0, 200))
     return {}
@@ -123,7 +128,8 @@ function getMainBranchFile(filePath: string): string | null {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     })
-  } catch {
+  }
+  catch {
     return null
   }
 }
@@ -133,7 +139,7 @@ function getMainBranchFile(filePath: string): string | null {
  */
 function getTranslationFiles(): string[] {
   const files = fs.readdirSync(I18N_DIR)
-  return files.filter((f) => f.endsWith('.json')).map((f) => f.replace('.json', ''))
+  return files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''))
 }
 
 /**
@@ -151,9 +157,10 @@ function getMainBranchNamespaces(): string[] {
     return output
       .trim()
       .split('\n')
-      .filter((f) => f.endsWith('.ts'))
-      .map((f) => path.basename(f, '.ts'))
-  } catch {
+      .filter(f => f.endsWith('.ts'))
+      .map(f => path.basename(f, '.ts'))
+  }
+  catch {
     return []
   }
 }
@@ -174,15 +181,15 @@ function checkNamespaceFiles(): NamespaceCheckResult {
   const currentFiles = fs.readdirSync(I18N_DIR)
 
   const currentJsonFiles = currentFiles
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace('.json', ''))
+    .filter(f => f.endsWith('.json'))
+    .map(f => f.replace('.json', ''))
 
   const currentTsFiles = currentFiles
-    .filter((f) => f.endsWith('.ts'))
-    .map((f) => f.replace('.ts', ''))
+    .filter(f => f.endsWith('.ts'))
+    .map(f => f.replace('.ts', ''))
 
   // Check which namespaces from main are missing json files
-  const missingJsonFiles = mainNamespaces.filter((ns) => !currentJsonFiles.includes(ns))
+  const missingJsonFiles = mainNamespaces.filter(ns => !currentJsonFiles.includes(ns))
 
   // ts files should not exist in current branch
   const unexpectedTsFiles = currentTsFiles
@@ -209,10 +216,7 @@ function analyzeFile(baseName: string): AnalysisResult {
 
   // Read current branch JSON file
   const jsonPath = path.join(I18N_DIR, `${baseName}.json`)
-  const currentContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8')) as Record<
-    string,
-    TranslationValue
-  >
+  const currentContent = JSON.parse(fs.readFileSync(jsonPath, 'utf-8')) as Record<string, TranslationValue>
 
   // Read main branch TS file
   const tsContent = getMainBranchFile(`${baseName}.ts`)
@@ -237,11 +241,11 @@ function analyzeFile(baseName: string): AnalysisResult {
 
   // Check for changed values
   for (const [key, oldValue] of Object.entries(mainFlat)) {
-    if (key in currentContent && !valuesEqual(currentContent[key]!, oldValue)) {
+    if (key in currentContent && !valuesEqual(currentContent[key], oldValue)) {
       result.changedValues.push({
         key,
         oldValue,
-        newValue: currentContent[key]!,
+        newValue: currentContent[key],
       })
     }
   }
@@ -260,9 +264,7 @@ function analyzeFile(baseName: string): AnalysisResult {
  * Main analysis function
  */
 function main() {
-  console.log(
-    '🔍 Analyzing i18n differences between current branch (flat JSON) and main branch (nested TS)...\n',
-  )
+  console.log('🔍 Analyzing i18n differences between current branch (flat JSON) and main branch (nested TS)...\n')
 
   // Check namespace file consistency first
   console.log('📂 Checking namespace files...')
@@ -281,7 +283,8 @@ function main() {
       console.log(`  - ${ns}.json (was ${ns}.ts in main)`)
     }
     hasNamespaceError = true
-  } else {
+  }
+  else {
     console.log('\n✅ All namespaces from main branch have corresponding JSON files')
   }
 
@@ -291,7 +294,8 @@ function main() {
       console.log(`  - ${ns}.ts`)
     }
     hasNamespaceError = true
-  } else {
+  }
+  else {
     console.log('✅ No TS files in current branch (all converted to JSON)')
   }
 
@@ -367,28 +371,21 @@ function main() {
 
   // Write detailed report to JSON file
   const reportPath = path.join(__dirname, '../i18n-analysis-report.json')
-  fs.writeFileSync(
-    reportPath,
-    JSON.stringify(
-      {
-        summary: {
-          totalFiles: files.length,
-          missingKeys: totalMissing,
-          changedValues: totalChanged,
-          newKeys: totalNew,
-        },
-        namespaceCheck: {
-          mainNamespaces: nsCheck.mainNamespaces,
-          currentJsonFiles: nsCheck.currentJsonFiles,
-          missingJsonFiles: nsCheck.missingJsonFiles,
-          unexpectedTsFiles: nsCheck.unexpectedTsFiles,
-        },
-        details: allResults,
-      },
-      null,
-      2,
-    ),
-  )
+  fs.writeFileSync(reportPath, JSON.stringify({
+    summary: {
+      totalFiles: files.length,
+      missingKeys: totalMissing,
+      changedValues: totalChanged,
+      newKeys: totalNew,
+    },
+    namespaceCheck: {
+      mainNamespaces: nsCheck.mainNamespaces,
+      currentJsonFiles: nsCheck.currentJsonFiles,
+      missingJsonFiles: nsCheck.missingJsonFiles,
+      unexpectedTsFiles: nsCheck.unexpectedTsFiles,
+    },
+    details: allResults,
+  }, null, 2))
 
   console.log(`\n📄 Detailed report written to: i18n-analysis-report.json`)
 

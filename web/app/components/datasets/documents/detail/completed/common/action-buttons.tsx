@@ -1,15 +1,15 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
-import { Button } from '@langgenius/dify-ui/button'
-import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import type { FC } from 'react'
+import { useKeyPress } from 'ahooks'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 
-const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
-const SAVE_HOTKEY = 'Mod+S' satisfies Hotkey
-
-type ActionButtonsProps = {
+type IActionButtonsProps = {
   handleCancel: () => void
   handleSave: () => void
   loading: boolean
@@ -19,7 +19,7 @@ type ActionButtonsProps = {
   showRegenerationButton?: boolean
 }
 
-export function ActionButtons({
+const ActionButtons: FC<IActionButtonsProps> = ({
   handleCancel,
   handleSave,
   loading,
@@ -27,59 +27,63 @@ export function ActionButtons({
   handleRegeneration,
   isChildChunk = false,
   showRegenerationButton = true,
-}: ActionButtonsProps) {
+}) => {
   const { t } = useTranslation()
-  const docForm = useDocumentContext((s) => s.docForm)
-  const parentMode = useDocumentContext((s) => s.parentMode)
+  const docForm = useDocumentContext(s => s.docForm)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
-  useHotkey(CANCEL_HOTKEY, (e) => {
+  useKeyPress(['esc'], (e) => {
     e.preventDefault()
     handleCancel()
   })
 
-  useHotkey(SAVE_HOTKEY, (e) => {
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
     e.preventDefault()
-    if (loading) return
+    if (loading)
+      return
     handleSave()
-  })
+  }, { exactMatch: true, useCapture: true })
 
-  const isParentChildParagraphMode =
-    docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
+  const isParentChildParagraphMode = useMemo(() => {
+    return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'
+  }, [docForm, parentMode])
 
   return (
     <div className="flex items-center gap-x-2">
-      <Button onClick={handleCancel}>
+      <Button
+        onClick={handleCancel}
+      >
         <div className="flex items-center gap-x-1">
-          <span className="system-sm-medium text-components-button-secondary-text">
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </span>
-          <Kbd>{formatForDisplay(CANCEL_HOTKEY)}</Kbd>
+          <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
+          <ShortcutsName keys={['ESC']} textColor="secondary" />
         </div>
       </Button>
-      {isParentChildParagraphMode &&
-      actionType === 'edit' &&
-      !isChildChunk &&
-      showRegenerationButton ? (
-        <Button onClick={handleRegeneration} disabled={loading}>
-          <span className="system-sm-medium text-components-button-secondary-text">
-            {t(($) => $['operation.saveAndRegenerate'], { ns: 'common' })}
-          </span>
-        </Button>
-      ) : null}
-      <Button variant="primary" onClick={handleSave} disabled={loading}>
+      {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk && showRegenerationButton)
+        ? (
+            <Button
+              onClick={handleRegeneration}
+              disabled={loading}
+            >
+              <span className="system-sm-medium text-components-button-secondary-text">
+                {t('operation.saveAndRegenerate', { ns: 'common' })}
+              </span>
+            </Button>
+          )
+        : null}
+      <Button
+        variant="primary"
+        onClick={handleSave}
+        disabled={loading}
+      >
         <div className="flex items-center gap-x-1">
-          <span className="text-components-button-primary-text">
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </span>
-          <KbdGroup>
-            {SAVE_HOTKEY.split('+').map((key) => (
-              <Kbd key={key} color="white">
-                {formatForDisplay(key)}
-              </Kbd>
-            ))}
-          </KbdGroup>
+          <span className="text-components-button-primary-text">{t('operation.save', { ns: 'common' })}</span>
+          <ShortcutsName keys={['ctrl', 'S']} bgColor="white" />
         </div>
       </Button>
     </div>
   )
 }
+
+ActionButtons.displayName = 'ActionButtons'
+
+export default React.memo(ActionButtons)

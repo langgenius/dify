@@ -1,7 +1,8 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import Toast from '@/app/components/base/toast'
+import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorView } from '../selector-view'
 
 let mockSubscriptions: TriggerSubscription[] = []
@@ -25,23 +26,11 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
-}))
-
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialType.ApiKey,
+  credential_type: TriggerCredentialTypeEnum.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},
@@ -53,6 +42,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
 beforeEach(() => {
   vi.clearAllMocks()
   mockSubscriptions = [createSubscription()]
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('SubscriptionSelectorView', () => {
@@ -70,9 +60,15 @@ describe('SubscriptionSelectorView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
-    )
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }))
+  })
+
+  it('should handle missing onSelect without crashing', () => {
+    render(<SubscriptionSelectorView />)
+
+    expect(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
+    }).not.toThrow()
   })
 
   it('should distinguish selected vs unselected subscription row', () => {
@@ -105,9 +101,7 @@ describe('SubscriptionSelectorView', () => {
     expect(deleteButton).toBeTruthy()
     fireEvent.click(deleteButton)
 
-    expect(
-      screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
   })
 
   it('should request selection reset after confirming delete', () => {
@@ -117,11 +111,7 @@ describe('SubscriptionSelectorView', () => {
     const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
     fireEvent.click(deleteButton)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
-      }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
 
     expect(mockDelete).toHaveBeenCalledWith('sub-1', expect.any(Object))
     expect(onSelect).toHaveBeenCalledWith({ id: '', name: '' })
@@ -137,8 +127,6 @@ describe('SubscriptionSelectorView', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/ }))
 
     expect(onSelect).not.toHaveBeenCalled()
-    expect(
-      screen.queryByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).not.toBeInTheDocument()
   })
 })

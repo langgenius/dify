@@ -12,7 +12,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 
 
 class TestDatasetDocumentProperties:
@@ -30,7 +29,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -40,10 +39,10 @@ class TestDatasetDocumentProperties:
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
                 position=i + 1,
-                data_source_type=DataSourceType.UPLOAD_FILE,
+                data_source_type="upload_file",
                 batch="batch_001",
                 name=f"doc_{i}.pdf",
-                created_from=DocumentCreatedFrom.WEB,
+                created_from="web",
                 created_by=created_by,
             )
             db_session_with_containers.add(doc)
@@ -57,7 +56,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -66,12 +65,12 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="available.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status="completed",
             enabled=True,
             archived=False,
         )
@@ -79,12 +78,12 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=2,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="pending.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
-            indexing_status=IndexingStatus.WAITING,
+            indexing_status="waiting",
             enabled=True,
             archived=False,
         )
@@ -92,12 +91,12 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=3,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="disabled.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
-            indexing_status=IndexingStatus.COMPLETED,
+            indexing_status="completed",
             enabled=False,
             archived=False,
         )
@@ -112,7 +111,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -122,10 +121,10 @@ class TestDatasetDocumentProperties:
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
                 position=i + 1,
-                data_source_type=DataSourceType.UPLOAD_FILE,
+                data_source_type="upload_file",
                 batch="batch_001",
                 name=f"doc_{i}.pdf",
-                created_from=DocumentCreatedFrom.WEB,
+                created_from="web",
                 created_by=created_by,
                 word_count=wc,
             )
@@ -140,7 +139,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -149,10 +148,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="doc.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -167,7 +166,7 @@ class TestDatasetDocumentProperties:
                 content=f"segment {i}",
                 word_count=100,
                 tokens=50,
-                status=SegmentStatus.COMPLETED,
+                status="completed",
                 enabled=True,
                 created_by=created_by,
             )
@@ -181,7 +180,7 @@ class TestDatasetDocumentProperties:
             content="waiting segment",
             word_count=100,
             tokens=50,
-            status=SegmentStatus.WAITING,
+            status="waiting",
             enabled=True,
             created_by=created_by,
         )
@@ -196,7 +195,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -205,10 +204,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="doc.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -236,7 +235,7 @@ class TestDatasetDocumentProperties:
         created_by = str(uuid4())
 
         dataset = Dataset(
-            tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
+            tenant_id=tenant_id, name="Test Dataset", data_source_type="upload_file", created_by=created_by
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.flush()
@@ -245,10 +244,10 @@ class TestDatasetDocumentProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="doc.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(doc)
@@ -289,7 +288,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -299,10 +298,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -336,7 +335,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -346,10 +345,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -383,7 +382,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -393,10 +392,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(document)
@@ -440,7 +439,7 @@ class TestDocumentSegmentNavigationProperties:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="Test Dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             created_by=created_by,
         )
         db_session_with_containers.add(dataset)
@@ -450,10 +449,10 @@ class TestDocumentSegmentNavigationProperties:
             tenant_id=tenant_id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type=DataSourceType.UPLOAD_FILE,
+            data_source_type="upload_file",
             batch="batch_001",
             name="test.pdf",
-            created_from=DocumentCreatedFrom.WEB,
+            created_from="web",
             created_by=created_by,
         )
         db_session_with_containers.add(document)

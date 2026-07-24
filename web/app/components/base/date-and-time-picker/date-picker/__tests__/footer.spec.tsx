@@ -4,9 +4,7 @@ import { ViewType } from '../../types'
 import Footer from '../footer'
 
 // Factory for Footer props
-const createFooterProps = (
-  overrides: Partial<DatePickerFooterProps> = {},
-): DatePickerFooterProps => ({
+const createFooterProps = (overrides: Partial<DatePickerFooterProps> = {}): DatePickerFooterProps => ({
   needTimePicker: true,
   displayTime: '02:30 PM',
   view: ViewType.date,

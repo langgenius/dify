@@ -1,26 +1,21 @@
 import type { BasicPlan } from '../../../type'
-import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import { Plan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
   [Plan.sandbox]: {
-    btnClassname:
-      'bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover text-text-primary',
-    btnDisabledClassname:
-      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname: 'bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover text-text-primary',
+    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
   [Plan.professional]: {
-    btnClassname:
-      'bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover text-text-primary-on-surface',
-    btnDisabledClassname:
-      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname: 'bg-saas-dify-blue-static hover:bg-saas-dify-blue-static-hover text-text-primary-on-surface',
+    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
   [Plan.team]: {
-    btnClassname:
-      'bg-saas-background-inverted hover:bg-saas-background-inverted-hover text-background-default',
-    btnDisabledClassname:
-      'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
+    btnClassname: 'bg-saas-background-inverted hover:bg-saas-background-inverted-hover text-background-default',
+    btnDisabledClassname: 'bg-components-button-tertiary-bg-disabled hover:bg-components-button-tertiary-bg-disabled text-text-disabled',
   },
 }
 
@@ -29,32 +24,29 @@ type ButtonProps = {
   isPlanDisabled: boolean
   btnText: string
   handleGetPayUrl: () => void
-  warningText?: string
 }
 
-const Button = ({ plan, isPlanDisabled, btnText, handleGetPayUrl, warningText }: ButtonProps) => {
+const Button = ({
+  plan,
+  isPlanDisabled,
+  btnText,
+  handleGetPayUrl,
+}: ButtonProps) => {
   return (
-    <div className="relative">
-      <button
-        type="button"
-        disabled={isPlanDisabled}
-        className={cn(
-          'flex w-full items-center gap-x-2 py-3 pr-4 pl-5 system-xl-semibold',
-          BUTTON_CLASSNAME[plan].btnClassname,
-          isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
-          isPlanDisabled && 'cursor-not-allowed',
-        )}
-        onClick={handleGetPayUrl}
-      >
-        <span className="grow text-start">{btnText}</span>
-        {!isPlanDisabled && <span className="i-ri-arrow-right-line size-5 shrink-0" />}
-      </button>
-      {warningText && (
-        <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
-          {warningText}
-        </div>
+    <button
+      type="button"
+      disabled={isPlanDisabled}
+      className={cn(
+        'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
+        BUTTON_CLASSNAME[plan].btnClassname,
+        isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
+        isPlanDisabled && 'cursor-not-allowed',
       )}
-    </div>
+      onClick={handleGetPayUrl}
+    >
+      <span className="grow text-start">{btnText}</span>
+      {!isPlanDisabled && <RiArrowRightLine className="size-5 shrink-0" />}
+    </button>
   )
 }
 

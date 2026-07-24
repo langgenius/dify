@@ -1,121 +1,99 @@
 'use client'
 
-import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
-import type { App } from '@/models/explore'
-import type { TryAppSelection } from '@/types/try-app'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-  useSuspenseQuery,
-} from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FC } from 'react'
+import { useDebounceFn } from 'ahooks'
+import dynamic from 'next/dynamic'
+import { parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNeedRefreshAppList } from '@/app/components/apps/storage'
-import {
-  activeStepByStepTourGuideGroupAtom,
-  activeStepByStepTourGuideIndexAtom,
-  activeStepByStepTourTaskIdAtom,
-  resolveStepByStepTourGuideGroupAtom,
-} from '@/app/components/step-by-step-tour/state'
-import {
-  getStepByStepTourGuides,
-  STEP_BY_STEP_TOUR_TARGETS,
-} from '@/app/components/step-by-step-tour/target-registry'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import Input from '@/app/components/base/input'
+import TabSliderNew from '@/app/components/base/tab-slider-new'
+import TagFilter from '@/app/components/base/tag-management/filter'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
-import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination } from '@/service/use-apps'
-import { AppModeEnum } from '@/types/app'
-import { hasPermission } from '@/utils/permission'
-import { AppCard } from './app-card'
+import { useInfiniteAppList } from '@/service/use-apps'
+import { AppModeEnum, AppModes } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { AppListCreationModals } from './app-list-creation-modals'
-import { AppListHeaderFilters } from './app-list-header-filters'
-import { AppListTagManagementModal } from './app-list-tag-management-modal'
-import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
-import FirstEmptyState from './first-empty-state'
-import { useAppsQueryState } from './hooks/use-apps-query-state'
+import Footer from './footer'
+import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import { StarredAppList } from './starred-app-list'
-import { StudioListHeader } from './studio-list-header'
+import NewAppCard from './new-app-card'
 
-const STARRED_APP_LIMIT = 100
-const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
+const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
+  ssr: false,
+})
+const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+  ssr: false,
+})
 
-type AppListQuery = NonNullable<GetAppsData['query']>
-type AppListSortBy = NonNullable<AppListQuery['sort_by']>
+const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
+type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
+const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
 
-type Props = Readonly<{
+const isAppListCategory = (value: string): value is AppListCategory => {
+  return appListCategorySet.has(value)
+}
+
+const parseAsAppListCategory = parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
+  .withDefault('all')
+  .withOptions({ history: 'push' })
+
+type Props = {
   controlRefreshList?: number
-  onCreateLearnDify?: (app: App) => void
-  onTryLearnDify?: (params: TryAppSelection) => void
-}>
-
-function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Props) {
+}
+const List: FC<Props> = ({
+  controlRefreshList = 0,
+}) => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { onPlanInfoChanged } = useProviderContext()
+  const { systemFeatures } = useGlobalPublicStore()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsAppListCategory,
+  )
 
-  // oxlint-disable-next-line eslint-react/use-state -- custom URL query hook, not React.useState
-  const {
-    query: { category, keywords, creatorIDs },
-    setCategory,
-    setKeywords,
-    setCreatorIDs,
-  } = useAppsQueryState()
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
-  const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
+  const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
+  const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
-  const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
-  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
-  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
-  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
-  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
-  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const setKeywords = useCallback((keywords: string) => {
+    setQuery(prev => ({ ...prev, keywords }))
+  }, [setQuery])
+  const setTagIDs = useCallback((tagIDs: string[]) => {
+    setQuery(prev => ({ ...prev, tagIDs }))
+  }, [setQuery])
 
-  const handleDSLFileDropped = useCallback(
-    (file: File) => {
-      if (!canCreateApp) return
-
-      setDroppedDSLFile(file)
-      setShowCreateFromDSLModal(true)
-    },
-    [canCreateApp],
-  )
+  const handleDSLFileDropped = useCallback((file: File) => {
+    setDroppedDSLFile(file)
+    setShowCreateFromDSLModal(true)
+  }, [])
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: canCreateApp,
+    enabled: isCurrentWorkspaceEditor,
   })
 
-  const appListQuery = useMemo<AppListQuery>(
-    () => ({
-      page: 1,
-      limit: 30,
-      name: debouncedKeywords,
-      sort_by: sortBy,
-      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
-      ...(category !== 'all' ? { mode: category } : {}),
-    }),
-    [category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
-  )
+  const appListQueryParams = {
+    page: 1,
+    limit: 30,
+    name: searchKeywords,
+    tag_ids: tagIDs,
+    is_created_by_me: isCreatedByMe,
+    ...(activeTab !== 'all' ? { mode: activeTab } : {}),
+  }
 
   const {
     data,
@@ -126,344 +104,191 @@ function List({ controlRefreshList = 0, onCreateLearnDify, onTryLearnDify }: Pro
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteQuery({
-    ...consoleQuery.apps.get.infiniteOptions({
-      input: (pageParam) => ({
-        query: {
-          ...appListQuery,
-          page: Number(pageParam),
-        },
-      }),
-      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
-    refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
-  })
-
-  const starredAppListQuery = useMemo<AppListQuery>(
-    () => ({
-      ...appListQuery,
-      page: 1,
-      limit: STARRED_APP_LIMIT,
-    }),
-    [appListQuery],
-  )
-
-  const { data: starredAppList, refetch: refetchStarredAppList } = useQuery({
-    ...consoleQuery.apps.starred.get.queryOptions({
-      input: {
-        query: starredAppListQuery,
-      },
-      select: normalizeAppPagination,
-    }),
-  })
-
-  const refreshAppLists = useCallback(() => {
-    void refetch()
-    void refetchStarredAppList()
-  }, [refetch, refetchStarredAppList])
+  } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
 
   useEffect(() => {
-    if (controlRefreshList > 0) refetch()
-  }, [controlRefreshList, refetch])
-
-  const anchorRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (needsRefreshAppList === '1') {
-      setNeedsRefreshAppList(null)
+    if (controlRefreshList > 0) {
       refetch()
     }
-  }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlRefreshList])
+
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const options = [
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="i-ri-apps-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="i-ri-exchange-2-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="i-ri-message-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="i-ri-robot-3-line mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="i-ri-file-4-line mr-1 h-[14px] w-[14px]" /> },
+  ]
 
   useEffect(() => {
+    if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
+      localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
+      refetch()
+    }
+  }, [refetch])
+
+  useEffect(() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
     if (error) {
-      if (observer) observer.disconnect()
+      if (observer)
+        observer.disconnect()
       return
     }
 
     if (anchorRef.current && containerRef.current) {
+      // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
       const containerHeight = containerRef.current.clientHeight
-      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
-      observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-            fetchNextPage()
-        },
-        {
-          root: containerRef.current,
-          rootMargin: `${dynamicMargin}px`,
-          threshold: 0.1,
-        },
-      )
+      observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+          fetchNextPage()
+      }, {
+        root: containerRef.current,
+        rootMargin: `${dynamicMargin}px`,
+        threshold: 0.1, // Trigger when 10% of the anchor element is visible
+      })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
-  const starredApps = useMemo(() => starredAppList?.data ?? [], [starredAppList?.data])
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchKeywords(keywords)
+  }, { wait: 500 })
+  const handleKeywordsChange = (value: string) => {
+    setKeywords(value)
+    handleSearch()
+  }
 
-  const workflowOnlineUserAppIds = useMemo(() => {
-    const appIds = new Set<string>()
-    apps.forEach((app) => {
-      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
-        appIds.add(app.id)
-    })
-    return Array.from(appIds)
-  }, [apps])
+  const { run: handleTagsUpdate } = useDebounceFn(() => {
+    setTagIDs(tagFilterValue)
+  }, { wait: 500 })
+  const handleTagsChange = (value: string[]) => {
+    setTagFilterValue(value)
+    handleTagsUpdate()
+  }
 
-  const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
-    appIds: workflowOnlineUserAppIds,
-    enabled: systemFeatures.enable_collaboration_mode,
-  })
+  const handleCreatedByMeChange = useCallback(() => {
+    const newValue = !isCreatedByMe
+    setIsCreatedByMe(newValue)
+    setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
+  }, [isCreatedByMe, setQuery])
 
-  const hasResolvedFirstPage = pages.length > 0
+  const pages = data?.pages ?? []
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  const hasActiveFilters =
-    category !== 'all' ||
-    tagIDs.length > 0 ||
-    keywords.trim().length > 0 ||
-    debouncedKeywords.trim().length > 0 ||
-    creatorIDs.length > 0
+  // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showFirstEmptyState =
-    !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
-  const showNoCreateEmptyState =
-    !showSkeleton && !hasAnyApp && !canCreateApp && hasResolvedFirstPage && !hasActiveFilters
-  const activeStudioGuideGroup = canCreateApp
-    ? showFirstEmptyState
-      ? 'studioEmpty'
-      : hasAnyApp
-        ? 'studioWithApps'
-        : undefined
-    : hasAnyApp
-      ? 'studioNoCreateWithApps'
-      : showNoCreateEmptyState
-        ? 'studioNoCreateEmpty'
-        : undefined
-  const effectiveActiveStudioGuideGroup = activeStepByStepTourGuideGroup ?? activeStudioGuideGroup
-  const activeStudioGuides =
-    activeStepByStepTourTaskId === 'studio' && effectiveActiveStudioGuideGroup
-      ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
-      : []
-  const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
-  const shouldOpenStepByStepTourCreateMenu =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
-  const shouldOpenStepByStepTourAppCardActionMenu =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-  const shouldHighlightStepByStepTourNoCreateAppRow =
-    activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-  const shouldHighlightStepByStepTourStarredAppRow =
-    shouldHighlightStepByStepTourNoCreateAppRow && starredApps.length > 0
-  const shouldHighlightStepByStepTourAllAppsRow =
-    shouldHighlightStepByStepTourNoCreateAppRow && !shouldHighlightStepByStepTourStarredAppRow
-  const openCreateBlankModal = useCallback(() => {
-    if (canCreateApp) setShowNewAppModal(true)
-  }, [canCreateApp])
-  const openCreateTemplateDialog = useCallback(() => {
-    if (canCreateApp) setShowNewAppTemplateDialog(true)
-  }, [canCreateApp])
-  const openCreateFromDSLModal = useCallback(() => {
-    if (canCreateApp) setShowCreateFromDSLModal(true)
-  }, [canCreateApp])
-
-  useEffect(() => {
-    if (activeStepByStepTourTaskId !== 'studio') return
-    if (!hasResolvedFirstPage || showSkeleton || !activeStudioGuideGroup) return
-    if (activeStepByStepTourGuideGroup === activeStudioGuideGroup) return
-
-    resolveStepByStepTourGuideGroup({
-      taskId: 'studio',
-      guideGroup: activeStudioGuideGroup,
-    })
-  }, [
-    activeStepByStepTourGuideGroup,
-    activeStepByStepTourTaskId,
-    activeStudioGuideGroup,
-    hasResolvedFirstPage,
-    resolveStepByStepTourGuideGroup,
-    showSkeleton,
-  ])
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
-      >
+      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
+          </div>
         )}
 
-        <StudioListHeader
-          title={
-            <div className="flex items-center">
-              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">
-                {t(($) => $['menus.apps'], { ns: 'common' })}
-              </h1>
-            </div>
-          }
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+          <TabSliderNew
+            value={activeTab}
+            onChange={(nextValue) => {
+              if (isAppListCategory(nextValue))
+                setActiveTab(nextValue)
+            }}
+            options={options}
+          />
+          <div className="flex items-center gap-2">
+            <CheckboxWithLabel
+              className="mr-2"
+              label={t('showMyCreatedAppsOnly', { ns: 'app' })}
+              isChecked={isCreatedByMe}
+              onChange={handleCreatedByMeChange}
+            />
+            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName="w-[200px]"
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
+            />
+          </div>
+        </div>
+        <div className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          !hasAnyApp && 'overflow-hidden',
+        )}
         >
-          <AppListHeaderFilters
-            category={category}
-            tagIDs={tagIDs}
-            keywords={keywords}
-            creatorIDs={creatorIDs}
-            sortBy={sortBy}
-            onCategoryChange={setCategory}
-            onTagIDsChange={setTagIDs}
-            onKeywordsChange={setKeywords}
-            onCreatorIDsChange={setCreatorIDs}
-            onSortByChange={setSortBy}
-            onCreateBlank={openCreateBlankModal}
-            onCreateTemplate={openCreateTemplateDialog}
-            onImportDSL={openCreateFromDSLModal}
-            onOpenTagManagement={() => setShowTagManagementModal(true)}
-            showCreateButton={canCreateApp}
-            stepByStepTourCreateMenuOpen={
-              activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
-            }
-            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
-            stepByStepTourCreateMenuHighlightPart={
-              STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu
-            }
-          />
-        </StudioListHeader>
-        {showFirstEmptyState ? (
-          <FirstEmptyState
-            onCreateBlank={openCreateBlankModal}
-            onCreateLearnDify={onCreateLearnDify}
-            onCreateTemplate={openCreateTemplateDialog}
-            onImportDSL={openCreateFromDSLModal}
-            onTryLearnDify={onTryLearnDify}
-            showLearnDify={systemFeatures.enable_learn_app}
-          />
-        ) : (
-          <>
-            {starredApps.length > 0 && (
-              <StarredAppList
-                apps={starredApps}
-                onRefresh={refreshAppLists}
-                stepByStepTourCardTarget={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                    : undefined
-                }
-                stepByStepTourCardHighlightPart={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                    : undefined
-                }
-                stepByStepTourHighlightedCardCount={
-                  shouldHighlightStepByStepTourStarredAppRow
-                    ? STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT
-                    : 0
-                }
-              />
-            )}
-            <div
-              className={cn(
-                `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
-                !hasAnyApp && 'overflow-hidden',
-              )}
-            >
-              {showSkeleton ? (
-                <AppCardSkeleton count={6} />
-              ) : hasAnyApp ? (
-                apps.map((app, index) => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refreshAppLists}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
-                    stepByStepTourActionMenuOpen={
-                      index === 0 ? shouldOpenStepByStepTourAppCardActionMenu : undefined
-                    }
-                    stepByStepTourCardTarget={
-                      index === 0
-                        ? shouldHighlightStepByStepTourAllAppsRow
-                          ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
-                          : canCreateApp
-                            ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
-                            : undefined
-                        : undefined
-                    }
-                    stepByStepTourCardHighlightPart={
-                      index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT &&
-                      shouldHighlightStepByStepTourAllAppsRow
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard
-                        : undefined
-                    }
-                    stepByStepTourActionMenuHighlightPart={
-                      index === 0 && shouldOpenStepByStepTourAppCardActionMenu
-                        ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
-                        : undefined
-                    }
-                  />
-                ))
-              ) : (
-                <Empty
-                  stepByStepTourTarget={
-                    showNoCreateEmptyState
-                      ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty
-                      : undefined
-                  }
-                />
-              )}
-              {isFetchingNextPage && <AppCardSkeleton count={3} />}
-            </div>
-          </>
-        )}
+          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
+            <NewAppCard
+              ref={newAppCardRef}
+              isLoading={isLoadingCurrentWorkspace}
+              onSuccess={refetch}
+              selectedAppType={activeTab}
+              className={cn(!hasAnyApp && 'z-10')}
+            />
+          )}
+          {(() => {
+            if (showSkeleton)
+              return <AppCardSkeleton count={6} />
 
-        {canCreateApp && !showFirstEmptyState && (
+            if (hasAnyApp) {
+              return pages.flatMap(({ data: apps }) => apps).map(app => (
+                <AppCard key={app.id} app={app} onRefresh={refetch} />
+              ))
+            }
+
+            // No apps - show empty state
+            return <Empty />
+          })()}
+          {isFetchingNextPage && (
+            <AppCardSkeleton count={3} />
+          )}
+        </div>
+
+        {isCurrentWorkspaceEditor && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
+            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">
-              {t(($) => $['newApp.dropDSLToCreateApp'], { ns: 'app' })}
-            </span>
+            <span className="i-ri-drag-drop-line h-4 w-4" />
+            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
+        {!systemFeatures.branding.enabled && (
+          <Footer />
+        )}
         <CheckModal />
-        <div ref={anchorRef} className="h-0">
-          {' '}
-        </div>
-        <AppListTagManagementModal
-          show={showTagManagementModal}
-          onClose={() => setShowTagManagementModal(false)}
-          onTagsChange={refreshAppLists}
-        />
+        <div ref={anchorRef} className="h-0"> </div>
+        {showTagManagementModal && (
+          <TagManagementModal type="app" show={showTagManagementModal} />
+        )}
       </div>
 
-      <AppListCreationModals
-        canCreateApp={canCreateApp}
-        category={category}
-        droppedDSLFile={droppedDSLFile}
-        showCreateFromDSLModal={showCreateFromDSLModal}
-        showNewAppModal={showNewAppModal}
-        showNewAppTemplateDialog={showNewAppTemplateDialog}
-        onPlanInfoChanged={onPlanInfoChanged}
-        onRefetch={refreshAppLists}
-        onSetDroppedDSLFile={setDroppedDSLFile}
-        onSetShowCreateFromDSLModal={setShowCreateFromDSLModal}
-        onSetShowNewAppModal={setShowNewAppModal}
-        onSetShowNewAppTemplateDialog={setShowNewAppTemplateDialog}
-      />
+      {showCreateFromDSLModal && (
+        <CreateFromDSLModal
+          show={showCreateFromDSLModal}
+          onClose={() => {
+            setShowCreateFromDSLModal(false)
+            setDroppedDSLFile(undefined)
+          }}
+          onSuccess={() => {
+            setShowCreateFromDSLModal(false)
+            setDroppedDSLFile(undefined)
+            refetch()
+          }}
+          droppedFile={droppedDSLFile}
+        />
+      )}
     </>
   )
 }

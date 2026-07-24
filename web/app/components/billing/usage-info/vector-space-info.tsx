@@ -1,40 +1,33 @@
 'use client'
 import type { FC } from 'react'
 import type { BasicPlan } from '../type'
-import { RiHardDrive3Line } from '@remixicon/react'
+import {
+  RiHardDrive3Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
 
-type Props = Readonly<{
+type Props = {
   className?: string
-}>
+}
 
 // Storage threshold in MB - usage below this shows as "< 50 MB"
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
 
-const VectorSpaceInfo: FC<Props> = ({ className }) => {
+const VectorSpaceInfo: FC<Props> = ({
+  className,
+}) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const { data: vectorSpace } = useCurrentPlanVectorSpace()
-  const displayPlan = vectorSpace
-    ? {
-        ...plan,
-        usage: {
-          ...plan.usage,
-          vectorSpace: vectorSpace.size,
-        },
-        total: {
-          ...plan.total,
-          vectorSpace: vectorSpace.limit,
-        },
-      }
-    : plan
-  const { type, usage, total } = displayPlan
+  const {
+    type,
+    usage,
+    total,
+  } = plan
 
   // Determine total based on plan type (in MB), derived from ALL_PLANS config
   const getTotalInMB = () => {
@@ -50,15 +43,15 @@ const VectorSpaceInfo: FC<Props> = ({ className }) => {
     <UsageInfo
       className={className}
       Icon={RiHardDrive3Line}
-      name={t(($) => $['usagePage.vectorSpace'], { ns: 'billing' })}
-      tooltip={t(($) => $['usagePage.vectorSpaceTooltip'], { ns: 'billing' }) as string}
+      name={t('usagePage.vectorSpace', { ns: 'billing' })}
+      tooltip={t('usagePage.vectorSpaceTooltip', { ns: 'billing' }) as string}
       usage={usage.vectorSpace}
       total={totalInMB}
       unit="MB"
       unitPosition="inline"
       storageMode
       storageThreshold={STORAGE_THRESHOLD_MB}
-      storageTooltip={t(($) => $['usagePage.storageThresholdTooltip'], { ns: 'billing' }) as string}
+      storageTooltip={t('usagePage.storageThresholdTooltip', { ns: 'billing' }) as string}
       isSandboxPlan={isSandbox}
     />
   )

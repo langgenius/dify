@@ -6,22 +6,21 @@ to FileVariable objects, fixing the "Invalid variable type: ObjectVariable" erro
 when passing files to downstream LLM nodes.
 """
 
-from typing import Any
 from unittest.mock import Mock, patch
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.workflow.nodes.trigger_webhook.entities import (
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from dify_graph.entities.graph_init_params import DIFY_RUN_CONTEXT_KEY, GraphInitParams
+from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from dify_graph.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
     WebhookBodyParameter,
     WebhookData,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
-from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
-from tests.workflow_test_utils import build_test_variable_pool
+from dify_graph.nodes.trigger_webhook.node import TriggerWebhookNode
+from dify_graph.runtime.graph_runtime_state import GraphRuntimeState
+from dify_graph.runtime.variable_pool import VariablePool
+from dify_graph.system_variable import SystemVariable
 
 
 def create_webhook_node(
@@ -30,6 +29,11 @@ def create_webhook_node(
     tenant_id: str = "test-tenant",
 ) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
+    node_config = {
+        "id": "webhook-node-1",
+        "data": webhook_data.model_dump(),
+    }
+
     graph_init_params = GraphInitParams(
         workflow_id="test-workflow",
         graph_config={},
@@ -51,8 +55,8 @@ def create_webhook_node(
     )
 
     node = TriggerWebhookNode(
-        node_id="webhook-node-1",
-        data=webhook_data,
+        id="webhook-node-1",
+        config=node_config,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -60,6 +64,10 @@ def create_webhook_node(
     # Attach a lightweight app_config onto runtime state for tenant lookups
     runtime_state.app_config = Mock()
     runtime_state.app_config.tenant_id = tenant_id
+
+    # Provide compatibility alias expected by node implementation
+    # Some nodes reference `self.node_id`; expose it as an alias to `self.id` for tests
+    node.node_id = node.id
 
     return node
 
@@ -88,18 +96,6 @@ def create_test_file_dict(
     }
 
 
-def build_webhook_variable_pool(inputs: dict[str, Any]) -> VariablePool:
-    return build_test_variable_pool(
-        variables=default_system_variables(),
-        node_id="webhook-node-1",
-        inputs=inputs,
-    )
-
-
-def expected_factory_mapping(file_dict: dict[str, Any]) -> dict[str, Any]:
-    return {**file_dict, "upload_file_id": file_dict["related_id"]}
-
-
 def test_webhook_node_file_conversion_to_file_variable():
     """Test that webhook node converts file dictionaries to FileVariable objects."""
     # Create test file dictionary (as it comes from webhook service)
@@ -115,8 +111,9 @@ def test_webhook_node_file_conversion_to_file_variable():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -125,16 +122,16 @@ def test_webhook_node_file_conversion_to_file_variable():
                     "image_upload": file_dict,
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
 
-    # Mock the file reference boundary and variable factory
+    # Mock the file factory and variable factory
     with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks
         mock_file_obj = Mock()
@@ -156,7 +153,8 @@ def test_webhook_node_file_conversion_to_file_variable():
 
         # Verify file factory was called with correct parameters
         mock_file_factory.assert_called_once_with(
-            mapping=expected_factory_mapping(file_dict),
+            mapping=file_dict,
+            tenant_id="test-tenant",
         )
 
         # Verify segment factory was called to create FileSegment
@@ -186,15 +184,16 @@ def test_webhook_node_file_conversion_with_missing_files():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
                 "body": {},
                 "files": {},  # No files
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
@@ -220,8 +219,9 @@ def test_webhook_node_file_conversion_with_none_file():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -230,7 +230,7 @@ def test_webhook_node_file_conversion_with_none_file():
                     "file": None,
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
@@ -256,8 +256,9 @@ def test_webhook_node_file_conversion_with_non_dict_file():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -266,7 +267,7 @@ def test_webhook_node_file_conversion_with_non_dict_file():
                     "file": "not_a_dict",  # Wrapped to match node expectation
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
@@ -299,8 +300,9 @@ def test_webhook_node_file_conversion_mixed_parameters():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -313,15 +315,15 @@ def test_webhook_node_file_conversion_mixed_parameters():
                     "file_param": file_dict,
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
 
     with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for file
         mock_file_obj = Mock()
@@ -348,7 +350,8 @@ def test_webhook_node_file_conversion_mixed_parameters():
 
         # Verify file conversion was called
         mock_file_factory.assert_called_once_with(
-            mapping=expected_factory_mapping(file_dict),
+            mapping=file_dict,
+            tenant_id="test-tenant",
         )
 
 
@@ -367,8 +370,9 @@ def test_webhook_node_different_file_types():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -379,15 +383,15 @@ def test_webhook_node_different_file_types():
                     "video": create_test_file_dict("video.mp4", "video"),
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)
 
     with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
+        patch("factories.file_factory.build_from_mapping") as mock_file_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
+        patch("dify_graph.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
     ):
         # Setup mocks for all files
         mock_file_objs = [Mock() for _ in range(3)]
@@ -426,8 +430,9 @@ def test_webhook_node_file_conversion_with_non_dict_wrapper():
         ],
     )
 
-    variable_pool = build_webhook_variable_pool(
-        {
+    variable_pool = VariablePool(
+        system_variables=SystemVariable.default(),
+        user_inputs={
             "webhook_data": {
                 "headers": {},
                 "query_params": {},
@@ -436,7 +441,7 @@ def test_webhook_node_file_conversion_with_non_dict_wrapper():
                     "file": "just a string",
                 },
             }
-        }
+        },
     )
 
     node = create_webhook_node(data, variable_pool)

@@ -28,13 +28,12 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
 from libs.broadcast_channel.channel import Topic
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -89,18 +88,12 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(
-        self,
-        app_model: App,
-        conversation: Conversation | None = None,
-        *,
-        session: Session,
-    ) -> AppModelConfig:
+    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
             )
-            app_model_config = session.scalar(stmt)
+            app_model_config = db.session.scalar(stmt)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -108,7 +101,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
 
-            app_model_config = session.get(AppModelConfig, app_model.app_model_config_id)
+            app_model_config = app_model.app_model_config
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -124,8 +117,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AdvancedChatAppGenerateEntity,
         ],
         conversation: Conversation | None = None,
-        *,
-        session: Session,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -139,10 +130,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         end_user_id = None
         account_id = None
         if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            from_source = ConversationFromSource.API
+            from_source = "api"
             end_user_id = application_generate_entity.user_id
         else:
-            from_source = ConversationFromSource.CONSOLE
+            from_source = "console"
             account_id = application_generate_entity.user_id
 
         if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
@@ -191,9 +182,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     from_account_id=account_id,
                 )
 
-                session.add(conversation)
-                session.flush()
-                session.refresh(conversation)
+                db.session.add(conversation)
+                db.session.flush()
+                db.session.refresh(conversation)
             else:
                 conversation.updated_at = naive_utc_now()
 
@@ -224,9 +215,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 app_mode=app_config.app_mode,
             )
 
-            session.add(message)
-            session.flush()
-            session.refresh(message)
+            db.session.add(message)
+            db.session.flush()
+            db.session.refresh(message)
 
             message_files = []
             for file in application_generate_entity.files:
@@ -234,25 +225,25 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                     message_id=message.id,
                     type=file.type,
                     transfer_method=file.transfer_method,
-                    belongs_to=MessageFileBelongsTo.USER,
+                    belongs_to="user",
                     url=file.remote_url,
-                    upload_file_id=resolve_file_record_id(file.reference),
+                    upload_file_id=file.related_id,
                     created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                     created_by=account_id or end_user_id or "",
                 )
                 message_files.append(message_file)
 
             if message_files:
-                session.add_all(message_files)
+                db.session.add_all(message_files)
 
-            session.commit()
+            db.session.commit()
 
             if isinstance(application_generate_entity, ConversationAppGenerateEntity):
                 application_generate_entity.conversation_id = conversation.id
                 application_generate_entity.is_new_conversation = created_new_conversation
             return conversation, message
         except Exception:
-            session.rollback()
+            db.session.rollback()
             raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:

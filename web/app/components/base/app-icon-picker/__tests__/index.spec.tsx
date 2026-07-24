@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -19,17 +18,18 @@ class MockLoadedImage {
   private listeners: Record<string, EventListener[]> = {}
 
   addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
-    const eventListener =
-      typeof listener === 'function' ? listener : listener.handleEvent.bind(listener)
-    if (!this.listeners[type]) this.listeners[type] = []
+    const eventListener = typeof listener === 'function' ? listener : listener.handleEvent.bind(listener)
+    if (!this.listeners[type])
+      this.listeners[type] = []
     this.listeners[type].push(eventListener)
   }
 
-  setAttribute(_name: string, _value: string) {}
+  setAttribute(_name: string, _value: string) { }
 
   set src(_value: string) {
     queueMicrotask(() => {
-      for (const listener of this.listeners.load ?? []) listener(new Event('load'))
+      for (const listener of this.listeners.load ?? [])
+        listener(new Event('load'))
     })
   }
 
@@ -55,10 +55,7 @@ const createCanvasContextMock = (): CanvasRenderingContext2D =>
     drawImage: vi.fn(),
   }) as unknown as CanvasRenderingContext2D
 
-const createCanvasElementMock = (
-  context: CanvasRenderingContext2D | null,
-  blob: Blob | null = new Blob(['ok'], { type: 'image/png' }),
-) =>
+const createCanvasElementMock = (context: CanvasRenderingContext2D | null, blob: Blob | null = new Blob(['ok'], { type: 'image/png' })) =>
   ({
     width: 0,
     height: 0,
@@ -80,21 +77,15 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('react-easy-crop', () => ({
-  default: ({
-    onCropComplete,
-  }: {
-    onCropComplete: (_area: Area, croppedAreaPixels: Area) => void
-  }) => (
+  default: ({ onCropComplete }: { onCropComplete: (_area: Area, croppedAreaPixels: Area) => void }) => (
     <div data-testid="mock-cropper">
       <button
         type="button"
         data-testid="trigger-crop"
-        onClick={() =>
-          onCropComplete(
-            { x: 0, y: 0, width: 100, height: 100 },
-            { x: 0, y: 0, width: 100, height: 100 },
-          )
-        }
+        onClick={() => onCropComplete(
+          { x: 0, y: 0, width: 100, height: 100 },
+          { x: 0, y: 0, width: 100, height: 100 },
+        )}
       >
         Trigger Crop
       </button>
@@ -120,27 +111,24 @@ describe('AppIconPicker', () => {
   let originalImage: typeof Image
 
   const mockCanvasCreation = (canvases: HTMLCanvasElement[]) => {
-    vi.spyOn(document, 'createElement').mockImplementation(
-      (...args: Parameters<Document['createElement']>) => {
-        if (args[0] === 'canvas') {
-          const nextCanvas = canvases.shift()
-          if (!nextCanvas) throw new Error('Unexpected canvas creation')
-          return nextCanvas as ReturnType<Document['createElement']>
-        }
-        return originalCreateElement(...args)
-      },
-    )
+    vi.spyOn(document, 'createElement').mockImplementation((...args: Parameters<Document['createElement']>) => {
+      if (args[0] === 'canvas') {
+        const nextCanvas = canvases.shift()
+        if (!nextCanvas)
+          throw new Error('Unexpected canvas creation')
+        return nextCanvas as ReturnType<Document['createElement']>
+      }
+      return originalCreateElement(...args)
+    })
   }
 
-  const renderPicker = (props: Partial<ComponentProps<typeof AppIconPicker>> = {}) => {
+  const renderPicker = () => {
     const onSelect = vi.fn()
-    const onOpenChange = vi.fn()
+    const onClose = vi.fn()
 
-    const { container } = render(
-      <AppIconPicker open onOpenChange={onOpenChange} onSelect={onSelect} {...props} />,
-    )
+    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} />)
 
-    return { onSelect, onOpenChange, container }
+    return { onSelect, onClose, container }
   }
 
   beforeEach(() => {
@@ -149,7 +137,8 @@ describe('AppIconPicker', () => {
     mocks.uploadResult = createImageFile()
     mocks.onUpload = null
     mocks.handleLocalFileUpload.mockImplementation(() => {
-      if (mocks.uploadResult) mocks.onUpload?.(mocks.uploadResult)
+      if (mocks.uploadResult)
+        mocks.onUpload?.(mocks.uploadResult)
     })
 
     originalImage = globalThis.Image
@@ -167,11 +156,10 @@ describe('AppIconPicker', () => {
     it('should render emoji and image tabs when upload is enabled', async () => {
       renderPicker()
 
-      expect(screen.getByRole('dialog', { name: /emoji/i })).toBeInTheDocument()
-      expect(await screen.findByRole('button', { name: /emoji/i }))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /image/i }))!.toBeInTheDocument()
-      expect(screen.getByText(/cancel/i))!.toBeInTheDocument()
-      expect(screen.getByText(/ok/i))!.toBeInTheDocument()
+      expect(await screen.findByText(/emoji/i)).toBeInTheDocument()
+      expect(screen.getByText(/image/i)).toBeInTheDocument()
+      expect(screen.getByText(/cancel/i)).toBeInTheDocument()
+      expect(screen.getByText(/ok/i)).toBeInTheDocument()
     })
 
     it('should hide the image tab when upload is disabled', () => {
@@ -179,59 +167,50 @@ describe('AppIconPicker', () => {
       renderPicker()
 
       expect(screen.queryByText(/image/i)).not.toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/search/i))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
-    it('should close when cancel is clicked', async () => {
-      const { onOpenChange } = renderPicker()
+    it('should call onClose when cancel is clicked', async () => {
+      const { onClose } = renderPicker()
 
       await userEvent.click(screen.getByText(/cancel/i))
 
-      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('should switch between emoji and image tabs', async () => {
       renderPicker()
 
       await userEvent.click(screen.getByText(/image/i))
-      expect(screen.getByText(/drop.*here/i))!.toBeInTheDocument()
+      expect(screen.getByText(/drop.*here/i)).toBeInTheDocument()
 
-      await userEvent.click(screen.getByRole('button', { name: /emoji/i }))
-      expect(screen.getByPlaceholderText(/search/i))!.toBeInTheDocument()
+      await userEvent.click(screen.getByText(/emoji/i))
+      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument()
     })
 
     it('should call onSelect with emoji data after emoji selection', async () => {
       const { onSelect } = renderPicker()
 
       await waitFor(() => {
-        expect(document.querySelector('em-emoji')?.closest('button'))!.toBeInTheDocument()
+        expect(screen.queryAllByTestId(/emoji-container-/i).length).toBeGreaterThan(0)
       })
 
-      const firstEmoji = document.querySelector('em-emoji')?.closest('button')
-      if (!firstEmoji) throw new Error('Could not find emoji option')
+      const firstEmoji = screen.queryAllByTestId(/emoji-container-/i)[0]
+      if (!firstEmoji)
+        throw new Error('Could not find emoji option')
 
       await userEvent.click(firstEmoji)
       await userEvent.click(screen.getByText(/ok/i))
 
       await waitFor(() => {
-        expect(onSelect).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'emoji',
-            icon: expect.any(String),
-            background: expect.any(String),
-          }),
-        )
+        expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'emoji',
+          icon: expect.any(String),
+          background: expect.any(String),
+        }))
       })
-    })
-
-    it('should close through the dialog open change contract when Escape is pressed', async () => {
-      const { onOpenChange } = renderPicker()
-
-      await userEvent.keyboard('{Escape}')
-
-      expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything())
     })
 
     it('should not call onSelect when no emoji has been selected', async () => {
@@ -240,20 +219,6 @@ describe('AppIconPicker', () => {
       await userEvent.click(screen.getByText(/ok/i))
 
       expect(onSelect).not.toHaveBeenCalled()
-    })
-
-    it('should submit the initial emoji when provided', async () => {
-      const { onSelect } = renderPicker({ initialEmoji: { icon: 'rabbit', background: '#E4FBCC' } })
-
-      await userEvent.click(screen.getByText(/ok/i))
-
-      await waitFor(() => {
-        expect(onSelect).toHaveBeenCalledWith({
-          type: 'emoji',
-          icon: 'rabbit',
-          background: '#E4FBCC',
-        })
-      })
     })
   })
 
@@ -280,14 +245,13 @@ describe('AppIconPicker', () => {
       await userEvent.click(screen.getByText(/image/i))
 
       const input = screen.queryByTestId('image-input')
-      if (!input) throw new Error('Could not find image input')
+      if (!input)
+        throw new Error('Could not find image input')
 
-      fireEvent.change(input, {
-        target: { files: [new File(['png'], 'avatar.png', { type: 'image/png' })] },
-      })
+      fireEvent.change(input, { target: { files: [new File(['png'], 'avatar.png', { type: 'image/png' })] } })
 
       await waitFor(() => {
-        expect(screen.getByTestId('mock-cropper'))!.toBeInTheDocument()
+        expect(screen.getByTestId('mock-cropper')).toBeInTheDocument()
       })
 
       await userEvent.click(screen.getByTestId('trigger-crop'))
@@ -297,7 +261,7 @@ describe('AppIconPicker', () => {
         expect(mocks.handleLocalFileUpload).toHaveBeenCalledTimes(1)
       })
 
-      const uploadedFile = mocks.handleLocalFileUpload.mock.calls[0]![0]
+      const uploadedFile = mocks.handleLocalFileUpload.mock.calls[0][0]
       expect(uploadedFile).toBeInstanceOf(File)
       expect(uploadedFile.name).toBe('avatar.png')
       expect(uploadedFile.type).toBe('image/png')
@@ -319,14 +283,15 @@ describe('AppIconPicker', () => {
       const gifFile = new File([gifBytes], 'animated.gif', { type: 'image/gif' })
 
       const input = screen.queryByTestId('image-input')
-      if (!input) throw new Error('Could not find image input')
+      if (!input)
+        throw new Error('Could not find image input')
 
       fireEvent.change(input, { target: { files: [gifFile] } })
 
       await waitFor(() => {
         expect(screen.queryByTestId('mock-cropper')).not.toBeInTheDocument()
         const preview = screen.queryByTestId('animated-image')
-        expect(preview)!.toBeInTheDocument()
+        expect(preview).toBeInTheDocument()
         expect(preview?.getAttribute('src')).toContain('blob:mock-url')
       })
 
@@ -354,7 +319,8 @@ describe('AppIconPicker', () => {
       const gifFile = new File([gifBytes], 'no-file-id.gif', { type: 'image/gif' })
 
       const input = screen.queryByTestId('image-input')
-      if (!input) throw new Error('Could not find image input')
+      if (!input)
+        throw new Error('Could not find image input')
 
       fireEvent.change(input, { target: { files: [gifFile] } })
 

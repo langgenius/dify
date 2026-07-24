@@ -3,13 +3,10 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import Any
 
-if TYPE_CHECKING:
-    from models.account import Account
-
-from sqlalchemy import delete, desc, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -17,8 +14,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.plugin.plugin_service import PluginService
-from core.tools.utils.system_encryption import decrypt_system_params
+from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
     TriggerProviderSubscriptionApiEntity,
@@ -41,12 +37,9 @@ from models.trigger import (
     TriggerSubscription,
     WorkflowPluginTrigger,
 )
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
-
-
-class VerifyCredentialsResult(TypedDict):
-    verified: bool
 
 
 class TriggerProviderService:
@@ -69,51 +62,34 @@ class TriggerProviderService:
 
     @classmethod
     def list_trigger_provider_subscriptions(
-        cls,
-        tenant_id: str,
-        provider_id: TriggerProviderID,
-        user: "Account | None" = None,
+        cls, tenant_id: str, provider_id: TriggerProviderID
     ) -> list[TriggerProviderSubscriptionApiEntity]:
-        """List all trigger subscriptions for the current tenant, filtered by visibility."""
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
+        """List all trigger subscriptions for the current tenant"""
         subscriptions: list[TriggerProviderSubscriptionApiEntity] = []
         workflows_in_use_map: dict[str, int] = {}
         with Session(db.engine, expire_on_commit=False) as session:
-            # Get all subscriptions with visibility filtering
-            query = (
-                select(TriggerSubscription)
-                .where(
-                    TriggerSubscription.tenant_id == tenant_id,
-                    TriggerSubscription.provider_id == str(provider_id),
-                )
+            # Get all subscriptions
+            subscriptions_db = (
+                session.query(TriggerSubscription)
+                .filter_by(tenant_id=tenant_id, provider_id=str(provider_id))
                 .order_by(desc(TriggerSubscription.created_at))
+                .all()
             )
-            if user is not None:
-                query = CredentialPermissionService.apply_visibility_filter(
-                    query,
-                    model_id_column=TriggerSubscription.id,
-                    model_user_id_column=TriggerSubscription.user_id,
-                    model_visibility_column=TriggerSubscription.visibility,
-                    credential_type=CredPermType.TRIGGER_SUBSCRIPTION,
-                    user=user,
-                )
-            subscriptions_db = session.scalars(query).all()
             subscriptions = [subscription.to_api_entity() for subscription in subscriptions_db]
             if not subscriptions:
                 return []
-            usage_counts = session.execute(
-                select(
+            usage_counts = (
+                session.query(
                     WorkflowPluginTrigger.subscription_id,
                     func.count(func.distinct(WorkflowPluginTrigger.app_id)).label("app_count"),
                 )
-                .where(
+                .filter(
                     WorkflowPluginTrigger.tenant_id == tenant_id,
                     WorkflowPluginTrigger.subscription_id.in_([s.id for s in subscriptions]),
                 )
                 .group_by(WorkflowPluginTrigger.subscription_id)
-            ).all()
+                .all()
+            )
             workflows_in_use_map = {str(row.subscription_id): int(row.app_count) for row in usage_counts}
 
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
@@ -170,19 +146,15 @@ class TriggerProviderService:
         """
         try:
             provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            with Session(db.engine, expire_on_commit=False) as session:
                 # Use distributed lock to prevent race conditions
                 lock_key = f"trigger_provider_create_lock:{tenant_id}_{provider_id}"
                 with redis_client.lock(lock_key, timeout=20):
                     # Check provider count limit
                     provider_count = (
-                        session.scalar(
-                            select(func.count(TriggerSubscription.id)).where(
-                                TriggerSubscription.tenant_id == tenant_id,
-                                TriggerSubscription.provider_id == str(provider_id),
-                            )
-                        )
-                        or 0
+                        session.query(TriggerSubscription)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id))
+                        .count()
                     )
 
                     if provider_count >= cls.__MAX_TRIGGER_PROVIDER_COUNT__:
@@ -192,14 +164,10 @@ class TriggerProviderService:
                         )
 
                     # Check if name already exists
-                    existing = session.scalar(
-                        select(TriggerSubscription)
-                        .where(
-                            TriggerSubscription.tenant_id == tenant_id,
-                            TriggerSubscription.provider_id == str(provider_id),
-                            TriggerSubscription.name == name,
-                        )
-                        .limit(1)
+                    existing = (
+                        session.query(TriggerSubscription)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id), name=name)
+                        .first()
                     )
                     if existing:
                         raise ValueError(f"Credential name '{name}' already exists for this provider")
@@ -230,13 +198,14 @@ class TriggerProviderService:
                         credentials=dict(credential_encrypter.encrypt(dict(credentials)))
                         if credential_encrypter
                         else {},
-                        credential_type=credential_type,
+                        credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
                     subscription.id = subscription_id or str(uuid.uuid4())
 
                     session.add(subscription)
+                    session.commit()
 
                     return {
                         "result": "success",
@@ -272,17 +241,12 @@ class TriggerProviderService:
         :param expires_at: Optional new expiration timestamp
         :return: Success response with updated subscription info
         """
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             # Use distributed lock to prevent race conditions on the same subscription
             lock_key = f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}"
             with redis_client.lock(lock_key, timeout=20):
-                subscription = session.scalar(
-                    select(TriggerSubscription)
-                    .where(
-                        TriggerSubscription.tenant_id == tenant_id,
-                        TriggerSubscription.id == subscription_id,
-                    )
-                    .limit(1)
+                subscription: TriggerSubscription | None = (
+                    session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
                 )
                 if not subscription:
                     raise ValueError(f"Trigger subscription {subscription_id} not found")
@@ -292,14 +256,10 @@ class TriggerProviderService:
 
                 # Check for name uniqueness if name is being updated
                 if name is not None and name != subscription.name:
-                    existing = session.scalar(
-                        select(TriggerSubscription)
-                        .where(
-                            TriggerSubscription.tenant_id == tenant_id,
-                            TriggerSubscription.provider_id == str(provider_id),
-                            TriggerSubscription.name == name,
-                        )
-                        .limit(1)
+                    existing = (
+                        session.query(TriggerSubscription)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id), name=name)
+                        .first()
                     )
                     if existing:
                         raise ValueError(f"Subscription name '{name}' already exists for this provider")
@@ -342,6 +302,8 @@ class TriggerProviderService:
                 if expires_at is not None:
                     subscription.expires_at = expires_at
 
+                session.commit()
+
                 # Clear subscription cache
                 delete_cache_for_subscription(
                     tenant_id=tenant_id,
@@ -357,18 +319,11 @@ class TriggerProviderService:
         with Session(db.engine, expire_on_commit=False) as session:
             subscription: TriggerSubscription | None = None
             if subscription_id:
-                subscription = session.scalar(
-                    select(TriggerSubscription)
-                    .where(
-                        TriggerSubscription.tenant_id == tenant_id,
-                        TriggerSubscription.id == subscription_id,
-                    )
-                    .limit(1)
+                subscription = (
+                    session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
                 )
             else:
-                subscription = session.scalar(
-                    select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id).limit(1)
-                )
+                subscription = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id).first()
             if subscription:
                 provider_controller = TriggerManager.get_trigger_provider(
                     tenant_id, TriggerProviderID(subscription.provider_id)
@@ -388,7 +343,7 @@ class TriggerProviderService:
             return subscription
 
     @classmethod
-    def delete_trigger_provider(cls, tenant_id: str, subscription_id: str, *, session: Session):
+    def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):
         """
         Delete a trigger provider subscription within an existing session.
 
@@ -397,13 +352,8 @@ class TriggerProviderService:
         :param subscription_id: Subscription instance ID
         :return: Success response
         """
-        subscription = session.scalar(
-            select(TriggerSubscription)
-            .where(
-                TriggerSubscription.tenant_id == tenant_id,
-                TriggerSubscription.id == subscription_id,
-            )
-            .limit(1)
+        subscription: TriggerSubscription | None = (
+            session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
         )
         if not subscription:
             raise ValueError(f"Trigger provider subscription {subscription_id} not found")
@@ -454,20 +404,13 @@ class TriggerProviderService:
         :param subscription_id: Subscription instance ID
         :return: New token info
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            subscription = session.scalar(
-                select(TriggerSubscription)
-                .where(
-                    TriggerSubscription.tenant_id == tenant_id,
-                    TriggerSubscription.id == subscription_id,
-                )
-                .limit(1)
-            )
+        with Session(db.engine) as session:
+            subscription = session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
 
             if not subscription:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if subscription.credential_type != CredentialType.OAUTH2:
+            if subscription.credential_type != CredentialType.OAUTH2.value:
                 raise ValueError("Only OAuth credentials can be refreshed")
 
             provider_id = TriggerProviderID(subscription.provider_id)
@@ -475,7 +418,7 @@ class TriggerProviderService:
                 tenant_id=tenant_id, provider_id=provider_id
             )
             # Create encrypter
-            encrypter, _ = create_provider_encrypter(
+            encrypter, cache = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                 cache=NoOpProviderCredentialCache(),
@@ -505,20 +448,15 @@ class TriggerProviderService:
             # Update credentials
             subscription.credentials = dict(encrypter.encrypt(dict(refreshed_credentials.credentials)))
             subscription.credential_expires_at = refreshed_credentials.expires_at
+            session.commit()
 
-            provider_id_value = subscription.provider_id
-            result = {
+            # Clear cache
+            cache.delete()
+
+            return {
                 "result": "success",
                 "expires_at": refreshed_credentials.expires_at,
             }
-
-        # Clear the trigger runtime credential cache after the DB commit so dispatch uses the refreshed token.
-        delete_cache_for_subscription(
-            tenant_id=tenant_id,
-            provider_id=provider_id_value,
-            subscription_id=subscription_id,
-        )
-        return result
 
     @classmethod
     def refresh_subscription(
@@ -540,14 +478,9 @@ class TriggerProviderService:
         """
         now_ts: int = int(now if now is not None else _time.time())
 
-        with sessionmaker(bind=db.engine).begin() as session:
-            subscription = session.scalar(
-                select(TriggerSubscription)
-                .where(
-                    TriggerSubscription.tenant_id == tenant_id,
-                    TriggerSubscription.id == subscription_id,
-                )
-                .limit(1)
+        with Session(db.engine) as session:
+            subscription: TriggerSubscription | None = (
+                session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
             )
             if subscription is None:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
@@ -598,6 +531,7 @@ class TriggerProviderService:
             # Persist refreshed properties and expires_at
             subscription.properties = dict(properties_encrypter.encrypt(dict(refreshed.properties)))
             subscription.expires_at = int(refreshed.expires_at)
+            session.commit()
             properties_cache.delete()
 
             logger.info(
@@ -623,15 +557,15 @@ class TriggerProviderService:
             tenant_id=tenant_id, provider_id=provider_id
         )
         with Session(db.engine, expire_on_commit=False) as session:
-            tenant_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.enabled.is_(True),
+            tenant_client: TriggerOAuthTenantClient | None = (
+                session.query(TriggerOAuthTenantClient)
+                .filter_by(
+                    tenant_id=tenant_id,
+                    provider=provider_id.provider_name,
+                    plugin_id=provider_id.plugin_id,
+                    enabled=True,
                 )
-                .limit(1)
+                .first()
             )
 
             oauth_params: Mapping[str, Any] | None = None
@@ -649,18 +583,15 @@ class TriggerProviderService:
                 return None
 
             # Check for system-level OAuth client
-            system_client = session.scalar(
-                select(TriggerOAuthSystemClient)
-                .where(
-                    TriggerOAuthSystemClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthSystemClient.provider == provider_id.provider_name,
-                )
-                .limit(1)
+            system_client: TriggerOAuthSystemClient | None = (
+                session.query(TriggerOAuthSystemClient)
+                .filter_by(plugin_id=provider_id.plugin_id, provider=provider_id.provider_name)
+                .first()
             )
 
             if system_client:
                 try:
-                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
+                    oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
                 except Exception as e:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 
@@ -676,13 +607,10 @@ class TriggerProviderService:
         if not is_verified:
             return False
         with Session(db.engine, expire_on_commit=False) as session:
-            system_client = session.scalar(
-                select(TriggerOAuthSystemClient)
-                .where(
-                    TriggerOAuthSystemClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthSystemClient.provider == provider_id.provider_name,
-                )
-                .limit(1)
+            system_client: TriggerOAuthSystemClient | None = (
+                session.query(TriggerOAuthSystemClient)
+                .filter_by(plugin_id=provider_id.plugin_id, provider=provider_id.provider_name)
+                .first()
             )
             return system_client is not None
 
@@ -711,16 +639,16 @@ class TriggerProviderService:
             tenant_id=tenant_id, provider_id=provider_id
         )
 
-        with sessionmaker(bind=db.engine).begin() as session:
+        with Session(db.engine) as session:
             # Find existing custom client params
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
+            custom_client = (
+                session.query(TriggerOAuthTenantClient)
+                .filter_by(
+                    tenant_id=tenant_id,
+                    plugin_id=provider_id.plugin_id,
+                    provider=provider_id.provider_name,
                 )
-                .limit(1)
+                .first()
             )
 
             # Create new record if doesn't exist
@@ -755,6 +683,8 @@ class TriggerProviderService:
             if enabled is not None:
                 custom_client.enabled = enabled
 
+            session.commit()
+
         return {"result": "success"}
 
     @classmethod
@@ -767,14 +697,14 @@ class TriggerProviderService:
         :return: Masked OAuth client parameters
         """
         with Session(db.engine) as session:
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
+            custom_client = (
+                session.query(TriggerOAuthTenantClient)
+                .filter_by(
+                    tenant_id=tenant_id,
+                    plugin_id=provider_id.plugin_id,
+                    provider=provider_id.provider_name,
                 )
-                .limit(1)
+                .first()
             )
 
             if custom_client is None:
@@ -803,16 +733,13 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: Success response
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            session.execute(
-                delete(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                )
-                .execution_options(synchronize_session=False)
-            )
+        with Session(db.engine) as session:
+            session.query(TriggerOAuthTenantClient).filter_by(
+                tenant_id=tenant_id,
+                provider=provider_id.provider_name,
+                plugin_id=provider_id.plugin_id,
+            ).delete()
+            session.commit()
 
         return {"result": "success"}
 
@@ -826,15 +753,15 @@ class TriggerProviderService:
         :return: True if enabled, False otherwise
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            custom_client = session.scalar(
-                select(TriggerOAuthTenantClient)
-                .where(
-                    TriggerOAuthTenantClient.tenant_id == tenant_id,
-                    TriggerOAuthTenantClient.plugin_id == provider_id.plugin_id,
-                    TriggerOAuthTenantClient.provider == provider_id.provider_name,
-                    TriggerOAuthTenantClient.enabled.is_(True),
+            custom_client = (
+                session.query(TriggerOAuthTenantClient)
+                .filter_by(
+                    tenant_id=tenant_id,
+                    plugin_id=provider_id.plugin_id,
+                    provider=provider_id.provider_name,
+                    enabled=True,
                 )
-                .limit(1)
+                .first()
             )
             return custom_client is not None
 
@@ -844,9 +771,7 @@ class TriggerProviderService:
         Get a trigger subscription by the endpoint ID.
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            subscription = session.scalar(
-                select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id).limit(1)
-            )
+            subscription = session.query(TriggerSubscription).filter_by(endpoint_id=endpoint_id).first()
             if not subscription:
                 return None
             provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
@@ -875,7 +800,7 @@ class TriggerProviderService:
         provider_id: TriggerProviderID,
         subscription_id: str,
         credentials: dict[str, Any],
-    ) -> VerifyCredentialsResult:
+    ) -> dict[str, Any]:
         """
         Verify credentials for an existing subscription without updating it.
 

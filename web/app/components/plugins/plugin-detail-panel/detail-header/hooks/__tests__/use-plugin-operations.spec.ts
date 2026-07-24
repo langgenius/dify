@@ -3,6 +3,7 @@ import type { ModalStates, VersionTarget } from '../use-detail-header-state'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as amplitude from '@/app/components/base/amplitude'
+import Toast from '@/app/components/base/toast'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
 
@@ -13,42 +14,21 @@ type VersionPickerMock = {
 
 const {
   mockSetShowUpdatePluginModal,
-  mockInvalidateCheckInstalled,
-  mockRefreshPluginList,
+  mockRefreshModelProviders,
+  mockInvalidateAllToolProviders,
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
-  mockToastNotify,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
-    mockInvalidateCheckInstalled: vi.fn(),
-    mockRefreshPluginList: vi.fn(),
+    mockRefreshModelProviders: vi.fn(),
+    mockInvalidateAllToolProviders: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
-    mockCheckForUpdates: vi.fn(() => ({
-      needUpdate: true,
-      toastProps: { type: 'success', message: 'Update available' },
-    })),
-    mockToastNotify: vi.fn(),
+    mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
   }
 })
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
-}))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -56,9 +36,9 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
-  default: () => ({
-    refreshPluginList: mockRefreshPluginList,
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    refreshModelProviders: mockRefreshModelProviders,
   }),
 }))
 
@@ -66,18 +46,16 @@ vi.mock('@/service/plugins', () => ({
   uninstallPlugin: mockUninstallPlugin,
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
+vi.mock('@/service/use-tools', () => ({
+  useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../install-plugin/hooks')>()
-  return {
-    ...actual,
+vi.mock('../../../../install-plugin/hooks', () => ({
+  useGitHubReleases: () => ({
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }
-})
+  }),
+}))
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',
@@ -140,6 +118,7 @@ describe('usePluginOperations', () => {
     modalStates = createModalStatesMock()
     versionPicker = createVersionPickerMock()
     mockOnUpdate = vi.fn()
+    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
     vi.spyOn(amplitude, 'trackEvent').mockImplementation(() => {})
   })
 
@@ -199,7 +178,6 @@ describe('usePluginOperations', () => {
         result.current.handleUpdatedFromMarketplace()
       })
 
-      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
       expect(modalStates.hideUpdateModal).toHaveBeenCalled()
     })
@@ -248,7 +226,7 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockCheckForUpdates).toHaveBeenCalled()
-      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Update available' })
+      expect(Toast.notify).toHaveBeenCalled()
     })
 
     it('should show update plugin modal when update is needed', async () => {
@@ -271,32 +249,6 @@ describe('usePluginOperations', () => {
       })
 
       expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
-    })
-
-    it('should invalidate checkInstalled when GitHub update save callback fires', async () => {
-      const detail = createPluginDetail({
-        source: PluginSource.github,
-        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
-      })
-      const { result } = renderHook(() =>
-        usePluginOperations({
-          detail,
-          modalStates,
-          versionPicker,
-          isFromMarketplace: false,
-          onUpdate: mockOnUpdate,
-        }),
-      )
-
-      await act(async () => {
-        await result.current.handleUpdate()
-      })
-
-      const firstCall = mockSetShowUpdatePluginModal.mock.calls.at(0)?.[0]
-      firstCall?.onSaveCallback()
-
-      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
-      expect(mockOnUpdate).toHaveBeenCalled()
     })
 
     it('should not show modal when no releases found', async () => {
@@ -436,7 +388,6 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalledWith(true)
     })
 
@@ -459,7 +410,7 @@ describe('usePluginOperations', () => {
       expect(modalStates.hideDeleteConfirm).toHaveBeenCalled()
     })
 
-    it('should refresh plugin list when deleting model plugin', async () => {
+    it('should refresh model providers when deleting model plugin', async () => {
       const detail = createPluginDetail({
         declaration: {
           author: 'test-author',
@@ -485,10 +436,10 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' })
+      expect(mockRefreshModelProviders).toHaveBeenCalled()
     })
 
-    it('should refresh plugin list when deleting tool plugin', async () => {
+    it('should invalidate tool providers when deleting tool plugin', async () => {
       const detail = createPluginDetail({
         declaration: {
           author: 'test-author',
@@ -514,7 +465,7 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'tool' })
+      expect(mockInvalidateAllToolProviders).toHaveBeenCalled()
     })
 
     it('should track plugin uninstalled event', async () => {
@@ -533,13 +484,10 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(amplitude.trackEvent).toHaveBeenCalledWith(
-        'plugin_uninstalled',
-        expect.objectContaining({
-          plugin_id: 'test-plugin',
-          plugin_name: 'test-plugin-name',
-        }),
-      )
+      expect(amplitude.trackEvent).toHaveBeenCalledWith('plugin_uninstalled', expect.objectContaining({
+        plugin_id: 'test-plugin',
+        plugin_name: 'test-plugin-name',
+      }))
     })
 
     it('should not call onUpdate when delete fails', async () => {

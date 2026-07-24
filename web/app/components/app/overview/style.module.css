@@ -1,5 +1,3 @@
-@reference "../../../styles/globals.css";
-
 .generateLogo {
   animation: 2s rotate linear infinite;
 }
@@ -15,7 +13,7 @@
 }
 
 .codeBrowserIcon {
-  @apply h-4 w-4 bg-center bg-no-repeat;
+  @apply w-4 h-4 bg-center bg-no-repeat;
   background-image: url(./assets/code-browser.svg);
 }
 
@@ -30,3 +28,4 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+

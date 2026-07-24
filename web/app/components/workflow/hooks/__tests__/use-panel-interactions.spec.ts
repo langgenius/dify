@@ -1,22 +1,11 @@
 import type * as React from 'react'
-import { waitFor } from '@testing-library/react'
-import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { usePanelInteractions } from '../use-panel-interactions'
 
 describe('usePanelInteractions', () => {
   let container: HTMLDivElement
-  let readTextMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    readTextMock = vi.fn().mockResolvedValue('')
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        readText: readTextMock,
-      },
-    })
-
     container = document.createElement('div')
     container.id = 'workflow-container'
     container.getBoundingClientRect = vi.fn().mockReturnValue({
@@ -36,12 +25,8 @@ describe('usePanelInteractions', () => {
     container.remove()
   })
 
-  it('handlePaneContextMenu should set the panel context menu target', () => {
-    const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: {
-        contextMenuTarget: { type: 'node', nodeId: 'n1' },
-      },
-    })
+  it('handlePaneContextMenu should set panelMenu with computed coordinates when container exists', () => {
+    const { result, store } = renderWorkflowHook(() => usePanelInteractions())
     const preventDefault = vi.fn()
 
     result.current.handlePaneContextMenu({
@@ -51,46 +36,43 @@ describe('usePanelInteractions', () => {
     } as unknown as React.MouseEvent)
 
     expect(preventDefault).toHaveBeenCalled()
-    expect(store.getState().contextMenuTarget).toEqual({ type: 'panel' })
-  })
-
-  it('handlePaneContextMenu should sync clipboard from navigator clipboard', async () => {
-    const clipboardNode = createNode({ id: 'clipboard-node' })
-    const clipboardEdge = createEdge({
-      id: 'clipboard-edge',
-      source: clipboardNode.id,
-      target: 'target-node',
-    })
-    readTextMock.mockResolvedValue(
-      JSON.stringify({
-        kind: 'dify-workflow-clipboard',
-        version: '0.6.0',
-        nodes: [clipboardNode],
-        edges: [clipboardEdge],
-      }),
-    )
-
-    const { result, store } = renderWorkflowHook(() => usePanelInteractions())
-
-    result.current.handlePaneContextMenu({
-      preventDefault: vi.fn(),
-      clientX: 350,
-      clientY: 250,
-    } as unknown as React.MouseEvent)
-
-    await waitFor(() => {
-      expect(store.getState().clipboardElements).toEqual([clipboardNode])
-      expect(store.getState().clipboardEdges).toEqual([clipboardEdge])
+    expect(store.getState().panelMenu).toEqual({
+      top: 200,
+      left: 250,
     })
   })
 
-  it('handlePaneContextmenuCancel should clear the context menu target', () => {
+  it('handlePaneContextMenu should throw when container does not exist', () => {
+    container.remove()
+
+    const { result } = renderWorkflowHook(() => usePanelInteractions())
+
+    expect(() => {
+      result.current.handlePaneContextMenu({
+        preventDefault: vi.fn(),
+        clientX: 350,
+        clientY: 250,
+      } as unknown as React.MouseEvent)
+    }).toThrow()
+  })
+
+  it('handlePaneContextmenuCancel should clear panelMenu', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { contextMenuTarget: { type: 'panel' } },
+      initialStoreState: { panelMenu: { top: 10, left: 20 } },
     })
 
     result.current.handlePaneContextmenuCancel()
 
-    expect(store.getState().contextMenuTarget).toBeUndefined()
+    expect(store.getState().panelMenu).toBeUndefined()
+  })
+
+  it('handleNodeContextmenuCancel should clear nodeMenu', () => {
+    const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
+      initialStoreState: { nodeMenu: { top: 10, left: 20, nodeId: 'n1' } },
+    })
+
+    result.current.handleNodeContextmenuCancel()
+
+    expect(store.getState().nodeMenu).toBeUndefined()
   })
 })

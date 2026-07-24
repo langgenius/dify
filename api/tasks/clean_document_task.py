@@ -11,18 +11,12 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
-from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def clean_document_task(
-    document_id: str,
-    dataset_id: str,
-    doc_form: str,
-    file_id: str | None,
-) -> None:
+def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str | None):
     """
     Clean document when document deleted.
     :param document_id: document id
@@ -35,16 +29,14 @@ def clean_document_task(
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
     total_attachment_files = []
-    vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
         try:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
 
             if not dataset:
                 raise Exception("Document has no dataset")
 
-            dataset_tenant_id = dataset.tenant_id
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             # Use JOIN to fetch attachments with bindings in a single query
             attachments_with_bindings = session.execute(
@@ -61,7 +53,7 @@ def clean_document_task(
             binding_ids = [binding.id for binding, _ in attachments_with_bindings]
             total_attachment_files.extend([attachment_file.key for _, attachment_file in attachments_with_bindings])
 
-            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+            index_node_ids = [segment.index_node_id for segment in segments]
             segment_contents = [segment.content for segment in segments]
         except Exception:
             logger.exception("Cleaned document when document deleted failed")
@@ -69,37 +61,13 @@ def clean_document_task(
 
     # check segment is exist
     if index_node_ids:
-        # Wrap vector / keyword index cleanup in try/except so that a transient
-        # failure here (e.g. billing API hiccup propagated via FeatureService when
-        # ModelManager is initialized inside ``Vector(dataset)``) does not abort
-        # the entire task and leave document_segments / child_chunks / image_files
-        # / metadata bindings stranded in PG. Mirrors the pattern already used in
-        # ``clean_dataset_task`` so the document row's hard delete (already
-        # committed by the caller) does not produce orphan PG rows just because
-        # the vector backend or one of its transitive dependencies was unhappy.
-        try:
-            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            with session_factory.create_session() as session, session.begin():
-                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-                if dataset:
-                    index_processor.clean(
-                        dataset,
-                        index_node_ids,
-                        with_keywords=True,
-                        delete_child_chunks=True,
-                        delete_summaries=True,
-                        session=session,
-                    )
-                    vector_cleanup_succeeded = True
-        except Exception:
-            logger.exception(
-                "Failed to clean vector / keyword index in clean_document_task, "
-                "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
-                "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
-                document_id,
-                dataset_id,
-                len(index_node_ids),
-            )
+        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+        with session_factory.create_session() as session:
+            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            if dataset:
+                index_processor.clean(
+                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                )
 
     total_image_files = []
     with session_factory.create_session() as session, session.begin():
@@ -126,7 +94,7 @@ def clean_document_task(
 
     with session_factory.create_session() as session, session.begin():
         if file_id:
-            file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            file = session.query(UploadFile).where(UploadFile.id == file_id).first()
             if file:
                 try:
                     storage.delete(file.key)
@@ -156,15 +124,10 @@ def clean_document_task(
 
     with session_factory.create_session() as session, session.begin():
         # delete dataset metadata binding
-        session.execute(
-            delete(DatasetMetadataBinding).where(
-                DatasetMetadataBinding.dataset_id == dataset_id,
-                DatasetMetadataBinding.document_id == document_id,
-            )
-        )
-
-    if vector_cleanup_succeeded:
-        schedule_billing_vector_space_refresh(dataset_tenant_id)
+        session.query(DatasetMetadataBinding).where(
+            DatasetMetadataBinding.dataset_id == dataset_id,
+            DatasetMetadataBinding.document_id == document_id,
+        ).delete()
 
     end_at = time.perf_counter()
     logger.info(

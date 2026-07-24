@@ -1,6 +1,8 @@
 import type { Locale } from '@/i18n-config'
 import type { AppIconType } from '@/types/app'
 
+export type ResponseHolder = {}
+
 export type ConversationItem = {
   id: string
   name: string
@@ -22,15 +24,12 @@ export type SiteInfo = {
   copyright?: string
   privacy_policy?: string
   custom_disclaimer?: string
-  input_placeholder?: string
   show_workflow_steps?: boolean
   use_icon_as_answer_icon?: boolean
 }
 
-export type ToolIcon = string | Record<string, unknown>
-
 export type AppMeta = {
-  tool_icons: Record<string, ToolIcon>
+  tool_icons: Record<string, string>
 }
 
 export type CustomConfigValueType = string | number | boolean | null | undefined

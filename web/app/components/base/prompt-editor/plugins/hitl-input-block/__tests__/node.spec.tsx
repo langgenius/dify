@@ -1,10 +1,20 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Var } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
+import {
+  BlockEnum,
+  InputVarType,
+} from '@/app/components/workflow/types'
+import {
+  createLexicalTestEditor,
+  expectInlineWrapperDom,
+} from '../../test-helpers'
 import HITLInputBlockComponent from '../component'
-import { $createHITLInputNode, HITLInputNode } from '../node'
+import {
+  $createHITLInputNode,
+  $isHITLInputNode,
+  HITLInputNode,
+} from '../node'
 
 const createFormInput = (): FormInputItem => ({
   type: InputVarType.paragraph,
@@ -88,8 +98,6 @@ describe('HITLInputNode', () => {
         expect(node.getConversationVariables()).toEqual(props.conversationVariables)
         expect(node.getRagVariables()).toEqual(props.ragVariables)
         expect(node.getReadonly()).toBe(true)
-        node.setReadonly(false)
-        expect(node.getReadonly()).toBe(false)
         expect(node.getTextContent()).toBe('{{#$output.user_name#}}')
       })
     })
@@ -192,7 +200,7 @@ describe('HITLInputNode', () => {
     })
   })
 
-  it('should create and update DOM', () => {
+  it('should create and update DOM and support helper type guard', () => {
     const editor = createTestEditor()
     const props = createNodeProps()
 
@@ -217,7 +225,11 @@ describe('HITLInputNode', () => {
 
         expectInlineWrapperDom(dom, ['w-[calc(100%-1px)]', 'support-drag'])
         expect(node.updateDOM()).toBe(false)
+        expect($isHITLInputNode(node)).toBe(true)
       })
     })
+
+    expect($isHITLInputNode(null)).toBe(false)
+    expect($isHITLInputNode(undefined)).toBe(false)
   })
 })

@@ -1,21 +1,21 @@
-import type { NodeKey, SerializedLexicalNode } from 'lexical'
+import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { DecoratorNode } from 'lexical'
 import CurrentBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode & { generatorType: GeneratorType }
+export type SerializedNode = SerializedLexicalNode & { generatorType: GeneratorType }
 
 export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
   __generatorType: GeneratorType
-  static override getType(): string {
+  static getType(): string {
     return 'current-block'
   }
 
-  static override clone(node: CurrentBlockNode): CurrentBlockNode {
+  static clone(node: CurrentBlockNode): CurrentBlockNode {
     return new CurrentBlockNode(node.__generatorType, node.getKey())
   }
 
-  override isInline(): boolean {
+  isInline(): boolean {
     return true
   }
 
@@ -25,18 +25,23 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__generatorType = generatorType
   }
 
-  override createDOM(): HTMLElement {
+  createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  override updateDOM(): false {
+  updateDOM(): false {
     return false
   }
 
-  override decorate(): React.JSX.Element {
-    return <CurrentBlockComponent nodeKey={this.getKey()} generatorType={this.getGeneratorType()} />
+  decorate(): React.JSX.Element {
+    return (
+      <CurrentBlockComponent
+        nodeKey={this.getKey()}
+        generatorType={this.getGeneratorType()}
+      />
+    )
   }
 
   getGeneratorType(): GeneratorType {
@@ -44,13 +49,13 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     return self.__generatorType
   }
 
-  static override importJSON(serializedNode: SerializedNode): CurrentBlockNode {
+  static importJSON(serializedNode: SerializedNode): CurrentBlockNode {
     const node = $createCurrentBlockNode(serializedNode.generatorType)
 
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  exportJSON(): SerializedNode {
     return {
       type: 'current-block',
       version: 1,
@@ -58,10 +63,16 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
     }
   }
 
-  override getTextContent(): string {
+  getTextContent(): string {
     return '{{#current#}}'
   }
 }
 export function $createCurrentBlockNode(type: GeneratorType): CurrentBlockNode {
   return new CurrentBlockNode(type)
+}
+
+export function $isCurrentBlockNode(
+  node: CurrentBlockNode | LexicalNode | null | undefined,
+): boolean {
+  return node instanceof CurrentBlockNode
 }

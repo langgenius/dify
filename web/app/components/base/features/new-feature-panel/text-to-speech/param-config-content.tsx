@@ -1,64 +1,54 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
-import { Switch } from '@langgenius/dify-ui/switch'
+import type { Item } from '@/app/components/base/select'
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { produce } from 'immer'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
 import AudioBtn from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { Infotip } from '@/app/components/base/infotip'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import { languages } from '@/i18n-config/language'
-import { usePathname } from '@/next/navigation'
 import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
-
-type SelectOption = {
-  value: string
-  name: string
-}
+import { cn } from '@/utils/classnames'
 
 type VoiceParamConfigProps = {
   onClose: () => void
   onChange?: OnFeaturesChange
 }
-const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
+const VoiceParamConfig = ({
+  onClose,
+  onChange,
+}: VoiceParamConfigProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = matched?.length && matched[1] ? matched[1] : ''
-  const text2speech = useFeatures((state) => state.features.text2speech)
+  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
-  const formatLanguageName = (item: SelectOption) => {
-    const key = `voice.language.${replace(item.value, '-', '')}` as I18nKeysWithPrefix<
-      'common',
-      'voice.language.'
-    >
-    return t(($) => $[key], { ns: 'common', defaultValue: item.name })
-  }
 
-  let languageItem = languages.find((item) => item.value === text2speech?.language)
-  if (languages && !languageItem) languageItem = languages[0]
-  const localLanguagePlaceholder =
-    languageItem?.name || t(($) => $['placeholder.select'], { ns: 'common' })
+  let languageItem = languages.find(item => item.value === text2speech?.language)
+  if (languages && !languageItem)
+    languageItem = languages[0]
+  const localLanguagePlaceholder = languageItem?.name || t('placeholder.select', { ns: 'common' })
 
   const language = languageItem?.value
   const { data: voiceItems } = useAppVoices(appId, language)
-  let voiceItem = voiceItems?.find((item) => item.value === text2speech?.voice)
-  if (voiceItems && !voiceItem) voiceItem = voiceItems[0]
-  const localVoicePlaceholder =
-    voiceItem?.name || t(($) => $['placeholder.select'], { ns: 'common' })
+  let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
+  if (voiceItems && !voiceItem)
+    voiceItem = voiceItems[0]
+  const localVoicePlaceholder = voiceItem?.name || t('placeholder.select', { ns: 'common' })
 
   const handleChange = (value: Record<string, string>) => {
-    const { features, setFeatures } = featuresStore!.getState()
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
 
     const newFeatures = produce(features, (draft) => {
       draft.text2speech = {
@@ -68,101 +58,170 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
     })
 
     setFeatures(newFeatures)
-    if (onChange) onChange()
+    if (onChange)
+      onChange()
   }
 
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">
-          {t(($) => $['voice.voiceSettings.title'], { ns: 'appDebug' })}
-        </div>
-        <button
-          type="button"
-          className="rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        <div className="text-text-primary system-xl-semibold">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div
+          className="cursor-pointer p-1"
+          role="button"
+          tabIndex={0}
+          aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClose()
+            }
+          }}
         >
-          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
-        </button>
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </div>
       </div>
       <div className="mb-3">
-        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
-          <Infotip
-            aria-label={t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })}
-            popupClassName="w-[180px]"
-          >
-            {t(($) => $['voice.voiceSettings.resolutionTooltip'], { ns: 'appDebug' })
-              .split('\n')
-              .map((item) => (
-                <div key={item}>{item}</div>
-              ))}
-          </Infotip>
+        <div className="mb-1 flex items-center py-1 text-text-secondary system-sm-semibold">
+          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          <Tooltip
+            popupContent={(
+              <div className="w-[180px]">
+                {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                  <div key={item}>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
+          />
         </div>
-        <Select
-          value={languageItem?.value ?? null}
-          onValueChange={(nextValue) => {
-            if (nextValue == null) return
+        <Listbox
+          value={languageItem}
+          onChange={(value: Item) => {
             handleChange({
-              language: nextValue,
+              language: String(value.value),
             })
           }}
         >
-          <SelectTrigger
-            aria-label={t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
-            className="w-full"
-          >
-            {languageItem ? formatLanguageName(languageItem) : localLanguagePlaceholder}
-          </SelectTrigger>
-          <SelectContent listClassName="max-h-60">
-            {languages.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                <SelectItemText>{formatLanguageName(item)}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <div className="relative h-8">
+            <ListboxButton
+              className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
+            >
+              <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
+                {languageItem?.name
+                  ? t(`voice.language.${replace(languageItem?.value ?? '', '-', '')}`, languageItem?.name, { ns: 'common' as const })
+                  : localLanguagePlaceholder}
+              </span>
+              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              </span>
+            </ListboxButton>
+            <Transition
+              as={Fragment}
+              leave="transition ease-in duration-100"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+
+              <ListboxOptions
+                className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm"
+              >
+                {languages.map(item => (
+                  <ListboxOption
+                    key={item.value}
+                    className="relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active"
+                    value={item}
+                    disabled={false}
+                  >
+                    {({ /* active, */ selected }) => (
+                      <>
+                        <span
+                          className={cn('block', selected && 'font-normal')}
+                        >
+                          {t(`voice.language.${replace((item.value), '-', '')}`, item.name, { ns: 'common' as const })}
+                        </span>
+                        {(selected || item.value === text2speech?.language) && (
+                          <span
+                            className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
+                          >
+                            <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </ListboxOption>
+                ))}
+              </ListboxOptions>
+            </Transition>
+          </div>
+        </Listbox>
       </div>
       <div className="mb-3">
-        <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
+          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
-          <Select
-            value={voiceItem?.value ?? null}
+          <Listbox
+            value={voiceItem}
             disabled={!languageItem}
-            onValueChange={(nextValue) => {
-              if (nextValue == null || nextValue === '') return
+            onChange={(value: Item) => {
               handleChange({
-                voice: nextValue,
+                voice: String(value.value),
               })
             }}
           >
-            <div className="grow">
-              <SelectTrigger
-                aria-label={t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
-                className="w-full"
+            <div className="relative h-8 grow">
+              <ListboxButton
+                className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
               >
-                {voiceItem?.name ?? localVoicePlaceholder}
-              </SelectTrigger>
-              <SelectContent listClassName="max-h-60">
-                {voiceItems?.map((item: SelectOption) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    <SelectItemText>{item.name}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
+                <span
+                  className={cn('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}
+                >
+                  {voiceItem?.name ?? localVoicePlaceholder}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                </span>
+              </ListboxButton>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+
+                <ListboxOptions
+                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm"
+                >
+                  {voiceItems?.map((item: Item) => (
+                    <ListboxOption
+                      key={item.value}
+                      className="relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active"
+                      value={item}
+                      disabled={false}
+                    >
+                      {({ /* active, */ selected }) => (
+                        <>
+                          <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
+                          {(selected || item.value === text2speech?.voice) && (
+                            <span
+                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
+                            >
+                              <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </ListboxOption>
+                  ))}
+                </ListboxOptions>
+              </Transition>
             </div>
-          </Select>
+          </Listbox>
           {languageItem?.example && (
-            <div
-              className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1"
-              role="group"
-              aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
-            >
+            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1" data-testid="audition-button">
               <AudioBtn
                 value={languageItem?.example}
                 isAudition
@@ -174,13 +233,13 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
         </div>
       </div>
       <div>
-        <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
-          {t(($) => $['voice.voiceSettings.autoPlay'], { ns: 'appDebug' })}
+        <div className="mb-1 py-1 text-text-secondary system-sm-semibold">
+          {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
         </div>
         <Switch
           className="shrink-0"
-          checked={text2speech?.autoPlay === TtsAutoPlay.enabled}
-          onCheckedChange={(value: boolean) => {
+          value={text2speech?.autoPlay === TtsAutoPlay.enabled}
+          onChange={(value: boolean) => {
             handleChange({
               autoPlay: value ? TtsAutoPlay.enabled : TtsAutoPlay.disabled,
             })
@@ -191,4 +250,4 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
   )
 }
 
-export default VoiceParamConfig
+export default React.memo(VoiceParamConfig)

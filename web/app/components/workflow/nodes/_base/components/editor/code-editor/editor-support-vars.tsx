@@ -2,25 +2,29 @@
 import type { FC } from 'react'
 import type { Props as EditorProps } from '.'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { cn } from '@/utils/classnames'
 import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
 
-type Props = Readonly<{
+type Props = {
   availableVars: NodeOutPutVar[]
   varList: Variable[]
   onAddVar?: (payload: Variable) => void
-}> &
-  EditorProps
+} & EditorProps
 
-const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProps }) => {
+const CodeEditor: FC<Props> = ({
+  availableVars,
+  varList,
+  onAddVar,
+  ...editorProps
+}) => {
   const { t } = useTranslation()
 
   const isLeftBraceRef = useRef(false)
@@ -29,7 +33,10 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
   const monacoRef = useRef(null)
 
   const popupRef = useRef<HTMLDivElement>(null)
-  const [isShowVarPicker, { setTrue: showVarPicker, setFalse: hideVarPicker }] = useBoolean(false)
+  const [isShowVarPicker, {
+    setTrue: showVarPicker,
+    setFalse: hideVarPicker,
+  }] = useBoolean(false)
 
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 })
 
@@ -49,7 +56,8 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
 
       setPopupPosition({ x: popupX, y: popupY })
       showVarPicker()
-    } else {
+    }
+    else {
       hideVarPicker()
     }
   }
@@ -77,12 +85,13 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
   }
 
   const getUniqVarName = (varName: string) => {
-    if (varList.find((v) => v.variable === varName)) {
+    if (varList.find(v => v.variable === varName)) {
       const varNameRegex = /_(\d+)$/
       const match = varNameRegex.exec(varName)
 
       const index = (() => {
-        if (match) return Number.parseInt(match[1]!) + 1
+        if (match)
+          return Number.parseInt(match[1]!) + 1
 
         return 1
       })()
@@ -92,10 +101,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
   }
 
   const getVarName = (varValue: string[]) => {
-    const existVar = varList.find(
-      (v) =>
-        Array.isArray(v.value_selector) && v.value_selector.join('@@@') === varValue.join('@@@'),
-    )
+    const existVar = varList.find(v => Array.isArray(v.value_selector) && v.value_selector.join('@@@') === varValue.join('@@@'))
     if (existVar) {
       return {
         name: existVar.variable,
@@ -104,7 +110,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
     }
     const varName = varValue.slice(-1)[0]
     return {
-      name: getUniqVarName(varName!),
+      name: getUniqVarName(varName),
       isExist: false,
     }
   }
@@ -127,12 +133,7 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
     editor?.executeEdits('', [
       {
         // position.column - 1 to remove the text before the cursor
-        range: new monaco.Range(
-          position.lineNumber,
-          position.column - 1,
-          position.lineNumber,
-          position.column,
-        ),
+        range: new monaco.Range(position.lineNumber, position.column - 1, position.lineNumber, position.column),
         text: `{{ ${name} }${!isLeftBraceRef.current ? '}' : ''}`, // left brace would auto add one right brace
       },
     ])
@@ -145,27 +146,28 @@ const CodeEditor: FC<Props> = ({ availableVars, varList, onAddVar, ...editorProp
       <Editor
         {...editorProps}
         onMount={onEditorMounted}
-        placeholder={t(($) => $['common.jinjaEditorPlaceholder'], { ns: 'workflow' })!}
+        placeholder={t('common.jinjaEditorPlaceholder', { ns: 'workflow' })!}
       />
-      {isShowVarPicker &&
-        createPortal(
-          <div
-            ref={popupRef}
-            className="fixed z-50 w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
-            style={{
-              top: popupPosition.y,
-              left: popupPosition.x,
-            }}
-          >
-            <VarReferenceVars
-              hideSearch
-              vars={availableVars}
-              onChange={handleSelectVar}
-              isSupportFileVar={false}
-            />
-          </div>,
-          document.body,
-        )}
+      {isShowVarPicker && createPortal(
+        <div
+          ref={popupRef}
+          className="w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+          style={{
+            position: 'fixed',
+            top: popupPosition.y,
+            left: popupPosition.x,
+            zIndex: 100,
+          }}
+        >
+          <VarReferenceVars
+            hideSearch
+            vars={availableVars}
+            onChange={handleSelectVar}
+            isSupportFileVar={false}
+          />
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

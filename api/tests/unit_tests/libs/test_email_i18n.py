@@ -503,7 +503,6 @@ class TestEmailI18nIntegration:
             EmailType.ACCOUNT_DELETION_VERIFICATION,
             EmailType.QUEUE_MONITOR_ALERT,
             EmailType.DOCUMENT_CLEAN_NOTIFY,
-            EmailType.WORKFLOW_COMMENT_MENTION,
         ]
 
         for email_type in expected_types:

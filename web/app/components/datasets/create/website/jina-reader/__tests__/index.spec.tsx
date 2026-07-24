@@ -6,17 +6,6 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}))
-
 vi.mock('@/service/datasets', () => ({
   createJinaReaderTask: vi.fn(),
   checkJinaReaderTaskStatus: vi.fn(),
@@ -27,6 +16,7 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
+const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -80,14 +70,20 @@ describe('JinaReader', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      const props = createDefaultProps()
+
+      render(<JinaReader {...props} />)
+
+      expect(screen.getByText('datasetCreation.stepOne.website.jinaReaderTitle')).toBeInTheDocument()
+    })
+
     it('should render header with configuration button', () => {
       const props = createDefaultProps()
 
       render(<JinaReader {...props} />)
 
-      expect(
-        screen.getByText('datasetCreation.stepOne.website.configureJinaReader'),
-      )!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.configureJinaReader')).toBeInTheDocument()
     })
 
     it('should render URL input field', () => {
@@ -95,7 +91,7 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
 
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should render run button', () => {
@@ -103,7 +99,7 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
 
-      expect(screen.getByRole('button', { name: /run/i }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument()
     })
 
     it('should render options section', () => {
@@ -111,7 +107,7 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
     })
 
     it('should render doc link to Jina Reader', () => {
@@ -120,7 +116,7 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       const docLink = screen.getByRole('link')
-      expect(docLink)!.toHaveAttribute('href', 'https://jina.ai/reader')
+      expect(docLink).toHaveAttribute('href', 'https://jina.ai/reader')
     })
 
     it('should not render crawling or result components initially', () => {
@@ -145,9 +141,7 @@ describe('JinaReader', () => {
 
       if (limitLabel) {
         // The limit input is a number input (spinbutton role) within the same container
-        const limitInput = limitLabel
-          .closest('div')
-          ?.parentElement?.querySelector('input[type="number"]')
+        const limitInput = limitLabel.closest('div')?.parentElement?.querySelector('input[type="number"]')
 
         if (limitInput) {
           await user.clear(limitInput)
@@ -155,10 +149,10 @@ describe('JinaReader', () => {
 
           expect(onCrawlOptionsChange).toHaveBeenCalled()
         }
-      } else {
+      }
+      else {
         // Options might not be visible, just verify component renders
-        // Options might not be visible, just verify component renders
-        expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
       }
     })
 
@@ -197,8 +191,7 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       // Assert - component renders with empty limit
-      // Assert - component renders with empty limit
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -207,10 +200,7 @@ describe('JinaReader', () => {
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       const taskPromise = new Promise((resolve) => {
-        resolvePromise = () =>
-          resolve({
-            data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' },
-          })
+        resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
       })
       mockCreateTask.mockImplementation(() => taskPromise)
 
@@ -218,14 +208,14 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
       const urlInput = screen.getAllByRole('textbox')[0]
-      await userEvent.type(urlInput!, 'https://example.com')
+      await userEvent.type(urlInput, 'https://example.com')
 
       const runButton = screen.getByRole('button', { name: /run/i })
       fireEvent.click(runButton)
 
       // Assert - crawling indicator should appear
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/i))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise and wait for component to finish
@@ -254,7 +244,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/selectAll|resetAll/i))!.toBeInTheDocument()
+        expect(screen.getByText(/selectAll|resetAll/i)).toBeInTheDocument()
       })
     })
 
@@ -315,8 +305,7 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       // Options should be visible initially
-      // Options should be visible initially
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
 
       const input = screen.getByRole('textbox')
       await userEvent.type(input, 'https://example.com')
@@ -324,9 +313,7 @@ describe('JinaReader', () => {
 
       // Assert - options should be folded after crawl starts
       await waitFor(() => {
-        expect(
-          screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
       })
     })
   })
@@ -359,10 +346,7 @@ describe('JinaReader', () => {
       const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       const taskPromise = new Promise((resolve) => {
-        resolvePromise = () =>
-          resolve({
-            data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' },
-          })
+        resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
       })
       mockCreateTask.mockImplementation(() => taskPromise)
 
@@ -371,8 +355,7 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       // Initially options should be visible
-      // Initially options should be visible
-      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
 
       const input = screen.getByRole('textbox')
       await userEvent.type(input, 'https://example.com')
@@ -380,7 +363,7 @@ describe('JinaReader', () => {
 
       // Assert - the crawling indicator should appear
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/i))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -401,21 +384,17 @@ describe('JinaReader', () => {
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
-      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
-      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
       const mockCreateTask = createJinaReaderTask as Mock
-      mockCreateTask.mockResolvedValue({
-        data: { title: 'T', content: 'C', description: 'D', url: 'https://a.com' },
-      })
+      mockCreateTask.mockResolvedValue({ data: { title: 'T', content: 'C', description: 'D', url: 'https://a.com' } })
 
       const props = createDefaultProps()
 
@@ -432,8 +411,7 @@ describe('JinaReader', () => {
       rerender(<JinaReader {...props} />)
 
       // Assert - component should still work correctly
-      // Assert - component should still work correctly
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -446,8 +424,9 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
-      expect(mockRouterPush).not.toHaveBeenCalled()
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+        payload: 'data-source',
+      })
     })
 
     it('should handle URL input and run button click', async () => {
@@ -497,7 +476,7 @@ describe('JinaReader', () => {
 
       // Assert - result should be displayed
       await waitFor(() => {
-        expect(screen.getByText('Preview Test'))!.toBeInTheDocument()
+        expect(screen.getByText('Preview Test')).toBeInTheDocument()
       })
 
       const previewButton = screen.getByText('datasetCreation.stepOne.website.preview')
@@ -515,9 +494,11 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
 
-      const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
+      // Find and click the checkbox by data-testid
+      const checkbox = screen.getByTestId('checkbox-crawl-sub-pages')
       fireEvent.click(checkbox)
 
+      // Assert - onCrawlOptionsChange should be called
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
@@ -527,53 +508,18 @@ describe('JinaReader', () => {
       render(<JinaReader {...props} />)
 
       // Options content should be visible initially
-      // Options content should be visible initially
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
       await userEvent.click(optionsHeader)
 
       // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      // Assert - options should be hidden
-      expect(
-        screen.queryByText('datasetCreation.stepOne.website.crawlSubPage'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
 
       await userEvent.click(optionsHeader)
 
       // Options should be visible again
-      // Options should be visible again
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
     })
   })
 
@@ -681,12 +627,10 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
       })
 
-      expect(screen.getByText('Crawl failed due to network error'))!.toBeInTheDocument()
+      expect(screen.getByText('Crawl failed due to network error')).toBeInTheDocument()
     })
 
     it('should handle API error during status check', async () => {
@@ -706,9 +650,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
       })
     })
 
@@ -723,8 +665,7 @@ describe('JinaReader', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
       })
 
       const props = createDefaultProps({
@@ -740,6 +681,15 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalled()
       })
+    })
+  })
+
+  // Component Memoization Tests
+  describe('Component Memoization', () => {
+    it('should be wrapped with React.memo', () => {
+      // Assert - React.memo components have $$typeof Symbol(react.memo)
+      expect(JinaReader.$$typeof?.toString()).toBe('Symbol(react.memo)')
+      expect((JinaReader as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 
@@ -860,9 +810,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
       })
 
       consoleSpy.mockRestore()
@@ -886,9 +834,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
       })
     })
 
@@ -910,9 +856,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.unknownError'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.unknownError')).toBeInTheDocument()
       })
     })
 
@@ -1020,7 +964,7 @@ describe('JinaReader', () => {
 
       // Assert - should show 0/10 when crawlResult is undefined
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/10/))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -1052,7 +996,7 @@ describe('JinaReader', () => {
 
       // Assert - should show 0/0 when limit parses to 0
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/0/))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -1085,7 +1029,7 @@ describe('JinaReader', () => {
 
       // Assert - should complete and show results even if empty
       await waitFor(() => {
-        expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
+        expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
       })
     })
 
@@ -1111,7 +1055,7 @@ describe('JinaReader', () => {
 
       // Assert - should use limit (15) as total
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/15/))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -1150,7 +1094,7 @@ describe('JinaReader', () => {
 
       // Assert - should show progress indicator
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -1385,7 +1329,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/10/))!.toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -1410,7 +1354,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
+        expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
       })
     })
 
@@ -1434,7 +1378,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('Result Page'))!.toBeInTheDocument()
+        expect(screen.getByText('Result Page')).toBeInTheDocument()
       })
     })
 
@@ -1453,9 +1397,7 @@ describe('JinaReader', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(
-          screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
-        )!.toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
       })
     })
   })
@@ -1511,8 +1453,8 @@ describe('JinaReader', () => {
 
       // Assert - final results should be displayed
       await waitFor(() => {
-        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
-        expect(screen.getByText('Page 5'))!.toBeInTheDocument()
+        expect(screen.getByText('Page 1')).toBeInTheDocument()
+        expect(screen.getByText('Page 5')).toBeInTheDocument()
       })
 
       // Assert - checked results should be updated
@@ -1541,7 +1483,7 @@ describe('JinaReader', () => {
 
       // Wait for results
       await waitFor(() => {
-        expect(screen.getByText('Single'))!.toBeInTheDocument()
+        expect(screen.getByText('Single')).toBeInTheDocument()
       })
 
       const selectAllCheckbox = screen.getByText(/selectAll|resetAll/i)

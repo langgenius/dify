@@ -1,33 +1,24 @@
-import type { AppInfoActions } from './use-app-info-actions'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { userProfileIdAtom } from '@/context/account-state'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { getAppACLCapabilities } from '@/utils/permission'
+import { useAppContext } from '@/context/app-context'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
+import { useAppInfoActions } from './use-app-info-actions'
 
-type IAppInfoProps = {
+export type IAppInfoProps = {
   expand: boolean
   onlyShowDetail?: boolean
   openState?: boolean
   onDetailExpand?: (expand: boolean) => void
 }
 
-type AppInfoViewProps = Omit<IAppInfoProps, 'onDetailExpand'> & {
-  actions: AppInfoActions
-  renderDetail?: boolean
-}
+const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
+  const { isCurrentWorkspaceEditor } = useAppContext()
 
-type AppInfoDetailLayerProps = {
-  actions: AppInfoActions
-  open?: boolean
-}
-
-const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetailLayerProps) => {
   const {
     appDetail,
+    panelOpen,
+    setPanelOpen,
     closePanel,
     activeModal,
     openModal,
@@ -37,22 +28,31 @@ const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetail
     onEdit,
     onCopy,
     onExport,
-    isExporting,
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = actions
+  } = useAppInfoActions({ onDetailExpand })
 
-  if (!appDetail) return null
+  if (!appDetail)
+    return null
 
   return (
-    <>
+    <div>
+      {!onlyShowDetail && (
+        <AppInfoTrigger
+          appDetail={appDetail}
+          expand={expand}
+          onClick={() => {
+            if (isCurrentWorkspaceEditor)
+              setPanelOpen(v => !v)
+          }}
+        />
+      )}
       <AppInfoDetailPanel
         appDetail={appDetail}
-        show={open}
+        show={onlyShowDetail ? openState : panelOpen}
         onClose={closePanel}
         openModal={openModal}
-        isExporting={isExporting}
         exportCheck={exportCheck}
       />
       <AppInfoModals
@@ -64,49 +64,12 @@ const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetail
         onEdit={onEdit}
         onCopy={onCopy}
         onExport={onExport}
-        isExporting={isExporting}
         exportCheck={exportCheck}
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
       />
-    </>
-  )
-}
-
-export const AppInfoView = ({
-  expand,
-  onlyShowDetail = false,
-  openState = false,
-  actions,
-  renderDetail = true,
-}: AppInfoViewProps) => {
-  const { appDetail, panelOpen, setPanelOpen, activeModal, secretEnvList } = actions
-  const currentUserId = useAtomValue(userProfileIdAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  })
-
-  if (!appDetail) return null
-
-  const detailLayerOpen = onlyShowDetail ? openState : panelOpen
-  const shouldRenderDetailLayer =
-    renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
-
-  return (
-    <div>
-      {!onlyShowDetail && (
-        <AppInfoTrigger
-          appDetail={appDetail}
-          expand={expand}
-          onClick={() => {
-            if (appACLCapabilities.canAccessLayout) setPanelOpen((v) => !v)
-          }}
-        />
-      )}
-      {shouldRenderDetailLayer && <AppInfoDetailLayer actions={actions} open={detailLayerOpen} />}
     </div>
   )
 }
+
+export default React.memo(AppInfo)

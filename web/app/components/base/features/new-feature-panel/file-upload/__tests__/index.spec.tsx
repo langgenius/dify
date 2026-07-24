@@ -21,7 +21,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { disabled?: boolean; onChange?: OnFeaturesChange } = {},
+  props: { disabled?: boolean, onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
@@ -64,64 +64,44 @@ describe('FileUpload', () => {
     expect(onChange).toHaveBeenCalled()
   })
 
-  it('should toggle without onChange callback', () => {
-    renderWithProvider()
-
-    expect(() => {
-      fireEvent.click(screen.getByRole('switch'))
-    }).not.toThrow()
-  })
-
   it('should show supported types when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image', 'document'],
-          number_limits: 5,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
+        allowed_file_types: ['image', 'document'],
+        number_limits: 5,
       },
-    )
+    })
 
     expect(screen.getByText('image,document')).toBeInTheDocument()
   })
 
   it('should show number limits when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
+        allowed_file_types: ['image'],
+        number_limits: 3,
       },
-    )
+    })
 
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
   it('should show dash when no allowed file types', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
       },
-    )
+    })
 
     expect(screen.getByText('-')).toBeInTheDocument()
   })
 
   it('should show settings button when hovering', () => {
-    renderWithProvider(
-      {},
-      {
-        file: { enabled: true },
-      },
-    )
+    renderWithProvider({}, {
+      file: { enabled: true },
+    })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -130,12 +110,9 @@ describe('FileUpload', () => {
   })
 
   it('should open setting modal when settings is clicked', async () => {
-    renderWithProvider(
-      {},
-      {
-        file: { enabled: true },
-      },
-    )
+    renderWithProvider({}, {
+      file: { enabled: true },
+    })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -147,32 +124,26 @@ describe('FileUpload', () => {
   })
 
   it('should show supported types label when enabled', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
+        allowed_file_types: ['image'],
+        number_limits: 3,
       },
-    )
+    })
 
     expect(screen.getByText(/feature\.fileUpload\.supportedTypes/)).toBeInTheDocument()
     expect(screen.getByText(/feature\.fileUpload\.numberLimit/)).toBeInTheDocument()
   })
 
   it('should hide info display when hovering over enabled feature', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
+        allowed_file_types: ['image'],
+        number_limits: 3,
       },
-    )
+    })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -183,16 +154,13 @@ describe('FileUpload', () => {
   })
 
   it('should show info display again when mouse leaves', () => {
-    renderWithProvider(
-      {},
-      {
-        file: {
-          enabled: true,
-          allowed_file_types: ['image'],
-          number_limits: 3,
-        },
+    renderWithProvider({}, {
+      file: {
+        enabled: true,
+        allowed_file_types: ['image'],
+        number_limits: 3,
       },
-    )
+    })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)
@@ -202,12 +170,9 @@ describe('FileUpload', () => {
   })
 
   it('should close setting modal when cancel is clicked', async () => {
-    renderWithProvider(
-      {},
-      {
-        file: { enabled: true },
-      },
-    )
+    renderWithProvider({}, {
+      file: { enabled: true },
+    })
 
     const card = screen.getByText(/feature\.fileUpload\.title/).closest('[class]')!
     fireEvent.mouseEnter(card)

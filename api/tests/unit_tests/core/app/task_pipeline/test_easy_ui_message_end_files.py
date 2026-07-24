@@ -6,7 +6,7 @@ SSE event, which is critical for vision/image chat responses to render correctly
 
 Test Coverage:
 - Files array populated when MessageFile records exist
-- Files array is empty when no MessageFile records exist
+- Files array is None when no MessageFile records exist
 - Correct signed URL generation for LOCAL_FILE transfer method
 - Correct URL handling for REMOTE_URL transfer method
 - Correct URL handling for TOOL_FILE transfer method
@@ -21,18 +21,8 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from graphon.file import FileTransferMethod, FileType
+from dify_graph.file.enums import FileTransferMethod
 from models.model import MessageFile, UploadFile
-
-
-def _patch_create_session(mock_session):
-    session_cm = MagicMock()
-    session_cm.__enter__.return_value = mock_session
-    session_cm.__exit__.return_value = False
-    return patch(
-        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-        return_value=session_cm,
-    )
 
 
 class TestMessageEndStreamResponseFiles:
@@ -61,7 +51,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.LOCAL_FILE
         message_file.upload_file_id = str(uuid.uuid4())
         message_file.url = None
-        message_file.type = FileType.IMAGE
+        message_file.type = "image"
         return message_file
 
     @pytest.fixture
@@ -73,7 +63,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.REMOTE_URL
         message_file.upload_file_id = None
         message_file.url = "https://example.com/image.jpg"
-        message_file.type = FileType.IMAGE
+        message_file.type = "image"
         return message_file
 
     @pytest.fixture
@@ -85,7 +75,7 @@ class TestMessageEndStreamResponseFiles:
         message_file.transfer_method = FileTransferMethod.TOOL_FILE
         message_file.upload_file_id = None
         message_file.url = "tool_file_123.png"
-        message_file.type = FileType.IMAGE
+        message_file.type = "image"
         return message_file
 
     @pytest.fixture
@@ -100,10 +90,17 @@ class TestMessageEndStreamResponseFiles:
         return upload_file
 
     def test_message_end_with_no_files(self, mock_pipeline):
-        """Test that files array is empty when no MessageFile records exist."""
+        """Test that files array is None when no MessageFile records exist."""
         # Arrange
-        mock_session = MagicMock(spec=Session)
-        with _patch_create_session(mock_session):
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
             mock_session.scalars.return_value.all.return_value = []
 
             # Act
@@ -111,21 +108,26 @@ class TestMessageEndStreamResponseFiles:
 
             # Assert
             assert isinstance(result, MessageEndStreamResponse)
-            assert result.files == []
+            assert result.files is None
             assert result.id == mock_pipeline._message_id
             assert result.metadata == {"test": "metadata"}
-            mock_pipeline._task_state.metadata.model_dump.assert_called_once_with(exclude_none=True)
 
     def test_message_end_with_local_file(self, mock_pipeline, mock_message_file_local, mock_upload_file):
         """Test that files array is populated correctly for LOCAL_FILE transfer method."""
         # Arrange
         mock_message_file_local.message_id = mock_pipeline._message_id
 
-        mock_session = MagicMock(spec=Session)
         with (
-            _patch_create_session(mock_session),
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()
@@ -179,8 +181,15 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         mock_message_file_remote.message_id = mock_pipeline._message_id
 
-        mock_session = MagicMock(spec=Session)
-        with _patch_create_session(mock_session):
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_remote]
@@ -213,8 +222,15 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "https://example.com/tool_file.png"
 
-        mock_session = MagicMock(spec=Session)
-        with _patch_create_session(mock_session):
+        with (
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
+        ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
@@ -240,11 +256,17 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "tool_file_123.png"
 
-        mock_session = MagicMock(spec=Session)
         with (
-            _patch_create_session(mock_session),
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
         ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
@@ -274,11 +296,15 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_tool.message_id = mock_pipeline._message_id
         mock_message_file_tool.url = "tool_file_abc.verylongextension"
 
-        mock_session = MagicMock(spec=Session)
         with (
-            _patch_create_session(mock_session),
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch("core.app.task_pipeline.message_file_utils.sign_tool_file") as mock_sign_tool,
         ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
             mock_scalars_result = Mock()
             mock_scalars_result.all.return_value = [mock_message_file_tool]
             mock_session.scalars.return_value = mock_scalars_result
@@ -299,11 +325,17 @@ class TestMessageEndStreamResponseFiles:
         mock_message_file_local.message_id = mock_pipeline._message_id
         mock_message_file_remote.message_id = mock_pipeline._message_id
 
-        mock_session = MagicMock(spec=Session)
         with (
-            _patch_create_session(mock_session),
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()
@@ -345,11 +377,17 @@ class TestMessageEndStreamResponseFiles:
         # Arrange
         mock_message_file_local.message_id = mock_pipeline._message_id
 
-        mock_session = MagicMock(spec=Session)
         with (
-            _patch_create_session(mock_session),
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
+            patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session") as mock_session_class,
             patch("core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url") as mock_get_url,
         ):
+            mock_engine = MagicMock()
+            mock_db.engine = mock_engine
+
+            mock_session = MagicMock(spec=Session)
+            mock_session_class.return_value.__enter__.return_value = mock_session
+
             # Mock database queries
             # First query: MessageFile
             mock_message_files_result = Mock()

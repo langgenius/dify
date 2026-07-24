@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -11,6 +10,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -20,7 +20,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../types'
 import OperationSelector from '../operation-selector'
 
-type Props = Readonly<{
+type Props = {
   readonly: boolean
   nodeId: string
   list: AssignerNodeOperation[]
@@ -33,7 +33,7 @@ type Props = Readonly<{
   writeModeTypes?: WriteMode[]
   writeModeTypesArr?: WriteMode[]
   writeModeTypesNum?: WriteMode[]
-}>
+}
 
 const VarList: FC<Props> = ({
   readonly,
@@ -50,101 +50,76 @@ const VarList: FC<Props> = ({
   writeModeTypesNum,
 }) => {
   const { t } = useTranslation()
-  const handleAssignedVarChange = useCallback(
-    (index: number) => {
-      return (value: ValueSelector | string) => {
-        const newList = produce(list, (draft) => {
-          draft[index]!.variable_selector = value as ValueSelector
-          draft[index]!.operation = WriteMode.overwrite
-          draft[index]!.input_type = AssignerNodeInputType.variable
-          draft[index]!.value = undefined
-        })
-        onChange(newList, value as ValueSelector)
-      }
-    },
-    [list, onChange],
-  )
+  const handleAssignedVarChange = useCallback((index: number) => {
+    return (value: ValueSelector | string) => {
+      const newList = produce(list, (draft) => {
+        draft[index].variable_selector = value as ValueSelector
+        draft[index].operation = WriteMode.overwrite
+        draft[index].input_type = AssignerNodeInputType.variable
+        draft[index].value = undefined
+      })
+      onChange(newList, value as ValueSelector)
+    }
+  }, [list, onChange])
 
-  const handleOperationChange = useCallback(
-    (index: number, varType: VarType) => {
-      return (item: { value: string | number }) => {
-        const newList = produce(list, (draft) => {
-          draft[index]!.operation = item.value as WriteMode
-          draft[index]!.value = '' // Clear value when operation changes
-          if (
-            item.value === WriteMode.set ||
-            item.value === WriteMode.increment ||
-            item.value === WriteMode.decrement ||
-            item.value === WriteMode.multiply ||
-            item.value === WriteMode.divide
-          ) {
-            if (varType === VarType.boolean) draft[index]!.value = false
-            draft[index]!.input_type = AssignerNodeInputType.constant
-          } else {
-            draft[index]!.input_type = AssignerNodeInputType.variable
-          }
-        })
-        onChange(newList)
-      }
-    },
-    [list, onChange],
-  )
+  const handleOperationChange = useCallback((index: number, varType: VarType) => {
+    return (item: { value: string | number }) => {
+      const newList = produce(list, (draft) => {
+        draft[index].operation = item.value as WriteMode
+        draft[index].value = '' // Clear value when operation changes
+        if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
+          || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
+          if (varType === VarType.boolean)
+            draft[index].value = false
+          draft[index].input_type = AssignerNodeInputType.constant
+        }
+        else {
+          draft[index].input_type = AssignerNodeInputType.variable
+        }
+      })
+      onChange(newList)
+    }
+  }, [list, onChange])
 
-  const handleToAssignedVarChange = useCallback(
-    (index: number) => {
-      return (value: ValueSelector | string | number | boolean) => {
-        const newList = produce(list, (draft) => {
-          draft[index]!.value = value as ValueSelector
-        })
-        onChange(newList, value as ValueSelector)
-      }
-    },
-    [list, onChange],
-  )
+  const handleToAssignedVarChange = useCallback((index: number) => {
+    return (value: ValueSelector | string | number | boolean) => {
+      const newList = produce(list, (draft) => {
+        draft[index].value = value as ValueSelector
+      })
+      onChange(newList, value as ValueSelector)
+    }
+  }, [list, onChange])
 
-  const handleVarRemove = useCallback(
-    (index: number) => {
-      return () => {
-        const newList = produce(list, (draft) => {
-          draft.splice(index, 1)
-        })
-        onChange(newList)
-      }
-    },
-    [list, onChange],
-  )
+  const handleVarRemove = useCallback((index: number) => {
+    return () => {
+      const newList = produce(list, (draft) => {
+        draft.splice(index, 1)
+      })
+      onChange(newList)
+    }
+  }, [list, onChange])
 
-  const handleOpen = useCallback(
-    (index: number) => {
-      return () => onOpen(index)
-    },
-    [onOpen],
-  )
+  const handleOpen = useCallback((index: number) => {
+    return () => onOpen(index)
+  }, [onOpen])
 
-  const handleFilterToAssignedVar = useCallback(
-    (index: number) => {
-      return (payload: Var) => {
-        const { variable_selector, operation } = list[index]!
-        if (!variable_selector || !operation || !filterToAssignedVar) return true
+  const handleFilterToAssignedVar = useCallback((index: number) => {
+    return (payload: Var) => {
+      const { variable_selector, operation } = list[index]
+      if (!variable_selector || !operation || !filterToAssignedVar)
+        return true
 
-        const assignedVarType = getAssignedVarType?.(variable_selector)
-        const isSameVariable =
-          Array.isArray(variable_selector) &&
-          variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`
+      const assignedVarType = getAssignedVarType?.(variable_selector)
+      const isSameVariable = Array.isArray(variable_selector) && variable_selector.join('.') === `${payload.nodeId}.${payload.variable}`
 
-        return (
-          !isSameVariable &&
-          (!assignedVarType || filterToAssignedVar(payload, assignedVarType, operation))
-        )
-      }
-    },
-    [list, filterToAssignedVar, getAssignedVarType],
-  )
+      return !isSameVariable && (!assignedVarType || filterToAssignedVar(payload, assignedVarType, operation))
+    }
+  }, [list, filterToAssignedVar, getAssignedVarType])
 
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t(($) => $['nodes.assigner.noVarTip'], { ns: 'workflow' })}
+        {t('nodes.assigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -152,13 +127,10 @@ const VarList: FC<Props> = ({
   return (
     <div className="flex flex-col items-start gap-4 self-stretch">
       {list.map((item, index) => {
-        const assignedVarType = item.variable_selector
-          ? getAssignedVarType?.(item.variable_selector)
+        const assignedVarType = item.variable_selector ? getAssignedVarType?.(item.variable_selector) : undefined
+        const toAssignedVarType = (assignedVarType && item.operation && getToAssignedVarType)
+          ? getToAssignedVarType(assignedVarType, item.operation)
           : undefined
-        const toAssignedVarType =
-          assignedVarType && item.operation && getToAssignedVarType
-            ? getToAssignedVarType(assignedVarType, item.operation)
-            : undefined
 
         return (
           <div className="flex items-start gap-1 self-stretch" key={index}>
@@ -172,11 +144,7 @@ const VarList: FC<Props> = ({
                   onChange={handleAssignedVarChange(index)}
                   onOpen={handleOpen(index)}
                   filterVar={filterVar}
-                  placeholder={
-                    t(($) => $['nodes.assigner.selectAssignedVariable'], {
-                      ns: 'workflow',
-                    }) as string
-                  }
+                  placeholder={t('nodes.assigner.selectAssignedVariable', { ns: 'workflow' }) as string}
                   minWidth={352}
                   popupFor="assigned"
                   className="w-full"
@@ -192,11 +160,10 @@ const VarList: FC<Props> = ({
                   writeModeTypesNum={writeModeTypesNum}
                 />
               </div>
-              {item.operation !== WriteMode.clear &&
-                item.operation !== WriteMode.set &&
-                item.operation !== WriteMode.removeFirst &&
-                item.operation !== WriteMode.removeLast &&
-                !writeModeTypesNum?.includes(item.operation) && (
+              {item.operation !== WriteMode.clear && item.operation !== WriteMode.set
+                && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
+                && !writeModeTypesNum?.includes(item.operation)
+                && (
                   <VarReferencePicker
                     readonly={readonly || !item.variable_selector || !item.operation}
                     nodeId={nodeId}
@@ -205,9 +172,7 @@ const VarList: FC<Props> = ({
                     onChange={handleToAssignedVarChange(index)}
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
-                    placeholder={
-                      t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' }) as string
-                    }
+                    placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
                     minWidth={352}
                     popupFor="toAssigned"
                     className="w-full"
@@ -219,58 +184,56 @@ const VarList: FC<Props> = ({
                     <Input
                       type="number"
                       value={item.value as number}
-                      onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
+                      onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
                       className="w-full"
                     />
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
-                      aria-label={
-                        item.variable_selector?.join('.') ||
-                        t(($) => $['nodes.assigner.setParameter'], { ns: 'workflow' })
-                      }
                       value={item.value as string}
-                      onValueChange={(value) => handleToAssignedVarChange(index)(value)}
+                      onChange={e => handleToAssignedVarChange(index)(e.target.value)}
                       className="w-full"
                     />
                   )}
                   {assignedVarType === 'boolean' && (
                     <BoolValue
                       value={item.value as boolean}
-                      onChange={(value) => handleToAssignedVarChange(index)(value)}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
                     />
                   )}
                   {assignedVarType === 'object' && (
                     <CodeEditor
                       value={item.value as string}
                       language={CodeLanguage.json}
-                      onChange={(value) => handleToAssignedVarChange(index)(value)}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
                       className="w-full"
                       readOnly={readonly}
                     />
                   )}
                 </>
               )}
-              {writeModeTypesNum?.includes(item.operation) && (
-                <Input
-                  type="number"
-                  value={item.value as number}
-                  onChange={(e) => handleToAssignedVarChange(index)(Number(e.target.value))}
-                  placeholder="Enter number value..."
-                  className="w-full"
-                />
-              )}
+              {writeModeTypesNum?.includes(item.operation)
+                && (
+                  <Input
+                    type="number"
+                    value={item.value as number}
+                    onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
+                    placeholder="Enter number value..."
+                    className="w-full"
+                  />
+                )}
             </div>
             <ActionButton
               size="l"
-              className="group shrink-0 hover:bg-state-destructive-hover!"
+              className="group shrink-0 hover:!bg-state-destructive-hover"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
+              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )
-      })}
+      },
+      )}
     </div>
   )
 }

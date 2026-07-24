@@ -1,13 +1,10 @@
-from __future__ import annotations
-
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
 
 
@@ -105,7 +102,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -152,7 +149,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -207,7 +204,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -262,7 +259,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -292,7 +289,7 @@ class TestWorkspaceService:
         # Arrange: No test data needed for this test
 
         # Act: Execute the method under test with None tenant
-        result = WorkspaceService.get_tenant_info(None, db_session_with_containers)
+        result = WorkspaceService.get_tenant_info(None)
 
         # Assert: Verify the expected outcomes
         assert result is None
@@ -342,7 +339,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+                result = WorkspaceService.get_tenant_info(tenant)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -399,7 +396,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -449,7 +446,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -514,7 +511,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+                result = WorkspaceService.get_tenant_info(tenant)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -537,290 +534,3 @@ class TestWorkspaceService:
                 # Verify database state
                 db_session_with_containers.refresh(tenant)
                 assert tenant.id is not None
-
-    def test_get_tenant_info_should_raise_assertion_when_join_missing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """TenantAccountJoin must exist; missing join should raise AssertionError."""
-        fake = Faker()
-        account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status="active")
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-
-        tenant = Tenant(name=fake.company(), status="normal", plan="basic")
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-
-        # No TenantAccountJoin created
-        with patch("services.workspace_service.current_user", account):
-            with pytest.raises(AssertionError, match="TenantAccountJoin not found"):
-                WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-    def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """replace_webapp_logo should be None when custom_config_dict does not have the key."""
-        import json
-
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-        tenant.custom_config = json.dumps({})
-        db_session_with_containers.commit()
-
-        mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
-
-        with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["custom_config"]["replace_webapp_logo"] is None
-
-    def test_get_tenant_info_should_use_files_url_for_logo_url(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """The logo URL should use dify_config.FILES_URL as the base."""
-        import json
-
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-        tenant.custom_config = json.dumps({"replace_webapp_logo": True})
-        db_session_with_containers.commit()
-
-        custom_base = "https://cdn.mycompany.io"
-        mock_external_service_dependencies["dify_config"].FILES_URL = custom_base
-        mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
-
-        with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["custom_config"]["replace_webapp_logo"].startswith(custom_base)
-
-    def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """next_credit_reset_date and trial_credits should NOT appear in SELF_HOSTED mode."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "SELF_HOSTED"
-        mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert "next_credit_reset_date" not in result
-        assert "trial_credits" not in result
-        assert "trial_credits_used" not in result
-
-    def test_get_tenant_info_cloud_credit_reset_date(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """next_credit_reset_date should be present in CLOUD edition."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=None),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["next_credit_reset_date"] == "2025-02-01"
-
-    def test_get_tenant_info_cloud_paid_pool_not_full(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """trial_credits come from paid pool when plan is not sandbox and pool is not full."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        paid_pool = MagicMock(quota_limit=1000, quota_used=200)
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["trial_credits"] == 1000
-        assert result["trial_credits_used"] == 200
-
-    def test_get_tenant_info_cloud_paid_pool_unlimited(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """quota_limit == -1 means unlimited; service should use paid pool."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        paid_pool = MagicMock(quota_limit=-1, quota_used=999)
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, None]),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["trial_credits"] == -1
-        assert result["trial_credits_used"] == 999
-
-    def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_full(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """When paid pool is exhausted, switch to trial pool."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        paid_pool = MagicMock(quota_limit=500, quota_used=500)
-        trial_pool = CreditPoolBalance(
-            tenant_id=tenant.id,
-            pool_type="trial",
-            quota_limit=100,
-            quota_used=100,
-            exhausted_at=1748908800,
-        )
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["trial_credits"] == 100
-        assert result["trial_credits_used"] == 100
-        assert result["trial_credits_exhausted_at"] == 1748908800
-
-    def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """When paid_pool is None, fall back to trial pool."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        trial_pool = MagicMock(quota_limit=50, quota_used=5)
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, trial_pool]),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["trial_credits"] == 50
-        assert result["trial_credits_used"] == 5
-
-    def test_get_tenant_info_cloud_sandbox_uses_trial_pool(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """When plan is SANDBOX, skip paid pool and use trial pool."""
-        from enums.cloud_plan import CloudPlan
-
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = CloudPlan.SANDBOX
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        paid_pool = MagicMock(quota_limit=1000, quota_used=0)
-        trial_pool = MagicMock(quota_limit=200, quota_used=20)
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert result["trial_credits"] == 200
-        assert result["trial_credits_used"] == 20
-
-    def test_get_tenant_info_cloud_both_pools_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """When both paid and trial pools are absent, trial_credits should not be set."""
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
-        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
-        feature.can_replace_logo = False
-        feature.next_credit_reset_date = "2025-02-01"
-        feature.billing.subscription.plan = "professional"
-        mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
-
-        with (
-            patch("services.workspace_service.current_user", account),
-            patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, None]),
-        ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
-
-        assert result is not None
-        assert "trial_credits" not in result
-        assert "trial_credits_used" not in result

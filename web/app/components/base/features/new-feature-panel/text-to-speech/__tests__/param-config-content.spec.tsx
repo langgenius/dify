@@ -13,7 +13,7 @@ let mockLanguages = [
 
 let mockPathname = '/app/test-app-id/configuration'
 
-let mockVoiceItems: { value: string; name: string }[] | undefined = [
+let mockVoiceItems: { value: string, name: string }[] | undefined = [
   { value: 'alloy', name: 'Alloy' },
   { value: 'echo', name: 'Echo' },
 ]
@@ -22,7 +22,7 @@ const mockUseAppVoices = vi.fn((_appId: string, _language?: string) => ({
   data: mockVoiceItems,
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
   useParams: () => ({}),
 }))
@@ -50,20 +50,19 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { onClose?: () => void; onChange?: OnFeaturesChange } = {},
+  props: { onClose?: () => void, onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
   return render(
     <FeaturesProvider features={features}>
-      <ParamConfigContent onClose={props.onClose ?? vi.fn()} onChange={props.onChange} />
+      <ParamConfigContent
+        onClose={props.onClose ?? vi.fn()}
+        onChange={props.onChange}
+      />
     </FeaturesProvider>,
   )
 }
-
-const getLanguageSelect = () =>
-  screen.getByRole('combobox', { name: /voice\.voiceSettings\.language/ })
-const getVoiceSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.voice/ })
 
 describe('ParamConfigContent', () => {
   beforeEach(() => {
@@ -84,55 +83,57 @@ describe('ParamConfigContent', () => {
     it('should render voice settings title', () => {
       renderWithProvider()
 
-      expect(screen.getByText(/voice\.voiceSettings\.title/))!.toBeInTheDocument()
+      expect(screen.getByText(/voice\.voiceSettings\.title/)).toBeInTheDocument()
     })
 
     it('should render language label', () => {
       renderWithProvider()
 
-      expect(screen.getByText(/voice\.voiceSettings\.language/))!.toBeInTheDocument()
+      expect(screen.getByText(/voice\.voiceSettings\.language/)).toBeInTheDocument()
     })
 
     it('should render voice label', () => {
       renderWithProvider()
 
-      expect(screen.getByText(/voice\.voiceSettings\.voice/))!.toBeInTheDocument()
+      expect(screen.getByText(/voice\.voiceSettings\.voice/)).toBeInTheDocument()
     })
 
     it('should render autoPlay toggle', () => {
       renderWithProvider()
 
-      expect(screen.getByText(/voice\.voiceSettings\.autoPlay/))!.toBeInTheDocument()
-      expect(screen.getByRole('switch'))!.toBeInTheDocument()
+      expect(screen.getByText(/voice\.voiceSettings\.autoPlay/)).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
     it('should render tooltip icon for language', () => {
       renderWithProvider()
 
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
-      expect(languageLabel)!.toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }),
-      )!.toBeInTheDocument()
+      expect(languageLabel).toBeInTheDocument()
+      const tooltip = languageLabel.parentElement as HTMLElement
+      expect(tooltip.querySelector('svg')).toBeInTheDocument()
     })
 
     it('should display language listbox button', () => {
       renderWithProvider()
 
-      expect(getLanguageSelect()).toBeInTheDocument()
+      const buttons = screen.getAllByRole('button')
+      expect(buttons.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should display current voice in listbox button', () => {
       renderWithProvider()
 
-      expect(getVoiceSelect()).toHaveTextContent('Alloy')
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons.find(btn => btn.textContent?.includes('Alloy'))
+      expect(voiceButton).toBeInTheDocument()
     })
 
     it('should render audition button when language has example', () => {
       renderWithProvider()
 
-      const auditionButton = screen.queryByRole('group', { name: /appApi\.play|play/i })
-      expect(auditionButton)!.toBeInTheDocument()
+      const auditionButton = screen.queryByTestId('audition-button')
+      expect(auditionButton).toBeInTheDocument()
     })
 
     it('should not render audition button when language has no example', () => {
@@ -143,35 +144,27 @@ describe('ParamConfigContent', () => {
 
       renderWithProvider()
 
-      const auditionButton = screen.queryByRole('group', { name: /appApi\.play|play/i })
+      const auditionButton = screen.queryByTestId('audition-button')
       expect(auditionButton).toBeNull()
     })
 
     it('should render with no language set and use first as default', () => {
-      renderWithProvider(
-        {},
-        {
-          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-        },
-      )
+      renderWithProvider({}, {
+        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+      })
 
-      expect(getLanguageSelect()).toBeInTheDocument()
+      const buttons = screen.getAllByRole('button')
+      expect(buttons.length).toBeGreaterThan(0)
     })
 
     it('should render with no voice set and use first as default', () => {
-      renderWithProvider(
-        {},
-        {
-          text2speech: {
-            enabled: true,
-            language: 'en-US',
-            voice: 'nonexistent',
-            autoPlay: TtsAutoPlay.disabled,
-          },
-        },
-      )
+      renderWithProvider({}, {
+        text2speech: { enabled: true, language: 'en-US', voice: 'nonexistent', autoPlay: TtsAutoPlay.disabled },
+      })
 
-      expect(getVoiceSelect()).toHaveTextContent('Alloy')
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons.find(btn => btn.textContent?.includes('Alloy'))
+      expect(voiceButton).toBeInTheDocument()
     })
   })
 
@@ -224,22 +217,15 @@ describe('ParamConfigContent', () => {
       const onChange = vi.fn()
       renderWithProvider(
         { onChange },
-        {
-          text2speech: {
-            enabled: true,
-            language: 'en-US',
-            voice: 'alloy',
-            autoPlay: TtsAutoPlay.enabled,
-          },
-        },
+        { text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.enabled } },
       )
 
       const autoPlaySwitch = screen.getByRole('switch')
-      expect(autoPlaySwitch)!.toHaveAttribute('aria-checked', 'true')
+      expect(autoPlaySwitch).toHaveAttribute('aria-checked', 'true')
 
       await userEvent.click(autoPlaySwitch)
 
-      expect(autoPlaySwitch)!.toHaveAttribute('aria-checked', 'false')
+      expect(autoPlaySwitch).toHaveAttribute('aria-checked', 'false')
       expect(onChange).toHaveBeenCalled()
     })
 
@@ -248,13 +234,16 @@ describe('ParamConfigContent', () => {
 
       await userEvent.click(screen.getByRole('switch'))
 
-      expect(screen.getByRole('switch'))!.toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
     it('should open language listbox and show options', async () => {
       renderWithProvider()
 
-      await userEvent.click(getLanguageSelect())
+      const buttons = screen.getAllByRole('button')
+      const languageButton = buttons.find(btn => btn.textContent?.includes('voice.language.'))
+      expect(languageButton).toBeDefined()
+      await userEvent.click(languageButton!)
 
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(2)
@@ -264,10 +253,13 @@ describe('ParamConfigContent', () => {
       const onChange = vi.fn()
       renderWithProvider({ onChange })
 
-      await userEvent.click(getLanguageSelect())
+      const buttons = screen.getAllByRole('button')
+      const languageButton = buttons.find(btn => btn.textContent?.includes('voice.language.'))
+      expect(languageButton).toBeDefined()
+      await userEvent.click(languageButton!)
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThan(1)
-      await userEvent.click(options[1]!)
+      await userEvent.click(options[1])
       expect(onChange).toHaveBeenCalled()
     })
 
@@ -275,35 +267,44 @@ describe('ParamConfigContent', () => {
       const onChange = vi.fn()
       renderWithProvider({ onChange })
 
-      await userEvent.click(getVoiceSelect())
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons.find(btn => btn.textContent?.includes('Alloy'))
+      expect(voiceButton).toBeDefined()
+      await userEvent.click(voiceButton!)
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThan(1)
-      await userEvent.click(options[1]!)
+      await userEvent.click(options[1])
       expect(onChange).toHaveBeenCalled()
     })
 
     it('should show selected language option in listbox', async () => {
       renderWithProvider()
 
-      await userEvent.click(getLanguageSelect())
+      const buttons = screen.getAllByRole('button')
+      const languageButton = buttons.find(btn => btn.textContent?.includes('voice.language.'))
+      expect(languageButton).toBeDefined()
+      await userEvent.click(languageButton!)
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find((opt) => opt.textContent?.includes('voice.language.enUS'))
+      const selectedOption = options.find(opt => opt.textContent?.includes('voice.language.enUS'))
       expect(selectedOption).toBeDefined()
-      expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
+      expect(selectedOption).toHaveAttribute('aria-selected', 'true')
     })
 
     it('should show selected voice option in listbox', async () => {
       renderWithProvider()
 
-      await userEvent.click(getVoiceSelect())
+      const buttons = screen.getAllByRole('button')
+      const voiceButton = buttons.find(btn => btn.textContent?.includes('Alloy'))
+      expect(voiceButton).toBeDefined()
+      await userEvent.click(voiceButton!)
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find((opt) => opt.textContent?.includes('Alloy'))
+      const selectedOption = options.find(opt => opt.textContent?.includes('Alloy'))
       expect(selectedOption).toBeDefined()
-      expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
+      expect(selectedOption).toHaveAttribute('aria-selected', 'true')
     })
   })
 
@@ -313,22 +314,18 @@ describe('ParamConfigContent', () => {
       mockLanguages = []
       mockVoiceItems = undefined
 
-      renderWithProvider(
-        {},
-        {
-          text2speech: {
-            enabled: true,
-            language: 'en-US',
-            voice: 'alloy',
-            autoPlay: TtsAutoPlay.disabled,
-          },
-        },
-      )
+      renderWithProvider({}, {
+        text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.disabled },
+      })
 
       const placeholderTexts = screen.getAllByText(/placeholder\.select/)
       expect(placeholderTexts.length).toBeGreaterThanOrEqual(2)
 
-      expect(getVoiceSelect()).toHaveAttribute('data-disabled')
+      const disabledButtons = screen
+        .getAllByRole('button')
+        .filter(button => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true')
+
+      expect(disabledButtons.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should call useAppVoices with empty appId when pathname has no app segment', () => {
@@ -342,14 +339,11 @@ describe('ParamConfigContent', () => {
     it('should render language text when selected language value is empty string', () => {
       mockLanguages = [{ value: '' as string, name: 'Unknown Language', example: '' }]
 
-      renderWithProvider(
-        {},
-        {
-          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-        },
-      )
+      renderWithProvider({}, {
+        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+      })
 
-      expect(screen.getByText(/voice\.language\./))!.toBeInTheDocument()
+      expect(screen.getByText(/voice\.language\./)).toBeInTheDocument()
     })
   })
 })

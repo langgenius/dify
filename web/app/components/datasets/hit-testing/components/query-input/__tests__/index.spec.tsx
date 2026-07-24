@@ -3,66 +3,35 @@ import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { expectLoadingButton } from '@/test/button'
 import QueryInput from '../index'
 
 // Capture onChange callback so tests can trigger handleImageChange
 let capturedOnChange: ((files: FileEntity[]) => void) | null = null
-vi.mock(
-  '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
-  () => ({
-    default: ({
-      textArea,
-      actionButton,
-      onChange,
-    }: {
-      textArea: React.ReactNode
-      actionButton: React.ReactNode
-      onChange?: (files: FileEntity[]) => void
-    }) => {
-      capturedOnChange = onChange ?? null
-      return (
-        <div data-testid="image-uploader">
-          {textArea}
-          {actionButton}
-        </div>
-      )
-    },
-  }),
-)
+vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing', () => ({
+  default: ({ textArea, actionButton, onChange }: { textArea: React.ReactNode, actionButton: React.ReactNode, onChange?: (files: FileEntity[]) => void }) => {
+    capturedOnChange = onChange ?? null
+    return (
+      <div data-testid="image-uploader">
+        {textArea}
+        {actionButton}
+      </div>
+    )
+  },
+}))
 
 vi.mock('@/app/components/datasets/common/retrieval-method-info', () => ({
   getIcon: () => '/test-icon.png',
 }))
 
 // Capture onSave callback for external retrieval modal
-let _capturedModalOnSave:
-  | ((data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => void)
-  | null = null
+let _capturedModalOnSave: ((data: { top_k: number, score_threshold: number, score_threshold_enabled: boolean }) => void) | null = null
 vi.mock('@/app/components/datasets/hit-testing/modify-external-retrieval-modal', () => ({
-  default: ({
-    onSave,
-    onClose,
-  }: {
-    onSave: (data: {
-      top_k: number
-      score_threshold: number
-      score_threshold_enabled: boolean
-    }) => void
-    onClose: () => void
-  }) => {
+  default: ({ onSave, onClose }: { onSave: (data: { top_k: number, score_threshold: number, score_threshold_enabled: boolean }) => void, onClose: () => void }) => {
     _capturedModalOnSave = onSave
     return (
       <div data-testid="external-retrieval-modal">
-        <button
-          data-testid="modal-save"
-          onClick={() => onSave({ top_k: 10, score_threshold: 0.8, score_threshold_enabled: true })}
-        >
-          Save
-        </button>
-        <button data-testid="modal-close" onClick={onClose}>
-          Close
-        </button>
+        <button data-testid="modal-save" onClick={() => onSave({ top_k: 10, score_threshold: 0.8, score_threshold_enabled: true })}>Save</button>
+        <button data-testid="modal-close" onClick={onClose}>Close</button>
       </div>
     )
   },
@@ -71,13 +40,7 @@ vi.mock('@/app/components/datasets/hit-testing/modify-external-retrieval-modal',
 // Capture handleTextChange callback
 let _capturedHandleTextChange: ((e: React.ChangeEvent<HTMLTextAreaElement>) => void) | null = null
 vi.mock('../textarea', () => ({
-  default: ({
-    text,
-    handleTextChange,
-  }: {
-    text: string
-    handleTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
-  }) => {
+  default: ({ text, handleTextChange }: { text: string, handleTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }) => {
     _capturedHandleTextChange = handleTextChange
     return <textarea data-testid="textarea" defaultValue={text} onChange={handleTextChange} />
   },
@@ -94,15 +57,12 @@ describe('QueryInput', () => {
     setHitResult: vi.fn(),
     setExternalHitResult: vi.fn(),
     loading: false,
-    queries: [
-      { content: 'test query', content_type: 'text_query', file_info: null },
-    ] satisfies Query[],
+    queries: [{ content: 'test query', content_type: 'text_query', file_info: null }] satisfies Query[],
     setQueries: vi.fn(),
     isExternal: false,
     onClickRetrievalMethod: vi.fn(),
     retrievalConfig: { search_method: 'semantic_search' } as RetrievalConfig,
     isEconomy: false,
-    canRunRetrievalRecall: true,
     hitTestingMutation: vi.fn(),
     externalKnowledgeBaseHitTestingMutation: vi.fn(),
   })
@@ -119,17 +79,17 @@ describe('QueryInput', () => {
 
   it('should render title', () => {
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByText('datasetHitTesting.input.title'))!.toBeInTheDocument()
+    expect(screen.getByText('datasetHitTesting.input.title')).toBeInTheDocument()
   })
 
   it('should render textarea with query text', () => {
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByTestId('textarea'))!.toBeInTheDocument()
+    expect(screen.getByTestId('textarea')).toBeInTheDocument()
   })
 
   it('should render submit button', () => {
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /input\.testing/ })).toBeInTheDocument()
   })
 
   it('should disable submit button when text is empty', () => {
@@ -138,41 +98,34 @@ describe('QueryInput', () => {
       queries: [{ content: '', content_type: 'text_query', file_info: null }] satisfies Query[],
     }
     render(<QueryInput {...props} />)
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
-  })
-
-  it('should disable submit button when retrieval recall permission is missing', () => {
-    render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
-
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+    expect(screen.getByRole('button', { name: /input\.testing/ })).toBeDisabled()
   })
 
   it('should render retrieval method for non-external mode', () => {
     render(<QueryInput {...defaultProps} />)
-    expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
+    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
   })
 
   it('should render settings button for external mode', () => {
     render(<QueryInput {...defaultProps} isExternal={true} />)
-    expect(screen.getByText('datasetHitTesting.settingTitle'))!.toBeInTheDocument()
+    expect(screen.getByText('datasetHitTesting.settingTitle')).toBeInTheDocument()
   })
 
   it('should disable submit button when text exceeds 200 characters', () => {
     const props = {
       ...defaultProps,
-      queries: [
-        { content: 'a'.repeat(201), content_type: 'text_query', file_info: null },
-      ] satisfies Query[],
+      queries: [{ content: 'a'.repeat(201), content_type: 'text_query', file_info: null }] satisfies Query[],
     }
     render(<QueryInput {...props} />)
-    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+    expect(screen.getByRole('button', { name: /input\.testing/ })).toBeDisabled()
   })
 
   it('should show loading state on submit button when loading', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
-    expectLoadingButton(submitButton)
-    expect(submitButton.querySelector('.animate-spin'))!.toBeInTheDocument()
+    // The real Button component does not disable on loading; it shows a spinner
+    expect(submitButton).toBeInTheDocument()
+    expect(submitButton.querySelector('[role="status"]')).toBeInTheDocument()
   })
 
   // Cover line 83: images useMemo with image_query data
@@ -183,49 +136,11 @@ describe('QueryInput', () => {
         {
           content: 'https://img.example.com/1.png',
           content_type: 'image_query',
-          file_info: {
-            id: 'img-1',
-            name: 'photo.png',
-            size: 1024,
-            mime_type: 'image/png',
-            extension: 'png',
-            source_url: 'https://img.example.com/1.png',
-          },
+          file_info: { id: 'img-1', name: 'photo.png', size: 1024, mime_type: 'image/png', extension: 'png', source_url: 'https://img.example.com/1.png' },
         },
       ]
       render(<QueryInput {...defaultProps} queries={queries} />)
 
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
-      // Submit should be enabled since we have text + uploaded image
       // Submit should be enabled since we have text + uploaded image
       expect(screen.getByRole('button', { name: /input\.testing/ })).not.toBeDisabled()
     })
@@ -238,7 +153,7 @@ describe('QueryInput', () => {
 
       // Click settings button to open modal
       fireEvent.click(screen.getByRole('button', { name: /settingTitle/ }))
-      expect(screen.getByTestId('external-retrieval-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('external-retrieval-modal')).toBeInTheDocument()
 
       // Close modal
       fireEvent.click(screen.getByTestId('modal-close'))
@@ -250,7 +165,7 @@ describe('QueryInput', () => {
 
       // Open modal
       fireEvent.click(screen.getByRole('button', { name: /settingTitle/ }))
-      expect(screen.getByTestId('external-retrieval-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('external-retrieval-modal')).toBeInTheDocument()
 
       // Save settings
       fireEvent.click(screen.getByTestId('modal-save'))
@@ -287,33 +202,21 @@ describe('QueryInput', () => {
     })
   })
 
-  describe('Permission Guarding', () => {
-    it('should not run hit testing mutation when retrieval recall permission is missing', () => {
-      render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
-
-      expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
-    })
-  })
-
   // Cover lines 127-143: handleImageChange
   describe('Image Change Handling', () => {
     it('should update queries when images change', () => {
       render(<QueryInput {...defaultProps} />)
 
-      const files: FileEntity[] = [
-        {
-          id: 'f-1',
-          name: 'pic.jpg',
-          size: 2048,
-          mimeType: 'image/jpeg',
-          extension: 'jpg',
-          sourceUrl: 'https://img.example.com/pic.jpg',
-          uploadedId: 'uploaded-1',
-          progress: 100,
-        },
-      ]
+      const files: FileEntity[] = [{
+        id: 'f-1',
+        name: 'pic.jpg',
+        size: 2048,
+        mimeType: 'image/jpeg',
+        extension: 'jpg',
+        sourceUrl: 'https://img.example.com/pic.jpg',
+        uploadedId: 'uploaded-1',
+        progress: 100,
+      }]
 
       capturedOnChange?.(files)
 
@@ -332,17 +235,15 @@ describe('QueryInput', () => {
     it('should handle files with missing sourceUrl and uploadedId', () => {
       render(<QueryInput {...defaultProps} />)
 
-      const files: FileEntity[] = [
-        {
-          id: 'f-2',
-          name: 'no-url.jpg',
-          size: 512,
-          mimeType: 'image/jpeg',
-          extension: 'jpg',
-          progress: 100,
-          // sourceUrl and uploadedId are undefined
-        },
-      ]
+      const files: FileEntity[] = [{
+        id: 'f-2',
+        name: 'no-url.jpg',
+        size: 512,
+        mimeType: 'image/jpeg',
+        extension: 'jpg',
+        progress: 100,
+        // sourceUrl and uploadedId are undefined
+      }]
 
       capturedOnChange?.(files)
 
@@ -360,18 +261,7 @@ describe('QueryInput', () => {
     it('should replace all existing image queries with new ones', () => {
       const queries: Query[] = [
         { content: 'text', content_type: 'text_query', file_info: null },
-        {
-          content: 'old-img',
-          content_type: 'image_query',
-          file_info: {
-            id: 'old',
-            name: 'old.png',
-            size: 100,
-            mime_type: 'image/png',
-            extension: 'png',
-            source_url: '',
-          },
-        },
+        { content: 'old-img', content_type: 'image_query', file_info: { id: 'old', name: 'old.png', size: 100, mime_type: 'image/png', extension: 'png', source_url: '' } },
       ]
       render(<QueryInput {...defaultProps} queries={queries} />)
 
@@ -379,11 +269,13 @@ describe('QueryInput', () => {
 
       // Should keep text query but remove all image queries
       expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ content_type: 'text_query' })]),
+        expect.arrayContaining([
+          expect.objectContaining({ content_type: 'text_query' }),
+        ]),
       )
       // Should not contain image_query
-      const calledWith = defaultProps.setQueries.mock.calls[0]![0] as Query[]
-      expect(calledWith.filter((q) => q.content_type === 'image_query')).toHaveLength(0)
+      const calledWith = defaultProps.setQueries.mock.calls[0][0] as Query[]
+      expect(calledWith.filter(q => q.content_type === 'image_query')).toHaveLength(0)
     })
   })
 
@@ -421,9 +313,7 @@ describe('QueryInput', () => {
         return response
       })
 
-      render(
-        <QueryInput {...defaultProps} hitTestingMutation={mockMutation} onSubmit={mockOnSubmit} />,
-      )
+      render(<QueryInput {...defaultProps} hitTestingMutation={mockMutation} onSubmit={mockOnSubmit} />)
 
       fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
 
@@ -461,13 +351,7 @@ describe('QueryInput', () => {
         return response
       })
 
-      render(
-        <QueryInput
-          {...defaultProps}
-          isExternal={true}
-          externalKnowledgeBaseHitTestingMutation={mockExternalMutation}
-        />,
-      )
+      render(<QueryInput {...defaultProps} isExternal={true} externalKnowledgeBaseHitTestingMutation={mockExternalMutation} />)
 
       fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
 
@@ -491,18 +375,7 @@ describe('QueryInput', () => {
     it('should include image attachment_ids in submit request', async () => {
       const queries: Query[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
-        {
-          content: 'img-url',
-          content_type: 'image_query',
-          file_info: {
-            id: 'img-id',
-            name: 'pic.png',
-            size: 100,
-            mime_type: 'image/png',
-            extension: 'png',
-            source_url: 'img-url',
-          },
-        },
+        { content: 'img-url', content_type: 'image_query', file_info: { id: 'img-id', name: 'pic.png', size: 100, mime_type: 'image/png', extension: 'png', source_url: 'img-url' } },
       ]
       const mockResponse = { query: { content: '', tsne_position: { x: 0, y: 0 } }, records: [] }
       const mockMutation = vi.fn(async (_req, opts) => {
@@ -539,7 +412,7 @@ describe('QueryInput', () => {
     it('should show keyword_search when isEconomy is true', () => {
       render(<QueryInput {...defaultProps} isEconomy={true} />)
 
-      expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.retrieval.keyword_search.title')).toBeInTheDocument()
     })
   })
 })

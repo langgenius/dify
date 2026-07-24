@@ -1,64 +1,63 @@
 'use client'
-import type { BlockEnum } from '../../../types'
-import type { ToolGroup } from '../../tool-list-data'
+import type { FC } from 'react'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
-import type { ToolActionPreviewCardHandle } from '../action-item'
-import { memo } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
 import Item from './item'
 
-type Props = Readonly<{
-  payload: ToolGroup[]
-  previewCardHandle: ToolActionPreviewCardHandle
+type Props = {
+  payload: Record<string, ToolWithProvider[]>
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-}>
+}
 
-export const ToolListTreeView = memo(
-  ({
-    payload,
-    previewCardHandle,
-    hasSearchText,
-    onSelect,
-    canNotSelectMultiple,
-    onSelectMultiple,
-    selectedTools,
-  }: Props) => {
-    const { t } = useTranslation()
-    const getGroupName = (group: ToolGroup) => {
-      if (group.kind === 'author') return group.author
+const ToolListTreeView: FC<Props> = ({
+  payload,
+  hasSearchText,
+  onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
+  selectedTools,
+}) => {
+  const { t } = useTranslation()
+  const getI18nGroupName = useCallback((name: string) => {
+    if (name === CUSTOM_GROUP_NAME)
+      return t('tabs.customTool', { ns: 'workflow' })
 
-      switch (group.category) {
-        case 'custom':
-          return t(($) => $['tabs.customTool'], { ns: 'workflow' })
-        case 'workflow':
-          return t(($) => $['tabs.workflowTool'], { ns: 'workflow' })
-        case 'data-source':
-          return t(($) => $['tabs.sources'], { ns: 'workflow' })
-        case 'mcp':
-          return 'MCP'
-      }
-    }
+    if (name === WORKFLOW_GROUP_NAME)
+      return t('tabs.workflowTool', { ns: 'workflow' })
 
-    return (
-      <div>
-        {payload.map((group) => (
-          <Item
-            key={group.kind === 'author' ? `author:${group.author}` : `category:${group.category}`}
-            groupName={getGroupName(group)}
-            toolList={group.tools}
-            previewCardHandle={previewCardHandle}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-          />
-        ))}
-      </div>
-    )
-  },
-)
+    if (name === AGENT_GROUP_NAME)
+      return t('tabs.agent', { ns: 'workflow' })
+
+    return name
+  }, [t])
+
+  if (!payload)
+    return null
+
+  return (
+    <div>
+      {Object.keys(payload).map(groupName => (
+        <Item
+          key={groupName}
+          groupName={getI18nGroupName(groupName)}
+          toolList={payload[groupName]}
+          hasSearchText={hasSearchText}
+          onSelect={onSelect}
+          canNotSelectMultiple={canNotSelectMultiple}
+          onSelectMultiple={onSelectMultiple}
+          selectedTools={selectedTools}
+        />
+      ))}
+    </div>
+  )
+}
+
+export default React.memo(ToolListTreeView)

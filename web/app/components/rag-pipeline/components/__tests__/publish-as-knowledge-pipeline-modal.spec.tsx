@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -16,21 +17,13 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div data-testid="modal" className={className}>
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <h2 className={className}>{children}</h2>
-  ),
+vi.mock('@/app/components/base/modal', () => ({
+  default: ({ children, isShow }: { children: React.ReactNode, isShow: boolean }) =>
+    isShow ? <div data-testid="modal">{children}</div> : null,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
+vi.mock('@/app/components/base/button', () => ({
+  default: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
     <button onClick={onClick as () => void} disabled={disabled as boolean} {...props}>
       {children as string}
     </button>
@@ -48,9 +41,36 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
+vi.mock('@/app/components/base/textarea', () => ({
+  default: ({ value, onChange, ...props }: Record<string, unknown>) => (
+    <textarea
+      data-testid="description-textarea"
+      value={value as string}
+      onChange={onChange as () => void}
+      {...props}
+    />
+  ),
+}))
+
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick?: () => void }) => (
     <div data-testid="app-icon" onClick={onClick} />
+  ),
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({ onSelect, onClose }: { onSelect: (item: { type: string, icon: string, background: string, url: string }) => void, onClose: () => void }) => (
+    <div data-testid="icon-picker">
+      <button data-testid="select-emoji" onClick={() => onSelect({ type: 'emoji', icon: '🎉', background: '#eee', url: '' })}>
+        Select Emoji
+      </button>
+      <button data-testid="select-image" onClick={() => onSelect({ type: 'image', icon: '', background: '', url: 'http://img.png' })}>
+        Select Image
+      </button>
+      <button data-testid="close-picker" onClick={onClose}>
+        Close
+      </button>
+    </div>
   ),
 }))
 
@@ -92,16 +112,14 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should initialize description as empty', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByRole('textbox', {
-      name: 'pipeline.common.publishAsPipeline.description',
-    }) as HTMLTextAreaElement
+    const textarea = screen.getByTestId('description-textarea') as HTMLTextAreaElement
     expect(textarea.value).toBe('')
   })
 
   it('should call onCancel when close button clicked', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
 
     expect(mockOnCancel).toHaveBeenCalled()
   })
@@ -138,9 +156,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should update description when textarea changes', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    const textarea = screen.getByRole('textbox', {
-      name: 'pipeline.common.publishAsPipeline.description',
-    })
+    const textarea = screen.getByTestId('description-textarea')
     fireEvent.change(textarea, { target: { value: 'My description' } })
 
     expect((textarea as HTMLTextAreaElement).value).toBe('My description')
@@ -171,46 +187,41 @@ describe('PublishAsKnowledgePipelineModal', () => {
     expect(mockOnConfirm).not.toHaveBeenCalled()
   })
 
-  it('should show icon picker when app icon clicked', async () => {
+  it('should show icon picker when app icon clicked', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('icon-picker')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('app-icon'))
 
-    expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    expect(screen.getByTestId('icon-picker')).toBeInTheDocument()
   })
 
-  it('should update icon when emoji style is selected', async () => {
+  it('should update icon when emoji is selected', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(screen.getByTestId('app-icon'))
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    fireEvent.click(screen.getByTestId('select-emoji'))
 
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
+    expect(screen.queryByTestId('icon-picker')).not.toBeInTheDocument()
   })
 
-  it('should keep icon picker open until confirmation', () => {
+  it('should update icon when image is selected', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(screen.getByTestId('app-icon'))
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByTestId('select-image'))
 
-    expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+    expect(screen.queryByTestId('icon-picker')).not.toBeInTheDocument()
   })
 
-  it('should close icon picker when cancel is clicked', async () => {
+  it('should close icon picker when close is clicked', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(screen.getByTestId('app-icon'))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    fireEvent.click(screen.getByTestId('close-picker'))
 
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
+    expect(screen.queryByTestId('icon-picker')).not.toBeInTheDocument()
   })
 
   it('should trim name and description before submitting', () => {
@@ -219,13 +230,15 @@ describe('PublishAsKnowledgePipelineModal', () => {
     const nameInput = screen.getByTestId('name-input')
     fireEvent.change(nameInput, { target: { value: '  Trimmed Name  ' } })
 
-    const textarea = screen.getByRole('textbox', {
-      name: 'pipeline.common.publishAsPipeline.description',
-    })
+    const textarea = screen.getByTestId('description-textarea')
     fireEvent.change(textarea, { target: { value: '  Some desc  ' } })
 
     fireEvent.click(screen.getByText('workflow.common.publish'))
 
-    expect(mockOnConfirm).toHaveBeenCalledWith('Trimmed Name', expect.any(Object), 'Some desc')
+    expect(mockOnConfirm).toHaveBeenCalledWith(
+      'Trimmed Name',
+      expect.any(Object),
+      'Some desc',
+    )
   })
 })

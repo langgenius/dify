@@ -23,7 +23,10 @@ describe('VariableMenuItem', () => {
 
     it('should render the icon when provided', () => {
       render(
-        <VariableMenuItem {...defaultProps} icon={<span data-testid="test-icon">icon</span>} />,
+        <VariableMenuItem
+          {...defaultProps}
+          icon={<span data-testid="test-icon">icon</span>}
+        />,
       )
       expect(screen.getByTestId('test-icon')).toBeInTheDocument()
     })
@@ -36,6 +39,12 @@ describe('VariableMenuItem', () => {
         />,
       )
       expect(screen.getByTestId('extra')).toBeInTheDocument()
+    })
+
+    it('should apply selection styles when isSelected is true', () => {
+      const { container } = render(<VariableMenuItem {...defaultProps} isSelected={true} />)
+      const item = container.firstChild as HTMLElement
+      expect(item).toHaveClass('bg-state-base-hover')
     })
   })
 

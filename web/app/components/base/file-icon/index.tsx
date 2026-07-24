@@ -18,7 +18,10 @@ type FileIconProps = {
   className?: string
 }
 
-const FileIcon: FC<FileIconProps> = ({ type, className }) => {
+const FileIcon: FC<FileIconProps> = ({
+  type,
+  className,
+}) => {
   switch (type) {
     case 'csv':
       return <Csv className={className} />

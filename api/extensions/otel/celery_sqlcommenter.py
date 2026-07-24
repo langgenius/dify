@@ -11,7 +11,7 @@ SQLAlchemy instrumentor appends comments to SQL statements.
 """
 
 import logging
-from typing import Any, TypedDict
+from typing import Any
 
 from celery.signals import task_postrun, task_prerun
 from opentelemetry import context
@@ -24,17 +24,9 @@ _SQLCOMMENTER_CONTEXT_KEY = "SQLCOMMENTER_ORM_TAGS_AND_VALUES"
 _TOKEN_ATTR = "_dify_sqlcommenter_context_token"
 
 
-class CelerySqlcommenterTagsDict(TypedDict, total=False):
-    framework: str
-    task_name: str
-    traceparent: str
-    celery_retries: int
-    routing_key: str
-
-
-def _build_celery_sqlcommenter_tags(task: Any) -> CelerySqlcommenterTagsDict:
+def _build_celery_sqlcommenter_tags(task: Any) -> dict[str, str | int]:
     """Build SQL commenter tags from the current Celery task and OpenTelemetry context."""
-    tags: CelerySqlcommenterTagsDict = {}
+    tags: dict[str, str | int] = {}
 
     try:
         tags["framework"] = f"celery:{_get_celery_version()}"

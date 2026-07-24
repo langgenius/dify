@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +10,6 @@ from flask import Flask
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
-    AgentNotPublishedError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -20,9 +17,8 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeError
 
 
 def _completion_app() -> SimpleNamespace:
@@ -145,37 +141,6 @@ class TestChatApi:
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(CompletionRequestError):
                 ChatApi().post(_chat_app(), _end_user())
-
-    @patch(
-        "controllers.web.completion.AppGenerateService.generate",
-        side_effect=AgentAppNotPublishedError("Agent has not been published"),
-    )
-    @patch("controllers.web.completion.web_ns")
-    def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "x"}
-        app_model = SimpleNamespace(id="app-1", mode="agent")
-
-        with app.test_request_context("/chat-messages", method="POST"):
-            with pytest.raises(AgentNotPublishedError):
-                ChatApi().post(app_model, _end_user())
-
-    @patch("controllers.web.completion.AppGenerateService.generate", return_value="response")
-    @patch("controllers.web.completion.ConversationService.get_conversation")
-    @patch("controllers.web.completion.web_ns")
-    def test_conversation_validation_uses_request_session(
-        self,
-        mock_ns: MagicMock,
-        mock_get_conversation: MagicMock,
-        mock_generate: MagicMock,
-        app: Flask,
-    ) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())}
-        session = MagicMock()
-
-        with app.test_request_context("/chat-messages", method="POST"):
-            unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())
-
-        assert mock_get_conversation.call_args.kwargs["session"] is session
 
 
 # ---------------------------------------------------------------------------

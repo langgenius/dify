@@ -5,13 +5,12 @@ type MockDragEventOverrides = {
   dataTransfer?: { files: File[] }
 }
 
-const createDragEvent = (overrides: MockDragEventOverrides = {}): React.DragEvent<HTMLDivElement> =>
-  ({
-    preventDefault: vi.fn(),
-    stopPropagation: vi.fn(),
-    dataTransfer: { files: [] as unknown as FileList },
-    ...overrides,
-  }) as unknown as React.DragEvent<HTMLDivElement>
+const createDragEvent = (overrides: MockDragEventOverrides = {}): React.DragEvent<HTMLDivElement> => ({
+  preventDefault: vi.fn(),
+  stopPropagation: vi.fn(),
+  dataTransfer: { files: [] as unknown as FileList },
+  ...overrides,
+} as unknown as React.DragEvent<HTMLDivElement>)
 
 describe('useDraggableUploader', () => {
   let setImageFn: ReturnType<typeof vi.fn<(file: File) => void>>

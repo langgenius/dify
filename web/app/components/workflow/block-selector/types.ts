@@ -1,55 +1,33 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  ParametersSchema,
-  PluginMeta,
-  PluginTriggerSubscriptionConstructor,
-  SupportedCreationMethods,
-  TriggerEvent,
-} from '../../plugins/types'
-import type { Collection, CollectionProviderType, Event } from '../../tools/types'
+import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
+import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-export const TabType = {
-  Start: 'start',
-  Blocks: 'blocks',
-  Tools: 'tools',
-  Sources: 'sources',
-  Snippets: 'snippets',
-} as const
+export enum TabsEnum {
+  Start = 'start',
+  Blocks = 'blocks',
+  Tools = 'tools',
+  Sources = 'sources',
+}
 
-export type TabType = (typeof TabType)[keyof typeof TabType]
+export enum ToolTypeEnum {
+  All = 'all',
+  BuiltIn = 'built-in',
+  Custom = 'custom',
+  Workflow = 'workflow',
+  MCP = 'mcp',
+}
 
-export const ToolType = {
-  All: 'all',
-  BuiltIn: 'built-in',
-  Custom: 'custom',
-  Workflow: 'workflow',
-  MCP: 'mcp',
-} as const
-
-export type ToolType = (typeof ToolType)[keyof typeof ToolType]
-
-export const ViewType = {
-  flat: 'flat',
-  tree: 'tree',
-} as const
-
-export type ViewType = (typeof ViewType)[keyof typeof ViewType]
-
-export const BlockClassification = {
-  Default: '-',
-  QuestionUnderstand: 'question-understand',
-  Logic: 'logic',
-  Transform: 'transform',
-  Utilities: 'utilities',
-} as const
-
-export type BlockClassification = (typeof BlockClassification)[keyof typeof BlockClassification]
+export enum BlockClassificationEnum {
+  Default = '-',
+  QuestionUnderstand = 'question-understand',
+  Logic = 'logic',
+  Transform = 'transform',
+  Utilities = 'utilities',
+}
 
 type PluginCommonDefaultValue = {
   provider_id: string
-  provider_type: CollectionProviderType
+  provider_type: string
   provider_name: string
 }
 
@@ -69,7 +47,6 @@ export type TriggerDefaultValue = PluginCommonDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginCommonDefaultValue & {
-  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description: string
@@ -88,6 +65,7 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
 
 export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
   plugin_id: string
+  provider_type: string
   provider_name: string
   datasource_name: string
   datasource_label: string
@@ -96,38 +74,11 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
   plugin_unique_identifier?: string
 }
 
-export type AgentRosterNodeData = Pick<
-  AgentInviteOptionResponse,
-  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name' | 'role'
->
-
-type AgentRosterBinding = {
-  binding_type: 'roster_agent'
-  agent_id: string
-}
-
-export type AgentInlineBinding = {
-  binding_type: 'inline_agent'
-  agent_id?: string | null
-  current_snapshot_id?: string | null
-}
-
-export type AgentBinding = AgentRosterBinding | AgentInlineBinding
-
-type AgentDefaultValue = {
-  agent_binding: AgentBinding
-  agent_node_kind: 'dify_agent'
-  version: '2'
-}
-
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
-
-export type BlockDefaultValue = PluginDefaultValue | AgentDefaultValue
 
 export type ToolValue = {
   provider_name: string
   provider_show_name?: string
-  plugin_id?: string
   tool_name: string
   tool_label: string
   tool_description?: string
@@ -145,11 +96,11 @@ export type DataSourceItem = {
   provider: string
   declaration: {
     credentials_schema: unknown[]
-    provider_type: DatasourceProviderType
+    provider_type: string
     identity: {
       author: string
       description: TypeWithI18N
-      icon: string | { background: string; content: string }
+      icon: string | { background: string, content: string }
       label: TypeWithI18N
       name: string
       tags: string[]
@@ -158,7 +109,7 @@ export type DataSourceItem = {
       description: TypeWithI18N
       identity: {
         author: string
-        icon?: string | { background: string; content: string }
+        icon?: string | { background: string, content: string }
         label: TypeWithI18N
         name: string
         provider: string
@@ -173,15 +124,38 @@ export type DataSourceItem = {
   is_authorized: boolean
 }
 
-type TriggerCredentialField = {
-  type:
-    | 'secret-input'
-    | 'text-input'
-    | 'select'
-    | 'boolean'
-    | 'app-selector'
-    | 'model-selector'
-    | 'tools-selector'
+// Backend API types - exact match with Python definitions
+export type TriggerParameter = {
+  multiple: boolean
+  name: string
+  label: TypeWithI18N
+  description?: TypeWithI18N
+  type: 'string' | 'number' | 'boolean' | 'select' | 'file' | 'files'
+    | 'model-selector' | 'app-selector' | 'object' | 'array' | 'dynamic-select'
+  auto_generate?: {
+    type: string
+    value?: unknown
+  } | null
+  template?: {
+    type: string
+    value?: unknown
+  } | null
+  scope?: string | null
+  required?: boolean
+  default?: unknown
+  min?: number | null
+  max?: number | null
+  precision?: number | null
+  options?: Array<{
+    value: string
+    label: TypeWithI18N
+    icon?: string | null
+  }> | null
+}
+
+export type TriggerCredentialField = {
+  type: 'secret-input' | 'text-input' | 'select' | 'boolean'
+    | 'app-selector' | 'model-selector' | 'tools-selector'
   name: string
   scope?: string | null
   required: boolean
@@ -194,6 +168,31 @@ type TriggerCredentialField = {
   help?: TypeWithI18N
   url?: string | null
   placeholder?: TypeWithI18N
+}
+
+export type TriggerSubscriptionSchema = {
+  parameters_schema: TriggerParameter[]
+  properties_schema: TriggerCredentialField[]
+}
+
+export type TriggerIdentity = {
+  author: string
+  name: string
+  label: TypeWithI18N
+  provider: string
+}
+
+export type TriggerDescription = {
+  human: TypeWithI18N
+  llm: TypeWithI18N
+}
+
+export type TriggerApiEntity = {
+  name: string
+  identity: TriggerIdentity
+  description: TypeWithI18N
+  parameters: TriggerParameter[]
+  output_schema?: Record<string, unknown>
 }
 
 export type TriggerProviderApiEntity = {
@@ -228,20 +227,17 @@ export type TriggerWithProvider = Collection & {
 
 // Trigger subscription instance types
 
-export const TriggerCredentialType = {
-  ApiKey: 'api-key',
-  Oauth2: 'oauth2',
-  Unauthorized: 'unauthorized',
-} as const
-
-export type TriggerCredentialType =
-  (typeof TriggerCredentialType)[keyof typeof TriggerCredentialType]
+export enum TriggerCredentialTypeEnum {
+  ApiKey = 'api-key',
+  Oauth2 = 'oauth2',
+  Unauthorized = 'unauthorized',
+}
 
 type TriggerSubscriptionStructure = {
   id: string
   name: string
   provider: string
-  credential_type: TriggerCredentialType
+  credential_type: TriggerCredentialTypeEnum
   credentials: Record<string, unknown>
   endpoint: string
   parameters: Record<string, unknown>
@@ -276,6 +272,11 @@ export type TriggerOAuthClientParams = {
   scope?: string
 }
 
+export type TriggerOAuthResponse = {
+  authorization_url: string
+  subscription_builder: TriggerSubscriptionBuilder
+}
+
 export type TriggerLogEntity = {
   id: string
   endpoint: string
@@ -284,18 +285,18 @@ export type TriggerLogEntity = {
   created_at: string
 }
 
-type LogRequest = {
+export type LogRequest = {
   method: string
   url: string
   headers: LogRequestHeaders
   data: string
 }
 
-type LogRequestHeaders = {
-  Host: string
+export type LogRequestHeaders = {
+  'Host': string
   'User-Agent': string
   'Content-Length': string
-  Accept: string
+  'Accept': string
   'Content-Type': string
   'X-Forwarded-For': string
   'X-Forwarded-Host': string
@@ -309,13 +310,13 @@ type LogRequestHeaders = {
   [key: string]: string
 }
 
-type LogResponse = {
+export type LogResponse = {
   status_code: number
   headers: LogResponseHeaders
   data: string
 }
 
-type LogResponseHeaders = {
+export type LogResponseHeaders = {
   'Content-Type': string
   'Content-Length': string
   [key: string]: string

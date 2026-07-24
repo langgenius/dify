@@ -1,45 +1,41 @@
 'use client'
 
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type FooterProps = {
+export type FooterProps = {
   resultCount: number
   searchMode: string
-  isLoading: boolean
-  hasUnavailableServices: boolean
+  isError: boolean
   isCommandsMode: boolean
   hasQuery: boolean
 }
 
-export function Footer({
+const Footer: FC<FooterProps> = ({
   resultCount,
   searchMode,
-  isLoading,
-  hasUnavailableServices,
+  isError,
   isCommandsMode,
   hasQuery,
-}: FooterProps) {
+}) => {
   const { t } = useTranslation()
 
   const renderLeftContent = () => {
-    if (hasUnavailableServices) {
-      return (
-        <span className="text-red-500">
-          {t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
-        </span>
-      )
-    }
+    if (resultCount > 0 || isError) {
+      if (isError) {
+        return (
+          <span className="text-red-500">
+            {t('gotoAnything.someServicesUnavailable', { ns: 'app' })}
+          </span>
+        )
+      }
 
-    if (resultCount > 0) {
       return (
         <>
-          {t(($) => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
+          {t('gotoAnything.resultCount', { ns: 'app', count: resultCount })}
           {searchMode !== 'general' && (
             <span className="ml-2 opacity-60">
-              {t(($) => $['gotoAnything.inScope'], {
-                ns: 'app',
-                scope: searchMode.replace('@', ''),
-              })}
+              {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
             </span>
           )}
         </>
@@ -49,23 +45,25 @@ export function Footer({
     return (
       <span className="opacity-60">
         {(() => {
-          if (isCommandsMode) return t(($) => $['gotoAnything.selectToNavigate'], { ns: 'app' })
+          if (isCommandsMode)
+            return t('gotoAnything.selectToNavigate', { ns: 'app' })
 
-          if (isLoading) return t(($) => $['gotoAnything.searching'], { ns: 'app' })
+          if (hasQuery)
+            return t('gotoAnything.searching', { ns: 'app' })
 
-          return t(($) => $['gotoAnything.startTyping'], { ns: 'app' })
+          return t('gotoAnything.startTyping', { ns: 'app' })
         })()}
       </span>
     )
   }
 
   const renderRightContent = () => {
-    if (resultCount > 0 || hasUnavailableServices) {
+    if (resultCount > 0 || isError) {
       return (
         <span className="opacity-60">
           {searchMode !== 'general'
-            ? t(($) => $['gotoAnything.clearToSearchAll'], { ns: 'app' })
-            : t(($) => $['gotoAnything.useAtForSpecific'], { ns: 'app' })}
+            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
+            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
         </span>
       )
     }
@@ -73,8 +71,8 @@ export function Footer({
     return (
       <span className="opacity-60">
         {hasQuery || isCommandsMode
-          ? t(($) => $['gotoAnything.tips'], { ns: 'app' })
-          : t(($) => $['gotoAnything.pressEscToClose'], { ns: 'app' })}
+          ? t('gotoAnything.tips', { ns: 'app' })
+          : t('gotoAnything.pressEscToClose', { ns: 'app' })}
       </span>
     )
   }
@@ -88,3 +86,5 @@ export function Footer({
     </div>
   )
 }
+
+export default Footer

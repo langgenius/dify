@@ -1,16 +1,15 @@
 from typing import Any, cast
 
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from events.app_event import app_model_config_was_updated
+from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import AppModelConfig
 
 
 @app_model_config_was_updated.connect
-def handle(sender, *, session: Session, **kwargs) -> None:
-    """Update dataset joins with the caller-provided session."""
+def handle(sender, **kwargs):
     app = sender
     app_model_config = kwargs.get("app_model_config")
     if app_model_config is None:
@@ -18,7 +17,7 @@ def handle(sender, *, session: Session, **kwargs) -> None:
 
     dataset_ids = get_dataset_ids_from_model_config(app_model_config)
 
-    app_dataset_joins = session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
+    app_dataset_joins = db.session.scalars(select(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id)).all()
 
     removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:
@@ -32,14 +31,16 @@ def handle(sender, *, session: Session, **kwargs) -> None:
 
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
-            session.execute(
-                delete(AppDatasetJoin).where(AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id)
-            )
+            db.session.query(AppDatasetJoin).where(
+                AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
+            ).delete()
 
     if added_dataset_ids:
         for dataset_id in added_dataset_ids:
             app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
-            session.add(app_dataset_join)
+            db.session.add(app_dataset_join)
+
+    db.session.commit()
 
 
 def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set[str]:

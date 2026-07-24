@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Category } from '../types'
+import type { Category } from '../index'
 import type { PlanRange } from './plan-range-switcher'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,12 +27,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
   const tabs = {
     cloud: {
       value: 'cloud' as Category,
-      label: t(($) => $['plansCommon.cloud'], { ns: 'billing' }),
+      label: t('plansCommon.cloud', { ns: 'billing' }),
       Icon: Cloud,
     },
     self: {
       value: 'self' as Category,
-      label: t(($) => $['plansCommon.self'], { ns: 'billing' }),
+      label: t('plansCommon.self', { ns: 'billing' }),
       Icon: SelfHosted,
     },
   }
@@ -53,7 +53,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
             onClick={onChangeCategory}
           />
         </div>
-        {isCloud && <PlanRangeSwitcher value={currentPlanRange} onChange={onChangePlanRange} />}
+        {isCloud && (
+          <PlanRangeSwitcher
+            value={currentPlanRange}
+            onChange={onChangePlanRange}
+          />
+        )}
       </div>
     </div>
   )

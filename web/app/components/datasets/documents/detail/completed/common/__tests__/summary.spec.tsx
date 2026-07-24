@@ -11,6 +11,11 @@ describe('SummaryLabel', () => {
 
   // Rendering: verifies the component renders with its heading and summary text
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<SummaryLabel />)
+      expect(screen.getByText(/segment\.summary/)).toBeInTheDocument()
+    })
+
     it('should render the summary heading with divider', () => {
       render(<SummaryLabel summary="Test summary" />)
       expect(screen.getByText(/segment\.summary/)).toBeInTheDocument()
@@ -23,6 +28,20 @@ describe('SummaryLabel', () => {
   })
 
   // Props: tests different prop combinations
+  describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(<SummaryLabel summary="test" className="custom-class" />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveClass('custom-class')
+      expect(wrapper).toHaveClass('space-y-1')
+    })
+
+    it('should render without className prop', () => {
+      const { container } = render(<SummaryLabel summary="test" />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveClass('space-y-1')
+    })
+  })
 
   // Edge Cases: tests undefined/empty/special values
   describe('Edge Cases', () => {
@@ -48,6 +67,12 @@ describe('SummaryLabel', () => {
       render(<SummaryLabel summary={longSummary} />)
       expect(screen.getByText(longSummary)).toBeInTheDocument()
     })
+
+    it('should handle both className and summary as undefined', () => {
+      const { container } = render(<SummaryLabel />)
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveClass('space-y-1')
+    })
   })
 })
 
@@ -58,6 +83,11 @@ describe('SummaryStatus', () => {
 
   // Rendering: verifies badge rendering based on status
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<SummaryStatus status="COMPLETED" />)
+      // Should not crash even for non-SUMMARIZING status
+    })
+
     it('should render badge when status is SUMMARIZING', () => {
       render(<SummaryStatus status="SUMMARIZING" />)
       expect(screen.getByText(/list\.summary\.generating/)).toBeInTheDocument()
@@ -109,6 +139,11 @@ describe('SummaryText', () => {
 
   // Rendering: verifies the label and textarea render correctly
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<SummaryText />)
+      expect(screen.getByText(/segment\.summary/)).toBeInTheDocument()
+    })
+
     it('should render the summary label', () => {
       render(<SummaryText value="hello" />)
       expect(screen.getByText(/segment\.summary/)).toBeInTheDocument()
@@ -118,10 +153,7 @@ describe('SummaryText', () => {
       render(<SummaryText />)
       const textarea = screen.getByRole('textbox')
       expect(textarea).toBeInTheDocument()
-      expect(textarea).toHaveAttribute(
-        'placeholder',
-        expect.stringContaining('segment.summaryPlaceholder'),
-      )
+      expect(textarea).toHaveAttribute('placeholder', expect.stringContaining('segment.summaryPlaceholder'))
     })
   })
 

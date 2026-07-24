@@ -1,16 +1,18 @@
 import type { FC } from 'react'
 import type { UserAction } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiDeleteBinLine } from '@remixicon/react'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
 const ACTION_ID_MAX_LENGTH = 20
-const ACTION_VALUE_MAX_LENGTH = 100
+const BUTTON_TEXT_MAX_LENGTH = 20
 
 type UserActionItemProps = {
   data: UserAction
@@ -19,7 +21,12 @@ type UserActionItemProps = {
   readonly?: boolean
 }
 
-const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, readonly }) => {
+const UserActionItem: FC<UserActionItemProps> = ({
+  data,
+  onChange,
+  onDelete,
+  readonly,
+}) => {
   const { t } = useTranslation()
 
   const handleIDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,40 +40,32 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
     let sanitized = withUnderscores
       .split('')
       .filter((char, index) => {
-        if (index === 0) return /^[a-z_]$/i.test(char)
+        if (index === 0)
+          return /^[a-z_]$/i.test(char)
         return /^\w$/.test(char)
       })
       .join('')
 
     if (sanitized !== withUnderscores) {
-      toast.error(t(($) => $[`${i18nPrefix}.userActions.actionIdFormatTip`], { ns: 'workflow' }))
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdFormatTip`, { ns: 'workflow' }) })
       return
     }
 
     // Limit to 20 characters
     if (sanitized.length > ACTION_ID_MAX_LENGTH) {
       sanitized = sanitized.slice(0, ACTION_ID_MAX_LENGTH)
-      toast.error(
-        t(($) => $[`${i18nPrefix}.userActions.actionIdTooLong`], {
-          ns: 'workflow',
-          maxLength: ACTION_ID_MAX_LENGTH,
-        }),
-      )
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.actionIdTooLong`, { ns: 'workflow', maxLength: ACTION_ID_MAX_LENGTH }) })
     }
 
-    if (sanitized) onChange({ ...data, id: sanitized })
+    if (sanitized)
+      onChange({ ...data, id: sanitized })
   }
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
-    if (value.length > ACTION_VALUE_MAX_LENGTH) {
-      value = value.slice(0, ACTION_VALUE_MAX_LENGTH)
-      toast.error(
-        t(($) => $[`${i18nPrefix}.userActions.buttonTextTooLong`], {
-          ns: 'workflow',
-          maxLength: ACTION_VALUE_MAX_LENGTH,
-        }),
-      )
+    if (value.length > BUTTON_TEXT_MAX_LENGTH) {
+      value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
+      Toast.notify({ type: 'error', message: t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }) })
     }
     onChange({ ...data, title: value })
   }
@@ -77,9 +76,7 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
         <Input
           wrapperClassName="w-[120px]"
           value={data.id}
-          placeholder={t(($) => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], {
-            ns: 'workflow',
-          })}
+          placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`, { ns: 'workflow' })}
           onChange={handleIDChange}
           disabled={readonly}
         />
@@ -87,9 +84,7 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
       <div className="grow">
         <Input
           value={data.title}
-          placeholder={t(($) => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], {
-            ns: 'workflow',
-          })}
+          placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`, { ns: 'workflow' })}
           onChange={handleTextChange}
           disabled={readonly}
         />
@@ -97,12 +92,16 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
       <ButtonStyleDropdown
         text={data.title}
         data={data.button_style}
-        onChange={(type) => onChange({ ...data, button_style: type })}
+        onChange={type => onChange({ ...data, button_style: type })}
         readonly={readonly}
       />
       {!readonly && (
-        <Button className="px-2" variant="tertiary" onClick={() => onDelete(data.id)}>
-          <RiDeleteBinLine className="size-4" />
+        <Button
+          className="px-2"
+          variant="tertiary"
+          onClick={() => onDelete(data.id)}
+        >
+          <RiDeleteBinLine className="h-4 w-4" />
         </Button>
       )}
     </div>

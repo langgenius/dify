@@ -1,6 +1,6 @@
 import type { LabelProps } from '../label'
-import { cn } from '@langgenius/dify-ui/cn'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { cn } from '@/utils/classnames'
 import Label from '../label'
 
 type VariableOrConstantInputFieldProps = {
@@ -20,7 +20,11 @@ const VariableOrConstantInputField = ({
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label htmlFor="variable-or-constant" label={label} {...(labelOptions ?? {})} />
+      <Label
+        htmlFor="variable-or-constant"
+        label={label}
+        {...(labelOptions ?? {})}
+      />
       <div className="flex items-center">
         <VarReferencePicker
           className="grow"

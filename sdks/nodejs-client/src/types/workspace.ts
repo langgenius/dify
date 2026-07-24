@@ -1,4 +1,2 @@
-import type { JsonObject } from './common'
-
-export type WorkspaceModelType = string
-export type WorkspaceModelsResponse = JsonObject
+export type WorkspaceModelType = string;
+export type WorkspaceModelsResponse = Record<string, unknown>;

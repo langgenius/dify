@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from core.workflow.node_factory import DifyNodeFactory
+from dify_graph.graph import Graph
+from dify_graph.graph.validation import GraphValidationError
+from dify_graph.nodes import NodeType
+from dify_graph.runtime import GraphRuntimeState, VariablePool
+from dify_graph.system_variable import SystemVariable
+from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _build_iteration_graph(node_id: str) -> dict[str, Any]:
+    return {
+        "nodes": [
+            {
+                "id": node_id,
+                "data": {
+                    "type": "iteration",
+                    "title": "Iteration",
+                    "iterator_selector": ["start", "items"],
+                    "output_selector": [node_id, "output"],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+
+def _build_loop_graph(node_id: str) -> dict[str, Any]:
+    return {
+        "nodes": [
+            {
+                "id": node_id,
+                "data": {
+                    "type": "loop",
+                    "title": "Loop",
+                    "loop_count": 1,
+                    "break_conditions": [],
+                    "logical_operator": "and",
+                    "loop_variables": [],
+                    "outputs": {},
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+
+def _make_factory(graph_config: dict[str, Any]) -> DifyNodeFactory:
+    graph_init_params = build_test_graph_init_params(
+        workflow_id="workflow",
+        graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from="account",
+        invoke_from="debugger",
+        call_depth=0,
+    )
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool(
+            system_variables=SystemVariable.default(),
+            user_inputs={},
+            environment_variables=[],
+        ),
+        start_at=0.0,
+    )
+    return DifyNodeFactory(graph_init_params=graph_init_params, graph_runtime_state=graph_runtime_state)
+
+
+def test_iteration_root_requires_skip_validation():
+    node_id = "iteration-node"
+    graph_config = _build_iteration_graph(node_id)
+    node_factory = _make_factory(graph_config)
+
+    with pytest.raises(GraphValidationError):
+        Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=node_id,
+        )
+
+    graph = Graph.init(
+        graph_config=graph_config,
+        node_factory=node_factory,
+        root_node_id=node_id,
+        skip_validation=True,
+    )
+
+    assert graph.root_node.id == node_id
+    assert graph.root_node.node_type == NodeType.ITERATION
+
+
+def test_loop_root_requires_skip_validation():
+    node_id = "loop-node"
+    graph_config = _build_loop_graph(node_id)
+    node_factory = _make_factory(graph_config)
+
+    with pytest.raises(GraphValidationError):
+        Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=node_id,
+        )
+
+    graph = Graph.init(
+        graph_config=graph_config,
+        node_factory=node_factory,
+        root_node_id=node_id,
+        skip_validation=True,
+    )
+
+    assert graph.root_node.id == node_id
+    assert graph.root_node.node_type == NodeType.LOOP

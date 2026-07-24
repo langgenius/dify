@@ -33,13 +33,16 @@ const COMMON_PARSE_FORMATS = [
 ]
 
 export const cloneTime = (targetDate: Dayjs, sourceDate: Dayjs) => {
-  return targetDate.clone().set('hour', sourceDate.hour()).set('minute', sourceDate.minute())
+  return targetDate.clone()
+    .set('hour', sourceDate.hour())
+    .set('minute', sourceDate.minute())
 }
 
 export const getDaysInMonth = (currentDate: Dayjs) => {
   const key = currentDate.format('YYYY-MM')
   // return the cached days
-  if (monthMaps[key]) return monthMaps[key]
+  if (monthMaps[key])
+    return monthMaps[key]
 
   const daysInCurrentMonth = currentDate.daysInMonth()
   const firstDay = currentDate.startOf('month').day()
@@ -69,14 +72,9 @@ export const getDaysInMonth = (currentDate: Dayjs) => {
   }
 
   // Add cells for days after the last day of the month
-  const totalLinesOfCurrentMonth =
-    Math.ceil((daysInCurrentMonth - (daysInOneWeek - firstDay + lastDay + 1)) / 7) + 2
+  const totalLinesOfCurrentMonth = Math.ceil((daysInCurrentMonth - ((daysInOneWeek - firstDay) + lastDay + 1)) / 7) + 2
   const needAdditionalLine = totalLinesOfCurrentMonth < totalLines
-  for (
-    let i = 0;
-    lastDay + i < (needAdditionalLine ? 2 * daysInOneWeek - 1 : daysInOneWeek - 1);
-    i++
-  ) {
+  for (let i = 0; lastDay + i < (needAdditionalLine ? 2 * daysInOneWeek - 1 : daysInOneWeek - 1); i++) {
     const date = cloneTime(firstDayInNextMonth.add(i, 'day'), currentDate)
     days.push({
       date,
@@ -90,7 +88,8 @@ export const getDaysInMonth = (currentDate: Dayjs) => {
 }
 
 export const clearMonthMapCache = () => {
-  for (const key in monthMaps) delete monthMaps[key]
+  for (const key in monthMaps)
+    delete monthMaps[key]
 }
 
 export const getHourIn12Hour = (date: Dayjs) => {
@@ -98,23 +97,26 @@ export const getHourIn12Hour = (date: Dayjs) => {
   return hour === 0 ? 12 : hour >= 12 ? hour - 12 : hour
 }
 
-export const getDateWithTimezone = ({ date, timezone }: { date?: Dayjs; timezone?: string }) => {
-  if (!timezone) return (date ?? dayjs()).clone()
+export const getDateWithTimezone = ({ date, timezone }: { date?: Dayjs, timezone?: string }) => {
+  if (!timezone)
+    return (date ?? dayjs()).clone()
   return date ? dayjs.tz(date, timezone) : dayjs().tz(timezone)
 }
 
 export const convertTimezoneToOffsetStr = (timezone?: string) => {
-  if (!timezone) return DEFAULT_OFFSET_STR
-  const tzItem = tz.find((item) => item.value === timezone)
-  if (!tzItem) return DEFAULT_OFFSET_STR
+  if (!timezone)
+    return DEFAULT_OFFSET_STR
+  const tzItem = tz.find(item => item.value === timezone)
+  if (!tzItem)
+    return DEFAULT_OFFSET_STR
   // Extract offset from name format like "-11:00 Niue Time" or "+05:30 India Time"
   // Name format is always "{offset}:{minutes} {timezone name}"
   const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
-  /* v8 ignore next 2 -- timezone.json entries are normalized to "{offset} {name}"; this protects against malformed data only. */
-  if (!offsetMatch) return DEFAULT_OFFSET_STR
+  if (!offsetMatch)
+    return DEFAULT_OFFSET_STR
   // Parse hours and minutes separately
-  const hours = Number.parseInt(offsetMatch[1]!, 10)
-  const minutes = Number.parseInt(offsetMatch[2]!, 10)
+  const hours = Number.parseInt(offsetMatch[1], 10)
+  const minutes = Number.parseInt(offsetMatch[2], 10)
   const sign = hours >= 0 ? '+' : ''
   // If minutes are non-zero, include them in the output (e.g., "UTC+5:30")
   // Otherwise, only show hours (e.g., "UTC+8")
@@ -123,21 +125,24 @@ export const convertTimezoneToOffsetStr = (timezone?: string) => {
 
 export const isDayjsObject = (value: unknown): value is Dayjs => dayjs.isDayjs(value)
 
-type ToDayjsOptions = {
+export type ToDayjsOptions = {
   timezone?: string
   format?: string
   formats?: string[]
 }
 
 const warnParseFailure = (value: string) => {
-  if (!IS_PROD) console.warn('[TimePicker] Failed to parse time value', value)
+  if (!IS_PROD)
+    console.warn('[TimePicker] Failed to parse time value', value)
 }
 
 const normalizeMillisecond = (value: string | undefined) => {
-  if (!value) return 0
-  if (value.length === 3) return Number(value)
-  /* v8 ignore next 2 -- TIME_ONLY_REGEX allows at most 3 fractional digits, so >3 can only occur after future regex changes. */
-  if (value.length > 3) return Number(value.slice(0, 3))
+  if (!value)
+    return 0
+  if (value.length === 3)
+    return Number(value)
+  if (value.length > 3)
+    return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
 }
 
@@ -145,17 +150,17 @@ const applyTimezone = (date: Dayjs, timezone?: string) => {
   return timezone ? getDateWithTimezone({ date, timezone }) : date
 }
 
-export const toDayjs = (
-  value: string | Dayjs | undefined,
-  options: ToDayjsOptions = {},
-): Dayjs | undefined => {
-  if (!value) return undefined
+export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptions = {}): Dayjs | undefined => {
+  if (!value)
+    return undefined
 
   const { timezone: tzName, format, formats } = options
 
-  if (isDayjsObject(value)) return applyTimezone(value, tzName)
+  if (isDayjsObject(value))
+    return applyTimezone(value, tzName)
 
-  if (typeof value !== 'string') return undefined
+  if (typeof value !== 'string')
+    return undefined
 
   const trimmed = value.trim()
 
@@ -163,7 +168,8 @@ export const toDayjs = (
     const parsedWithFormat = tzName
       ? dayjs(trimmed, format, true).tz(tzName, true)
       : dayjs(trimmed, format, true)
-    if (parsedWithFormat.isValid()) return parsedWithFormat
+    if (parsedWithFormat.isValid())
+      return parsedWithFormat
   }
 
   const timeMatch = TIME_ONLY_REGEX.exec(trimmed)
@@ -186,37 +192,70 @@ export const toDayjs = (
     const base = applyTimezone(dayjs(), tzName).startOf('day')
     let hour = Number(timeMatch12h[1]) % 12
     const isPM = timeMatch12h[4]?.toUpperCase() === 'PM'
-    if (isPM) hour += 12
+    if (isPM)
+      hour += 12
     const minute = Number(timeMatch12h[2])
     const second = timeMatch12h[3] ? Number(timeMatch12h[3]) : 0
 
-    return base.set('hour', hour).set('minute', minute).set('second', second).set('millisecond', 0)
+    return base
+      .set('hour', hour)
+      .set('minute', minute)
+      .set('second', second)
+      .set('millisecond', 0)
   }
 
   const candidateFormats = formats ?? COMMON_PARSE_FORMATS
   for (const fmt of candidateFormats) {
-    const parsed = tzName ? dayjs(trimmed, fmt, true).tz(tzName, true) : dayjs(trimmed, fmt, true)
-    if (parsed.isValid()) return parsed
+    const parsed = tzName
+      ? dayjs(trimmed, fmt, true).tz(tzName, true)
+      : dayjs(trimmed, fmt, true)
+    if (parsed.isValid())
+      return parsed
   }
 
   const fallbackParsed = tzName ? dayjs.tz(trimmed, tzName) : dayjs(trimmed)
-  if (fallbackParsed.isValid()) return fallbackParsed
+  if (fallbackParsed.isValid())
+    return fallbackParsed
 
   warnParseFailure(value)
   return undefined
 }
+
+// Parse date with multiple format support
+export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
+  if (!dateString)
+    return null
+
+  // If format is specified, use it directly
+  if (format) {
+    const parsed = dayjs(dateString, format, true)
+    return parsed.isValid() ? parsed : null
+  }
+
+  // Try common date formats
+  const formats = [
+    ...COMMON_PARSE_FORMATS,
+  ]
+
+  for (const fmt of formats) {
+    const parsed = dayjs(dateString, fmt, true)
+    if (parsed.isValid())
+      return parsed
+  }
+
+  return null
+}
+
 // Format date output with localization support
-export const formatDateForOutput = (
-  date: Dayjs,
-  includeTime: boolean = false,
-  _locale: string = 'en-US',
-): string => {
-  if (!date || !date.isValid()) return ''
+export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
+  if (!date || !date.isValid())
+    return ''
 
   if (includeTime) {
     // Output format with time
     return date.format('YYYY-MM-DDTHH:mm:ss.SSSZ')
-  } else {
+  }
+  else {
     // Date-only output format without timezone
     return date.format('YYYY-MM-DD')
   }

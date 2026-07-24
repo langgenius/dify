@@ -1,12 +1,10 @@
 from collections.abc import Sequence
-from typing import Any
 
 from requests import HTTPError
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     MissingPluginDependency,
-    PluginCategory,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -17,7 +15,6 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
-    PluginListWithoutTotalResponse,
     PluginReadmeResponse,
 )
 from core.plugin.impl.base import BasePluginClient
@@ -73,16 +70,6 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": page, "page_size": page_size, "response_type": "paged"},
-        )
-
-    def list_plugins_by_category(
-        self, tenant_id: str, category: PluginCategory, page: int, page_size: int
-    ) -> PluginListWithoutTotalResponse:
-        return self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/{category.value}/list",
-            PluginListWithoutTotalResponse,
             params={"page": page, "page_size": page_size, "response_type": "paged"},
         )
 
@@ -222,10 +209,8 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/decode/from_identifier",
             PluginDecodeResponse,
-            params={
-                "plugin_unique_identifier": plugin_unique_identifier,
-                "PluginUniqueIdentifier": plugin_unique_identifier,  # compat with daemon <= 0.5.4
-            },
+            data={"plugin_unique_identifier": plugin_unique_identifier},
+            headers={"Content-Type": "application/json"},
         )
 
     def fetch_plugin_installation_by_ids(
@@ -276,7 +261,7 @@ class PluginInstaller(BasePluginClient):
         original_plugin_unique_identifier: str,
         new_plugin_unique_identifier: str,
         source: PluginInstallationSource,
-        meta: dict[str, Any],
+        meta: dict,
     ) -> PluginInstallTaskStartResponse:
         """
         Upgrade a plugin.

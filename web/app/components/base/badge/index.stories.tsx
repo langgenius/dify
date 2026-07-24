@@ -7,8 +7,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Compact label used for statuses and counts. Supports uppercase styling and optional red corner marks.',
+        component: 'Compact label used for statuses and counts. Supports uppercase styling and optional red corner marks.',
       },
       source: {
         language: 'tsx',
@@ -48,10 +47,10 @@ export const WithCornerMark: Story = {
 }
 
 export const CustomContent: Story = {
-  render: (args) => (
+  render: args => (
     <Badge {...args} uppercase={false}>
       <span className="flex items-center gap-1">
-        <span className="size-2 rounded-full bg-emerald-400" />
+        <span className="h-2 w-2 rounded-full bg-emerald-400" />
         Production
       </span>
     </Badge>

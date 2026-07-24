@@ -23,17 +23,7 @@ vi.mock('@/app/components/workflow/note-node/types', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({
-    id,
-    type,
-    data,
-    position,
-  }: {
-    id: string
-    type?: string
-    data: object
-    position: { x: number; y: number }
-  }) => ({
+  generateNewNode: ({ id, type, data, position }: { id: string, type?: string, data: object, position: { x: number, y: number } }) => ({
     newNode: { id, type: type || 'custom', data, position },
   }),
 }))
@@ -100,8 +90,8 @@ describe('processNodesWithoutDataSource', () => {
       const result = processNodesWithoutDataSource(nodes, viewport)
 
       expect(result.nodes.length).toBe(3)
-      expect(result.nodes[0]!.id).toBe('data-source-empty')
-      expect(result.nodes[1]!.id).toBe('note')
+      expect(result.nodes[0].id).toBe('data-source-empty')
+      expect(result.nodes[1].id).toBe('note')
       expect(result.nodes[2]).toBe(nodes[0])
     })
 
@@ -130,8 +120,8 @@ describe('processNodesWithoutDataSource', () => {
 
       const result = processNodesWithoutDataSource(nodes, viewport)
 
-      expect(result.nodes[0]!.position.x).toBe(-200)
-      expect(result.nodes[0]!.position.y).toBe(100)
+      expect(result.nodes[0].position.x).toBe(-200)
+      expect(result.nodes[0].position.y).toBe(100)
     })
 
     it('should adjust viewport based on new node position', () => {
@@ -205,8 +195,8 @@ describe('processNodesWithoutDataSource', () => {
       const noteNode = result.nodes[1]
 
       // Note node should be 100px below data source empty node
-      expect(noteNode!.position.x).toBe(dataSourceEmptyNode!.position.x)
-      expect(noteNode!.position.y).toBe(dataSourceEmptyNode!.position.y + 100)
+      expect(noteNode.position.x).toBe(dataSourceEmptyNode.position.x)
+      expect(noteNode.position.y).toBe(dataSourceEmptyNode.position.y + 100)
     })
 
     it('should set correct data for data source empty node', () => {
@@ -221,9 +211,9 @@ describe('processNodesWithoutDataSource', () => {
 
       const result = processNodesWithoutDataSource(nodes)
 
-      expect(result.nodes[0]!.data.type).toBe(BlockEnum.DataSourceEmpty)
-      expect(result.nodes[0]!.data._isTempNode).toBe(true)
-      expect(result.nodes[0]!.data.width).toBe(240)
+      expect(result.nodes[0].data.type).toBe(BlockEnum.DataSourceEmpty)
+      expect(result.nodes[0].data._isTempNode).toBe(true)
+      expect(result.nodes[0].data.width).toBe(240)
     })
 
     it('should set correct data for note node', () => {
@@ -239,7 +229,7 @@ describe('processNodesWithoutDataSource', () => {
       const result = processNodesWithoutDataSource(nodes)
 
       const noteNode = result.nodes[1]
-      const noteData = noteNode!.data as Record<string, unknown>
+      const noteData = noteNode.data as Record<string, unknown>
       expect(noteData._isTempNode).toBe(true)
       expect(noteData.theme).toBe('blue')
       expect(noteData.width).toBe(240)
@@ -313,8 +303,8 @@ describe('processNodesWithoutDataSource', () => {
 
       const result = processNodesWithoutDataSource(nodes)
 
-      expect(result.nodes[0]!.position.x).toBe(-500)
-      expect(result.nodes[0]!.position.y).toBe(-50)
+      expect(result.nodes[0].position.x).toBe(-500)
+      expect(result.nodes[0].position.y).toBe(-50)
     })
 
     it('should handle undefined viewport gracefully', () => {

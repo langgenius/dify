@@ -1,72 +1,75 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useEffect, useState } from 'react'
+import type { FC } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
+import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { SSOProtocol } from '@/features/system-features/constants'
-import { useRouter, useSearchParams } from '@/next/navigation'
-import {
-  fetchMembersOAuth2SSOUrl,
-  fetchMembersOIDCSSOUrl,
-  fetchMembersSAMLSSOUrl,
-} from '@/service/share'
-import { getClientLoginFallback } from '@/utils/login-redirect'
-import { replaceLoginRedirect } from '@/utils/login-redirect.client'
-import { basePath } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
+import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
+import { SSOProtocol } from '@/types/feature'
 
 type SSOAuthProps = {
-  protocol: string
+  protocol: SSOProtocol | ''
 }
 
-function SSOAuth({ protocol }: SSOAuthProps) {
+const SSOAuth: FC<SSOAuthProps> = ({
+  protocol,
+}) => {
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
 
   const redirectUrl = searchParams.get('redirect_url')
+  const getAppCodeFromRedirectUrl = useCallback(() => {
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
+    if (!appCode)
+      return null
+
+    return appCode
+  }, [redirectUrl])
 
   const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
-  }, [redirectUrl, router])
-
   const handleSSOLogin = () => {
-    const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
+    const appCode = getAppCodeFromRedirectUrl()
+    if (!redirectUrl || !appCode) {
+      Toast.notify({
+        type: 'error',
+        message: 'invalid redirect URL or app code',
+      })
       return
     }
     setIsLoading(true)
     if (protocol === SSOProtocol.SAML) {
-      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        .then((res) => {
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else if (protocol === SSOProtocol.OIDC) {
-      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        .then((res) => {
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else if (protocol === SSOProtocol.OAuth2) {
-      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href)
-        .then((res) => {
-          router.push(res.url)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
-    } else {
-      toast.error(t(($) => $['error.invalidSSOProtocol'], { ns: 'login' }))
+      fetchMembersSAMLSSOUrl(appCode, redirectUrl).then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === SSOProtocol.OIDC) {
+      fetchMembersOIDCSSOUrl(appCode, redirectUrl).then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === SSOProtocol.OAuth2) {
+      fetchMembersOAuth2SSOUrl(appCode, redirectUrl).then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else {
+      Toast.notify({
+        type: 'error',
+        message: 'invalid SSO protocol',
+      })
       setIsLoading(false)
     }
   }
@@ -74,14 +77,12 @@ function SSOAuth({ protocol }: SSOAuthProps) {
   return (
     <Button
       tabIndex={0}
-      onClick={() => {
-        handleSSOLogin()
-      }}
+      onClick={() => { handleSSOLogin() }}
       disabled={isLoading}
       className="w-full"
     >
-      <Lock01 className="mr-2 size-5 text-text-accent-light-mode-only" />
-      <span className="truncate">{t(($) => $.withSSO, { ns: 'login' })}</span>
+      <Lock01 className="mr-2 h-5 w-5 text-text-accent-light-mode-only" />
+      <span className="truncate">{t('withSSO', { ns: 'login' })}</span>
     </Button>
   )
 }

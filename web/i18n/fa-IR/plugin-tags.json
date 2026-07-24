@@ -1,6 +1,5 @@
 {
   "allTags": "همه برچسب ها",
-  "clearSelectedTags": "پاک کردن برچسب‌های انتخاب‌شده: {{tags}}",
   "searchTags": "جستجو برچسب ها",
   "tags.agent": "عامل",
   "tags.business": "تجاری",

@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
+import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
+import Toast from '../../../../base/toast'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -21,7 +23,7 @@ const STYLE_MAP = {
     icon: <Premium />,
     bg: 'bg-billing-plan-card-premium-bg opacity-10',
     noise: (
-      <div className="absolute inset-x-0 -top-12 -z-10">
+      <div className="absolute -top-12 left-0 right-0 -z-10">
         <PremiumNoise />
       </div>
     ),
@@ -30,7 +32,7 @@ const STYLE_MAP = {
     icon: <Enterprise />,
     bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
     noise: (
-      <div className="absolute inset-x-0 -top-12 -z-10">
+      <div className="absolute -top-12 left-0 right-0 -z-10">
         <EnterpriseNoise />
       </div>
     ),
@@ -41,14 +43,26 @@ type SelfHostedPlanItemProps = {
   plan: SelfHostedPlan
 }
 
-const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
+const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
+  plan,
+}) => {
   const { t } = useTranslation()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const handleGetPayUrl = useCallback(() => {
+    // Only workspace manager can buy plan
+    if (!isCurrentWorkspaceManager) {
+      Toast.notify({
+        type: 'error',
+        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
+        className: 'z-[1001]',
+      })
+      return
+    }
     if (isFreePlan) {
       window.location.href = getStartedWithCommunityUrl
       return
@@ -58,8 +72,9 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
       return
     }
 
-    if (isEnterprisePlan) window.location.href = contactSalesUrl
-  }, [isFreePlan, isPremiumPlan, isEnterprisePlan])
+    if (isEnterprisePlan)
+      window.location.href = contactSalesUrl
+  }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -67,29 +82,26 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
       {/* Noise Effect */}
       {STYLE_MAP[plan].noise}
       <div className="flex flex-col px-5 py-4">
-        <div className="flex flex-col gap-y-6 px-1 pt-10">
+        <div className=" flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
-            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
-              {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
-            </div>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
-            </div>
+            <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
+            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
-          <div className="shrink-0 title-4xl-semi-bold text-text-primary">
-            {t(($) => $[`${i18nPrefix}.price`], { ns: 'billing' })}
-          </div>
+        <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
+          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
           {!isFreePlan && (
-            <span className="pb-0.5 system-md-regular text-text-tertiary">
-              {t(($) => $[`${i18nPrefix}.priceTip`], { ns: 'billing' })}
+            <span className="system-md-regular pb-0.5 text-text-tertiary">
+              {t(`${i18nPrefix}.priceTip`, { ns: 'billing' })}
             </span>
           )}
         </div>
-        <Button plan={plan} handleGetPayUrl={handleGetPayUrl} />
+        <Button
+          plan={plan}
+          handleGetPayUrl={handleGetPayUrl}
+        />
       </div>
       <List plan={plan} />
       {isPremiumPlan && (
@@ -103,7 +115,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">
-            {t(($) => $['plans.premium.comingSoon'], { ns: 'billing' })}
+            {t('plans.premium.comingSoon', { ns: 'billing' })}
           </span>
         </div>
       )}

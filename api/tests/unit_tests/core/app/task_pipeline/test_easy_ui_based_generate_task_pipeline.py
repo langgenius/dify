@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -26,20 +26,9 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
-from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from dify_graph.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
+from dify_graph.model_runtime.entities.message_entities import TextPromptMessageContent
 from models.model import AppMode
-
-
-def _patch_stream_session():
-    session = Mock()
-    session_cm = Mock()
-    session_cm.__enter__ = Mock(return_value=session)
-    session_cm.__exit__ = Mock(return_value=False)
-    return session, patch(
-        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-        return_value=session_cm,
-    )
 
 
 class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
@@ -262,16 +251,17 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._save_message = Mock()
         pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
 
-        session, patch_session = _patch_stream_session()
-        with patch_session:
+        # Patch db.engine used inside pipeline for session creation
+        with patch(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
+        ):
             # Execute
             responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
         assert mock_task_state.llm_result == llm_result
-        pipeline._save_message.assert_called_once_with(session=session, trace_manager=None)
-        session.commit.assert_called_once()
+        pipeline._save_message.assert_called_once()
         pipeline._message_end_to_stream_response.assert_called_once()
 
     def test_error_event(self, pipeline):
@@ -287,15 +277,16 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.handle_error = Mock(return_value=Exception("Test error"))
         pipeline.error_to_stream_response = Mock(return_value=Mock(spec=ErrorStreamResponse))
 
-        session, patch_session = _patch_stream_session()
-        with patch_session:
+        # Patch db.engine used inside pipeline for session creation
+        with patch(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
+        ):
             # Execute
             responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
-        pipeline.handle_error.assert_called_once_with(event=error_event, session=session, message_id="test-message-id")
-        session.commit.assert_called_once()
+        pipeline.handle_error.assert_called_once()
         pipeline.error_to_stream_response.assert_called_once()
 
     def test_ping_event(self, pipeline):
@@ -373,14 +364,15 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._save_message = Mock()
         pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
 
-        session, patch_session = _patch_stream_session()
-        with patch_session:
+        # Patch db.engine used inside pipeline for session creation
+        with patch(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
+        ):
             # Execute
             list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
         # Assert
-        pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
-        session.commit.assert_called_once()
+        pipeline._save_message.assert_called_once_with(session=ANY, trace_manager=trace_manager)
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling multiple events in sequence."""

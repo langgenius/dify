@@ -9,73 +9,20 @@ This test module covers all aspects of the billing service including:
 - Cache management for billing data
 - Partner integration features
 
-Network, billing-provider, and cache boundaries are mocked; database authorization
-paths use isolated in-memory SQLite sessions with persisted membership rows.
+All tests use mocking to avoid external dependencies and ensure fast, reliable execution.
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
-import logging
 from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
-
-TENANT_ID = "11111111-1111-1111-1111-111111111111"
-OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
-ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", tenant_id: str = TENANT_ID) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = tenant_id
-    account = Account(name="Test User", email=email)
-    account.id = account_id
-    account._current_tenant = tenant
-    return account
-
-
-def _persist_membership(
-    sqlite_session: Session,
-    *,
-    role: TenantAccountRole | None,
-    add_other_tenant_membership: bool = False,
-) -> Account:
-    account = _account()
-    tenant = account.current_tenant
-    assert tenant is not None
-    sqlite_session.add_all([tenant, account])
-    if role is not None:
-        sqlite_session.add(
-            TenantAccountJoin(
-                tenant_id=TENANT_ID,
-                account_id=ACCOUNT_ID,
-                current=True,
-                role=role,
-            )
-        )
-    if add_other_tenant_membership:
-        other_tenant = Tenant(name="Other Tenant")
-        other_tenant.id = OTHER_TENANT_ID
-        sqlite_session.add_all(
-            [
-                other_tenant,
-                TenantAccountJoin(
-                    tenant_id=OTHER_TENANT_ID,
-                    account_id=ACCOUNT_ID,
-                    current=False,
-                    role=TenantAccountRole.OWNER,
-                ),
-            ]
-        )
-    sqlite_session.commit()
-    return account
 
 
 class TestBillingServiceSendRequest:
@@ -91,7 +38,7 @@ class TestBillingServiceSendRequest:
     @pytest.fixture
     def mock_httpx_request(self):
         """Mock httpx.request for testing."""
-        with patch("services.billing_service._http_client.request") as mock_request:
+        with patch("services.billing_service.httpx.request") as mock_request:
             yield mock_request
 
     @pytest.fixture
@@ -124,23 +71,6 @@ class TestBillingServiceSendRequest:
         assert call_args[1]["params"] == {"key": "value"}
         assert call_args[1]["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
         assert call_args[1]["headers"]["Content-Type"] == "application/json"
-
-    def test_send_request_with_base_url_override(self, mock_httpx_request, mock_billing_config):
-        """Quota APIs can use the new billing service without changing legacy billing calls."""
-        # Arrange
-        expected_response = {"result": "success"}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act
-        result = BillingService._send_request("GET", "/quota/balance", base_url="https://quota.example.com")
-
-        # Assert
-        assert result == expected_response
-        call_args = mock_httpx_request.call_args
-        assert call_args[0][1] == "https://quota.example.com/quota/balance"
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
@@ -240,9 +170,7 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_valid_json(
-        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
-    ):
+    def test_delete_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test DELETE request with non-200 status code raises ValueError.
 
         DELETE now checks status code and raises ValueError for non-200 responses.
@@ -256,11 +184,13 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
+        with patch("services.billing_service.logger") as mock_logger:
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
+            # Verify error logging
+            mock_logger.error.assert_called_once()
+            assert "DELETE response" in str(mock_logger.error.call_args)
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -283,9 +213,7 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_invalid_json(
-        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
-    ):
+    def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
 
         DELETE now checks status code before calling response.json(), so ValueError is raised
@@ -299,11 +227,13 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
+        with patch("services.billing_service.logger") as mock_logger:
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
+            # Verify error logging
+            mock_logger.error.assert_called_once()
+            assert "DELETE response" in str(mock_logger.error.call_args)
 
     def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
         """Test that _send_request retries on httpx.RequestError."""
@@ -360,19 +290,9 @@ class TestBillingServiceSubscriptionInfo:
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {
-            "enabled": True,
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "vector_space": {"size": 0.0, "limit": 20480},
-            "knowledge_rate_limit": {"limit": 1000},
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": 1775952000,
+            "subscription_plan": "professional",
+            "billing_cycle": "monthly",
+            "status": "active",
         }
         mock_send_request.return_value = expected_response
 
@@ -382,126 +302,6 @@ class TestBillingServiceSubscriptionInfo:
         # Assert
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": tenant_id})
-
-    def test_get_info_exclude_vector_space(self, mock_send_request):
-        """When requested, get_info asks billing to skip vector_space."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {
-            "enabled": True,
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "knowledge_rate_limit": {"limit": 1000},
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-        }
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
-
-        # Assert
-        assert "vector_space" not in result
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/info",
-            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
-        )
-
-    def test_get_info_exclude_vector_space_normalizes_null_field(self, mock_send_request):
-        """When billing serializes skipped vector_space as null, get_info treats it as absent."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {
-            "enabled": True,
-            "subscription": {"plan": "professional", "interval": "month", "education": False},
-            "members": {"size": 1, "limit": 50},
-            "apps": {"size": 1, "limit": 200},
-            "vector_space": None,
-            "knowledge_rate_limit": {"limit": 1000},
-            "documents_upload_quota": {"size": 0, "limit": 1000},
-            "annotation_quota_limit": {"size": 0, "limit": 5000},
-            "docs_processing": "top-priority",
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-        }
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
-
-        # Assert
-        assert "vector_space" not in result
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/info",
-            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
-        )
-
-    def test_get_vector_space_success(self, mock_send_request):
-        """Test successful retrieval of vector-space usage and limit."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"size": 5120.75, "limit": 20480}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_vector_space(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/vector-space",
-            params={"tenant_id": tenant_id},
-        )
-
-    def test_get_vector_space_bypasses_cache(self, mock_send_request):
-        tenant_id = "tenant-123"
-        mock_send_request.return_value = {"size": 4096, "limit": 20480}
-
-        result = BillingService.get_vector_space(tenant_id, bypass_cache=True)
-
-        assert result == {"size": 4096, "limit": 20480}
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/subscription/vector-space",
-            params={"tenant_id": tenant_id, "bypass_cache": "true"},
-        )
-
-    def test_invalidate_vector_space_cache_bypasses_cache(self):
-        tenant_id = "tenant-123"
-
-        with patch.object(BillingService, "get_vector_space") as get_vector_space:
-            BillingService.invalidate_vector_space_cache(tenant_id)
-
-        get_vector_space.assert_called_once_with(tenant_id, bypass_cache=True)
-
-    def test_quota_get_balance_uses_quota_request(self):
-        tenant_id = "tenant-123"
-        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
-            mock_send_quota_request.return_value = {
-                "quota": "200",
-                "usage": "6",
-                "available": "194",
-                "reserved": "0",
-                "exhausted_at": "1748908800",
-            }
-
-            result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
-
-        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0, "exhausted_at": 1748908800}
-        mock_send_quota_request.assert_called_once_with(
-            "GET",
-            "/quota/balance",
-            params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
-        )
 
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
         """Test knowledge rate limit retrieval with default values."""
@@ -615,7 +415,7 @@ class TestBillingServiceUsageCalculation:
             yield mock
 
     def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
-        """Test retrieval of tenant feature plan usage information (legacy endpoint)."""
+        """Test retrieval of tenant feature plan usage information."""
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
@@ -627,21 +427,6 @@ class TestBillingServiceUsageCalculation:
         # Assert
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
-
-    def test_get_quota_info(self):
-        """Test retrieval of quota info from new endpoint."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
-        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
-            mock_send_quota_request.return_value = expected_response
-
-            # Act
-            result = BillingService.get_quota_info(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_quota_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""
@@ -718,232 +503,6 @@ class TestBillingServiceUsageCalculation:
         mock_send_request.assert_called_once_with(
             "GET", "/billing/tenant_feature_plan/usage", params={"tenant_id": tenant_id, "feature_key": feature_key}
         )
-
-
-class TestBillingServiceQuotaOperations:
-    """Unit tests for quota reserve/commit/release operations."""
-
-    @pytest.fixture
-    def mock_send_request(self):
-        with patch.object(BillingService, "_send_quota_request") as mock:
-            yield mock
-
-    def test_quota_reserve_success(self, mock_send_request):
-        expected = {"reservation_id": "rid-1", "available": 99, "reserved": 1}
-        mock_send_request.return_value = expected
-
-        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1)
-
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/reserve",
-            json={"tenant_id": "t1", "feature_key": "trigger_event", "request_id": "req-1", "amount": 1},
-        )
-
-    def test_quota_reserve_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"reservation_id": "rid-str", "available": "99", "reserved": "1"}
-
-        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-s", amount=1)
-
-        assert result["available"] == 99
-        assert isinstance(result["available"], int)
-        assert result["reserved"] == 1
-        assert isinstance(result["reserved"], int)
-
-    def test_quota_reserve_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
-        meta = {"source": "webhook"}
-
-        BillingService.quota_reserve(
-            tenant_id="t1", feature_key="trigger_event", request_id="req-2", amount=1, meta=meta
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["meta"] == {"source": "webhook"}
-
-    def test_quota_reserve_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
-
-        BillingService.quota_reserve(
-            tenant_id="t1", feature_key="credit_pool", request_id="req-2", amount=1, bucket="trial"
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "trial"
-
-    def test_quota_commit_success(self, mock_send_request):
-        expected = {"available": 98, "reserved": 0, "refunded": 0}
-        mock_send_request.return_value = expected
-
-        result = BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1
-        )
-
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/commit",
-            json={
-                "tenant_id": "t1",
-                "feature_key": "trigger_event",
-                "reservation_id": "rid-1",
-                "actual_amount": 1,
-            },
-        )
-
-    def test_quota_commit_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"available": "97", "reserved": "0", "refunded": "1"}
-
-        result = BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s", actual_amount=1
-        )
-
-        assert result["available"] == 97
-        assert isinstance(result["available"], int)
-        assert result["refunded"] == 1
-        assert isinstance(result["refunded"], int)
-
-    def test_quota_commit_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
-        meta = {"reason": "partial"}
-
-        BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1, meta=meta
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["meta"] == {"reason": "partial"}
-
-    def test_quota_commit_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
-
-        BillingService.quota_commit(
-            tenant_id="t1",
-            feature_key="credit_pool",
-            reservation_id="rid-1",
-            actual_amount=1,
-            bucket="paid",
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "paid"
-
-    def test_quota_release_success(self, mock_send_request):
-        expected = {"available": 100, "reserved": 0, "released": 1}
-        mock_send_request.return_value = expected
-
-        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1")
-
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/release",
-            json={"tenant_id": "t1", "feature_key": "trigger_event", "reservation_id": "rid-1"},
-        )
-
-    def test_quota_release_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"available": "100", "reserved": "0", "released": "1"}
-
-        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s")
-
-        assert result["available"] == 100
-        assert isinstance(result["available"], int)
-        assert result["released"] == 1
-        assert isinstance(result["released"], int)
-
-    def test_quota_release_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"available": 100, "reserved": 0, "released": 1}
-
-        BillingService.quota_release(tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial")
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "trial"
-
-    def test_quota_consume_capped_success(self, mock_send_request):
-        mock_send_request.return_value = {
-            "deducted": "2",
-            "available": "8",
-            "reserved": "0",
-            "quota": "10",
-            "usage": "2",
-        }
-
-        result = BillingService.quota_consume_capped(
-            tenant_id="t1",
-            feature_key="credit_pool",
-            request_id="req-1",
-            amount=5,
-            bucket="paid",
-            meta={"source": "test"},
-        )
-
-        assert result == {"deducted": 2, "available": 8, "reserved": 0, "quota": 10, "usage": 2}
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/consume-capped",
-            json={
-                "tenant_id": "t1",
-                "feature_key": "credit_pool",
-                "request_id": "req-1",
-                "amount": 5,
-                "bucket": "paid",
-                "meta": {"source": "test"},
-            },
-        )
-
-    def test_send_quota_request_uses_quota_base_url(self):
-        with (
-            patch.object(BillingService, "quota_base_url", "https://quota.example.com/v1"),
-            patch.object(BillingService, "_send_request") as mock_send_request,
-        ):
-            mock_send_request.return_value = {"ok": True}
-
-            result = BillingService._send_quota_request("GET", "/quota/info", params={"tenant_id": "t1"})
-
-        assert result == {"ok": True}
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/quota/info",
-            json=None,
-            params={"tenant_id": "t1"},
-            base_url="https://quota.example.com/v1",
-        )
-
-    def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int for get_quota_info."""
-        mock_send_request.return_value = {
-            "trigger_event": {"usage": "42", "limit": "3000", "reset_date": "1700000000"},
-            "api_rate_limit": {"usage": "10", "limit": "-1", "reset_date": "-1"},
-        }
-
-        result = BillingService.get_quota_info("t1")
-
-        assert result["trigger_event"]["usage"] == 42
-        assert isinstance(result["trigger_event"]["usage"], int)
-        assert result["trigger_event"]["limit"] == 3000
-        assert isinstance(result["trigger_event"]["limit"], int)
-        assert result["trigger_event"]["reset_date"] == 1700000000
-        assert isinstance(result["trigger_event"]["reset_date"], int)
-        assert result["api_rate_limit"]["limit"] == -1
-        assert isinstance(result["api_rate_limit"]["limit"], int)
-
-    def test_get_quota_info_accepts_int_values(self, mock_send_request):
-        """Test that get_quota_info works with native int values."""
-        expected = {
-            "trigger_event": {"usage": 42, "limit": 3000, "reset_date": 1700000000},
-            "api_rate_limit": {"usage": 0, "limit": -1},
-        }
-        mock_send_request.return_value = expected
-
-        result = BillingService.get_quota_info("t1")
-
-        assert result["trigger_event"]["usage"] == 42
-        assert result["trigger_event"]["limit"] == 3000
-        assert result["api_rate_limit"]["limit"] == -1
 
 
 class TestBillingServiceRateLimitEnforcement:
@@ -1075,7 +634,10 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_not_exceeded(self, mock_send_request):
         """Test education activation when rate limit is not exceeded."""
         # Arrange
-        account = _account(email="student@university.edu")
+        account = MagicMock(spec=Account)
+        account.id = "account-123"
+        account.email = "student@university.edu"
+        account.current_tenant_id = "tenant-456"
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -1109,7 +671,10 @@ class TestBillingServiceRateLimitEnforcement:
     def test_education_activate_rate_limit_exceeded(self, mock_send_request):
         """Test education activation when rate limit is exceeded."""
         # Arrange
-        account = _account(email="student@university.edu")
+        account = MagicMock(spec=Account)
+        account.id = "account-123"
+        account.email = "student@university.edu"
+        account.current_tenant_id = "tenant-456"
         token = "verification-token"
         institution = "MIT"
         role = "student"
@@ -1215,6 +780,12 @@ class TestBillingServiceAccountManagement:
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
 
+    @pytest.fixture
+    def mock_db_session(self):
+        """Mock database session."""
+        with patch("services.billing_service.db.session") as mock_session:
+            yield mock_session
+
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""
         # Arrange
@@ -1284,48 +855,79 @@ class TestBillingServiceAccountManagement:
             "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
         )
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_owner(self, sqlite_session: Session):
+    def test_is_tenant_owner_or_admin_owner(self, mock_db_session):
         """Test tenant owner/admin check for owner role."""
         # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_join = MagicMock(spec=TenantAccountJoin)
+        mock_join.role = TenantAccountRole.OWNER
+
+        mock_query = MagicMock()
+        mock_query.where.return_value.first.return_value = mock_join
+        mock_db_session.query.return_value = mock_query
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
+        BillingService.is_tenant_owner_or_admin(current_user)
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_admin(self, sqlite_session: Session):
+        # Assert
+        mock_db_session.query.assert_called_once()
+
+    def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
         # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.ADMIN)
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_join = MagicMock(spec=TenantAccountJoin)
+        mock_join.role = TenantAccountRole.ADMIN
+
+        mock_query = MagicMock()
+        mock_query.where.return_value.first.return_value = mock_join
+        mock_db_session.query.return_value = mock_query
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
+        BillingService.is_tenant_owner_or_admin(current_user)
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, sqlite_session: Session):
+        # Assert
+        mock_db_session.query.assert_called_once()
+
+    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
         # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.NORMAL)
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_join = MagicMock(spec=TenantAccountJoin)
+        mock_join.role = TenantAccountRole.NORMAL
+
+        mock_query = MagicMock()
+        mock_query.where.return_value.first.return_value = mock_join
+        mock_db_session.query.return_value = mock_query
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
+            BillingService.is_tenant_owner_or_admin(current_user)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_no_join_raises_error(self, sqlite_session: Session):
+    def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error when join not found."""
         # Arrange
-        current_user = _persist_membership(
-            sqlite_session,
-            role=None,
-            add_other_tenant_membership=True,
-        )
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_query = MagicMock()
+        mock_query.where.return_value.first.return_value = None
+        mock_db_session.query.return_value = mock_query
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
+            BillingService.is_tenant_owner_or_admin(current_user)
         assert "Tenant account join not found" in str(exc_info.value)
 
 
@@ -1407,14 +1009,17 @@ class TestBillingServiceEdgeCases:
             yield mock
 
     def test_get_info_empty_response(self, mock_send_request):
-        """Empty response from billing API should raise ValidationError due to missing required fields."""
-        from pydantic import ValidationError
-
+        """Test handling of empty billing info response."""
+        # Arrange
         tenant_id = "tenant-empty"
         mock_send_request.return_value = {}
 
-        with pytest.raises(ValidationError):
-            BillingService.get_info(tenant_id)
+        # Act
+        result = BillingService.get_info(tenant_id)
+
+        # Assert
+        assert result == {}
+        mock_send_request.assert_called_once()
 
     def test_update_tenant_feature_plan_usage_zero_delta(self, mock_send_request):
         """Test updating tenant feature usage with zero delta (no change)."""
@@ -1518,6 +1123,46 @@ class TestBillingServiceEdgeCases:
 
             # Assert
             assert result["history_id"] == history_id
+
+    def test_is_tenant_owner_or_admin_editor_role_raises_error(self):
+        """Test tenant owner/admin check raises error for editor role."""
+        # Arrange
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_join = MagicMock(spec=TenantAccountJoin)
+        mock_join.role = TenantAccountRole.EDITOR  # Editor is not privileged
+
+        with patch("services.billing_service.db.session") as mock_session:
+            mock_query = MagicMock()
+            mock_query.where.return_value.first.return_value = mock_join
+            mock_session.query.return_value = mock_query
+
+            # Act & Assert
+            with pytest.raises(ValueError) as exc_info:
+                BillingService.is_tenant_owner_or_admin(current_user)
+            assert "Only team owner or team admin can perform this action" in str(exc_info.value)
+
+    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self):
+        """Test tenant owner/admin check raises error for dataset operator role."""
+        # Arrange
+        current_user = MagicMock(spec=Account)
+        current_user.id = "account-123"
+        current_user.current_tenant_id = "tenant-456"
+
+        mock_join = MagicMock(spec=TenantAccountJoin)
+        mock_join.role = TenantAccountRole.DATASET_OPERATOR  # Dataset operator is not privileged
+
+        with patch("services.billing_service.db.session") as mock_session:
+            mock_query = MagicMock()
+            mock_query.where.return_value.first.return_value = mock_join
+            mock_session.query.return_value = mock_query
+
+            # Act & Assert
+            with pytest.raises(ValueError) as exc_info:
+                BillingService.is_tenant_owner_or_admin(current_user)
+            assert "Only team owner or team admin can perform this action" in str(exc_info.value)
 
 
 class TestBillingServiceSubscriptionOperations:
@@ -1658,25 +1303,7 @@ class TestBillingServiceSubscriptionOperations:
         # Assert
         assert result == {}
 
-    def test_get_plan_bulk_converts_string_expiration_date_to_int(self, mock_send_request):
-        """Test bulk plan retrieval converts string expiration_date to int."""
-        # Arrange
-        tenant_ids = ["tenant-1"]
-        mock_send_request.return_value = {
-            "data": {
-                "tenant-1": {"plan": "sandbox", "expiration_date": "1735689600"},
-            }
-        }
-
-        # Act
-        result = BillingService.get_plan_bulk(tenant_ids)
-
-        # Assert
-        assert "tenant-1" in result
-        assert isinstance(result["tenant-1"]["expiration_date"], int)
-        assert result["tenant-1"]["expiration_date"] == 1735689600
-
-    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request, caplog: pytest.LogCaptureFixture):
+    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request):
         """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
         # Arrange
         tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
@@ -1691,7 +1318,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Act
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
+        with patch("services.billing_service.logger") as mock_logger:
             result = BillingService.get_plan_bulk(tenant_ids)
 
         # Assert - should only contain valid tenants
@@ -1707,11 +1334,10 @@ class TestBillingServiceSubscriptionOperations:
         assert result["tenant-valid-2"]["expiration_date"] == 1767225600
 
         # Verify exception was logged for the invalid tenant
-        exception_records = [r for r in caplog.records if r.levelname == "ERROR"]
-        assert len(exception_records) == 1
-        formatted = exception_records[0].getMessage()
-        assert "get_plan_bulk: failed to validate subscription plan for tenant" in formatted
-        assert "tenant-invalid" in formatted
+        mock_logger.exception.assert_called_once()
+        log_call_args = mock_logger.exception.call_args[0]
+        assert "get_plan_bulk: failed to validate subscription plan for tenant" in log_call_args[0]
+        assert "tenant-invalid" in log_call_args[1]
 
     def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
         """Test successful retrieval of expired subscription cleanup whitelist."""
@@ -1790,21 +1416,12 @@ class TestBillingServiceIntegrationScenarios:
 
         # Step 1: Get current billing info
         mock_send_request.return_value = {
-            "enabled": True,
-            "subscription": {"plan": "sandbox", "interval": "", "education": False},
-            "members": {"size": 0, "limit": 1},
-            "apps": {"size": 0, "limit": 5},
-            "vector_space": {"size": 0.0, "limit": 50},
-            "knowledge_rate_limit": {"limit": 10},
-            "documents_upload_quota": {"size": 0, "limit": 50},
-            "annotation_quota_limit": {"size": 0, "limit": 10},
-            "docs_processing": "standard",
-            "can_replace_logo": False,
-            "model_load_balancing_enabled": False,
-            "knowledge_pipeline_publish_enabled": False,
+            "subscription_plan": "sandbox",
+            "billing_cycle": "monthly",
+            "status": "active",
         }
         current_info = BillingService.get_info(tenant_id)
-        assert current_info["subscription"]["plan"] == "sandbox"
+        assert current_info["subscription_plan"] == "sandbox"
 
         # Step 2: Get payment link for upgrade
         mock_send_request.return_value = {"payment_link": "https://payment.example.com/upgrade"}
@@ -1876,7 +1493,10 @@ class TestBillingServiceIntegrationScenarios:
     def test_education_verification_and_activation_flow(self, mock_send_request):
         """Test complete education verification and activation flow."""
         # Arrange
-        account = _account(email="student@mit.edu")
+        account = MagicMock(spec=Account)
+        account.id = "account-edu"
+        account.email = "student@mit.edu"
+        account.current_tenant_id = "tenant-edu"
 
         # Step 1: Search for institution
         with (
@@ -1915,143 +1535,3 @@ class TestBillingServiceIntegrationScenarios:
             mock_send_request.return_value = {"result": "success", "activated": True}
             activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")
             assert activate_result["activated"] is True
-
-
-class TestBillingServiceSubscriptionInfoDataType:
-    """Unit tests for data type coercion in BillingService.get_info
-
-    1. Verifies the get_info returns correct Python types for numeric fields
-    2. Ensure the compatibility regardless of what results the upstream billing API returns
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    @pytest.fixture
-    def normal_billing_response(self) -> dict:
-        return {
-            "enabled": True,
-            "subscription": {
-                "plan": "team",
-                "interval": "year",
-                "education": False,
-            },
-            "members": {"size": 10, "limit": 50},
-            "apps": {"size": 80, "limit": 200},
-            "vector_space": {"size": 5120.75, "limit": 20480},
-            "knowledge_rate_limit": {"limit": 1000},
-            "documents_upload_quota": {"size": 450, "limit": 1000},
-            "annotation_quota_limit": {"size": 1200, "limit": 5000},
-            "docs_processing": "top-priority",
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": 1745971200,
-        }
-
-    @pytest.fixture
-    def string_billing_response(self) -> dict:
-        return {
-            "enabled": True,
-            "subscription": {
-                "plan": "team",
-                "interval": "year",
-                "education": False,
-            },
-            "members": {"size": "10", "limit": "50"},
-            "apps": {"size": "80", "limit": "200"},
-            "vector_space": {"size": 5120.75, "limit": "20480"},
-            "knowledge_rate_limit": {"limit": "1000"},
-            "documents_upload_quota": {"size": "450", "limit": "1000"},
-            "annotation_quota_limit": {"size": "1200", "limit": "5000"},
-            "docs_processing": "top-priority",
-            "can_replace_logo": True,
-            "model_load_balancing_enabled": True,
-            "knowledge_pipeline_publish_enabled": True,
-            "next_credit_reset_date": "1745971200",
-        }
-
-    @staticmethod
-    def _assert_billing_info_types(result: dict):
-        assert isinstance(result["enabled"], bool)
-        assert isinstance(result["subscription"]["plan"], str)
-        assert isinstance(result["subscription"]["interval"], str)
-        assert isinstance(result["subscription"]["education"], bool)
-
-        assert isinstance(result["members"]["size"], int)
-        assert isinstance(result["members"]["limit"], int)
-
-        assert isinstance(result["apps"]["size"], int)
-        assert isinstance(result["apps"]["limit"], int)
-
-        if "vector_space" in result:
-            assert isinstance(result["vector_space"]["size"], float)
-            assert isinstance(result["vector_space"]["limit"], int)
-
-        assert isinstance(result["knowledge_rate_limit"]["limit"], int)
-
-        assert isinstance(result["documents_upload_quota"]["size"], int)
-        assert isinstance(result["documents_upload_quota"]["limit"], int)
-
-        assert isinstance(result["annotation_quota_limit"]["size"], int)
-        assert isinstance(result["annotation_quota_limit"]["limit"], int)
-
-        assert isinstance(result["docs_processing"], str)
-        assert isinstance(result["can_replace_logo"], bool)
-        assert isinstance(result["model_load_balancing_enabled"], bool)
-        assert isinstance(result["knowledge_pipeline_publish_enabled"], bool)
-        if "next_credit_reset_date" in result:
-            assert isinstance(result["next_credit_reset_date"], int)
-
-    def test_get_info_with_normal_types(self, mock_send_request, normal_billing_response):
-        """When the billing API returns native numeric types, get_info should preserve them."""
-        mock_send_request.return_value = normal_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        self._assert_billing_info_types(result)
-        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
-
-    def test_get_info_with_string_types(self, mock_send_request, string_billing_response):
-        """When the billing API returns numeric values as strings, get_info should coerce them."""
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        self._assert_billing_info_types(result)
-        mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": "tenant-type-test"})
-
-    def test_get_info_without_optional_fields(self, mock_send_request, string_billing_response):
-        """NotRequired fields can be absent without raising."""
-        del string_billing_response["next_credit_reset_date"]
-        del string_billing_response["vector_space"]
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        assert "next_credit_reset_date" not in result
-        assert "vector_space" not in result
-        self._assert_billing_info_types(result)
-
-    def test_get_info_with_extra_fields(self, mock_send_request, string_billing_response):
-        """Undefined fields are silently stripped by validate_python."""
-        string_billing_response["new_feature"] = "something"
-        mock_send_request.return_value = string_billing_response
-
-        result = BillingService.get_info("tenant-type-test")
-
-        # extra fields are dropped by TypeAdapter on TypedDict
-        assert "new_feature" not in result
-        self._assert_billing_info_types(result)
-
-    def test_get_info_missing_required_field_raises(self, mock_send_request, string_billing_response):
-        """Missing a required field should raise ValidationError."""
-        from pydantic import ValidationError
-
-        del string_billing_response["members"]
-        mock_send_request.return_value = string_billing_response
-
-        with pytest.raises(ValidationError):
-            BillingService.get_info("tenant-type-test")

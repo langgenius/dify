@@ -1,6 +1,5 @@
 {
   "allTags": "كل العلامات",
-  "clearSelectedTags": "مسح العلامات المحددة: {{tags}}",
   "searchTags": "البحث في العلامات",
   "tags.agent": "وكيل",
   "tags.business": "أعمال",

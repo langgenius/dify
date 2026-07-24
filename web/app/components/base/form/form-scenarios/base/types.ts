@@ -1,4 +1,5 @@
-import type { Option } from '../../components/field/select'
+import type { Option } from '../../../select/pure'
+import type { CustomActionsProps } from '../../components/form/actions'
 import type { TransferMethod } from '@/types/app'
 
 export enum BaseFieldType {
@@ -32,7 +33,7 @@ export type SelectConfiguration = {
   }
 }
 
-type FileConfiguration = {
+export type FileConfiguration = {
   allowedFileTypes: string[]
   allowedFileExtensions: string[]
   allowedFileUploadMethods: TransferMethod[]
@@ -48,6 +49,13 @@ export type BaseConfiguration = {
   showConditions: ShowCondition[] // Show this field only when all conditions are met
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
-} & NumberConfiguration &
-  Partial<SelectConfiguration> &
-  Partial<FileConfiguration>
+} & NumberConfiguration
+& Partial<SelectConfiguration>
+& Partial<FileConfiguration>
+
+export type BaseFormProps = {
+  initialData?: Record<string, any>
+  configurations: BaseConfiguration[]
+  CustomActions?: (props: CustomActionsProps) => React.ReactNode
+  onSubmit: (value: Record<string, any>) => void
+}

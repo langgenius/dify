@@ -2,15 +2,24 @@ import type { ErrorMessageBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { $applyNodeReplacement } from 'lexical'
-import { memo, useCallback, useEffect } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+} from 'react'
 import { ERROR_MESSAGE_PLACEHOLDER_TEXT } from '../../constants'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
-import { $createErrorMessageBlockNode, ErrorMessageBlockNode } from './node'
+import {
+  $createErrorMessageBlockNode,
+  ErrorMessageBlockNode,
+} from './node'
 
 const REGEX = new RegExp(ERROR_MESSAGE_PLACEHOLDER_TEXT)
 
-const ErrorMessageBlockReplacementBlock = ({ onInsert }: ErrorMessageBlockType) => {
+const ErrorMessageBlockReplacementBlock = ({
+  onInsert,
+}: ErrorMessageBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -19,14 +28,16 @@ const ErrorMessageBlockReplacementBlock = ({ onInsert }: ErrorMessageBlockType) 
   }, [editor])
 
   const createErrorMessageBlockNode = useCallback((): ErrorMessageBlockNode => {
-    if (onInsert) onInsert()
+    if (onInsert)
+      onInsert()
     return $applyNodeReplacement($createErrorMessageBlockNode())
   }, [onInsert])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
-    if (matchArr === null) return null
+    if (matchArr === null)
+      return null
 
     const startOffset = matchArr.index
     const endOffset = startOffset + ERROR_MESSAGE_PLACEHOLDER_TEXT.length
@@ -39,9 +50,7 @@ const ErrorMessageBlockReplacementBlock = ({ onInsert }: ErrorMessageBlockType) 
   useEffect(() => {
     REGEX.lastIndex = 0
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, (textNode) =>
-        decoratorTransform(textNode, getMatch, createErrorMessageBlockNode),
-      ),
+      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createErrorMessageBlockNode)),
     )
   }, [])
 

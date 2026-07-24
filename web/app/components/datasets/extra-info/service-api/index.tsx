@@ -1,72 +1,60 @@
-import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { hasPermission } from '@/utils/permission'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import Indicator from '@/app/components/header/indicator'
+import { cn } from '@/utils/classnames'
 import Card from './card'
 
 type ServiceApiProps = {
   apiBaseUrl: string
 }
 
-const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
+const ServiceApi = ({
+  apiBaseUrl,
+}: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
-  const handleOpenSecretKeyModal = useCallback(() => {
-    setIsSecretKeyModalVisible(true)
-  }, [])
-
-  const handleCloseSecretKeyModal = useCallback(() => {
-    setIsSecretKeyModalVisible(false)
-  }, [])
+  const handleToggle = () => {
+    setOpen(!open)
+  }
 
   return (
-    <div className="flex items-center">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <button type="button" className="w-full border-none bg-transparent p-0 text-left">
-              <div
-                className={cn(
-                  'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
-                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                )}
-              >
-                <StatusDot className={cn('shrink-0')} status={apiBaseUrl ? 'success' : 'warning'} />
-                <div className="px-0.5 system-xs-medium">
-                  {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
-                </div>
-              </div>
-            </button>
-          }
-        />
-        <PopoverContent
-          placement="top-start"
-          sideOffset={4}
-          alignOffset={-4}
-          popupClassName="border-none bg-transparent shadow-none"
+    <div>
+      <PortalToFollowElem
+        open={open}
+        onOpenChange={setOpen}
+        placement="top-start"
+        offset={{
+          mainAxis: 4,
+          crossAxis: -4,
+        }}
+      >
+        <PortalToFollowElemTrigger
+          className="w-full"
+          onClick={handleToggle}
         >
+          <div className={cn(
+            'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg px-3',
+            open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
+          )}
+          >
+            <Indicator
+              className={cn('shrink-0')}
+              color={
+                apiBaseUrl ? 'green' : 'yellow'
+              }
+            />
+            <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+          </div>
+        </PortalToFollowElemTrigger>
+        <PortalToFollowElemContent className="z-[10]">
           <Card
             apiBaseUrl={apiBaseUrl}
-            onOpenSecretKeyModal={handleOpenSecretKeyModal}
-            canManageSecretKey={canManageSecretKey}
           />
-        </PopoverContent>
-      </Popover>
-      <SecretKeyModal
-        isShow={isSecretKeyModalVisible}
-        onClose={handleCloseSecretKeyModal}
-        canManage={canManageSecretKey}
-      />
+        </PortalToFollowElemContent>
+      </PortalToFollowElem>
     </div>
   )
 }

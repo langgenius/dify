@@ -1,82 +1,55 @@
-import { DropdownMenuItem, DropdownMenuSeparator } from '@langgenius/dify-ui/dropdown-menu'
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import OperationItem from './operation-item'
 
 type OperationsProps = {
-  showEdit?: boolean
   showDelete: boolean
   showExportPipeline: boolean
-  showAccessConfig?: boolean
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
-  openAccessConfig: () => void
-  onClose?: () => void
 }
 
 const Operations = ({
-  showEdit = true,
   showDelete,
   showExportPipeline,
-  showAccessConfig = false,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
-  openAccessConfig,
-  onClose,
 }: OperationsProps) => {
   const { t } = useTranslation()
 
-  const handleRename = () => {
-    onClose?.()
-    openRenameModal()
-  }
-
-  const handleExport = () => {
-    onClose?.()
-    handleExportPipeline()
-  }
-
-  const handleDelete = () => {
-    onClose?.()
-    detectIsUsedByApp()
-  }
-
-  const handleAccessConfig = () => {
-    onClose?.()
-    openAccessConfig()
-  }
-
   return (
-    <>
-      {showEdit && (
-        <DropdownMenuItem onClick={handleRename}>
-          <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
-          {t(($) => $['operation.edit'], { ns: 'common' })}
-        </DropdownMenuItem>
-      )}
-      {showExportPipeline && (
-        <DropdownMenuItem onClick={handleExport}>
-          <span aria-hidden className="mr-1 i-ri-file-download-line size-4 text-text-tertiary" />
-          {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
-        </DropdownMenuItem>
-      )}
-      {showAccessConfig && (
-        <DropdownMenuItem onClick={handleAccessConfig}>
-          <span aria-hidden className="mr-1 i-ri-lock-line size-4 text-text-tertiary" />
-          {t(($) => $['settings.resourceAccess'], { ns: 'common' })}
-        </DropdownMenuItem>
-      )}
+    <div className="relative flex w-full flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+      <div className="flex flex-col p-1">
+        <OperationItem
+          Icon={RiEditLine}
+          name={t('operation.edit', { ns: 'common' })}
+          handleClick={openRenameModal}
+        />
+        {showExportPipeline && (
+          <OperationItem
+            Icon={RiFileDownloadLine}
+            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            handleClick={handleExportPipeline}
+          />
+        )}
+      </div>
       {showDelete && (
         <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-            <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
-            {t(($) => $['operation.delete'], { ns: 'common' })}
-          </DropdownMenuItem>
+          <Divider type="horizontal" className="my-0 bg-divider-subtle" />
+          <div className="flex flex-col p-1">
+            <OperationItem
+              Icon={RiDeleteBinLine}
+              name={t('operation.delete', { ns: 'common' })}
+              handleClick={detectIsUsedByApp}
+            />
+          </div>
         </>
       )}
-    </>
+    </div>
   )
 }
 

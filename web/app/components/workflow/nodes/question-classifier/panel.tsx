@@ -16,7 +16,10 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => {
+const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
 
   const {
@@ -45,9 +48,12 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4">
-        <Field title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })} required>
+        <Field
+          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
+          required
+        >
           <ModelParameterModal
-            popupClassName="w-[387px]!"
+            popupClassName="!w-[387px]"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -58,11 +64,12 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
-            nodesOutputVars={availableVars}
-            availableNodes={availableNodesWithParent}
           />
         </Field>
-        <Field title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })} required>
+        <Field
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
+          required
+        >
           <VarReferencePicker
             readonly={readOnly}
             isShowNodeName
@@ -92,7 +99,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
         />
         <Split />
       </div>
-      <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflow' })}>
+      <FieldCollapse
+        title={t(`${i18nPrefix}.advancedSetting`, { ns: 'workflow' })}
+      >
         <AdvancedSetting
           hideMemorySetting={!isChatMode}
           instruction={inputs.instruction}
@@ -114,17 +123,12 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({ id, data }) => 
             <VarItem
               name="class_name"
               type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.className`], { ns: 'workflow' })}
-            />
-            <VarItem
-              name="class_label"
-              type="string"
-              description={t(($) => $[`${i18nPrefix}.outputVars.classLabel`], { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.className`, { ns: 'workflow' })}
             />
             <VarItem
               name="usage"
               type="object"
-              description={t(($) => $[`${i18nPrefix}.outputVars.usage`], { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>

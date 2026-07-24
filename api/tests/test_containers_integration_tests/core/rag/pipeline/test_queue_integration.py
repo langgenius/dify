@@ -15,13 +15,10 @@ from uuid import uuid4
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
 
 from core.rag.pipeline.queue import TaskWrapper, TenantIsolatedTaskQueue
 from extensions.ext_redis import redis_client
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-
-TenantAndAccount = tuple[Tenant, Account]
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 
 
 @dataclass
@@ -43,14 +40,14 @@ class TestTenantIsolatedTaskQueueIntegration:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
+    def test_tenant_and_account(self, db_session_with_containers, fake):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -58,7 +55,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -76,18 +73,18 @@ class TestTenantIsolatedTaskQueueIntegration:
         return tenant, account
 
     @pytest.fixture
-    def test_queue(self, test_tenant_and_account: TenantAndAccount):
+    def test_queue(self, test_tenant_and_account):
         """Create a generic test queue for testing."""
         tenant, _ = test_tenant_and_account
         return TenantIsolatedTaskQueue(tenant.id, "test_queue")
 
     @pytest.fixture
-    def secondary_queue(self, test_tenant_and_account: TenantAndAccount):
+    def secondary_queue(self, test_tenant_and_account):
         """Create a secondary test queue for testing isolation."""
         tenant, _ = test_tenant_and_account
         return TenantIsolatedTaskQueue(tenant.id, "secondary_queue")
 
-    def test_queue_initialization(self, test_tenant_and_account: TenantAndAccount):
+    def test_queue_initialization(self, test_tenant_and_account):
         """Test queue initialization with correct key generation."""
         tenant, _ = test_tenant_and_account
         queue = TenantIsolatedTaskQueue(tenant.id, "test-key")
@@ -97,16 +94,14 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert queue._queue == f"tenant_self_test-key_task_queue:{tenant.id}"
         assert queue._task_key == f"tenant_test-key_task:{tenant.id}"
 
-    def test_tenant_isolation(
-        self, test_tenant_and_account: TenantAndAccount, db_session_with_containers: Session, fake: Faker
-    ):
+    def test_tenant_isolation(self, test_tenant_and_account, db_session_with_containers, fake):
         """Test that different tenants have isolated queues."""
         tenant1, _ = test_tenant_and_account
 
         # Create second tenant
         tenant2 = Tenant(
             name=fake.company(),
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant2)
         db_session_with_containers.commit()
@@ -119,7 +114,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert queue1._queue == f"tenant_self_same-key_task_queue:{tenant1.id}"
         assert queue2._queue == f"tenant_self_same-key_task_queue:{tenant2.id}"
 
-    def test_key_isolation(self, test_tenant_and_account: TenantAndAccount):
+    def test_key_isolation(self, test_tenant_and_account):
         """Test that different keys have isolated queues."""
         tenant, _ = test_tenant_and_account
         queue1 = TenantIsolatedTaskQueue(tenant.id, "key1")
@@ -181,7 +176,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert len(remaining_tasks) == 2
         assert remaining_tasks == ["task4", "task5"]
 
-    def test_push_and_pull_complex_objects(self, test_queue, fake: Faker):
+    def test_push_and_pull_complex_objects(self, test_queue, fake):
         """Test pushing and pulling complex object tasks."""
         # Create complex task objects as dictionaries (not dataclass instances)
         tasks = [
@@ -223,7 +218,7 @@ class TestTenantIsolatedTaskQueueIntegration:
             assert pulled_task["data"] == original_task["data"]
             assert pulled_task["metadata"] == original_task["metadata"]
 
-    def test_mixed_task_types(self, test_queue, fake: Faker):
+    def test_mixed_task_types(self, test_queue, fake):
         """Test pushing and pulling mixed string and object tasks."""
         string_task = "simple_string_task"
         object_task = {
@@ -272,7 +267,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         # Verify task key has expired
         assert test_queue.get_task_key() is None
 
-    def test_large_task_batch(self, test_queue, fake: Faker):
+    def test_large_task_batch(self, test_queue, fake):
         """Test handling large batches of tasks."""
         # Create large batch of tasks
         large_batch = []
@@ -297,7 +292,7 @@ class TestTenantIsolatedTaskQueueIntegration:
             assert isinstance(task, dict)
             assert task["index"] == i  # FIFO order
 
-    def test_queue_operations_isolation(self, test_tenant_and_account: TenantAndAccount, fake: Faker):
+    def test_queue_operations_isolation(self, test_tenant_and_account, fake):
         """Test concurrent operations on different queues."""
         tenant, _ = test_tenant_and_account
 
@@ -317,7 +312,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert tasks2 == ["task1_queue2", "task2_queue2"]
         assert tasks1 != tasks2
 
-    def test_task_wrapper_serialization_roundtrip(self, test_queue, fake: Faker):
+    def test_task_wrapper_serialization_roundtrip(self, test_queue, fake):
         """Test TaskWrapper serialization and deserialization roundtrip."""
         # Create complex nested data
         complex_data = {
@@ -351,7 +346,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         task = test_queue.pull_tasks(1)
         assert task[0] == invalid_json_task
 
-    def test_real_world_batch_processing_scenario(self, test_queue, fake: Faker):
+    def test_real_world_batch_processing_scenario(self, test_queue, fake):
         """Test realistic batch processing scenario."""
         # Simulate batch processing tasks
         batch_tasks = []
@@ -408,14 +403,14 @@ class TestTenantIsolatedTaskQueueCompatibility:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
+    def test_tenant_and_account(self, db_session_with_containers, fake):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status=AccountStatus.ACTIVE,
+            status="active",
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -423,7 +418,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status=TenantStatus.NORMAL,
+            status="normal",
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -440,7 +435,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
 
         return tenant, account
 
-    def test_legacy_string_queue_compatibility(self, test_tenant_and_account: TenantAndAccount, fake: Faker):
+    def test_legacy_string_queue_compatibility(self, test_tenant_and_account, fake):
         """
         Test compatibility with legacy queues containing only string data.
 
@@ -470,7 +465,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
         expected_order = ["legacy_task_1", "legacy_task_2", "legacy_task_3", "legacy_task_4", "legacy_task_5"]
         assert pulled_tasks == expected_order
 
-    def test_legacy_queue_migration_scenario(self, test_tenant_and_account: TenantAndAccount, fake: Faker):
+    def test_legacy_queue_migration_scenario(self, test_tenant_and_account, fake):
         """
         Test complete migration scenario from legacy to new system.
 
@@ -551,7 +546,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
             assert task["tenant_id"] == tenant.id
             assert task["processing_type"] == "new_system"
 
-    def test_legacy_queue_error_recovery(self, test_tenant_and_account: TenantAndAccount, fake: Faker):
+    def test_legacy_queue_error_recovery(self, test_tenant_and_account, fake):
         """
         Test error recovery when legacy queue contains malformed data.
 

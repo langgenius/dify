@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { Field } from '../../../types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { cn } from '@/utils/classnames'
 import { Type } from '../../../types'
 import { getFieldType, getHasChildren } from '../../../utils'
 import AddField from './add-field'
@@ -63,17 +63,14 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   readOnly,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true)
-  const hoveringProperty = useVisualEditorStore((state) => state.hoveringProperty)
-  const setHoveringProperty = useVisualEditorStore((state) => state.setHoveringProperty)
-  const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
-  const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
+  const hoveringProperty = useVisualEditorStore(state => state.hoveringProperty)
+  const setHoveringProperty = useVisualEditorStore(state => state.setHoveringProperty)
+  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
 
-  const { run: setHoveringPropertyDebounced } = useDebounceFn(
-    (path: string | null) => {
-      setHoveringProperty(path)
-    },
-    { wait: 50 },
-  )
+  const { run: setHoveringPropertyDebounced } = useDebounceFn((path: string | null) => {
+    setHoveringProperty(path)
+  }, { wait: 50 })
 
   const hasChildren = useMemo(() => getHasChildren(schema), [schema])
   const type = useMemo(() => getFieldType(schema), [schema])
@@ -84,14 +81,18 @@ const SchemaNode: FC<SchemaNodeProps> = ({
   }
 
   const handleMouseEnter = () => {
-    if (readOnly) return
-    if (advancedEditing || isAddingNewField) return
+    if (readOnly)
+      return
+    if (advancedEditing || isAddingNewField)
+      return
     setHoveringPropertyDebounced(path.join('.'))
   }
 
   const handleMouseLeave = () => {
-    if (readOnly) return
-    if (advancedEditing || isAddingNewField) return
+    if (readOnly)
+      return
+    if (advancedEditing || isAddingNewField)
+      return
     setHoveringPropertyDebounced(null)
   }
 
@@ -99,53 +100,52 @@ const SchemaNode: FC<SchemaNodeProps> = ({
     <div className="relative">
       <div className={cn('relative z-10', indentPadding[depth])}>
         {depth > 0 && hasChildren && (
-          <div
-            className={cn(
-              'absolute top-0 z-10 flex h-7 w-5 items-center bg-background-section-burn px-0.5',
-              indentLeft[depth - 1],
-            )}
-          >
+          <div className={cn('absolute top-0 z-10 flex h-7 w-5 items-center bg-background-section-burn px-0.5', indentLeft[depth - 1])}>
             <button
               type="button"
               onClick={handleExpand}
               className="py-0.5 text-text-tertiary hover:text-text-accent"
             >
-              {isExpanded ? (
-                <RiArrowDropDownLine className="size-4" />
-              ) : (
-                <RiArrowDropRightLine className="size-4" />
-              )}
+              {
+                isExpanded
+                  ? <RiArrowDropDownLine className="h-4 w-4" />
+                  : <RiArrowDropRightLine className="h-4 w-4" />
+              }
             </button>
           </div>
         )}
 
-        <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-          {isHovering && depth > 0 ? (
-            <EditCard
-              fields={{
-                name,
-                type,
-                required,
-                description: schema.description,
-                enum: schema.enum,
-              }}
-              path={path}
-              parentPath={parentPath!}
-              depth={depth}
-            />
-          ) : (
-            <Card name={name} type={type} required={required} description={schema.description} />
-          )}
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {(isHovering && depth > 0)
+            ? (
+                <EditCard
+                  fields={{
+                    name,
+                    type,
+                    required,
+                    description: schema.description,
+                    enum: schema.enum,
+                  }}
+                  path={path}
+                  parentPath={parentPath!}
+                  depth={depth}
+                />
+              )
+            : (
+                <Card
+                  name={name}
+                  type={type}
+                  required={required}
+                  description={schema.description}
+                />
+              )}
         </div>
       </div>
 
-      <div
-        className={cn(
-          'absolute z-0 flex w-5 justify-center',
-          schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
-          indentLeft[depth],
-        )}
-      >
+      <div className={cn('absolute z-0 flex w-5 justify-center', schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]', indentLeft[depth])}>
         <Divider
           type="vertical"
           className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
@@ -154,8 +154,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
 
       {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
         <>
-          {schema.type === Type.object &&
-            schema.properties &&
+          {schema.type === Type.object && schema.properties && (
             Object.entries(schema.properties).map(([key, childSchema]) => (
               <SchemaNode
                 key={key}
@@ -166,27 +165,34 @@ const SchemaNode: FC<SchemaNodeProps> = ({
                 parentPath={path}
                 depth={depth + 1}
               />
-            ))}
+            ))
+          )}
 
-          {schema.type === Type.array &&
-            schema.items &&
-            schema.items.type === Type.object &&
-            schema.items.properties &&
-            Object.entries(schema.items.properties).map(([key, childSchema]) => (
-              <SchemaNode
-                key={key}
-                name={key}
-                required={!!schema.items?.required?.includes(key)}
-                schema={childSchema}
-                path={[...path, 'items', 'properties', key]}
-                parentPath={path}
-                depth={depth + 1}
-              />
-            ))}
+          {schema.type === Type.array
+            && schema.items
+            && schema.items.type === Type.object
+            && schema.items.properties
+            && (
+              Object.entries(schema.items.properties).map(([key, childSchema]) => (
+                <SchemaNode
+                  key={key}
+                  name={key}
+                  required={!!schema.items?.required?.includes(key)}
+                  schema={childSchema}
+                  path={[...path, 'items', 'properties', key]}
+                  parentPath={path}
+                  depth={depth + 1}
+                />
+              ))
+            )}
         </>
       )}
 
-      {!readOnly && depth === 0 && !isAddingNewField && <AddField />}
+      {
+        !readOnly && depth === 0 && !isAddingNewField && (
+          <AddField />
+        )
+      }
     </div>
   )
 }

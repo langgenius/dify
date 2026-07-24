@@ -8,47 +8,20 @@ import InputsFormContent from '../content'
 
 // Keep lightweight mocks for non-base project components
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
-  default: ({
-    value,
-    onChange,
-    name,
-  }: {
-    value: boolean
-    onChange: (v: boolean) => void
-    name: string
-  }) => (
-    <div
-      data-testid="mock-bool-input"
-      role="checkbox"
-      aria-checked={value}
-      onClick={() => onChange(!value)}
-    >
+  default: ({ value, onChange, name }: { value: boolean, onChange: (v: boolean) => void, name: string }) => (
+    <div data-testid="mock-bool-input" role="checkbox" aria-checked={value} onClick={() => onChange(!value)}>
       {name}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({
-    onChange,
-    value,
-    placeholder,
-  }: {
-    onChange: (v: string) => void
-    value: string
-    placeholder?: React.ReactNode
-  }) => (
+  default: ({ onChange, value, placeholder }: { onChange: (v: string) => void, value: string, placeholder?: React.ReactNode }) => (
     <div>
-      <textarea
-        data-testid="mock-code-editor"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      <textarea data-testid="mock-code-editor" value={value} onChange={e => onChange(e.target.value)} />
       {!!placeholder && (
         <div data-testid="mock-code-editor-placeholder">
-          {React.isValidElement<{ children?: React.ReactNode }>(placeholder)
-            ? placeholder.props.children
-            : ''}
+          {React.isValidElement<{ children?: React.ReactNode }>(placeholder) ? placeholder.props.children : ''}
         </div>
       )}
     </div>
@@ -57,22 +30,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 // MOCK: file-uploader (stable, deterministic for unit tests)
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    onChange,
-    value,
-  }: {
-    onChange: (files: unknown[]) => void
-    value?: unknown[]
-  }) => (
+  FileUploaderInAttachmentWrapper: ({ onChange, value }: { onChange: (files: unknown[]) => void, value?: unknown[] }) => (
     <div
       data-testid="mock-file-uploader"
-      onClick={() =>
-        onChange(
-          value && value.length > 0
-            ? [...value, `uploaded-file-${(value.length || 0) + 1}`]
-            : ['uploaded-file-1'],
-        )
-      }
+      onClick={() => onChange(value && value.length > 0 ? [...value, `uploaded-file-${(value.length || 0) + 1}`] : ['uploaded-file-1'])}
       data-value-count={value?.length ?? 0}
     />
   ),
@@ -89,22 +50,14 @@ const defaultSystemParameters = {
   workflow_file_upload_limit: 1,
 }
 
-const createMockContext = (
-  overrides: Partial<ChatWithHistoryContextValue> = {},
-): ChatWithHistoryContextValue => {
+const createMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {}): ChatWithHistoryContextValue => {
   const base: ChatWithHistoryContextValue = {
-    appParams: {
-      system_parameters: defaultSystemParameters,
-    } as unknown as ChatWithHistoryContextValue['appParams'],
-    inputsForms: [
-      { variable: 'text_var', type: InputVarType.textInput, label: 'Text Label', required: true },
-    ],
+    appParams: { system_parameters: defaultSystemParameters } as unknown as ChatWithHistoryContextValue['appParams'],
+    inputsForms: [{ variable: 'text_var', type: InputVarType.textInput, label: 'Text Label', required: true }],
     currentConversationId: '123',
     currentConversationInputs: { text_var: 'current-value' },
     newConversationInputs: { text_var: 'new-value' },
-    newConversationInputsRef: { current: { text_var: 'ref-value' } } as React.RefObject<
-      Record<string, unknown>
-    >,
+    newConversationInputsRef: { current: { text_var: 'ref-value' } } as React.RefObject<Record<string, unknown>>,
     setCurrentConversationInputs: mockSetCurrentConversationInputs,
     handleNewConversationInputsChange: mockHandleNewConversationInputsChange,
     allInputsHidden: false,
@@ -124,9 +77,7 @@ const createMockContext = (
     isMobile: false,
     isInstalledApp: false,
     handleFeedback: vi.fn(),
-    currentChatInstanceRef: { current: { handleStop: vi.fn() } } as React.RefObject<{
-      handleStop: () => void
-    }>,
+    currentChatInstanceRef: { current: { handleStop: vi.fn() } } as React.RefObject<{ handleStop: () => void }>,
     sidebarCollapseState: false,
     handleSidebarCollapse: vi.fn(),
     setClearChatList: vi.fn(),
@@ -143,13 +94,7 @@ vi.mock('../../context', () => ({
   useChatWithHistoryContext: () => React.useContext(MockContext),
 }))
 
-const MockContextProvider = ({
-  children,
-  value,
-}: {
-  children: React.ReactNode
-  value: ChatWithHistoryContextValue
-}) => {
+const MockContextProvider = ({ children, value }: { children: React.ReactNode, value: ChatWithHistoryContextValue }) => {
   // We need to manage state locally to support controlled components
   const [currentInputs, setCurrentInputs] = React.useState(value.currentConversationInputs)
   const [newInputs, setNewInputs] = React.useState(value.newConversationInputs)
@@ -180,11 +125,12 @@ describe('InputsFormContent', () => {
     vi.clearAllMocks()
   })
 
-  const renderWithContext = (
-    component: React.ReactNode,
-    contextValue: ChatWithHistoryContextValue,
-  ) => {
-    return render(<MockContextProvider value={contextValue}>{component}</MockContextProvider>)
+  const renderWithContext = (component: React.ReactNode, contextValue: ChatWithHistoryContextValue) => {
+    return render(
+      <MockContextProvider value={contextValue}>
+        {component}
+      </MockContextProvider>,
+    )
   }
 
   it('renders only visible forms and ignores hidden ones', () => {
@@ -203,9 +149,7 @@ describe('InputsFormContent', () => {
 
   it('shows optional label when required is false', () => {
     const context = createMockContext({
-      inputsForms: [
-        { variable: 'opt', type: InputVarType.textInput, label: 'Opt', required: false },
-      ],
+      inputsForms: [{ variable: 'opt', type: InputVarType.textInput, label: 'Opt', required: false }],
     })
 
     renderWithContext(<InputsFormContent />, context)
@@ -240,12 +184,8 @@ describe('InputsFormContent', () => {
     await user.clear(input)
     await user.type(input, 'updated')
 
-    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ text_var: 'updated' }),
-    )
-    expect(mockHandleNewConversationInputsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ text_var: 'updated' }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(expect.objectContaining({ text_var: 'updated' }))
+    expect(mockHandleNewConversationInputsChange).toHaveBeenLastCalledWith(expect.objectContaining({ text_var: 'updated' }))
   })
 
   it('renders and handles number input updates', async () => {
@@ -261,9 +201,7 @@ describe('InputsFormContent', () => {
 
     await user.type(input, '123')
 
-    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ num: '123' }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(expect.objectContaining({ num: '123' }))
   })
 
   it('renders and handles paragraph input updates', async () => {
@@ -277,9 +215,7 @@ describe('InputsFormContent', () => {
     const textarea = screen.getByPlaceholderText('Para') as HTMLTextAreaElement
     await user.type(textarea, 'hello')
 
-    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ para: 'hello' }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(expect.objectContaining({ para: 'hello' }))
   })
 
   it('renders and handles checkbox input updates (uses mocked BoolInput)', async () => {
@@ -297,15 +233,7 @@ describe('InputsFormContent', () => {
   it('handles select input with default value and updates', async () => {
     const user = userEvent.setup()
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A', 'B'],
-          default: 'B',
-        },
-      ],
+      inputsForms: [{ variable: 'sel', type: InputVarType.select, label: 'Sel', options: ['A', 'B'], default: 'B' }],
       currentConversationInputs: {},
     })
 
@@ -317,63 +245,24 @@ describe('InputsFormContent', () => {
     const optionA = screen.getByText('A')
     await user.click(optionA)
 
-    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ sel: 'A' }),
-    )
-  })
-
-  it('renders select dropdown on the shared dify-ui overlay layer', async () => {
-    const user = userEvent.setup()
-    const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A', 'B'],
-          default: 'B',
-        },
-      ],
-      currentConversationInputs: {},
-    })
-
-    renderWithContext(<InputsFormContent />, context)
-    await user.click(screen.getByText('B'))
-
-    expect(screen.getByText('A').closest('.z-50')).not.toBeNull()
+    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(expect.objectContaining({ sel: 'A' }))
   })
 
   it('handles select input with existing value (value not in options -> shows placeholder)', () => {
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A'],
-          default: undefined,
-        },
-      ],
+      inputsForms: [{ variable: 'sel', type: InputVarType.select, label: 'Sel', options: ['A'], default: undefined }],
       currentConversationInputs: { sel: 'existing' },
     })
 
     renderWithContext(<InputsFormContent />, context)
     const selNodes = screen.getAllByText('Sel')
     expect(selNodes.length).toBeGreaterThan(0)
-    expect(screen.getByText('existing')).toBeInTheDocument()
+    expect(screen.queryByText('existing')).toBeNull()
   })
 
   it('handles select input empty branches (no current value -> show placeholder)', () => {
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'sel',
-          type: InputVarType.select,
-          label: 'Sel',
-          options: ['A'],
-          default: undefined,
-        },
-      ],
+      inputsForms: [{ variable: 'sel', type: InputVarType.select, label: 'Sel', options: ['A'], default: undefined }],
       currentConversationInputs: {},
     })
 
@@ -385,14 +274,7 @@ describe('InputsFormContent', () => {
   it('renders and handles JSON object updates (uses mocked CodeEditor)', async () => {
     const user = userEvent.setup()
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'json',
-          type: InputVarType.jsonObject,
-          label: 'Json',
-          json_schema: '{ "a": 1 }',
-        },
-      ],
+      inputsForms: [{ variable: 'json', type: InputVarType.jsonObject, label: 'Json', json_schema: '{ "a": 1 }' }],
       currentConversationInputs: {},
     })
 
@@ -402,23 +284,12 @@ describe('InputsFormContent', () => {
     const jsonEditor = screen.getByTestId('mock-code-editor') as HTMLTextAreaElement
     await user.clear(jsonEditor)
     await user.paste('{"a":2}')
-    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
-      expect.objectContaining({ json: '{"a":2}' }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(expect.objectContaining({ json: '{"a":2}' }))
   })
 
   it('handles single file uploader with existing value (using mocked uploader)', () => {
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'single',
-          type: InputVarType.singleFile,
-          label: 'Single',
-          allowed_file_types: [],
-          allowed_file_extensions: [],
-          allowed_file_upload_methods: [],
-        },
-      ],
+      inputsForms: [{ variable: 'single', type: InputVarType.singleFile, label: 'Single', allowed_file_types: [], allowed_file_extensions: [], allowed_file_upload_methods: [] }],
       currentConversationInputs: { single: 'file1' },
     })
 
@@ -429,16 +300,7 @@ describe('InputsFormContent', () => {
   it('handles single file uploader with no value and updates (using mocked uploader)', async () => {
     const user = userEvent.setup()
     const context = createMockContext({
-      inputsForms: [
-        {
-          variable: 'single',
-          type: InputVarType.singleFile,
-          label: 'Single',
-          allowed_file_types: [],
-          allowed_file_extensions: [],
-          allowed_file_upload_methods: [],
-        },
-      ],
+      inputsForms: [{ variable: 'single', type: InputVarType.singleFile, label: 'Single', allowed_file_types: [], allowed_file_extensions: [], allowed_file_upload_methods: [] }],
       currentConversationInputs: {},
     })
 
@@ -447,17 +309,13 @@ describe('InputsFormContent', () => {
 
     const uploader = screen.getByTestId('mock-file-uploader')
     await user.click(uploader)
-    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ single: 'uploaded-file-1' }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(expect.objectContaining({ single: 'uploaded-file-1' }))
   })
 
   it('renders and handles multi files uploader updates (using mocked uploader)', async () => {
     const user = userEvent.setup()
     const context = createMockContext({
-      inputsForms: [
-        { variable: 'multi', type: InputVarType.multiFiles, label: 'Multi', max_length: 3 },
-      ],
+      inputsForms: [{ variable: 'multi', type: InputVarType.multiFiles, label: 'Multi', max_length: 3 }],
       currentConversationInputs: {},
     })
 
@@ -465,9 +323,7 @@ describe('InputsFormContent', () => {
     const uploader = screen.getByTestId('mock-file-uploader')
     await user.click(uploader)
 
-    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(
-      expect.objectContaining({ multi: ['uploaded-file-1'] }),
-    )
+    expect(mockSetCurrentConversationInputs).toHaveBeenCalledWith(expect.objectContaining({ multi: ['uploaded-file-1'] }))
   })
 
   it('renders footer tip only when showTip prop is true', () => {

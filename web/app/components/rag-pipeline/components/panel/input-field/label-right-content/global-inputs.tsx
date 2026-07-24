@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
+import Tooltip from '@/app/components/base/tooltip'
 
 const GlobalInputs = () => {
   const { t } = useTranslation()
@@ -8,14 +8,12 @@ const GlobalInputs = () => {
   return (
     <div className="flex items-center gap-x-1">
       <span className="system-sm-semibold-uppercase text-text-secondary">
-        {t(($) => $['inputFieldPanel.globalInputs.title'], { ns: 'datasetPipeline' })}
+        {t('inputFieldPanel.globalInputs.title', { ns: 'datasetPipeline' })}
       </span>
-      <Infotip
-        aria-label={t(($) => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
+      <Tooltip
+        popupContent={t('inputFieldPanel.globalInputs.tooltip', { ns: 'datasetPipeline' })}
         popupClassName="w-[240px]"
-      >
-        {t(($) => $['inputFieldPanel.globalInputs.tooltip'], { ns: 'datasetPipeline' })}
-      </Infotip>
+      />
     </div>
   )
 }

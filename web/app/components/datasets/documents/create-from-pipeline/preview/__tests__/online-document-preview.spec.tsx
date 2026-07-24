@@ -1,31 +1,18 @@
 import type { NotionPage } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import Toast from '@/app/components/base/toast'
 import OnlineDocumentPreview from '../online-document-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 
-const { mockToastError } = vi.hoisted(() => ({
-  mockToastError: vi.fn(),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      error: mockToastError,
-    },
-  }
-})
+// Spy on Toast.notify
+const toastNotifySpy = vi.spyOn(Toast, 'notify')
 
 // Mock dataset-detail context - needs mock to control return values
 const mockPipelineId = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    _selector: (s: { dataset: { pipeline_id: string } }) => string,
-  ) => {
+  useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { pipeline_id: string } }) => string) => {
     return mockPipelineId()
   },
 }))
@@ -69,7 +56,6 @@ const defaultProps = {
 describe('OnlineDocumentPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastError.mockReset()
     mockPipelineId.mockReturnValue('pipeline-123')
     mockUsePreviewOnlineDocument.mockReturnValue({
       mutateAsync: mockMutateAsync,
@@ -272,7 +258,10 @@ describe('OnlineDocumentPreview', () => {
       render(<OnlineDocumentPreview {...defaultProps} />)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(errorMessage)
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          type: 'error',
+          message: errorMessage,
+        })
       })
     })
 
@@ -287,7 +276,10 @@ describe('OnlineDocumentPreview', () => {
       render(<OnlineDocumentPreview {...defaultProps} />)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('Network Error')
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Network Error',
+        })
       })
     })
   })

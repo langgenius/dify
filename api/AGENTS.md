@@ -78,7 +78,7 @@ class UserProfile(TypedDict):
     nickname: NotRequired[str]
 ```
 
-- For classes, declare all member variables explicitly with types at the top of the class body (before `__init__`), even when the class is not a dataclass or Pydantic model, so the class shape is obvious at a glance:
+- For classes, declare member variables at the top of the class body (before `__init__`) so the class shape is obvious at a glance:
 
 ```python
 from datetime import datetime
@@ -108,18 +108,6 @@ class Example:
 - Mirror the layered architecture: controller → service → core/domain.
 - Reuse existing helpers in `core/`, `services/`, and `libs/` before creating new abstractions.
 - Optimise for observability: deterministic control flow, clear logging, actionable errors.
-
-### Owner-Bound Resource References
-
-- Resolve and validate the outer owner before binding a nested resource ID.
-- For stable single-parent chains, use immutable nested `NamedTuple` refs.
-- Root refs carry tenant plus root ID; child refs carry the parent ref.
-- In production, construct refs through the domain ref service.
-- Python allowing direct construction does not grant authorization.
-- Scope every consuming query with complete owner predicates; refs are not security tokens.
-- Keep polymorphic owners flat until explicit nominal owner types exist.
-- Do not add generic ref bases or compatibility fields only for uniformity.
-- Reconstruct internal refs from validated database state after payload or async boundaries.
 
 ### Logging & Errors
 
@@ -192,8 +180,6 @@ Quick checks while iterating:
 - Format: `make format`
 - Lint (includes auto-fix): `make lint`
 - Type check: `make type-check`
-- Unit tests: `make test`
-- Full backend tests, including Docker-backed suites: `make test-all`
 - Targeted tests: `make test TARGET_TESTS=./api/tests/<target_tests>`
 
 Before opening a PR / submitting:
@@ -207,11 +193,6 @@ Before opening a PR / submitting:
 - Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
 - Services: coordinate repositories, providers, background tasks; keep side effects explicit.
 - Document non-obvious behaviour with concise docstrings and comments.
-- For `204 No Content` responses, return an empty body only; never return a dict, model, or other payload.
-- For Flask-RESTX controller request, query, and response schemas, follow `controllers/API_SCHEMA_GUIDE.md`.
-  In short: use Pydantic models, document GET query params with `query_params_from_model(...)`, register response
-  DTOs with `register_response_schema_models(...)`, serialize response DTOs with `dump_response(...)`,
-  and avoid adding new legacy `ns.model(...)`, `@marshal_with(...)`, or GET `@ns.expect(...)` patterns.
 
 ### Miscellaneous
 

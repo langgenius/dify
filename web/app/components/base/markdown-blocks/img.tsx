@@ -8,11 +8,7 @@ import ImageGallery from '@/app/components/base/image-gallery'
 
 const Img = memo(({ src }: { src: string }) => {
   const srcs = useMemo(() => [src], [src])
-  return (
-    <div className="markdown-img-wrapper">
-      <ImageGallery srcs={srcs} />
-    </div>
-  )
+  return <div className="markdown-img-wrapper"><ImageGallery srcs={srcs} /></div>
 })
 
 export default Img

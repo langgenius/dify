@@ -1,11 +1,10 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
 from configs import dify_config
-from constants.languages import get_valid_language, languages
-from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from constants.languages import languages
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -16,17 +15,17 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from extensions.ext_database import db
-from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
-from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import AccountNotFoundError, AccountRegisterError
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
+from ..error import AccountInFreezeError, EmailSendIpLimitError
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -44,40 +43,15 @@ class EmailRegisterResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)
     password_confirm: str = Field(...)
-    language: str | None = Field(default=None)
-    timezone: str | None = Field(default=None)
 
     @field_validator("new_password", "password_confirm")
     @classmethod
     def validate_password(cls, value: str) -> str:
         return valid_password(value)
 
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return validate_timezone_string(value)
 
-
-class EmailRegisterTokenPairResponse(ResponseModel):
-    access_token: str
-    refresh_token: str
-    csrf_token: str
-
-
-class EmailRegisterResetResponse(ResponseModel):
-    result: str
-    data: EmailRegisterTokenPairResponse
-
-
-register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
-register_response_schema_models(
-    console_ns,
-    SimpleResultDataResponse,
-    VerificationTokenResponse,
-    EmailRegisterResetResponse,
-)
+for model in (EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload):
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 @console_ns.route("/email-register/send-email")
@@ -85,8 +59,6 @@ class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -95,13 +67,14 @@ class EmailRegisterSendEmailApi(Resource):
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
         language = "en-US"
-        if args.language is not None and args.language in languages:
+        if args.language in languages:
             language = args.language
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
+        with Session(db.engine) as session:
+            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -111,8 +84,6 @@ class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 
@@ -153,8 +124,6 @@ class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
-    @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
     def post(self):
         args = EmailRegisterResetPayload.model_validate(console_ns.payload)
 
@@ -176,39 +145,31 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
+        with Session(db.engine) as session:
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
-        if account:
-            raise EmailAlreadyInUseError()
-
-        account = self._create_new_account(
-            email=normalized_email,
-            password=args.password_confirm,
-            timezone=args.timezone,
-            language=args.language,
-        )
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(normalized_email)
+            if account:
+                raise EmailAlreadyInUseError()
+            else:
+                account = self._create_new_account(normalized_email, args.password_confirm)
+                if not account:
+                    raise AccountNotFoundError()
+                token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+                AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
 
-    def _create_new_account(
-        self,
-        email: str,
-        password: str,
-        timezone: str | None = None,
-        language: str | None = None,
-    ) -> Account:
+    def _create_new_account(self, email: str, password: str) -> Account | None:
+        # Create new account if allowed
+        account = None
         try:
-            return AccountService.create_account_and_tenant(
+            account = AccountService.create_account_and_tenant(
                 email=email,
                 name=email,
                 password=password,
-                interface_language=get_valid_language(language),
-                timezone=timezone,
-                session=db.session(),
+                interface_language=languages[0],
             )
-        except SeatsLimitExceededError:
-            raise SeatsLimitExceeded()
         except AccountRegisterError:
             raise AccountInFreezeError()
+
+        return account

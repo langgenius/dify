@@ -1,0 +1,11 @@
+.slider.disabled {
+    opacity: 0.6;
+}
+
+.slider-track {
+    background-color: var(--color-components-slider-range);
+}
+
+.slider-track-1 {
+    background-color: var(--color-components-slider-track);
+}

@@ -1,14 +1,12 @@
 'use client'
-import { useQuery } from '@tanstack/react-query'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
+import { useGlobalPublicStore, useIsSystemFeaturesPending } from '@/context/global-public-context'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
-  const systemFeatures = data ?? defaultSystemFeatures
+  const isPending = useIsSystemFeaturesPending()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''
   let favicon = ''
@@ -16,7 +14,8 @@ export default function useDocumentTitle(title: string) {
     if (systemFeatures.branding.enabled) {
       titleStr = `${prefix}${systemFeatures.branding.application_title}`
       favicon = systemFeatures.branding.favicon
-    } else {
+    }
+    else {
       titleStr = `${prefix}Dify`
       favicon = `${basePath}/favicon.ico`
     }
@@ -27,9 +26,9 @@ export default function useDocumentTitle(title: string) {
     if (systemFeatures.branding.favicon) {
       document
         .querySelectorAll(
-          "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon'], link[rel='mask-icon']",
+          'link[rel=\'icon\'], link[rel=\'shortcut icon\'], link[rel=\'apple-touch-icon\'], link[rel=\'mask-icon\']',
         )
-        .forEach((n) => n.parentNode?.removeChild(n))
+        .forEach(n => n.parentNode?.removeChild(n))
 
       apple = document.createElement('link')
       apple.rel = 'apple-touch-icon'

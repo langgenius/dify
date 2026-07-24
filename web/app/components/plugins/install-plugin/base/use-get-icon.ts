@@ -1,16 +1,12 @@
-import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { API_PREFIX } from '@/config'
-import { currentWorkspaceIdAtom } from '@/context/workspace-state'
+import { useSelector } from '@/context/app-context'
 
 const useGetIcon = () => {
-  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const getIconUrl = useCallback(
-    (fileName: string) => {
-      return `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${currentWorkspaceId}&filename=${fileName}`
-    },
-    [currentWorkspaceId],
-  )
+  const currentWorkspace = useSelector(s => s.currentWorkspace)
+  const getIconUrl = useCallback((fileName: string) => {
+    return `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${currentWorkspace.id}&filename=${fileName}`
+  }, [currentWorkspace.id])
 
   return {
     getIconUrl,

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +14,12 @@ vi.mock('../../../common/document-file-icon', () => ({
 vi.mock('@/app/components/base/notion-icon', () => ({
   default: ({ src }: { src?: string }) => <span data-testid="notion-icon">{src}</span>,
 }))
+vi.mock('@/app/components/base/tooltip', () => ({
+  default: ({ children, popupContent }: { children?: ReactNode, popupContent?: ReactNode }) => (
+    <div data-testid="tooltip" data-content={popupContent}>{children}</div>
+  ),
+}))
+
 describe('IndexingProgressItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,18 +100,42 @@ describe('IndexingProgressItem', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Parse failed')).toBeInTheDocument()
+    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-content', 'Parse failed')
   })
 
   it('should show priority label when billing is enabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={true} />)
+    render(
+      <IndexingProgressItem
+        detail={makeDetail()}
+        name="test.pdf"
+        enableBilling={true}
+      />,
+    )
 
     expect(screen.getByTestId('priority-label')).toBeInTheDocument()
   })
 
   it('should not show priority label when billing is disabled', () => {
-    render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={false} />)
+    render(
+      <IndexingProgressItem
+        detail={makeDetail()}
+        name="test.pdf"
+        enableBilling={false}
+      />,
+    )
 
     expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
+  })
+
+  it('should apply error styling for error status', () => {
+    const { container } = render(
+      <IndexingProgressItem
+        detail={makeDetail({ indexing_status: 'error' })}
+        name="error.pdf"
+      />,
+    )
+
+    const wrapper = container.firstChild as HTMLElement
+    expect(wrapper.className).toContain('bg-state-destructive-hover-alt')
   })
 })

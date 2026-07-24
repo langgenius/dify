@@ -9,20 +9,19 @@ from decimal import Decimal
 from typing import cast
 
 from core.model_manager import ModelManager
-from core.tools.entities.tool_entities import ToolProviderType
-from extensions.ext_database import db
-from graphon.model_runtime.entities.llm_entities import LLMResult
-from graphon.model_runtime.entities.message_entities import PromptMessage
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.errors.invoke import (
+from dify_graph.model_runtime.entities.llm_entities import LLMResult
+from dify_graph.model_runtime.entities.message_entities import PromptMessage
+from dify_graph.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from dify_graph.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.model_runtime.utils.encoders import jsonable_encoder
+from dify_graph.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dify_graph.model_runtime.utils.encoders import jsonable_encoder
+from extensions.ext_database import db
 from models.tools import ToolModelInvoke
 
 
@@ -34,12 +33,11 @@ class ModelInvocationUtils:
     @staticmethod
     def get_max_llm_context_tokens(
         tenant_id: str,
-        user_id: str | None = None,
     ) -> int:
         """
         get max llm context tokens of the model
         """
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
+        model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -61,13 +59,13 @@ class ModelInvocationUtils:
         return max_tokens
 
     @staticmethod
-    def calculate_tokens(tenant_id: str, prompt_messages: list[PromptMessage], user_id: str | None = None) -> int:
+    def calculate_tokens(tenant_id: str, prompt_messages: list[PromptMessage]) -> int:
         """
         calculate tokens from prompt messages and model parameters
         """
 
         # get model instance
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id)
+        model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
 
         if not model_instance:
@@ -80,12 +78,7 @@ class ModelInvocationUtils:
 
     @staticmethod
     def invoke(
-        user_id: str,
-        tenant_id: str,
-        tool_type: ToolProviderType,
-        tool_name: str,
-        prompt_messages: list[PromptMessage],
-        caller_user_id: str | None = None,
+        user_id: str, tenant_id: str, tool_type: str, tool_name: str, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context
@@ -99,7 +92,7 @@ class ModelInvocationUtils:
         """
 
         # get model manager
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id, user_id=caller_user_id or user_id)
+        model_manager = ModelManager()
         # get model instance
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
@@ -143,6 +136,7 @@ class ModelInvocationUtils:
                 tools=[],
                 stop=[],
                 stream=False,
+                user=user_id,
                 callbacks=[],
             )
         except InvokeRateLimitError as e:

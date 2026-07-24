@@ -7,8 +7,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Decorative label that anchors to card corners. Useful for marking “beta”, “deprecated”, or similar callouts.',
+        component: 'Decorative label that anchors to card corners. Useful for marking “beta”, “deprecated”, or similar callouts.',
       },
       source: {
         language: 'tsx',
@@ -30,12 +29,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 export const OnCard: Story = {
-  render: (args) => (
+  render: args => (
     <div className="relative w-80 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <CornerLabel {...args} className="absolute -top-px -right-px" />
+      <CornerLabel {...args} className="absolute right-[-1px] top-[-1px]" />
       <div className="text-sm text-text-secondary">
-        Showcase how the label sits on a card header. Pair with contextual text or status
-        information.
+        Showcase how the label sits on a card header. Pair with contextual text or status information.
       </div>
     </div>
   ),
@@ -45,7 +43,7 @@ export const OnCard: Story = {
         language: 'tsx',
         code: `
 <div className="relative">
-  <CornerLabel label="beta" className="absolute -left-px -top-px" />
+  <CornerLabel label="beta" className="absolute left-[-1px] top-[-1px]" />
   ...card content...
 </div>
         `.trim(),

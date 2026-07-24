@@ -1,4 +1,4 @@
-import type { ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from '../index'
+import type { LexicalCommand } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -31,9 +31,7 @@ beforeAll(() => {
   Range.prototype.getClientRects = vi.fn(() => {
     const rectList = [mockDOMRect] as unknown as DOMRectList
     Object.defineProperty(rectList, 'length', { value: 1 })
-    Object.defineProperty(rectList, 'item', {
-      value: (index: number) => (index === 0 ? mockDOMRect : null),
-    })
+    Object.defineProperty(rectList, 'item', { value: (index: number) => index === 0 ? mockDOMRect : null })
     return rectList
   })
 
@@ -52,10 +50,7 @@ const CONTENT_EDITABLE_ID = 'ce'
 type MinimalEditorProps = {
   withContainer?: boolean
   hotkey?: string | string[] | string[][] | ((e: KeyboardEvent) => boolean)
-  displayMode?: ShortcutPopupDisplayMode
-  children?:
-    | React.ReactNode
-    | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
+  children?: React.ReactNode | ((close: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void) => React.ReactNode)
   className?: string
   onOpen?: () => void
   onClose?: () => void
@@ -64,7 +59,6 @@ type MinimalEditorProps = {
 const MinimalEditor: React.FC<MinimalEditorProps> = ({
   withContainer = true,
   hotkey,
-  displayMode,
   children,
   className,
   onOpen,
@@ -80,11 +74,7 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div
-        data-testid={CONTAINER_ID}
-        className="relative"
-        ref={withContainer ? setContainerEl : undefined}
-      >
+      <div data-testid={CONTAINER_ID} className="relative" ref={withContainer ? setContainerEl : undefined}>
         <RichTextPlugin
           contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_ID} />}
           placeholder={null}
@@ -93,7 +83,6 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
         <ShortcutsPopupPlugin
           container={withContainer ? containerEl : undefined}
           hotkey={hotkey}
-          displayMode={displayMode}
           className={className}
           onOpen={onOpen}
           onClose={onClose}
@@ -106,25 +95,13 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
 }
 
 /** Helper: focus the content editable and trigger a hotkey. */
-function focusAndTriggerHotkey(
-  key: string,
-  modifiers: Partial<Record<'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey', boolean>> = {
-    ctrlKey: true,
-  },
-) {
+function focusAndTriggerHotkey(key: string, modifiers: Partial<Record<'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey', boolean>> = { ctrlKey: true }) {
   const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
   ce.focus()
   fireEvent.keyDown(document, { key, ...modifiers })
 }
 
 describe('ShortcutsPopupPlugin', () => {
-  it('does not render popup when never opened', async () => {
-    render(<MinimalEditor />)
-    await waitFor(() => {
-      expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
-    })
-  })
-
   // ─── Basic open / close ───
   it('opens on hotkey when editor is focused', async () => {
     render(<MinimalEditor />)
@@ -165,109 +142,20 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
-  it('does not close on mousedown inside a Base UI portal overlay', async () => {
-    render(<MinimalEditor />)
-    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
-    ce.focus()
-
-    fireEvent.keyDown(document, { key: '/', ctrlKey: true })
-    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-
-    const portal = document.createElement('div')
-    portal.setAttribute('data-base-ui-portal', '')
-    const portalChild = document.createElement('button')
-    portalChild.textContent = 'portal-child'
-    portal.appendChild(portalChild)
-    document.body.appendChild(portal)
-
-    fireEvent.mouseDown(portalChild)
-
-    await waitFor(() => {
-      expect(screen.getByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-    })
-
-    portal.remove()
-  })
-
   // ─── Container / portal ───
   it('portals into provided container when container is set', async () => {
     render(<MinimalEditor withContainer />)
     const host = screen.getByTestId(CONTAINER_ID)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(host).toContainElement(portalContent)
-    expect(floatingDiv).toHaveStyle({ position: 'absolute' })
   })
 
   it('falls back to document.body when container is not provided', async () => {
     render(<MinimalEditor withContainer={false} />)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
-    expect(floatingDiv).toHaveStyle({ position: 'fixed' })
-    expect(floatingDiv).toHaveStyle({ zIndex: '50' })
-    expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
-  })
-
-  it('clips the popup viewport so child popups own their internal scrolling', async () => {
-    render(<MinimalEditor />)
-    focusAndTriggerHotkey('/')
-    await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
-    expect(floatingDiv.firstElementChild).toHaveClass('overflow-hidden')
-  })
-
-  it('can render fixed next to the workflow panel instead of following the cursor', async () => {
-    const originalInnerWidth = window.innerWidth
-    const originalInnerHeight = window.innerHeight
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1200 })
-    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
-
-    const rightPanel = document.createElement('div')
-    rightPanel.setAttribute('data-workflow-right-panel', '')
-    rightPanel.getBoundingClientRect = vi.fn(
-      () =>
-        ({
-          x: 800,
-          y: 56,
-          width: 400,
-          height: 840,
-          top: 56,
-          right: 1200,
-          bottom: 896,
-          left: 800,
-          toJSON: () => ({}),
-        }) as DOMRect,
-    )
-    document.body.appendChild(rightPanel)
-
-    try {
-      render(<MinimalEditor withContainer={false} displayMode="workflow-panel-adjacent-center" />)
-      focusAndTriggerHotkey('/')
-      await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-
-      const floatingDiv = screen.getByTestId('shortcuts-popup')
-      await waitFor(() => {
-        expect(floatingDiv).toHaveStyle({
-          position: 'fixed',
-          right: '404px',
-          top: '474px',
-          transform: 'translateY(-50%)',
-        })
-      })
-      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-width')).toBe('400px')
-      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-height')).toBe('836px')
-    } finally {
-      rightPanel.remove()
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
-      Object.defineProperty(window, 'innerHeight', {
-        configurable: true,
-        value: originalInnerHeight,
-      })
-    }
   })
 
   // ─── matchHotkey: string hotkey ───
@@ -292,40 +180,19 @@ describe('ShortcutsPopupPlugin', () => {
 
   // ─── matchHotkey: string[][] (nested) hotkey ───
   it('matches when hotkey is a nested array (any combo matches)', async () => {
-    render(
-      <MinimalEditor
-        hotkey={[
-          ['ctrl', 'k'],
-          ['meta', 'j'],
-        ]}
-      />,
-    )
+    render(<MinimalEditor hotkey={[['ctrl', 'k'], ['meta', 'j']]} />)
     focusAndTriggerHotkey('k', { ctrlKey: true })
     expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
   })
 
   it('matches the second combo in a nested array', async () => {
-    render(
-      <MinimalEditor
-        hotkey={[
-          ['ctrl', 'k'],
-          ['meta', 'j'],
-        ]}
-      />,
-    )
+    render(<MinimalEditor hotkey={[['ctrl', 'k'], ['meta', 'j']]} />)
     focusAndTriggerHotkey('j', { metaKey: true })
     expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
   })
 
   it('does not match nested array when no combo matches', async () => {
-    render(
-      <MinimalEditor
-        hotkey={[
-          ['ctrl', 'k'],
-          ['meta', 'j'],
-        ]}
-      />,
-    )
+    render(<MinimalEditor hotkey={[['ctrl', 'k'], ['meta', 'j']]} />)
     focusAndTriggerHotkey('x', { ctrlKey: true })
     await waitFor(() => {
       expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
@@ -442,22 +309,18 @@ describe('ShortcutsPopupPlugin', () => {
 
   it('renders children as render function and provides close/onInsert', async () => {
     const TEST_COMMAND = createCommand<unknown>('TEST_COMMAND')
-    const childrenFn = vi.fn((close: () => void, onInsert: ShortcutPopupInsertHandler) => (
+    const childrenFn = vi.fn((close: () => void, onInsert: (cmd: LexicalCommand<unknown>, params: unknown[]) => void) => (
       <div>
-        <button type="button" data-testid="close-btn" onClick={close}>
-          Close
-        </button>
-        <button
-          type="button"
-          data-testid="insert-btn"
-          onClick={() => onInsert(TEST_COMMAND, ['param1'])}
-        >
-          Insert
-        </button>
+        <button type="button" data-testid="close-btn" onClick={close}>Close</button>
+        <button type="button" data-testid="insert-btn" onClick={() => onInsert(TEST_COMMAND, ['param1'])}>Insert</button>
       </div>
     ))
 
-    render(<MinimalEditor>{childrenFn}</MinimalEditor>)
+    render(
+      <MinimalEditor>
+        {childrenFn}
+      </MinimalEditor>,
+    )
     focusAndTriggerHotkey('/')
 
     // Children render function should have been called
@@ -476,15 +339,9 @@ describe('ShortcutsPopupPlugin', () => {
     const TEST_COMMAND = createCommand<unknown>('TEST_INSERT_COMMAND')
     render(
       <MinimalEditor>
-        {(close: () => void, onInsert: ShortcutPopupInsertHandler) => (
+        {(close: () => void, onInsert: (cmd: LexicalCommand<unknown>, params: unknown[]) => void) => (
           <div>
-            <button
-              type="button"
-              data-testid="insert-btn"
-              onClick={() => onInsert(TEST_COMMAND, ['value'])}
-            >
-              Insert
-            </button>
+            <button type="button" data-testid="insert-btn" onClick={() => onInsert(TEST_COMMAND, ['value'])}>Insert</button>
           </div>
         )}
       </MinimalEditor>,
@@ -504,9 +361,7 @@ describe('ShortcutsPopupPlugin', () => {
     render(
       <MinimalEditor>
         {(close: () => void) => (
-          <button type="button" data-testid="close-via-fn" onClick={close}>
-            Close
-          </button>
+          <button type="button" data-testid="close-via-fn" onClick={close}>Close</button>
         )}
       </MinimalEditor>,
     )
@@ -542,6 +397,13 @@ describe('ShortcutsPopupPlugin', () => {
   })
 
   // ─── className prop ───
+  it('applies custom className to floating popup', async () => {
+    render(<MinimalEditor className="custom-popup-class" />)
+    focusAndTriggerHotkey('/')
+    const content = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+    const floatingDiv = content.closest('div')
+    expect(floatingDiv).toHaveClass('custom-popup-class')
+  })
 
   // ─── mousedown inside portal should not close ───
   it('does not close on mousedown inside the portal', async () => {
@@ -570,11 +432,7 @@ describe('ShortcutsPopupPlugin', () => {
     const stopPropagationSpy = vi.fn()
 
     // Use a custom event to capture preventDefault/stopPropagation calls
-    const escEvent = new KeyboardEvent('keydown', {
-      key: 'Escape',
-      bubbles: true,
-      cancelable: true,
-    })
+    const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
     Object.defineProperty(escEvent, 'preventDefault', { value: preventDefaultSpy })
     Object.defineProperty(escEvent, 'stopPropagation', { value: stopPropagationSpy })
     document.dispatchEvent(escEvent)
@@ -589,17 +447,7 @@ describe('ShortcutsPopupPlugin', () => {
   // ─── Zero-rect fallback in openPortal ───
   it('handles zero-size range rects by falling back to node bounding rect', async () => {
     // Temporarily override getClientRects to return zero-size rect
-    const zeroRect = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0,
-      toJSON: () => ({}),
-    }
+    const zeroRect = { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0, toJSON: () => ({}) }
     const originalGetClientRects = Range.prototype.getClientRects
     const originalGetBoundingClientRect = Range.prototype.getBoundingClientRect
 
@@ -659,59 +507,5 @@ describe('ShortcutsPopupPlugin', () => {
     await waitFor(() => {
       expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
     })
-  })
-
-  // ─── Line 195: lastSelectionRef fallback when no domSelection range ───
-  it('opens via lastSelectionRef fallback when getSelection returns no ranges', async () => {
-    // First, focus and type so lastSelectionRef is populated
-    render(<MinimalEditor />)
-    focusAndTriggerHotkey('/')
-    // First open works normally
-    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-    // Close it
-    fireEvent.keyDown(document, { key: 'Escape' })
-    await waitFor(() => {
-      expect(screen.queryByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
-    })
-
-    // Now stub getSelection to return no ranges so lastSelectionRef is used
-    const originalGetSelection = window.getSelection
-    window.getSelection = vi.fn(() => ({ rangeCount: 0 }) as Selection)
-
-    focusAndTriggerHotkey('/')
-    expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
-
-    window.getSelection = originalGetSelection
-  })
-
-  // ─── Line 101: expectedKey is null (modifier-only hotkey like "ctrl") ───
-  it('opens when hotkey is a modifier-only string (no key part)', async () => {
-    render(<MinimalEditor hotkey="ctrl" />)
-    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
-    ce.focus()
-    // Fire ctrl alone — matchCombo with no expectedKey should return true
-    fireEvent.keyDown(document, { key: 'Control', ctrlKey: true })
-    // Either opens or not, what matters is the branch executes without error
-    await waitFor(() => {
-      // Component either shows popup or not (implementation may open)
-      expect(document.body).toBeInTheDocument()
-    })
-  })
-
-  // ─── Line 199: null range when both domSelection and lastSelectionRef are null ───
-  it('does not crash when openPortal is called with null range', async () => {
-    render(<MinimalEditor />)
-    // Stub getSelection so it returns null — no range available
-    const originalGetSelection = window.getSelection
-    window.getSelection = vi.fn(() => null)
-
-    const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
-    ce.focus()
-    fireEvent.keyDown(document, { key: '/', ctrlKey: true })
-
-    // No crash expected, popup may still open but without position reference
-    expect(document.body).toBeInTheDocument()
-
-    window.getSelection = originalGetSelection
   })
 })

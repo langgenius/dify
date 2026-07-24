@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
+import { cn } from '@/utils/classnames'
 
 type RetrievalSettingsProps = {
   topK: number
@@ -11,12 +11,7 @@ type RetrievalSettingsProps = {
   scoreThresholdEnabled: boolean
   isInHitTesting?: boolean
   isInRetrievalSetting?: boolean
-  readonly?: boolean
-  onChange: (data: {
-    top_k?: number
-    score_threshold?: number
-    score_threshold_enabled?: boolean
-  }) => void
+  onChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
 }
 
 const RetrievalSettings: FC<RetrievalSettingsProps> = ({
@@ -26,7 +21,6 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   onChange,
   isInHitTesting = false,
   isInRetrievalSetting = false,
-  readonly = false,
 }) => {
   const { t } = useTranslation()
 
@@ -35,25 +29,20 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   }
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-2 self-stretch',
-        isInRetrievalSetting && 'w-full max-w-[480px]',
-      )}
-    >
+    <div className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-[480px]')}>
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">
-          <label className="system-sm-semibold text-text-secondary">
-            {t(($) => $.retrievalSettings, { ns: 'dataset' })}
-          </label>
+          <label className="system-sm-semibold text-text-secondary">{t('retrievalSettings', { ns: 'dataset' })}</label>
         </div>
       )}
-      <div
-        className={cn('flex gap-4 self-stretch', {
+      <div className={cn(
+        'flex gap-4 self-stretch',
+        {
           'flex-col': isInHitTesting,
           'flex-row': isInRetrievalSetting,
           'flex-col sm:flex-row': !isInHitTesting && !isInRetrievalSetting,
-        })}
+        },
+      )}
       >
         <div className="flex grow flex-col gap-1">
           <TopKItem
@@ -61,7 +50,6 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             value={topK}
             onChange={(_key, v) => onChange({ top_k: v })}
             enable={true}
-            disabled={readonly}
           />
         </div>
         <div className="flex grow flex-col gap-1">
@@ -72,7 +60,6 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             enable={scoreThresholdEnabled}
             hasSwitch={true}
             onSwitchChange={(_key, v) => handleScoreThresholdChange(v)}
-            disabled={readonly}
           />
         </div>
       </div>

@@ -1,8 +1,8 @@
 import type { FileUploaderInAttachmentWrapperProps } from '../../../file-uploader/file-uploader-in-attachment'
 import type { FileEntity } from '../../../file-uploader/types'
 import type { LabelProps } from '../label'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import FileUploaderInAttachmentWrapper from '../../../file-uploader/file-uploader-in-attachment'
 import Label from '../label'
@@ -23,10 +23,14 @@ const FileUploaderField = ({
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
+      <Label
+        htmlFor={field.name}
+        label={label}
+        {...(labelOptions ?? {})}
+      />
       <FileUploaderInAttachmentWrapper
         value={field.state.value}
-        onChange={(value) => field.handleChange(value)}
+        onChange={value => field.handleChange(value)}
         {...inputProps}
       />
     </div>

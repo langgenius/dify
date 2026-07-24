@@ -11,16 +11,14 @@ type LanguageDeps = {
 
 const buildLanguageCommands = (query: string): CommandSearchResult[] => {
   const q = query.toLowerCase()
-  const list = languages.filter(
-    (item) =>
-      item.supported &&
-      (!q || item.name.toLowerCase().includes(q) || String(item.value).toLowerCase().includes(q)),
-  )
+  const list = languages.filter(item => item.supported && (
+    !q || item.name.toLowerCase().includes(q) || String(item.value).toLowerCase().includes(q)
+  ))
   const i18n = getI18n()
-  return list.map((item) => ({
+  return list.map(item => ({
     id: `lang-${item.value}`,
     title: item.name,
-    description: i18n.t(($) => $['gotoAnything.actions.languageChangeDesc'], { ns: 'app' }),
+    description: i18n.t('gotoAnything.actions.languageChangeDesc', { ns: 'app' }),
     type: 'command' as const,
     data: { command: 'i18n.set', args: { locale: item.value } },
   }))
@@ -36,7 +34,7 @@ export const languageCommand: SlashCommandHandler<LanguageDeps> = {
   description: 'Switch between different languages',
   mode: 'submenu', // Explicitly set submenu mode
 
-  search(args: string, _locale: string = 'en') {
+  async search(args: string, _locale: string = 'en') {
     // Return language options directly, regardless of parameters
     return buildLanguageCommands(args)
   },
@@ -45,7 +43,8 @@ export const languageCommand: SlashCommandHandler<LanguageDeps> = {
     registerCommands({
       'i18n.set': async (args) => {
         const locale = args?.locale
-        if (locale) await deps.setLocale?.(locale)
+        if (locale)
+          await deps.setLocale?.(locale)
       },
     })
   },

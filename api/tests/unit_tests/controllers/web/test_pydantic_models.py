@@ -198,7 +198,7 @@ class TestMessageListQuery:
         assert q.limit == 20
 
     def test_invalid_conversation_id(self) -> None:
-        with pytest.raises(ValidationError, match="must be a valid UUID"):
+        with pytest.raises(ValidationError, match="not a valid uuid"):
             MessageListQuery(conversation_id="bad")
 
     def test_limit_bounds(self) -> None:
@@ -216,7 +216,7 @@ class TestMessageListQuery:
 
     def test_invalid_first_id(self) -> None:
         cid = str(uuid4())
-        with pytest.raises(ValidationError, match="must be a valid UUID"):
+        with pytest.raises(ValidationError, match="not a valid uuid"):
             MessageListQuery(conversation_id=cid, first_id="invalid")
 
 

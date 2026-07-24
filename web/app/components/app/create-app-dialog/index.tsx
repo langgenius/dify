@@ -1,6 +1,7 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { CreateAppDialogShell } from '../create-app-dialog-shell'
+import { useKeyPress } from 'ahooks'
+import { useCallback } from 'react'
+import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import AppList from './app-list'
 
 type CreateAppDialogProps = {
@@ -10,18 +11,18 @@ type CreateAppDialogProps = {
   onCreateFromBlank?: () => void
 }
 
-const CreateAppTemplateDialog = ({
-  show,
-  onSuccess,
-  onClose,
-  onCreateFromBlank,
-}: CreateAppDialogProps) => {
-  const { t } = useTranslation()
+const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
+  const handleEscKeyPress = useCallback(() => {
+    if (show)
+      onClose()
+  }, [show, onClose])
+
+  useKeyPress('esc', handleEscKeyPress)
 
   return (
-    <CreateAppDialogShell
-      show={show}
-      title={t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
+    <FullScreenModal
+      open={show}
+      closable
       onClose={onClose}
     >
       <AppList
@@ -31,7 +32,7 @@ const CreateAppTemplateDialog = ({
           onClose()
         }}
       />
-    </CreateAppDialogShell>
+    </FullScreenModal>
   )
 }
 

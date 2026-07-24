@@ -3,8 +3,7 @@ from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
-
-pytest_plugins = ("tests.integration_tests.tools.__mock.http",)
+from tests.integration_tests.tools.__mock.http import setup_http_mock
 
 tool_bundle = {
     "server_url": "http://www.example.com/{path_param}",

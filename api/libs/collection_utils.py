@@ -1,12 +1,9 @@
-from collections.abc import Collection
-
-
-def convert_to_lower_and_upper_set(inputs: Collection[str]) -> set[str]:
+def convert_to_lower_and_upper_set(inputs: list[str] | set[str]) -> set[str]:
     """
-    Convert a collection of strings to a set containing both lower and upper case versions of each string.
+    Convert a list or set of strings to a set containing both lower and upper case versions of each string.
 
     Args:
-        inputs (Collection[str]): A collection of strings to be converted.
+        inputs (list[str] | set[str]): A list or set of strings to be converted.
 
     Returns:
         set[str]: A set containing both lower and upper case versions of each string.

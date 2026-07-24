@@ -23,15 +23,9 @@ vi.mock('../../../../../hooks/use-pipeline', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: (...args: unknown[]) => mockToastNotify(...args),
-  },
-  toast: {
-    success: (message: string) => mockToastNotify({ type: 'success', message }),
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 
@@ -75,9 +69,7 @@ describe('useFieldList', () => {
   describe('initialization', () => {
     it('should return inputFields from initialInputFields', () => {
       const fields = [createInputVar({ variable: 'var1' })]
-      const { result } = renderHook(() =>
-        useFieldList(createDefaultProps({ initialInputFields: fields })),
-      )
+      const { result } = renderHook(() => useFieldList(createDefaultProps({ initialInputFields: fields })))
 
       expect(result.current.inputFields).toEqual(fields)
     })
@@ -111,12 +103,10 @@ describe('useFieldList', () => {
       const var2 = createInputVar({ variable: 'var2', label: 'V2' })
       const onInputFieldsChange = vi.fn()
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1, var2],
-            onInputFieldsChange,
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1, var2],
+          onInputFieldsChange,
+        })),
       )
 
       act(() => {
@@ -133,19 +123,19 @@ describe('useFieldList', () => {
       const var1 = createInputVar({ variable: 'var1' })
       const onInputFieldsChange = vi.fn()
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1],
-            onInputFieldsChange,
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1],
+          onInputFieldsChange,
+        })),
       )
 
       act(() => {
-        result.current.handleListSortChange([{ ...var1, id: '0', chosen: true, selected: true }])
+        result.current.handleListSortChange([
+          { ...var1, id: '0', chosen: true, selected: true },
+        ])
       })
 
-      const updatedFields = onInputFieldsChange.mock.calls[0]![0]
+      const updatedFields = onInputFieldsChange.mock.calls[0][0]
       expect(updatedFields[0]).not.toHaveProperty('id')
       expect(updatedFields[0]).not.toHaveProperty('chosen')
       expect(updatedFields[0]).not.toHaveProperty('selected')
@@ -160,12 +150,10 @@ describe('useFieldList', () => {
       mockIsVarUsedInNodes.mockReturnValue(false)
 
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1, var2],
-            onInputFieldsChange,
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1, var2],
+          onInputFieldsChange,
+        })),
       )
 
       act(() => {
@@ -181,12 +169,10 @@ describe('useFieldList', () => {
       mockIsVarUsedInNodes.mockReturnValue(true)
 
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1],
-            onInputFieldsChange,
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1],
+          onInputFieldsChange,
+        })),
       )
 
       act(() => {
@@ -205,13 +191,11 @@ describe('useFieldList', () => {
       mockIsVarUsedInNodes.mockReturnValue(true)
 
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1],
-            onInputFieldsChange,
-            nodeId: 'node-1',
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1],
+          onInputFieldsChange,
+          nodeId: 'node-1',
+        })),
       )
 
       act(() => {
@@ -249,7 +233,9 @@ describe('useFieldList', () => {
     })
 
     it('should open editor for new field when id does not match', () => {
-      const { result } = renderHook(() => useFieldList(createDefaultProps()))
+      const { result } = renderHook(() =>
+        useFieldList(createDefaultProps()),
+      )
 
       act(() => {
         result.current.handleOpenInputFieldEditor('non-existent')
@@ -263,7 +249,9 @@ describe('useFieldList', () => {
     })
 
     it('should open editor for new field when no id provided', () => {
-      const { result } = renderHook(() => useFieldList(createDefaultProps()))
+      const { result } = renderHook(() =>
+        useFieldList(createDefaultProps()),
+      )
 
       act(() => {
         result.current.handleOpenInputFieldEditor()
@@ -280,13 +268,15 @@ describe('useFieldList', () => {
   describe('field submission (via editor)', () => {
     it('should add new field when editingFieldIndex is -1', () => {
       const onInputFieldsChange = vi.fn()
-      const { result } = renderHook(() => useFieldList(createDefaultProps({ onInputFieldsChange })))
+      const { result } = renderHook(() =>
+        useFieldList(createDefaultProps({ onInputFieldsChange })),
+      )
 
       act(() => {
         result.current.handleOpenInputFieldEditor()
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
       const newField = createInputVar({ variable: 'new_var', label: 'New' })
 
       act(() => {
@@ -300,27 +290,27 @@ describe('useFieldList', () => {
       const var1 = createInputVar({ variable: 'existing_var' })
       const onInputFieldsChange = vi.fn()
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1],
-            onInputFieldsChange,
-            allVariableNames: ['existing_var'],
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1],
+          onInputFieldsChange,
+          allVariableNames: ['existing_var'],
+        })),
       )
 
       act(() => {
         result.current.handleOpenInputFieldEditor()
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
       const duplicateField = createInputVar({ variable: 'existing_var' })
 
       act(() => {
         editorProps.onSubmit(duplicateField)
       })
 
-      expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
       expect(onInputFieldsChange).not.toHaveBeenCalled()
     })
 
@@ -328,21 +318,19 @@ describe('useFieldList', () => {
       const var1 = createInputVar({ variable: 'old_name' })
       const onInputFieldsChange = vi.fn()
       const { result } = renderHook(() =>
-        useFieldList(
-          createDefaultProps({
-            initialInputFields: [var1],
-            onInputFieldsChange,
-            nodeId: 'node-1',
-            allVariableNames: ['old_name'],
-          }),
-        ),
+        useFieldList(createDefaultProps({
+          initialInputFields: [var1],
+          onInputFieldsChange,
+          nodeId: 'node-1',
+          allVariableNames: ['old_name'],
+        })),
       )
 
       act(() => {
         result.current.handleOpenInputFieldEditor('old_name')
       })
 
-      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0]![0]
+      const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
       const updatedField = createInputVar({ variable: 'new_name' })
 
       act(() => {

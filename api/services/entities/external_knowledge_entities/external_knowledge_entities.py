@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel
 
@@ -22,5 +22,5 @@ class ProcessStatusSetting(BaseModel):
 class ExternalKnowledgeApiSetting(BaseModel):
     url: str
     request_method: str
-    headers: dict[str, Any] | None = None
-    params: dict[str, Any] | None = None
+    headers: dict | None = None
+    params: dict | None = None

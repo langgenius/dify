@@ -40,9 +40,7 @@ describe('UploadMethodField', () => {
     render(<UploadMethodField label="Upload methods" />)
 
     expect(screen.getByText('Upload methods')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'appDebug.variableConfig.localUpload' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'appDebug.variableConfig.localUpload' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'URL' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'appDebug.variableConfig.both' })).toBeInTheDocument()
   })

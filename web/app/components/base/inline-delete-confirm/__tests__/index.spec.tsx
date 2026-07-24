@@ -4,14 +4,12 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import InlineDeleteConfirm from '../index'
 
 // Mock react-i18next with custom translations for test assertions
-vi.mock('react-i18next', () =>
-  createReactI18nextMock({
-    'operation.deleteConfirmTitle': 'Delete?',
-    'operation.yes': 'Yes',
-    'operation.no': 'No',
-    'operation.confirmAction': 'Please confirm your action.',
-  }),
-)
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.deleteConfirmTitle': 'Delete?',
+  'operation.yes': 'Yes',
+  'operation.no': 'No',
+  'operation.confirmAction': 'Please confirm your action.',
+}))
 
 afterEach(cleanup)
 
@@ -83,6 +81,66 @@ describe('InlineDeleteConfirm', () => {
       fireEvent.click(getByText('Yes'))
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onCancel).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Variant prop', () => {
+    it('should render with delete variant by default', () => {
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
+      const { getByText } = render(
+        <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
+      )
+
+      const confirmButton = getByText('Yes').closest('button')
+      expect(confirmButton?.className).toContain('btn-destructive')
+    })
+
+    it('should render without destructive class for warning variant', () => {
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
+      const { getByText } = render(
+        <InlineDeleteConfirm
+          variant="warning"
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />,
+      )
+
+      const confirmButton = getByText('Yes').closest('button')
+      expect(confirmButton?.className).not.toContain('btn-destructive')
+    })
+
+    it('should render without destructive class for info variant', () => {
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
+      const { getByText } = render(
+        <InlineDeleteConfirm
+          variant="info"
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />,
+      )
+
+      const confirmButton = getByText('Yes').closest('button')
+      expect(confirmButton?.className).not.toContain('btn-destructive')
+    })
+  })
+
+  describe('Custom className', () => {
+    it('should apply custom className to wrapper', () => {
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
+      const { container } = render(
+        <InlineDeleteConfirm
+          className="custom-class"
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />,
+      )
+
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper.className).toContain('custom-class')
     })
   })
 })

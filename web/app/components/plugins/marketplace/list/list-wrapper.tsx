@@ -7,9 +7,10 @@ import List from './index'
 
 type ListWrapperProps = {
   showInstallButton?: boolean
-  linkToMarketplaceDetail?: boolean
 }
-const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapperProps) => {
+const ListWrapper = ({
+  showInstallButton,
+}: ListWrapperProps) => {
   const { t } = useTranslation()
 
   const {
@@ -24,38 +25,40 @@ const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapper
 
   return (
     <div
-      style={{
-        scrollbarGutter: 'stable',
-        paddingBottom: 'calc(0.5rem + var(--marketplace-header-collapse-offset, 0px))',
-      }}
-      className="relative flex grow flex-col bg-background-default-subtle px-8 py-2"
+      style={{ scrollbarGutter: 'stable' }}
+      className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
     >
-      <div className="flex w-full grow flex-col">
-        {plugins && (
+      {
+        plugins && (
           <div className="mb-4 flex items-center pt-3">
-            <div className="title-xl-semi-bold text-text-primary">
-              {t(($) => $['marketplace.pluginsResult'], { ns: 'plugin', num: pluginsTotal })}
-            </div>
-            <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
+            <div className="title-xl-semi-bold text-text-primary">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
+            <div className="mx-3 h-3.5 w-[1px] bg-divider-regular"></div>
             <SortDropdown />
           </div>
-        )}
-        {(!isLoading || page > 1) && (
+        )
+      }
+      {
+        isLoading && page === 1 && (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Loading />
+          </div>
+        )
+      }
+      {
+        (!isLoading || page > 1) && (
           <List
             marketplaceCollections={marketplaceCollections || []}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton={showInstallButton}
-            linkToMarketplaceDetail={linkToMarketplaceDetail}
           />
-        )}
-      </div>
-      {isLoading && page === 1 && (
-        <div className="absolute top-1/2 left-1/2 -translate-1/2">
-          <Loading />
-        </div>
-      )}
-      {isFetchingNextPage && <Loading className="my-3" />}
+        )
+      }
+      {
+        isFetchingNextPage && (
+          <Loading className="my-3" />
+        )
+      }
     </div>
   )
 }

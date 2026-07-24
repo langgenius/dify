@@ -1,12 +1,11 @@
 import type { TryAppInfo } from '@/service/try-app'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import TryApp from '../index'
-import { TypeEnum } from '../types'
+import { TypeEnum } from '../tab'
 
 vi.mock('@/config', async (importOriginal) => {
-  const actual = (await importOriginal()) as object
+  const actual = await importOriginal() as object
   return {
     ...actual,
     IS_CLOUD_EDITION: true,
@@ -20,7 +19,7 @@ vi.mock('@/service/use-try-app', () => ({
 }))
 
 vi.mock('../app', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => (
+  default: ({ appId, appDetail }: { appId: string, appDetail: TryAppInfo }) => (
     <div data-testid="app-component" data-app-id={appId} data-mode={appDetail?.mode}>
       App Component
     </div>
@@ -28,7 +27,7 @@ vi.mock('../app', () => ({
 }))
 
 vi.mock('../preview', () => ({
-  default: ({ appId, appDetail }: { appId: string; appDetail: TryAppInfo }) => (
+  default: ({ appId, appDetail }: { appId: string, appDetail: TryAppInfo }) => (
     <div data-testid="preview-component" data-app-id={appId} data-mode={appDetail?.mode}>
       Preview Component
     </div>
@@ -39,60 +38,53 @@ vi.mock('../app-info', () => ({
   default: ({
     appId,
     appDetail,
-    categories,
+    category,
     className,
     onCreate,
-  }: {
-    appId: string
-    appDetail: TryAppInfo
-    categories?: string[]
-    className?: string
-    onCreate: () => void
-  }) => (
+  }: { appId: string, appDetail: TryAppInfo, category?: string, className?: string, onCreate: () => void }) => (
     <div
       data-testid="app-info-component"
       data-app-id={appId}
-      data-categories={categories?.join(',')}
+      data-category={category}
       className={className}
     >
-      <button data-testid="create-button" onClick={onCreate}>
-        Create
-      </button>
-      App Info: {appDetail?.name}
+      <button data-testid="create-button" onClick={onCreate}>Create</button>
+      App Info:
+      {' '}
+      {appDetail?.name}
     </div>
   ),
 }))
 
-const createMockAppDetail = (mode: string = 'chat'): TryAppInfo =>
-  ({
-    id: 'test-app-id',
-    name: 'Test App Name',
-    description: 'Test Description',
-    mode,
-    site: {
-      title: 'Test Site Title',
-      icon: '🚀',
-      icon_type: 'emoji',
-      icon_background: '#FFFFFF',
-      icon_url: '',
+const createMockAppDetail = (mode: string = 'chat'): TryAppInfo => ({
+  id: 'test-app-id',
+  name: 'Test App Name',
+  description: 'Test Description',
+  mode,
+  site: {
+    title: 'Test Site Title',
+    icon: '🚀',
+    icon_type: 'emoji',
+    icon_background: '#FFFFFF',
+    icon_url: '',
+  },
+  model_config: {
+    model: {
+      provider: 'langgenius/openai/openai',
+      name: 'gpt-4',
+      mode: 'chat',
     },
-    model_config: {
-      model: {
-        provider: 'langgenius/openai/openai',
-        name: 'gpt-4',
-        mode: 'chat',
+    dataset_configs: {
+      datasets: {
+        datasets: [],
       },
-      dataset_configs: {
-        datasets: {
-          datasets: [],
-        },
-      },
-      agent_mode: {
-        tools: [],
-      },
-      user_input_form: [],
     },
-  }) as unknown as TryAppInfo
+    agent_mode: {
+      tools: [],
+    },
+    user_input_form: [],
+  },
+} as unknown as TryAppInfo)
 
 describe('TryApp (main index.tsx)', () => {
   beforeEach(() => {
@@ -117,39 +109,27 @@ describe('TryApp (main index.tsx)', () => {
         isLoading: true,
       })
 
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       expect(document.body.querySelector('[role="status"]')).toBeInTheDocument()
-    })
-
-    it('renders unavailable state when the app detail request fails', () => {
-      mockUseGetTryAppInfo.mockReturnValue({
-        data: null,
-        isError: true,
-        error: new Error('App is unavailable'),
-      })
-
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
-
-      expect(screen.getByText('App is unavailable')).toBeInTheDocument()
-    })
-
-    it('renders unknown unavailable state when app detail is empty', () => {
-      mockUseGetTryAppInfo.mockReturnValue({
-        data: null,
-        isLoading: false,
-        isError: false,
-      })
-
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
-
-      expect(screen.getByText('share.common.appUnknownError')).toBeInTheDocument()
     })
   })
 
   describe('content rendering', () => {
     it('renders Tab component', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText('explore.tryApp.tabHeader.try')).toBeInTheDocument()
@@ -158,38 +138,59 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('renders App component by default (TRY mode)', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         expect(document.body.querySelector('[data-testid="app-component"]')).toBeInTheDocument()
-        expect(
-          document.body.querySelector('[data-testid="preview-component"]'),
-        ).not.toBeInTheDocument()
+        expect(document.body.querySelector('[data-testid="preview-component"]')).not.toBeInTheDocument()
       })
     })
 
     it('renders AppInfo component', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
-        expect(
-          document.body.querySelector('[data-testid="app-info-component"]'),
-        ).toBeInTheDocument()
+        expect(document.body.querySelector('[data-testid="app-info-component"]')).toBeInTheDocument()
       })
     })
 
     it('renders close button', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
+        const buttons = document.body.querySelectorAll('button')
+        expect(buttons.length).toBeGreaterThan(0)
       })
     })
   })
 
   describe('tab switching', () => {
     it('switches to Preview when Detail tab is clicked', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
@@ -204,7 +205,13 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('switches back to App when Try tab is clicked', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
@@ -228,29 +235,26 @@ describe('TryApp (main index.tsx)', () => {
     it('calls onClose when close button is clicked', async () => {
       const mockOnClose = vi.fn()
 
-      render(<TryApp appId="test-app-id" onClose={mockOnClose} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={mockOnClose}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
-      })
+        const buttons = document.body.querySelectorAll('button')
+        const closeButton = Array.from(buttons).find(btn =>
+          btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
+        )
+        expect(closeButton).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+        if (closeButton)
+          fireEvent.click(closeButton)
+      })
 
       expect(mockOnClose).toHaveBeenCalled()
-    })
-
-    it('calls onClose when the dialog requests close', async () => {
-      const mockOnClose = vi.fn()
-
-      render(<TryApp appId="test-app-id" onClose={mockOnClose} onCreate={vi.fn()} />)
-
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
-      })
-
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -258,25 +262,32 @@ describe('TryApp (main index.tsx)', () => {
     it('calls onCreate when create button in AppInfo is clicked', async () => {
       const mockOnCreate = vi.fn()
 
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={mockOnCreate} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={mockOnCreate}
+        />,
+      )
 
       await waitFor(() => {
         const createButton = document.body.querySelector('[data-testid="create-button"]')
         expect(createButton).toBeInTheDocument()
 
-        if (createButton) fireEvent.click(createButton)
+        if (createButton)
+          fireEvent.click(createButton)
       })
 
       expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
   })
 
-  describe('categories prop', () => {
-    it('passes categories to AppInfo when provided', async () => {
+  describe('category prop', () => {
+    it('passes category to AppInfo when provided', async () => {
       render(
         <TryApp
           appId="test-app-id"
-          categories={['AI Assistant', 'Workflow']}
+          category="AI Assistant"
           onClose={vi.fn()}
           onCreate={vi.fn()}
         />,
@@ -284,23 +295,35 @@ describe('TryApp (main index.tsx)', () => {
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).toHaveAttribute('data-categories', 'AI Assistant,Workflow')
+        expect(appInfo).toHaveAttribute('data-category', 'AI Assistant')
       })
     })
 
-    it('does not pass categories to AppInfo when not provided', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+    it('does not pass category to AppInfo when not provided', async () => {
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).not.toHaveAttribute('data-categories', expect.any(String))
+        expect(appInfo).not.toHaveAttribute('data-category', expect.any(String))
       })
     })
   })
 
   describe('hook calls', () => {
     it('calls useGetTryAppInfo with correct appId', () => {
-      render(<TryApp appId="my-specific-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="my-specific-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       expect(mockUseGetTryAppInfo).toHaveBeenCalledWith('my-specific-app-id')
     })
@@ -308,7 +331,13 @@ describe('TryApp (main index.tsx)', () => {
 
   describe('props passing', () => {
     it('passes appId to App component', async () => {
-      render(<TryApp appId="my-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="my-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         const appComponent = document.body.querySelector('[data-testid="app-component"]')
@@ -317,7 +346,13 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('passes appId to Preview component when in Detail mode', async () => {
-      render(<TryApp appId="my-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="my-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         expect(screen.getByText('explore.tryApp.tabHeader.detail')).toBeInTheDocument()
@@ -332,7 +367,13 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('passes appId to AppInfo component', async () => {
-      render(<TryApp appId="my-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="my-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         const appInfoComponent = document.body.querySelector('[data-testid="app-info-component"]')
@@ -341,7 +382,13 @@ describe('TryApp (main index.tsx)', () => {
     })
 
     it('passes appDetail to AppInfo component', async () => {
-      render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
 
       await waitFor(() => {
         const appInfoComponent = document.body.querySelector('[data-testid="app-info-component"]')

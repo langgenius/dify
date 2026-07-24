@@ -7,7 +7,6 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -94,7 +93,7 @@ class TestAppMessageExportServiceIntegration:
             name="conv",
             inputs={"seed": 1},
             status="normal",
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=str(uuid.uuid4()),
         )
         session.add(conversation)
@@ -129,7 +128,7 @@ class TestAppMessageExportServiceIntegration:
             total_price=Decimal("0.003"),
             currency="USD",
             message_metadata=message_metadata,
-            from_source=ConversationFromSource.API,
+            from_source="api",
             from_end_user_id=conversation.from_end_user_id,
             created_at=created_at,
         )
@@ -173,8 +172,8 @@ class TestAppMessageExportServiceIntegration:
             app_id=app.id,
             conversation_id=conversation.id,
             message_id=first_message.id,
-            rating=FeedbackRating.LIKE,
-            from_source=FeedbackFromSource.USER,
+            rating="like",
+            from_source="user",
             content="first",
             from_end_user_id=conversation.from_end_user_id,
         )
@@ -182,8 +181,8 @@ class TestAppMessageExportServiceIntegration:
             app_id=app.id,
             conversation_id=conversation.id,
             message_id=first_message.id,
-            rating=FeedbackRating.DISLIKE,
-            from_source=FeedbackFromSource.USER,
+            rating="dislike",
+            from_source="user",
             content="second",
             from_end_user_id=conversation.from_end_user_id,
         )
@@ -191,8 +190,8 @@ class TestAppMessageExportServiceIntegration:
             app_id=app.id,
             conversation_id=conversation.id,
             message_id=first_message.id,
-            rating=FeedbackRating.LIKE,
-            from_source=FeedbackFromSource.ADMIN,
+            rating="like",
+            from_source="admin",
             content="should-be-filtered",
             from_account_id=str(uuid.uuid4()),
         )

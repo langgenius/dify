@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 type AutoWidthInputProps = {
   value: string
@@ -30,14 +30,17 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       textRef.current.textContent = value || placeholder
       const textWidth = textRef.current.offsetWidth
       const newWidth = Math.max(minWidth, Math.min(textWidth + 16, maxWidth))
-      if (width !== newWidth) setWidth(newWidth)
+      if (width !== newWidth)
+        setWidth(newWidth)
     }
   }, [value, placeholder, minWidth, maxWidth, width])
 
   // Handle Enter key
   const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.blur) e.currentTarget.blur()
-    if (props.onKeyUp) props.onKeyUp(e)
+    if (e.key === 'Enter' && e.currentTarget.blur)
+      e.currentTarget.blur()
+    if (props.onKeyUp)
+      props.onKeyUp(e)
   }
 
   return (
@@ -45,7 +48,7 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       {/* Hidden measurement span */}
       <span
         ref={textRef}
-        className="invisible absolute top-0 left-0 -z-10 px-1 system-sm-semibold whitespace-pre"
+        className="system-sm-semibold invisible absolute left-0 top-0 -z-10 whitespace-pre px-1"
         aria-hidden="true"
       >
         {value || placeholder}
@@ -55,8 +58,8 @@ const AutoWidthInput: FC<AutoWidthInputProps> = ({
       <input
         value={value}
         className={cn(
-          'h-5 rounded-[5px] border border-transparent px-1 system-sm-semibold placeholder:system-sm-semibold',
-          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-hidden',
+          'system-sm-semibold placeholder:system-sm-semibold h-5 rounded-[5px] border border-transparent px-1',
+          'py-px text-text-primary caret-[#295EFF] shadow-shadow-shadow-3 outline-none',
           'placeholder:text-text-placeholder hover:bg-state-base-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
           className,
         )}

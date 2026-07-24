@@ -20,12 +20,14 @@ const getTargetId = (href: string) => href.replace('#', '')
  */
 const extractTocFromArticle = (): TocItem[] => {
   const article = document.querySelector('article')
-  if (!article) return []
+  if (!article)
+    return []
 
   return Array.from(article.querySelectorAll('h2'))
     .map((heading) => {
       const anchor = heading.querySelector('a')
-      if (!anchor) return null
+      if (!anchor)
+        return null
       return {
         href: anchor.getAttribute('href') || '',
         text: anchor.textContent || '',
@@ -43,7 +45,8 @@ const extractTocFromArticle = (): TocItem[] => {
 export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
   const [toc, setToc] = useState<TocItem[]>([])
   const [isTocExpanded, setIsTocExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false
+    if (typeof window === 'undefined')
+      return false
     return window.matchMedia('(min-width: 1280px)').matches
   })
   const [activeSection, setActiveSection] = useState<string>('')
@@ -53,7 +56,8 @@ export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
     const timer = setTimeout(() => {
       const tocItems = extractTocFromArticle()
       setToc(tocItems)
-      if (tocItems.length > 0) setActiveSection(getTargetId(tocItems[0]!.href))
+      if (tocItems.length > 0)
+        setActiveSection(getTargetId(tocItems[0].href))
     }, 0)
     return () => clearTimeout(timer)
   }, [appDetail, locale])
@@ -61,7 +65,8 @@ export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
   // Track active section based on scroll position
   useEffect(() => {
     const scrollContainer = document.querySelector(SCROLL_CONTAINER_SELECTOR)
-    if (!scrollContainer || toc.length === 0) return
+    if (!scrollContainer || toc.length === 0)
+      return
 
     const handleScroll = () => {
       let currentSection = ''
@@ -70,11 +75,13 @@ export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
         const element = document.getElementById(targetId)
         if (element) {
           const rect = element.getBoundingClientRect()
-          if (rect.top <= window.innerHeight / 2) currentSection = targetId
+          if (rect.top <= window.innerHeight / 2)
+            currentSection = targetId
         }
       }
 
-      if (currentSection && currentSection !== activeSection) setActiveSection(currentSection)
+      if (currentSection && currentSection !== activeSection)
+        setActiveSection(currentSection)
     }
 
     scrollContainer.addEventListener('scroll', handleScroll)
@@ -86,7 +93,8 @@ export const useDocToc = ({ appDetail, locale }: UseDocTocOptions) => {
     e.preventDefault()
     const targetId = getTargetId(item.href)
     const element = document.getElementById(targetId)
-    if (!element) return
+    if (!element)
+      return
 
     const scrollContainer = document.querySelector(SCROLL_CONTAINER_SELECTOR)
     if (scrollContainer) {

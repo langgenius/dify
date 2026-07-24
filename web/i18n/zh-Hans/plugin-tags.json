@@ -1,6 +1,5 @@
 {
   "allTags": "所有标签",
-  "clearSelectedTags": "清空已选标签：{{tags}}",
   "searchTags": "搜索标签",
   "tags.agent": "Agent",
   "tags.business": "商业",

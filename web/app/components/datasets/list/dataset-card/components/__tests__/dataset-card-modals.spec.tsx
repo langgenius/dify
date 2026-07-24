@@ -7,21 +7,38 @@ import DatasetCardModals from '../dataset-card-modals'
 
 // Mock RenameDatasetModal since it's from a different feature folder
 vi.mock('../../../../rename-modal', () => ({
-  default: ({
-    show,
-    onClose,
-    onSuccess,
-  }: {
-    show: boolean
-    onClose: () => void
-    onSuccess?: () => void
-  }) =>
-    show ? (
-      <div data-testid="rename-modal">
-        <button onClick={onClose}>Close Rename</button>
-        <button onClick={onSuccess}>Success</button>
-      </div>
-    ) : null,
+  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess?: () => void }) => (
+    show
+      ? (
+          <div data-testid="rename-modal">
+            <button onClick={onClose}>Close Rename</button>
+            <button onClick={onSuccess}>Success</button>
+          </div>
+        )
+      : null
+  ),
+}))
+
+// Mock Confirm component since it uses createPortal which can cause issues in tests
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, title, content, onConfirm, onCancel }: {
+    isShow: boolean
+    title: string
+    content?: React.ReactNode
+    onConfirm: () => void
+    onCancel: () => void
+  }) => (
+    isShow
+      ? (
+          <div data-testid="confirm-modal">
+            <div data-testid="confirm-title">{title}</div>
+            <div data-testid="confirm-content">{content}</div>
+            <button onClick={onCancel} role="button" aria-label="cancel">Cancel</button>
+            <button onClick={onConfirm} role="button" aria-label="confirm">Confirm</button>
+          </div>
+        )
+      : null
+  ),
 }))
 
 describe('DatasetCardModals', () => {
@@ -76,12 +93,10 @@ describe('DatasetCardModals', () => {
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
-      showAccessConfig: false,
       confirmMessage: '',
     },
     onCloseRename: vi.fn(),
     onCloseConfirm: vi.fn(),
-    onCloseAccessConfig: vi.fn(),
     onConfirmDelete: vi.fn(),
     onSuccess: vi.fn(),
   }
@@ -91,7 +106,7 @@ describe('DatasetCardModals', () => {
   })
 
   describe('Rendering', () => {
-    it('renders no dialogs when both visibility flags are false', () => {
+    it('should render without crashing when no modals are shown', () => {
       const { container } = render(<DatasetCardModals {...defaultProps} />)
       // Should render empty fragment
       expect(container.innerHTML).toBe('')
@@ -216,7 +231,6 @@ describe('DatasetCardModals', () => {
           modalState={{
             showRenameModal: true,
             showConfirmDelete: true,
-            showAccessConfig: false,
             confirmMessage: 'Delete this dataset?',
           }}
         />,

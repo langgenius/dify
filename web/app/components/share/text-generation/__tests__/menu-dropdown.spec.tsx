@@ -3,31 +3,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MenuDropdown from '../menu-dropdown'
 
-vi.mock('../info-modal', () => ({
-  default: ({
-    isShow,
-    onClose,
-    data,
-  }: {
-    isShow: boolean
-    onClose: () => void
-    data?: SiteInfo
-  }) => {
-    if (!isShow) return null
-    return (
-      <div data-testid="info-modal">
-        <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>
-          Close Info
-        </button>
-      </div>
-    )
-  },
-}))
-
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
@@ -213,23 +191,23 @@ describe('MenuDropdown', () => {
         expect(screen.getByText('Test App')).toBeInTheDocument()
       })
     })
+  })
 
-    it('should close InfoModal when the close handler runs', async () => {
-      render(<MenuDropdown data={baseSiteInfo} />)
+  describe('forceClose prop', () => {
+    it('should close dropdown when forceClose changes to true', async () => {
+      const { rerender } = render(<MenuDropdown data={baseSiteInfo} forceClose={false} />)
 
-      fireEvent.click(screen.getByRole('button'))
+      const triggerButton = screen.getByRole('button')
+      fireEvent.click(triggerButton)
+
       await waitFor(() => {
-        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
+        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('common.userProfile.about'))
-      await waitFor(() => {
-        expect(screen.getByTestId('info-modal')).toBeInTheDocument()
-      })
+      rerender(<MenuDropdown data={baseSiteInfo} forceClose={true} />)
 
-      fireEvent.click(screen.getByText('Close Info'))
       await waitFor(() => {
-        expect(screen.queryByTestId('info-modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
     })
   })
@@ -258,6 +236,12 @@ describe('MenuDropdown', () => {
       await waitFor(() => {
         expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
+    })
+  })
+
+  describe('memoization', () => {
+    it('should be wrapped with React.memo', () => {
+      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

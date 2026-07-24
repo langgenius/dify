@@ -1,17 +1,8 @@
-import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as ReactI18next from 'react-i18next'
-import { expectLoadingButton } from '@/test/button'
-import { withSelectorKey } from '@/test/i18n-mock'
+import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RenameModal from '../rename-modal'
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: ReactNode }) => <div role="dialog">{children}</div>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-}))
 
 describe('RenameModal', () => {
   const defaultProps = {
@@ -26,113 +17,58 @@ describe('RenameModal', () => {
     vi.clearAllMocks()
   })
 
-  it('renders title, label, input and action buttons', () => {
+  it('should render with initial name', () => {
     render(<RenameModal {...defaultProps} />)
 
     expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
-    expect(screen.getByText('common.chat.conversationName')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toHaveValue(
-      'Original Name',
-    )
-    expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.save')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Original Name')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('common.chat.conversationNamePlaceholder')).toBeInTheDocument()
   })
 
-  it('does not render when isShow is false', () => {
-    render(<RenameModal {...defaultProps} isShow={false} />)
-    expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
-  })
-
-  it('calls onClose when cancel is clicked', async () => {
+  it('should update text when typing', async () => {
     const user = userEvent.setup()
     render(<RenameModal {...defaultProps} />)
 
-    await user.click(screen.getByText('common.operation.cancel'))
-    expect(defaultProps.onClose).toHaveBeenCalled()
+    const input = screen.getByDisplayValue('Original Name')
+    await user.clear(input)
+    await user.type(input, 'New Name')
+
+    expect(input).toHaveValue('New Name')
   })
 
-  it('calls onSave with updated name', async () => {
+  it('should call onSave with new name when save button is clicked', async () => {
     const user = userEvent.setup()
     render(<RenameModal {...defaultProps} />)
 
-    const input = screen.getByRole('textbox')
+    const input = screen.getByDisplayValue('Original Name')
     await user.clear(input)
     await user.type(input, 'Updated Name')
-    await user.click(screen.getByText('common.operation.save'))
+
+    const saveButton = screen.getByText('common.operation.save')
+    await user.click(saveButton)
 
     expect(defaultProps.onSave).toHaveBeenCalledWith('Updated Name')
   })
 
-  it('calls onSave with initial name when unchanged', async () => {
+  it('should call onClose when cancel button is clicked', async () => {
     const user = userEvent.setup()
     render(<RenameModal {...defaultProps} />)
 
-    await user.click(screen.getByText('common.operation.save'))
-    expect(defaultProps.onSave).toHaveBeenCalledWith('Original Name')
+    const cancelButton = screen.getByText('common.operation.cancel')
+    await user.click(cancelButton)
+
+    expect(defaultProps.onClose).toHaveBeenCalled()
   })
 
-  it('shows loading state when saveLoading is true', () => {
-    render(<RenameModal {...defaultProps} saveLoading />)
-    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expectLoadingButton(saveButton)
-    expect(saveButton.querySelector('.animate-spin')).toBeInTheDocument()
+  it('should show loading state on save button', () => {
+    render(<RenameModal {...defaultProps} saveLoading={true} />)
+
+    // The Button component with loading=true renders a status role (spinner)
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
-  it('hides loading state when saveLoading is false', () => {
-    render(<RenameModal {...defaultProps} saveLoading={false} />)
-    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).not.toBeDisabled()
-    expect(saveButton).not.toHaveAttribute('aria-busy')
-    expect(saveButton.querySelector('.animate-spin')).not.toBeInTheDocument()
-  })
-
-  it('keeps edited name when parent rerenders with different name prop', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(<RenameModal {...defaultProps} name="First" />)
-
-    const input = screen.getByRole('textbox')
-    await user.clear(input)
-    await user.type(input, 'Edited')
-
-    rerender(<RenameModal {...defaultProps} name="Second" />)
-    expect(screen.getByRole('textbox')).toHaveValue('Edited')
-  })
-
-  it('retains typed state after isShow false then true on same component instance', async () => {
-    const user = userEvent.setup()
-    const { rerender } = render(<RenameModal {...defaultProps} isShow />)
-
-    const input = screen.getByRole('textbox')
-    await user.clear(input)
-    await user.type(input, 'Changed')
-
-    rerender(<RenameModal {...defaultProps} isShow={false} />)
-    rerender(<RenameModal {...defaultProps} isShow />)
-
-    expect(screen.getByRole('textbox')).toHaveValue('Changed')
-  })
-
-  it('uses empty placeholder fallback when translation returns empty string', () => {
-    const originalUseTranslation = ReactI18next.useTranslation
-    const useTranslationSpy = vi
-      .spyOn(ReactI18next, 'useTranslation')
-      .mockImplementation((...args) => {
-        const translation = originalUseTranslation(...args)
-        return {
-          ...translation,
-          t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
-            if (key === 'chat.conversationNamePlaceholder') return ''
-            const ns = options?.ns as string | undefined
-            return ns ? `${ns}.${key}` : key
-          }) as typeof translation.t,
-        }
-      })
-
-    try {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByPlaceholderText('')).toBeInTheDocument()
-    } finally {
-      useTranslationSpy.mockRestore()
-    }
+  it('should not render when isShow is false', () => {
+    const { queryByText } = render(<RenameModal {...defaultProps} isShow={false} />)
+    expect(queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
   })
 })

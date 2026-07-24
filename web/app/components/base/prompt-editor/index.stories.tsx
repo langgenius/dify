@@ -2,15 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 
 // Mock component to avoid complex initialization issues
-const PromptEditorMock = ({
-  value,
-  onChange,
-  placeholder,
-  editable,
-  compact,
-  className,
-  wrapperClassName,
-}: any) => {
+const PromptEditorMock = ({ value, onChange, placeholder, editable, compact, className, wrapperClassName }: any) => {
   const [content, setContent] = useState(value || '')
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -21,7 +13,7 @@ const PromptEditorMock = ({
   return (
     <div className={wrapperClassName}>
       <textarea
-        className={`w-full resize-none outline-hidden ${compact ? 'text-[13px] leading-5' : 'text-sm/6'} ${className}`}
+        className={`w-full resize-none outline-none ${compact ? 'text-[13px] leading-5' : 'text-sm leading-6'} ${className}`}
         value={content}
         onChange={handleChange}
         placeholder={placeholder}
@@ -39,8 +31,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Rich text prompt editor built on Lexical. Supports variable blocks, context blocks, and slash commands for inserting dynamic content. Use `/` or `{` to trigger component picker.\n\n**Note:** This is a simplified version for Storybook. The actual component uses Lexical editor with advanced features.',
+        component: 'Rich text prompt editor built on Lexical. Supports variable blocks, context blocks, and slash commands for inserting dynamic content. Use `/` or `{` to trigger component picker.\n\n**Note:** This is a simplified version for Storybook. The actual component uses Lexical editor with advanced features.',
       },
     },
   },
@@ -95,7 +86,9 @@ const PromptEditorDemo = (args: any) => {
       {value && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">Current Value:</div>
-          <div className="font-mono text-sm whitespace-pre-wrap text-gray-800">{value}</div>
+          <div className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+            {value}
+          </div>
         </div>
       )}
     </div>
@@ -104,7 +97,7 @@ const PromptEditorDemo = (args: any) => {
 
 // Default state
 export const Default: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     placeholder: 'Type / for commands...',
     editable: true,
@@ -114,7 +107,7 @@ export const Default: Story = {
 
 // With initial value
 export const WithInitialValue: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     value: 'Write a summary about the following topic:\n\nPlease include key points and examples.',
     placeholder: 'Type / for commands...',
@@ -124,7 +117,7 @@ export const WithInitialValue: Story = {
 
 // Compact mode
 export const CompactMode: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     value: 'This is a compact editor with smaller text size.',
     placeholder: 'Type / for commands...',
@@ -135,17 +128,16 @@ export const CompactMode: Story = {
 
 // Read-only mode
 export const ReadOnlyMode: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
-    value:
-      'This content is read-only and cannot be edited.\n\nYou can select and copy text, but not modify it.',
+    value: 'This content is read-only and cannot be edited.\n\nYou can select and copy text, but not modify it.',
     editable: false,
   },
 }
 
 // With variables example
 export const WithVariablesExample: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     value: 'Hello, please analyze the following data and provide insights.',
     placeholder: 'Type / to insert variables...',
@@ -155,7 +147,7 @@ export const WithVariablesExample: Story = {
 
 // Long content example
 export const LongContent: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     value: `You are a helpful AI assistant. Your task is to provide accurate, helpful, and friendly responses.
 
@@ -173,7 +165,7 @@ Please analyze the user's request and provide a comprehensive response.`,
 
 // Custom placeholder
 export const CustomPlaceholder: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     placeholder: 'Describe the task you want the AI to perform... (Press / for variables)',
     editable: true,
@@ -212,16 +204,20 @@ const MultipleEditorsDemo = () => {
       {(systemPrompt || userPrompt) && (
         <div className="rounded-lg bg-gray-50 p-4">
           <div className="mb-2 text-xs font-medium text-gray-600">Combined Output:</div>
-          <div className="text-sm whitespace-pre-wrap text-gray-800">
+          <div className="whitespace-pre-wrap text-sm text-gray-800">
             {systemPrompt && (
               <>
-                <strong>System:</strong> {systemPrompt}
+                <strong>System:</strong>
+                {' '}
+                {systemPrompt}
                 {userPrompt && '\n\n'}
               </>
             )}
             {userPrompt && (
               <>
-                <strong>User:</strong> {userPrompt}
+                <strong>User:</strong>
+                {' '}
+                {userPrompt}
               </>
             )}
           </div>
@@ -301,7 +297,11 @@ const ChatPromptBuilderDemo = () => {
     <div style={{ width: '700px' }} className="rounded-lg border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Chat Prompt Builder</h3>
-        <span className="text-xs text-gray-500">{characterCount} characters</span>
+        <span className="text-xs text-gray-500">
+          {characterCount}
+          {' '}
+          characters
+        </span>
       </div>
       <div className="min-h-[200px] rounded-lg border border-gray-300 bg-gray-50 p-4">
         <PromptEditorMock
@@ -311,7 +311,14 @@ const ChatPromptBuilderDemo = () => {
         />
       </div>
       <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-        💡 <strong>Tip:</strong> Type <code className="rounded-sm bg-blue-100 px-1 py-0.5">/</code>{' '}
+        💡
+        {' '}
+        <strong>Tip:</strong>
+        {' '}
+        Type
+        {' '}
+        <code className="rounded bg-blue-100 px-1 py-0.5">/</code>
+        {' '}
         to insert variables or templates
       </div>
     </div>
@@ -359,7 +366,7 @@ export const APIInstructionEditor: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: (args) => <PromptEditorDemo {...args} />,
+  render: args => <PromptEditorDemo {...args} />,
   args: {
     value: '',
     placeholder: 'Type / for commands...',

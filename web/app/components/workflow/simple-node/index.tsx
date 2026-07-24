@@ -1,44 +1,60 @@
-import type { FC } from 'react'
-import type { NodeProps } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import type {
+  FC,
+} from 'react'
+import type {
+  NodeProps,
+} from '@/app/components/workflow/types'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import { memo, useMemo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
 import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
-import { NodeTargetHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import {
+  NodeTargetHandle,
+} from '@/app/components/workflow/nodes/_base/components/node-handle'
+import {
+  NodeRunningStatus,
+} from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type SimpleNodeProps = NodeProps
 
-const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
+const SimpleNode: FC<SimpleNodeProps> = ({
+  id,
+  data,
+}) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
-  const { showRunningBorder, showSuccessBorder, showFailedBorder, showExceptionBorder } =
-    useMemo(() => {
-      return {
-        showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
-        showSuccessBorder:
-          data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
-        showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
-        showExceptionBorder:
-          data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
-      }
-    }, [data._runningStatus, showSelectedBorder])
+  const {
+    showRunningBorder,
+    showSuccessBorder,
+    showFailedBorder,
+    showExceptionBorder,
+  } = useMemo(() => {
+    return {
+      showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
+      showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
+      showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
+      showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
+    }
+  }, [data._runningStatus, showSelectedBorder])
 
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-2',
-        showSelectedBorder
-          ? 'border-components-option-card-option-selected-border'
-          : 'border-transparent',
+        'flex rounded-2xl border-[2px]',
+        showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
       )}
       style={{
@@ -52,45 +68,68 @@ const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
           'rounded-[15px] border border-transparent',
           'w-[240px] bg-workflow-block-bg',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && 'border-state-accent-solid!',
-          showSuccessBorder && 'border-state-success-solid!',
-          showFailedBorder && 'border-state-destructive-solid!',
-          showExceptionBorder && 'border-state-warning-solid!',
-          data._isBundled && 'shadow-lg!',
+          showRunningBorder && '!border-state-accent-solid',
+          showSuccessBorder && '!border-state-success-solid',
+          showFailedBorder && '!border-state-destructive-solid',
+          showExceptionBorder && '!border-state-warning-solid',
+          data._isBundled && '!shadow-lg',
         )}
       >
-        {!data._isCandidate && (
-          <NodeTargetHandle
-            id={id}
-            data={data}
-            handleClassName="top-4! -left-[9px]! translate-y-0!"
-            handleId="target"
+        {
+          !data._isCandidate && (
+            <NodeTargetHandle
+              id={id}
+              data={data}
+              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleId="target"
+            />
+          )
+        }
+        {
+          !data._runningStatus && !nodesReadOnly && !data._isCandidate && (
+            <NodeControl
+              id={id}
+              data={data}
+            />
+          )
+        }
+        <div className={cn(
+          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+        )}
+        >
+          <BlockIcon
+            className="mr-2 shrink-0"
+            type={data.type}
+            size="md"
           />
-        )}
-        {!data._runningStatus && !nodesReadOnly && !data._isCandidate && (
-          <NodeControl id={id} data={data} />
-        )}
-        <div className={cn('flex items-center rounded-t-2xl px-3 pt-3 pb-2')}>
-          <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" />
           <div
             title={data.title}
-            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
+            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
           >
-            <div>{data.title}</div>
+            <div>
+              {data.title}
+            </div>
           </div>
-          {(data._runningStatus === NodeRunningStatus.Running ||
-            data._singleRunningStatus === NodeRunningStatus.Running) && (
-            <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
-          )}
-          {data._runningStatus === NodeRunningStatus.Succeeded && (
-            <RiCheckboxCircleFill className="size-3.5 text-text-success" />
-          )}
-          {data._runningStatus === NodeRunningStatus.Failed && (
-            <RiErrorWarningFill className="size-3.5 text-text-destructive" />
-          )}
-          {data._runningStatus === NodeRunningStatus.Exception && (
-            <RiAlertFill className="size-3.5 text-text-warning-secondary" />
-          )}
+          {
+            (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
+              <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Succeeded && (
+              <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Failed && (
+              <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Exception && (
+              <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
+            )
+          }
         </div>
       </div>
     </div>

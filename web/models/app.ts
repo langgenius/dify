@@ -12,7 +12,7 @@ import type {
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { Dependency } from '@/app/components/plugins/types'
-import type { App, AppModeEnum, SiteConfig } from '@/types/app'
+import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 
 export enum DSLImportMode {
   YAML_CONTENT = 'yaml-content',
@@ -24,13 +24,6 @@ export enum DSLImportStatus {
   COMPLETED_WITH_WARNINGS = 'completed-with-warnings',
   PENDING = 'pending',
   FAILED = 'failed',
-}
-
-export type DSLImportWarning = {
-  code: string
-  path: string
-  message: string
-  details: Record<string, unknown>
 }
 
 export type AppListResponse = {
@@ -52,22 +45,26 @@ export type DSLImportResponse = {
   imported_dsl_version?: string
   error: string
   leaked_dependencies: Dependency[]
-  permission_keys: string[]
-  warnings?: DSLImportWarning[]
 }
+
+export type AppTemplatesResponse = {
+  data: AppTemplate[]
+}
+
+export type CreateAppResponse = App
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyMessagesResponse = {
-  data: Array<{ date: string; message_count: number }>
+  data: Array<{ date: string, message_count: number }>
 }
 
 export type AppDailyConversationsResponse = {
-  data: Array<{ date: string; conversation_count: number }>
+  data: Array<{ date: string, conversation_count: number }>
 }
 
 export type WorkflowDailyConversationsResponse = {
-  data: Array<{ date: string; runs: number }>
+  data: Array<{ date: string, runs: number }>
 }
 
 export type AppStatisticsResponse = {
@@ -75,16 +72,16 @@ export type AppStatisticsResponse = {
 }
 
 export type AppDailyEndUsersResponse = {
-  data: Array<{ date: string; terminal_count: number }>
+  data: Array<{ date: string, terminal_count: number }>
 }
 
 export type AppTokenCostsResponse = {
-  data: Array<{ date: string; token_count: number; total_price: number; currency: number }>
+  data: Array<{ date: string, token_count: number, total_price: number, currency: number }>
 }
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-type ApiKeyItemResponse = {
+export type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string
@@ -101,28 +98,21 @@ export type CreateApiKeyResponse = {
   created_at: string
 }
 
-export type AppVoicesListResponse = [
-  {
-    name: string
-    value: string
-  },
-]
-
-export type WorkflowOnlineUser = {
-  user_id?: string
-  username?: string
-  avatar?: string | null
-  sid?: string
+export type ValidateOpenAIKeyResponse = {
+  result: string
+  error?: string
 }
 
-export type WorkflowOnlineUsersResponse = {
-  data:
-    | Record<string, WorkflowOnlineUser[]>
-    | Array<{
-        app_id: string
-        users: WorkflowOnlineUser[]
-      }>
+export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
+
+export type GenerationIntroductionResponse = {
+  introduction: string
 }
+
+export type AppVoicesListResponse = [{
+  name: string
+  value: string
+}]
 
 export type TracingStatus = {
   enabled: boolean
@@ -131,17 +121,7 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config:
-    | ArizeConfig
-    | PhoenixConfig
-    | LangSmithConfig
-    | LangFuseConfig
-    | DatabricksConfig
-    | MLflowConfig
-    | OpikConfig
-    | WeaveConfig
-    | AliyunConfig
-    | TencentConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | DatabricksConfig | MLflowConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
 }
 
 export type WebhookTriggerResponse = {
@@ -156,9 +136,9 @@ export type WebhookTriggerResponse = {
 export type Banner = {
   id: string
   content: {
-    category: string
-    title: string
-    description: string
+    'category': string
+    'title': string
+    'description': string
     'img-src': string
   }
   link: string

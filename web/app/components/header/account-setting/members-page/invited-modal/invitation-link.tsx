@@ -1,18 +1,19 @@
 'use client'
-import type { MemberInviteSuccessResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import type { SuccessInvitationResult } from '.'
 import copy from 'copy-to-clipboard'
+import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {
-  value: MemberInviteSuccessResponse
+  value: SuccessInvitationResult
 }
 
-const InvitationLink = ({ value }: IInvitationLinkProps) => {
-  const { t } = useTranslation()
+const InvitationLink = ({
+  value,
+}: IInvitationLinkProps) => {
   const [isCopied, setIsCopied] = useState(false)
 
   const copyHandle = useCallback(() => {
@@ -34,43 +35,23 @@ const InvitationLink = ({ value }: IInvitationLinkProps) => {
   }, [isCopied])
 
   return (
-    <div className="flex items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal py-2 hover:bg-state-base-hover">
+    <div className="flex items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal py-2 hover:bg-state-base-hover" data-testid="invitation-link-container">
       <div className="flex h-5 grow items-center">
         <div className="relative h-full grow text-[13px]">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  className="absolute inset-x-0 top-0 block w-full cursor-pointer truncate border-none bg-transparent p-0 px-2 text-left text-text-primary"
-                  onClick={copyHandle}
-                >
-                  {value.url}
-                </button>
-              }
-            />
-            <TooltipContent>
-              {isCopied ? t(($) => $.copied, { ns: 'appApi' }) : t(($) => $.copy, { ns: 'appApi' })}
-            </TooltipContent>
+          <Tooltip
+            popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
+          >
+            <div className="absolute left-0 right-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary" onClick={copyHandle} data-testid="invitation-link-url">{value.url}</div>
           </Tooltip>
         </div>
-        <div className="h-4 shrink-0 border border-divider-regular bg-divider-regular" />
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <div className="shrink-0 px-0.5">
-                <button
-                  type="button"
-                  aria-label={t(($) => $.copy, { ns: 'appApi' })}
-                  className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
-                  onClick={copyHandle}
-                />
-              </div>
-            }
-          />
-          <TooltipContent>
-            {isCopied ? t(($) => $.copied, { ns: 'appApi' }) : t(($) => $.copy, { ns: 'appApi' })}
-          </TooltipContent>
+        <div className="h-4 shrink-0 border bg-divider-regular" />
+        <Tooltip
+          popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
+        >
+          <div className="shrink-0 px-0.5">
+            <div className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={copyHandle} data-testid="invitation-link-copy">
+            </div>
+          </div>
         </Tooltip>
       </div>
     </div>

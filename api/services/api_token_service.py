@@ -7,7 +7,7 @@ Includes Redis cache operations, database queries, and single-flight concurrency
 
 import logging
 from datetime import datetime
-from typing import Any, override
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -43,7 +43,6 @@ class CachedApiToken(BaseModel):
     last_used_at: datetime | None
     created_at: datetime | None
 
-    @override
     def __repr__(self) -> str:
         return f"<CachedApiToken id={self.id} type={self.type}>"
 

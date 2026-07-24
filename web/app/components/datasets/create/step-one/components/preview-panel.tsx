@@ -3,7 +3,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem } from '@/models/datasets'
 import { useTranslation } from 'react-i18next'
-import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import FilePreview from '../../file-preview'
 import NotionPagePreview from '../../notion-page-preview'
 import WebsitePreview from '../../website/preview'
@@ -46,15 +46,13 @@ function PreviewPanel({
           notionCredentialId={notionCredentialId}
         />
       )}
-      {currentWebsite && (
-        <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />
-      )}
+      {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
       {isShowPlanUpgradeModal && (
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t(($) => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
-          description={t(($) => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
+          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
+          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
         />
       )}
     </div>

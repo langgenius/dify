@@ -6,16 +6,16 @@ by the core workflow module. These models are independent of the storage mechani
 and don't contain implementation details like tenant_id, app_id, etc.
 """
 
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Protocol
 
-from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
+from dify_graph.entities.pause_reason import PauseReason
 
 
-class WorkflowPauseEntity(Protocol):
+class WorkflowPauseEntity(ABC):
     """
-    Protocol for workflow pause entities.
+    Abstract base class for workflow pause entities.
 
     This domain model represents a paused workflow execution state,
     without implementation details like tenant_id, app_id, etc.
@@ -27,17 +27,19 @@ class WorkflowPauseEntity(Protocol):
     """
 
     @property
+    @abstractmethod
     def id(self) -> str:
         """The identifier of current WorkflowPauseEntity"""
-        ...
+        pass
 
     @property
+    @abstractmethod
     def workflow_execution_id(self) -> str:
         """The identifier of the workflow execution record the pause associated with.
         Correspond to `WorkflowExecution.id`.
         """
-        ...
 
+    @abstractmethod
     def get_state(self) -> bytes:
         """
         Retrieve the serialized workflow state from storage.
@@ -54,18 +56,21 @@ class WorkflowPauseEntity(Protocol):
         ...
 
     @property
+    @abstractmethod
     def resumed_at(self) -> datetime | None:
         """`resumed_at` return the resumption time of the current pause, or `None` if
         the pause is not resumed yet.
         """
-        ...
+        pass
 
     @property
+    @abstractmethod
     def paused_at(self) -> datetime:
         """`paused_at` returns the creation time of the pause."""
-        ...
+        pass
 
-    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
+    @abstractmethod
+    def get_pause_reasons(self) -> Sequence[PauseReason]:
         """
         Retrieve detailed reasons for this pause.
 

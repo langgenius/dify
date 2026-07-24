@@ -2,11 +2,11 @@ import type { EditorConfig, SerializedTextNode } from 'lexical'
 import { $createTextNode, TextNode } from 'lexical'
 
 export class CustomTextNode extends TextNode {
-  static override getType() {
+  static getType() {
     return 'custom-text'
   }
 
-  static override clone(node: CustomTextNode) {
+  static clone(node: CustomTextNode) {
     return new CustomTextNode(node.__text, node.__key)
   }
 
@@ -14,12 +14,12 @@ export class CustomTextNode extends TextNode {
   //   super(text, key)
   // }
 
-  override createDOM(config: EditorConfig) {
+  createDOM(config: EditorConfig) {
     const dom = super.createDOM(config)
     return dom
   }
 
-  static override importJSON(serializedNode: SerializedTextNode): TextNode {
+  static importJSON(serializedNode: SerializedTextNode): TextNode {
     const node = $createTextNode(serializedNode.text)
     node.setFormat(serializedNode.format)
     node.setDetail(serializedNode.detail)
@@ -28,7 +28,7 @@ export class CustomTextNode extends TextNode {
     return node
   }
 
-  override exportJSON(): SerializedTextNode {
+  exportJSON(): SerializedTextNode {
     return {
       detail: this.getDetail(),
       format: this.getFormat(),
@@ -40,8 +40,9 @@ export class CustomTextNode extends TextNode {
     }
   }
 
-  override isSimpleText() {
-    return (this.__type === 'text' || this.__type === 'custom-text') && this.__mode === 0
+  isSimpleText() {
+    return (
+      (this.__type === 'text' || this.__type === 'custom-text') && this.__mode === 0)
   }
 }
 

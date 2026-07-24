@@ -7,35 +7,31 @@ type DatePickerProps = {
   value: number | null
   onChange: (value: number) => void
   className?: string
-  label?: string
 }
 
 // Mock the base date-picker component
 vi.mock('../../base/date-picker', () => ({
-  default: ({ value, onChange, className, label }: DatePickerProps) => (
-    <button
-      type="button"
-      aria-label={label}
-      data-testid="date-picker"
-      className={className}
-      onClick={() => onChange(Date.now())}
-    >
+  default: ({ value, onChange, className }: DatePickerProps) => (
+    <div data-testid="date-picker" className={className} onClick={() => onChange(Date.now())}>
       {value || 'Pick date'}
-    </button>
+    </div>
   ),
 }))
 
 describe('InputCombined', () => {
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      const handleChange = vi.fn()
+      const { container } = render(
+        <InputCombined type={DataType.string} value="" onChange={handleChange} />,
+      )
+      expect(container.firstChild).toBeInTheDocument()
+    })
+
     it('should render text input for string type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value="test"
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="test" onChange={handleChange} />,
       )
       const input = screen.getByDisplayValue('test')
       expect(input).toBeInTheDocument()
@@ -45,27 +41,16 @@ describe('InputCombined', () => {
     it('should render number input for number type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={42}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
-      const input = screen.getByRole('textbox', { name: 'Metadata field' })
+      const input = screen.getByDisplayValue('42')
       expect(input).toBeInTheDocument()
-      expect(input).toHaveValue('42')
     })
 
     it('should render date picker for time type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.time}
-          value={Date.now()}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.time} value={Date.now()} onChange={handleChange} />,
       )
       expect(screen.getByTestId('date-picker')).toBeInTheDocument()
     })
@@ -75,12 +60,7 @@ describe('InputCombined', () => {
     it('should call onChange with input value for string type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value=""
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="" onChange={handleChange} />,
       )
 
       const input = screen.getByRole('textbox')
@@ -92,12 +72,7 @@ describe('InputCombined', () => {
     it('should display current value for string type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value="existing value"
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="existing value" onChange={handleChange} />,
       )
 
       expect(screen.getByDisplayValue('existing value')).toBeInTheDocument()
@@ -106,13 +81,7 @@ describe('InputCombined', () => {
     it('should apply readOnly prop to string input', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value="test"
-          onChange={handleChange}
-          readOnly
-        />,
+        <InputCombined type={DataType.string} value="test" onChange={handleChange} readOnly />,
       )
 
       const input = screen.getByRole('textbox')
@@ -124,64 +93,31 @@ describe('InputCombined', () => {
     it('should call onChange with number value for number type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={0}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('spinbutton')
       fireEvent.change(input, { target: { value: '123' } })
 
       expect(handleChange).toHaveBeenCalled()
     })
 
-    it('should reset cleared number input to 0', () => {
-      const handleChange = vi.fn()
-      render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={42}
-          onChange={handleChange}
-        />,
-      )
-
-      const input = screen.getByRole('textbox')
-      fireEvent.change(input, { target: { value: '' } })
-
-      expect(handleChange).toHaveBeenCalledWith(0)
-    })
-
     it('should display current value for number type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={999}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={999} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('textbox')).toHaveValue('999')
+      expect(screen.getByDisplayValue('999')).toBeInTheDocument()
     })
 
     it('should apply readOnly prop to number input', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={42}
-          onChange={handleChange}
-          readOnly
-        />,
+        <InputCombined type={DataType.number} value={42} onChange={handleChange} readOnly />,
       )
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('spinbutton')
       expect(input).toHaveAttribute('readonly')
     })
   })
@@ -190,40 +126,16 @@ describe('InputCombined', () => {
     it('should render date picker for time type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.time}
-          value={1234567890}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.time} value={1234567890} onChange={handleChange} />,
       )
 
       expect(screen.getByTestId('date-picker')).toBeInTheDocument()
     })
 
-    it('should label the date picker trigger with the metadata field name', () => {
-      const handleChange = vi.fn()
-      render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.time}
-          value={1234567890}
-          onChange={handleChange}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: 'Metadata field' })).toBeInTheDocument()
-    })
-
     it('should call onChange when date is selected', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.time}
-          value={null}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.time} value={null} onChange={handleChange} />,
       )
 
       fireEvent.click(screen.getByTestId('date-picker'))
@@ -236,7 +148,6 @@ describe('InputCombined', () => {
       const handleChange = vi.fn()
       const { container } = render(
         <InputCombined
-          label="Metadata field"
           type={DataType.string}
           value=""
           onChange={handleChange}
@@ -252,12 +163,7 @@ describe('InputCombined', () => {
     it('should handle null value for string type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value={null}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value={null} onChange={handleChange} />,
       )
 
       const input = screen.getByRole('textbox')
@@ -267,12 +173,7 @@ describe('InputCombined', () => {
     it('should handle undefined value for string type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value={undefined as unknown as string}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value={undefined as unknown as string} onChange={handleChange} />,
       )
 
       const input = screen.getByRole('textbox')
@@ -282,15 +183,10 @@ describe('InputCombined', () => {
     it('should handle null value for number type', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={null}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={null} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('spinbutton')
       expect(input).toBeInTheDocument()
     })
   })
@@ -299,12 +195,7 @@ describe('InputCombined', () => {
     it('should have correct base styling for string input', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value=""
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="" onChange={handleChange} />,
       )
 
       const input = screen.getByRole('textbox')
@@ -314,15 +205,10 @@ describe('InputCombined', () => {
     it('should have correct styling for number input', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={0}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('spinbutton')
       expect(input).toHaveClass('rounded-l-md')
     })
   })
@@ -331,12 +217,7 @@ describe('InputCombined', () => {
     it('should handle empty string value', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value=""
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="" onChange={handleChange} />,
       )
 
       const input = screen.getByRole('textbox')
@@ -346,40 +227,25 @@ describe('InputCombined', () => {
     it('should handle zero value for number', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={0}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={0} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('textbox')).toHaveValue('0')
+      expect(screen.getByDisplayValue('0')).toBeInTheDocument()
     })
 
     it('should handle negative number', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={-100}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={-100} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('textbox')).toHaveValue('-100')
+      expect(screen.getByDisplayValue('-100')).toBeInTheDocument()
     })
 
     it('should handle special characters in string', () => {
       const handleChange = vi.fn()
       render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value={'<script>alert("xss")</script>'}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value={'<script>alert("xss")</script>'} onChange={handleChange} />,
       )
 
       expect(screen.getByDisplayValue('<script>alert("xss")</script>')).toBeInTheDocument()
@@ -388,26 +254,16 @@ describe('InputCombined', () => {
     it('should handle switching between types', () => {
       const handleChange = vi.fn()
       const { rerender } = render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value="test"
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.string} value="test" onChange={handleChange} />,
       )
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
 
       rerender(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.number}
-          value={42}
-          onChange={handleChange}
-        />,
+        <InputCombined type={DataType.number} value={42} onChange={handleChange} />,
       )
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
     })
   })
 })

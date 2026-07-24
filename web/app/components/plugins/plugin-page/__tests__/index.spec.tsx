@@ -1,25 +1,12 @@
-import type { ReactElement } from 'react'
 import type { PluginPageProps } from '../index'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useQueryState } from 'nuqs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import useDocumentTitle from '@/hooks/use-document-title'
+
 import { usePluginInstallation } from '@/hooks/use-query-params'
 // Import mocked modules for assertions
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
 import PluginPageWithContext from '../index'
-
-let mockEnableMarketplace = true
-const { mockRouterReplace } = vi.hoisted(() => ({
-  mockRouterReplace: vi.fn(),
-}))
-
-const render = (ui: ReactElement, options: Parameters<typeof renderWithConsoleQuery>[1] = {}) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: mockEnableMarketplace },
-    ...options,
-  })
 
 // Mock external dependencies
 vi.mock('@/service/plugins', () => ({
@@ -35,124 +22,35 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockRouterReplace,
-  }),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
+vi.mock('@/context/global-public-context', () => ({
+  useGlobalPublicStore: vi.fn((selector) => {
+    const state = {
+      systemFeatures: {
+        enable_marketplace: true,
+      },
+    }
+    return selector(state)
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.0.0',
-      version: '1.0.0',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.debug',
-      'plugin.plugin_preferences',
-    ],
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.0.0',
-      version: '1.0.0',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.debug',
-      'plugin.plugin_preferences',
-    ],
-  }))
-})
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceOwner: false,
-    langGeniusVersionInfo: {
-      current_env: 'CLOUD',
-      current_version: '1.0.0',
-      latest_version: '1.0.0',
-      version: '1.0.0',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-    workspacePermissionKeys: [
-      'plugin.install',
-      'plugin.delete',
-      'plugin.debug',
-      'plugin.plugin_preferences',
-    ],
-  }))
-})
+  }),
+}))
 
 vi.mock('@/service/use-plugins', () => ({
-  hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
-    if (!permission) return false
-    if (permission === 'noone') return false
-    if (permission === 'everyone') return true
-    return isAdmin
-  },
   useReferenceSettings: () => ({
     data: {
       permission: {
         install_permission: 'everyone',
         debug_permission: 'admins',
-      },
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
-      },
-    },
-  }),
-  usePluginPermissionSettings: () => ({
-    data: {
-      install_permission: 'everyone',
-      debug_permission: 'admins',
-    },
-  }),
-  useMutationPluginPermissionSettings: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
-  usePluginAutoUpgradeSettings: () => ({
-    data: {
-      auto_upgrade: {
-        strategy_setting: 'fix_only',
-        upgrade_time_of_day: 0,
-        upgrade_mode: 'all',
-        exclude_plugins: [],
-        include_plugins: [],
       },
     },
   }),
@@ -240,7 +138,6 @@ const createDefaultProps = (): PluginPageProps => ({
 describe('PluginPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockEnableMarketplace = true
     // Reset to default mock values
     vi.mocked(usePluginInstallation).mockReturnValue([
       { packageId: null, bundleInfo: null },
@@ -253,6 +150,11 @@ describe('PluginPage Component', () => {
   // Rendering Tests
   // ============================================================================
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(document.getElementById('marketplace-container')).toBeInTheDocument()
+    })
+
     it('should render with correct container id', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
       const container = document.getElementById('marketplace-container')
@@ -280,20 +182,6 @@ describe('PluginPage Component', () => {
       expect(container).toBeInTheDocument()
       // Check that marketplace-specific links are shown
       expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
-    })
-
-    it('should use plugins as document title on plugins tab', () => {
-      vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
-
-      render(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(useDocumentTitle).toHaveBeenCalledWith('plugin.metadata.title')
-    })
-
-    it('should use marketplace as document title when exploring marketplace', () => {
-      vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
-
-      render(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(useDocumentTitle).toHaveBeenCalledWith('common.mainNav.marketplace')
     })
 
     it('should render TabSlider', () => {
@@ -386,31 +274,12 @@ describe('PluginPage Component', () => {
     it('should use noop for file handlers when canManagement is false', () => {
       // Override mock to disable management permission
       vi.doMock('@/service/use-plugins', () => ({
-        hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
-          if (!permission) return false
-          if (permission === 'noone') return false
-          if (permission === 'everyone') return true
-          return isAdmin
-        },
         useReferenceSettings: () => ({
           data: {
             permission: {
               install_permission: 'noone',
               debug_permission: 'noone',
             },
-            auto_upgrade: {
-              strategy_setting: 'fix_only',
-              upgrade_time_of_day: 0,
-              upgrade_mode: 'all',
-              exclude_plugins: [],
-              include_plugins: [],
-            },
-          },
-        }),
-        usePluginPermissionSettings: () => ({
-          data: {
-            install_permission: 'noone',
-            debug_permission: 'noone',
           },
         }),
         useMutationReferenceSettings: () => ({
@@ -521,7 +390,7 @@ describe('PluginPage Component', () => {
           plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
           version: { version: '1.0.0' },
         },
-      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -557,43 +426,16 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
           version: { version: '1.0.0' },
         },
-      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
-
-      render(<PluginPageWithContext {...createDefaultProps()} />)
-
-      await waitFor(
-        () => {
-          expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-        },
-        { timeout: 3000 },
-      )
-    })
-
-    it('should redirect supported plugin categories to integrations before opening the modal', async () => {
-      const mockSetInstallState = vi.fn()
-      vi.mocked(usePluginInstallation).mockReturnValue([
-        { packageId: 'junjiem/mcp_see_agent:0.2.4@test', bundleInfo: null },
-        mockSetInstallState,
-      ])
-
-      vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
-        data: {
-          plugin: { org: 'junjiem', name: 'mcp_see_agent', category: 'agent-strategy' },
-          version: { version: '0.2.4' },
-        },
-      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       await waitFor(() => {
-        expect(mockRouterReplace).toHaveBeenCalledWith(
-          '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%3A0.2.4%40test%22%5D',
-        )
-      })
-      expect(screen.queryByTestId('install-marketplace-modal')).not.toBeInTheDocument()
+        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+      }, { timeout: 3000 })
     })
 
     it('should handle fetch error gracefully', async () => {
@@ -623,7 +465,7 @@ describe('PluginPage Component', () => {
     it('should open settings modal when settings button is clicked', async () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /plugin\.privilege\.title/i }))
+      fireEvent.click(screen.getByTestId('plugin-settings-button'))
 
       await waitFor(() => {
         expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
@@ -634,7 +476,7 @@ describe('PluginPage Component', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       // Open modal
-      fireEvent.click(screen.getByRole('button', { name: /plugin\.privilege\.title/i }))
+      fireEvent.click(screen.getByTestId('plugin-settings-button'))
 
       await waitFor(() => {
         expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
@@ -685,6 +527,32 @@ describe('PluginPage Component', () => {
   // Memoization Tests
   // ============================================================================
   describe('Memoization', () => {
+    it('should memoize isPluginsTab correctly', () => {
+      vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
+
+      const { rerender } = render(<PluginPageWithContext {...createDefaultProps()} />)
+
+      // Should show plugins content
+      expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
+
+      // Rerender with same props - memoized value should be same
+      rerender(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
+    })
+
+    it('should memoize isExploringMarketplace correctly', () => {
+      vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
+
+      const { rerender } = render(<PluginPageWithContext {...createDefaultProps()} />)
+
+      // Should show marketplace links when on discover tab
+      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
+
+      // Rerender with same props
+      rerender(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
+    })
+
     it('should recognize plugin type tabs as marketplace', () => {
       // Test with a plugin type tab like 'tool'
       vi.mocked(useQueryState).mockReturnValue(['tool', vi.fn()])
@@ -762,7 +630,18 @@ describe('PluginPage Component', () => {
     })
 
     it('should handle marketplace disabled', () => {
-      mockEnableMarketplace = false
+      // Mock marketplace disabled
+      vi.mock('@/context/global-public-context', async () => ({
+        useGlobalPublicStore: vi.fn((selector) => {
+          const state = {
+            systemFeatures: {
+              enable_marketplace: false,
+            },
+          }
+          return selector(state)
+        }),
+      }))
+
       vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
@@ -820,20 +699,17 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
           version: { version: '1.0.0' },
         },
-      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       // Wait for modal to appear
-      await waitFor(
-        () => {
-          expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-        },
-        { timeout: 3000 },
-      )
+      await waitFor(() => {
+        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+      }, { timeout: 3000 })
 
       // Close modal
       fireEvent.click(screen.getByText('Close'))
@@ -864,6 +740,13 @@ describe('PluginPage Component', () => {
       const container = document.getElementById('marketplace-container')
 
       expect(container).toHaveClass('bg-background-body')
+    })
+
+    it('should have scrollbar-gutter stable style', () => {
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      const container = document.getElementById('marketplace-container')
+
+      expect(container).toHaveStyle({ scrollbarGutter: 'stable' })
     })
   })
 })
@@ -956,9 +839,7 @@ describe('Uploader Hook Integration', () => {
         container.dispatchEvent(dragEnterEvent)
       })
 
-      const file = new File(['content'], 'test-plugin.difypkg', {
-        type: 'application/octet-stream',
-      })
+      const file = new File(['content'], 'test-plugin.difypkg', { type: 'application/octet-stream' })
       const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: { files: [file] },
@@ -1098,10 +979,10 @@ describe('PluginPage Integration', () => {
 
     vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
       data: {
-        plugin: { org: 'langgenius', name: 'test-plugin', category: 'unknown' },
+        plugin: { org: 'langgenius', name: 'test-plugin', category: 'tool' },
         version: { version: '1.0.0' },
       },
-    } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+    } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
     render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -1111,12 +992,9 @@ describe('PluginPage Integration', () => {
     })
 
     // Wait for modal
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-      },
-      { timeout: 3000 },
-    )
+    await waitFor(() => {
+      expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+    }, { timeout: 3000 })
 
     // Close modal
     fireEvent.click(screen.getByText('Close'))

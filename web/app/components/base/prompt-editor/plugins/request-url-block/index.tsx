@@ -1,14 +1,27 @@
 import type { RequestURLBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import { $insertNodes, COMMAND_PRIORITY_EDITOR, createCommand } from 'lexical'
-import { memo, useEffect } from 'react'
-import { $createRequestURLBlockNode, RequestURLBlockNode } from './node'
+import {
+  $insertNodes,
+  COMMAND_PRIORITY_EDITOR,
+  createCommand,
+} from 'lexical'
+import {
+  memo,
+  useEffect,
+} from 'react'
+import {
+  $createRequestURLBlockNode,
+  RequestURLBlockNode,
+} from './node'
 
 export const INSERT_REQUEST_URL_BLOCK_COMMAND = createCommand('INSERT_REQUEST_URL_BLOCK_COMMAND')
 export const DELETE_REQUEST_URL_BLOCK_COMMAND = createCommand('DELETE_REQUEST_URL_BLOCK_COMMAND')
 
-const RequestURLBlock = memo(({ onInsert, onDelete }: RequestURLBlockType) => {
+const RequestURLBlock = memo(({
+  onInsert,
+  onDelete,
+}: RequestURLBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -22,7 +35,8 @@ const RequestURLBlock = memo(({ onInsert, onDelete }: RequestURLBlockType) => {
           const contextBlockNode = $createRequestURLBlockNode()
 
           $insertNodes([contextBlockNode])
-          if (onInsert) onInsert()
+          if (onInsert)
+            onInsert()
 
           return true
         },
@@ -31,7 +45,8 @@ const RequestURLBlock = memo(({ onInsert, onDelete }: RequestURLBlockType) => {
       editor.registerCommand(
         DELETE_REQUEST_URL_BLOCK_COMMAND,
         () => {
-          if (onDelete) onDelete()
+          if (onDelete)
+            onDelete()
 
           return true
         },

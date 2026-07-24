@@ -1,1 +1,6 @@
-export const BUILTIN_TOOLS_ARRAY = ['code', 'audio', 'time', 'webscraper']
+export const BUILTIN_TOOLS_ARRAY = [
+  'code',
+  'audio',
+  'time',
+  'webscraper',
+]

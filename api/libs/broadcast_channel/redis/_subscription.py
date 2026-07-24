@@ -3,11 +3,10 @@ import queue
 import threading
 import types
 from collections.abc import Generator, Iterator
-from typing import Any, Self, override
+from typing import Self
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
 from redis.client import PubSub
 
@@ -84,22 +83,16 @@ class RedisSubscriptionBase(Subscription):
             if raw_message is None:
                 continue
 
-            # If close() sent a control event to unblock us, exit immediately
-            # without processing any message — the subscription is shutting down.
-            if self._closed.is_set():
-                break
-
             if raw_message.get("type") != self._get_message_type():
                 continue
 
             channel_field = raw_message.get("channel")
-            match channel_field:
-                case bytes():
-                    channel_name = channel_field.decode("utf-8")
-                case str():
-                    channel_name = channel_field
-                case _:
-                    channel_name = str(channel_field)
+            if isinstance(channel_field, bytes):
+                channel_name = channel_field.decode("utf-8")
+            elif isinstance(channel_field, str):
+                channel_name = channel_field
+            else:
+                channel_name = str(channel_field)
 
             if channel_name != self._topic:
                 _logger.warning(
@@ -118,8 +111,6 @@ class RedisSubscriptionBase(Subscription):
                 continue
 
             self._enqueue_message(payload_bytes)
-            if payload_bytes == SIG_CLOSE:
-                break
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
         try:
@@ -165,23 +156,15 @@ class RedisSubscriptionBase(Subscription):
             except queue.Empty:
                 continue
 
-            if self._closed.is_set():
-                return
-
             yield item
 
-    @override
     def __iter__(self) -> Iterator[bytes]:
         """Return an iterator over messages from the subscription."""
         if self._closed.is_set():
-            return iter(())
-        try:
-            self._start_if_needed()
-        except SubscriptionClosedError:
-            return iter(())
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
+        self._start_if_needed()
         return iter(self._message_iterator())
 
-    @override
     def receive(self, timeout: float | None = 0.1) -> bytes | None:
         """Receive the next message from the subscription."""
         if self._closed.is_set():
@@ -195,13 +178,11 @@ class RedisSubscriptionBase(Subscription):
 
         return item
 
-    @override
     def __enter__(self) -> Self:
         """Context manager entry point."""
         self._start_if_needed()
         return self
 
-    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -212,56 +193,24 @@ class RedisSubscriptionBase(Subscription):
         self.close()
         return None
 
-    @override
     def close(self) -> None:
         """Close the subscription and clean up resources."""
-        with self._start_lock:
-            if self._closed.is_set():
-                return
+        if self._closed.is_set():
+            return
 
-            self._closed.set()
-            listener = self._listener_thread
-            self._listener_thread = None
-            started = self._started
-
-        if started:
-            self._unblock_message_iterator()
-
-        # Send a control event on the same Redis channel to unblock the
-        self._publish_close_event()
-
+        self._closed.set()
         # NOTE: PubSub is not thread-safe. More specifically, the `PubSub.close` method and the
         # message retrieval method should NOT be called concurrently.
         #
         # Due to the restriction above, the PubSub cleanup logic happens inside the consumer thread.
-        if listener is not None and listener.is_alive():
-            listener.join(timeout=2)
-
-    def _unblock_message_iterator(self) -> None:
-        try:
-            self._queue.put_nowait(SIG_CLOSE)
-        except queue.Full:
-            try:
-                self._queue.get_nowait()
-            except queue.Empty:
-                pass
-            try:
-                self._queue.put_nowait(SIG_CLOSE)
-            except queue.Full:
-                pass
+        listener = self._listener_thread
+        if listener is not None:
+            listener.join(timeout=1.0)
+            self._listener_thread = None
 
     # Abstract methods to be implemented by subclasses
     def _get_subscription_type(self) -> str:
         """Return the subscription type (e.g., 'regular' or 'sharded')."""
-        raise NotImplementedError
-
-    def _publish_close_event(self) -> None:
-        """Publish a control event on the Redis channel to unblock the listener.
-
-        This is called by close() after setting _closed. The subclass should
-        publish an empty message on the same topic so that a blocking
-        get_message() call in the listener thread returns promptly.
-        """
         raise NotImplementedError
 
     def _subscribe(self) -> None:
@@ -272,7 +221,7 @@ class RedisSubscriptionBase(Subscription):
         """Unsubscribe from the Redis topic using the appropriate command."""
         raise NotImplementedError
 
-    def _get_message(self) -> dict[str, Any] | None:
+    def _get_message(self) -> dict | None:
         """Get a message from Redis using the appropriate method."""
         raise NotImplementedError
 

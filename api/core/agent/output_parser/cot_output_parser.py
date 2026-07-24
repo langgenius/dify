@@ -1,16 +1,16 @@
 import json
 import re
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Union
 
 from core.agent.entities import AgentScratchpadUnit
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+from dify_graph.model_runtime.entities.llm_entities import LLMResultChunk
 
 
 class CotAgentOutputParser:
     @classmethod
     def handle_react_stream_output(
-        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict[str, Any]
+        cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict
     ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
         def parse_action(action) -> Union[str, AgentScratchpadUnit.Action]:
             action_name = None

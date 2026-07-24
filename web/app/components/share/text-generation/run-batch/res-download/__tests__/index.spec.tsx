@@ -7,16 +7,9 @@ let capturedProps: Record<string, unknown> | undefined
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => {
-    const CSVDownloader = ({
-      children,
-      ...props
-    }: React.PropsWithChildren<Record<string, unknown>>) => {
+    const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       capturedProps = props
-      return (
-        <div data-testid="csv-downloader" className={props.className as string}>
-          {children}
-        </div>
-      )
+      return <div data-testid="csv-downloader" className={props.className as string}>{children}</div>
     }
     return {
       CSVDownloader,

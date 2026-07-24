@@ -1,9 +1,4 @@
-import type {
-  CreateDocumentReq,
-  CustomFile,
-  FullDocumentDetail,
-  ProcessRule,
-} from '@/models/datasets'
+import type { CustomFile, FullDocumentDetail, ProcessRule } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,14 +14,8 @@ const mocks = vi.hoisted(() => ({
   invalidDatasetList: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: { notify: mocks.toastNotify },
-  toast: {
-    success: (message: string) => mocks.toastNotify({ type: 'success', message }),
-    error: (message: string) => mocks.toastNotify({ type: 'error', message }),
-    warning: (message: string) => mocks.toastNotify({ type: 'warning', message }),
-    info: (message: string) => mocks.toastNotify({ type: 'info', message }),
-  },
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -93,16 +82,14 @@ describe('useDocumentCreation', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
       const invalid = { ...defaultValidationParams, overlap: 2000, maxChunkLength: 1000 }
       expect(result.current.validateParams(invalid)).toBe(false)
-      expect(mocks.toastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      expect(mocks.toastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' }),
+      )
     })
 
     it('should return false when maxChunkLength > limitMaxChunkLength', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
-      const invalid = {
-        ...defaultValidationParams,
-        maxChunkLength: 5000,
-        limitMaxChunkLength: 4000,
-      }
+      const invalid = { ...defaultValidationParams, maxChunkLength: 5000, limitMaxChunkLength: 4000 }
       expect(result.current.validateParams(invalid)).toBe(false)
     })
 
@@ -187,52 +174,6 @@ describe('useDocumentCreation', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
       expect(result.current.validatePreviewParams(999999)).toBe(false)
       expect(mocks.toastNotify).toHaveBeenCalled()
-    })
-  })
-
-  describe('executeCreation', () => {
-    it('should not create document when existing dataset cannot add documents', async () => {
-      const onStepChange = vi.fn()
-      const { result } = renderHook(() =>
-        useDocumentCreation({
-          ...defaultOptions,
-          datasetId: 'dataset-1',
-          canCreateDocument: false,
-          onStepChange,
-        }),
-      )
-
-      await result.current.executeCreation(
-        {} as CreateDocumentReq,
-        IndexingType.QUALIFIED,
-        defaultValidationParams.retrievalConfig,
-      )
-
-      expect(mocks.mutateAsync).not.toHaveBeenCalled()
-      expect(mocks.invalidDatasetList).not.toHaveBeenCalled()
-      expect(onStepChange).not.toHaveBeenCalled()
-    })
-
-    it('should allow setting saves even when document creation permission is false', async () => {
-      const onSave = vi.fn()
-      const { result } = renderHook(() =>
-        useDocumentCreation({
-          ...defaultOptions,
-          datasetId: 'dataset-1',
-          canCreateDocument: false,
-          isSetting: true,
-          onSave,
-        }),
-      )
-
-      await result.current.executeCreation(
-        {} as CreateDocumentReq,
-        IndexingType.QUALIFIED,
-        defaultValidationParams.retrievalConfig,
-      )
-
-      expect(mocks.mutateAsync).toHaveBeenCalled()
-      expect(onSave).toHaveBeenCalled()
     })
   })
 

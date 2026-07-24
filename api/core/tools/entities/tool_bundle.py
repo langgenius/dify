@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +26,6 @@ class ApiToolBundle(BaseModel):
     # icon
     icon: str | None = None
     # openapi operation
-    openapi: dict[str, Any]
+    openapi: dict
     # output schema
     output_schema: Mapping[str, object] = Field(default_factory=dict)

@@ -45,31 +45,28 @@ const PARAMS: ParamConfig[] = [
 ]
 
 const ParamItemPlayground = () => {
-  const [state, setState] = useState<Record<string, { value: number; enabled: boolean }>>(() => {
-    return PARAMS.reduce(
-      (acc, item) => {
-        acc[item.id] = { value: item.value, enabled: true }
-        return acc
-      },
-      {} as Record<string, { value: number; enabled: boolean }>,
-    )
+  const [state, setState] = useState<Record<string, { value: number, enabled: boolean }>>(() => {
+    return PARAMS.reduce((acc, item) => {
+      acc[item.id] = { value: item.value, enabled: true }
+      return acc
+    }, {} as Record<string, { value: number, enabled: boolean }>)
   })
 
   const handleChange = (id: string, value: number) => {
-    setState((prev) => ({
+    setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id]!,
+        ...prev[id],
         value: Number.parseFloat(value.toFixed(3)),
       },
     }))
   }
 
   const handleToggle = (id: string, enabled: boolean) => {
-    setState((prev) => ({
+    setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id]!,
+        ...prev[id],
         enabled,
       },
     }))
@@ -77,21 +74,21 @@ const ParamItemPlayground = () => {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-5 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
+      <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
         <span>Generation parameters</span>
         <code className="rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
           {JSON.stringify(state, null, 0)}
         </code>
       </div>
-      {PARAMS.map((param) => (
+      {PARAMS.map(param => (
         <ParamItem
           key={param.id}
           className="rounded-xl border border-transparent px-3 py-2 hover:border-divider-subtle hover:bg-background-default-subtle"
           id={param.id}
           name={param.name}
           tip={param.tip}
-          value={state[param.id]!.value}
-          enable={state[param.id]!.enabled}
+          value={state[param.id].value}
+          enable={state[param.id].enabled}
           min={param.min}
           max={param.max}
           step={param.step}
@@ -111,8 +108,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Slider + numeric input pairing used for model parameter tuning. Supports optional enable toggles per parameter.',
+        component: 'Slider + numeric input pairing used for model parameter tuning. Supports optional enable toggles per parameter.',
       },
     },
   },

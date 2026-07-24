@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
@@ -15,7 +13,7 @@ class AppConfigModel(BaseModel):
 
 class MoreLikeThisConfigManager:
     @classmethod
-    def convert(cls, config: dict[str, Any]) -> bool:
+    def convert(cls, config: dict) -> bool:
         """
         Convert model config to model config
 
@@ -25,7 +23,7 @@ class MoreLikeThisConfigManager:
         return AppConfigModel.model_validate(validated_config).more_like_this.enabled
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         try:
             return AppConfigModel.model_validate(config).model_dump(), ["more_like_this"]
         except ValidationError:

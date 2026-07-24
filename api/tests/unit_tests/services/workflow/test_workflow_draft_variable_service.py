@@ -1,22 +1,16 @@
 import dataclasses
 import secrets
 import uuid
-from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from core.workflow.system_variables import SystemVariableKey
-from core.workflow.variable_prefixes import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID,
-)
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
+from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
+from dify_graph.enums import NodeType
+from dify_graph.variables.segments import StringSegment
+from dify_graph.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType
@@ -31,14 +25,19 @@ from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
     WorkflowDraftVariableService,
-    _model_to_insertion_dict,
 )
 
-SQLITE_MODELS = (Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel)
-pytestmark = [
-    pytest.mark.usefixtures("sqlite_session"),
-    pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
-]
+
+@pytest.fixture
+def mock_engine() -> Engine:
+    return Mock(spec=Engine)
+
+
+@pytest.fixture
+def mock_session(mock_engine) -> Session:
+    mock_session = Mock(spec=Session)
+    mock_session.get_bind.return_value = mock_engine
+    return mock_session
 
 
 class TestDraftVariableSaver:
@@ -46,23 +45,23 @@ class TestDraftVariableSaver:
         suffix = secrets.token_hex(6)
         return f"test_app_id_{suffix}"
 
-    def test__should_variable_be_visible(self, sqlite_session: Session):
+    def test__should_variable_be_visible(self):
+        mock_session = MagicMock(spec=Session)
         mock_user = Account(name="test", email="test@example.com")
         mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="test-tenant-id",
+            session=mock_session,
             app_id=test_app_id,
             node_id="test_node_id",
-            node_type=BuiltinNodeTypes.START,
+            node_type=NodeType.START,
             node_execution_id="test_execution_id",
             user=mock_user,
         )
-        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") == False
-        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") == True
+        assert saver._should_variable_be_visible("123_456", NodeType.IF_ELSE, "output") == False
+        assert saver._should_variable_be_visible("123", NodeType.START, "output") == True
 
-    def test__normalize_variable_for_start_node(self, sqlite_session: Session):
+    def test__normalize_variable_for_start_node(self):
         @dataclasses.dataclass(frozen=True)
         class TestCase:
             name: str
@@ -88,20 +87,6 @@ class TestDraftVariableSaver:
                 expected_name="start_input",
             ),
             TestCase(
-                name="name with `env.` prefix should return the environment node_id",
-                input_node_id=_NODE_ID,
-                input_name="env.API_KEY",
-                expected_node_id=ENVIRONMENT_VARIABLE_NODE_ID,
-                expected_name="API_KEY",
-            ),
-            TestCase(
-                name="name with `conversation.` prefix should return the conversation node_id",
-                input_node_id=_NODE_ID,
-                input_name="conversation.session_id",
-                expected_node_id=CONVERSATION_VARIABLE_NODE_ID,
-                expected_name="session_id",
-            ),
-            TestCase(
                 name="dummy_variable should return the original input node_id",
                 input_node_id=_NODE_ID,
                 input_name="__dummy__",
@@ -110,14 +95,14 @@ class TestDraftVariableSaver:
             ),
         ]
 
+        mock_session = MagicMock(spec=Session)
         mock_user = MagicMock()
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="test-tenant-id",
+            session=mock_session,
             app_id=test_app_id,
             node_id=_NODE_ID,
-            node_type=BuiltinNodeTypes.START,
+            node_type=NodeType.START,
             node_execution_id="test_execution_id",
             user=mock_user,
         )
@@ -127,46 +112,18 @@ class TestDraftVariableSaver:
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
 
-    def test_build_variables_from_start_mapping_rebuilds_system_files(self, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
-        mock_user.id = str(uuid.uuid4())
-        saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="tenant-1",
-            app_id=self._get_test_app_id(),
-            node_id="start",
-            node_type=BuiltinNodeTypes.START,
-            node_execution_id="exec-1",
-            user=mock_user,
-        )
-        rebuilt_file = File(
-            file_id="file-1",
-            file_type=FileType.DOCUMENT,
-            transfer_method=FileTransferMethod.LOCAL_FILE,
-            reference="upload-1",
-            filename="test.txt",
-            extension=".txt",
-            mime_type="text/plain",
-            size=12,
-            storage_key="canonical-storage-key",
-        )
-        raw_file = {
-            **rebuilt_file.model_dump(mode="json"),
-            "tenant_id": "legacy-tenant",
-        }
+    @pytest.fixture
+    def mock_session(self):
+        """Mock SQLAlchemy session."""
+        from sqlalchemy import Engine
 
-        with patch(
-            "services.workflow_draft_variable_service.build_file_from_stored_mapping",
-            return_value=rebuilt_file,
-        ) as rebuild_file:
-            draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
-
-        sys_var = draft_vars[0]
-        assert sys_var.get_value().value[0] == rebuilt_file
-        rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
+        mock_session = MagicMock(spec=Session)
+        mock_engine = MagicMock(spec=Engine)
+        mock_session.get_bind.return_value = mock_engine
+        return mock_session
 
     @pytest.fixture
-    def draft_saver(self, sqlite_session: Session):
+    def draft_saver(self, mock_session):
         """Create DraftVariableSaver instance with user context."""
         # Create a mock user
         mock_user = MagicMock(spec=Account)
@@ -174,16 +131,15 @@ class TestDraftVariableSaver:
         mock_user.tenant_id = "test-tenant-id"
 
         return DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="test-tenant-id",
+            session=mock_session,
             app_id="test-app-id",
             node_id="test-node-id",
-            node_type=BuiltinNodeTypes.LLM,
+            node_type=NodeType.LLM,
             node_execution_id="test-execution-id",
             user=mock_user,
         )
 
-    def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver):
+    def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
@@ -195,61 +151,24 @@ class TestDraftVariableSaver:
             assert draft_var.file_id is None
             _mock_try_offload.return_value = None
 
-    def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver):
+    def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
-                tenant_id=str(uuidv7()),
-                app_id=str(uuidv7()),
-                user_id=str(uuidv7()),
+                id=str(uuidv7()),
                 size=1024,
                 length=10,
                 value_type=SegmentType.ARRAY_STRING,
-                upload_file_id=str(uuidv7()),
+                upload_file_id=str(uuid.uuid4()),
             )
-            mock_draft_var_file.id = str(uuidv7())
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
             draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
 
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
-
-    def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
-        mock_user.id = "test-user-id"
-        mock_user.current_tenant_id = ""
-        saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="app-tenant-id",
-            app_id="test-app-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.LLM,
-            node_execution_id="test-execution-id",
-            user=mock_user,
-        )
-        upload_file = SimpleNamespace(id="upload-file-id")
-        truncation_result = SimpleNamespace(result=StringSegment(value="..."), truncated=True)
-
-        with (
-            patch(
-                "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
-            ),
-            patch("services.workflow_draft_variable_service.FileService") as file_service_class,
-            patch("services.workflow_draft_variable_service.sessionmaker") as sessionmaker_mock,
-        ):
-            file_service_class.return_value.upload_file.return_value = upload_file
-            result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
-
-        assert result is not None
-        _, variable_file = result
-        assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
-        assert variable_file.tenant_id == "app-tenant-id"
-        sessionmaker_mock.return_value.begin.return_value.__enter__.return_value.add.assert_called_once_with(
-            variable_file
-        )
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
@@ -262,84 +181,6 @@ class TestDraftVariableSaver:
         mock_batch_upsert.assert_called_once()
         draft_vars = mock_batch_upsert.call_args[0][1]
         assert len(draft_vars) == 2
-
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
-    def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(
-        self, mock_batch_upsert, sqlite_session: Session
-    ):
-        """Start node should persist common `sys.*` variables, not only `sys.files`."""
-        mock_user = MagicMock(spec=Account)
-        mock_user.id = "test-user-id"
-        mock_user.tenant_id = "test-tenant-id"
-
-        saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="test-tenant-id",
-            app_id="test-app-id",
-            node_id="start-node-id",
-            node_type=BuiltinNodeTypes.START,
-            node_execution_id="exec-id",
-            user=mock_user,
-        )
-
-        outputs = {
-            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.TIMESTAMP}": 1700000000,
-            f"{SYSTEM_VARIABLE_NODE_ID}.{SystemVariableKey.WORKFLOW_EXECUTION_ID}": "run-id-123",
-        }
-
-        saver.save(outputs=outputs)
-
-        mock_batch_upsert.assert_called_once()
-        draft_vars = mock_batch_upsert.call_args[0][1]
-
-        # plus one dummy output because there are no non-sys Start inputs
-        assert len(draft_vars) == 3
-
-        sys_vars = [v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID]
-        assert {v.name for v in sys_vars} == {
-            str(SystemVariableKey.TIMESTAMP),
-            str(SystemVariableKey.WORKFLOW_EXECUTION_ID),
-        }
-
-    @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
-    def test_start_node_save_normalizes_reserved_prefix_outputs(self, mock_batch_upsert, sqlite_session: Session):
-        mock_user = MagicMock(spec=Account)
-        mock_user.id = "test-user-id"
-        mock_user.tenant_id = "test-tenant-id"
-
-        saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="test-tenant-id",
-            app_id="test-app-id",
-            node_id="start-node-id",
-            node_type=BuiltinNodeTypes.START,
-            node_execution_id="exec-id",
-            user=mock_user,
-        )
-
-        saver.save(
-            outputs={
-                "env.API_KEY": "secret",
-                "conversation.session_id": "conversation-1",
-                "sys.workflow_run_id": "run-id-123",
-            }
-        )
-
-        mock_batch_upsert.assert_called_once()
-        draft_vars = mock_batch_upsert.call_args[0][1]
-
-        assert len(draft_vars) == 3
-
-        env_var = next(v for v in draft_vars if v.node_id == ENVIRONMENT_VARIABLE_NODE_ID)
-        assert env_var.name == "API_KEY"
-        assert env_var.editable is False
-
-        conversation_var = next(v for v in draft_vars if v.node_id == CONVERSATION_VARIABLE_NODE_ID)
-        assert conversation_var.name == "session_id"
-        assert conversation_var.node_execution_id is None
-
-        sys_var = next(v for v in draft_vars if v.node_id == SYSTEM_VARIABLE_NODE_ID)
-        assert sys_var.name == str(SystemVariableKey.WORKFLOW_EXECUTION_ID)
 
 
 class TestWorkflowDraftVariableService:
@@ -362,45 +203,9 @@ class TestWorkflowDraftVariableService:
             rag_pipeline_variables=[],
         )
 
-    def test_list_variables_without_values_excludes_node_ids(self, sqlite_session: Session):
-        service = WorkflowDraftVariableService(sqlite_session)
-        variable = WorkflowDraftVariable.new_node_variable(
-            app_id="app-1",
-            node_id="node-1",
-            name="output",
-            value=StringSegment(value="value"),
-            node_execution_id="execution-1",
-        )
-        variable.user_id = "user-1"
-        excluded_system = WorkflowDraftVariable.new_sys_variable(
-            app_id="app-1", name="query", value=StringSegment(value="hidden"), node_execution_id="execution-1"
-        )
-        excluded_system.user_id = "user-1"
-        other_user = WorkflowDraftVariable.new_node_variable(
-            app_id="app-1",
-            node_id="node-2",
-            name="output",
-            value=StringSegment(value="other"),
-            node_execution_id="execution-2",
-        )
-        other_user.user_id = "user-2"
-        sqlite_session.add_all([variable, excluded_system, other_user])
-        sqlite_session.commit()
-
-        result = service.list_variables_without_values(
-            app_id="app-1",
-            page=1,
-            limit=20,
-            user_id="user-1",
-            exclude_node_ids={SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID},
-        )
-
-        assert result.total == 1
-        assert [item.id for item in result.variables] == [variable.id]
-
-    def test_reset_conversation_variable(self, sqlite_session: Session):
+    def test_reset_conversation_variable(self, mock_session):
         """Test resetting a conversation variable"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = WorkflowDraftVariableService(mock_session)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -423,9 +228,9 @@ class TestWorkflowDraftVariableService:
             mock_reset_conv.assert_called_once_with(workflow, variable)
             assert result == expected_result
 
-    def test_reset_node_variable_with_no_execution_id(self, sqlite_session: Session):
+    def test_reset_node_variable_with_no_execution_id(self, mock_session):
         """Test resetting a node variable with no execution ID - should delete variable"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = WorkflowDraftVariableService(mock_session)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -441,18 +246,33 @@ class TestWorkflowDraftVariableService:
         )
         # Manually set to None to simulate the test condition
         variable.node_execution_id = None
-        sqlite_session.add(variable)
-        sqlite_session.commit()
 
         result = service._reset_node_var_or_sys_var(workflow, variable)
 
         # Should delete the variable and return None
-        assert sqlite_session.get(WorkflowDraftVariable, variable.id) is None
+        mock_session.delete.assert_called_once_with(instance=variable)
+        mock_session.flush.assert_called_once()
         assert result is None
 
-    def test_reset_node_variable_with_missing_execution_record(self, sqlite_session: Session):
+    def test_reset_node_variable_with_missing_execution_record(
+        self,
+        mock_engine,
+        mock_session,
+        monkeypatch,
+    ):
         """Test resetting a node variable when execution record doesn't exist"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        mock_repo_session = Mock(spec=Session)
+
+        mock_session_maker = MagicMock()
+        # Mock the context manager protocol for sessionmaker
+        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
+        mock_session_maker.return_value.__exit__.return_value = None
+        monkeypatch.setattr("services.workflow_draft_variable_service.sessionmaker", mock_session_maker)
+        service = WorkflowDraftVariableService(mock_session)
+
+        # Mock the repository to return None (no execution record found)
+        service._api_node_execution_repo = Mock()
+        service._api_node_execution_repo.get_execution_by_id.return_value = None
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -462,17 +282,32 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
+        # Variable is editable by default from factory method
 
         result = service._reset_node_var_or_sys_var(workflow, variable)
 
-        assert sqlite_session.get(WorkflowDraftVariable, variable.id) is None
+        mock_session_maker.assert_called_once_with(bind=mock_engine, expire_on_commit=False)
+        # Should delete the variable and return None
+        mock_session.delete.assert_called_once_with(instance=variable)
+        mock_session.flush.assert_called_once()
         assert result is None
 
-    def test_reset_node_variable_with_valid_execution_record(self, sqlite_session: Session):
-        """Reset a node variable from its execution output and flush the restored value."""
-        service = WorkflowDraftVariableService(sqlite_session)
+    def test_reset_node_variable_with_valid_execution_record(
+        self,
+        mock_session,
+        monkeypatch,
+    ):
+        """Test resetting a node variable with valid execution record - should restore from execution"""
+        mock_repo_session = Mock(spec=Session)
+
+        mock_session_maker = MagicMock()
+        # Mock the context manager protocol for sessionmaker
+        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
+        mock_session_maker.return_value.__exit__.return_value = None
+        mock_session_maker = monkeypatch.setattr(
+            "services.workflow_draft_variable_service.sessionmaker", mock_session_maker
+        )
+        service = WorkflowDraftVariableService(mock_session)
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
@@ -490,27 +325,27 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
+        # Variable is editable by default from factory method
 
         # Mock workflow methods
         mock_node_config = {"type": "test_node"}
         with (
-            patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush,
             patch.object(workflow, "get_node_config_by_id", return_value=mock_node_config, autospec=True),
-            patch.object(workflow, "get_node_type_from_node_config", return_value=BuiltinNodeTypes.LLM, autospec=True),
+            patch.object(workflow, "get_node_type_from_node_config", return_value=NodeType.LLM, autospec=True),
         ):
             result = service._reset_node_var_or_sys_var(workflow, variable)
 
             # Verify last_edited_at was reset
             assert variable.last_edited_at is None
-            flush.assert_called()
+            # Verify session.flush was called
+            mock_session.flush.assert_called()
+
             # Should return the updated variable
             assert result == variable
 
-    def test_reset_non_editable_system_variable_raises_error(self, sqlite_session: Session):
+    def test_reset_non_editable_system_variable_raises_error(self, mock_session):
         """Test that resetting a non-editable system variable raises an error"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = WorkflowDraftVariableService(mock_session)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -530,9 +365,9 @@ class TestWorkflowDraftVariableService:
         assert "cannot reset system variable" in str(exc_info.value)
         assert f"variable_id={variable.id}" in str(exc_info.value)
 
-    def test_reset_editable_system_variable_succeeds(self, sqlite_session: Session):
+    def test_reset_editable_system_variable_succeeds(self, mock_session):
         """Test that resetting an editable system variable succeeds"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = WorkflowDraftVariableService(mock_session)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -546,8 +381,6 @@ class TestWorkflowDraftVariableService:
             node_execution_id="exec-id",
             editable=True,  # Editable system variable
         )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
@@ -557,17 +390,16 @@ class TestWorkflowDraftVariableService:
         service._api_node_execution_repo = Mock()
         service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
 
-        with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
-            result = service._reset_node_var_or_sys_var(workflow, variable)
+        result = service._reset_node_var_or_sys_var(workflow, variable)
 
         # Should succeed and return the variable
         assert result == variable
         assert variable.last_edited_at is None
-        flush.assert_called()
+        mock_session.flush.assert_called()
 
-    def test_reset_query_system_variable_succeeds(self, sqlite_session: Session):
+    def test_reset_query_system_variable_succeeds(self, mock_session):
         """Test that resetting query system variable (another editable one) succeeds"""
-        service = WorkflowDraftVariableService(sqlite_session)
+        service = WorkflowDraftVariableService(mock_session)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -581,8 +413,6 @@ class TestWorkflowDraftVariableService:
             node_execution_id="exec-id",
             editable=True,  # Editable system variable
         )
-        sqlite_session.add(variable)
-        sqlite_session.commit()
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
@@ -592,13 +422,12 @@ class TestWorkflowDraftVariableService:
         service._api_node_execution_repo = Mock()
         service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
 
-        with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
-            result = service._reset_node_var_or_sys_var(workflow, variable)
+        result = service._reset_node_var_or_sys_var(workflow, variable)
 
         # Should succeed and return the variable
         assert result == variable
         assert variable.last_edited_at is None
-        flush.assert_called()
+        mock_session.flush.assert_called()
 
     def test_system_variable_editability_check(self):
         """Test the system variable editability function directly"""
@@ -646,53 +475,3 @@ class TestWorkflowDraftVariableService:
         assert node_var.visible == True
         assert node_var.editable == True
         assert node_var.node_execution_id == "exec-id"
-
-
-class TestModelToInsertionDict:
-    """Reproduce two production errors in _model_to_insertion_dict / _new()."""
-
-    def test_visible_and_is_default_value_always_present(self):
-        """Problem 1: _new() did not set visible/is_default_value, causing
-        inconsistent dict keys across rows in multi-row INSERT and missing
-        is_default_value in the insertion dict entirely.
-        """
-        conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id="app-1",
-            name="counter",
-            value=StringSegment(value="0"),
-        )
-        # _new() should explicitly set these fields so they are not None
-        assert conv_var.visible is not None
-        assert conv_var.is_default_value is not None
-
-        d = _model_to_insertion_dict(conv_var)
-        # visible must appear in every row's dict
-        assert "visible" in d
-        # is_default_value must always be present
-        assert "is_default_value" in d
-
-    def test_description_passthrough(self):
-        """_model_to_insertion_dict passes description as-is;
-        length validation is enforced earlier in build_conversation_variable_from_mapping.
-        """
-        desc = "a" * 200
-        conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id="app-1",
-            name="counter",
-            value=StringSegment(value="0"),
-            description=desc,
-        )
-        d = _model_to_insertion_dict(conv_var)
-        assert d["description"] == desc
-
-    def test_is_default_value_omitted_when_none(self):
-        conv_var = WorkflowDraftVariable.new_conversation_variable(
-            app_id="app-1",
-            name="counter",
-            value=StringSegment(value="0"),
-        )
-        conv_var.is_default_value = None
-
-        d = _model_to_insertion_dict(conv_var)
-
-        assert "is_default_value" not in d

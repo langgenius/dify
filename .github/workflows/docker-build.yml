@@ -6,18 +6,7 @@ on:
       - "main"
     paths:
       - api/Dockerfile
-      - api/Dockerfile.dockerignore
-      - api/pyproject.toml
-      - api/uv.lock
-      - dify-agent/pyproject.toml
-      - dify-agent/README.md
-      - dify-agent/src/**
       - web/Dockerfile
-      - dify-agent-runtime/docker/Dockerfile
-      - dify-agent-runtime/go.mod
-      - dify-agent-runtime/go.sum
-      - dify-agent-runtime/cmd/**
-      - dify-agent-runtime/internal/**
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
@@ -25,84 +14,35 @@ concurrency:
 
 jobs:
   build-docker:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ matrix.runs_on }}
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - service_name: "api-amd64"
             platform: linux/amd64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+            context: "api"
           - service_name: "api-arm64"
             platform: linux/arm64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+            context: "api"
           - service_name: "web-amd64"
             platform: linux/amd64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+            context: "web"
           - service_name: "web-arm64"
             platform: linux/arm64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "local-sandbox-amd64"
-            platform: linux/amd64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
-          - service_name: "local-sandbox-arm64"
-            platform: linux/arm64
-            runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
+            context: "web"
     steps:
-      - name: Set up Depot CLI
-        uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
-      - name: Build Docker Image
-        uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
-        with:
-          project: ${{ vars.DEPOT_PROJECT_ID }}
-          push: false
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          build-contexts: ${{ matrix.build_contexts }}
-          platforms: ${{ matrix.platform }}
-
-  build-docker-fork:
-    if: github.event.pull_request.head.repo.full_name != github.repository
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    strategy:
-      matrix:
-        include:
-          - service_name: "api-amd64"
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "web-amd64"
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "local-sandbox-amd64"
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
-    steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build Docker Image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           push: false
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          build-contexts: ${{ matrix.build_contexts }}
-          platforms: linux/amd64
+          context: "{{defaultContext}}:${{ matrix.context }}"
+          file: "${{ matrix.file }}"
+          platforms: ${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

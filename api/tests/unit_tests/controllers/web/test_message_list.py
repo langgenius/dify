@@ -6,7 +6,7 @@ import builtins
 import uuid
 from datetime import datetime
 from types import ModuleType, SimpleNamespace
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -137,7 +137,7 @@ def test_message_list_mapping(app: Flask) -> None:
             {"id": "file-dict", "filename": "a.txt", "type": "file", "transfer_method": "local"},
             message_file_obj,
         ],
-        status="normal",
+        status="success",
         error=None,
         message_metadata_dict={"meta": "value"},
         extra_contents=[
@@ -158,7 +158,7 @@ def test_message_list_mapping(app: Flask) -> None:
     ):
         response = MessageListApi().get(app_model, end_user)
 
-    mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20, session=ANY)
+    mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20)
     assert response["limit"] == 20
     assert response["has_more"] is False
     assert len(response["data"]) == 1

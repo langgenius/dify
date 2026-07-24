@@ -8,9 +8,13 @@ export type IProps = {
 const Create = async (props: IProps) => {
   const params = await props.params
 
-  const { datasetId } = params
+  const {
+    datasetId,
+  } = params
 
-  return <DatasetUpdateForm datasetId={datasetId} />
+  return (
+    <DatasetUpdateForm datasetId={datasetId} />
+  )
 }
 
 export default Create

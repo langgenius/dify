@@ -1,96 +1,89 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import Toast from '@/app/components/base/toast'
 import { ChangeType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
 
-type Props = Readonly<{
+type Props = {
   readonly: boolean
   list: InputVar[]
-  onChange: (list: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => void
-}>
+  onChange: (list: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => void
+}
 
-const VarList: FC<Props> = ({ readonly, list, onChange }) => {
+const VarList: FC<Props> = ({
+  readonly,
+  list,
+  onChange,
+}) => {
   const { t } = useTranslation()
 
-  const handleVarChange = useCallback(
-    (index: number) => {
-      return (payload: InputVar, moreInfo?: MoreInfo) => {
-        const newList = produce(list, (draft) => {
-          draft[index] = payload
-        })
-        let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
-        let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
-        if (hasDuplicateStr(newList.map((item) => item.variable))) {
-          errorMsgKey = 'varKeyError.keyAlreadyExists'
-          typeName = 'variableConfig.varName'
-        } else if (hasDuplicateStr(newList.map((item) => item.label as string))) {
-          errorMsgKey = 'varKeyError.keyAlreadyExists'
-          typeName = 'variableConfig.labelName'
-        }
-
-        if (errorMsgKey && typeName) {
-          toast.error(
-            t(($) => $[errorMsgKey], {
-              ns: 'appDebug',
-              key: t(($) => $[typeName], { ns: 'appDebug' }),
-            }),
-          )
-          return false
-        }
-        onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
-        return true
+  const handleVarChange = useCallback((index: number) => {
+    return (payload: InputVar, moreInfo?: MoreInfo) => {
+      const newList = produce(list, (draft) => {
+        draft[index] = payload
+      })
+      let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+      let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
+      if (hasDuplicateStr(newList.map(item => item.variable))) {
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.varName'
       }
-    },
-    [list, onChange],
-  )
+      else if (hasDuplicateStr(newList.map(item => item.label as string))) {
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.labelName'
+      }
 
-  const handleVarRemove = useCallback(
-    (index: number) => {
-      return () => {
-        const newList = produce(list, (draft) => {
-          draft.splice(index, 1)
+      if (errorMsgKey && typeName) {
+        Toast.notify({
+          type: 'error',
+          message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
         })
-        onChange(newList, {
-          index,
+        return false
+      }
+      onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
+      return true
+    }
+  }, [list, onChange])
+
+  const handleVarRemove = useCallback((index: number) => {
+    return () => {
+      const newList = produce(list, (draft) => {
+        draft.splice(index, 1)
+      })
+      onChange(newList, {
+        index,
+        payload: {
+          type: ChangeType.remove,
           payload: {
-            type: ChangeType.remove,
-            payload: {
-              beforeKey: list[index]!.variable,
-            },
+            beforeKey: list[index].variable,
           },
-        })
-      }
-    },
-    [list, onChange],
-  )
+        },
+      })
+    }
+  }, [list, onChange])
 
-  const listWithIds = useMemo(
-    () =>
-      list.map((item) => {
-        return {
-          id: item.variable,
-          variable: { ...item },
-        }
-      }),
-    [list],
-  )
+  const listWithIds = useMemo(() => list.map((item) => {
+    return {
+      id: item.variable,
+      variable: { ...item },
+    }
+  }), [list])
 
   const varCount = list.length
 
   if (list.length === 0) {
     return (
-      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs leading-[18px] font-normal text-text-tertiary">
-        {t(($) => $['nodes.start.noVarTip'], { ns: 'workflow' })}
+      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary">
+        {t('nodes.start.noVarTip', { ns: 'workflow' })}
       </div>
     )
   }
@@ -101,9 +94,7 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
     <ReactSortable
       className="space-y-1"
       list={listWithIds}
-      setList={(list) => {
-        onChange(list.map((item) => item.variable))
-      }}
+      setList={(list) => { onChange(list.map(item => item.variable)) }}
       handle=".handle"
       ghostClass="opacity-50"
       animation={150}
@@ -116,15 +107,14 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
             payload={itemWithId.variable}
             onChange={handleVarChange(index)}
             onRemove={handleVarRemove(index)}
-            varKeys={list.map((item) => item.variable)}
+            varKeys={list.map(item => item.variable)}
             canDrag={canDrag}
           />
           {canDrag && (
-            <RiDraggable
-              className={cn(
-                'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
-                'group-hover:block',
-              )}
+            <RiDraggable className={cn(
+              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'group-hover:block',
+            )}
             />
           )}
         </div>

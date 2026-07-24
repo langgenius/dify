@@ -1,16 +1,19 @@
 'use client'
 
-import type { SelectorParam } from 'i18next'
 import type { FC, ReactNode } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import {
+  RiBugLine,
+  RiHardDrive3Line,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
+import Tooltip from '@/app/components/base/tooltip'
 import { PluginSource } from '../../../types'
 
 type SourceConfig = {
   icon: ReactNode
-  tipSelector: SelectorParam<'plugin'>
+  tipKey: string
 }
 
 type PluginSourceBadgeProps = {
@@ -19,25 +22,20 @@ type PluginSourceBadgeProps = {
 
 const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
   [PluginSource.marketplace]: {
-    icon: <BoxSparkleFill className="size-3.5 text-text-tertiary hover:text-text-accent" />,
-    tipSelector: ($) => $['detailPanel.categoryTip.marketplace'],
+    icon: <BoxSparkleFill className="h-3.5 w-3.5 text-text-tertiary hover:text-text-accent" />,
+    tipKey: 'detailPanel.categoryTip.marketplace',
   },
   [PluginSource.github]: {
-    icon: <Github className="size-3.5 text-text-secondary hover:text-text-primary" />,
-    tipSelector: ($) => $['detailPanel.categoryTip.github'],
+    icon: <Github className="h-3.5 w-3.5 text-text-secondary hover:text-text-primary" />,
+    tipKey: 'detailPanel.categoryTip.github',
   },
   [PluginSource.local]: {
-    icon: <span aria-hidden className="i-ri-hard-drive-3-line size-3.5 text-text-tertiary" />,
-    tipSelector: ($) => $['detailPanel.categoryTip.local'],
+    icon: <RiHardDrive3Line className="h-3.5 w-3.5 text-text-tertiary" />,
+    tipKey: 'detailPanel.categoryTip.local',
   },
   [PluginSource.debugging]: {
-    icon: (
-      <span
-        aria-hidden
-        className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning"
-      />
-    ),
-    tipSelector: ($) => $['detailPanel.categoryTip.debugging'],
+    icon: <RiBugLine className="h-3.5 w-3.5 text-text-tertiary hover:text-text-warning" />,
+    tipKey: 'detailPanel.categoryTip.debugging',
   },
 }
 
@@ -45,21 +43,14 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const { t } = useTranslation()
 
   const config = SOURCE_CONFIG_MAP[source]
-  if (!config) return null
-  const tip = t(config.tipSelector, { ns: 'plugin' })
+  if (!config)
+    return null
 
   return (
     <>
-      <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <span aria-label={tip} className="inline-flex">
-              {config.icon}
-            </span>
-          }
-        />
-        <TooltipContent>{tip}</TooltipContent>
+      <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
+      <Tooltip popupContent={t(config.tipKey as never, { ns: 'plugin' })}>
+        <div>{config.icon}</div>
       </Tooltip>
     </>
   )

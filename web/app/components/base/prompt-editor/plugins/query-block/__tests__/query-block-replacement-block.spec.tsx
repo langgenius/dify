@@ -1,25 +1,25 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { QUERY_PLACEHOLDER_TEXT } from '../../../constants'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../__tests__/test-helpers'
-import { CustomTextNode } from '../../custom-text/node'
+} from '../../test-helpers'
 import { QueryBlockNode } from '../index'
 import QueryBlockReplacementBlock from '../query-block-replacement-block'
 
-const renderReplacementPlugin = (
-  props: {
-    onInsert?: () => void
-  } = {},
-) => {
+const renderReplacementPlugin = (props: {
+  onInsert?: () => void
+} = {}) => {
   return renderLexicalEditor({
     namespace: 'query-block-replacement-plugin-test',
     nodes: [CustomTextNode, QueryBlockNode],
-    children: <QueryBlockReplacementBlock {...props} />,
+    children: (
+      <QueryBlockReplacementBlock {...props} />
+    ),
   })
 }
 
@@ -35,11 +35,7 @@ describe('QueryBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(
-        editor,
-        `prefix ${QUERY_PLACEHOLDER_TEXT} suffix`,
-        (text) => new CustomTextNode(text),
-      )
+      setEditorRootText(editor, `prefix ${QUERY_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodeCount(editor, QueryBlockNode)).toBe(1)
@@ -53,11 +49,7 @@ describe('QueryBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(
-        editor,
-        'plain text without placeholder',
-        (text) => new CustomTextNode(text),
-      )
+      setEditorRootText(editor, 'plain text without placeholder', text => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodeCount(editor, QueryBlockNode)).toBe(0)
@@ -70,7 +62,7 @@ describe('QueryBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, QUERY_PLACEHOLDER_TEXT, (text) => new CustomTextNode(text))
+      setEditorRootText(editor, QUERY_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodeCount(editor, QueryBlockNode)).toBe(1)

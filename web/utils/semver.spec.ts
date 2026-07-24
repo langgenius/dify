@@ -1,9 +1,4 @@
-import {
-  compareVersion,
-  getLatestVersion,
-  isEarlierThanVersion,
-  isEqualOrLaterThanVersion,
-} from './semver'
+import { compareVersion, getLatestVersion, isEqualOrLaterThanVersion } from './semver'
 
 describe('semver utilities', () => {
   describe('getLatestVersion', () => {
@@ -75,26 +70,6 @@ describe('semver utilities', () => {
       expect(isEqualOrLaterThanVersion('1.0.0', '1.0.0-beta')).toBe(true)
       expect(isEqualOrLaterThanVersion('1.0.0-beta', '1.0.0-alpha')).toBe(true)
       expect(isEqualOrLaterThanVersion('1.0.0-alpha', '1.0.0')).toBe(false)
-    })
-  })
-
-  describe('isEarlierThanVersion', () => {
-    it('should return true when baseVersion is less than targetVersion', () => {
-      expect(isEarlierThanVersion('1.0.0', '1.1.0')).toBe(true)
-      expect(isEarlierThanVersion('1.9.9', '2.0.0')).toBe(true)
-      expect(isEarlierThanVersion('1.0.0', '1.0.1')).toBe(true)
-    })
-
-    it('should return false when baseVersion is equal to or greater than targetVersion', () => {
-      expect(isEarlierThanVersion('1.0.0', '1.0.0')).toBe(false)
-      expect(isEarlierThanVersion('1.1.0', '1.0.0')).toBe(false)
-      expect(isEarlierThanVersion('1.0.1', '1.0.0')).toBe(false)
-    })
-
-    it('should handle pre-release versions correctly', () => {
-      expect(isEarlierThanVersion('1.0.0-beta', '1.0.0')).toBe(true)
-      expect(isEarlierThanVersion('1.0.0-alpha', '1.0.0-beta')).toBe(true)
-      expect(isEarlierThanVersion('1.0.0', '1.0.0-beta')).toBe(false)
     })
   })
 })

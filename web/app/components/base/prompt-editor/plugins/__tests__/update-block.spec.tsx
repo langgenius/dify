@@ -1,13 +1,14 @@
 import type { LexicalEditor } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
-import { $getRoot } from 'lexical'
+import { $getRoot, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { CustomTextNode } from '../custom-text/node'
+import { CaptureEditorPlugin } from '../test-utils'
 import UpdateBlock, {
   PROMPT_EDITOR_INSERT_QUICKLY,
   PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
 } from '../update-block'
-import { CaptureEditorPlugin } from './test-utils'
+import { CLEAR_HIDE_MENU_TIMEOUT } from '../workflow-variable-block'
 
 const { mockUseEventEmitterContextContext } = vi.hoisted(() => ({
   mockUseEventEmitterContextContext: vi.fn(),
@@ -41,17 +42,19 @@ const selectRootEnd = (editor: LexicalEditor) => {
   })
 }
 
-const setup = (props?: { instanceId?: string; withEventEmitter?: boolean }) => {
+const setup = (props?: {
+  instanceId?: string
+  withEventEmitter?: boolean
+}) => {
   const callbacks: Array<(event: TestEvent) => void> = []
 
-  const eventEmitter =
-    props?.withEventEmitter === false
-      ? null
-      : {
-          useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
-            callbacks.push(callback)
-          }),
-        }
+  const eventEmitter = props?.withEventEmitter === false
+    ? null
+    : {
+        useSubscription: vi.fn((callback: (event: TestEvent) => void) => {
+          callbacks.push(callback)
+        }),
+      }
 
   mockUseEventEmitterContextContext.mockReturnValue({ eventEmitter })
 
@@ -77,7 +80,7 @@ const setup = (props?: { instanceId?: string; withEventEmitter?: boolean }) => {
 
   const emit = (event: TestEvent) => {
     act(() => {
-      callbacks.forEach((callback) => callback(event))
+      callbacks.forEach(callback => callback(event))
     })
   }
 
@@ -154,7 +157,7 @@ describe('UpdateBlock', () => {
   })
 
   describe('Quick insert event', () => {
-    it('should insert slash when quick insert event matches instance id', async () => {
+    it('should insert slash and dispatch clear command when quick insert event matches instance id', async () => {
       const { emit, getEditor } = setup({ instanceId: 'instance-1' })
 
       await waitFor(() => {
@@ -165,6 +168,13 @@ describe('UpdateBlock', () => {
 
       selectRootEnd(editor!)
 
+      const clearCommandHandler = vi.fn(() => true)
+      const unregister = editor!.registerCommand(
+        CLEAR_HIDE_MENU_TIMEOUT,
+        clearCommandHandler,
+        COMMAND_PRIORITY_EDITOR,
+      )
+
       emit({
         type: PROMPT_EDITOR_INSERT_QUICKLY,
         instanceId: 'instance-1',
@@ -173,6 +183,9 @@ describe('UpdateBlock', () => {
       await waitFor(() => {
         expect(readEditorText(editor!)).toBe('/')
       })
+      expect(clearCommandHandler).toHaveBeenCalledTimes(1)
+
+      unregister()
     })
 
     it('should ignore quick insert event when instance id does not match', async () => {

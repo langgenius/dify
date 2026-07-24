@@ -15,20 +15,13 @@ vi.mock('@/context/i18n', () => ({
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId: string | undefined = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    selector: (s: { dataset: { pipeline_id: string | undefined } }) => unknown,
-  ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
+  useDatasetDetailContextWithSelector: (selector: (s: { dataset: { pipeline_id: string | undefined } }) => unknown) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
+  useModalContextSelector: (selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
@@ -50,11 +43,10 @@ vi.mock('@/service/use-datasource', () => ({
 }))
 
 // Mock usePipeline hooks - API service hooks require mocking
-const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } =
-  vi.hoisted(() => ({
-    mockUseDraftPipelinePreProcessingParams: vi.fn(),
-    mockUsePublishedPipelinePreProcessingParams: vi.fn(),
-  }))
+const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } = vi.hoisted(() => ({
+  mockUseDraftPipelinePreProcessingParams: vi.fn(),
+  mockUsePublishedPipelinePreProcessingParams: vi.fn(),
+}))
 
 vi.mock('@/service/use-pipeline', () => ({
   useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
@@ -64,9 +56,7 @@ vi.mock('@/service/use-pipeline', () => ({
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
 const mockStoreState = {
-  crawlResult: undefined as
-    | { data: CrawlResultItem[]; time_consuming: number | string }
-    | undefined,
+  crawlResult: undefined as { data: CrawlResultItem[], time_consuming: number | string } | undefined,
   step: CrawlStep.init,
   websitePages: [] as CrawlResultItem[],
   previewIndex: -1,
@@ -82,8 +72,7 @@ const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../store', () => ({
-  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) =>
-    selector(mockStoreState),
+  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
@@ -95,18 +84,9 @@ vi.mock('../../base/header', () => ({
       <span data-testid="header-doc-link">{props.docLink as string}</span>
       <span data-testid="header-plugin-name">{props.pluginName as string}</span>
       <span data-testid="header-credential-id">{props.currentCredentialId as string}</span>
-      <button data-testid="header-config-btn" onClick={props.onClickConfiguration as () => void}>
-        Configure
-      </button>
-      <button
-        data-testid="header-credential-change"
-        onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}
-      >
-        Change Credential
-      </button>
-      <span data-testid="header-credentials-count">
-        {(props.credentials as unknown[] | undefined)?.length || 0}
-      </span>
+      <button data-testid="header-config-btn" onClick={props.onClickConfiguration as () => void}>Configure</button>
+      <button data-testid="header-credential-change" onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}>Change Credential</button>
+      <span data-testid="header-credentials-count">{(props.credentials as unknown[] | undefined)?.length || 0}</span>
     </div>
   ),
 }))
@@ -118,17 +98,12 @@ vi.mock('../base/options', () => ({
     <div data-testid="options">
       <span data-testid="options-step">{props.step as string}</span>
       <span data-testid="options-run-disabled">{String(props.runDisabled)}</span>
-      <span data-testid="options-variables-count">
-        {(props.variables as unknown[] | undefined)?.length || 0}
-      </span>
+      <span data-testid="options-variables-count">{(props.variables as unknown[] | undefined)?.length || 0}</span>
       <button
         data-testid="options-submit-btn"
         onClick={() => {
           mockOptionsSubmit()
-          ;(props.onSubmit as (v: Record<string, unknown>) => void)({
-            url: 'https://example.com',
-            depth: 2,
-          })
+          ;(props.onSubmit as (v: Record<string, unknown>) => void)({ url: 'https://example.com', depth: 2 })
         }}
       >
         Submit
@@ -161,35 +136,21 @@ vi.mock('../base/error-message', () => ({
 vi.mock('../base/crawled-result', () => ({
   default: (props: Record<string, unknown>) => (
     <div data-testid="crawled-result" className={props.className as string}>
-      <span data-testid="crawled-result-count">
-        {(props.list as unknown[] | undefined)?.length || 0}
-      </span>
-      <span data-testid="crawled-result-checked-count">
-        {(props.checkedList as unknown[] | undefined)?.length || 0}
-      </span>
+      <span data-testid="crawled-result-count">{(props.list as unknown[] | undefined)?.length || 0}</span>
+      <span data-testid="crawled-result-checked-count">{(props.checkedList as unknown[] | undefined)?.length || 0}</span>
       <span data-testid="crawled-result-used-time">{props.usedTime as number}</span>
       <span data-testid="crawled-result-preview-index">{props.previewIndex as number}</span>
       <span data-testid="crawled-result-show-preview">{String(props.showPreview)}</span>
       <span data-testid="crawled-result-multiple-choice">{String(props.isMultipleChoice)}</span>
       <button
         data-testid="crawled-result-select-change"
-        onClick={() =>
-          (props.onSelectedChange as (v: { source_url: string; title: string }[]) => void)([
-            { source_url: 'https://example.com', title: 'Test' },
-          ])
-        }
+        onClick={() => (props.onSelectedChange as (v: { source_url: string, title: string }[]) => void)([{ source_url: 'https://example.com', title: 'Test' }])}
       >
         Change Selection
       </button>
       <button
         data-testid="crawled-result-preview"
-        onClick={() =>
-          (
-            props.onPreview as
-              | ((item: { source_url: string; title: string }, idx: number) => void)
-              | undefined
-          )?.({ source_url: 'https://example.com', title: 'Test' }, 0)
-        }
+        onClick={() => (props.onPreview as ((item: { source_url: string, title: string }, idx: number) => void) | undefined)?.({ source_url: 'https://example.com', title: 'Test' }, 0)}
       >
         Preview
       </button>
@@ -197,18 +158,17 @@ vi.mock('../base/crawled-result', () => ({
   ),
 }))
 
-const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
-  ({
-    title: 'Test Node',
-    plugin_id: 'plugin-123',
-    provider_type: 'website',
-    provider_name: 'website-provider',
-    datasource_name: 'website-ds',
-    datasource_label: 'Website Crawler',
-    datasource_parameters: {},
-    datasource_configurations: {},
-    ...overrides,
-  }) as DataSourceNodeType
+const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
+  title: 'Test Node',
+  plugin_id: 'plugin-123',
+  provider_type: 'website',
+  provider_name: 'website-provider',
+  datasource_name: 'website-ds',
+  datasource_label: 'Website Crawler',
+  datasource_parameters: {},
+  datasource_configurations: {},
+  ...overrides,
+} as DataSourceNodeType)
 
 const createMockCrawlResultItem = (overrides?: Partial<CrawlResultItem>): CrawlResultItem => ({
   source_url: 'https://example.com/page1',
@@ -218,7 +178,7 @@ const createMockCrawlResultItem = (overrides?: Partial<CrawlResultItem>): CrawlR
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -278,6 +238,15 @@ describe('WebsiteCrawl', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      const props = createDefaultProps()
+
+      render(<WebsiteCrawl {...props} />)
+
+      expect(screen.getByTestId('header')).toBeInTheDocument()
+      expect(screen.getByTestId('options')).toBeInTheDocument()
+    })
+
     it('should render Header with correct props', () => {
       mockStoreState.currentCredentialId = 'cred-123'
       const props = createDefaultProps({
@@ -1267,6 +1236,17 @@ describe('WebsiteCrawl', () => {
 
   // Component Memoization
   describe('Component Memoization', () => {
+    it('should be wrapped with React.memo', () => {
+      const props = createDefaultProps()
+
+      const { rerender } = render(<WebsiteCrawl {...props} />)
+      rerender(<WebsiteCrawl {...props} />)
+
+      // Assert - Component should still render correctly after rerender
+      expect(screen.getByTestId('header')).toBeInTheDocument()
+      expect(screen.getByTestId('options')).toBeInTheDocument()
+    })
+
     it('should not re-run callbacks when props are the same', () => {
       const onCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange })
@@ -1282,6 +1262,15 @@ describe('WebsiteCrawl', () => {
 
   // Styling
   describe('Styling', () => {
+    it('should apply correct container classes', () => {
+      const props = createDefaultProps()
+
+      const { container } = render(<WebsiteCrawl {...props} />)
+
+      const rootDiv = container.firstChild as HTMLElement
+      expect(rootDiv).toHaveClass('flex', 'flex-col')
+    })
+
     it('should apply correct classes to options container', () => {
       const props = createDefaultProps()
 

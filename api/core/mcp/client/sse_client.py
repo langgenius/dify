@@ -3,7 +3,7 @@ import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, final
+from typing import Any, TypeAlias, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -33,9 +33,9 @@ class _StatusError:
 
 
 # Type aliases for better readability
-type ReadQueue = queue.Queue[SessionMessage | Exception | None]
-type WriteQueue = queue.Queue[SessionMessage | Exception | None]
-type StatusQueue = queue.Queue[_StatusReady | _StatusError]
+ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
+WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
+StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
 
 
 class SSETransport:
@@ -211,13 +211,12 @@ class SSETransport:
         except queue.Empty:
             raise ValueError("failed to get endpoint URL")
 
-        match status:
-            case _StatusReady():
-                return status.endpoint_url
-            case _StatusError():
-                raise status.exc
-            case _:
-                raise ValueError("failed to get endpoint URL")
+        if isinstance(status, _StatusReady):
+            return status.endpoint_url
+        elif isinstance(status, _StatusError):
+            raise status.exc
+        else:
+            raise ValueError("failed to get endpoint URL")
 
     def connect(
         self,

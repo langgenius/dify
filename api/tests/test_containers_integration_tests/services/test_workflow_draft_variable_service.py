@@ -2,8 +2,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from graphon.variables.segments import StringSegment
+from dify_graph.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from dify_graph.variables.segments import StringSegment
 from models import App, Workflow
 from models.enums import DraftVariableType
 from models.workflow import WorkflowDraftVariable
@@ -45,9 +45,7 @@ class TestWorkflowDraftVariableService:
         # WorkflowDraftVariableService doesn't have external dependencies that need mocking
         return {}
 
-    def _create_test_app(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, fake: Faker | None = None
-    ):
+    def _create_test_app(self, db_session_with_containers: Session, mock_external_service_dependencies, fake=None):
         """
         Helper method to create a test app with realistic data for testing.
 
@@ -82,7 +80,7 @@ class TestWorkflowDraftVariableService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, fake: Faker | None = None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, fake=None):
         """
         Helper method to create a test workflow associated with an app.
 
@@ -124,7 +122,6 @@ class TestWorkflowDraftVariableService:
         name,
         value,
         variable_type: DraftVariableType = DraftVariableType.CONVERSATION,
-        user_id: str | None = None,
         fake=None,
     ):
         """
@@ -147,15 +144,10 @@ class TestWorkflowDraftVariableService:
             WorkflowDraftVariable: Created test variable instance with proper type configuration
         """
         fake = fake or Faker()
-        if user_id is None:
-            app = db_session_with_containers.query(App).filter_by(id=app_id).first()
-            assert app is not None
-            user_id = app.created_by
         if variable_type == "conversation":
             # Create conversation variable using the appropriate factory method
             variable = WorkflowDraftVariable.new_conversation_variable(
                 app_id=app_id,
-                user_id=user_id,
                 name=name,
                 value=value,
                 description=fake.text(max_nb_chars=20),
@@ -164,7 +156,6 @@ class TestWorkflowDraftVariableService:
             # Create system variable with editable flag and execution context
             variable = WorkflowDraftVariable.new_sys_variable(
                 app_id=app_id,
-                user_id=user_id,
                 name=name,
                 value=value,
                 node_execution_id=fake.uuid4(),
@@ -174,7 +165,6 @@ class TestWorkflowDraftVariableService:
             # Create node variable with visibility and editability settings
             variable = WorkflowDraftVariable.new_node_variable(
                 app_id=app_id,
-                user_id=user_id,
                 node_id=node_id,
                 name=name,
                 value=value,
@@ -199,13 +189,7 @@ class TestWorkflowDraftVariableService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         test_value = StringSegment(value=fake.word())
         variable = self._create_test_variable(
-            db_session_with_containers,
-            app.id,
-            CONVERSATION_VARIABLE_NODE_ID,
-            "test_var",
-            test_value,
-            user_id=app.created_by,
-            fake=fake,
+            db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "test_var", test_value, fake=fake
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
         retrieved_variable = service.get_variable(variable.id)
@@ -266,7 +250,7 @@ class TestWorkflowDraftVariableService:
             ["test_node_1", "var3"],
         ]
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_variables = service.get_draft_variables_by_selectors(app.id, selectors, user_id=app.created_by)
+        retrieved_variables = service.get_draft_variables_by_selectors(app.id, selectors)
         assert len(retrieved_variables) == 3
         var_names = [var.name for var in retrieved_variables]
         assert "var1" in var_names
@@ -304,7 +288,7 @@ class TestWorkflowDraftVariableService:
                 fake=fake,
             )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        result = service.list_variables_without_values(app.id, page=1, limit=3, user_id=app.created_by)
+        result = service.list_variables_without_values(app.id, page=1, limit=3)
         assert result.total == 5
         assert len(result.variables) == 3
         assert result.variables[0].created_at >= result.variables[1].created_at
@@ -355,7 +339,7 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        result = service.list_node_variables(app.id, node_id, user_id=app.created_by)
+        result = service.list_node_variables(app.id, node_id)
         assert len(result.variables) == 2
         for var in result.variables:
             assert var.node_id == node_id
@@ -397,7 +381,7 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        result = service.list_conversation_variables(app.id, user_id=app.created_by)
+        result = service.list_conversation_variables(app.id)
         assert len(result.variables) == 2
         for var in result.variables:
             assert var.node_id == CONVERSATION_VARIABLE_NODE_ID
@@ -484,7 +468,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from graphon.variables.variables import StringVariable
+        from dify_graph.variables.variables import StringVariable
 
         conv_var = StringVariable(
             id=fake.uuid4(),
@@ -575,76 +559,13 @@ class TestWorkflowDraftVariableService:
         assert len(app_variables) == 3
         assert len(other_app_variables) == 1
         service = WorkflowDraftVariableService(db_session_with_containers)
-        service.delete_user_workflow_variables(app.id, user_id=app.created_by)
+        service.delete_workflow_variables(app.id)
         app_variables_after = db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id).all()
         other_app_variables_after = (
             db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=other_app.id).all()
         )
         assert len(app_variables_after) == 0
         assert len(other_app_variables_after) == 1
-
-    def test_draft_variables_are_isolated_between_users(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test draft variable isolation for different users in the same app.
-
-        This test verifies that:
-        1. Query APIs return only variables owned by the target user.
-        2. User-scoped deletion only removes variables for that user and keeps
-           other users' variables in the same app untouched.
-        """
-        fake = Faker()
-        app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
-        user_a = app.created_by
-        user_b = fake.uuid4()
-
-        # Use identical variable names on purpose to verify uniqueness scope includes user_id.
-        self._create_test_variable(
-            db_session_with_containers,
-            app.id,
-            CONVERSATION_VARIABLE_NODE_ID,
-            "shared_name",
-            StringSegment(value="value_a"),
-            user_id=user_a,
-            fake=fake,
-        )
-        self._create_test_variable(
-            db_session_with_containers,
-            app.id,
-            CONVERSATION_VARIABLE_NODE_ID,
-            "shared_name",
-            StringSegment(value="value_b"),
-            user_id=user_b,
-            fake=fake,
-        )
-        self._create_test_variable(
-            db_session_with_containers,
-            app.id,
-            CONVERSATION_VARIABLE_NODE_ID,
-            "only_a",
-            StringSegment(value="only_a"),
-            user_id=user_a,
-            fake=fake,
-        )
-
-        service = WorkflowDraftVariableService(db_session_with_containers)
-
-        user_a_vars = service.list_conversation_variables(app.id, user_id=user_a)
-        user_b_vars = service.list_conversation_variables(app.id, user_id=user_b)
-        assert {v.name for v in user_a_vars.variables} == {"shared_name", "only_a"}
-        assert {v.name for v in user_b_vars.variables} == {"shared_name"}
-
-        service.delete_user_workflow_variables(app.id, user_id=user_a)
-
-        user_a_remaining = (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, user_id=user_a).count()
-        )
-        user_b_remaining = (
-            db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, user_id=user_b).count()
-        )
-        assert user_a_remaining == 0
-        assert user_b_remaining == 1
 
     def test_delete_node_variables_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -706,7 +627,7 @@ class TestWorkflowDraftVariableService:
         assert len(other_node_variables) == 1
         assert len(conv_variables) == 1
         service = WorkflowDraftVariableService(db_session_with_containers)
-        service.delete_node_variables(app.id, node_id, user_id=app.created_by)
+        service.delete_node_variables(app.id, node_id)
         target_node_variables_after = (
             db_session_with_containers.query(WorkflowDraftVariable).filter_by(app_id=app.id, node_id=node_id).all()
         )
@@ -736,7 +657,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         workflow = self._create_test_workflow(db_session_with_containers, app, fake=fake)
-        from graphon.variables.variables import StringVariable
+        from dify_graph.variables.variables import StringVariable
 
         conv_var1 = StringVariable(
             id=fake.uuid4(),
@@ -754,7 +675,7 @@ class TestWorkflowDraftVariableService:
 
         db_session_with_containers.commit()
         service = WorkflowDraftVariableService(db_session_with_containers)
-        service.prefill_conversation_variable_default_values(workflow, user_id="00000000-0000-0000-0000-000000000001")
+        service.prefill_conversation_variable_default_values(workflow)
         draft_variables = (
             db_session_with_containers.query(WorkflowDraftVariable)
             .filter_by(app_id=app.id, node_id=CONVERSATION_VARIABLE_NODE_ID)
@@ -794,7 +715,7 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id, app.created_by)
+        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id)
         assert retrieved_conv_id == conversation_id
 
     def test_get_conversation_id_from_draft_variable_not_found(
@@ -810,7 +731,7 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id, app.created_by)
+        retrieved_conv_id = service._get_conversation_id_from_draft_variable(app.id)
         assert retrieved_conv_id is None
 
     def test_list_system_variables_success(
@@ -851,7 +772,7 @@ class TestWorkflowDraftVariableService:
             db_session_with_containers, app.id, CONVERSATION_VARIABLE_NODE_ID, "conv_var", conv_var_value, fake=fake
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        result = service.list_system_variables(app.id, user_id=app.created_by)
+        result = service.list_system_variables(app.id)
         assert len(result.variables) == 2
         for var in result.variables:
             assert var.node_id == SYSTEM_VARIABLE_NODE_ID
@@ -898,15 +819,15 @@ class TestWorkflowDraftVariableService:
             fake=fake,
         )
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_var = service.get_conversation_variable(app.id, "test_conv_var", user_id=app.created_by)
+        retrieved_conv_var = service.get_conversation_variable(app.id, "test_conv_var")
         assert retrieved_conv_var is not None
         assert retrieved_conv_var.name == "test_conv_var"
         assert retrieved_conv_var.node_id == CONVERSATION_VARIABLE_NODE_ID
-        retrieved_sys_var = service.get_system_variable(app.id, "test_sys_var", user_id=app.created_by)
+        retrieved_sys_var = service.get_system_variable(app.id, "test_sys_var")
         assert retrieved_sys_var is not None
         assert retrieved_sys_var.name == "test_sys_var"
         assert retrieved_sys_var.node_id == SYSTEM_VARIABLE_NODE_ID
-        retrieved_node_var = service.get_node_variable(app.id, "test_node", "test_node_var", user_id=app.created_by)
+        retrieved_node_var = service.get_node_variable(app.id, "test_node", "test_node_var")
         assert retrieved_node_var is not None
         assert retrieved_node_var.name == "test_node_var"
         assert retrieved_node_var.node_id == "test_node"
@@ -924,14 +845,9 @@ class TestWorkflowDraftVariableService:
         fake = Faker()
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, fake=fake)
         service = WorkflowDraftVariableService(db_session_with_containers)
-        retrieved_conv_var = service.get_conversation_variable(app.id, "non_existent_conv_var", user_id=app.created_by)
+        retrieved_conv_var = service.get_conversation_variable(app.id, "non_existent_conv_var")
         assert retrieved_conv_var is None
-        retrieved_sys_var = service.get_system_variable(app.id, "non_existent_sys_var", user_id=app.created_by)
+        retrieved_sys_var = service.get_system_variable(app.id, "non_existent_sys_var")
         assert retrieved_sys_var is None
-        retrieved_node_var = service.get_node_variable(
-            app.id,
-            "test_node",
-            "non_existent_node_var",
-            user_id=app.created_by,
-        )
+        retrieved_node_var = service.get_node_variable(app.id, "test_node", "non_existent_node_var")
         assert retrieved_node_var is None

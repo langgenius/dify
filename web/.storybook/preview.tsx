@@ -1,11 +1,13 @@
-import type { Decorator, Preview } from '@storybook/react'
+import type { Preview } from '@storybook/react'
 import type { Resource } from 'i18next'
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { withThemeByDataAttribute } from '@storybook/addon-themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ToastProvider } from '../app/components/base/toast'
 import { I18nClientProvider as I18N } from '../app/components/provider/i18n'
 import commonEnUS from '../i18n/en-US/common.json'
-import '../app/styles/markdown.css'
+
+import '../app/styles/globals.css'
+import '../app/styles/markdown.scss'
 import './storybook.css'
 
 const queryClient = new QueryClient({
@@ -24,7 +26,7 @@ const storyResources: Resource = {
   },
 }
 
-export const decorators: Decorator[] = [
+export const decorators = [
   withThemeByDataAttribute({
     themes: {
       light: 'light',
@@ -37,10 +39,9 @@ export const decorators: Decorator[] = [
     return (
       <QueryClientProvider client={queryClient}>
         <I18N locale="en-US" resource={storyResources}>
-          <>
-            <ToastHost />
+          <ToastProvider>
             <Story />
-          </>
+          </ToastProvider>
         </I18N>
       </QueryClientProvider>
     )

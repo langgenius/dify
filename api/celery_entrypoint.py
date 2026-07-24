@@ -1,5 +1,5 @@
-import psycogreen.gevent as pscycogreen_gevent
-from grpc.experimental import gevent as grpc_gevent
+import psycogreen.gevent as pscycogreen_gevent  # type: ignore
+from grpc.experimental import gevent as grpc_gevent  # type: ignore
 
 # grpc gevent
 grpc_gevent.init_gevent()

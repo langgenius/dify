@@ -10,9 +10,10 @@ from typing import Any
 
 import pytest
 
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segment_group import SegmentGroup
-from graphon.variables.segments import (
+from dify_graph.file.enums import FileTransferMethod, FileType
+from dify_graph.file.models import File
+from dify_graph.variables.segment_group import SegmentGroup
+from dify_graph.variables.segments import (
     ArrayFileSegment,
     BooleanSegment,
     FileSegment,
@@ -21,7 +22,7 @@ from graphon.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-from graphon.variables.types import ArrayValidation, SegmentType
+from dify_graph.variables.types import ArrayValidation, SegmentType
 
 
 def create_test_file(
@@ -35,7 +36,7 @@ def create_test_file(
     """Factory function to create File objects for testing."""
     return File(
         tenant_id="test-tenant",
-        file_type=file_type,
+        type=file_type,
         transfer_method=transfer_method,
         filename=filename,
         extension=extension,

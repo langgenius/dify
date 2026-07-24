@@ -1,11 +1,12 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Toast from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
 const mockPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -14,27 +15,43 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
-  mockToastSuccess: vi.fn(),
-  mockToastError: vi.fn(),
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: vi.fn(),
+  },
 }))
-
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
-  return {
-    ...actual,
-    toast: {
-      ...actual.toast,
-      success: mockToastSuccess,
-      error: mockToastError,
-    },
-  }
-})
 
 // Mock download utilities
 vi.mock('@/utils/download', () => ({
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
+}))
+
+// Capture Confirm callbacks
+let _capturedOnConfirm: (() => void) | undefined
+let _capturedOnCancel: (() => void) | undefined
+
+vi.mock('@/app/components/base/confirm', () => ({
+  default: ({ isShow, onConfirm, onCancel, title, content }: {
+    isShow: boolean
+    onConfirm: () => void
+    onCancel: () => void
+    title: string
+    content: string
+  }) => {
+    _capturedOnConfirm = onConfirm
+    _capturedOnCancel = onCancel
+    return isShow
+      ? (
+          <div data-testid="confirm-dialog">
+            <div data-testid="confirm-title">{title}</div>
+            <div data-testid="confirm-content">{content}</div>
+            <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
+            <button data-testid="confirm-submit" onClick={onConfirm}>Confirm</button>
+          </div>
+        )
+      : null
+  },
 }))
 
 // Capture Actions callbacks
@@ -43,14 +60,7 @@ let _capturedHandleExportDSL: (() => void) | undefined
 let _capturedOpenEditModal: (() => void) | undefined
 
 vi.mock('../actions', () => ({
-  default: ({
-    onApplyTemplate,
-    handleShowTemplateDetails,
-    showMoreOperations,
-    openEditModal,
-    handleExportDSL,
-    handleDelete,
-  }: {
+  default: ({ onApplyTemplate, handleShowTemplateDetails, showMoreOperations, openEditModal, handleExportDSL, handleDelete }: {
     onApplyTemplate: () => void
     handleShowTemplateDetails: () => void
     showMoreOperations: boolean
@@ -63,23 +73,13 @@ vi.mock('../actions', () => ({
     _capturedOpenEditModal = openEditModal
     return (
       <div data-testid="actions">
-        <button data-testid="action-choose" onClick={onApplyTemplate}>
-          operations.choose
-        </button>
-        <button data-testid="action-details" onClick={handleShowTemplateDetails}>
-          operations.details
-        </button>
+        <button data-testid="action-choose" onClick={onApplyTemplate}>operations.choose</button>
+        <button data-testid="action-details" onClick={handleShowTemplateDetails}>operations.details</button>
         {showMoreOperations && (
           <>
-            <button data-testid="action-edit" onClick={openEditModal}>
-              Edit
-            </button>
-            <button data-testid="action-export" onClick={handleExportDSL}>
-              Export
-            </button>
-            <button data-testid="action-delete" onClick={handleDelete}>
-              Delete
-            </button>
+            <button data-testid="action-edit" onClick={openEditModal}>Edit</button>
+            <button data-testid="action-export" onClick={handleExportDSL}>Export</button>
+            <button data-testid="action-delete" onClick={handleDelete}>Delete</button>
           </>
         )}
       </div>
@@ -91,23 +91,17 @@ vi.mock('../actions', () => ({
 vi.mock('../edit-pipeline-info', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="edit-pipeline-info">
-      <button data-testid="edit-close" onClick={onClose}>
-        Close
-      </button>
+      <button data-testid="edit-close" onClick={onClose}>Close</button>
     </div>
   ),
 }))
 
 // Mock Details component
 vi.mock('../details', () => ({
-  default: ({ onClose, onApplyTemplate }: { onClose: () => void; onApplyTemplate: () => void }) => (
+  default: ({ onClose, onApplyTemplate }: { onClose: () => void, onApplyTemplate: () => void }) => (
     <div data-testid="details-component">
-      <button data-testid="details-close" onClick={onClose}>
-        Close
-      </button>
-      <button data-testid="details-apply" onClick={onApplyTemplate}>
-        Apply
-      </button>
+      <button data-testid="details-close" onClick={onClose}>Close</button>
+      <button data-testid="details-apply" onClick={onApplyTemplate}>Apply</button>
     </div>
   ),
 }))
@@ -142,9 +136,7 @@ vi.mock('@/service/use-pipeline', () => ({
   }),
   useExportTemplateDSL: () => ({
     mutateAsync: mockExportPipelineDSL,
-    get isPending() {
-      return mockIsExporting
-    },
+    get isPending() { return mockIsExporting },
   }),
   useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
 }))
@@ -180,16 +172,11 @@ describe('TemplateCard', () => {
     type: 'customized' as const,
   }
 
-  const getDeleteConfirmButton = () =>
-    screen.getByRole('button', { name: 'common.operation.confirm' })
-  const getDeleteCancelButton = () =>
-    screen.getByRole('button', { name: 'common.operation.cancel' })
-
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastSuccess.mockReset()
-    mockToastError.mockReset()
     mockIsExporting = false
+    _capturedOnConfirm = undefined
+    _capturedOnCancel = undefined
     _capturedHandleDelete = undefined
     _capturedHandleExportDSL = undefined
     _capturedOpenEditModal = undefined
@@ -202,6 +189,11 @@ describe('TemplateCard', () => {
   })
 
   describe('Rendering', () => {
+    it('should render without crashing', () => {
+      render(<TemplateCard {...defaultProps} />)
+      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
+    })
+
     it('should render pipeline name', () => {
       render(<TemplateCard {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
@@ -236,7 +228,10 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.any(String),
+        })
       })
     })
 
@@ -296,7 +291,10 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'success',
+          message: expect.any(String),
+        })
       })
     })
 
@@ -311,7 +309,10 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.any(String),
+        })
       })
     })
   })
@@ -339,21 +340,6 @@ describe('TemplateCard', () => {
 
       const closeButton = screen.getByTestId('details-close')
       fireEvent.click(closeButton)
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should close details modal when dialog requests close', async () => {
-      render(<TemplateCard {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('action-details'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
-      })
-
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
@@ -472,7 +458,10 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'success',
+          message: expect.any(String),
+        })
       })
     })
 
@@ -487,7 +476,10 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: expect.any(String),
+        })
       })
     })
 
@@ -503,11 +495,9 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(downloadBlob).toHaveBeenCalledWith(
-          expect.objectContaining({
-            fileName: 'Test Pipeline.pipeline',
-          }),
-        )
+        expect(downloadBlob).toHaveBeenCalledWith(expect.objectContaining({
+          fileName: 'Test Pipeline.pipeline',
+        }))
       })
     })
   })
@@ -520,7 +510,7 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
     })
 
@@ -530,13 +520,14 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(getDeleteCancelButton())
+      const cancelButton = screen.getByTestId('confirm-cancel')
+      fireEvent.click(cancelButton)
 
       await waitFor(() => {
-        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
 
@@ -551,10 +542,11 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(getDeleteConfirmButton())
+      const confirmButton = screen.getByTestId('confirm-submit')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
@@ -572,10 +564,11 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(getDeleteConfirmButton())
+      const confirmButton = screen.getByTestId('confirm-submit')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
         expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
@@ -593,13 +586,14 @@ describe('TemplateCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('datasetPipeline.deletePipeline.title')).toBeInTheDocument()
+        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(getDeleteConfirmButton())
+      const confirmButton = screen.getByTestId('confirm-submit')
+      fireEvent.click(confirmButton)
 
       await waitFor(() => {
-        expect(screen.queryByText('datasetPipeline.deletePipeline.title')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
   })
@@ -627,21 +621,6 @@ describe('TemplateCard', () => {
 
       const closeButton = screen.getByTestId('edit-close')
       fireEvent.click(closeButton)
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should close edit modal when dialog requests close', async () => {
-      render(<TemplateCard {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('action-edit'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
-      })
-
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
@@ -683,6 +662,12 @@ describe('TemplateCard', () => {
   })
 
   describe('Layout', () => {
+    it('should have proper card styling', () => {
+      const { container } = render(<TemplateCard {...defaultProps} />)
+      const card = container.firstChild as HTMLElement
+      expect(card).toHaveClass('group', 'relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
+    })
+
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
@@ -693,6 +678,14 @@ describe('TemplateCard', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
+    })
+  })
+
+  describe('Memoization', () => {
+    it('should be memoized with React.memo', () => {
+      const { rerender } = render(<TemplateCard {...defaultProps} />)
+      rerender(<TemplateCard {...defaultProps} />)
+      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
   })
 })

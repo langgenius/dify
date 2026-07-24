@@ -1,5 +1,11 @@
-import type { AnyFormApi, FieldValidators } from '@tanstack/react-form'
-import type { ForwardedRef, ReactNode } from 'react'
+import type {
+  AnyFormApi,
+  FieldValidators,
+} from '@tanstack/react-form'
+import type {
+  ForwardedRef,
+  ReactNode,
+} from 'react'
 import type { Locale } from '@/i18n-config'
 
 export type TypeWithI18N<T = string> = {
@@ -8,7 +14,7 @@ export type TypeWithI18N<T = string> = {
   [key: string]: T
 }
 
-type FormShowOnObject = {
+export type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -37,7 +43,7 @@ export type FormOption = {
   icon?: string
 }
 
-type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
+export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
 export enum FormItemValidateStatusEnum {
   Success = 'success',
@@ -75,6 +81,8 @@ export type FormSchema = {
     credential_id: string
   }
 }
+
+export type FormValues = Record<string, any>
 
 export type GetValuesOptions = {
   needTransformWhenSecretFieldIsPristine?: boolean

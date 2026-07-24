@@ -3,21 +3,29 @@
     "compounds": [
         {
             "name": "Launch Flask and Celery",
-            "configurations": ["Python: API (gevent)", "Python: Celery"]
+            "configurations": ["Python: Flask", "Python: Celery"]
         }
     ],
     "configurations": [
         {
-            "name": "Python: API (gevent)",
-            "consoleName": "API",
+            "name": "Python: Flask",
+            "consoleName": "Flask",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
             "cwd": "${workspaceFolder}",
             "envFile": ".env",
-            "program": "${workspaceFolder}/app.py",
+            "module": "flask",
             "justMyCode": true,
-            "jinja": true
+            "jinja": true,
+            "env": {
+                "FLASK_APP": "app.py",
+                "GEVENT_SUPPORT": "True"
+            },
+            "args": [
+                "run",
+                "--port=5001"
+            ]
         },
         {
             "name": "Python: Celery",

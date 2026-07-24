@@ -4,7 +4,6 @@ import time
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
@@ -18,26 +17,21 @@ from core.app.entities.task_entities import (
 )
 from core.errors.error import QuotaExceededError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
 
 logger = logging.getLogger(__name__)
 
 
-class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
+class BasedGenerateTaskPipeline:
     """
     BasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
-
-    The type parameter preserves the concrete application generate entity for
-    subclasses after the shared initializer stores it on ``_application_generate_entity``.
     """
-
-    _application_generate_entity: AppGenerateEntityT
 
     def __init__(
         self,
-        application_generate_entity: AppGenerateEntityT,
+        application_generate_entity: AppGenerateEntity,
         queue_manager: AppQueueManager,
         stream: bool,
     ):
@@ -52,14 +46,13 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         e = event.error
         err: Exception
 
-        match e:
-            case InvokeAuthorizationError():
-                err = InvokeAuthorizationError("Incorrect API key provided")
-            case InvokeError() | ValueError() | AgentBackendError():
-                err = e
-            case _:
-                description = getattr(e, "description", None)
-                err = Exception(description if description is not None else str(e))
+        if isinstance(e, InvokeAuthorizationError):
+            err = InvokeAuthorizationError("Incorrect API key provided")
+        elif isinstance(e, InvokeError | ValueError):
+            err = e
+        else:
+            description = getattr(e, "description", None)
+            err = Exception(description if description is not None else str(e))
 
         if not message_id or not session:
             return err

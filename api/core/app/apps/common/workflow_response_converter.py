@@ -1,10 +1,9 @@
-import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import Any, NewType, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -49,63 +48,31 @@ from core.app.entities.task_entities import (
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
-from core.workflow.human_input_forms import (
-    load_form_dispositions_by_form_id,
-)
-from core.workflow.human_input_policy import (
-    FormDisposition,
-    HumanInputSurface,
-    enrich_human_input_pause_reasons,
-    resolve_human_input_pause_reason_inputs,
-)
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
-from graphon.entities import WorkflowStartReason
-from graphon.enums import (
-    BuiltinNodeTypes,
+from dify_graph.entities.pause_reason import HumanInputRequired
+from dify_graph.entities.workflow_start_reason import WorkflowStartReason
+from dify_graph.enums import (
+    NodeType,
+    SystemVariableKey,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.file import FILE_MODEL_IDENTITY, File
-from graphon.runtime import GraphRuntimeState
-from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
-from graphon.variables.variables import Variable
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from dify_graph.file import FILE_MODEL_IDENTITY, File
+from dify_graph.runtime import GraphRuntimeState
+from dify_graph.system_variable import SystemVariable
+from dify_graph.variables.segments import ArrayFileSegment, FileSegment, Segment
+from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
-# Maps the entry surface a workflow was invoked from to the HITL surface that
-# its resume tokens must be filtered for. Surfaces not in this map fall back to
-# the general priority ordering (typically CONSOLE > BACKSTAGE).
-_INVOKE_FROM_TO_HITL_SURFACE: Mapping[InvokeFrom, HumanInputSurface] = {
-    InvokeFrom.SERVICE_API: HumanInputSurface.SERVICE_API,
-    InvokeFrom.OPENAPI: HumanInputSurface.OPENAPI,
-}
-
 NodeExecutionId = NewType("NodeExecutionId", str)
 logger = logging.getLogger(__name__)
-
-
-class AccountCreatedByDict(TypedDict):
-    id: str
-    name: str
-    email: str
-
-
-class EndUserCreatedByDict(TypedDict):
-    id: str
-    user: str
-
-
-CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 
 @dataclass(slots=True)
@@ -129,11 +96,11 @@ class WorkflowResponseConverter:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
-        system_variables: Sequence[Variable],
+        system_variables: SystemVariable,
     ):
         self._application_generate_entity = application_generate_entity
         self._user = user
-        self._system_variables = system_variables_to_mapping(system_variables)
+        self._system_variables = system_variables
         self._workflow_inputs = self._prepare_workflow_inputs()
 
         # Disable truncation for SERVICE_API calls to keep backward compatibility.
@@ -151,7 +118,7 @@ class WorkflowResponseConverter:
     # ------------------------------------------------------------------
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
         inputs = dict(self._application_generate_entity.inputs)
-        for field_name, value in self._system_variables.items():
+        for field_name, value in self._system_variables.to_dict().items():
             # TODO(@future-refactor): store system variables separately from user inputs so we don't
             # need to flatten `sys.*` entries into the input payload just for rerun/export tooling.
             if field_name == SystemVariableKey.CONVERSATION_ID:
@@ -281,20 +248,19 @@ class WorkflowResponseConverter:
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
 
-        created_by: CreatedByDict | dict[str, object] = {}
+        created_by: Mapping[str, object] | None
         user = self._user
-        match user:
-            case Account():
-                created_by = AccountCreatedByDict(
-                    id=user.id,
-                    name=user.name,
-                    email=user.email,
-                )
-            case EndUser():
-                created_by = EndUserCreatedByDict(
-                    id=user.id,
-                    user=user.session_id,
-                )
+        if isinstance(user, Account):
+            created_by = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }
+        else:
+            created_by = {
+                "id": user.id,
+                "user": user.session_id,
+            }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -334,56 +300,24 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        variable_pool = graph_runtime_state.variable_pool
-        resolved_reasons = resolve_human_input_pause_reason_inputs(
-            event.reasons,
-            variable_pool=variable_pool,
-        )
-        pause_reasons = [reason.model_dump(mode="json") for reason in resolved_reasons]
-        human_input_form_ids = [reason.form_id for reason in resolved_reasons if isinstance(reason, HumanInputRequired)]
+        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+        human_input_form_ids = [reason.form_id for reason in event.reasons if isinstance(reason, HumanInputRequired)]
         expiration_times_by_form_id: dict[str, datetime] = {}
-        display_in_ui_by_form_id: dict[str, bool] = {}
-        dispositions_by_form_id: dict[str, FormDisposition] = {}
         if human_input_form_ids:
-            stmt = select(
-                HumanInputForm.id,
-                HumanInputForm.expiration_time,
-                HumanInputForm.form_definition,
-            ).where(HumanInputForm.id.in_(human_input_form_ids))
-            hitl_surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
+            stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
+                HumanInputForm.id.in_(human_input_form_ids)
+            )
             with Session(bind=db.engine) as session:
-                for form_id, expiration_time, form_definition in session.execute(stmt):
+                for form_id, expiration_time in session.execute(stmt):
                     expiration_times_by_form_id[str(form_id)] = expiration_time
-                    try:
-                        definition_payload = json.loads(form_definition) if form_definition else {}
-                    except (TypeError, json.JSONDecodeError):
-                        definition_payload = {}
-                    display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-                dispositions_by_form_id = load_form_dispositions_by_form_id(
-                    human_input_form_ids,
-                    session=session,
-                    surface=hitl_surface,
-                )
-
-        # Reconnect paths must preserve the same pause-reason contract as live streams;
-        # otherwise clients see schema drift after resume.
-        pause_reasons = enrich_human_input_pause_reasons(
-            pause_reasons,
-            dispositions_by_form_id=dispositions_by_form_id,
-            expiration_times_by_form_id={
-                form_id: int(expiration_time.timestamp())
-                for form_id, expiration_time in expiration_times_by_form_id.items()
-            },
-        )
 
         responses: list[StreamResponse] = []
 
-        for reason in resolved_reasons:
+        for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 expiration_time = expiration_times_by_form_id.get(reason.form_id)
                 if expiration_time is None:
                     raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
-                disposition = dispositions_by_form_id.get(reason.form_id)
                 responses.append(
                     HumanInputRequiredResponse(
                         task_id=task_id,
@@ -395,9 +329,8 @@ class WorkflowResponseConverter:
                             form_content=reason.form_content,
                             inputs=reason.inputs,
                             actions=reason.actions,
-                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
-                            form_token=disposition.form_token if disposition else None,
-                            approval_channels=list(disposition.approval_channels) if disposition else [],
+                            display_in_ui=reason.display_in_ui,
+                            form_token=reason.form_token,
                             resolved_default_values=reason.resolved_default_values,
                             expiration_time=int(expiration_time.timestamp()),
                         ),
@@ -428,19 +361,17 @@ class WorkflowResponseConverter:
         self, *, event: QueueHumanInputFormFilledEvent, task_id: str
     ) -> HumanInputFormFilledResponse:
         run_id = self._ensure_workflow_run_id()
-        data = HumanInputFormFilledResponse.Data(
-            node_id=event.node_id,
-            node_title=event.node_title,
-            rendered_content=event.rendered_content,
-            action_id=event.action_id,
-            action_text=event.action_text,
+        return HumanInputFormFilledResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=HumanInputFormFilledResponse.Data(
+                node_id=event.node_id,
+                node_title=event.node_title,
+                rendered_content=event.rendered_content,
+                action_id=event.action_id,
+                action_text=event.action_text,
+            ),
         )
-        if event.submitted_data is not None:
-            runtime_type_converter = WorkflowRuntimeTypeConverter()
-
-            data.submitted_data = runtime_type_converter.value_to_json_encodable_recursive(event.submitted_data)
-
-        return HumanInputFormFilledResponse(task_id=task_id, workflow_run_id=run_id, data=data)
 
     def human_input_form_timeout_to_stream_response(
         self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
@@ -473,18 +404,17 @@ class WorkflowResponseConverter:
 
         created_by: Mapping[str, object]
         user = creator_user
-        match user:
-            case Account():
-                created_by = {
-                    "id": user.id,
-                    "name": user.name,
-                    "email": user.email,
-                }
-            case _:
-                created_by = {
-                    "id": user.id,
-                    "user": user.session_id,
-                }
+        if isinstance(user, Account):
+            created_by = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }
+        else:
+            created_by = {
+                "id": user.id,
+                "user": user.session_id,
+            }
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -512,7 +442,7 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
-        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
+        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
         snapshot = self._store_snapshot(event)
@@ -534,13 +464,13 @@ class WorkflowResponseConverter:
         )
 
         try:
-            if event.node_type == BuiltinNodeTypes.TOOL:
+            if event.node_type == NodeType.TOOL:
                 response.data.extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self._application_generate_entity.app_config.tenant_id,
                     provider_type=ToolProviderType(event.provider_type),
                     provider_id=event.provider_id,
                 )
-            elif event.node_type == BuiltinNodeTypes.DATASOURCE:
+            elif event.node_type == NodeType.DATASOURCE:
                 manager = PluginDatasourceManager()
                 provider_entity = manager.fetch_datasource_provider(
                     self._application_generate_entity.app_config.tenant_id,
@@ -549,7 +479,7 @@ class WorkflowResponseConverter:
                 response.data.extras["icon"] = provider_entity.declaration.identity.generate_datasource_icon_url(
                     self._application_generate_entity.app_config.tenant_id
                 )
-            elif event.node_type == TRIGGER_PLUGIN_NODE_TYPE:
+            elif event.node_type == NodeType.TRIGGER_PLUGIN:
                 response.data.extras["icon"] = TriggerManager.get_trigger_plugin_icon(
                     self._application_generate_entity.app_config.tenant_id,
                     event.provider_id,
@@ -566,13 +496,13 @@ class WorkflowResponseConverter:
         event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent,
         task_id: str,
     ) -> NodeFinishStreamResponse | None:
-        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
+        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
         snapshot = self._pop_snapshot(event.node_execution_id)
 
         start_at = snapshot.start_at if snapshot else event.start_at
-        finished_at = event.finished_at or naive_utc_now()
+        finished_at = naive_utc_now()
         elapsed_time = (finished_at - start_at).total_seconds()
 
         inputs, inputs_truncated = self._truncate_mapping(event.inputs)
@@ -581,16 +511,15 @@ class WorkflowResponseConverter:
         outputs, outputs_truncated = self._truncate_mapping(encoded_outputs)
         metadata = self._merge_metadata(event.execution_metadata, snapshot)
 
-        match event:
-            case QueueNodeSucceededEvent():
-                status = WorkflowNodeExecutionStatus.SUCCEEDED
-                error_message = event.error
-            case QueueNodeFailedEvent():
-                status = WorkflowNodeExecutionStatus.FAILED
-                error_message = event.error
-            case _:
-                status = WorkflowNodeExecutionStatus.EXCEPTION
-                error_message = event.error
+        if isinstance(event, QueueNodeSucceededEvent):
+            status = WorkflowNodeExecutionStatus.SUCCEEDED
+            error_message = event.error
+        elif isinstance(event, QueueNodeFailedEvent):
+            status = WorkflowNodeExecutionStatus.FAILED
+            error_message = event.error
+        else:
+            status = WorkflowNodeExecutionStatus.EXCEPTION
+            error_message = event.error
 
         return NodeFinishStreamResponse(
             task_id=task_id,
@@ -625,7 +554,7 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
     ) -> NodeRetryStreamResponse | None:
-        if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
+        if event.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
 
@@ -683,7 +612,7 @@ class WorkflowResponseConverter:
             data=IterationNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
@@ -706,7 +635,7 @@ class WorkflowResponseConverter:
             data=IterationNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 index=event.index,
                 created_at=int(time.time()),
@@ -733,7 +662,7 @@ class WorkflowResponseConverter:
             data=IterationNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 outputs=new_outputs,
                 outputs_truncated=outputs_truncated,
@@ -763,7 +692,7 @@ class WorkflowResponseConverter:
             data=LoopNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
@@ -786,7 +715,7 @@ class WorkflowResponseConverter:
             data=LoopNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 index=event.index,
                 # The `pre_loop_output` field is not utilized by the frontend.
@@ -815,7 +744,7 @@ class WorkflowResponseConverter:
             data=LoopNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
-                node_type=event.node_type,
+                node_type=event.node_type.value,
                 title=event.node_title,
                 outputs=new_outputs,
                 outputs_truncated=outputs_truncated,
@@ -866,29 +795,29 @@ class WorkflowResponseConverter:
             return []
 
         files: list[Mapping[str, Any]] = []
-        match value:
-            case FileSegment():
-                files.append(value.value.to_dict())
-            case ArrayFileSegment():
-                files.extend([i.to_dict() for i in value.value])
-            case File():
-                files.append(value.to_dict())
-            case list():
-                for item in value:
-                    file = cls._get_file_var_from_value(item)
-                    if file:
-                        files.append(file)
-            case dict():
-                file = cls._get_file_var_from_value(value)
+        if isinstance(value, FileSegment):
+            files.append(value.value.to_dict())
+        elif isinstance(value, ArrayFileSegment):
+            files.extend([i.to_dict() for i in value.value])
+        elif isinstance(value, File):
+            files.append(value.to_dict())
+        elif isinstance(value, list):
+            for item in value:
+                file = cls._get_file_var_from_value(item)
                 if file:
                     files.append(file)
-            case _:
-                pass
+        elif isinstance(
+            value,
+            dict,
+        ):
+            file = cls._get_file_var_from_value(value)
+            if file:
+                files.append(file)
 
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: object) -> Mapping[str, Any] | None:
+    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
@@ -897,11 +826,10 @@ class WorkflowResponseConverter:
         if not value:
             return None
 
-        match value:
-            case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                return value
-            case File():
-                return value.to_dict()
+        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+            return value
+        elif isinstance(value, File):
+            return value.to_dict()
 
         return None
 

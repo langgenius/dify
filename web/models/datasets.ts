@@ -1,19 +1,13 @@
-import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
-import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import {
-  ExternalKnowledgeBase,
-  General,
-  ParentChild,
-  Qa,
-} from '@/app/components/base/icons/src/public/knowledge/dataset-card'
-import { PermissionLevel } from './permission'
+import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -21,10 +15,11 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-// Re-export PermissionLevel as DatasetPermission for backward compatibility
-export const DatasetPermission = PermissionLevel
-
-export type DatasetPermission = PermissionLevel
+export enum DatasetPermission {
+  onlyMe = 'only_me',
+  allTeamMembers = 'all_team_members',
+  partialMembers = 'partial_members',
+}
 
 export enum ChunkingMode {
   text = 'text_model', // General text
@@ -65,7 +60,6 @@ export type DataSet = {
   indexing_technique: IndexingType
   author_name?: string
   created_by: string
-  maintainer?: string
   updated_by: string
   updated_at: number
   app_count: number
@@ -102,8 +96,6 @@ export type DataSet = {
   enable_api: boolean // Indicates if the service API is enabled
   is_multimodal: boolean // Indicates if the dataset supports multimodal
   summary_index_setting?: SummaryIndexSetting
-  /** ACL permission keys */
-  permission_keys?: string[]
 }
 
 export type ExternalAPIItem = {
@@ -115,7 +107,7 @@ export type ExternalAPIItem = {
     endpoint: string
     api_key: string
   }
-  dataset_bindings: { id: string; name: string }[]
+  dataset_bindings: { id: string, name: string }[]
   created_by: string
   created_at: string
 }
@@ -236,12 +228,12 @@ export type QA = {
   answer: string
 }
 
-type IndexingEstimateResponse = {
+export type IndexingEstimateResponse = {
   tokens: number
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string; child_chunks: string[]; summary?: string }>
+  preview: Array<{ content: string, child_chunks: string[], summary?: string }>
   qa_preview?: QA[]
 }
 
@@ -288,7 +280,7 @@ export type Rules = {
   subchunk_segmentation: Segmentation
 }
 
-type Limits = {
+export type Limits = {
   indexing_max_segmentation_tokens_length: number
 }
 
@@ -297,21 +289,24 @@ export type PreProcessingRule = {
   enabled: boolean
 }
 
-type Segmentation = {
+export type Segmentation = {
   separator: string
   max_tokens: number
   chunk_overlap?: number
 }
 
-export type DocumentIndexingStatus =
-  | 'waiting'
-  | 'parsing'
-  | 'cleaning'
-  | 'splitting'
-  | 'indexing'
-  | 'paused'
-  | 'error'
-  | 'completed'
+export const DocumentIndexingStatusList = [
+  'waiting',
+  'parsing',
+  'cleaning',
+  'splitting',
+  'indexing',
+  'paused',
+  'error',
+  'completed',
+] as const
+
+export type DocumentIndexingStatus = typeof DocumentIndexingStatusList[number]
 
 export const DisplayStatusList = [
   'queuing',
@@ -324,7 +319,7 @@ export const DisplayStatusList = [
   'archived',
 ] as const
 
-export type DocumentDisplayStatus = (typeof DisplayStatusList)[number]
+export type DocumentDisplayStatus = typeof DisplayStatusList[number]
 
 export type LegacyDataSourceInfo = {
   upload_file: {
@@ -386,18 +381,9 @@ export type OnlineDriveInfo = {
   type: 'file' | 'folder'
 }
 
-export type UploadFileIdInfo = {
-  upload_file_id: string
-}
+export type DataSourceInfo = LegacyDataSourceInfo | LocalFileInfo | OnlineDocumentInfo | WebsiteCrawlInfo
 
-export type DataSourceInfo =
-  | LegacyDataSourceInfo
-  | LocalFileInfo
-  | OnlineDocumentInfo
-  | WebsiteCrawlInfo
-  | UploadFileIdInfo
-
-type InitialDocumentDetail = {
+export type InitialDocumentDetail = {
   id: string
   batch: string
   position: number
@@ -443,7 +429,7 @@ export type DocumentListResponse = {
   limit: number
 }
 
-type DocumentReq = {
+export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: IndexingType
   doc_form: ChunkingMode
@@ -459,12 +445,11 @@ export type CreateDocumentReq = DocumentReq & {
   embedding_model_provider: string
 }
 
-export type IndexingEstimateParams = DocumentReq &
-  Partial<DataSource> & {
-    dataset_id: string
-  }
+export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
+  dataset_id: string
+}
 
-type DataSource = {
+export type DataSource = {
   type: DataSourceType
   info_list: {
     data_source_type: DataSourceType
@@ -484,6 +469,10 @@ export type NotionInfo = {
   workspace_id: string
   pages: DataSourceNotionPage[]
   credential_id: string
+}
+export type NotionPage = {
+  page_id: string
+  type: string
 }
 
 export type ProcessRule = {
@@ -525,7 +514,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   [key: string]: any
 }
 
-type DocMetadata = {
+export type DocMetadata = {
   title: string
   language: string
   author: string
@@ -536,20 +525,35 @@ type DocMetadata = {
   [key: string]: string
 }
 
-type CustomizableDocType =
-  | 'book'
-  | 'web_page'
-  | 'paper'
-  | 'social_media_post'
-  | 'personal_document'
-  | 'business_document'
-  | 'im_chat_log'
-type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
+export const CUSTOMIZABLE_DOC_TYPES = [
+  'book',
+  'web_page',
+  'paper',
+  'social_media_post',
+  'personal_document',
+  'business_document',
+  'im_chat_log',
+] as const
+
+export const FIXED_DOC_TYPES = ['synced_from_github', 'synced_from_notion', 'wikipedia_entry'] as const
+
+export type CustomizableDocType = typeof CUSTOMIZABLE_DOC_TYPES[number]
+export type FixedDocType = typeof FIXED_DOC_TYPES[number]
 export type DocType = CustomizableDocType | FixedDocType
 
 export type DocumentDetailResponse = FullDocumentDetail
 
-type SegmentStatus = 'waiting' | 'completed' | 'error' | 'indexing'
+export const SEGMENT_STATUS_LIST = ['waiting', 'completed', 'error', 'indexing']
+export type SegmentStatus = typeof SEGMENT_STATUS_LIST[number]
+
+export type SegmentsQuery = {
+  page?: string
+  limit: number
+  // status?: SegmentStatus
+  hit_count_gte?: number
+  keyword?: string
+  enabled?: boolean | 'all'
+}
 
 export type Attachment = {
   id: string
@@ -640,7 +644,7 @@ export type ExternalKnowledgeBaseHitTesting = {
   }
 }
 
-type Segment = {
+export type Segment = {
   id: string
   document: Document
   content: string
@@ -654,7 +658,7 @@ type Segment = {
   answer: string
 }
 
-type Document = {
+export type Document = {
   id: string
   data_source_type: string
   name: string
@@ -669,7 +673,7 @@ export type HitTestingRecordsResponse = {
   page: number
 }
 
-type TsnePosition = {
+export type TsnePosition = {
   x: number
   y: number
 }
@@ -756,7 +760,7 @@ export const DEFAULT_WEIGHTED_SCORE = {
   },
 }
 
-type ChildChunkType = 'automatic' | 'customized'
+export type ChildChunkType = 'automatic' | 'customized'
 
 export type ChildChunkDetail = {
   id: string
@@ -777,6 +781,11 @@ export type ChildSegmentsResponse = {
   limit: number
 }
 
+export type UpdateDocumentParams = {
+  datasetId: string
+  documentId: string
+}
+
 // Used in api url
 export enum DocumentActionType {
   enable = 'enable',
@@ -795,18 +804,21 @@ export type UpdateDocumentBatchParams = {
 
 export type BatchImportResponse = {
   job_id: string
-  job_status: SegmentImportStatus
+  job_status: string
 }
 
-export const DOC_FORM_ICON_WITH_BG: Record<
-  ChunkingMode | 'external',
-  React.ComponentType<{ className: string }>
-> = {
+export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,
   // [ChunkingMode.graph]: Graph, // todo: Graph RAG
   external: ExternalKnowledgeBase,
+}
+
+export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | ChunkingMode.parentChild, React.ComponentType<{ className: string }>> = {
+  [ChunkingMode.text]: GeneralChunk,
+  [ChunkingMode.qa]: QuestionAndAnswer,
+  [ChunkingMode.parentChild]: ParentChildChunk,
 }
 
 type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>
@@ -839,6 +851,12 @@ export type CreateDatasetResponse = {
 export type IndexingStatusBatchRequest = {
   datasetId: string
   batchId: string
+}
+
+export type HitTestingRecordsRequest = {
+  datasetId: string
+  page: number
+  limit: number
 }
 
 export type HitTestingRequest = {

@@ -9,7 +9,11 @@ Score snippets against query.
 [ENDTHINKFLAG]
 `
 
-const ThinkBlockDemo = ({ responding = false }: { responding?: boolean }) => {
+const ThinkBlockDemo = ({
+  responding = false,
+}: {
+  responding?: boolean
+}) => {
   const [isResponding, setIsResponding] = useState(responding)
 
   return (
@@ -28,18 +32,20 @@ const ThinkBlockDemo = ({ responding = false }: { responding?: boolean }) => {
       onFeedback={undefined}
     >
       <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-        <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
+        <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
           <span>Think block</span>
           <button
             type="button"
             className="rounded-md border border-divider-subtle bg-background-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
-            onClick={() => setIsResponding((prev) => !prev)}
+            onClick={() => setIsResponding(prev => !prev)}
           >
             {isResponding ? 'Mark complete' : 'Simulate thinking'}
           </button>
         </div>
         <ThinkBlock data-think>
-          <pre className="text-sm whitespace-pre-wrap text-text-secondary">{THOUGHT_TEXT}</pre>
+          <pre className="whitespace-pre-wrap text-sm text-text-secondary">
+            {THOUGHT_TEXT}
+          </pre>
         </ThinkBlock>
       </div>
     </ChatContextProvider>
@@ -53,8 +59,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component:
-          'Expandable chain-of-thought block used in chat responses. Toggles between “thinking” and completed states.',
+        component: 'Expandable chain-of-thought block used in chat responses. Toggles between “thinking” and completed states.',
       },
     },
   },

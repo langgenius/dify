@@ -6,7 +6,11 @@ export type IDatasetDetail = {
 }
 
 const AppDetail: FC<IDatasetDetail> = ({ children }) => {
-  return <>{children}</>
+  return (
+    <>
+      {children}
+    </>
+  )
 }
 
 export default React.memo(AppDetail)

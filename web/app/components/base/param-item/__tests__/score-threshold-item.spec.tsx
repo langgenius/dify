@@ -14,35 +14,35 @@ describe('ScoreThresholdItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () =>
-    screen.getByLabelText('appDebug.datasetConfig.score_threshold', {
-      selector: 'input[type="range"]',
-    })
-
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(
-        screen.getByText('appDebug.datasetConfig.score_threshold', { selector: 'span' }),
-      ).toBeInTheDocument()
+      expect(screen.getByText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
     })
 
     it('should render tooltip trigger', () => {
-      render(<ScoreThresholdItem {...defaultProps} />)
+      const { container } = render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
+      // Tooltip trigger icon should be rendered
+      expect(container.querySelector('[data-state]')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(getSlider()).toBeInTheDocument()
+      expect(screen.getByRole('spinbutton')).toBeInTheDocument()
+      expect(screen.getByRole('slider')).toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
+    it('should apply custom className', () => {
+      const { container } = render(<ScoreThresholdItem {...defaultProps} className="custom-cls" />)
+
+      expect(container.firstChild).toHaveClass('custom-cls')
+    })
+
     it('should render switch when hasSwitch is true', () => {
       render(<ScoreThresholdItem {...defaultProps} hasSwitch />)
 
@@ -62,30 +62,34 @@ describe('ScoreThresholdItem', () => {
     it('should disable controls when enable is false', () => {
       render(<ScoreThresholdItem {...defaultProps} enable={false} />)
 
-      expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(getSlider()).toBeDisabled()
+      expect(screen.getByRole('spinbutton')).toBeDisabled()
+      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
   describe('Value Clamping', () => {
     it('should clamp values to minimum of 0', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('min', '0')
     })
 
     it('should clamp values to maximum of 1', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('max', '1')
     })
 
     it('should use step of 0.01', () => {
-      render(<ScoreThresholdItem {...defaultProps} value={0.5} />)
-      expect(screen.getByRole('textbox')).toHaveValue('0.5')
+      render(<ScoreThresholdItem {...defaultProps} />)
+      const input = screen.getByRole('spinbutton')
+
+      expect(input).toHaveAttribute('step', '0.01')
     })
 
-    it('should call onChange with rounded-sm value when input changes', async () => {
+    it('should call onChange with rounded value when input changes', async () => {
       const user = userEvent.setup()
       const StatefulScoreThresholdItem = () => {
         const [value, setValue] = useState(defaultProps.value)
@@ -103,7 +107,7 @@ describe('ScoreThresholdItem', () => {
       }
 
       render(<StatefulScoreThresholdItem />)
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('spinbutton')
 
       await user.clear(input)
       await user.type(input, '0.55')
@@ -134,14 +138,8 @@ describe('ScoreThresholdItem', () => {
 
     it('should clamp to max=1 when value exceeds maximum', () => {
       render(<ScoreThresholdItem {...defaultProps} value={1.5} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('1')
-    })
-
-    it('should fall back to default value when value is undefined', () => {
-      render(<ScoreThresholdItem {...defaultProps} value={undefined} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('0.7')
+      const input = screen.getByRole('spinbutton')
+      expect(input).toHaveValue(1)
     })
   })
 })

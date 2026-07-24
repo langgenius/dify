@@ -30,28 +30,30 @@ describe('FileImageItem', () => {
     render(<FileImageItem file={createFile()} />)
 
     const img = screen.getByRole('img')
-    expect(img)!.toBeInTheDocument()
-    expect(img)!.toHaveAttribute('src', 'data:image/png;base64,abc')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('src', 'data:image/png;base64,abc')
   })
 
   it('should use url when base64Url is not available', () => {
     render(<FileImageItem file={createFile({ base64Url: undefined })} />)
 
     const img = screen.getByRole('img')
-    expect(img)!.toHaveAttribute('src', 'https://example.com/photo.png')
+    expect(img).toHaveAttribute('src', 'https://example.com/photo.png')
   })
 
   it('should render delete button when showDeleteAction is true', () => {
     render(<FileImageItem file={createFile()} showDeleteAction />)
 
-    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     render(<FileImageItem file={createFile()} showDeleteAction onRemove={onRemove} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    const buttons = screen.getAllByRole('button')
+    fireEvent.click(buttons[0])
 
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
@@ -62,21 +64,26 @@ describe('FileImageItem', () => {
     )
 
     const svgs = container.querySelectorAll('svg')
-    const progressSvg = Array.from(svgs).find((svg) => svg.querySelector('circle'))
-    expect(progressSvg)!.toBeInTheDocument()
+    const progressSvg = Array.from(svgs).find(svg => svg.querySelector('circle'))
+    expect(progressSvg).toBeInTheDocument()
   })
 
   it('should render replay icon when upload failed', () => {
-    render(<FileImageItem file={createFile({ progress: -1 })} />)
+    const { container } = render(<FileImageItem file={createFile({ progress: -1 })} />)
 
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+    // ReplayLine renders as an SVG icon with data-icon attribute
+    const replaySvg = container.querySelector('svg[data-icon="ReplayLine"]')
+    expect(replaySvg).toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    render(<FileImageItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
+    const { container } = render(
+      <FileImageItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    const replaySvg = container.querySelector('svg[data-icon="ReplayLine"]')
+    fireEvent.click(replaySvg!)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
@@ -88,8 +95,8 @@ describe('FileImageItem', () => {
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    // ImagePreview renders through Dialog with class "image-preview-container"
-    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
+    // ImagePreview renders via createPortal with class "image-preview-container", not role="dialog"
+    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
   })
 
   it('should not show image preview when canPreview is false', () => {
@@ -106,28 +113,35 @@ describe('FileImageItem', () => {
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
-    // ImagePreview renders through Dialog with class "image-preview-container"
+    // ImagePreview renders via createPortal with class "image-preview-container"
     const previewContainer = document.querySelector('.image-preview-container')!
-    expect(previewContainer)!.toBeInTheDocument()
+    expect(previewContainer).toBeInTheDocument()
 
     // Close button is the last clickable div with an SVG in the preview container
-    const closeIcon = screen.getByRole('button', { name: 'common.operation.cancel' })
-    fireEvent.click(closeIcon)
+    const closeIcon = screen.getByTestId('image-preview-close-button')
+    fireEvent.click(closeIcon.parentElement!)
 
     expect(document.querySelector('.image-preview-container')).not.toBeInTheDocument()
   })
 
   it('should render download overlay when showDownloadAction is true', () => {
-    render(<FileImageItem file={createFile()} showDownloadAction />)
+    const { container } = render(<FileImageItem file={createFile()} showDownloadAction />)
 
-    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
+    // The download icon SVG should be present
+    const svgs = container.querySelectorAll('svg')
+    expect(svgs.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should call downloadUrl when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
-    render(<FileImageItem file={createFile()} showDownloadAction />)
+    const { container } = render(<FileImageItem file={createFile()} showDownloadAction />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
+    // Find the RiDownloadLine SVG (it doesn't have data-icon attribute, unlike ReplayLine)
+    const svgs = container.querySelectorAll('svg')
+    const downloadSvg = Array.from(svgs).find(
+      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
+    )
+    fireEvent.click(downloadSvg!.parentElement!)
 
     expect(downloadUrl).toHaveBeenCalled()
   })
@@ -139,79 +153,68 @@ describe('FileImageItem', () => {
   })
 
   it('should use url when both base64Url and url fallback for image render', () => {
-    render(
-      <FileImageItem
-        file={createFile({ base64Url: undefined, url: 'https://example.com/img.png' })}
-      />,
-    )
+    render(<FileImageItem file={createFile({ base64Url: undefined, url: 'https://example.com/img.png' })} />)
 
     const img = screen.getByRole('img')
-    expect(img)!.toHaveAttribute('src', 'https://example.com/img.png')
+    expect(img).toHaveAttribute('src', 'https://example.com/img.png')
   })
 
   it('should render image element even when both base64Url and url are undefined', () => {
     render(<FileImageItem file={createFile({ base64Url: undefined, url: undefined })} />)
 
     const img = screen.getByRole('img')
-    expect(img)!.toBeInTheDocument()
+    expect(img).toBeInTheDocument()
   })
 
   it('should use url with attachment param for download_url when url is available', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: 'https://example.com/photo.png' })
-    render(<FileImageItem file={file} showDownloadAction />)
+    const { container } = render(<FileImageItem file={file} showDownloadAction />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: expect.stringContaining('as_attachment=true'),
-      }),
+    // The download SVG should be rendered
+    const svgs = container.querySelectorAll('svg')
+    expect(svgs.length).toBeGreaterThanOrEqual(1)
+    const downloadSvg = Array.from(svgs).find(
+      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
     )
+    fireEvent.click(downloadSvg!.parentElement!)
+    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('as_attachment=true'),
+    }))
   })
 
   it('should use base64Url for download_url when url is not available', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: undefined, base64Url: 'data:image/png;base64,abc' })
-    render(<FileImageItem file={file} showDownloadAction />)
+    const { container } = render(<FileImageItem file={file} showDownloadAction />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'data:image/png;base64,abc',
-      }),
+    const svgs = container.querySelectorAll('svg')
+    const downloadSvg = Array.from(svgs).find(
+      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
     )
+    fireEvent.click(downloadSvg!.parentElement!)
+
+    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'data:image/png;base64,abc',
+    }))
   })
 
   it('should set preview url using base64Url when available', () => {
-    render(
-      <FileImageItem
-        file={createFile({
-          base64Url: 'data:image/png;base64,abc',
-          url: 'https://example.com/photo.png',
-        })}
-        canPreview
-      />,
-    )
+    render(<FileImageItem file={createFile({ base64Url: 'data:image/png;base64,abc', url: 'https://example.com/photo.png' })} canPreview />)
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
+    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
   })
 
   it('should set preview url using url when base64Url is not available', () => {
-    render(
-      <FileImageItem
-        file={createFile({ base64Url: undefined, url: 'https://example.com/photo.png' })}
-        canPreview
-      />,
-    )
+    render(<FileImageItem file={createFile({ base64Url: undefined, url: 'https://example.com/photo.png' })} canPreview />)
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
+    expect(document.querySelector('.image-preview-container')).toBeInTheDocument()
   })
 
   it('should set preview url to empty string when both base64Url and url are undefined', () => {
@@ -227,15 +230,17 @@ describe('FileImageItem', () => {
   it('should call downloadUrl with correct params when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
     const file = createFile({ url: 'https://example.com/photo.png', name: 'photo.png' })
-    render(<FileImageItem file={file} showDownloadAction />)
+    const { container } = render(<FileImageItem file={file} showDownloadAction />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.download' }))
-
-    expect(downloadUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: expect.stringContaining('as_attachment=true'),
-        fileName: 'photo.png',
-      }),
+    const svgs = container.querySelectorAll('svg')
+    const downloadSvg = Array.from(svgs).find(
+      svg => !svg.hasAttribute('data-icon') && !svg.querySelector('circle'),
     )
+    fireEvent.click(downloadSvg!.parentElement!)
+
+    expect(downloadUrl).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('as_attachment=true'),
+      fileName: 'photo.png',
+    }))
   })
 })

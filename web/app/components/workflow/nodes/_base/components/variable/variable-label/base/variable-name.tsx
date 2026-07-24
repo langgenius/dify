@@ -1,5 +1,5 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 import { useVarName } from '../hooks'
 
 type VariableNameProps = {
@@ -7,11 +7,21 @@ type VariableNameProps = {
   className?: string
   notShowFullPath?: boolean
 }
-const VariableName = ({ variables, className, notShowFullPath }: VariableNameProps) => {
+const VariableName = ({
+  variables,
+  className,
+  notShowFullPath,
+}: VariableNameProps) => {
   const varName = useVarName(variables, notShowFullPath)
 
   return (
-    <div className={cn('truncate system-xs-medium', className)} title={varName}>
+    <div
+      className={cn(
+        'system-xs-medium truncate',
+        className,
+      )}
+      title={varName}
+    >
       {varName}
     </div>
   )

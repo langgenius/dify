@@ -6,7 +6,9 @@ import { VarType } from '../../types'
 type Params = {
   nodeId: string
 }
-const useIsVarFileAttribute = ({ nodeId }: Params) => {
+const useIsVarFileAttribute = ({
+  nodeId,
+}: Params) => {
   const isChatMode = useIsChatMode()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = useMemo(() => {
@@ -14,7 +16,8 @@ const useIsVarFileAttribute = ({ nodeId }: Params) => {
   }, [getBeforeNodesInSameBranch, nodeId])
   const { getCurrentVariableType } = useWorkflowVariables()
   const getIsVarFileAttribute = (variable: ValueSelector) => {
-    if (variable.length !== 3) return false
+    if (variable.length !== 3)
+      return false
     const parentVariable = variable.slice(0, 2)
     const varType = getCurrentVariableType({
       valueSelector: parentVariable,

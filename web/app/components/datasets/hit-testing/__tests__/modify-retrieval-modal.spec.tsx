@@ -4,32 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-    variant?: string
-  }) => <button onClick={onClick}>{children}</button>,
+vi.mock('@/app/components/base/button', () => ({
+  default: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
+    <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
@@ -37,21 +17,10 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: RetrievalConfig
-    onChange: (v: RetrievalConfig) => void
-  }) => (
+  default: ({ value, onChange }: { value: RetrievalConfig, onChange: (v: RetrievalConfig) => void }) => (
     <div data-testid="retrieval-method-config">
       <span>{value.search_method}</span>
-      <button
-        data-testid="change-config"
-        onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}
-      >
-        change
-      </button>
+      <button data-testid="change-config" onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}>change</button>
     </div>
   ),
 }))
@@ -66,6 +35,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: () => 'model-name',
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+}))
+
+vi.mock('../../../base/toast', () => ({
+  default: { notify: vi.fn() },
 }))
 
 vi.mock('../../settings/utils', () => ({
@@ -114,19 +91,13 @@ describe('ModifyRetrievalModal', () => {
 
   it('should call onHide when cancel button clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel$/ }))
-    expect(defaultProps.onHide).toHaveBeenCalled()
-  })
-
-  it('should call onHide when close button clicked', () => {
-    render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    fireEvent.click(screen.getByTestId('cancel-button'))
     expect(defaultProps.onHide).toHaveBeenCalled()
   })
 
   it('should call onSave with retrieval config when save clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /operation\.save$/ }))
+    fireEvent.click(screen.getByTestId('save-button'))
     expect(defaultProps.onSave).toHaveBeenCalled()
   })
 

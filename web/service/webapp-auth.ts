@@ -17,11 +17,11 @@ export function getWebAppPassport(shareCode: string) {
   return localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode)) || ''
 }
 
-function clearWebAppAccessToken() {
+export function clearWebAppAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)
 }
 
-function clearWebAppPassport(shareCode: string) {
+export function clearWebAppPassport(shareCode: string) {
   localStorage.removeItem(PASSPORT_LOCAL_STORAGE_NAME(shareCode))
 }
 
@@ -34,10 +34,9 @@ export async function webAppLoginStatus(shareCode: string, userId?: string) {
   // always need to check login to prevent passport from being outdated
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const params = new URLSearchParams({ app_code: shareCode })
-  if (userId) params.append('user_id', userId)
-  const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(
-    `/login/status?${params.toString()}`,
-  )
+  if (userId)
+    params.append('user_id', userId)
+  const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(`/login/status?${params.toString()}`)
   return {
     userLoggedIn: logged_in,
     appLoggedIn: app_logged_in,

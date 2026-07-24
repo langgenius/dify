@@ -4,9 +4,7 @@ import dayjs from '../../utils/dayjs'
 import Header from '../header'
 
 // Factory for Header props
-const createHeaderProps = (
-  overrides: Partial<DatePickerHeaderProps> = {},
-): DatePickerHeaderProps => ({
+const createHeaderProps = (overrides: Partial<DatePickerHeaderProps> = {}): DatePickerHeaderProps => ({
   handleOpenYearMonthPicker: vi.fn(),
   currentDate: dayjs('2024-06-15'),
   onClickNextMonth: vi.fn(),
@@ -26,8 +24,7 @@ describe('DatePicker Header', () => {
       render(<Header {...props} />)
 
       // The useMonths hook returns translated keys; check for year
-      // The useMonths hook returns translated keys; check for year
-      expect(screen.getByText(/2024/))!.toBeInTheDocument()
+      expect(screen.getByText(/2024/)).toBeInTheDocument()
     })
 
     it('should render navigation buttons', () => {
@@ -49,7 +46,7 @@ describe('DatePicker Header', () => {
 
       // First button is the month/year display
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0]!)
+      fireEvent.click(buttons[0])
 
       expect(handleOpenYearMonthPicker).toHaveBeenCalledTimes(1)
     })
@@ -61,7 +58,7 @@ describe('DatePicker Header', () => {
 
       // Second button is prev month
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1]!)
+      fireEvent.click(buttons[1])
 
       expect(onClickPrevMonth).toHaveBeenCalledTimes(1)
     })
@@ -73,7 +70,7 @@ describe('DatePicker Header', () => {
 
       // Third button is next month
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[2]!)
+      fireEvent.click(buttons[2])
 
       expect(onClickNextMonth).toHaveBeenCalledTimes(1)
     })

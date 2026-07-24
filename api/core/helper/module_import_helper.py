@@ -2,13 +2,12 @@ import importlib.util
 import logging
 import sys
 from types import ModuleType
+from typing import AnyStr
 
 logger = logging.getLogger(__name__)
 
 
-def import_module_from_source[T: (str, bytes)](
-    *, module_name: str, py_file_path: T, use_lazy_loader: bool = False
-) -> ModuleType:
+def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_lazy_loader: bool = False) -> ModuleType:
     """
     Importing a module from the source file directly
     """
@@ -20,18 +19,17 @@ def import_module_from_source[T: (str, bytes)](
                 raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
         else:
             # Refer to: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            new_spec = importlib.util.spec_from_file_location(module_name, py_file_path)
-            if not new_spec or not new_spec.loader:
+            # FIXME: mypy does not support the type of spec.loader
+            spec = importlib.util.spec_from_file_location(module_name, py_file_path)  # type: ignore[assignment]
+            if not spec or not spec.loader:
                 raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
             if use_lazy_loader:
                 # Refer to: https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
-                new_spec.loader = importlib.util.LazyLoader(new_spec.loader)
-            spec = new_spec
+                spec.loader = importlib.util.LazyLoader(spec.loader)
         module = importlib.util.module_from_spec(spec)
         if not existed_spec:
             sys.modules[module_name] = module
-        if spec.loader is not None:
-            spec.loader.exec_module(module)
+        spec.loader.exec_module(module)
         return module
     except Exception as e:
         logger.exception("Failed to load module %s from script file '%s'", module_name, repr(py_file_path))

@@ -1,13 +1,13 @@
 import type { Block } from '../types'
 import { BlockEnum } from '../types'
-import { BlockClassification } from './types'
+import { BlockClassificationEnum } from './types'
 
 export const BLOCK_CLASSIFICATIONS = [
-  BlockClassification.Default,
-  BlockClassification.QuestionUnderstand,
-  BlockClassification.Logic,
-  BlockClassification.Transform,
-  BlockClassification.Utilities,
+  BlockClassificationEnum.Default,
+  BlockClassificationEnum.QuestionUnderstand,
+  BlockClassificationEnum.Logic,
+  BlockClassificationEnum.Transform,
+  BlockClassificationEnum.Utilities,
 ] as const
 
 export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
@@ -34,19 +34,19 @@ export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
 
 export const START_BLOCKS = [
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
     title: 'User Input',
     description: 'Traditional start node for user input',
   },
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.TriggerSchedule,
     title: 'Schedule Trigger',
     description: 'Time-based workflow trigger',
   },
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.TriggerWebhook,
     title: 'Webhook Trigger',
     description: 'HTTP callback trigger',
@@ -62,99 +62,94 @@ export const ENTRY_NODE_TYPES = [
 
 export const BLOCKS = [
   {
-    classification: BlockClassification.Default,
-    type: BlockEnum.Agent,
-    title: 'Agent',
-  },
-  {
-    classification: BlockClassification.Default,
-    type: BlockEnum.AgentV2,
-    title: 'Agent',
-  },
-  {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
     title: 'LLM',
   },
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.KnowledgeRetrieval,
     title: 'Knowledge Retrieval',
   },
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.End,
     title: 'End',
   },
   {
-    classification: BlockClassification.Default,
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.Answer,
     title: 'Direct Answer',
   },
   {
-    classification: BlockClassification.QuestionUnderstand,
+    classification: BlockClassificationEnum.QuestionUnderstand,
     type: BlockEnum.QuestionClassifier,
     title: 'Question Classifier',
   },
   {
-    classification: BlockClassification.Logic,
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.IfElse,
     title: 'IF/ELSE',
   },
   {
-    classification: BlockClassification.Logic,
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.LoopEnd,
     title: 'Exit Loop',
     description: '',
   },
   {
-    classification: BlockClassification.Logic,
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.Iteration,
     title: 'Iteration',
   },
   {
-    classification: BlockClassification.Logic,
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.Loop,
     title: 'Loop',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.Code,
     title: 'Code',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.TemplateTransform,
     title: 'Templating Transform',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.VariableAggregator,
     title: 'Variable Aggregator',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.DocExtractor,
     title: 'Doc Extractor',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.Assigner,
     title: 'Variable Assigner',
   },
   {
-    classification: BlockClassification.Transform,
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.ParameterExtractor,
     title: 'Parameter Extractor',
   },
   {
-    classification: BlockClassification.Utilities,
+    classification: BlockClassificationEnum.Utilities,
     type: BlockEnum.HttpRequest,
     title: 'HTTP Request',
   },
   {
-    classification: BlockClassification.Utilities,
+    classification: BlockClassificationEnum.Utilities,
     type: BlockEnum.ListFilter,
     title: 'List Filter',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Agent,
+    title: 'Agent',
   },
 ] as const satisfies readonly Block[]

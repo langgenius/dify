@@ -1,14 +1,12 @@
 import base64
 
-from flask import Flask
-
 from .test_utils import CodeExecutorTestMixin
 
 
 class TestJinja2CodeExecutor(CodeExecutorTestMixin):
     """Test class for Jinja2 code executor functionality."""
 
-    def test_jinja2(self, flask_app_with_containers: Flask):
+    def test_jinja2(self, flask_app_with_containers):
         """Test basic Jinja2 template execution with variable substitution"""
         CodeExecutor, CodeLanguage = self.code_executor_imports
         _, Jinja2TemplateTransformer = self.jinja2_imports
@@ -27,7 +25,7 @@ class TestJinja2CodeExecutor(CodeExecutorTestMixin):
         )
         assert result == "<<RESULT>>Hello World<<RESULT>>\n"
 
-    def test_jinja2_with_code_template(self, flask_app_with_containers: Flask):
+    def test_jinja2_with_code_template(self, flask_app_with_containers):
         """Test Jinja2 workflow code template execution with inputs"""
         CodeExecutor, CodeLanguage = self.code_executor_imports
 
@@ -36,7 +34,7 @@ class TestJinja2CodeExecutor(CodeExecutorTestMixin):
         )
         assert result == {"result": "Hello World"}
 
-    def test_jinja2_get_runner_script(self, flask_app_with_containers: Flask):
+    def test_jinja2_get_runner_script(self, flask_app_with_containers):
         """Test Jinja2 template transformer runner script generation"""
         _, Jinja2TemplateTransformer = self.jinja2_imports
 
@@ -45,7 +43,7 @@ class TestJinja2CodeExecutor(CodeExecutorTestMixin):
         assert runner_script.count(Jinja2TemplateTransformer._inputs_placeholder) == 1
         assert runner_script.count(Jinja2TemplateTransformer._result_tag) == 2
 
-    def test_jinja2_template_with_special_characters(self, flask_app_with_containers: Flask):
+    def test_jinja2_template_with_special_characters(self, flask_app_with_containers):
         """
         Test that templates with special characters (quotes, newlines) render correctly.
         This is a regression test for issue #26818 where textarea pre-fill values

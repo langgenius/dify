@@ -2,7 +2,6 @@ import copy
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
 
 from core.prompt.prompt_templates.advanced_prompt_templates import (
     BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
@@ -30,9 +29,7 @@ class TestAdvancedPromptTemplateService:
         # for consistency with other test files
         return {}
 
-    def test_get_prompt_baichuan_model_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_prompt_baichuan_model_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test successful prompt generation for Baichuan model.
 
@@ -67,9 +64,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#histories#}}" in prompt_text
         assert "{{#query#}}" in prompt_text
 
-    def test_get_prompt_common_model_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_prompt_common_model_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test successful prompt generation for common models.
 
@@ -105,7 +100,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#query#}}" in prompt_text
 
     def test_get_prompt_case_insensitive_baichuan_detection(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan model detection is case insensitive.
@@ -136,7 +131,7 @@ class TestAdvancedPromptTemplateService:
             assert BAICHUAN_CONTEXT in prompt_text
 
     def test_get_common_prompt_chat_app_completion_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test common prompt generation for chat app with completion mode.
@@ -166,9 +161,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#histories#}}" in prompt_text
         assert "{{#query#}}" in prompt_text
 
-    def test_get_common_prompt_chat_app_chat_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_common_prompt_chat_app_chat_mode(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test common prompt generation for chat app with chat mode.
 
@@ -196,7 +189,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#pre_prompt#}}" in prompt_text
 
     def test_get_common_prompt_completion_app_completion_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test common prompt generation for completion app with completion mode.
@@ -224,7 +217,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#pre_prompt#}}" in prompt_text
 
     def test_get_common_prompt_completion_app_chat_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test common prompt generation for completion app with chat mode.
@@ -252,9 +245,7 @@ class TestAdvancedPromptTemplateService:
         assert CONTEXT in prompt_text
         assert "{{#pre_prompt#}}" in prompt_text
 
-    def test_get_common_prompt_no_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_common_prompt_no_context(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test common prompt generation without context.
 
@@ -282,7 +273,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#query#}}" in prompt_text
 
     def test_get_common_prompt_unsupported_app_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test common prompt generation with unsupported app mode.
@@ -300,7 +291,7 @@ class TestAdvancedPromptTemplateService:
         assert result == {}
 
     def test_get_common_prompt_unsupported_model_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test common prompt generation with unsupported model mode.
@@ -317,9 +308,7 @@ class TestAdvancedPromptTemplateService:
         # Assert: Verify empty dict is returned
         assert result == {}
 
-    def test_get_completion_prompt_with_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_completion_prompt_with_context(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test completion prompt generation with context.
 
@@ -350,7 +339,7 @@ class TestAdvancedPromptTemplateService:
         assert result_text == CONTEXT + original_text
 
     def test_get_completion_prompt_without_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test completion prompt generation without context.
@@ -379,9 +368,7 @@ class TestAdvancedPromptTemplateService:
         assert result_text == original_text
         assert CONTEXT not in result_text
 
-    def test_get_chat_prompt_with_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_chat_prompt_with_context(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test chat prompt generation with context.
 
@@ -412,9 +399,7 @@ class TestAdvancedPromptTemplateService:
         assert original_text in result_text
         assert result_text == CONTEXT + original_text
 
-    def test_get_chat_prompt_without_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_chat_prompt_without_context(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test chat prompt generation without context.
 
@@ -444,7 +429,7 @@ class TestAdvancedPromptTemplateService:
         assert CONTEXT not in result_text
 
     def test_get_baichuan_prompt_chat_app_completion_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation for chat app with completion mode.
@@ -475,7 +460,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#query#}}" in prompt_text
 
     def test_get_baichuan_prompt_chat_app_chat_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation for chat app with chat mode.
@@ -504,7 +489,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#pre_prompt#}}" in prompt_text
 
     def test_get_baichuan_prompt_completion_app_completion_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation for completion app with completion mode.
@@ -532,7 +517,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#pre_prompt#}}" in prompt_text
 
     def test_get_baichuan_prompt_completion_app_chat_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation for completion app with chat mode.
@@ -560,9 +545,7 @@ class TestAdvancedPromptTemplateService:
         assert BAICHUAN_CONTEXT in prompt_text
         assert "{{#pre_prompt#}}" in prompt_text
 
-    def test_get_baichuan_prompt_no_context(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_baichuan_prompt_no_context(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test Baichuan prompt generation without context.
 
@@ -590,7 +573,7 @@ class TestAdvancedPromptTemplateService:
         assert "{{#query#}}" in prompt_text
 
     def test_get_baichuan_prompt_unsupported_app_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation with unsupported app mode.
@@ -608,7 +591,7 @@ class TestAdvancedPromptTemplateService:
         assert result == {}
 
     def test_get_baichuan_prompt_unsupported_model_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test Baichuan prompt generation with unsupported model mode.
@@ -626,7 +609,7 @@ class TestAdvancedPromptTemplateService:
         assert result == {}
 
     def test_get_prompt_all_app_modes_common_model(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test prompt generation for all app modes with common model.
@@ -658,7 +641,7 @@ class TestAdvancedPromptTemplateService:
                 assert result != {}
 
     def test_get_prompt_all_app_modes_baichuan_model(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test prompt generation for all app modes with Baichuan model.
@@ -689,7 +672,7 @@ class TestAdvancedPromptTemplateService:
                 assert result is not None
                 assert result != {}
 
-    def test_get_prompt_edge_cases(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_prompt_edge_cases(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test prompt generation with edge cases.
 
@@ -721,7 +704,7 @@ class TestAdvancedPromptTemplateService:
             # Should either return a valid result or empty dict, but not crash
             assert result is not None
 
-    def test_template_immutability(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_template_immutability(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test that original templates are not modified.
 
@@ -755,9 +738,7 @@ class TestAdvancedPromptTemplateService:
         assert original_completion_completion == COMPLETION_APP_COMPLETION_PROMPT_CONFIG
         assert original_completion_chat == COMPLETION_APP_CHAT_PROMPT_CONFIG
 
-    def test_baichuan_template_immutability(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_baichuan_template_immutability(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test that original Baichuan templates are not modified.
 
@@ -791,9 +772,7 @@ class TestAdvancedPromptTemplateService:
         assert original_baichuan_completion_completion == BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG
         assert original_baichuan_completion_chat == BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG
 
-    def test_context_integration_consistency(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_context_integration_consistency(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test consistency of context integration across different scenarios.
 
@@ -849,7 +828,7 @@ class TestAdvancedPromptTemplateService:
                 assert prompt_text.startswith(CONTEXT)
 
     def test_baichuan_context_integration_consistency(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, db_session_with_containers, mock_external_service_dependencies
     ):
         """
         Test consistency of Baichuan context integration across different scenarios.

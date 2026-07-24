@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CheckboxWithLabel from '../checkbox-with-label'
 
+vi.mock('@/app/components/base/tooltip', () => ({
+  default: ({ popupContent }: { popupContent?: React.ReactNode }) => <div data-testid="tooltip">{popupContent}</div>,
+}))
+
 describe('CheckboxWithLabel', () => {
   const onChange = vi.fn()
 
@@ -23,17 +27,17 @@ describe('CheckboxWithLabel', () => {
         tooltip="Help text"
       />,
     )
-    expect(screen.getByLabelText('Help text')).toBeInTheDocument()
+    expect(screen.getByTestId('tooltip')).toBeInTheDocument()
   })
 
   it('should not render tooltip when not provided', () => {
     render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Option" />)
-    expect(screen.queryByLabelText('Help text')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
   })
 
   it('should toggle checked state on checkbox click', () => {
-    render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Toggle" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Toggle' }))
+    render(<CheckboxWithLabel isChecked={false} onChange={onChange} label="Toggle" testId="my-check" />)
+    fireEvent.click(screen.getByTestId('checkbox-my-check'))
     expect(onChange).toHaveBeenCalledWith(true)
   })
 })

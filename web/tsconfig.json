@@ -1,24 +1,49 @@
 {
-  "extends": "@dify/tsconfig/nextjs.json",
   "compilerOptions": {
     "incremental": true,
+    "target": "es2022",
+    "jsx": "react-jsx",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "paths": {
-      "@/*": ["./*"],
-      "~@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ],
+      "~@/*": [
+        "./*"
+      ]
     },
     "resolveJsonModule": true,
-    "types": ["vitest/globals", "node"],
-    "allowImportingTsExtensions": true,
-    "allowJs": true
+    "types": [
+      "vitest/globals",
+      "node"
+    ],
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
-    ".storybook/**/*.ts",
-    ".storybook/**/*.tsx",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
