@@ -134,35 +134,35 @@ class TestParseTimeRange:
             assert end is not None
 
     def test_parse_time_range_dst_nonexistent_time(self):
-        """Test parsing during DST nonexistent time (spring forward)."""
-        with patch("pytz.timezone", autospec=True) as mock_timezone:
-            # Mock timezone that raises NonExistentTimeError
-            mock_tz = mock_timezone.return_value
+        """A non-existent (spring-forward) wall-clock time resolves to the
+        instant just after the gap, consistent with zoneinfo fold=0."""
+        # America/New_York springs forward 2024-03-10 02:00 -> 03:00, so
+        # 02:30 does not exist. The correct UTC instant is 07:30.
+        start, end = parse_time_range("2024-03-10 02:30", "2024-03-10 04:00", "America/New_York")
+        assert start == datetime.datetime(2024, 3, 10, 7, 30, tzinfo=pytz.UTC)
+        assert end == datetime.datetime(2024, 3, 10, 8, 0, tzinfo=pytz.UTC)
 
-            # Create a mock datetime object for the return value
-            mock_dt = datetime.datetime(2024, 1, 1, 10, 0, 0)
-            mock_utc_dt = mock_dt.replace(tzinfo=pytz.UTC)
+    def test_parse_time_range_dst_nonexistent_time_gap_longer_than_one_hour(self):
+        """A spring-forward gap longer than one hour must not raise.
 
-            # Create a proper mock for the localized datetime
-            from unittest.mock import MagicMock
+        Antarctica/Troll springs forward 2 hours (2024-03-31 01:00 -> 03:00),
+        so 01:30 is non-existent and a naive +1h adjustment lands at 02:30,
+        which is still inside the gap. The resolved instant matches
+        zoneinfo fold=0 (01:30 +00:00 == 01:30 UTC).
+        """
+        start, _ = parse_time_range("2024-03-31 01:30", None, "Antarctica/Troll")
+        assert start == datetime.datetime(2024, 3, 31, 1, 30, tzinfo=pytz.UTC)
 
-            mock_localized_dt = MagicMock()
-            mock_localized_dt.astimezone.return_value = mock_utc_dt
+    def test_parse_time_range_dst_nonexistent_time_sub_hour_gap(self):
+        """A spring-forward gap shorter than one hour resolves to the correct
+        instant, not one shifted by a hardcoded hour.
 
-            # Set up side effects: first call raises exception, second call succeeds
-            mock_tz.localize.side_effect = [
-                pytz.NonExistentTimeError("Non-existent time"),  # First call for start
-                mock_localized_dt,  # Second call for start (with adjusted time)
-                pytz.NonExistentTimeError("Non-existent time"),  # First call for end
-                mock_localized_dt,  # Second call for end (with adjusted time)
-            ]
-
-            start, end = parse_time_range("2024-01-01 10:00", "2024-01-01 18:00", "US/Eastern")
-
-            # Should adjust time forward by 1 hour for nonexistent times
-            assert mock_tz.localize.call_count == 4  # 2 calls per time (first fails, second succeeds)
-            assert start is not None
-            assert end is not None
+        Australia/Lord_Howe springs forward only 30 minutes (2024-10-06
+        02:00 +10:30 -> 02:30 +11:00), so 02:15 is non-existent. Per
+        zoneinfo fold=0 the instant is 02:15 +10:30 == 2024-10-05 15:45 UTC.
+        """
+        start, _ = parse_time_range("2024-10-06 02:15", None, "Australia/Lord_Howe")
+        assert start == datetime.datetime(2024, 10, 5, 15, 45, tzinfo=pytz.UTC)
 
     def test_parse_time_range_edge_cases(self):
         """Test edge cases for time parsing."""
