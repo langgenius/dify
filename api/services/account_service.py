@@ -693,8 +693,17 @@ class AccountService:
         email: str | None = None,
         language: str = "en-US",
         is_allow_register: bool = False,
+        account_id: str | None = None,
     ):
-        account_email = account.email if account else email
+        # Prefer the explicitly-passed email string over account.email. The Account
+        # is loaded from the request's scoped session (db.session()) by the caller,
+        # and under gevent that session can be recycled before this method runs,
+        # leaving the instance detached. Accessing account.email then triggers a
+        # lazy refresh that raises DetachedInstanceError (#39287). Callers always
+        # pass the normalized email alongside the account, so use that directly and
+        # accept a pre-resolved account_id so the token path does not have to
+        # lazy-load account.id either.
+        account_email = email if email is not None else (account.email if account else None)
         if account_email is None:
             raise ValueError("Email must be provided.")
 
@@ -703,7 +712,7 @@ class AccountService:
 
             raise PasswordResetRateLimitExceededError(int(cls.reset_password_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_reset_password_token(account_email, account)
+        code, token = cls.generate_reset_password_token(account_email, account=account, account_id=account_id)
 
         if account:
             send_reset_password_mail_task.delay(
@@ -893,6 +902,7 @@ class AccountService:
         cls,
         email: str,
         account: Account | None = None,
+        account_id: str | None = None,
         code: str | None = None,
         additional_data: dict[str, Any] = {},
     ):
@@ -900,7 +910,11 @@ class AccountService:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="reset_password", additional_data=additional_data
+            account=account,
+            account_id=account_id,
+            email=email,
+            token_type="reset_password",
+            additional_data=additional_data,
         )
         return code, token
 

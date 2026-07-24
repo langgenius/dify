@@ -495,11 +495,18 @@ class TokenManager:
         account: "Account | None" = None,
         email: str | None = None,
         additional_data: dict[str, Any] | None = None,
+        account_id: str | None = None,
     ) -> str:
-        if account is None and email is None:
+        if account is None and email is None and account_id is None:
             raise ValueError("Account or email must be provided")
 
-        account_id = account.id if account else None
+        # Prefer an explicitly-resolved account_id over account.id. The Account
+        # ORM object may have been loaded from a scoped session that has since
+        # been recycled (common under gevent), leaving it detached. Reading
+        # account.id on a detached instance raises DetachedInstanceError (#39287),
+        # so callers that already hold the id should pass it directly.
+        if account_id is None and account is not None:
+            account_id = account.id
         account_email = email if email is not None else account.email if account else None
 
         if account_id:
