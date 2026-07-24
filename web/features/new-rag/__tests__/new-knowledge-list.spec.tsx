@@ -146,7 +146,7 @@ describe('NewKnowledgeList', () => {
     expect(options?.getNextPageParam({ items: [] })).toBeUndefined()
   })
 
-  it('renders real knowledge spaces as unavailable until the detail contract is supported', () => {
+  it('links real knowledge spaces to the new detail shell', () => {
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
@@ -172,15 +172,16 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
     const list = screen.getByRole('list', { name: 'dataset.knowledge' })
-    const supportCard = within(list).getByRole('article', {
-      name: 'Support knowledge. dataset.cornerLabel.unavailable',
+    const supportCard = within(list).getByRole('link', {
+      name: 'Support knowledge',
     })
+    expect(supportCard).toHaveAttribute('href', '/datasets/new/space-1/sources')
     expect(supportCard).toBeInTheDocument()
     expect(
-      within(list).getByRole('article', {
-        name: 'Engineering handbook. dataset.cornerLabel.unavailable',
+      within(list).getByRole('link', {
+        name: 'Engineering handbook',
       }),
-    ).toBeInTheDocument()
+    ).toHaveAttribute('href', '/datasets/new/space-2/sources')
     expect(within(list).getByText('Answers for customer support')).toBeInTheDocument()
     expect(within(list).getByText('dataset.newKnowledge.noDescription')).toBeInTheDocument()
     expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
@@ -188,7 +189,6 @@ describe('NewKnowledgeList', () => {
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.appsUnavailable')).toHaveLength(2)
-    expect(within(list).queryByRole('link')).not.toBeInTheDocument()
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -225,22 +225,21 @@ describe('NewKnowledgeList', () => {
     const tags = screen.getByRole('button', { name: 'dataset.newKnowledge.tags' })
     const creators = screen.getByRole('button', { name: 'dataset.newKnowledge.creators' })
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
-    const create = screen.getByRole('button', { name: 'common.operation.create' })
+    const create = screen.getByRole('link', { name: 'common.operation.create' })
 
     expect(tags).toBeEnabled()
     expect(creators).toBeEnabled()
     await user.click(tags)
     expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     expect(search).toBeEnabled()
-    expect(create).toBeDisabled()
-    expect(create).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
+    expect(create).toHaveAttribute('href', '/datasets/new/create')
 
     await user.type(search, 'customer support')
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
     expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
   })
 
-  it('shows unavailable empty-state creation entries to authorized users', () => {
+  it('keeps stacked creation modes disabled while start empty remains available', () => {
     setResolvedPage()
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
@@ -251,7 +250,7 @@ describe('NewKnowledgeList', () => {
     const uploadFiles = screen.getByRole('button', {
       name: 'dataset.newKnowledge.uploadFiles',
     })
-    const startEmpty = screen.getByRole('button', {
+    const startEmpty = screen.getByRole('link', {
       name: 'dataset.newKnowledge.startEmpty',
     })
 
@@ -263,15 +262,26 @@ describe('NewKnowledgeList', () => {
     expect(uploadFiles).toHaveAccessibleDescription(
       'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
     )
-    expect(startEmpty).toBeDisabled()
-    expect(startEmpty).toHaveAccessibleDescription(
-      'dataset.newKnowledge.startEmptyDescription dataset.cornerLabel.unavailable',
-    )
+    expect(startEmpty).toHaveAttribute('href', '/datasets/new/create?start=empty')
+    expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
     expect(screen.getByText('dataset.newKnowledge.connectSourceDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.uploadFilesDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.firstEmpty.recommended')).toBeInTheDocument()
     expect(screen.queryByTestId('empty-knowledge-card')).not.toBeInTheDocument()
+  })
+
+  it('does not show the Create route to users with external-connect permission only', () => {
+    permissionStateMock.workspacePermissionKeys = ['dataset.external.connect']
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.queryByRole('link', { name: 'common.operation.create' })).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.connectSource' }),
+    ).not.toBeInTheDocument()
   })
 
   it('hides creation entries from read-only users', () => {
@@ -281,10 +291,10 @@ describe('NewKnowledgeList', () => {
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(
-      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.startEmpty/ }),
+      screen.queryByRole('link', { name: /^dataset\.newKnowledge\.startEmpty/ }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /common\.operation\.create/ }),
+      screen.queryByRole('link', { name: /common\.operation\.create/ }),
     ).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.readOnlyEmpty')).toBeInTheDocument()
   })

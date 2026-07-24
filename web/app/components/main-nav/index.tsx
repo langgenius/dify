@@ -17,6 +17,7 @@ import {
   isCurrentWorkspaceManagerAtom,
 } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
@@ -41,6 +42,7 @@ export function MainNav({ className }: MainNavProps) {
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
+  const canManageAgents = useCanManageAgents()
   const contactsEnabled = isContactsManagementEnabled()
   const showEnvTag =
     langGeniusVersionInfo.current_env === 'TESTING' ||
@@ -52,6 +54,7 @@ export function MainNav({ className }: MainNavProps) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
+          canManageAgents,
           canUseAppDeploy,
           canViewContacts: isCurrentWorkspaceManager,
           contactsEnabled,
@@ -76,6 +79,7 @@ export function MainNav({ className }: MainNavProps) {
       }),
     [
       agentV2Enabled,
+      canManageAgents,
       canUseAppDeploy,
       contactsEnabled,
       isCurrentWorkspaceDatasetOperator,
