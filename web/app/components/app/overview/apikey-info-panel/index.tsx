@@ -3,17 +3,22 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const APIKeyInfoPanel: FC = () => {
-  const isCloud = !IS_CE_EDITION
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloud = deploymentEdition === 'CLOUD'
 
   const { isAPIKeySet } = useProviderContext()
   const openIntegrationsSetting = useIntegrationsSetting()

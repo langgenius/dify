@@ -1,22 +1,31 @@
 'use client'
 
-import type { FC } from 'react'
 import type { AmplitudeInitializationOptions } from './init'
-import * as React from 'react'
 import { useEffect } from 'react'
-import { ensureAmplitudeInitialized } from './init'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
+import { ensureAmplitudeInitialized, setAmplitudeOptOut } from './init'
 
-export type IAmplitudeProps = AmplitudeInitializationOptions
+export type IAmplitudeProps = AmplitudeInitializationOptions & {
+  active?: boolean
+}
 
-const AmplitudeProvider: FC<IAmplitudeProps> = ({ sessionReplaySampleRate = 0.5 }) => {
+export function AmplitudeProvider({
+  active = true,
+  sessionReplaySampleRate = 0.5,
+}: IAmplitudeProps) {
+  const consent = useAnalyticsConsent()
+
   useEffect(() => {
+    if (!active || consent !== 'granted') {
+      setAmplitudeOptOut(true)
+      return
+    }
+
     ensureAmplitudeInitialized({
       sessionReplaySampleRate,
     })
-  }, [sessionReplaySampleRate])
+    setAmplitudeOptOut(false)
+  }, [active, consent, sessionReplaySampleRate])
 
-  // This is a client component that renders nothing
   return null
 }
-
-export default React.memo(AmplitudeProvider)

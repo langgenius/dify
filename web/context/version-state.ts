@@ -6,12 +6,12 @@ import { consoleQuery } from '@/service/client'
 import { accountProfileMetaAtom } from './account-state'
 import { initialLangGeniusVersionInfo } from './app-context-defaults'
 import { getLangGeniusVersionInfo } from './app-context-normalizers'
-import { systemFeaturesAtom } from './system-features-state'
+import { brandingEnabledAtom } from './system-features-state'
 
 const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(accountProfileMetaAtom)
-  const systemFeatures = get(systemFeaturesAtom)
-  const enabled = Boolean(meta.currentVersion && !systemFeatures.branding.enabled)
+  const brandingEnabled = get(brandingEnabledAtom)
+  const enabled = Boolean(meta.currentVersion && !brandingEnabled)
 
   return consoleQuery.version.get.queryOptions({
     input: {

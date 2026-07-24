@@ -17,13 +17,18 @@ const isDatasetCreatePath = (pathname: string) => {
   return (
     pathname === '/datasets/create' ||
     pathname.startsWith('/datasets/create/') ||
+    pathname === '/datasets/new/create' ||
     pathname === '/datasets/create-from-pipeline' ||
     pathname.startsWith('/datasets/create-from-pipeline/')
   )
 }
 
 const isDatasetExternalConnectPath = (pathname: string) => {
-  return pathname === '/datasets/connect' || pathname.startsWith('/datasets/connect/')
+  return (
+    pathname === '/datasets/connect' ||
+    pathname.startsWith('/datasets/connect/') ||
+    /^\/datasets\/new\/[^/]+\/sources\/new\/?$/.test(pathname)
+  )
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {

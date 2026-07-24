@@ -3,7 +3,7 @@ import type { ModelProvider } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,9 +11,9 @@ import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { IS_CE_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/client'
@@ -45,6 +45,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   pluginDetail,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const language = useLanguage()
   const refreshModelProviders = useProviderContextSelector((state) => state.refreshModelProviders)
   const currentProviderName = provider.provider
@@ -76,7 +80,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showModelProvider =
     systemConfig.enabled &&
     MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) &&
-    !IS_CE_EDITION
+    deploymentEdition === 'CLOUD'
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential

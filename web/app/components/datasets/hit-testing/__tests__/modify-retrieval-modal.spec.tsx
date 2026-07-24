@@ -1,6 +1,7 @@
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 

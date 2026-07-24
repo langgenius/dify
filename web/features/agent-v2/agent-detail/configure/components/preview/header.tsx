@@ -139,6 +139,17 @@ export function AgentPreviewHeader({
   const previewDisabledTip = t(($) => $['agentDetail.configure.rightPanel.previewDisabledTip'])
   const learnMoreLabel = t(($) => $['agentDetail.configure.rightPanel.learnMore'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
+  const restartButton = (
+    <button
+      type="button"
+      disabled={refreshDisabled}
+      onClick={mode === 'preview' ? onRefresh : undefined}
+      className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label={t(($) => $['agentDetail.configure.preview.restart'])}
+    >
+      <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
+    </button>
+  )
 
   return (
     <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
@@ -191,16 +202,13 @@ export function AgentPreviewHeader({
       </div>
       <div className="flex shrink-0 items-center">
         <div className="flex items-center gap-2">
-          <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
-            <button
-              type="button"
-              disabled={refreshDisabled}
-              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={t(($) => $['agentDetail.configure.preview.restart'])}
-            >
-              <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
-            </button>
-          </AgentConfigureClearSessionConfirmDialog>
+          {mode === 'preview' ? (
+            restartButton
+          ) : (
+            <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
+              {restartButton}
+            </AgentConfigureClearSessionConfirmDialog>
+          )}
           {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"

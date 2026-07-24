@@ -1,6 +1,7 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -8,8 +9,10 @@ import { Suspense } from 'react'
 import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
@@ -78,11 +81,7 @@ const mockUserProfileResponseState = vi.hoisted(() => ({
   },
 }))
 const mockSystemFeaturesState = vi.hoisted(() => ({
-  data: {
-    branding: {
-      enabled: false,
-    },
-  },
+  data: null as unknown as GetSystemFeaturesResponse,
 }))
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
@@ -121,13 +120,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => mockSystemFeaturesState.data,
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryKey: ['user-profile'],
@@ -137,6 +129,14 @@ vi.mock('@/features/account-profile/client', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryKey: ['system-features'],
+          queryFn: async () => mockSystemFeaturesState.data,
+        }),
+      },
+    },
     workspaces: {
       current: {
         post: {
@@ -182,6 +182,10 @@ vi.mock('@/service/base', () => ({
 vi.mock('@/app/components/base/amplitude', () => ({
   setUserId: vi.fn(),
   setUserProperties: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
+  useAmplitudeInitialized: () => true,
 }))
 
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
@@ -317,6 +321,7 @@ function renderConsoleBootstrap() {
 describe('Console bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setAnalyticsConsent('granted')
     mockPermissionKeysState.isPending = false
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
     mockCurrentWorkspaceQueryState.data = mockCurrentWorkspaceResponse
@@ -335,11 +340,9 @@ describe('Console bootstrap', () => {
         currentEnv: 'cloud',
       },
     }
-    mockSystemFeaturesState.data = {
-      branding: {
-        enabled: false,
-      },
-    }
+    mockSystemFeaturesState.data = createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+    })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
       release_date: '',
@@ -455,32 +458,44 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([
-          {
-            id: ZENDESK_FIELD_IDS.ENVIRONMENT,
-            value: 'cloud',
-          },
-        ])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+              value: 'cloud',
+            },
+          ],
+          'CLOUD',
+        )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([
-        {
-          id: ZENDESK_FIELD_IDS.VERSION,
-          value: '1.0.1',
-        },
-      ])
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([
-        {
-          id: ZENDESK_FIELD_IDS.EMAIL,
-          value: 'user@example.com',
-        },
-      ])
-      await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
           {
-            id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-            value: 'workspace-1',
+            id: ZENDESK_FIELD_IDS.VERSION,
+            value: '1.0.1',
           },
-        ])
+        ],
+        'CLOUD',
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
+          {
+            id: ZENDESK_FIELD_IDS.EMAIL,
+            value: 'user@example.com',
+          },
+        ],
+        'CLOUD',
+      )
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+              value: 'workspace-1',
+            },
+          ],
+          'CLOUD',
+        )
       })
       await waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
@@ -517,6 +532,23 @@ describe('Console bootstrap', () => {
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
+    })
+
+    it('should sync an already loaded identity after analytics consent is granted', async () => {
+      setAnalyticsConsent('denied')
+      renderConsoleBootstrap()
+
+      await screen.findByText('user:user@example.com')
+      expect(setUserId).not.toHaveBeenCalled()
+      expect(setUserProperties).not.toHaveBeenCalled()
+
+      act(() => setAnalyticsConsent('granted'))
+
+      await waitFor(() => {
+        expect(setUserId).toHaveBeenCalledWith('user@example.com')
+        expect(setUserProperties).toHaveBeenCalled()
+        expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
     })
   })
 })

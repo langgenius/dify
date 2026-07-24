@@ -56,6 +56,7 @@ class OAuthProviderTokenResponse(BaseModel):
 
 
 class OAuthProviderAccountResponse(BaseModel):
+    id: str
     name: str
     email: str
     avatar: str | None = None
@@ -251,6 +252,7 @@ class OAuthServerUserAccountApi(Resource):
     def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
         return jsonable_encoder(
             {
+                "id": account.id,
                 "name": account.name,
                 "email": account.email,
                 "avatar": account.avatar,

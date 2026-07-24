@@ -22,7 +22,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
-  IS_CLOUD_EDITION: true,
 }))
 
 vi.mock('@/next/navigation', () => ({

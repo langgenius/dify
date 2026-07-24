@@ -1,8 +1,28 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
+
+const renderWithNuqs = (
+  ui: React.ReactElement,
+  options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+) => {
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper()
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <ConsoleQueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </ConsoleQueryWrapper>
+  )
+
+  return {
+    ...render(ui, { wrapper: Wrapper }),
+    onUrlUpdate,
+  }
+}
 
 const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
