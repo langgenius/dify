@@ -16,6 +16,7 @@ from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
@@ -37,6 +38,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -345,6 +347,22 @@ class OpsTraceManager:
     _decryption_cache_lock = threading.RLock()
 
     @classmethod
+    def _get_dispatch_entry(
+        cls, tracing_provider: str
+    ) -> tuple[str, TracingProviderConfigEntry | UnifiedProviderConfigEntry]:
+        """Select one tracing mode before constructing an instance.
+
+        Registered unified providers never fall back after construction or dispatch starts.
+        Unregistered providers continue through the legacy registry.
+        """
+        if dify_config.OPS_TRACE_UNIFIED_ENABLED:
+            try:
+                return "unified", unified_provider_config_map[tracing_provider]
+            except KeyError:
+                pass
+        return "legacy", provider_config_map[tracing_provider]
+
+    @classmethod
     def encrypt_tracing_config(
         cls, tenant_id: str, tracing_provider: str, tracing_config: dict[str, Any], current_trace_config=None
     ):
@@ -526,17 +544,16 @@ class OpsTraceManager:
         if not decrypt_trace_config:
             return None
 
-        trace_instance, config_class = (
-            provider_config_map[tracing_provider]["trace_instance"],
-            provider_config_map[tracing_provider]["config_class"],
-        )
-        decrypt_trace_config_key = json.dumps(decrypt_trace_config, sort_keys=True)
-        tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
+        mode, dispatch_entry = cls._get_dispatch_entry(tracing_provider)
+        trace_instance = dispatch_entry["trace_instance"]
+        config_class = dispatch_entry["config_class"]
+        cache_key = (mode, tracing_provider, json.dumps(decrypt_trace_config, sort_keys=True))
+        tracing_instance = cls.ops_trace_instances_cache.get(cache_key)
         if tracing_instance is None:
-            # create new tracing_instance and update the cache if it absent
+            # The mode is part of the key so unified and legacy clients never share mutable SDK state.
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
-            cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logger.info("new tracing_instance for app_id: %s", app_id)
+            cls.ops_trace_instances_cache[cache_key] = tracing_instance
+            logger.info("new %s tracing_instance for app_id: %s", mode, app_id)
         return tracing_instance
 
     @classmethod
@@ -1275,6 +1292,7 @@ class TraceTask:
 
         generate_name_trace_info = GenerateNameTraceInfo(
             trace_id=self.trace_id,
+            message_id=self.message_id,
             conversation_id=conversation_id,
             inputs=inputs,
             outputs=generate_conversation_name,

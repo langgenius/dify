@@ -245,7 +245,9 @@ class TestMessageCycleManagerOptimization:
             ),
             patch("core.app.task_pipeline.message_cycle_manager.Timer", DummyTimer),
         ):
-            thread = message_cycle_manager.generate_conversation_name(conversation_id="conv-1", query="hello")
+            thread = message_cycle_manager.generate_conversation_name(
+                conversation_id="conv-1", query="hello", message_id="message-1"
+            )
 
         assert isinstance(thread, DummyTimer)
         assert thread.interval == 1
@@ -255,6 +257,7 @@ class TestMessageCycleManagerOptimization:
         assert thread.kwargs["flask_app"] is flask_app
         assert thread.kwargs["conversation_id"] == "conv-1"
         assert thread.kwargs["query"] == "hello"
+        assert thread.kwargs["message_id"] == "message-1"
         assert message_cycle_manager._application_generate_entity.is_new_conversation is False
 
     def test_generate_conversation_name_skips_thread_when_auto_generate_disabled(self, message_cycle_manager):
@@ -339,6 +342,7 @@ class TestMessageCycleManagerOptimization:
         )
         db_session = Mock()
         db_session.scalar.return_value = conversation
+        db_session.get.return_value = SimpleNamespace(tenant_id="tenant-1")
 
         with (
             _patch_create_session(db_session),
@@ -348,10 +352,15 @@ class TestMessageCycleManagerOptimization:
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.return_value = "generated-title"
 
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", "hello")
+            message_cycle_manager._generate_conversation_name_worker(
+                flask_app, "conv-1", "hello", message_id="message-1"
+            )
 
         assert conversation.name == "generated-title"
         db_session.commit.assert_called_once()
+        mock_llm_generator.generate_conversation_name.assert_called_once_with(
+            "tenant-1", "hello", "conv-1", "app-id", message_id="message-1"
+        )
         mock_redis.setex.assert_called_once()
 
     def test_generate_conversation_name_worker_falls_back_when_generation_fails(

@@ -30,9 +30,13 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = mock_response
 
         with patch("core.llm_generator.llm_generator.TraceQueueManager") as mock_trace:
-            name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
+            name = LLMGenerator.generate_conversation_name(
+                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
+            )
             assert name == "Test Conversation Name"
-            mock_trace.assert_called_once()
+            mock_trace.assert_called_once_with(app_id="app-1")
+            trace_task = mock_trace.return_value.add_trace_task.call_args.args[0]
+            assert trace_task.message_id == "message-1"
 
     def test_generate_conversation_name_truncated(self, mock_model_instance):
         long_query = "a" * 2100
