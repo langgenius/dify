@@ -96,7 +96,7 @@ const Card = ({
             <OrgInfo
               className="mt-0.5"
               orgName={org}
-              downloadCount={install_count}
+              downloadCount={payload.install_count}
               linkToOrg={!disableOrgLink}
             />
           </div>
