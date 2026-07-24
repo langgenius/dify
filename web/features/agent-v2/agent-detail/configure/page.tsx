@@ -64,7 +64,7 @@ function AgentConfigurePageContent({
     (nextMode: AgentConfigureRightPanelMode) => {
       if (nextMode === 'preview' && !previewEnabled) return
 
-      void setModeInUrl(nextMode)
+      return setModeInUrl(nextMode)
     },
     [previewEnabled, setModeInUrl],
   )

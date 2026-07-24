@@ -65,7 +65,7 @@ export function AgentConfigureComposerScope({
   previewEnabled: boolean
   rightPanelMode: AgentConfigureRightPanelMode
   onComposerRebase: () => void
-  onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void
+  onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void | Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -336,6 +336,7 @@ function AgentConfigurePageComposerContent({
     changeMode,
     confirmSwitchToPreview: confirmSessionSwitchToPreview,
     finishBuildAction,
+    isEnteringBuildMode,
     isBuildCallbackCurrent,
     resetBuildSession: resetSessionController,
     resetBuildSessionState,
@@ -374,10 +375,12 @@ function AgentConfigurePageComposerContent({
         discardBuildDraft: buildDraftActions.discardBuildDraft,
         rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
         savePreviewDraft: saveDraft,
+        startFreshBuildSession: buildDraftActions.startFreshBuildSession,
         stopBuildChat,
       }),
     [
       buildDraftActions.discardBuildDraft,
+      buildDraftActions.startFreshBuildSession,
       changeMode,
       rebaseComposerDraftFromSoulConfig,
       saveDraft,
@@ -401,10 +404,12 @@ function AgentConfigurePageComposerContent({
   const isRestartCurrentChatDisabled =
     !hasRestartCurrentChatTarget ||
     buildDraftActionsDisabled ||
+    isEnteringBuildMode ||
     isRefreshingDebugConversation ||
     buildDraftActions.isApplyingBuildDraft ||
     buildDraftActions.isDiscardingBuildDraft
-  const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+  const isChatFeaturesReadOnly =
+    isEnteringBuildMode || (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
   const buildConversationHasAgentResponse =
     !!conversationIds.build &&
     (conversationIds.build === completedBuildConversationId ||
@@ -433,7 +438,7 @@ function AgentConfigurePageComposerContent({
 
   return (
     <AgentConfigureWorkspace
-      aria-busy={agentQuery.isFetching}
+      aria-busy={agentQuery.isFetching || isEnteringBuildMode}
       leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
@@ -445,11 +450,11 @@ function AgentConfigurePageComposerContent({
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          readOnly={isViewingVersion || buildDraft.isActive}
+          readOnly={isViewingVersion || buildDraft.isActive || isEnteringBuildMode}
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
-          showPublishBar={!buildDraft.isActive}
+          showPublishBar={!buildDraft.isActive && !isEnteringBuildMode}
           workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={
             showBuildDraftBar ? (
@@ -501,7 +506,7 @@ function AgentConfigurePageComposerContent({
             />
           }
           chat={
-            buildDraft.isPending ? (
+            buildDraft.isPending || isEnteringBuildMode ? (
               <Loading type="app" />
             ) : (
               <AgentConfigureRightPanelChat

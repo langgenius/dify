@@ -323,14 +323,15 @@ export function useAgentConfigureBuildDraftActions({
     applyBuildDraftMutation
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } =
     discardBuildDraftMutation
-  const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
-    agentId,
-    buildDraftAgentSoulConfig,
-    isBuildDraftActive: isActive,
-    rebaseComposerDraft,
-    saveDraft,
-    setSoulSourceOverride,
-  })
+  const { forceCheckoutBuildDraft, prepareBuildDraftBeforeRun } =
+    usePrepareAgentBuildDraftBeforeRun({
+      agentId,
+      buildDraftAgentSoulConfig,
+      isBuildDraftActive: isActive,
+      rebaseComposerDraft,
+      saveDraft,
+      setSoulSourceOverride,
+    })
 
   const cancelBuildDraftRefresh = useCallback(() => {
     buildDraftRefreshGenerationRef.current += 1
@@ -344,6 +345,18 @@ export function useAgentConfigureBuildDraftActions({
     cancelBuildDraftRefresh()
     return prepareBuildDraftBeforeRun()
   }, [cancelBuildDraftRefresh, prepareBuildDraftBeforeRun])
+
+  const startFreshBuildSession = useCallback(async () => {
+    cancelBuildDraftRefresh()
+    try {
+      await resetBuildChatSession()
+      await forceCheckoutBuildDraft()
+      return true
+    } catch {
+      toast.error(tCommon(($) => $['api.actionFailed']))
+      return false
+    }
+  }, [cancelBuildDraftRefresh, forceCheckoutBuildDraft, resetBuildChatSession, tCommon])
 
   const refreshBuildDraftAfterBuildChat = useCallback(
     (onRefreshed?: () => void) => {
@@ -451,5 +464,6 @@ export function useAgentConfigureBuildDraftActions({
     isDiscardingBuildDraft,
     prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,
+    startFreshBuildSession,
   }
 }

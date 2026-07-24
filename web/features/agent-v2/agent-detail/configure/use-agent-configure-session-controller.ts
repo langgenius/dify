@@ -19,11 +19,12 @@ export function useAgentConfigureSessionController({
   isBuildDraftActive: boolean
   mode: AgentConfigureRightPanelMode
   normalAgentSoulConfig?: AgentSoulConfig
-  onModeChange: (mode: AgentConfigureRightPanelMode) => void
+  onModeChange: (mode: AgentConfigureRightPanelMode) => void | Promise<unknown>
 }) {
   const [buildCallbackRevision, setBuildCallbackRevision] = useState(0)
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [hasStartedBuildChat, setHasStartedBuildChat] = useState(false)
+  const [isEnteringBuildMode, setIsEnteringBuildMode] = useState(false)
   const [showSwitchToPreviewConfirm, setShowSwitchToPreviewConfirm] = useState(false)
   const buildCallbackGeneration = useMemo(
     () => Symbol(`agent-build-session:${mode}:${buildCallbackRevision}`),
@@ -32,6 +33,7 @@ export function useAgentConfigureSessionController({
   const buildCallbackGenerationRef = useRef(buildCallbackGeneration)
   const buildCallbacksEnabledRef = useRef(mode === 'build')
   const modeRef = useRef(mode)
+  const pendingBuildModeTransitionRef = useRef<Promise<void> | null>(null)
   const pendingBuildDraftPreparationRef = useRef<Promise<unknown> | null>(null)
   const pendingPreviewDraftSaveRef = useRef<Promise<PendingDraftSaveResult> | null>(null)
 
@@ -180,11 +182,13 @@ export function useAgentConfigureSessionController({
         discardBuildDraft,
         rebaseComposerDraft,
         savePreviewDraft,
+        startFreshBuildSession,
         stopBuildChat,
       }: {
         discardBuildDraft: () => Promise<boolean>
         rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
         savePreviewDraft: () => Promise<unknown>
+        startFreshBuildSession?: () => Promise<boolean>
         stopBuildChat: () => void
       },
     ) => {
@@ -204,6 +208,39 @@ export function useAgentConfigureSessionController({
       const nextUsesBuildDraft = nextMode === 'build' && hasActiveBuildDraft
       const isEnteringBuildMode = modeRef.current === 'preview' && nextMode === 'build'
       if (isEnteringBuildMode) {
+        if (startFreshBuildSession) {
+          if (pendingBuildModeTransitionRef.current) return
+
+          setIsEnteringBuildMode(true)
+          const transition = (async () => {
+            try {
+              registerPreviewDraftSave(savePreviewDraft())
+              await waitForPendingPreviewDraftSave()
+              if (modeRef.current !== 'preview') return
+
+              const started = await startFreshBuildSession()
+              if (!started || modeRef.current !== 'preview') return
+
+              modeRef.current = 'build'
+              rotateBuildCallbackGeneration(true)
+              try {
+                await onModeChange(nextMode)
+              } catch (error) {
+                modeRef.current = 'preview'
+                rotateBuildCallbackGeneration(false)
+                throw error
+              }
+            } catch {}
+          })()
+          pendingBuildModeTransitionRef.current = transition
+          void transition.finally(() => {
+            if (pendingBuildModeTransitionRef.current === transition)
+              pendingBuildModeTransitionRef.current = null
+            setIsEnteringBuildMode(false)
+          })
+          return
+        }
+
         modeRef.current = 'build'
         rotateBuildCallbackGeneration(true)
         registerPreviewDraftSave(savePreviewDraft())
@@ -228,6 +265,7 @@ export function useAgentConfigureSessionController({
       onModeChange,
       registerPreviewDraftSave,
       rotateBuildCallbackGeneration,
+      waitForPendingPreviewDraftSave,
     ],
   )
 
@@ -237,6 +275,7 @@ export function useAgentConfigureSessionController({
     changeMode,
     confirmSwitchToPreview: discardBuildDraftAndSwitchToPreview,
     finishBuildAction,
+    isEnteringBuildMode,
     isBuildCallbackCurrent,
     resetBuildSession,
     resetBuildSessionState,
