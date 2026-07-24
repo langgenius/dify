@@ -4,19 +4,15 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import SearchBoxWrapper from '@/app/components/plugins/marketplace/search-box/search-box-wrapper'
+import styles from './home-sticky.module.css'
 
-type HomeSearchProps = {
-  isMarketplacePlatform: boolean
-}
-
-const HomeSearch = ({ isMarketplacePlatform }: HomeSearchProps) => {
+const HomeSearch = () => {
   const searchRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation('plugin')
 
   useEffect(() => {
     const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || (!event.metaKey && !event.ctrlKey))
-        return
+      if (event.key.toLowerCase() !== 'k' || (!event.metaKey && !event.ctrlKey)) return
 
       event.preventDefault()
       searchRef.current?.querySelector('input')?.focus()
@@ -27,12 +23,7 @@ const HomeSearch = ({ isMarketplacePlatform }: HomeSearchProps) => {
   }, [])
 
   return (
-    <div
-      className={cn(
-        'sticky z-[60] -mt-9 flex h-9 shrink-0 justify-center px-4',
-        isMarketplacePlatform ? 'top-[5px]' : 'top-1',
-      )}
-    >
+    <div className={cn('sticky z-[60] -mt-9 flex h-9 shrink-0 justify-center px-4', styles.search)}>
       <div ref={searchRef} className="relative w-full max-w-[480px]">
         <SearchBoxWrapper
           wrapperClassName="w-full max-w-none"
