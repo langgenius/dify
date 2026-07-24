@@ -29,6 +29,11 @@ logger = logging.getLogger(__name__)
 
 class RagPipelineTransformService:
     def transform_dataset(self, dataset_id: str, session: Session):
+        """Transform a vendor dataset within the caller-owned transaction.
+
+        Dataset and document state is read through ``session`` so uncommitted caller changes remain visible. The
+        transformation commits only after the pipeline and migrated document metadata have been persisted.
+        """
         dataset = session.get(Dataset, dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
@@ -46,7 +51,9 @@ class RagPipelineTransformService:
         if not datasource_type and not indexing_technique:
             return self._transform_to_empty_pipeline(dataset, session=session)
 
-        doc_form = dataset.doc_form
+        doc_form = dataset.chunk_structure or session.scalar(
+            select(Document.doc_form).where(Document.dataset_id == dataset.id).limit(1)
+        )
         if not doc_form:
             return self._transform_to_empty_pipeline(dataset, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
