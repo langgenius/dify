@@ -80,6 +80,7 @@ const modelHooksState = vi.hoisted(() => ({
 const editionState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
   isSystemFeaturesPending: false,
+  licenseStatus: 'none',
   systemFeaturesPendingPromise: new Promise<never>(() => {}),
 }))
 
@@ -169,18 +170,27 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         isSuccess: false,
       }
     }),
-    useSuspenseQuery: vi.fn(() => {
-      if (editionState.isSystemFeaturesPending) throw editionState.systemFeaturesPendingPromise
+    useSuspenseQuery: vi.fn(
+      (options: {
+        select?: (data: {
+          deployment_edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+          license: { status: string }
+        }) => unknown
+      }) => {
+        if (editionState.isSystemFeaturesPending) throw editionState.systemFeaturesPendingPromise
 
-      return {
-        data: {
+        const data = {
           deployment_edition: editionState.deploymentEdition,
           license: {
-            status: 'none',
+            status: editionState.licenseStatus,
           },
-        },
-      }
-    }),
+        }
+
+        return {
+          data: options.select ? options.select(data) : data,
+        }
+      },
+    ),
   }
 })
 
@@ -518,6 +528,7 @@ describe('AgentConfigurePage', () => {
     mocks.completeBuildConversation = undefined
     editionState.deploymentEdition = 'CLOUD'
     editionState.isSystemFeaturesPending = false
+    editionState.licenseStatus = 'none'
     modelHooksState.defaultTextGenerationModel = {
       provider: {
         provider: 'langgenius/openai/openai',
@@ -1534,8 +1545,9 @@ describe('AgentConfigurePage', () => {
       })
     })
 
-    it('should enable preview in enterprise edition', () => {
+    it('should enable preview in enterprise edition regardless of license status', () => {
       editionState.deploymentEdition = 'ENTERPRISE'
+      editionState.licenseStatus = 'lost'
       mocks.queryState.composer = {
         data: {},
         isFetching: false,

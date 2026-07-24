@@ -51,8 +51,11 @@ function AgentConfigurePageContent({
   const rebaseComposer = useSetAtom(rebaseAgentConfigureComposerAtom)
   const selectVersion = useSetAtom(agentConfigureSelectVersionAtom)
   const configureData = useAgentConfigureData(agentId, selectedVersionId)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const previewEnabled = systemFeatures.deployment_edition !== 'COMMUNITY'
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (systemFeatures) => systemFeatures.deployment_edition,
+  })
+  const previewEnabled = deploymentEdition !== 'COMMUNITY'
   const requestedMode = modeInUrl ?? 'build'
   const rightPanelMode = previewEnabled ? requestedMode : 'build'
   const changeRightPanelMode = useCallback(
@@ -67,7 +70,7 @@ function AgentConfigurePageContent({
   useEffect(() => {
     if (modeInUrl === rightPanelMode) return
 
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The URL is external state and must mirror the effective mode after parsing and license gating.
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The URL is external state and must mirror the effective mode after parsing and edition gating.
     void setModeInUrl(rightPanelMode, { history: 'replace' })
   }, [modeInUrl, rightPanelMode, setModeInUrl])
 
