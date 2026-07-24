@@ -539,9 +539,23 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
 
 
 def _query_values(name: str, alias_name: str | None = None) -> list[str]:
-    values = request.args.getlist(name)
+    def _get_values(field_name: str) -> list[str]:
+        values = request.args.getlist(field_name)
+        indexed_values: list[tuple[int, list[str]]] = []
+        prefix = f"{field_name}["
+        for key in request.args:
+            if not key.startswith(prefix) or not key.endswith("]"):
+                continue
+            index = key[len(prefix) : -1]
+            if index.isdigit():
+                indexed_values.append((int(index), request.args.getlist(key)))
+        for _, items in sorted(indexed_values):
+            values.extend(items)
+        return values
+
+    values = _get_values(name)
     if alias_name:
-        values.extend(request.args.getlist(alias_name))
+        values.extend(_get_values(alias_name))
     return [value.strip() for value in values if value.strip()]
 
 

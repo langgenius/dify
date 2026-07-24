@@ -1199,6 +1199,8 @@
   "panel.goTo": "Git",
   "panel.goToFix": "Düzeltmeye git",
   "panel.helpLink": "Yardım",
+  "panel.locateNodeNotFound": "Düğüm bulunamadı: {{nodeId}}",
+  "panel.locateNodeSuccess": "Düğüm bulundu: {{title}}",
   "panel.nextStep": "Sonraki Adım",
   "panel.openWorkflow": "İş Akışını Aç",
   "panel.optional": "(isteğe bağlı)",
