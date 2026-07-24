@@ -284,7 +284,12 @@ function AgentConfigurePageComposerContent({
   } = configureData
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [clearChatByMode, setClearChatByMode] = useState<
+    Record<AgentConfigureRightPanelMode, boolean>
+  >({
+    build: false,
+    preview: false,
+  })
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
     null,
   )
@@ -310,9 +315,9 @@ function AgentConfigurePageComposerContent({
     } finally {
       setCompletedBuildConversationId(null)
       setConversationId({ mode: 'build', conversationId: null })
-      setClearPreviewChat(true)
+      setClearChatByMode((current) => ({ ...current, build: true }))
     }
-  }, [onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  }, [onRefreshDebugConversationAsync, setClearChatByMode, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
@@ -436,7 +441,7 @@ function AgentConfigurePageComposerContent({
     }
 
     resetConversation(rightPanelChatMode)
-    setClearPreviewChat(true)
+    setClearChatByMode((current) => ({ ...current, [rightPanelChatMode]: true }))
   }
 
   return (
@@ -524,14 +529,19 @@ function AgentConfigurePageComposerContent({
                 agentIconType={agentIconType}
                 agentName={agentQuery.data?.name}
                 agentSoulConfig={buildDraft.agentSoulConfig}
-                clearChatList={clearPreviewChat}
+                clearChatList={clearChatByMode[rightPanelChatMode]}
                 controllerRef={rightPanelChatControllerRef}
                 conversationIds={conversationIds}
                 mode={rightPanelChatMode}
                 speechToTextDraftType={
                   rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'
                 }
-                onClearChatListChange={setClearPreviewChat}
+                onClearChatListChange={(clearChatList) => {
+                  setClearChatByMode((current) => ({
+                    ...current,
+                    [rightPanelChatMode]: clearChatList,
+                  }))
+                }}
                 onConversationComplete={(mode, completedConversationId) => {
                   if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
 
