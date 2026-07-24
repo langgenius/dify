@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
     branches:
-      - "deploy/dev"
       - "deploy/konwledge"
     types:
       - completed
@@ -14,7 +13,7 @@ jobs:
     runs-on: depot-ubuntu-24.04
     if: |
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'deploy/dev'
+      github.event.workflow_run.head_branch == 'deploy/konwledge'
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
