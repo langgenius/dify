@@ -34,6 +34,10 @@ class ContactId(_Identifier):
     """Identifier of a canonical Contact."""
 
 
+class EndUserId(_Identifier):
+    """Identifier of one app-scoped EndUser identity."""
+
+
 class PlatformEntryId(_Identifier):
     """Identifier of one Platform allow-list entry."""
 

@@ -9,6 +9,7 @@ from core.human_input_v2.shared import (
     AccountId,
     ContactId,
     DeploymentScope,
+    EndUserId,
     NormalizedEmail,
     UtcTimestamp,
     WorkspaceId,
@@ -16,7 +17,7 @@ from core.human_input_v2.shared import (
 )
 
 
-@pytest.mark.parametrize("identifier_type", [AccountId, ContactId, WorkspaceId])
+@pytest.mark.parametrize("identifier_type", [AccountId, ContactId, EndUserId, WorkspaceId])
 @pytest.mark.parametrize("invalid_value", ["", "   ", "\n"])
 def test_typed_ids_reject_blank_values(identifier_type, invalid_value: str) -> None:
     with pytest.raises(ValueError, match="must not be blank"):
