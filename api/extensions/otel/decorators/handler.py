@@ -87,8 +87,7 @@ class SpanHandler:
         with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL) as span:
             try:
                 result = wrapped(*args, **kwargs)
-                if span.status.status_code is StatusCode.UNSET:
-                    span.set_status(Status(StatusCode.OK))
+                span.set_status(Status(StatusCode.OK))
                 return result
             except Exception as exc:
                 span.record_exception(exc)

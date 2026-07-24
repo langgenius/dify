@@ -1,7 +1,8 @@
+import threading
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from opentelemetry.trace import get_current_span, get_tracer
+from opentelemetry.trace import StatusCode, get_current_span, get_tracer
 
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -81,3 +82,41 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
         )
 
     assert observed_trace_ids == [node_span.get_span_context().trace_id]
+
+
+def test_retriever_thread_exception_sets_error_span_and_is_collected(
+    app,
+    memory_span_exporter,
+    tracer_provider_with_memory_exporter,
+) -> None:
+    retrieval = DatasetRetrieval()
+    cancel_event = threading.Event()
+    thread_exceptions: list[Exception] = []
+    expected_error = RuntimeError("retrieval failed")
+
+    with (
+        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
+        patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session"),
+        patch.object(retrieval, "_retriever", side_effect=expected_error),
+    ):
+        retrieval._run_retriever_thread_safely(
+            flask_app=app,
+            dataset_id=str(uuid4()),
+            query="test query",
+            top_k=4,
+            all_documents=[],
+            document_ids_filter=None,
+            metadata_condition=None,
+            attachment_ids=None,
+            cancel_event=cancel_event,
+            thread_exceptions=thread_exceptions,
+        )
+
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name.endswith("DatasetRetrieval._run_retriever_thread")
+    )
+    assert retrieval_span.status.status_code == StatusCode.ERROR
+    assert cancel_event.is_set()
+    assert thread_exceptions == [expected_error]
