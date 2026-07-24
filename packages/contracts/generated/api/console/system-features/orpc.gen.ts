@@ -28,26 +28,26 @@ export const license = {
 }
 
 /**
- * Get system-wide feature configuration
+ * Get the non-sensitive bootstrap snapshot exposed before authentication
  *
- * Get system-wide feature configuration
- * NOTE: This endpoint is unauthenticated by design, as it provides system features
- * data required for dashboard initialization.
+ * Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
+ * This endpoint is unauthenticated by design because its data is required to initialize
+ * authentication flows for Console and Web clients.
  *
  * Authentication would create circular dependency (can't login without dashboard loading).
  *
- * Only non-sensitive configuration data should be returned by this endpoint. Authenticated
- * license detail is served separately by SystemFeatureLicenseApi.
+ * This is not a general feature registry. Authenticated license detail is served separately
+ * by SystemFeatureLicenseApi.
  */
 export const get2 = oc
   .route({
     description:
-      "Get system-wide feature configuration\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for dashboard initialization.\n\nAuthentication would create circular dependency (can't login without dashboard loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint. Authenticated\nlicense detail is served separately by SystemFeatureLicenseApi.",
+      "Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is unauthenticated by design because its data is required to initialize\nauthentication flows for Console and Web clients.\n\nAuthentication would create circular dependency (can't login without dashboard loading).\n\nThis is not a general feature registry. Authenticated license detail is served separately\nby SystemFeatureLicenseApi.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',
     path: '/system-features',
-    summary: 'Get system-wide feature configuration',
+    summary: 'Get the non-sensitive bootstrap snapshot exposed before authentication',
     tags: ['console'],
   })
   .output(zGetSystemFeaturesResponse)

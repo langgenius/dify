@@ -774,24 +774,18 @@ Retrieve app site information and configuration.
 | 500 | Internal Server Error |  |
 
 ### [GET] /system-features
-**Get system feature flags and configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system feature flags and configuration
-Returns the current system feature flags and configuration
-that control various functionalities across the platform.
-
-Returns:
-    dict: System feature configuration object
-
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for webapp initialization.
+This endpoint is unauthenticated by design because its data is required to initialize
+authentication flows for Console and Web clients.
 
 Authentication would create circular dependency (can't authenticate without webapp loading).
 
-Only non-sensitive configuration data should be returned by this endpoint.
+This is not a general feature registry.
 
 #### Responses
 
@@ -1551,12 +1545,7 @@ Default configuration for form inputs.
 
 #### SystemFeatureModel
 
-Shared unauthenticated bootstrap allowlist for Console and Web.
-
-New fields must satisfy the Public System Features Contract in
-`api/controllers/API_SCHEMA_GUIDE.md`.
-Existing fields do not establish precedent; backend-only, post-authentication, and
-surface-specific values belong to their consumer or domain owner.
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

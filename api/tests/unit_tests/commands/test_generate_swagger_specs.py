@@ -126,7 +126,6 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path):
         schemas = payload["components"]["schemas"]
         system_features_schema = schemas["SystemFeatureModel"]
 
-        assert "bootstrap allowlist" in system_features_schema["description"]
         assert excluded_fields.isdisjoint(system_features_schema["properties"])
         assert "PluginManagerModel" not in schemas
 

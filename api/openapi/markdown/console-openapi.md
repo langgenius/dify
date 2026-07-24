@@ -9475,16 +9475,16 @@ Used for frontend component type mapping
 | 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
 
 ### [GET] /system-features
-**Get system-wide feature configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system-wide feature configuration
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for dashboard initialization.
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
+This endpoint is unauthenticated by design because its data is required to initialize
+authentication flows for Console and Web clients.
 
 Authentication would create circular dependency (can't login without dashboard loading).
 
-Only non-sensitive configuration data should be returned by this endpoint. Authenticated
-license detail is served separately by SystemFeatureLicenseApi.
+This is not a general feature registry. Authenticated license detail is served separately
+by SystemFeatureLicenseApi.
 
 #### Responses
 
@@ -22046,12 +22046,7 @@ Model class for provider system configuration response.
 
 #### SystemFeatureModel
 
-Shared unauthenticated bootstrap allowlist for Console and Web.
-
-New fields must satisfy the Public System Features Contract in
-`api/controllers/API_SCHEMA_GUIDE.md`.
-Existing fields do not establish precedent; backend-only, post-authentication, and
-surface-specific values belong to their consumer or domain owner.
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
