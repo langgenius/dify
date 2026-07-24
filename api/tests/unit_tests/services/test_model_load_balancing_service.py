@@ -183,9 +183,7 @@ def test_enable_disable_persists_provider_model_setting(
     assert model_setting.load_balancing_enabled is enabled
 
 
-def test_provider_missing_errors_use_runtime_boundary(
-    service: ServiceFixture, sqlite_session: Session
-) -> None:
+def test_provider_missing_errors_use_runtime_boundary(service: ServiceFixture, sqlite_session: Session) -> None:
     svc, manager, _ = service
     manager.get_configurations.return_value = {}
     with pytest.raises(ValueError, match="Provider openai does not exist"):
@@ -290,9 +288,7 @@ def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
     assert configs[1]["in_cooldown"] is True
 
 
-def test_get_single_config_is_tenant_scoped_and_obfuscated(
-    service: ServiceFixture, sqlite_session: Session
-) -> None:
+def test_get_single_config_is_tenant_scoped_and_obfuscated(service: ServiceFixture, sqlite_session: Session) -> None:
     svc, _, _ = service
     config = _config(sqlite_session, encrypted_config='{"api_key":"secret"}')
     assert svc.get_load_balancing_config(
