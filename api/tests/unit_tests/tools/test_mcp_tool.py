@@ -135,6 +135,18 @@ class TestMCPToolInvoke:
         values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
         assert values == {"a": 1, "b": "x"}
 
+    def test_invoke_yields_variables_when_structured_content_has_no_output_schema(self, orm_session: Session) -> None:
+        tool = _make_mcp_tool()
+        result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
+
+        with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
+            messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+
+        variable_messages = [
+            message.message for message in messages if isinstance(message.message, ToolInvokeMessage.VariableMessage)
+        ]
+        assert {message.variable_name: message.variable_value for message in variable_messages} == {"a": 1, "b": "x"}
+
 
 class TestMCPToolUsageExtraction:
     """Test usage metadata extraction from MCP tool results."""
