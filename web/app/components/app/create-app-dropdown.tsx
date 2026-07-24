@@ -35,9 +35,16 @@ export function CreateAppDropdown({
   const menu = useStepByStepTourControlledDropdown({
     controlledOpen: stepByStepTourControlledOpen,
   })
+  const isControlledByStepByStepTour = stepByStepTourControlledOpen === true
 
   return (
-    <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
+    <DropdownMenu
+      key={isControlledByStepByStepTour ? 'step-by-step-tour' : 'interactive'}
+      modal={false}
+      {...(isControlledByStepByStepTour
+        ? { open: menu.open, onOpenChange: menu.onOpenChange }
+        : undefined)}
+    >
       <DropdownMenuTrigger
         data-step-by-step-tour-target={stepByStepTourTarget}
         className={cn(
