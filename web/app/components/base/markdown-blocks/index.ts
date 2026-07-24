@@ -15,4 +15,5 @@ export * from './plugin-img'
 export * from './plugin-paragraph'
 
 export { default as ThinkBlock } from './think-block'
+export { default as TableCopy } from './table-copy'
 export { default as VideoBlock } from './video-block'
