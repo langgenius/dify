@@ -95,7 +95,7 @@ class IMControlPlaneRepository(Protocol):
         ...
 
     def apply_reconciliation(self, plan: ReconciliationPlan, *, now: UtcTimestamp) -> ApplyReconciliationResult:
-        """Idempotently apply one plan after comparing its captured revision."""
+        """Apply one plan using its persisted sync run capture as CAS authority."""
         ...
 
     def resolve_effective_binding(

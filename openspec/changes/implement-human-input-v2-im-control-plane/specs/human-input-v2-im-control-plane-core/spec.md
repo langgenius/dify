@@ -26,6 +26,10 @@ Updates and deletion of an existing IM Integration MUST require a token containi
 - **WHEN** an Integration is replaced and a later Integration reuses the same numeric configuration version
 - **THEN** a token for the previous integration ID MUST remain stale and MUST NOT pass CAS validation
 
+#### Scenario: Deployment-wide Integration is created concurrently
+- **WHEN** two EE requests create a deployment-wide Integration while no current configuration exists
+- **THEN** creation MUST serialize on a stable deployment owner and exactly one request MUST create the singleton
+
 ### Requirement: Provider replacement and credential rotation MUST have distinct effects
 The Integration aggregate MUST distinguish confirmed credential rotation from provider or provider-tenant replacement.
 
@@ -64,12 +68,24 @@ The pure reconciler MUST match provider entries against current snapshots and pr
 - **THEN** reconciliation MUST select that identity before considering normalized Email fallback
 
 #### Scenario: Email fallback matches a Contact
-- **WHEN** no provider user ID matches and normalized Email matches an eligible current Contact
+- **WHEN** no provider user ID matches and normalized Email matches an eligible current Organization Contact
 - **THEN** reconciliation MUST plan the appropriate identity/binding update without creating a new External Contact
+
+#### Scenario: Email fallback matches only an External Contact
+- **WHEN** no provider user ID matches and normalized Email matches an External Contact
+- **THEN** reconciliation MUST leave the provider entry unmatched
+
+#### Scenario: Reconciliation plan differs from its persisted run capture
+- **WHEN** a plan changes the captured Integration version or provider for an existing sync run
+- **THEN** apply MUST reject the plan before checking or mutating current state
 
 #### Scenario: Reconciliation is stale
 - **WHEN** current Integration revision differs from the run's captured revision
 - **THEN** apply MUST append a stale diagnostic result and MUST NOT mutate current identities or bindings
+
+#### Scenario: Reconciliation removes an identity with scoped overrides
+- **WHEN** an absent provider identity has organization and workspace bindings
+- **THEN** apply MUST delete every binding and append one removal fact for each removed scope binding
 
 ### Requirement: Effective IM binding resolution MUST hide control-plane details
 Consumers MUST receive one effective binding result using priority `workspace override > organization binding > Email fallback` without access to encrypted credentials, provider raw payloads or ORM identity records.
@@ -85,6 +101,10 @@ Consumers MUST receive one effective binding result using priority `workspace ov
 #### Scenario: Binding provider mismatches Integration
 - **WHEN** a binding or identity belongs to a different Integration/provider than the requested channel
 - **THEN** resolution MUST return a stable invalid-binding result and MUST NOT expose the binding to consumers
+
+#### Scenario: Tenant-owned Integration is requested from another workspace
+- **WHEN** an Integration owner does not match the requested workspace
+- **THEN** resolution MUST reject the request before loading identities, bindings, or Email fallback candidates
 
 ### Requirement: IM persistence ports MUST expose transaction-oriented operations
 IM persistence ports MUST provide configuration CAS, Integration-locked run creation, snapshot loading, revision-guarded plan apply and append-only results rather than generic CRUD per table.

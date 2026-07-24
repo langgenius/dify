@@ -2,8 +2,10 @@
 
 Configuration transitions, active-run creation, and reconciliation apply each
 own their complete transaction. Integration locks serialize single-active-run
-decisions. ORM records never cross this boundary, and aggregate relationships
-are loaded explicitly because their model relationships use ``lazy="raise"``.
+decisions. Deployment-wide creation additionally locks the stable ``DifySetup``
+owner because nullable uniqueness cannot enforce the EE singleton. ORM records
+never cross this boundary, and aggregate relationships are loaded explicitly
+because their model relationships use ``lazy="raise"``.
 """
 
 from __future__ import annotations
@@ -68,6 +70,7 @@ from models.human_input_v2 import (
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
+from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.mappers import contact_from_record
 
 from .mappers import (
@@ -93,9 +96,16 @@ class SQLAlchemyIMControlPlaneRepository:
         self._session_maker = session_maker
 
     def create_integration(self, integration: IMIntegration) -> IMIntegration:
-        """Create the first configuration for an owner scope."""
+        """Create the first configuration after serializing its owner scope."""
 
         with self._session_maker() as session, session.begin():
+            if integration.workspace_id is None:
+                self._lock_deployment_owner(session)
+                existing_deployment_integration_id = session.scalar(
+                    select(HumanInputIMIntegration.id).where(HumanInputIMIntegration.tenant_id.is_(None)).limit(1)
+                )
+                if existing_deployment_integration_id is not None:
+                    raise ValueError("deployment-wide IM integration already exists")
             record = integration_to_record(integration)
             session.add(record)
             session.flush()
@@ -247,7 +257,7 @@ class SQLAlchemyIMControlPlaneRepository:
             )
 
     def apply_reconciliation(self, plan: ReconciliationPlan, *, now: UtcTimestamp) -> ApplyReconciliationResult:
-        """Idempotently apply one plan after rechecking its captured token."""
+        """Idempotently apply one plan using the persisted run capture as authority."""
 
         with self._session_maker() as session, session.begin():
             run_record = session.scalar(
@@ -255,8 +265,14 @@ class SQLAlchemyIMControlPlaneRepository:
             )
             if run_record is None:
                 raise ValueError("sync run not found")
-            if run_record.integration_id != str(plan.integration_revision.integration_id):
-                raise ValueError("sync run integration does not match plan")
+            captured_revision = IntegrationRevisionToken(
+                IntegrationId(run_record.integration_id),
+                run_record.integration_config_version,
+            )
+            if plan.integration_revision != captured_revision:
+                raise ValueError("sync run revision does not match plan")
+            if plan.provider is not run_record.provider:
+                raise ValueError("sync run provider does not match plan")
 
             existing_results = self._load_result_records(session, plan.sync_run_id)
             if run_record.status in (IMSyncRunStatus.SUCCEEDED, IMSyncRunStatus.FAILED):
@@ -266,8 +282,8 @@ class SQLAlchemyIMControlPlaneRepository:
                     tuple(sync_result_from_record(record) for record in existing_results),
                 )
 
-            integration_record = session.scalar(self._locked_integration_statement(plan.integration_revision))
-            if integration_record is None:
+            integration_record = session.scalar(self._locked_integration_statement(captured_revision))
+            if integration_record is None or integration_record.provider is not run_record.provider:
                 stale_result = self._stale_result(plan, now)
                 self._append_result_record(session, stale_result)
                 run_record.status = IMSyncRunStatus.FAILED
@@ -290,8 +306,8 @@ class SQLAlchemyIMControlPlaneRepository:
                 self._append_result_record(session, result)
                 results.append(result)
             for identity_id in plan.removed_identity_ids:
-                removal_result = self._remove_identity(session, plan, identity_id, now)
-                if removal_result is not None:
+                removal_results = self._remove_identity(session, plan, identity_id, now)
+                for removal_result in removal_results:
                     self._append_result_record(session, removal_result)
                     results.append(removal_result)
 
@@ -345,12 +361,21 @@ class SQLAlchemyIMControlPlaneRepository:
         workspace_id: WorkspaceId,
         contact_id: ContactId,
     ) -> BindingResolutionResult:
-        """Load mapped facts and expose one consumer-safe effective binding."""
+        """Validate Integration ownership before loading consumer-safe binding facts."""
 
-        state = self.load_integration_state(integration_id)
-        if state.integration.provider_tenant.provider is not provider:
-            return BindingResolutionResult(BindingResolutionKind.INVALID_BINDING, None)
         with self._session_maker() as session, session.begin():
+            integration_record = session.scalar(
+                select(HumanInputIMIntegration).where(
+                    HumanInputIMIntegration.id == str(integration_id),
+                    sa.or_(
+                        HumanInputIMIntegration.tenant_id == str(workspace_id),
+                        HumanInputIMIntegration.tenant_id.is_(None),
+                    ),
+                )
+            )
+            if integration_record is None or integration_record.provider is not provider:
+                return BindingResolutionResult(BindingResolutionKind.INVALID_BINDING, None)
+            integration = integration_from_record(integration_record)
             contact_record = session.scalar(
                 select(HumanInputContact).where(
                     HumanInputContact.id == str(contact_id),
@@ -360,14 +385,32 @@ class SQLAlchemyIMControlPlaneRepository:
             if contact_record is None:
                 return BindingResolutionResult(BindingResolutionKind.NOT_AVAILABLE, None)
             contact = ContactSnapshot(contact_from_record(contact_record), True)
-        return EffectiveBindingResolver.resolve(
-            integration_revision=state.integration.revision,
-            provider_tenant=state.integration.provider_tenant,
-            workspace_id=workspace_id,
-            contact=contact,
-            identities=state.identities,
-            bindings=state.bindings,
-        )
+            identities = tuple(
+                identity_from_record(record)
+                for record in session.scalars(
+                    select(HumanInputIMIdentity).where(
+                        HumanInputIMIdentity.integration_id == str(integration_id),
+                        HumanInputIMIdentity.provider == provider,
+                    )
+                ).all()
+            )
+            bindings = tuple(
+                binding_from_record(record)
+                for record in session.scalars(
+                    select(HumanInputIMBinding).where(
+                        HumanInputIMBinding.integration_id == str(integration_id),
+                        HumanInputIMBinding.provider == provider,
+                    )
+                ).all()
+            )
+            return EffectiveBindingResolver.resolve(
+                integration_revision=integration.revision,
+                provider_tenant=integration.provider_tenant,
+                workspace_id=workspace_id,
+                contact=contact,
+                identities=identities,
+                bindings=bindings,
+            )
 
     def append_sync_results(self, results: tuple[SyncResultFact, ...]) -> None:
         """Append diagnostic facts in their own explicit transaction."""
@@ -397,6 +440,14 @@ class SQLAlchemyIMControlPlaneRepository:
         if record is None:
             return None
         return IntegrationRevisionToken(IntegrationId(record.id), record.config_version)
+
+    @staticmethod
+    def _lock_deployment_owner(session: Session) -> None:
+        """Serialize EE singleton decisions on the deployment's stable owner."""
+
+        setup_version = session.scalars(select(DifySetup.version).with_for_update()).one_or_none()
+        if setup_version is None:
+            raise ValueError("deployment setup row is required for deployment-wide IM integration")
 
     @staticmethod
     def _copy_integration_values(record: HumanInputIMIntegration, integration: IMIntegration) -> None:
@@ -541,7 +592,7 @@ class SQLAlchemyIMControlPlaneRepository:
         plan: ReconciliationPlan,
         identity_id: IMIdentityId,
         now: UtcTimestamp,
-    ) -> SyncResultFact | None:
+    ) -> tuple[SyncResultFact, ...]:
         record = session.scalar(
             select(HumanInputIMIdentity).where(
                 HumanInputIMIdentity.id == str(identity_id),
@@ -549,54 +600,65 @@ class SQLAlchemyIMControlPlaneRepository:
             )
         )
         if record is None:
-            return None
-        binding = session.scalar(
-            select(HumanInputIMBinding).where(
-                HumanInputIMBinding.integration_id == str(plan.integration_revision.integration_id),
-                HumanInputIMBinding.im_identity_id == record.id,
-            )
-        )
-        contact_record = session.get(HumanInputContact, binding.contact_id) if binding is not None else None
-        result = SyncResultFact(
-            id=IMSyncResultId(str(uuidv7())),
-            integration_id=plan.integration_revision.integration_id,
-            sync_run_id=plan.sync_run_id,
-            result_type=IMSyncResultType.REMOVED,
-            provider_user_id=record.provider_user_id,
-            display_name=record.display_name,
-            email=record.email,
-            normalized_email=NormalizedEmail(record.normalized_email) if record.normalized_email is not None else None,
-            contact_id=ContactId(binding.contact_id) if binding is not None else None,
-            identity_id=identity_id,
-            binding_id=IMBindingId(binding.id) if binding is not None else None,
-            removal_reason=IMSyncRemovalReason.NOT_PRESENT_IN_DIRECTORY,
-            reason_code="not_present_in_directory",
-            reason_message=None,
-            directory_entry_payload=None,
-            contact_snapshot=(
-                SyncContactSnapshot(
-                    contact_id=ContactId(contact_record.id),
-                    name=contact_record.name,
-                    email=contact_record.email,
-                    avatar_file_id=contact_record.avatar_file_id,
+            return ()
+        binding_records = tuple(
+            session.scalars(
+                select(HumanInputIMBinding)
+                .where(
+                    HumanInputIMBinding.integration_id == str(plan.integration_revision.integration_id),
+                    HumanInputIMBinding.im_identity_id == record.id,
                 )
-                if contact_record is not None
-                else None
-            ),
-            identity_snapshot=SyncIdentitySnapshot(
-                identity_id=identity_id,
-                provider=record.provider,
-                provider_user_id=record.provider_user_id,
-                display_name=record.display_name,
-                email=record.email,
-            ),
-            created_at=now,
-            updated_at=now,
+                .order_by(HumanInputIMBinding.created_at, HumanInputIMBinding.id)
+            ).all()
         )
-        if binding is not None:
+        bindings_for_results: tuple[HumanInputIMBinding | None, ...] = binding_records or (None,)
+        results: list[SyncResultFact] = []
+        for binding in bindings_for_results:
+            contact_record = session.get(HumanInputContact, binding.contact_id) if binding is not None else None
+            results.append(
+                SyncResultFact(
+                    id=IMSyncResultId(str(uuidv7())),
+                    integration_id=plan.integration_revision.integration_id,
+                    sync_run_id=plan.sync_run_id,
+                    result_type=IMSyncResultType.REMOVED,
+                    provider_user_id=record.provider_user_id,
+                    display_name=record.display_name,
+                    email=record.email,
+                    normalized_email=(
+                        NormalizedEmail(record.normalized_email) if record.normalized_email is not None else None
+                    ),
+                    contact_id=ContactId(binding.contact_id) if binding is not None else None,
+                    identity_id=identity_id,
+                    binding_id=IMBindingId(binding.id) if binding is not None else None,
+                    removal_reason=IMSyncRemovalReason.NOT_PRESENT_IN_DIRECTORY,
+                    reason_code="not_present_in_directory",
+                    reason_message=None,
+                    directory_entry_payload=None,
+                    contact_snapshot=(
+                        SyncContactSnapshot(
+                            contact_id=ContactId(contact_record.id),
+                            name=contact_record.name,
+                            email=contact_record.email,
+                            avatar_file_id=contact_record.avatar_file_id,
+                        )
+                        if contact_record is not None
+                        else None
+                    ),
+                    identity_snapshot=SyncIdentitySnapshot(
+                        identity_id=identity_id,
+                        provider=record.provider,
+                        provider_user_id=record.provider_user_id,
+                        display_name=record.display_name,
+                        email=record.email,
+                    ),
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        for binding in binding_records:
             session.delete(binding)
         session.delete(record)
-        return result
+        return tuple(results)
 
     @staticmethod
     def _stale_result(plan: ReconciliationPlan, now: UtcTimestamp) -> SyncResultFact:

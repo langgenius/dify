@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+import pytest
+
 from core.human_input_v2.entities import (
     IMBindingScope,
     IMProvider,
@@ -145,6 +147,14 @@ def test_integration_mapping_round_trips_without_leaking_orm_identity() -> None:
 
     assert record.encrypted_credentials.provider is IMProvider.FEISHU
     assert integration_from_record(record) == integration
+
+
+def test_integration_mapping_rejects_missing_provider_tenant_identity() -> None:
+    record = integration_to_record(_integration())
+    record.provider_tenant_id = None
+
+    with pytest.raises(ValueError, match="provider_tenant_id"):
+        integration_from_record(record)
 
 
 def test_identity_mapping_round_trips_structured_raw_payload() -> None:

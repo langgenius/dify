@@ -1,19 +1,31 @@
 """Domain tests for IM Integration configuration revision semantics."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
 
-from core.human_input_v2.entities import IMIntegrationStatus, IMProvider
+from core.human_input_v2.entities import IMBindingScope, IMIntegrationStatus, IMProvider
 from core.human_input_v2.im_integration import (
     ConfigurationTransitionKind,
     EncryptedCredentials,
+    IMBinding,
+    IMIdentity,
     IMIntegration,
     IntegrationRevisionToken,
+    OpaqueProviderPayload,
     ProviderTenantIdentity,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    IMBindingId,
+    IMIdentityId,
+    IntegrationId,
+    UtcTimestamp,
+    WorkspaceId,
+)
 
 _NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
 _LATER = UtcTimestamp(datetime(2026, 7, 25, 9, tzinfo=UTC))
@@ -49,6 +61,62 @@ def test_revision_token_requires_positive_version(config_version: int) -> None:
         IntegrationRevisionToken(IntegrationId("integration-1"), config_version)
 
 
+def test_opaque_values_reject_empty_or_non_object_payloads() -> None:
+    with pytest.raises(ValueError, match="must not be empty"):
+        EncryptedCredentials.from_mapping({})
+    with pytest.raises(ValueError, match="JSON object"):
+        EncryptedCredentials("[]").to_mapping()
+    with pytest.raises(ValueError, match="JSON object"):
+        OpaqueProviderPayload("[]").to_mapping()
+
+
+def test_provider_tenant_and_integration_require_valid_persisted_values() -> None:
+    with pytest.raises(ValueError, match="must not be blank"):
+        ProviderTenantIdentity(IMProvider.FEISHU, " ")
+    with pytest.raises(ValueError, match="positive"):
+        replace(_integration(), config_version=0)
+
+
+def test_identity_and_binding_reject_invalid_current_state() -> None:
+    with pytest.raises(ValueError, match="provider user id"):
+        IMIdentity.create(
+            identity_id=IMIdentityId("identity-1"),
+            integration_id=IntegrationId("integration-1"),
+            provider=IMProvider.FEISHU,
+            provider_user_id=" ",
+            display_name=None,
+            email=None,
+            raw_payload={},
+            last_seen_sync_run_id=None,
+            last_seen_at=None,
+            now=_NOW,
+        )
+    with pytest.raises(ValueError, match="scope id"):
+        IMBinding.create(
+            binding_id=IMBindingId("binding-1"),
+            integration_id=IntegrationId("integration-1"),
+            scope=IMBindingScope.WORKSPACE,
+            scope_id=" ",
+            contact_id=ContactId("contact-1"),
+            identity_id=IMIdentityId("identity-1"),
+            provider=IMProvider.FEISHU,
+            bound_by_account_id=None,
+            now=_NOW,
+        )
+    with pytest.raises(ValueError, match="organization binding scope"):
+        IMBinding.create(
+            binding_id=IMBindingId("binding-1"),
+            integration_id=IntegrationId("integration-1"),
+            scope=IMBindingScope.ORGANIZATION,
+            scope_id="integration-other",
+            contact_id=ContactId("contact-1"),
+            identity_id=IMIdentityId("identity-1"),
+            provider=IMProvider.FEISHU,
+            bound_by_account_id=None,
+            now=_NOW,
+        )
+
+
 def test_confirmed_credential_rotation_advances_once_and_preserves_current_state() -> None:
     integration = _integration()
 
@@ -66,6 +134,21 @@ def test_confirmed_credential_rotation_advances_once_and_preserves_current_state
     assert decision.integration.revision.config_version == 2
     assert decision.invalidation.invalidate_identities is False
     assert decision.invalidation.invalidate_bindings is False
+
+
+def test_credential_rotation_rejects_replacement_identity() -> None:
+    integration = _integration()
+
+    with pytest.raises(ValueError, match="must preserve integration identity"):
+        integration.reconfigure(
+            expected_revision=integration.revision,
+            provider_tenant=integration.provider_tenant,
+            encrypted_credentials=_credentials("ciphertext-2"),
+            configured_by_account_id=None,
+            callback_url=None,
+            now=_LATER,
+            replacement_integration_id=IntegrationId("integration-2"),
+        )
 
 
 def test_provider_tenant_replacement_gets_new_identity_and_invalidates_current_state() -> None:
@@ -103,6 +186,27 @@ def test_provider_tenant_replacement_gets_new_identity_and_invalidates_current_s
         now=_LATER,
     )
     assert stale == StaleRevision(expected=integration.revision, actual=decision.integration.revision)
+
+
+def test_provider_replacement_requires_new_integration_identity() -> None:
+    integration = _integration()
+
+    with pytest.raises(ValueError, match="requires a new integration identity"):
+        integration.reconfigure(
+            expected_revision=integration.revision,
+            provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-tenant-2"),
+            encrypted_credentials=EncryptedCredentials.from_mapping(
+                {
+                    "client_id": "client-1",
+                    "encrypted_client_secret": "ciphertext-2",
+                    "encrypted_signing_secret": "ciphertext-3",
+                    "encrypted_bot_token": "ciphertext-4",
+                }
+            ),
+            configured_by_account_id=None,
+            callback_url=None,
+            now=_LATER,
+        )
 
 
 def test_stale_update_and_delete_return_stable_results() -> None:

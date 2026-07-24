@@ -205,7 +205,12 @@ def upgrade() -> None:
         sa.Column("added_count", sa.Integer(), nullable=False, comment="Newly matched and bound entries."),
         sa.Column("not_matched_count", sa.Integer(), nullable=False, comment="Unmatched entries."),
         sa.Column("failed_count", sa.Integer(), nullable=False, comment="Failed entries."),
-        sa.Column("removed_count", sa.Integer(), nullable=False, comment="Removed current identities."),
+        sa.Column(
+            "removed_count",
+            sa.Integer(),
+            nullable=False,
+            comment="Removed binding facts, including one unbound-identity fact when applicable.",
+        ),
         sa.Column("skipped_count", sa.Integer(), nullable=False, comment="Intentionally skipped entries."),
         sa.Column(
             "started_by_account_id",
@@ -288,7 +293,7 @@ def upgrade() -> None:
             comment="Immutable removed identity snapshot JSON.",
         ),
         *_default_fields("human_input_im_sync_results"),
-        comment="Append-only per-entry IM synchronization outcomes.",
+        comment="Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes.",
     )
     op.create_index(
         "hiimsres_run_type_created_idx",

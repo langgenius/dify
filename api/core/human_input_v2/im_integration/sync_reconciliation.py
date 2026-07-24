@@ -7,7 +7,7 @@ from enum import StrEnum
 
 from pydantic import JsonValue
 
-from core.human_input_v2.contact_directory import ContactSnapshot
+from core.human_input_v2.contact_directory import ContactIdentitySource, ContactSnapshot
 from core.human_input_v2.entities import IMProvider, IMSyncRemovalReason, IMSyncResultType, IMSyncRunStatus
 from core.human_input_v2.shared import (
     AccountId,
@@ -95,7 +95,12 @@ class ReconciliationPlan:
 
 @dataclass(frozen=True, slots=True)
 class SyncResultFact:
-    """Append-only outcome for one reconciliation action or diagnostic."""
+    """Append-only outcome for one action, removed binding, or diagnostic.
+
+    Removing an identity emits one fact per removed binding so every scope
+    override remains auditable. An identity without bindings emits one fact
+    whose binding and Contact fields are absent.
+    """
 
     id: IMSyncResultId
     integration_id: IntegrationId
@@ -222,7 +227,9 @@ class SyncReconciler:
         contacts_by_email = {
             item.contact.normalized_email: item.contact
             for item in snapshot.contacts
-            if item.account_available and item.contact.normalized_email is not None
+            if item.account_available
+            and item.contact.identity_source is ContactIdentitySource.ORGANIZATION_ACCOUNT
+            and item.contact.normalized_email is not None
         }
 
         actions: list[ReconciliationAction] = []

@@ -21,6 +21,7 @@ from core.human_input_v2.im_integration import (
     IMBinding,
     IMIdentity,
     IMIntegration,
+    IntegrationDeletion,
     IntegrationRevisionToken,
     MatchKind,
     ProviderDirectoryEntry,
@@ -48,6 +49,7 @@ from models.human_input_v2 import (
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
+from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.mappers import binding_to_record, identity_to_record
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
@@ -62,6 +64,7 @@ def repository_context(
     sqlite_engine: Engine,
 ) -> Iterator[tuple[SQLAlchemyIMControlPlaneRepository, sessionmaker[Session]]]:
     tables = [
+        DifySetup.__table__,
         Account.__table__,
         HumanInputContact.__table__,
         HumanInputIMIntegration.__table__,
@@ -72,6 +75,8 @@ def repository_context(
     ]
     HumanInputIMIntegration.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with session_maker.begin() as session:
+        session.add(DifySetup(version="test-deployment"))
     return SQLAlchemyIMControlPlaneRepository(session_maker), session_maker
 
 
@@ -79,16 +84,57 @@ def _credentials(secret: str = "ciphertext") -> EncryptedCredentials:
     return EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": secret})
 
 
-def _integration(integration_id: str = "integration-1") -> IMIntegration:
+def _integration(
+    integration_id: str = "integration-1",
+    *,
+    workspace_id: WorkspaceId | None = _WORKSPACE_ID,
+) -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId(integration_id),
-        workspace_id=_WORKSPACE_ID,
+        workspace_id=workspace_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=_credentials(),
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,
     )
+
+
+def test_deployment_integration_creation_is_singleton_while_tenant_integrations_remain_scoped(
+    repository_context,
+) -> None:
+    repository, session_maker = repository_context
+
+    deployment_integration = repository.create_integration(_integration(workspace_id=None))
+    first_tenant = repository.create_integration(
+        _integration("integration-tenant-1", workspace_id=WorkspaceId("workspace-tenant-1"))
+    )
+    second_tenant = repository.create_integration(
+        _integration("integration-tenant-2", workspace_id=WorkspaceId("workspace-tenant-2"))
+    )
+
+    with pytest.raises(ValueError, match="deployment-wide IM integration already exists"):
+        repository.create_integration(_integration("integration-deployment-2", workspace_id=None))
+
+    assert deployment_integration.workspace_id is None
+    assert first_tenant.workspace_id == WorkspaceId("workspace-tenant-1")
+    assert second_tenant.workspace_id == WorkspaceId("workspace-tenant-2")
+    with session_maker() as session:
+        assert (
+            session.scalar(
+                select(sa.func.count(HumanInputIMIntegration.id)).where(HumanInputIMIntegration.tenant_id.is_(None))
+            )
+            == 1
+        )
+
+
+def test_deployment_integration_creation_requires_stable_setup_owner(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.execute(sa.delete(DifySetup))
+
+    with pytest.raises(ValueError, match="setup row"):
+        repository.create_integration(_integration(workspace_id=None))
 
 
 def _identity(integration_id: IntegrationId) -> IMIdentity:
@@ -194,6 +240,15 @@ def test_delete_requires_complete_current_revision(repository_context) -> None:
     assert repository.compare_and_swap_delete(integration.plan_deletion(integration.revision)) is None
     with session_maker() as session:
         assert session.get(HumanInputIMIntegration, str(integration.id)) is None
+
+
+def test_delete_reports_missing_current_integration(repository_context) -> None:
+    repository, _ = repository_context
+    revision = IntegrationRevisionToken(IntegrationId("integration-missing"), 1)
+
+    result = repository.compare_and_swap_delete(IntegrationDeletion(revision))
+
+    assert result == StaleRevision(expected=revision, actual=None)
 
 
 def test_active_run_creation_returns_existing_state_and_rejects_stale_trigger(repository_context) -> None:
@@ -324,6 +379,85 @@ def test_stale_reconciliation_appends_diagnostic_without_current_state_mutation(
         assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
 
 
+@pytest.mark.parametrize(
+    ("integration_revision", "provider", "message"),
+    [
+        (IntegrationRevisionToken(IntegrationId("integration-1"), 2), IMProvider.FEISHU, "revision"),
+        (IntegrationRevisionToken(IntegrationId("integration-1"), 1), IMProvider.SLACK, "provider"),
+    ],
+)
+def test_reconciliation_plan_must_match_persisted_run_capture(
+    repository_context,
+    integration_revision: IntegrationRevisionToken,
+    provider: IMProvider,
+    message: str,
+) -> None:
+    repository, session_maker = repository_context
+    integration = repository.create_integration(_integration())
+    run_decision = repository.create_or_get_active_run(
+        integration.revision,
+        sync_run_id=IMSyncRunId("run-1"),
+        started_by_account_id=None,
+        now=_NOW,
+    )
+    assert run_decision.run is not None
+    plan = ReconciliationPlan(
+        sync_run_id=run_decision.run.id,
+        integration_revision=integration_revision,
+        provider=provider,
+        actions=(),
+        removed_identity_ids=(),
+    )
+
+    with pytest.raises(ValueError, match=message):
+        repository.apply_reconciliation(plan, now=_LATER)
+
+    with session_maker() as session:
+        run = session.get_one(HumanInputIMSyncRun, str(run_decision.run.id))
+        assert run.status is IMSyncRunStatus.QUEUED
+        assert session.scalar(select(sa.func.count(HumanInputIMSyncResult.id))) == 0
+
+
+def test_reconciliation_requires_persisted_run(repository_context) -> None:
+    repository, _ = repository_context
+    plan = ReconciliationPlan(
+        sync_run_id=IMSyncRunId("run-missing"),
+        integration_revision=IntegrationRevisionToken(IntegrationId("integration-missing"), 1),
+        provider=IMProvider.FEISHU,
+        actions=(),
+        removed_identity_ids=(),
+    )
+
+    with pytest.raises(ValueError, match="sync run not found"):
+        repository.apply_reconciliation(plan, now=_NOW)
+
+
+def test_reconciliation_rejects_current_provider_that_differs_from_persisted_run(repository_context) -> None:
+    repository, session_maker = repository_context
+    integration = repository.create_integration(_integration())
+    run_decision = repository.create_or_get_active_run(
+        integration.revision,
+        sync_run_id=IMSyncRunId("run-1"),
+        started_by_account_id=None,
+        now=_NOW,
+    )
+    assert run_decision.run is not None
+    with session_maker.begin() as session:
+        session.get_one(HumanInputIMIntegration, str(integration.id)).provider = IMProvider.SLACK
+    plan = ReconciliationPlan(
+        sync_run_id=run_decision.run.id,
+        integration_revision=run_decision.run.integration_revision,
+        provider=run_decision.run.provider,
+        actions=(),
+        removed_identity_ids=(),
+    )
+
+    result = repository.apply_reconciliation(plan, now=_LATER)
+
+    assert result.status is ApplyReconciliationStatus.STALE_REVISION
+    assert result.results[0].reason_code == "stale_integration_revision"
+
+
 def test_snapshot_load_and_effective_binding_use_mapped_owner_scoped_facts(repository_context) -> None:
     repository, session_maker = repository_context
     integration = repository.create_integration(_integration())
@@ -362,6 +496,48 @@ def test_snapshot_load_and_effective_binding_use_mapped_owner_scoped_facts(repos
     assert effective.binding.provider_user_id == "provider-user-1"
 
 
+def test_missing_integration_state_and_contact_are_reported(repository_context) -> None:
+    repository, _ = repository_context
+    with pytest.raises(ValueError, match="integration not found"):
+        repository.load_integration_state(IntegrationId("integration-missing"))
+
+    integration = repository.create_integration(_integration())
+    effective = repository.resolve_effective_binding(
+        integration_id=integration.id,
+        provider=IMProvider.FEISHU,
+        workspace_id=_WORKSPACE_ID,
+        contact_id=ContactId("contact-missing"),
+    )
+
+    assert effective.kind is BindingResolutionKind.NOT_AVAILABLE
+
+
+def test_effective_binding_rejects_cross_tenant_integration_before_email_fallback(repository_context) -> None:
+    repository, session_maker = repository_context
+    integration = repository.create_integration(_integration())
+    other_workspace_id = WorkspaceId("workspace-2")
+    contact = Contact.external(
+        contact_id=ContactId("contact-other-workspace"),
+        workspace_id=other_workspace_id,
+        name="Other Workspace Reviewer",
+        email="reviewer@example.com",
+        now=_NOW,
+    )
+    with session_maker.begin() as session:
+        session.add(contact_to_record(contact))
+        session.add(identity_to_record(_identity(integration.id)))
+
+    result = repository.resolve_effective_binding(
+        integration_id=integration.id,
+        provider=IMProvider.FEISHU,
+        workspace_id=other_workspace_id,
+        contact_id=contact.id,
+    )
+
+    assert result.kind is BindingResolutionKind.INVALID_BINDING
+    assert result.binding is None
+
+
 def test_reconciliation_snapshot_marks_disabled_account_contact_unavailable(repository_context) -> None:
     repository, session_maker = repository_context
     integration = repository.create_integration(_integration())
@@ -391,7 +567,7 @@ def test_reconciliation_snapshot_marks_disabled_account_contact_unavailable(repo
     assert snapshot.contacts[0].account_available is False
 
 
-def test_reconciliation_updates_provider_match_and_removes_absent_identity(repository_context) -> None:
+def test_reconciliation_updates_provider_match_and_removes_all_bindings_for_absent_identity(repository_context) -> None:
     repository, session_maker = repository_context
     integration = repository.create_integration(_integration())
     run_decision = repository.create_or_get_active_run(
@@ -442,10 +618,27 @@ def test_reconciliation_updates_provider_match_and_removes_absent_identity(repos
         bound_by_account_id=None,
         now=_NOW,
     )
+    removed_workspace_binding = IMBinding.create(
+        binding_id=IMBindingId("binding-removed-workspace"),
+        integration_id=integration.id,
+        scope=IMBindingScope.WORKSPACE,
+        scope_id=str(_WORKSPACE_ID),
+        contact_id=contacts[1].id,
+        identity_id=removed_identity.id,
+        provider=IMProvider.FEISHU,
+        bound_by_account_id=None,
+        now=_NOW,
+    )
     with session_maker.begin() as session:
         session.add_all([contact_to_record(contact) for contact in contacts])
         session.add_all([identity_to_record(first_identity), identity_to_record(removed_identity)])
-        session.add_all([binding_to_record(first_binding), binding_to_record(removed_binding)])
+        session.add_all(
+            [
+                binding_to_record(first_binding),
+                binding_to_record(removed_binding),
+                binding_to_record(removed_workspace_binding),
+            ]
+        )
     plan = ReconciliationPlan(
         sync_run_id=run_decision.run.id,
         integration_revision=integration.revision,
@@ -471,18 +664,63 @@ def test_reconciliation_updates_provider_match_and_removes_absent_identity(repos
 
     assert result.status is ApplyReconciliationStatus.APPLIED
     assert result.run.skipped_count == 1
-    assert result.run.removed_count == 1
+    assert result.run.removed_count == 2
     with session_maker() as session:
         updated = session.get_one(HumanInputIMIdentity, str(first_identity.id))
         assert updated.display_name == "Updated Reviewer"
         assert updated.last_seen_sync_run_id == str(run_decision.run.id)
         assert session.get(HumanInputIMIdentity, str(removed_identity.id)) is None
-        removed_result = session.scalar(
-            select(HumanInputIMSyncResult).where(HumanInputIMSyncResult.im_identity_id == str(removed_identity.id))
+        assert (
+            session.scalar(
+                select(sa.func.count(HumanInputIMBinding.id)).where(
+                    HumanInputIMBinding.im_identity_id == str(removed_identity.id)
+                )
+            )
+            == 0
         )
-        assert removed_result is not None
-        assert removed_result.identity_snapshot is not None
-        assert removed_result.identity_snapshot.provider_user_id == "provider-user-removed"
+        removed_results = session.scalars(
+            select(HumanInputIMSyncResult)
+            .where(HumanInputIMSyncResult.im_identity_id == str(removed_identity.id))
+            .order_by(HumanInputIMSyncResult.im_binding_id)
+        ).all()
+        assert {item.im_binding_id for item in removed_results} == {
+            str(removed_binding.id),
+            str(removed_workspace_binding.id),
+        }
+        assert all(item.identity_snapshot is not None for item in removed_results)
+        assert all(item.identity_snapshot.provider_user_id == "provider-user-removed" for item in removed_results)
+
+
+def test_reconciliation_removal_emits_fact_for_unbound_identity(repository_context) -> None:
+    repository, session_maker = repository_context
+    integration = repository.create_integration(_integration())
+    identity = _identity(integration.id)
+    with session_maker.begin() as session:
+        session.add(identity_to_record(identity))
+    run_decision = repository.create_or_get_active_run(
+        integration.revision,
+        sync_run_id=IMSyncRunId("run-1"),
+        started_by_account_id=None,
+        now=_NOW,
+    )
+    assert run_decision.run is not None
+    plan = ReconciliationPlan(
+        sync_run_id=run_decision.run.id,
+        integration_revision=integration.revision,
+        provider=IMProvider.FEISHU,
+        actions=(),
+        removed_identity_ids=(identity.id,),
+    )
+
+    result = repository.apply_reconciliation(plan, now=_LATER)
+
+    assert result.status is ApplyReconciliationStatus.APPLIED
+    assert result.run.removed_count == 1
+    assert len(result.results) == 1
+    assert result.results[0].identity_id == identity.id
+    assert result.results[0].binding_id is None
+    assert result.results[0].contact_id is None
+    assert result.results[0].contact_snapshot is None
 
 
 def test_valid_reconciliation_failure_rolls_back_current_state_and_results(repository_context, monkeypatch) -> None:

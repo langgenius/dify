@@ -27,13 +27,13 @@ _INTEGRATION_ID = IntegrationId("integration-1")
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 
 
-def _contact() -> ContactSnapshot:
+def _contact(email: str | None = "reviewer@example.com") -> ContactSnapshot:
     return ContactSnapshot(
         contact=Contact.organization_account(
             contact_id=ContactId("contact-1"),
             account_id=AccountId("account-1"),
             name="Reviewer",
-            email="reviewer@example.com",
+            email=email,
             now=_NOW,
         ),
         account_available=True,
@@ -121,6 +121,21 @@ def test_normalized_email_fallback_is_used_when_no_binding_exists() -> None:
     assert result.binding.account_id == AccountId("account-1")
     assert not hasattr(result.binding, "raw_payload")
     assert not hasattr(result.binding, "encrypted_credentials")
+
+
+def test_missing_email_or_matching_identity_returns_not_available() -> None:
+    without_email = EffectiveBindingResolver.resolve(
+        integration_revision=IntegrationRevisionToken(_INTEGRATION_ID, 1),
+        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
+        workspace_id=_WORKSPACE_ID,
+        contact=_contact(None),
+        identities=(),
+        bindings=(),
+    )
+    without_identity = _resolve(identities=(), bindings=())
+
+    assert without_email.kind is BindingResolutionKind.NOT_AVAILABLE
+    assert without_identity.kind is BindingResolutionKind.NOT_AVAILABLE
 
 
 def test_integration_or_provider_mismatch_returns_stable_rejection_without_binding() -> None:

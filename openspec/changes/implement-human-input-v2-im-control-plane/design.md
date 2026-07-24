@@ -33,15 +33,15 @@ Connectivity diagnostics 是非配置状态，不推进 config version。Credent
 
 `IMSyncRun` 捕获启动时 integration revision。Application handler 负责 provider read/current snapshot I/O，`SyncReconciler` 只执行 provider-user-ID-first matching、normalized-email fallback 和 result classification，返回 immutable `ReconciliationPlan`。
 
-Repository apply 前再次比较 current revision。Stale plan 只能追加 diagnostic result，不能更改 current identities/bindings。替代方案是让 reconciler直接操作 repository，但会混合 matching knowledge 与 transaction/locking。
+Repository apply 以 persisted sync run 捕获的完整 revision 与 provider 为权威，先拒绝任何与 run 不一致的 plan，再比较 current Integration。Stale plan 只能追加 diagnostic result，不能更改 current identities/bindings。替代方案是让 reconciler直接操作 repository，但会混合 matching knowledge 与 transaction/locking。
 
 ### 3. Single-active-run 与 retry idempotency 在 persistence boundary 实现
 
-创建 run 时 adapter 锁定 Integration row，检查 active run 并创建或返回 existing active state。同一 `sync_run_id` 的 apply 使用 stable idempotency identity；重复调用返回已有结果，不重复 current-state mutation。
+创建 run 时 adapter 锁定 Integration row，检查 active run 并创建或返回 existing active state。同一 `sync_run_id` 的 apply 使用 stable idempotency identity；重复调用返回已有结果，不重复 current-state mutation。缺席 identity 的 organization 与 workspace bindings 会全部删除，并为每个删除的 scope binding 追加独立 result fact；没有 binding 的 identity 仍追加一个无 binding/contact 字段的 removal fact。
 
 ### 4. Effective binding resolution 是 control-plane 的深接口
 
-Resolution priority 固定为 workspace override、organization binding、Email fallback。Reset-to-global 删除/停用 workspace override 后重新暴露 organization binding。Integration/provider mismatch 返回 typed rejection，不把错误 binding 传给 recipient/submission consumers。
+Resolution priority 固定为 workspace override、organization binding、Email fallback。Reconciliation Email fallback 仅使用 eligible Organization Contact，External Contact 不参与自动匹配。Reset-to-global 删除/停用 workspace override 后重新暴露 organization binding。Tenant-owned Integration 必须先匹配 requested workspace，之后才能加载 identities/bindings 或执行 Email fallback；Integration/provider mismatch 返回 typed rejection，不把错误 binding 传给 recipient/submission consumers。
 
 Consumer 只看到 Contact、Account、channel availability 与 proof 所需的 immutable facts，不看到 encrypted credentials、ORM identity record 或 provider raw payload。
 
@@ -52,6 +52,8 @@ Ports 提供 configuration CAS、Integration-locked active-run creation、curren
 ### 6. IM schema 使用独立 migration slice
 
 本 change 审核并迁移 Integration、identity、binding、sync run/result tables。所有 records 通过 explicit mappers 与 domain objects 互转，logical relationships 使用 eager loading 且保持 `lazy="raise"`。
+
+EE deployment-wide Integration 的 `tenant_id` 为 null，portable unique constraint 无法保证 singleton。Creation transaction 因此先锁定稳定的 `DifySetup` owner row，再检查并插入 deployment Integration；SaaS/CE tenant-owned rows 继续由 tenant-scoped uniqueness 隔离。
 
 ## Risks / Trade-offs
 

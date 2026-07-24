@@ -519,8 +519,8 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
 
     Credential values must be encrypted before persistence. CE/SaaS rows are
     tenant-scoped. EE uses a null ``tenant_id`` because the deployment is the
-    conceptual Organization boundary; the service must serialize creation to
-    preserve the first-release singleton rule. Configuration writes use
+    conceptual Organization boundary; creation must lock the stable ``DifySetup``
+    owner before checking for an existing null-owned row. Configuration writes use
     ``config_version`` for explicit compare-and-swap; connectivity diagnostics
     do not advance that revision. Asynchronous work must capture the revision
     that produced it and reject stale current-state writes.
@@ -881,7 +881,10 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
         sa.Integer, nullable=False, default=0, comment="Number of entries that failed reconciliation."
     )
     removed_count: Mapped[int] = mapped_column(
-        sa.Integer, nullable=False, default=0, comment="Number of prior bindings removed by reconciliation."
+        sa.Integer,
+        nullable=False,
+        default=0,
+        comment="Number of removed binding facts, including one unbound-identity fact when applicable.",
     )
     skipped_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, default=0, comment="Number of entries intentionally skipped."
@@ -924,7 +927,7 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
 
 
 class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
-    """Immutable reconciliation result for one provider directory entry.
+    """Immutable reconciliation result for one entry, removed binding, or diagnostic.
 
     Provider identifiers and normalized email remain queryable columns. JSON is
     limited to the raw provider input and immutable display snapshots.

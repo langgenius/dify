@@ -22,6 +22,7 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     UtcTimestamp,
+    WorkspaceId,
 )
 
 _NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
@@ -53,6 +54,21 @@ def test_sync_run_captures_complete_integration_revision() -> None:
     assert run.integration_revision == _REVISION
     assert run.status is IMSyncRunStatus.QUEUED
     assert run.is_active is True
+
+
+def test_sync_run_start_is_idempotent_after_leaving_queued_state() -> None:
+    run = IMSyncRun.create(
+        sync_run_id=IMSyncRunId("run-1"),
+        integration_revision=_REVISION,
+        provider=IMProvider.FEISHU,
+        started_by_account_id=None,
+        now=_NOW,
+    )
+
+    started = run.start(_NOW)
+
+    assert started.status is IMSyncRunStatus.RUNNING
+    assert started.start(_NOW) is started
 
 
 def test_reconciler_prefers_provider_user_id_before_conflicting_email() -> None:
@@ -129,6 +145,36 @@ def test_reconciler_uses_normalized_email_fallback_without_creating_contacts() -
     assert plan.actions[0].contact_id == contact.contact.id
     assert plan.actions[0].identity_id is None
     assert not hasattr(plan, "contacts_to_create")
+
+
+def test_reconciler_does_not_use_external_contact_for_email_fallback() -> None:
+    external_contact = ContactSnapshot(
+        contact=Contact.external(
+            contact_id=ContactId("contact-external"),
+            workspace_id=WorkspaceId("workspace-1"),
+            name="External Reviewer",
+            email="reviewer@example.com",
+            now=_NOW,
+        ),
+        account_available=True,
+    )
+    entry = ProviderDirectoryEntry.create(
+        provider_user_id="provider-user-1",
+        display_name="Reviewer",
+        email="reviewer@example.com",
+        raw_payload={},
+    )
+
+    plan = SyncReconciler.reconcile(
+        sync_run_id=IMSyncRunId("run-1"),
+        integration_revision=_REVISION,
+        provider=IMProvider.FEISHU,
+        entries=(entry,),
+        snapshot=ReconciliationSnapshot(contacts=(external_contact,)),
+    )
+
+    assert plan.actions[0].match_kind is MatchKind.UNMATCHED
+    assert plan.actions[0].contact_id is None
 
 
 def test_reconciler_returns_unmatched_for_missing_or_ineligible_contact() -> None:

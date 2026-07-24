@@ -35,7 +35,8 @@
 
 ## Validation Evidence
 
-- Targeted IM and Contact Directory regression suite: `118 passed`.
-- Focused IM domain/repository coverage: `92.43%`, above the explicit `90%` threshold; reports are `coverage.xml` and `coverage.json`.
-- Affected-file Ruff formatting/lint, Pyrefly, and Mypy checks passed.
-- PostgreSQL concurrency coverage is defined in `api/tests/integration_tests/repositories/human_input_v2/test_im_control_plane_concurrency.py`; it is CI-only and was not run locally.
+- Targeted IM and Contact Directory regression suite: `137 passed`.
+- Focused IM domain/repository suite: `52 passed`; combined coverage is `98.39%` and actual branch coverage is `100/108 = 92.59%`, above the explicit `90%` threshold. Reports are `coverage.xml` and `coverage.json`.
+- Affected-file Ruff format/check, Pyrefly, and Mypy checks passed.
+- PostgreSQL concurrency coverage collects `5 tests`, including deployment singleton creation and a non-empty reconciliation retry that asserts one identity, binding, and result fact. It is CI-only and was not run locally.
+- Strict OpenSpec validation passed for `implement-human-input-v2-im-control-plane`.
