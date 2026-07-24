@@ -44,7 +44,7 @@ export function CreateAppDropdown({
           buttonVariants({ variant: 'primary', size: 'medium' }),
           'gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3',
         )}
-        onKeyDown={(event) => {
+        onKeyDownCapture={(event) => {
           if (event.key !== 'Enter' || menu.open) return
 
           event.preventDefault()
