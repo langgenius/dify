@@ -15,6 +15,32 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
+    // `loro-crdt`'s default `browser` and `base64` builds both
+    // synchronously call `new WebAssembly.Module(buffer)` on the
+    // module's main thread, which Chromium throws on with
+    //   "RangeError: WebAssembly.compile is disallowed on the main
+    //    thread, if the buffer size is larger than 4KB"
+    // (the WASM blob in this package is well over 4KB). Newer
+    // Chromium/Firefox versions happen to keep the SPA working here,
+    // but older browsers — the exact ones users report hitting in
+    // issue #38532 — do not, so the registration page and other
+    // top-level layouts that transitively import the workflow
+    // collaboration manager blow up before hydration completes.
+    //
+    // The `bundler` subpath re-exports the same surface but
+    // initializes the WASM asynchronously through
+    // `WebAssembly.instantiate` / `WebAssembly.instantiateStreaming`
+    // (which is allowed on the main thread because it returns a
+    // Promise, not a synchronous `Module`/`compile`). Aliasing
+    // `loro-crdt` to `loro-crdt/bundler` for `condition: browser` only
+    // makes the production client bundle safe on every supported
+    // browser without affecting the Node.js server bundle (where
+    // `serverExternalPackages` above still keeps `loro-crdt`
+    // external). See the matching Vite alias in `web/vite.config.ts`
+    // (which only covers Vite-based pipelines like vitest/vinext).
+    resolveAlias: {
+      'loro-crdt': { browser: 'loro-crdt/bundler' },
+    },
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
     }),
