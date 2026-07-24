@@ -33,14 +33,18 @@ const HomeHero = ({ isMarketplacePlatform }: HomeHeroProps) => {
           </p>
         </div>
 
-        <img
-          src={blueBrick.src}
-          width={93}
-          height={91}
-          alt=""
+        <div
           aria-hidden
-          className="pointer-events-none absolute top-1/2 left-0 h-[91px] w-[93px] -translate-y-1/2 -rotate-[44deg] select-none"
-        />
+          className="pointer-events-none absolute top-1/2 left-0 flex h-[130.4px] w-[130.5px] -translate-y-1/2 items-center justify-center select-none"
+        >
+          <img
+            src={blueBrick.src}
+            width={93}
+            height={91}
+            alt=""
+            className="h-[91.2px] w-[93.3px] -rotate-[43.67deg]"
+          />
+        </div>
         <img
           src={magnifyingGlass.src}
           width={26}
@@ -55,32 +59,44 @@ const HomeHero = ({ isMarketplacePlatform }: HomeHeroProps) => {
           height={16}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute top-3 left-[294px] hidden size-4 -scale-y-100 select-none opacity-[0.88] sm:block"
+          className="pointer-events-none absolute top-[22px] left-[254px] hidden size-4 -scale-y-100 select-none opacity-[0.88] sm:block"
         />
-        <img
-          src={greenFlag.src}
-          width={24}
-          height={24}
-          alt=""
+        <div
           aria-hidden
-          className="pointer-events-none absolute top-0 left-[409px] hidden size-6 rotate-45 select-none opacity-[0.88] sm:block"
-        />
-        <img
-          src={redBrick.src}
-          width={21}
-          height={20}
-          alt=""
+          className="pointer-events-none absolute top-0 left-[409px] hidden size-[33.2px] items-center justify-center select-none sm:flex"
+        >
+          <img
+            src={greenFlag.src}
+            width={23}
+            height={24}
+            alt=""
+            className="h-6 w-[23px] rotate-45 opacity-[0.88]"
+          />
+        </div>
+        <div
           aria-hidden
-          className="pointer-events-none absolute top-[23px] left-[541px] hidden h-5 w-[21px] -rotate-[60deg] select-none opacity-[0.88] sm:block"
-        />
-        <img
-          src={telescope.src}
-          width={93}
-          height={93}
-          alt=""
+          className="pointer-events-none absolute top-[22.8px] left-[541px] hidden h-[28.2px] w-[27.8px] items-center justify-center select-none sm:flex"
+        >
+          <img
+            src={redBrick.src}
+            width={21}
+            height={20}
+            alt=""
+            className="h-5 w-[21px] -rotate-[60deg] opacity-[0.88]"
+          />
+        </div>
+        <div
           aria-hidden
-          className="pointer-events-none absolute top-1/2 right-0 size-[93px] -translate-y-1/2 rotate-[15deg] select-none"
-        />
+          className="pointer-events-none absolute top-1/2 right-0 flex size-[113.6px] -translate-y-1/2 items-center justify-center select-none"
+        >
+          <img
+            src={telescope.src}
+            width={93}
+            height={93}
+            alt=""
+            className="size-[92.8px] rotate-[15deg]"
+          />
+        </div>
       </div>
     </section>
   )
