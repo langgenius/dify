@@ -226,6 +226,7 @@
   "agentDetail.configure.skills.upload.title": "スキルをアップロード",
   "agentDetail.configure.skills.upload.warning.files": "Markdown ファイルのみを使用する場合は、「ファイル」にアップロードし、プロンプト内で参照してください。",
   "agentDetail.configure.skills.upload.warning.specification": "アップロードするスキルは <specificationLink>Agent Skills 仕様</specificationLink>に準拠する必要があります。",
+  "agentDetail.configure.switchToPreviewConfirm.title": "プレビューモードに切り替えますか？",
   "agentDetail.configure.title": "設定",
   "agentDetail.configure.tools.add": "ツールを追加",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "開発者向け",

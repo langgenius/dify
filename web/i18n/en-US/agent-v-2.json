@@ -226,6 +226,7 @@
   "agentDetail.configure.skills.upload.title": "Upload skill",
   "agentDetail.configure.skills.upload.warning.files": "If you only need to use Markdown files, upload them to Files and reference them in your prompt.",
   "agentDetail.configure.skills.upload.warning.specification": "Uploaded skills must follow the <specificationLink>Agent Skills specification</specificationLink>.",
+  "agentDetail.configure.switchToPreviewConfirm.title": "Switch to Preview mode?",
   "agentDetail.configure.title": "Configure",
   "agentDetail.configure.tools.add": "Add tool",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "For developers",

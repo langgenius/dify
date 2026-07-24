@@ -629,7 +629,10 @@ describe('Workflow edge event wiring', () => {
       },
     )
 
-    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
 
     unmount()
 
@@ -638,10 +641,40 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
+  it('should skip the unmount save before workflow data has loaded', () => {
+    const { unmount } = renderSubject()
+
+    unmount()
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('should not save the draft when the workflow rerenders', () => {
+    const { rerender } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: false,
+    })
+
+    rerender(
+      <ReactFlowProvider>
+        <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
+          <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
+        </Workflow>
+      </ReactFlowProvider>,
+    )
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
   it('should skip the unmount save when the current collaborator is not the draft leader', () => {
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
 
-    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
 
     unmount()
 
