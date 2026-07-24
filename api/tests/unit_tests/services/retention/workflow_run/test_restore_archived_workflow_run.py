@@ -10,14 +10,19 @@ import io
 import json
 import logging
 import zipfile
+from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Column, Integer, MetaData, String, Table
+from sqlalchemy import Column, Engine, Integer, MetaData, String, Table, delete, event, func, select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
+from models.enums import CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -28,6 +33,7 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from services.retention.workflow_run import restore_archived_workflow_run as restore_module
 from services.retention.workflow_run.restore_archived_workflow_run import (
     SCHEMA_MAPPERS,
     TABLE_MODELS,
@@ -36,24 +42,49 @@ from services.retention.workflow_run.restore_archived_workflow_run import (
 )
 
 
+@dataclass(frozen=True)
+class Database:
+    """Explicit SQLite engine, caller session, and real service-owned session factory."""
+
+    engine: Engine
+    session: Session
+    session_maker: sessionmaker[Session]
+
+
+@pytest.fixture
+def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
+    WorkflowRun.metadata.create_all(
+        sqlite_engine,
+        tables=[WorkflowRun.__table__, WorkflowAppLog.__table__, WorkflowArchiveLog.__table__],
+    )
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with session_maker() as session:
+        database = Database(engine=sqlite_engine, session=session, session_maker=session_maker)
+        monkeypatch.setattr(restore_module, "db", database)
+        # Production constructs PostgreSQL's equivalent statement; SQLite's
+        # dialect keeps the conflict behavior executable in these tests.
+        monkeypatch.setattr(restore_module, "pg_insert", sqlite_insert)
+        yield database
+
+
 class WorkflowRunRestoreTestDataFactory:
     """
-    Factory for creating test data and mock objects.
+    Factory for creating persisted-model-compatible test data.
 
     Provides reusable methods to create consistent mock objects for testing
     workflow run restore operations.
     """
 
     @staticmethod
-    def create_workflow_run_mock(
+    def create_workflow_run(
         run_id: str = "run-123",
         tenant_id: str = "tenant-123",
         app_id: str = "app-123",
         created_at: datetime | None = None,
         **kwargs,
-    ) -> Mock:
+    ) -> WorkflowRun:
         """
-        Create a mock WorkflowRun object.
+        Create a concrete WorkflowRun object.
 
         Args:
             run_id: Unique identifier for the workflow run
@@ -63,27 +94,44 @@ class WorkflowRunRestoreTestDataFactory:
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock WorkflowRun object with specified attributes
+            WorkflowRun object with specified attributes
         """
-        run = create_autospec(WorkflowRun, instance=True)
-        run.id = run_id
-        run.tenant_id = tenant_id
-        run.app_id = app_id
-        run.created_at = created_at or datetime(2024, 1, 1, 12, 0, 0)
-        for key, value in kwargs.items():
-            setattr(run, key, value)
+        attrs = {
+            "id": run_id,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "workflow_id": "workflow-123",
+            "type": "workflow",
+            "triggered_from": "app-run",
+            "version": "1",
+            "graph": None,
+            "inputs": None,
+            "status": "succeeded",
+            "outputs": "{}",
+            "error": None,
+            "elapsed_time": 0,
+            "total_tokens": 0,
+            "total_steps": 0,
+            "created_by_role": CreatorUserRole.ACCOUNT,
+            "created_by": "user-123",
+            "created_at": created_at or datetime(2024, 1, 1, 12, 0, 0),
+            "finished_at": None,
+            "exceptions_count": 0,
+        }
+        attrs.update(kwargs)
+        run = WorkflowRun(**attrs)
         return run
 
     @staticmethod
-    def create_workflow_archive_log_mock(
+    def create_workflow_archive_log(
         run_id: str = "run-123",
         tenant_id: str = "tenant-123",
         app_id: str = "app-123",
         created_at: datetime | None = None,
         **kwargs,
-    ) -> Mock:
+    ) -> WorkflowArchiveLog:
         """
-        Create a mock WorkflowArchiveLog object.
+        Create a concrete WorkflowArchiveLog object.
 
         Args:
             run_id: Unique identifier for the workflow run
@@ -93,16 +141,32 @@ class WorkflowRunRestoreTestDataFactory:
             **kwargs: Additional attributes to set on the mock
 
         Returns:
-            Mock WorkflowArchiveLog object with specified attributes
+            WorkflowArchiveLog object with specified attributes
         """
-        archive_log = create_autospec(WorkflowArchiveLog, instance=True)
-        archive_log.workflow_run_id = run_id
-        archive_log.tenant_id = tenant_id
-        archive_log.app_id = app_id
-        archive_log.run_created_at = created_at or datetime(2024, 1, 1, 12, 0, 0)
-        for key, value in kwargs.items():
-            setattr(archive_log, key, value)
-        return archive_log
+        attrs = {
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "workflow_id": "workflow-123",
+            "workflow_run_id": run_id,
+            "created_by_role": CreatorUserRole.ACCOUNT,
+            "created_by": "user-123",
+            "log_id": None,
+            "log_created_at": None,
+            "log_created_from": None,
+            "run_version": "1",
+            "run_status": "succeeded",
+            "run_triggered_from": "app-run",
+            "run_error": None,
+            "run_elapsed_time": 0,
+            "run_total_tokens": 0,
+            "run_total_steps": 0,
+            "run_created_at": created_at or datetime(2024, 1, 1, 12, 0, 0),
+            "run_finished_at": None,
+            "run_exceptions_count": 0,
+            "trigger_metadata": None,
+        }
+        attrs.update(kwargs)
+        return WorkflowArchiveLog(**attrs)
 
     @staticmethod
     def create_archive_zip_mock(
@@ -137,7 +201,7 @@ class WorkflowRunRestoreTestDataFactory:
                         "app_id": "app-123",
                         "workflow_id": "workflow-123",
                         "type": "workflow",
-                        "triggered_from": "app",
+                        "triggered_from": "app-run",
                         "version": "1",
                         "status": "succeeded",
                         "created_by_role": "account",
@@ -151,7 +215,7 @@ class WorkflowRunRestoreTestDataFactory:
                         "app_id": "app-123",
                         "workflow_id": "workflow-123",
                         "workflow_run_id": "run-123",
-                        "created_from": "app",
+                        "created_from": "service-api",
                         "created_by_role": "account",
                         "created_by": "user-123",
                     },
@@ -161,7 +225,7 @@ class WorkflowRunRestoreTestDataFactory:
                         "app_id": "app-123",
                         "workflow_id": "workflow-123",
                         "workflow_run_id": "run-123",
-                        "created_from": "app",
+                        "created_from": "service-api",
                         "created_by_role": "account",
                         "created_by": "user-123",
                     },
@@ -225,14 +289,10 @@ class TestGetWorkflowRunRepo:
     """Tests for WorkflowRunRestore._get_workflow_run_repo method."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.DifyAPIRepositoryFactory")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.sessionmaker")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.db")
-    def test_first_call_creates_repo(self, mock_db, mock_sessionmaker, mock_factory):
+    def test_first_call_creates_repo(self, mock_factory, database: Database):
         """First call should create and cache repository."""
         restore = WorkflowRunRestore()
 
-        mock_session = Mock()
-        mock_sessionmaker.return_value = mock_session
         mock_repo = Mock()
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
@@ -240,8 +300,9 @@ class TestGetWorkflowRunRepo:
 
         assert result is mock_repo
         assert restore.workflow_run_repo is mock_repo
-        mock_sessionmaker.assert_called_once_with(bind=mock_db.engine, expire_on_commit=False)
-        mock_factory.create_api_workflow_run_repository.assert_called_once_with(mock_session)
+        session_maker = mock_factory.create_api_workflow_run_repository.call_args.args[0]
+        assert isinstance(session_maker, sessionmaker)
+        assert session_maker.kw["bind"] is database.engine
 
     def test_cached_repo_returned(self):
         """Subsequent calls should return cached repository."""
@@ -492,46 +553,26 @@ class TestGetModelColumnInfo:
 class TestRestoreTableRecords:
     """Tests for WorkflowRunRestore._restore_table_records method."""
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.TABLE_MODELS")
-    def test_unknown_table_returns_zero(self, mock_table_models, caplog: pytest.LogCaptureFixture):
+    def test_unknown_table_returns_zero(self, database: Database, caplog: pytest.LogCaptureFixture):
         """Should return 0 for unknown table."""
         restore = WorkflowRunRestore()
-        mock_table_models.get.return_value = None
-
-        mock_session = Mock()
         records = [{"id": "test"}]
         caplog.set_level(logging.WARNING, logger="services.retention.workflow_run.restore_archived_workflow_run")
 
-        result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
+        result = restore._restore_table_records(database.session, "unknown_table", records, schema_version="1.0")
 
         assert result == 0
         assert "Unknown table: unknown_table" in caplog.messages
 
-    def test_empty_records_returns_zero(self):
+    def test_empty_records_returns_zero(self, database: Database):
         """Should return 0 for empty records list."""
         restore = WorkflowRunRestore()
-        mock_session = Mock()
-
-        result = restore._restore_table_records(mock_session, "workflow_runs", [], schema_version="1.0")
+        result = restore._restore_table_records(database.session, "workflow_runs", [], schema_version="1.0")
         assert result == 0
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.pg_insert")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.cast")
-    def test_successful_restore(self, mock_cast, mock_pg_insert):
+    def test_successful_restore(self, database: Database):
         """Should successfully restore records."""
         restore = WorkflowRunRestore()
-
-        # Mock session and execution
-        mock_session = Mock()
-        mock_result = Mock()
-        mock_result.rowcount = 2
-        mock_session.execute.return_value = mock_result
-        mock_cast.return_value = mock_result
-
-        # Mock insert statement
-        mock_stmt = Mock()
-        mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
-        mock_pg_insert.return_value = mock_stmt
 
         records = [
             {
@@ -540,7 +581,7 @@ class TestRestoreTableRecords:
                 "app_id": "app-123",
                 "workflow_id": "workflow-123",
                 "type": "workflow",
-                "triggered_from": "app",
+                "triggered_from": "app-run",
                 "version": "1",
                 "status": "succeeded",
                 "created_by_role": "account",
@@ -552,7 +593,7 @@ class TestRestoreTableRecords:
                 "app_id": "app-123",
                 "workflow_id": "workflow-123",
                 "type": "workflow",
-                "triggered_from": "app",
+                "triggered_from": "app-run",
                 "version": "1",
                 "status": "succeeded",
                 "created_by_role": "account",
@@ -560,38 +601,20 @@ class TestRestoreTableRecords:
             },
         ]
 
-        result = restore._restore_table_records(mock_session, "workflow_runs", records, schema_version="1.0")
+        result = restore._restore_table_records(database.session, "workflow_runs", records, schema_version="1.0")
 
         assert result == 2
-        mock_session.execute.assert_called_once()
+        assert database.session.scalar(select(func.count(WorkflowRun.id))) == 2
+        assert restore._restore_table_records(database.session, "workflow_runs", records, schema_version="1.0") == 0
 
-    def test_missing_required_columns_raises_error(self):
+    def test_missing_required_columns_raises_error(self, database: Database):
         """Should raise ValueError for missing required columns."""
         restore = WorkflowRunRestore()
 
-        mock_session = Mock()
-        # Use a dedicated mock model to isolate required-column validation behavior.
-        mock_model = Mock()
+        records = [{"id": "test"}]
 
-        # Mock a required column
-        required_column = Mock()
-        required_column.key = "required_field"
-        required_column.nullable = False
-        required_column.default = None
-        required_column.server_default = None
-        required_column.autoincrement = False
-        required_column.type = Mock()
-
-        # Mock the __table__ attribute properly
-        mock_table = Mock()
-        mock_table.columns = [required_column]
-        mock_model.__table__ = mock_table
-
-        records = [{"name": "test"}]  # Missing required 'required_field'
-
-        with patch.dict(TABLE_MODELS, {"test_table": mock_model}):
-            with pytest.raises(ValueError, match="Missing required columns for test_table"):
-                restore._restore_table_records(mock_session, "test_table", records, schema_version="1.0")
+        with pytest.raises(ValueError, match="Missing required columns for workflow_runs"):
+            restore._restore_table_records(database.session, "workflow_runs", records, schema_version="1.0")
 
 
 # ---------------------------------------------------------------------------
@@ -603,38 +626,38 @@ class TestRestoreFromRun:
     """Tests for WorkflowRunRestore._restore_from_run method."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    def test_archive_storage_not_configured(self, mock_get_storage):
+    def test_archive_storage_not_configured(self, mock_get_storage, database: Database):
         """Should handle ArchiveStorageNotConfiguredError."""
         restore = WorkflowRunRestore()
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("Storage not configured")
 
-        run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-            result = restore._restore_from_run(run, session_maker=lambda: Mock())
+            result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
         assert "Storage not configured" in result.error
         assert result.elapsed_time > 0
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    def test_archive_bundle_not_found(self, mock_get_storage):
+    def test_archive_bundle_not_found(self, mock_get_storage, database: Database):
         """Should handle FileNotFoundError when archive bundle is missing."""
         restore = WorkflowRunRestore()
         mock_storage = Mock()
         mock_storage.get_object.side_effect = FileNotFoundError("Bundle not found")
         mock_get_storage.return_value = mock_storage
 
-        run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-            result = restore._restore_from_run(run, session_maker=lambda: Mock())
+            result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
         assert "Archive bundle not found" in result.error
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    def test_dry_run_mode(self, mock_get_storage):
+    def test_dry_run_mode(self, mock_get_storage, database: Database):
         """Should handle dry run mode correctly."""
         restore = WorkflowRunRestore(dry_run=True)
 
@@ -644,23 +667,16 @@ class TestRestoreFromRun:
         mock_storage.get_object.return_value = archive_data
         mock_get_storage.return_value = mock_storage
 
-        run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
-        # Create a proper mock session with context manager support
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        result = restore._restore_from_run(run, session_maker=lambda: mock_session)
+        result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is True
         assert result.restored_counts["workflow_runs"] == 1
         assert result.restored_counts["workflow_app_logs"] == 2
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.pg_insert")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.cast")
-    def test_successful_restore(self, mock_cast, mock_pg_insert, mock_get_storage):
+    def test_successful_restore(self, mock_get_storage, database: Database):
         """Should successfully restore from archive."""
         restore = WorkflowRunRestore()
 
@@ -670,53 +686,57 @@ class TestRestoreFromRun:
         mock_storage.get_object.return_value = archive_data
         mock_get_storage.return_value = mock_storage
 
-        # Mock session with context manager support
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        def session_maker():
-            return mock_session
-
-        # Mock database execution to return integer counts
-        mock_result_workflow_runs = Mock()
-        mock_result_workflow_runs.rowcount = 1
-        mock_result_app_logs = Mock()
-        mock_result_app_logs.rowcount = 2
-
-        # Configure session.execute to return different results based on the table
-        def mock_execute(stmt):
-            if "workflow_runs" in str(stmt):
-                return mock_result_workflow_runs
-            else:
-                return mock_result_app_logs
-
-        mock_session.execute.side_effect = mock_execute
-        mock_cast.return_value = mock_result_workflow_runs
-
-        # Mock insert statement
-        mock_stmt = Mock()
-        mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
-        mock_pg_insert.return_value = mock_stmt
-
-        run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
 
         # Mock repository methods
         with patch.object(restore, "_get_workflow_run_repo") as mock_get_repo:
             mock_repo = Mock()
+            mock_repo.delete_archive_log_by_run_id.side_effect = lambda session, run_id: session.execute(
+                delete(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id)
+            )
             mock_get_repo.return_value = mock_repo
 
             with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                result = restore._restore_from_run(run, session_maker=session_maker)
+                result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is True
         assert result.restored_counts["workflow_runs"] == 1
-        assert result.restored_counts["workflow_app_logs"] >= 1  # Just check it's restored
-        mock_session.commit.assert_called_once()
-        mock_repo.delete_archive_log_by_run_id.assert_called_once_with(mock_session, run.id)
+        assert result.restored_counts["workflow_app_logs"] == 2
+        database.session.expire_all()
+        assert database.session.scalar(select(func.count(WorkflowRun.id))) == 1
+        assert database.session.scalar(select(func.count(WorkflowAppLog.id))) == 2
+        assert database.session.scalar(select(func.count(WorkflowArchiveLog.id))) == 0
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    def test_invalid_archive_bundle(self, mock_get_storage):
+    def test_insert_failure_rolls_back_all_tables(self, mock_get_storage, database: Database):
+        """A later table failure must roll back earlier restored rows."""
+        restore = WorkflowRunRestore()
+        mock_storage = Mock()
+        mock_storage.get_object.return_value = WorkflowRunRestoreTestDataFactory.create_archive_zip_mock()
+        mock_get_storage.return_value = mock_storage
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
+
+        def fail_app_log_insert(_connection, _cursor, statement, _parameters, _context, _executemany):
+            if statement.startswith("INSERT INTO workflow_app_logs"):
+                raise RuntimeError("forced app-log insert failure")
+
+        event.listen(database.engine, "before_cursor_execute", fail_app_log_insert)
+        try:
+            with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
+                result = restore._restore_from_run(run, session_maker=database.session_maker)
+        finally:
+            event.remove(database.engine, "before_cursor_execute", fail_app_log_insert)
+
+        assert result.success is False
+        assert result.error == "forced app-log insert failure"
+        assert database.session.scalar(select(func.count(WorkflowRun.id))) == 0
+        assert database.session.scalar(select(func.count(WorkflowAppLog.id))) == 0
+
+    @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
+    def test_invalid_archive_bundle(self, mock_get_storage, database: Database):
         """Should handle invalid archive bundle."""
         restore = WorkflowRunRestore()
 
@@ -725,22 +745,17 @@ class TestRestoreFromRun:
         mock_storage.get_object.return_value = b"invalid zip data"
         mock_get_storage.return_value = mock_storage
 
-        run = WorkflowRunRestoreTestDataFactory.create_workflow_run_mock()
-
-        # Create proper mock session
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
+        run = WorkflowRunRestoreTestDataFactory.create_workflow_run()
 
         with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-            result = restore._restore_from_run(run, session_maker=lambda: mock_session)
+            result = restore._restore_from_run(run, session_maker=database.session_maker)
 
         assert result.success is False
         # The error message comes from zipfile.BadZipFile which says "File is not a zip file"
         assert "File is not a zip file" in result.error
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    def test_workflow_archive_log_input(self, mock_get_storage):
+    def test_workflow_archive_log_input(self, mock_get_storage, database: Database):
         """Should handle WorkflowArchiveLog input correctly."""
         restore = WorkflowRunRestore(dry_run=True)
 
@@ -750,14 +765,11 @@ class TestRestoreFromRun:
         mock_storage.get_object.return_value = archive_data
         mock_get_storage.return_value = mock_storage
 
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
 
-        # Create proper mock session
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        result = restore._restore_from_run(archive_log, session_maker=lambda: mock_session)
+        result = restore._restore_from_run(archive_log, session_maker=database.session_maker)
 
         assert result.success is True
         assert result.run_id == archive_log.workflow_run_id
@@ -772,39 +784,29 @@ class TestRestoreFromRun:
 class TestRestoreBatch:
     """Tests for WorkflowRunRestore.restore_batch method."""
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.sessionmaker")
-    def test_empty_tenant_ids_returns_empty(self, mock_sessionmaker):
+    def test_empty_tenant_ids_returns_empty(self, database: Database):
         """Should return empty list when tenant_ids is empty list."""
         restore = WorkflowRunRestore()
 
-        # Mock db.engine to avoid SQLAlchemy issues
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-            mock_db.engine = Mock()
-            result = restore.restore_batch(
-                tenant_ids=[],
-                start_date=datetime(2024, 1, 1),
-                end_date=datetime(2024, 1, 2),
-            )
+        result = restore.restore_batch(
+            tenant_ids=[],
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+        )
 
         assert result == []
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.ThreadPoolExecutor")
-    def test_successful_batch_restore(self, mock_executor):
+    def test_successful_batch_restore(self, mock_executor, database: Database):
         """Should successfully restore batch of workflow runs."""
         restore = WorkflowRunRestore(workers=2)
 
-        # Mock session that supports context manager protocol
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        # Mock session factory that returns context manager sessions
-        mock_session_factory = Mock(return_value=mock_session)
-
         # Mock repository and archive logs
         mock_repo = Mock()
-        archive_log1 = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock("run-1")
-        archive_log2 = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock("run-2")
+        archive_log1 = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log("run-1")
+        archive_log2 = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log("run-2")
+        database.session.add_all([archive_log1, archive_log2])
+        database.session.commit()
         mock_repo.get_archived_logs_by_time_range.return_value = [archive_log1, archive_log2]
 
         # Mock restore results
@@ -821,38 +823,25 @@ class TestRestoreBatch:
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", side_effect=[result1, result2]):
                 with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    # Mock sessionmaker and db.engine to avoid SQLAlchemy issues
-                    with patch(
-                        "services.retention.workflow_run.restore_archived_workflow_run.sessionmaker"
-                    ) as mock_sessionmaker:
-                        mock_sessionmaker.return_value = mock_session_factory
-                        with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-                            mock_db.engine = Mock()
-                            results = restore.restore_batch(
-                                tenant_ids=["tenant-1"],
-                                start_date=datetime(2024, 1, 1),
-                                end_date=datetime(2024, 1, 2),
-                            )
+                    results = restore.restore_batch(
+                        tenant_ids=["tenant-1"],
+                        start_date=datetime(2024, 1, 1),
+                        end_date=datetime(2024, 1, 2),
+                    )
 
         assert len(results) == 2
         assert results[0].run_id == "run-1"
         assert results[1].run_id == "run-2"
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.ThreadPoolExecutor")
-    def test_dry_run_batch_restore(self, mock_executor):
+    def test_dry_run_batch_restore(self, mock_executor, database: Database):
         """Should handle dry run mode for batch restore."""
         restore = WorkflowRunRestore(dry_run=True)
 
-        # Mock session that supports context manager protocol
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        # Mock session factory that returns context manager sessions
-        mock_session_factory = Mock(return_value=mock_session)
-
         mock_repo = Mock()
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
         mock_repo.get_archived_logs_by_time_range.return_value = [archive_log]
 
         result = RestoreResult(run_id="run-1", tenant_id="tenant-1", success=True, restored_counts={"workflow_runs": 1})
@@ -867,18 +856,11 @@ class TestRestoreBatch:
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
                 with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    # Mock sessionmaker and db.engine to avoid SQLAlchemy issues
-                    with patch(
-                        "services.retention.workflow_run.restore_archived_workflow_run.sessionmaker"
-                    ) as mock_sessionmaker:
-                        mock_sessionmaker.return_value = mock_session_factory
-                        with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-                            mock_db.engine = Mock()
-                            results = restore.restore_batch(
-                                tenant_ids=["tenant-1"],
-                                start_date=datetime(2024, 1, 1),
-                                end_date=datetime(2024, 1, 2),
-                            )
+                    results = restore.restore_batch(
+                        tenant_ids=["tenant-1"],
+                        start_date=datetime(2024, 1, 1),
+                        end_date=datetime(2024, 1, 2),
+                    )
 
         assert len(results) == 1
         assert results[0].success is True
@@ -907,16 +889,14 @@ class TestRestoreByRunId:
         assert "not found" in result.error
         assert result.run_id == "nonexistent-run"
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.sessionmaker")
-    def test_successful_restore_by_id(self, mock_sessionmaker):
+    def test_successful_restore_by_id(self, database: Database):
         """Should successfully restore by run ID."""
         restore = WorkflowRunRestore()
 
-        mock_session = Mock()
-        mock_sessionmaker.return_value = mock_session
-
         mock_repo = Mock()
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
         mock_repo.get_archived_log_by_run_id.return_value = archive_log
 
         result = RestoreResult(run_id="run-1", tenant_id="tenant-1", success=True, restored_counts={})
@@ -924,24 +904,19 @@ class TestRestoreByRunId:
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
                 with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    # Mock db.engine to avoid SQLAlchemy issues
-                    with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-                        mock_db.engine = Mock()
-                        actual_result = restore.restore_by_run_id("run-1")
+                    actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True
         assert actual_result.run_id == "run-1"
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.sessionmaker")
-    def test_dry_run_restore_by_id(self, mock_sessionmaker):
+    def test_dry_run_restore_by_id(self, database: Database):
         """Should handle dry run mode for restore by ID."""
         restore = WorkflowRunRestore(dry_run=True)
 
-        mock_session = Mock()
-        mock_sessionmaker.return_value = mock_session
-
         mock_repo = Mock()
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
         mock_repo.get_archived_log_by_run_id.return_value = archive_log
 
         result = RestoreResult(run_id="run-1", tenant_id="tenant-1", success=True, restored_counts={"workflow_runs": 1})
@@ -949,10 +924,7 @@ class TestRestoreByRunId:
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
             with patch.object(restore, "_restore_from_run", return_value=result):
                 with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                    # Mock db.engine to avoid SQLAlchemy issues
-                    with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-                        mock_db.engine = Mock()
-                        actual_result = restore.restore_by_run_id("run-1")
+                    actual_result = restore.restore_by_run_id("run-1")
 
         assert actual_result.success is True
         assert actual_result.run_id == "run-1"
@@ -1038,8 +1010,7 @@ class TestIntegration:
     """Integration tests combining multiple components."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.get_archive_storage")
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.ThreadPoolExecutor")
-    def test_full_restore_flow(self, mock_executor, mock_get_storage):
+    def test_full_restore_flow(self, mock_get_storage, database: Database):
         """Test complete restore flow with all components."""
         restore = WorkflowRunRestore(workers=1)
 
@@ -1059,7 +1030,7 @@ class TestIntegration:
                     "app_id": "app-123",
                     "workflow_id": "workflow-123",
                     "type": "workflow",
-                    "triggered_from": "app",
+                    "triggered_from": "app-run",
                     "version": "1",
                     "status": "succeeded",
                     "created_by_role": "account",
@@ -1072,48 +1043,20 @@ class TestIntegration:
         mock_storage.get_object.return_value = archive_data
         mock_get_storage.return_value = mock_storage
 
-        # Mock session that supports context manager protocol
-        mock_session = Mock()
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        # Mock session factory that returns context manager sessions
-        mock_session_factory = Mock(return_value=mock_session)
-
-        mock_result = Mock()
-        mock_result.rowcount = 1
-        mock_session.execute.return_value = mock_result
-
         # Mock repository
         mock_repo = Mock()
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log_mock()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        database.session.add(archive_log)
+        database.session.commit()
         mock_repo.get_archived_log_by_run_id.return_value = archive_log
-
-        # Mock ThreadPoolExecutor (not actually used in restore_by_run_id but needed for patch)
-        mock_executor_instance = Mock()
-        mock_executor_instance.__enter__ = Mock(return_value=mock_executor_instance)
-        mock_executor_instance.__exit__ = Mock(return_value=None)
-        mock_executor_instance.map = Mock(return_value=[])
-        mock_executor.return_value = mock_executor_instance
+        mock_repo.delete_archive_log_by_run_id.side_effect = lambda session, run_id: session.execute(
+            delete(WorkflowArchiveLog).where(WorkflowArchiveLog.workflow_run_id == run_id)
+        )
 
         with patch.object(restore, "_get_workflow_run_repo", return_value=mock_repo):
-            with patch("services.retention.workflow_run.restore_archived_workflow_run.pg_insert") as mock_insert:
-                mock_stmt = Mock()
-                mock_stmt.on_conflict_do_nothing.return_value = mock_stmt
-                mock_insert.return_value = mock_stmt
-
-                with patch("services.retention.workflow_run.restore_archived_workflow_run.cast") as mock_cast:
-                    mock_cast.return_value = mock_result
-
-                    with patch("services.retention.workflow_run.restore_archived_workflow_run.click") as mock_click:
-                        # Mock sessionmaker and db.engine to avoid SQLAlchemy issues
-                        with patch(
-                            "services.retention.workflow_run.restore_archived_workflow_run.sessionmaker"
-                        ) as mock_sessionmaker:
-                            mock_sessionmaker.return_value = mock_session_factory
-                            with patch("services.retention.workflow_run.restore_archived_workflow_run.db") as mock_db:
-                                mock_db.engine = Mock()
-                                result = restore.restore_by_run_id("run-123")
+            with patch("services.retention.workflow_run.restore_archived_workflow_run.click"):
+                result = restore.restore_by_run_id("run-123")
 
         assert result.success is True
         assert result.restored_counts.get("workflow_runs") == 1
+        assert database.session.scalar(select(func.count(WorkflowRun.id))) == 1
