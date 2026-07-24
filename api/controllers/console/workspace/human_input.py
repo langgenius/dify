@@ -10,9 +10,13 @@ from flask_restx import Resource
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
+    BatchGetContactOptionsQuery,
+    BatchGetContactOptionsResponse,
     BatchGetContactsQuery,
     BatchGetContactsResponse,
     ContactListQuery,
+    ContactOption,
+    ContactOptionsQuery,
     CreateHITLMigrationResponse,
     CreateIMBindingRequest,
     CreateIMBindingResponse,
@@ -20,10 +24,12 @@ from controllers.common.human_input_v2_contracts import (
     CreateNodeDataMigrationRequest,
     DeleteIMBindingQuery,
     DeleteIMBindingResponse,
+    DeleteIMIntegrationQuery,
     ExternalContactCreateRequest,
     ExternalContactCreateResponse,
     ExternalContactUpdateRequest,
     ExternalContactUpdateResponse,
+    GetContactResponse,
     GetEmailProviderResponse,
     GetIMIntegrationResponse,
     GetLatestIMSyncRunResponse,
@@ -33,6 +39,7 @@ from controllers.common.human_input_v2_contracts import (
     IMProvider,
     IMSyncResultType,
     IMSyncRunStatus,
+    ListContactOptionsResponse,
     ListContactsResponse,
     ListIMIdentitiesQuery,
     ListIMIdentitiesResponse,
@@ -63,6 +70,7 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    edit_permission_required,
     is_admin_or_owner_required,
     setup_required,
     with_current_tenant_id,
@@ -80,12 +88,15 @@ register_enum_models(
 register_schema_models(
     console_ns,
     ContactListQuery,
+    ContactOptionsQuery,
+    BatchGetContactOptionsQuery,
     OrganizationCandidatesQuery,
     AddPlatformContactsRequest,
     ExternalContactCreateRequest,
     ExternalContactUpdateRequest,
     RemoveContactsRequest,
     UpdateIMIntegrationRequest,
+    DeleteIMIntegrationQuery,
     TestIMIntegrationRequest,
     ListIMIdentitiesQuery,
     ListLatestIMSyncRunResultsQuery,
@@ -97,10 +108,14 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     HumanInputContact,
+    ContactOption,
+    GetContactResponse,
     ExternalContactCreateResponse,
     ExternalContactUpdateResponse,
     AddPlatformContactsResponse,
     ListContactsResponse,
+    ListContactOptionsResponse,
+    BatchGetContactOptionsResponse,
     RemoveContactsResponse,
     ListIMIdentitiesResponse,
     GetIMIntegrationResponse,
@@ -133,9 +148,48 @@ class WorkspaceContactsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
         ContactListQuery.model_validate(request.args.to_dict(flat=True))
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>")
+class WorkspaceContactApi(Resource):
+    """Read one contact only when it resolves in the current workspace scope."""
+
+    @console_ns.response(200, "Success", console_ns.models[GetContactResponse.__name__])
+    @console_ns.response(404, "Contact not found or absent in the current workspace")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, contact_id: str):
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/contact-options")
+class WorkspaceContactOptionsApi(Resource):
+    """Search the current workspace's selectable Contact projection for workflow editors."""
+
+    @console_ns.doc(
+        params=query_params_from_model(ContactOptionsQuery),
+        description=(
+            "List editor-safe Contact options for static recipient selection. "
+            "The projection omits email, IM bindings, and management metadata; contacts that resolve as ABSENT "
+            "or are otherwise unavailable in the current workspace are omitted."
+        ),
+    )
+    @console_ns.response(200, "Success", console_ns.models[ListContactOptionsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        ContactOptionsQuery.model_validate(request.args.to_dict(flat=True))
         _raise_stub_not_implemented()
 
 
@@ -231,6 +285,17 @@ class WorkspaceIMIntegrationApi(Resource):
         UpdateIMIntegrationRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
+    @console_ns.doc(params=query_params_from_model(DeleteIMIntegrationQuery))
+    @console_ns.response(204, "IM integration deleted successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def delete(self, tenant_id: str):
+        query_params_from_request(DeleteIMIntegrationQuery)
+        _raise_stub_not_implemented()
+
 
 @console_ns.route("/workspaces/current/human-input/im-integration/test")
 class WorkspaceIMIntegrationTestApi(Resource):
@@ -260,6 +325,12 @@ class WorkspaceIMSyncRunsApi(Resource):
 
 @console_ns.route("/workspaces/current/human-input/im-sync-runs/latest")
 class WorkspaceLatestIMSyncRunApi(Resource):
+    @console_ns.doc(
+        description=(
+            "Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; "
+            "the response does not include started_by."
+        )
+    )
     @console_ns.response(200, "Success", console_ns.models[GetLatestIMSyncRunResponse.__name__])
     @setup_required
     @login_required
@@ -272,7 +343,13 @@ class WorkspaceLatestIMSyncRunApi(Resource):
 
 @console_ns.route("/workspaces/current/human-input/im-sync-runs/latest/results")
 class WorkspaceLatestIMSyncRunResultsApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ListLatestIMSyncRunResultsQuery))
+    @console_ns.doc(
+        params=query_params_from_model(ListLatestIMSyncRunResultsQuery),
+        description=(
+            "Return one required result bucket from the latest IM sync run using page and limit pagination. "
+            "There is no all filter; the response contains page, limit, and total metadata without a run summary."
+        ),
+    )
     @console_ns.response(200, "Success", console_ns.models[ListLatestIMSyncRunResultsResponse.__name__])
     @setup_required
     @login_required
@@ -379,16 +456,40 @@ class BatchGetContactsAPI(Resource):
     @console_ns.doc(
         params=query_params_from_model(BatchGetContactsQuery),
         description=(
-            "Batch get contacts by their IDs. Used for retrieving contact information for workflow orchestration."
+            "Admin-only batch lookup for Contact management clients. "
+            "Workflow editors must use the editor-safe contact-options/batch projection."
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[BatchGetContactsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
         query_params_from_request(BatchGetContactsQuery, list_fields=("contact_ids",))
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/contact-options/batch")
+class BatchGetContactOptionsAPI(Resource):
+    """Resolve persisted Contact IDs through the same editor-safe selection projection."""
+
+    @console_ns.doc(
+        params=query_params_from_model(BatchGetContactOptionsQuery),
+        description=(
+            "Resolve Contact IDs persisted in workflow recipient configuration. "
+            "Contacts that resolve as ABSENT or are otherwise unavailable in the current workspace are omitted."
+        ),
+    )
+    @console_ns.response(200, "Success", console_ns.models[BatchGetContactOptionsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        query_params_from_request(BatchGetContactOptionsQuery, list_fields=("contact_ids",))
         _raise_stub_not_implemented()
 
 
@@ -397,7 +498,8 @@ class NodeDataMigrationAPI(Resource):
     @console_ns.doc(
         description=(
             "Migrate node data from HITLv1 to HITLv2. "
-            "This endpoint only returns the migrated Human Input v2 node data to the client."
+            'A missing legacy version defaults to "1"; any other explicit version is rejected. '
+            "This endpoint only returns the migrated Human Input v2 node data to the client. "
             "It does not update the workflow DSL."
         ),
     )
@@ -407,6 +509,7 @@ class NodeDataMigrationAPI(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
         CreateNodeDataMigrationRequest.model_validate(console_ns.payload or {})

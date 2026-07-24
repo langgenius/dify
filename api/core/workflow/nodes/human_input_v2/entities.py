@@ -2,7 +2,7 @@ import enum
 from collections.abc import Sequence
 from typing import Annotated, Final, Literal
 
-from pydantic import AfterValidator, BaseModel, Discriminator, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field
 
 from core.human_input_v2.entities import IMProvider
 from core.workflow.nodes.human_input.entities import FormInputConfig, TimeoutUnit, UserActionConfig
@@ -73,6 +73,8 @@ def _version_validator(version: str) -> str:
 
 class HumanInputNodeData(BaseNodeData):
     """Human Input node data."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
     version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION

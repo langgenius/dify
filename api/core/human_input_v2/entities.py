@@ -2,13 +2,6 @@ from enum import StrEnum
 from typing import NewType
 
 
-class HumanInputContactScope(StrEnum):
-    """Ownership boundary of a canonical Human Input contact."""
-
-    ORGANIZATION = "organization"
-    WORKSPACE = "workspace"
-
-
 class HumanInputContactType(StrEnum):
     """Concrete contact classification resolved in one workspace."""
 
@@ -17,13 +10,29 @@ class HumanInputContactType(StrEnum):
     EXTERNAL = "external"
 
 
-class HumanInputApprovalPrincipalKind(StrEnum):
-    """Business identity kind allowed to approve one Human Input form."""
+class HumanInputApproverGrantSubjectType(StrEnum):
+    """Business subject receiving approval authority for one Human Input form."""
 
     CONTACT = "contact"
+    END_USER = "end_user"
+    EMAIL_ADDRESS = "email_address"
+
+
+class HumanInputSubmissionActorType(StrEnum):
+    """Business identity that completed one Human Input form submission."""
+
     ACCOUNT = "account"
     END_USER = "end_user"
-    EMAIL = "email"
+    EMAIL_ADDRESS = "email_address"
+
+
+class HumanInputAuthorizationProofType(StrEnum):
+    """Verified evidence type retained for a Human Input authorization audit event."""
+
+    ACCOUNT_SESSION = "account_session"
+    EMAIL_OTP = "email_otp"
+    IM_IDENTITY = "im_identity"
+    TRUSTED_END_USER = "trusted_end_user"
 
 
 class HumanInputDeliveryChannel(StrEnum):
@@ -142,12 +151,13 @@ IMBindingId = NewType("IMBindingId", str)
 __all__ = [
     "ContactId",
     "EmailProviderType",
-    "HumanInputApprovalPrincipalKind",
-    "HumanInputContactScope",
+    "HumanInputApproverGrantSubjectType",
+    "HumanInputAuthorizationProofType",
     "HumanInputContactType",
     "HumanInputDeliveryAttemptStatus",
     "HumanInputDeliveryChannel",
     "HumanInputOTPChallengeStatus",
+    "HumanInputSubmissionActorType",
     "IMBindingId",
     "IMBindingScope",
     "IMIdentityBindingStatus",

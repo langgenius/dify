@@ -24,15 +24,19 @@
 - **THEN** 系统 MUST 拒绝将 current initiator 作为审批主体，并 MUST 使节点直接报错
 
 ### Requirement: Web 与 IM 审批必须按审批主体选择鉴权链路
-系统 MUST 按审批主体类型决定审批鉴权链路。以 Dify 登录身份承载的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，MUST 使用 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email 和未命中 Contact 的 dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
+Public web form definition MAY 直接基于有效 `form_token` 读取，读取完整 form definition MUST NOT 要求先提供 `IdentityProof`，也 MUST NOT 因此授予 submit authority。系统 MUST 在提交阶段按审批主体类型决定鉴权链路：以 Dify 登录身份承载的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，MUST 使用 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email 和未命中 Contact 的 dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
+
+#### Scenario: Form token 可以读取完整 form definition
+- **WHEN** a caller opens the standalone approval page with a valid `form_token` while the task remains readable
+- **THEN** 系统 MAY 返回完整 form definition，而 MUST NOT 将该次读取视为当前 caller 已经通过身份校验或获得提交权限
 
 #### Scenario: Platform contact 通过 Web 审批
-- **WHEN** a platform contact opens the standalone approval page
-- **THEN** 系统 MUST 要求其使用 Dify 登录，并 MUST 在提交时校验其是否命中 allowed approver
+- **WHEN** a platform contact submits from the standalone approval page
+- **THEN** 系统 MUST 要求其使用 Dify 登录，并 MUST 校验其当前身份是否命中 allowed approver
 
 #### Scenario: External contact 通过 Web 审批
-- **WHEN** an external contact opens the standalone approval page
-- **THEN** 系统 MUST 要求其完成 Email OTP 验证，并 MUST 在提交时再次校验 allowed approver
+- **WHEN** an external contact submits from the standalone approval page
+- **THEN** 系统 MUST 要求其完成 Email OTP 验证，并 MUST 校验其当前身份是否命中 allowed approver
 
 #### Scenario: OTP 验证与表单提交可合并为同一请求
 - **WHEN** an external contact submits an OTP code together with the approval form in one request
@@ -46,19 +50,19 @@
 - **WHEN** an approver submits from an IM card
 - **THEN** 系统 MUST 先将当前 IM identity 解析到 current IM Binding 和 valid Contact，再校验其是否命中 allowed approver
 
-### Requirement: Task snapshot 只能用于回溯，不能单独赋予提交权限
-系统 MUST 在 task 创建时冻结 `RecipientSpecification`、`ApprovalPrincipal` 和 `DeliveryEndpoint` 的快照，用于历史展示、审计和问题排查。系统 MUST 在打开审批页与提交表单时重新按当前身份链路、当前 Contact 状态、当前 IM Binding 状态和当前 task 状态判定权限；任何历史 snapshot 或 URL token MUST NOT 单独赋予提交权限。
+### Requirement: Approver Grant snapshot 只能用于回溯，不能单独赋予提交权限
+系统 MUST 在 task 创建时保存 `RecipientSpecification`、form-scoped `ApproverGrant` 和 immutable `DeliveryEndpoint`。Approver Grant MUST 保存授权 subject、matched sources 与最小展示快照。读取 form definition 时 MUST 校验当前 form token、task 状态与有效期，但 MAY 不校验访问者身份或 allowed approver。提交表单时 MUST 重新按当前身份链路、当前 Contact 状态、当前 IM Binding 状态和当前 task 状态判定权限；任何 Grant snapshot 或 URL token MUST NOT 单独赋予提交权限。
 
-#### Scenario: Task 创建时冻结 recipient、principal 与 endpoint 快照
+#### Scenario: Task 创建时保存 recipient、grant 与 endpoint
 - **WHEN** a HITL task is created
-- **THEN** 系统 MUST 持久化该 task 的 `RecipientSpecification`、`ApprovalPrincipal` 和 `DeliveryEndpoint` 快照，用于后续展示与审计
+- **THEN** 系统 MUST 持久化该 task 的 `RecipientSpecification`、`ApproverGrant` 和 immutable `DeliveryEndpoint`，用于后续展示与审计
 
 #### Scenario: 历史链接不能替代当前身份证明
 - **WHEN** a caller presents a previously issued form link without a currently valid `IdentityProof`
 - **THEN** 系统 MUST NOT 仅凭该 link 或 token 允许提交，而 MUST 继续执行当前身份链路与 allowed approver 校验
 
-### Requirement: 打开页面与提交表单都必须重新校验 task 当前可访问性
-系统 MUST 在打开审批页和提交表单时重新校验 task 状态、有效期、身份状态与 allowed approver 关系。历史 snapshot MUST 用于展示和审计，但 MUST NOT 单独赋予提交权限。
+### Requirement: Form read 与 submit 必须采用不同的授权边界
+系统 MUST 在读取 form definition 时校验 form token、task 状态和有效期。读取 MAY 不校验访问者身份、当前 Contact 状态或 allowed approver 关系，并且 MUST NOT 授予 submit authority。系统 MUST 在提交表单时重新校验 task 状态、有效期、身份状态、当前 Contact / IM Binding 状态与 allowed approver 关系。历史 snapshot MUST 用于展示和审计，但 MUST NOT 单独赋予提交权限。
 
 #### Scenario: 已完成 task 不可再次提交
 - **WHEN** a task is already `SUBMITTED`
@@ -66,7 +70,7 @@
 
 #### Scenario: 成员退出 workspace 后失去 pending task 提交资格
 - **WHEN** a workspace contact was removed from the workspace before submitting a pending task
-- **THEN** 系统 MUST 拒绝其继续打开或提交该 task
+- **THEN** 系统 MAY 继续基于有效 form token 返回 form definition，但 MUST 拒绝该已移除成员提交该 task
 
 #### Scenario: IM Binding 变更后旧身份失效
 - **WHEN** a pending task was sent to an IM identity that no longer maps to the current binding or valid Contact
@@ -74,7 +78,7 @@
 
 #### Scenario: external contact 删除后旧 pending task 失效
 - **WHEN** an external contact was deleted after a pending task was created
-- **THEN** 系统 MUST 拒绝该 deleted contact 继续打开或提交旧 pending task
+- **THEN** 系统 MAY 继续基于有效 form token 返回 form definition，但 MUST 拒绝该 deleted contact 提交旧 pending task
 
 #### Scenario: 同邮箱重建的新 external contact 不继承旧授权
 - **WHEN** an external contact was deleted and a new external contact is recreated later with the same normalized email
@@ -82,7 +86,7 @@
 
 #### Scenario: contact email 变更后旧 email proof 失效
 - **WHEN** the email of a contact changes after a pending task was created
-- **THEN** 系统 MUST 使旧 email 对应的 proof、OTP 或 link 失效，并 MUST 要求后续按当前有效渠道身份重新验证
+- **THEN** 系统 MUST 使旧 email 对应的 proof 和 OTP 失效；原 form link MAY 继续用于读取 definition，但 MUST NOT 作为提交凭证，并 MUST 要求后续按当前有效渠道身份重新验证
 
 #### Scenario: task 超时或过期后不可访问
 - **WHEN** a task is `TIMEOUT` or `EXPIRED`
@@ -108,14 +112,14 @@
 
 #### Scenario: 记录多渠道 delivery attempt
 - **WHEN** a recipient receives both IM and Email for the same task
-- **THEN** 系统 MUST 分别记录两条 delivery attempt，并 MUST 将它们关联到同一个 canonical approver 和同一个 task
+- **THEN** 系统 MUST 分别记录两条 delivery attempt，并 MUST 将它们关联到同一个 Approver Grant 和同一个 task
 
 ## Acceptance Coverage
 
 | 场景族 | 最小验收标准 | Primary owner |
 | --- | --- | --- |
 | current initiator 解析 | 必须覆盖 WebApp 发起者、Service API request-scoped `end_user`、CLI 可解析、CLI unavailable 四类入口，并证明业务主体仍只有 `workspace user` / `end_user` 两类 | Backend HITL Runtime |
-| Web / IM / Email 鉴权链路 | 必须覆盖 Platform contact 走 Dify 登录、external contact 走 Email OTP、IM 卡片按当前 IM binding 重新映射三类路径 | Backend HITL Runtime + Web Approval |
+| Web / IM / Email 鉴权链路 | 必须覆盖 form token 可读 definition 但不授予提交权限、Platform contact 提交走 Dify 登录、external contact 提交走 Email OTP、IM 卡片按当前 IM binding 重新映射四类路径 | Backend HITL Runtime + Web Approval |
 | OTP 同步提交 | 必须覆盖 external contact 在同一请求里完成 OTP 验证与表单提交，且提交阶段仍会执行 task 状态与 allowed approver 校验 | Backend HITL Runtime + Security |
 | 权限变化后的 pending task 重校验 | 必须覆盖成员退出 workspace、IM binding 修改、external contact 删除、同邮箱重建、contact email 变更、task `TIMEOUT` / `EXPIRED` 六类路径 | Backend HITL Runtime + QA |
 | 并发提交 | 必须覆盖 IM / Email 双渠道并发提交，并证明后到请求收到 `This task has already been completed.` | Backend HITL Runtime + QA |

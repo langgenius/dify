@@ -1,11 +1,18 @@
-"""Shared Human Input v2 transport contracts."""
+"""Shared Human Input v2 transport contracts.
+
+Request DTOs use normal Pydantic coercion and forbid unknown fields. Migration
+input is the sole compatibility exception: it ignores unknown legacy fields,
+defaults a missing version to ``"1"``, rejects any other explicit version, and
+rejects duplicate node IDs.
+Public v2, trusted Service API v2, and legacy v1 submit DTOs stay independent.
+"""
 
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal, Self, Union
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
 
 from core.human_input_v2.entities import (
     ContactId,
@@ -37,10 +44,16 @@ class _NoExtraModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class _StrictModel(BaseModel):
-    """Base request/query model that forbids unknown fields and enforces strict validation."""
+class _RequestModel(BaseModel):
+    """Base request model that forbids unknown fields while accepting JSON-native values."""
 
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
+
+
+class _MigrationInputModel(BaseModel):
+    """Forward-compatible migration input that ignores fields unknown to this backend version."""
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class ContactListQuery(PaginationParamsMixin, _NoExtraModel):
@@ -51,6 +64,12 @@ class ContactListQuery(PaginationParamsMixin, _NoExtraModel):
         description="Optional contact type filter. None means all contacts.",
     )
     keyword: str | None = Field(default=None, description="Free-text search against contact name or email.")
+
+
+class ContactOptionsQuery(PaginationParamsMixin, _NoExtraModel):
+    """Query params for selecting contacts in workflow editors."""
+
+    keyword: str | None = Field(default=None, description="Free-text search against selectable contact names.")
 
 
 class OrganizationCandidatesQuery(PaginationParamsMixin, _NoExtraModel):
@@ -81,21 +100,21 @@ ExternalContactAvatar = Annotated[
         description=(
             "Optional avatar file ID. Upload the avatar image first via "
             "`POST /console/api/files/upload`, then use the returned file id here."
-            "Set to empty string for resetting to default avatar."
+            " Set to empty string for resetting to default avatar."
         ),
     ),
 ]
 
 
-class ExternalContactCreateRequest(_StrictModel):
+class ExternalContactCreateRequest(_RequestModel):
     """Request body for creating or updating one external contact."""
 
     name: ExternalContactName
     email: ExternalContactEmail
-    avatar: ExternalContactAvatar
+    avatar: ExternalContactAvatar | None = None
 
 
-class ExternalContactUpdateRequest(_StrictModel):
+class ExternalContactUpdateRequest(_RequestModel):
     """Request body for creating or updating one external contact."""
 
     name: ExternalContactName | None = None
@@ -132,11 +151,20 @@ class HumanInputContact(BaseModel):
         description=(
             "IM bindings that are bound to this contact. "
             "Currently, only one IM binding is supported. "
-            "There is at most one IM binding per IMProvidr."
+            "There is at most one IM binding per IM provider."
         ),
     )
 
     created_at: Timestamp = Field(description="Timestamp when the contact was created.")
+
+
+class ContactOption(ResponseModel):
+    """Least-privilege contact projection returned to workflow editors."""
+
+    id: ContactId = Field(description="Unique contact identifier persisted in workflow recipient configuration.")
+    type: HumanInputContactType = Field(description="Resolved contact type in the current workspace scope.")
+    name: str = Field(description="Display name shown in the contact picker.")
+    avatar_url: str | None = Field(default=None, description="Signed avatar URL if one is available.")
 
 
 class ExternalContactCreateResponse(ResponseModel):
@@ -162,6 +190,18 @@ class ListContactsResponse(PaginationResultMixin, ResponseModel):
     data: list[HumanInputContact] = Field(description="Contacts returned for the current page.")
 
 
+class ListContactOptionsResponse(PaginationResultMixin, ResponseModel):
+    """Paginated editor-safe contact picker response."""
+
+    data: list[ContactOption] = Field(description="Selectable contacts returned for the current page.")
+
+
+class GetContactResponse(ResponseModel):
+    """Response body for one contact resolved in the current workspace scope."""
+
+    contact: HumanInputContact = Field(description="Contact resolved as workspace, platform, or external.")
+
+
 class ListOrganizationCandidatesResponse(PaginationResultMixin, ResponseModel):
     """Paginated response body for organization candidate search."""
 
@@ -170,7 +210,7 @@ class ListOrganizationCandidatesResponse(PaginationResultMixin, ResponseModel):
     )
 
 
-class AddPlatformContactsRequest(_StrictModel):
+class AddPlatformContactsRequest(_RequestModel):
     """Request body for adding one or more organization members as platform contacts."""
 
     candidate_ids: list[OrganizationCandidateId] = Field(
@@ -186,7 +226,7 @@ class AddPlatformContactsResponse(ResponseModel):
     data: list[HumanInputContact] = Field(description="Contacts created by the current add operation.")
 
 
-class RemoveContactsRequest(_StrictModel):
+class RemoveContactsRequest(_RequestModel):
     """Request body for batch-removing platform or external contacts."""
 
     contact_ids: list[ContactId] = Field(
@@ -202,7 +242,7 @@ class RemoveContactsResponse(ResponseModel):
     removed_contact_ids: list[ContactId] = Field(description="Contact identifiers removed by the current operation.")
 
 
-class _FeishuLarkIMIntegrationCredentialsBase(_StrictModel):
+class _FeishuLarkIMIntegrationCredentialsBase(_RequestModel):
     """Shared credential fields for Feishu and Lark integrations."""
 
     app_id: str = Field(description="Feishu or Lark application identifier.")
@@ -225,7 +265,7 @@ class LarkIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
     provider: Literal[IMProvider.LARK] = Field(description="Discriminator for Lark integration credentials.")
 
 
-class SlackIMIntegrationCredentials(_StrictModel):
+class SlackIMIntegrationCredentials(_RequestModel):
     """Slack integration credentials used by organization-level IM setup."""
 
     provider: Literal[IMProvider.SLACK] = Field(description="Discriminator for Slack integration credentials.")
@@ -237,7 +277,7 @@ class SlackIMIntegrationCredentials(_StrictModel):
     )
 
 
-class DingTalkIMIntegrationCredentials(_StrictModel):
+class DingTalkIMIntegrationCredentials(_RequestModel):
     """DingTalk integration credentials used by organization-level IM setup."""
 
     provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
@@ -247,7 +287,7 @@ class DingTalkIMIntegrationCredentials(_StrictModel):
     )
 
 
-class MSTeamsIMIntegrationCredentials(_StrictModel):
+class MSTeamsIMIntegrationCredentials(_RequestModel):
     """Microsoft Teams integration credentials used by organization-level IM setup."""
 
     provider: Literal[IMProvider.MS_TEAMS] = Field(
@@ -260,7 +300,7 @@ class MSTeamsIMIntegrationCredentials(_StrictModel):
     )
 
 
-class WeComIMIntegrationCredentials(_StrictModel):
+class WeComIMIntegrationCredentials(_RequestModel):
     """WeCom integration credentials used by organization-level IM setup."""
 
     provider: Literal[IMProvider.WE_COM] = Field(description="Discriminator for WeCom integration credentials.")
@@ -282,7 +322,7 @@ IMIntegrationCredentials = Annotated[
 ]
 
 
-class _IMIntegrationRequest(_StrictModel):
+class _IMIntegrationRequest(_RequestModel):
     """Internal shared body for IM integration write/test operations."""
 
     credentials: IMIntegrationCredentials = Field(description="Provider-specific IM integration credentials.")
@@ -290,6 +330,32 @@ class _IMIntegrationRequest(_StrictModel):
 
 class UpdateIMIntegrationRequest(_IMIntegrationRequest):
     """Request body for creating or updating one IM integration."""
+
+    expected_integration_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Current integration identifier used with expected_config_version for compare-and-swap.",
+    )
+    expected_config_version: int | None = Field(
+        default=None,
+        ge=1,
+        description="Current integration revision used with expected_integration_id for compare-and-swap.",
+    )
+
+    @model_validator(mode="after")
+    def validate_complete_cas_token(self) -> Self:
+        has_integration_id = self.expected_integration_id is not None
+        has_config_version = self.expected_config_version is not None
+        if has_integration_id != has_config_version:
+            raise ValueError("expected_integration_id and expected_config_version must be provided together")
+        return self
+
+
+class DeleteIMIntegrationQuery(_NoExtraModel):
+    """CAS token required when deleting the current IM integration."""
+
+    expected_integration_id: str = Field(min_length=1, description="Current integration identifier.")
+    expected_config_version: int = Field(ge=1, description="Current integration revision.")
 
 
 class TestIMIntegrationRequest(_IMIntegrationRequest):
@@ -317,6 +383,15 @@ class IMIntegration(ResponseModel):
     )
     updated_at: Timestamp | None = Field(
         default=None, description="Unix timestamp in milliseconds when the integration was last updated."
+    )
+    integration_id: str | None = Field(
+        default=None,
+        description="Stable integration identifier. None when no integration is configured.",
+    )
+    config_version: int | None = Field(
+        default=None,
+        ge=1,
+        description="Monotonic configuration revision. None when no integration is configured.",
     )
 
 
@@ -350,7 +425,11 @@ class IMSyncRunResultCounts(ResponseModel):
 
 
 class IMSyncRun(ResponseModel):
-    """One IM sync run snapshot."""
+    """One IM sync run snapshot.
+
+    The latest-only UI displays ``finished_at`` as the explicit sync time. The
+    transport contract intentionally does not expose a ``started_by`` actor.
+    """
 
     id: IMSyncRunId = Field(description="Unique sync run identifier.")
     status: IMSyncRunStatus = Field(description="Current lifecycle state of the sync run.")
@@ -358,7 +437,11 @@ class IMSyncRun(ResponseModel):
         default=None, description="Unix timestamp in milliseconds when the sync run started."
     )
     finished_at: Timestamp | None = Field(
-        default=None, description="Unix timestamp in milliseconds when the sync run finished, if any."
+        default=None,
+        description=(
+            "Unix timestamp in milliseconds when the sync run finished. "
+            "This is the sync time displayed by the latest-only UI and is None while the run is unfinished."
+        ),
     )
     error_message: str | None = Field(
         default=None,
@@ -368,6 +451,11 @@ class IMSyncRun(ResponseModel):
         description="Aggregate reconciliation counts for the current run snapshot.",
     )
     provider: IMProvider = Field(description="IM provider associated with the sync run.")
+    integration_id: str = Field(description="Integration identifier captured when the sync run was created.")
+    integration_config_version: int = Field(
+        ge=1,
+        description="Integration configuration revision captured when the sync run was created.",
+    )
 
 
 class CreateIMSyncRunResponse(ResponseModel):
@@ -376,7 +464,7 @@ class CreateIMSyncRunResponse(ResponseModel):
     run: IMSyncRun = Field(description="Newly created sync run snapshot.")
 
 
-class IMDirectoryEntry(_StrictModel):
+class IMDirectoryEntry(_RequestModel):
     """Normalized provider-side account observed during an IM sync run.
 
     The entry is run-scoped input to identity and binding reconciliation. It does
@@ -390,7 +478,7 @@ class IMDirectoryEntry(_StrictModel):
     email: str | None = None
 
 
-class IMIdentitySnapshot(_StrictModel):
+class IMIdentitySnapshot(_RequestModel):
     """Last known persistent IM identity state retained by a sync result."""
 
     identity_id: IMIdentityId
@@ -457,15 +545,12 @@ IMSyncResult = Annotated[
 class IMSyncResultItem(ResponseModel):
     """One paginated reconciliation result entry for the latest sync run."""
 
-    # Please not that the current implementation does not return IM binding status for Other IM providers.
+    # The current implementation does not return IM binding status for other IM providers.
     # According to the design, we should return IM binding status for all configured IM providers.
-    # However, this version only one IM provider could be configured. So this model exclude
+    # However, this version allows only one configured IM provider, so this model excludes
     # the IM binding status for other IM providers.
 
-    id: str = Field(description="Unique synchorization result identifier.")
-    type_: HumanInputContactType = Field(
-        description="Resolved contact type in the current workspace scope.", alias="type"
-    )
+    id: str = Field(description="Unique synchronization result identifier.")
     result: IMSyncResult = Field(description="Result bucket this entry belongs to.")
 
 
@@ -478,19 +563,30 @@ class GetLatestIMSyncRunResponse(ResponseModel):
 class ListLatestIMSyncRunResultsQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for reading paginated latest-run results."""
 
-    result: IMSyncResultType = Field(description="Result bucket to paginate from the latest sync run.")
+    result: IMSyncResultType = Field(
+        ...,
+        description=(
+            "Required result bucket to paginate from the latest sync run. "
+            "There is no `all` bucket or unfiltered results mode."
+        ),
+    )
 
 
 class ListLatestIMSyncRunResultsResponse(PaginationResultMixin, ResponseModel):
-    """Paginated response body for latest-run result APIs."""
+    """Page-based latest-run results without cursor state or a repeated run summary."""
 
-    data: list[IMSyncResultItem] = Field(description="Result entries returned for the selected bucket and page.")
+    data: list[IMSyncResultItem] = Field(
+        description="Result entries returned with page, limit, and total metadata for the selected bucket."
+    )
 
 
 class ListIMIdentitiesQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for searching synced IM identities."""
 
-    keyword: str | None = Field(default=None, description="Free-text search against identity display name or email.")
+    keyword: str | None = Field(
+        default=None,
+        description="Free-text search against identity display name, email, or provider user ID.",
+    )
 
 
 class IMIdentity(ResponseModel):
@@ -512,7 +608,7 @@ class ListIMIdentitiesResponse(PaginationResultMixin, ResponseModel):
     data: list[IMIdentity] = Field(description="IM identities returned for the current page.")
 
 
-class SetContactIMOverrideRequest(_StrictModel):
+class SetContactIMOverrideRequest(_RequestModel):
     """Request body for setting one workspace-scoped IM override."""
 
     identity_id: IMIdentityId = Field(description="Synced IM identity identifier selected as the workspace override.")
@@ -530,7 +626,7 @@ class ResetContactIMOverrideResponse(ResponseModel):
     contact: HumanInputContact = Field(description="Contact snapshot after the override is cleared.")
 
 
-class CreateIMBindingRequest(_StrictModel):
+class CreateIMBindingRequest(_RequestModel):
     """Request body for setting one workspace-scoped IM override."""
 
     identity_id: IMIdentityId = Field(description="Synced IM identity identifier selected as the workspace override.")
@@ -542,7 +638,7 @@ class CreateIMBindingResponse(ResponseModel):
     contact: HumanInputContact = Field(description="Contact snapshot after the IM identity is bound.")
 
 
-class DeleteIMBindingQuery(_StrictModel):
+class DeleteIMBindingQuery(_RequestModel):
     binding_id: IMBindingId = Field(description="IM binding to unbind.")
 
 
@@ -550,7 +646,7 @@ class DeleteIMBindingResponse(ResponseModel):
     pass
 
 
-class MessageTemplateTestRequest(_StrictModel):
+class MessageTemplateTestRequest(_RequestModel):
     """Request body for sending one message-template test notification."""
 
     channel: Channel = Field(description="Target debug delivery channel used for the test send.")
@@ -568,6 +664,7 @@ class FormAccessRequestResponse(ResponseModel):
     """Response body returned after creating one OTP challenge."""
 
     expires_in_seconds: int = Field(description="Seconds until the current OTP challenge expires.")
+    resend_after_seconds: int = Field(description="Seconds until another OTP challenge may be requested.")
     challenge_token: str = Field(description="The token used to complete the OTP challenge.")
 
 
@@ -587,39 +684,114 @@ class FormDefinitionResponse(ResponseModel):
     expiration_time: int = Field(description="Unix timestamp when the current form expires.")
 
 
-class ServiceFormQuery(_StrictModel):
+class ServiceFormQuery(_NoExtraModel):
     """Query params for reading one service-api human-input form."""
 
-    user: str = Field(description="End-user identifier used to scope the service API request.")
+    user: str = Field(min_length=1, description="End-user identifier used to scope the service API request.")
 
 
-class BatchGetContactsQuery(BaseModel):
+class BatchGetContactsQuery(_NoExtraModel):
     contact_ids: list[ContactId] = Field(..., description="List of contact IDs to retrieve.")
 
 
-class BatchGetContactsResponse(PaginationResultMixin, ResponseModel):
+class BatchGetContactsResponse(ResponseModel):
     data: list[HumanInputContactSummary] = Field(..., description="List of retrieved human input contacts.")
+
+
+class BatchGetContactOptionsQuery(_NoExtraModel):
+    contact_ids: list[ContactId] = Field(..., description="Contact IDs persisted in workflow recipient configuration.")
+
+
+class BatchGetContactOptionsResponse(ResponseModel):
+    data: list[ContactOption] = Field(..., description="Selectable contacts resolved in request order.")
+
+
+class HumanInputV2FormSubmitRequest(_RequestModel):
+    """Public Human Input v2 submit payload, independent from the v1 form contract."""
+
+    inputs: dict[str, JsonValue] = Field(description="Submitted form values keyed by output variable name.")
+    action: str = Field(description="Identifier of the selected Human Input v2 action.")
+    challenge_token: str | None = Field(
+        default=None,
+        description="OTP challenge token returned by the Human Input v2 access-request endpoint.",
+    )
+    otp_code: str | None = Field(
+        default=None,
+        description="OTP code required when the current Human Input v2 approver uses email proof.",
+    )
+
+    @model_validator(mode="after")
+    def validate_complete_email_proof(self) -> Self:
+        has_challenge_token = self.challenge_token is not None
+        has_otp_code = self.otp_code is not None
+        if has_challenge_token != has_otp_code:
+            raise ValueError("challenge_token and otp_code must be provided together")
+        return self
+
+
+class HumanInputV2ServiceFormSubmitRequest(_RequestModel):
+    """Trusted Service API submit payload without public-web OTP proof fields."""
+
+    inputs: dict[str, JsonValue] = Field(description="Submitted form values keyed by output variable name.")
+    action: str = Field(description="Identifier of the selected Human Input v2 action.")
+    user: str = Field(min_length=1, description="End-user identifier scoped to the current app token.")
+
+
+class FormUploadTokenResponse(ResponseModel):
+    """Response body returned when issuing a Human Input v2 upload token."""
+
+    upload_token: str
+    expires_at: int
+
+
+class FormSubmitResponse(ResponseModel):
+    """Empty response body returned after a Human Input v2 form submission."""
 
 
 # =================== Node migration related entities ===================
 
 
-class NodedataWithId[T](_StrictModel):
+class LegacyHITLv1NodeData(HITLv1NodeData):
+    """Legacy Human Input node data accepted by the v1-to-v2 migration helper.
+
+    Missing versions use the historical v1 default. Any explicit value other
+    than the string ``"1"`` is rejected before migration.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    version: Literal["1"] = Field(
+        default="1",
+        description=(
+            'Legacy Human Input node version. Missing values default to "1"; '
+            'any explicit value other than the string "1" is rejected.'
+        ),
+    )
+
+
+class NodedataWithId[T](_MigrationInputModel):
     node_id: str = Field(
         ..., description="The identifier of node to migrate. Used to associate between request and response"
     )
     data: T = Field(..., description="The node data before and after migration.")
 
 
-class CreateNodeDataMigrationRequest(BaseModel):
-    node_data: list[NodedataWithId[HITLv1NodeData]] = Field(min_length=1)
+class CreateNodeDataMigrationRequest(_MigrationInputModel):
+    node_data: list[NodedataWithId[LegacyHITLv1NodeData]] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_node_ids(self) -> Self:
+        node_ids = [node.node_id for node in self.node_data]
+        if len(node_ids) != len(set(node_ids)):
+            raise ValueError("node_id must be unique within one migration request")
+        return self
 
 
 class CreateHITLMigrationResponse(ResponseModel):
     node_data: list[NodedataWithId[HITLv2NodeData]]
 
 
-class NodeDataMigrationFailureReason(_StrictModel):
+class NodeDataMigrationFailureReason(_RequestModel):
     node_id: str = Field(..., description="The identifier of the node that failed migration.")
     reason: str = Field(..., description="The reason for the migration failure.")
 
@@ -636,11 +808,11 @@ class NodeMigrationFailure(ResponseModel):
 # =================== EmailProvider related entities ===================
 
 
-class PreserveOriginalValue(_StrictModel):
+class PreserveOriginalValue(_RequestModel):
     tag: Literal["preserve_original_value"] = "preserve_original_value"
 
 
-class ResendProviderUpdateConfig(_StrictModel):
+class ResendProviderUpdateConfig(_RequestModel):
     type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
 
     api_key: str | PreserveOriginalValue = Field(
@@ -675,7 +847,7 @@ class GetEmailProviderResponse(ResponseModel):
     )
 
 
-class SetEmailProviderRequest(_StrictModel):
+class SetEmailProviderRequest(_RequestModel):
     provider_config: EmailProviderUpdateConfig = Field(..., description="Email provider configuration update.")
 
 
@@ -683,7 +855,7 @@ class SetEmailProviderResponse(ResponseModel):
     pass
 
 
-class TestEmailProviderConfigRequest(_StrictModel):
+class TestEmailProviderConfigRequest(_RequestModel):
     pass
 
 
@@ -694,8 +866,14 @@ class TestEmailProviderConfigResponse(ResponseModel):
 __all__ = [
     "AddPlatformContactsRequest",
     "AddPlatformContactsResponse",
+    "BatchGetContactOptionsQuery",
+    "BatchGetContactOptionsResponse",
     "ContactListQuery",
+    "ContactOption",
+    "ContactOptionsQuery",
     "CreateIMSyncRunResponse",
+    "CreateNodeDataMigrationRequest",
+    "DeleteIMIntegrationQuery",
     "DingTalkIMIntegrationCredentials",
     "EmailProviderConfigResponse",
     "EmailProviderType",
@@ -705,11 +883,16 @@ __all__ = [
     "FeishuIMIntegrationCredentials",
     "FormAccessRequestResponse",
     "FormDefinitionResponse",
+    "FormSubmitResponse",
+    "FormUploadTokenResponse",
+    "GetContactResponse",
     "GetEmailProviderResponse",
     "GetIMIntegrationResponse",
     "GetLatestIMSyncRunResponse",
     "HumanInputContact",
     "HumanInputContactType",
+    "HumanInputV2FormSubmitRequest",
+    "HumanInputV2ServiceFormSubmitRequest",
     "IMIdentity",
     "IMIdentityBindingStatus",
     "IMIntegration",
@@ -723,6 +906,7 @@ __all__ = [
     "IMSyncRunResultCounts",
     "IMSyncRunStatus",
     "LarkIMIntegrationCredentials",
+    "ListContactOptionsResponse",
     "ListContactsResponse",
     "ListIMIdentitiesQuery",
     "ListIMIdentitiesResponse",

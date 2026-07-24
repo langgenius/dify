@@ -7,7 +7,7 @@ Human Input V2 API 按四个 surface 拆分：
 1. workspace console：Contact Directory、IM integration、manual sync、contact IM binding / override、Email provider，以及无副作用的 node-data migration helper。
 2. workflow draft：form preview、form run、message-template test。
 3. runtime form：public web 与 Service API。
-4. EE dashboard admin：提供与 workspace Python contract 对齐的完整 Protobuf control-plane；workspace console 在 EE 部署中作为 UI-facing adapter，不形成第二套业务语义。
+4. EE dashboard admin：只提供 Organization 级 IM integration / sync 与 Organization Contact IM binding Protobuf control-plane；workspace console 在 EE 部署中作为 UI-facing adapter，不形成第二套业务语义。
 
 统一约束如下：
 
@@ -49,19 +49,23 @@ Contact 上位概念保持如下：
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| `GET` | `/console/api/workspaces/current/human-input/contacts` | 分页浏览当前 workspace Contact，并按 workspace、platform 或 external 类型筛选。 |
+| `GET` | `/console/api/workspaces/current/human-input/contacts` | owner/admin 分页浏览当前 workspace Contact，并按 workspace、platform 或 external 类型筛选。 |
+| `GET` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>` | owner/admin 读取一个当前 workspace 中可用的完整 Contact projection。 |
+| `GET` | `/console/api/workspaces/current/human-input/contacts/batch` | owner/admin 按 contact ID 批量读取 Contact summary；workflow editor 不使用该接口。 |
+| `GET` | `/console/api/workspaces/current/human-input/contact-options` | workflow editor 按 keyword 分页搜索静态 recipient 候选，只返回 `id / type / name / avatar_url`。 |
+| `GET` | `/console/api/workspaces/current/human-input/contact-options/batch` | workflow editor 按 contact ID 批量回显已保存 recipient，并使用同一最小投影。 |
 | `GET` | `/console/api/workspaces/current/human-input/organization-candidates` | 搜索可投影为 Platform contact 的 Organization member candidate。 |
 | `POST` | `/console/api/workspaces/current/human-input/contacts/platform` | 批量将 Organization member 投影为当前 workspace 的 Platform contact。 |
 | `POST` | `/console/api/workspaces/current/human-input/contacts/external` | 创建 External contact。 |
 | `PATCH` | `/console/api/workspaces/current/human-input/contacts/external/<uuid:contact_id>` | 更新 External contact。 |
 | `POST` | `/console/api/workspaces/current/human-input/contacts/remove` | 批量 detach Platform contact 或删除 External contact。 |
-| `GET` | `/console/api/workspaces/current/human-input/contacts/batch` | 按 contact ID 批量读取 workflow orchestration 所需的 Contact summary。 |
-| `GET` | `/console/api/workspaces/current/human-input/im-integration` | 读取当前 Organization-level IM integration 摘要。 |
-| `PUT` | `/console/api/workspaces/current/human-input/im-integration` | 创建或更新当前 IM integration credentials。 |
+| `GET` | `/console/api/workspaces/current/human-input/im-integration` | 读取当前 Organization-level IM integration 摘要及 CAS revision。 |
+| `PUT` | `/console/api/workspaces/current/human-input/im-integration` | 创建 integration，或使用 `integration_id + config_version` CAS 更新当前配置。 |
+| `DELETE` | `/console/api/workspaces/current/human-input/im-integration` | 使用 `integration_id + config_version` CAS 解除当前 integration，并使后续读取回到 `Not configured`。 |
 | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | 测试 IM provider credentials、callback 与 permission。 |
 | `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | 手动创建一次 IM directory sync run。 |
-| `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | 读取最近一次 IM sync run。 |
-| `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | 按结果类型分页读取最近一次 sync run 的 reconciliation result。 |
+| `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | 读取最近一次 IM sync run；UI 使用 `finished_at` 作为显式同步时间，不返回 `started_by`。 |
+| `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | 必须指定一个真实 result bucket，并使用 `page / limit` 分页读取最近一次 sync run 的 reconciliation result；不支持 All 或 cursor。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-identities` | 搜索已同步的 IM identity。 |
 | `PUT` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | 设置或替换 workspace-scoped Contact IM override。 |
 | `DELETE` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | 清除 workspace-scoped Contact IM override 并恢复全局绑定。 |
@@ -70,6 +74,8 @@ Contact 上位概念保持如下：
 | `POST` | `/console/api/workspaces/current/human-input/node-data-migration` | 批量、无副作用地将 Human Input v1 node data 转换为 v2；整批 all-or-error，`whole_workspace: true` 仅允许物化为迁移时 workspace member / Contact snapshot 的静态 recipient 列表。 |
 | `GET` | `/console/api/workspaces/current/human-input/email-provider` | 读取 Email provider 配置及 credential configured 状态，不返回 secret 或 masked secret。 |
 | `PUT` | `/console/api/workspaces/current/human-input/email-provider` | 创建或更新 Email provider 配置，并支持显式 preserve existing secret。 |
+
+Contact management 与 workflow recipient selection 使用不同读取模型：`contacts` list/detail/batch 继续要求 owner/admin，并可返回管理所需字段；`contact-options` list/batch 要求 edit permission，只暴露 picker 所需最小字段。两组接口都只返回当前 workspace 中解析为 `WORKSPACE / PLATFORM / EXTERNAL` 的 Contact；`ABSENT`、hard-deleted 或其他 unavailable Contact 必须省略，历史 workflow/task/audit 继续读取冻结 snapshot。
 
 ### 3.2 Draft Workflow / Advanced Chat APIs
 
@@ -100,7 +106,9 @@ Contact 上位概念保持如下：
 
 ## 4. EE Protobuf API
 
-以下 Protobuf block 是 EE Human Input admin API 的完整接口定义草案。它与 workspace Python contract 保持业务语义一致，并显式定义 Contact、provider credentials、sync result、binding / override、migration 与 Email provider contract。
+以下 Protobuf block 是 EE Human Input admin API 的完整接口定义草案。它只覆盖 Organization 级 IM integration / sync 与账号生命周期绑定的 Organization Contact IM binding control-plane。
+
+EE sync read model 与 workspace console 保持同一语义：只暴露 latest summary 和 latest results；`finished_at` 是 UI 同步时间，不返回 `started_by`；results 必须指定一个真实 bucket，使用 `page / limit / total`，不支持 All、cursor 或在分页响应中重复 run summary。
 
 ```proto
 syntax = "proto3";
@@ -110,17 +118,9 @@ package dify.enterprise.api.enterprise;
 option go_package = "github.com/langgenius/dify-enterprise/pkg/apis/enterprise/v1;v1";
 
 import "google/api/annotations.proto";
-import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "pagination/pagination.proto";
 import "validate/validate.proto";
-
-enum HumanInputContactType {
-  HUMAN_INPUT_CONTACT_TYPE_UNSPECIFIED = 0;
-  HUMAN_INPUT_CONTACT_TYPE_WORKSPACE = 1;
-  HUMAN_INPUT_CONTACT_TYPE_PLATFORM = 2;
-  HUMAN_INPUT_CONTACT_TYPE_EXTERNAL = 3;
-}
 
 enum IMProvider {
   IM_PROVIDER_UNSPECIFIED = 0;
@@ -130,12 +130,6 @@ enum IMProvider {
   IM_PROVIDER_MS_TEAMS = 4;
   IM_PROVIDER_WE_COM = 5;
   IM_PROVIDER_LARK = 6;
-}
-
-enum IMBindingScope {
-  IM_BINDING_SCOPE_UNSPECIFIED = 0;
-  IM_BINDING_SCOPE_WORKSPACE = 1;
-  IM_BINDING_SCOPE_ORGANIZATION = 2;
 }
 
 enum IMIntegrationStatus {
@@ -178,11 +172,6 @@ enum IMSyncRemovalReason {
   IM_SYNC_REMOVAL_REASON_BINDING_REPLACED = 3;
 }
 
-enum EmailProviderType {
-  EMAIL_PROVIDER_TYPE_UNSPECIFIED = 0;
-  EMAIL_PROVIDER_TYPE_RESEND = 1;
-}
-
 message PreserveOriginalValue {}
 
 message SecretUpdate {
@@ -196,7 +185,10 @@ message SecretUpdate {
 message IMBinding {
   string id = 1 [(validate.rules).string = { min_len: 1 }];
   IMProvider provider = 2 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
-  IMBindingScope scope = 3 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
+  string identity_id = 3 [json_name = "identity_id", (validate.rules).string = { min_len: 1 }];
+  string provider_user_id = 4 [json_name = "provider_user_id", (validate.rules).string = { min_len: 1 }];
+  optional string display_name = 5 [json_name = "display_name"];
+  optional string email = 6;
 }
 
 message HumanInputContactSummary {
@@ -208,105 +200,22 @@ message HumanInputContactSummary {
 
 message HumanInputContact {
   string id = 1 [(validate.rules).string = { min_len: 1 }];
-  HumanInputContactType type = 2 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
-  string name = 3 [(validate.rules).string = { min_len: 1 }];
-  optional string email = 4;
-  string avatar_url = 5 [json_name = "avatar_url"];
-  repeated IMBinding im_bindings = 6 [json_name = "im_bindings"];
-  google.protobuf.Timestamp created_at = 7 [json_name = "created_at"];
-}
-
-message OrganizationCandidate {
-  string id = 1 [(validate.rules).string = { min_len: 1 }];
   string name = 2 [(validate.rules).string = { min_len: 1 }];
-  string email = 3 [(validate.rules).string = { email: true }];
-  optional string avatar_url = 4 [json_name = "avatar_url"];
+  optional string email = 3;
+  string avatar_url = 4 [json_name = "avatar_url"];
+  repeated IMBinding im_bindings = 5 [json_name = "im_bindings"];
+  google.protobuf.Timestamp created_at = 6 [json_name = "created_at"];
 }
 
 message ListContactsReq {
-  optional HumanInputContactType group = 1 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
-  optional string keyword = 2;
+  optional string member_name = 1 [json_name = "member_name"];
+  optional string email = 2;
   optional int32 page = 3 [(validate.rules).int32 = { gte: 1 }];
   optional int32 limit = 4 [(validate.rules).int32 = { gte: 1, lte: 100 }];
 }
 
 message ListContactsRes {
   repeated HumanInputContact data = 1;
-  pagination.Pagination pagination = 2;
-}
-
-message ListOrganizationCandidatesReq {
-  optional string keyword = 1;
-  optional int32 page = 2 [(validate.rules).int32 = { gte: 1 }];
-  optional int32 limit = 3 [(validate.rules).int32 = { gte: 1, lte: 100 }];
-}
-
-message ListOrganizationCandidatesRes {
-  repeated OrganizationCandidate data = 1;
-  pagination.Pagination pagination = 2;
-}
-
-message AddPlatformContactsReq {
-  repeated string candidate_ids = 1 [
-    json_name = "candidate_ids",
-    (validate.rules).repeated = {
-      min_items: 1,
-      items: { string: { min_len: 1 } }
-    }
-  ];
-}
-
-message AddPlatformContactsRes {
-  repeated HumanInputContact data = 1;
-}
-
-message CreateExternalContactReq {
-  string name = 1 [(validate.rules).string = { min_len: 1, max_len: 255 }];
-  string email = 2 [(validate.rules).string = { email: true }];
-  string avatar = 3;
-}
-
-message CreateExternalContactRes {
-  HumanInputContact contact = 1 [(validate.rules).message.required = true];
-}
-
-message UpdateExternalContactReq {
-  string contact_id = 1 [json_name = "contact_id", (validate.rules).string = { min_len: 1 }];
-  optional string name = 2 [(validate.rules).string = { min_len: 1, max_len: 255 }];
-  optional string email = 3 [(validate.rules).string = { email: true }];
-  optional string avatar = 4;
-}
-
-message UpdateExternalContactRes {
-  HumanInputContact contact = 1 [(validate.rules).message.required = true];
-}
-
-message RemoveContactsReq {
-  repeated string contact_ids = 1 [
-    json_name = "contact_ids",
-    (validate.rules).repeated = {
-      min_items: 1,
-      items: { string: { min_len: 1 } }
-    }
-  ];
-}
-
-message RemoveContactsRes {
-  repeated string removed_contact_ids = 1 [json_name = "removed_contact_ids"];
-}
-
-message BatchGetContactsReq {
-  repeated string contact_ids = 1 [
-    json_name = "contact_ids",
-    (validate.rules).repeated = {
-      min_items: 1,
-      items: { string: { min_len: 1 } }
-    }
-  ];
-}
-
-message BatchGetContactsRes {
-  repeated HumanInputContactSummary data = 1;
   pagination.Pagination pagination = 2;
 }
 
@@ -367,6 +276,8 @@ message IMIntegration {
   optional string permission_hint = 4 [json_name = "permission_hint"];
   google.protobuf.Timestamp configured_at = 5 [json_name = "configured_at"];
   google.protobuf.Timestamp updated_at = 6 [json_name = "updated_at"];
+  string integration_id = 7 [json_name = "integration_id", (validate.rules).string = { min_len: 1 }];
+  int64 config_version = 8 [json_name = "config_version", (validate.rules).int64 = { gte: 1 }];
 }
 
 message GetIMIntegrationReq {}
@@ -375,15 +286,32 @@ message GetIMIntegrationRes {
   IMIntegration integration = 1 [(validate.rules).message.required = true];
 }
 
-message UpdateIMIntegrationReq {
+message UpsertIMIntegrationReq {
   IMIntegrationCredentials credentials = 1 [(validate.rules).message.required = true];
+  optional string expected_integration_id = 2 [
+    json_name = "expected_integration_id",
+    (validate.rules).string = { min_len: 1 }
+  ];
+  optional int64 expected_config_version = 3 [
+    json_name = "expected_config_version",
+    (validate.rules).int64 = { gte: 1 }
+  ];
 }
 
-message UpdateIMIntegrationRes {
+message UpsertIMIntegrationRes {
   IMIntegration integration = 1 [(validate.rules).message.required = true];
 }
 
-message DeleteIMIntegrationReq {}
+message DeleteIMIntegrationReq {
+  string expected_integration_id = 1 [
+    json_name = "expected_integration_id",
+    (validate.rules).string = { min_len: 1 }
+  ];
+  int64 expected_config_version = 2 [
+    json_name = "expected_config_version",
+    (validate.rules).int64 = { gte: 1 }
+  ];
+}
 
 message DeleteIMIntegrationRes {}
 
@@ -408,10 +336,17 @@ message IMSyncRun {
   string id = 1 [(validate.rules).string = { min_len: 1 }];
   IMSyncRunStatus status = 2 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
   google.protobuf.Timestamp started_at = 3 [json_name = "started_at"];
+  // The latest-only UI displays finished_at as the explicit sync time.
+  // A started_by field is intentionally not part of this transport contract.
   google.protobuf.Timestamp finished_at = 4 [json_name = "finished_at"];
   optional string error_message = 5 [json_name = "error_message"];
   IMSyncRunResultCounts result_counts = 6 [json_name = "result_counts", (validate.rules).message.required = true];
   IMProvider provider = 7 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
+  string integration_id = 8 [json_name = "integration_id", (validate.rules).string = { min_len: 1 }];
+  int64 integration_config_version = 9 [
+    json_name = "integration_config_version",
+    (validate.rules).int64 = { gte: 1 }
+  ];
 }
 
 message IMDirectoryEntry {
@@ -468,8 +403,7 @@ message IMSyncResult {
 
 message IMSyncResultItem {
   string id = 1 [(validate.rules).string = { min_len: 1 }];
-  HumanInputContactType type = 2 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
-  IMSyncResult result = 3 [(validate.rules).message.required = true];
+  IMSyncResult result = 2 [(validate.rules).message.required = true];
 }
 
 message CreateIMSyncRunReq {}
@@ -485,14 +419,19 @@ message GetLatestIMSyncRunRes {
 }
 
 message ListLatestIMSyncRunResultsReq {
+  // Required bucket. IMSyncResultType intentionally has no ALL value.
   IMSyncResultType result = 1 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
+  // Defaults to 1 when omitted by the HTTP client.
   optional int32 page = 2 [(validate.rules).int32 = { gte: 1 }];
+  // Defaults to 20 when omitted by the HTTP client.
   optional int32 limit = 3 [(validate.rules).int32 = { gte: 1, lte: 100 }];
 }
 
 message ListLatestIMSyncRunResultsRes {
   repeated IMSyncResultItem data = 1;
-  pagination.Pagination pagination = 2;
+  int32 page = 2 [(validate.rules).int32 = { gte: 1 }];
+  int32 limit = 3 [(validate.rules).int32 = { gte: 1, lte: 100 }];
+  int64 total = 4 [(validate.rules).int64 = { gte: 0 }];
 }
 
 message IMIdentity {
@@ -508,31 +447,15 @@ message IMIdentity {
 }
 
 message ListIMIdentitiesReq {
-  optional string keyword = 1;
-  optional int32 page = 2 [(validate.rules).int32 = { gte: 1 }];
-  optional int32 limit = 3 [(validate.rules).int32 = { gte: 1, lte: 100 }];
+  IMProvider provider = 1 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
+  optional string keyword = 2;
+  optional int32 page = 3 [(validate.rules).int32 = { gte: 1 }];
+  optional int32 limit = 4 [(validate.rules).int32 = { gte: 1, lte: 100 }];
 }
 
 message ListIMIdentitiesRes {
   repeated IMIdentity data = 1;
   pagination.Pagination pagination = 2;
-}
-
-message SetContactIMOverrideReq {
-  string contact_id = 1 [json_name = "contact_id", (validate.rules).string = { min_len: 1 }];
-  string identity_id = 2 [json_name = "identity_id", (validate.rules).string = { min_len: 1 }];
-}
-
-message SetContactIMOverrideRes {
-  HumanInputContact contact = 1 [(validate.rules).message.required = true];
-}
-
-message ResetContactIMOverrideReq {
-  string contact_id = 1 [json_name = "contact_id", (validate.rules).string = { min_len: 1 }];
-}
-
-message ResetContactIMOverrideRes {
-  HumanInputContact contact = 1 [(validate.rules).message.required = true];
 }
 
 message CreateIMBindingReq {
@@ -549,131 +472,24 @@ message DeleteIMBindingReq {
   string binding_id = 2 [json_name = "binding_id", (validate.rules).string = { min_len: 1 }];
 }
 
-message DeleteIMBindingRes {}
-
-// The data field carries one versioned Human Input v1 workflow node definition.
-message LegacyNodeDataWithId {
-  string node_id = 1 [json_name = "node_id", (validate.rules).string = { min_len: 1 }];
-  google.protobuf.Struct data = 2 [(validate.rules).message.required = true];
+message DeleteIMBindingRes {
+  HumanInputContact contact = 1 [(validate.rules).message.required = true];
 }
 
-// The data field carries the corresponding Human Input v2 workflow node definition.
-message MigratedNodeDataWithId {
-  string node_id = 1 [json_name = "node_id", (validate.rules).string = { min_len: 1 }];
-  google.protobuf.Struct data = 2 [(validate.rules).message.required = true];
+message TestIMBindingReq {
+  string contact_id = 1 [json_name = "contact_id", (validate.rules).string = { min_len: 1 }];
+  string binding_id = 2 [json_name = "binding_id", (validate.rules).string = { min_len: 1 }];
 }
 
-message CreateNodeDataMigrationReq {
-  repeated LegacyNodeDataWithId node_data = 1 [
-    json_name = "node_data",
-    (validate.rules).repeated = { min_items: 1 }
-  ];
-}
-
-message CreateNodeDataMigrationRes {
-  repeated MigratedNodeDataWithId node_data = 1 [json_name = "node_data"];
-}
-
-message NodeDataMigrationFailureReason {
-  string node_id = 1 [json_name = "node_id", (validate.rules).string = { min_len: 1 }];
-  string reason = 2 [(validate.rules).string = { min_len: 1 }];
-}
-
-// Returned as the structured HTTP 400 error payload when any node in the batch cannot be migrated.
-message NodeDataMigrationFailure {
-  string code = 1 [(validate.rules).string = { const: "hitl_node_data_migration_failure" }];
+message TestIMBindingRes {
+  bool reachable = 1;
   string message = 2;
-  int32 status = 3 [(validate.rules).int32 = { const: 400 }];
-  repeated NodeDataMigrationFailureReason reasons = 4;
 }
-
-message ResendProviderUpdateConfig {
-  optional EmailProviderType type = 1 [(validate.rules).enum = { const: 1, defined_only: true }];
-  SecretUpdate api_key = 2 [json_name = "api_key", (validate.rules).message.required = true];
-  string sender_email = 3 [json_name = "sender_email", (validate.rules).string = { email: true }];
-  string sender_name = 4 [json_name = "sender_name"];
-}
-
-message ResendProviderConfigResponse {
-  EmailProviderType type = 1 [(validate.rules).enum = { const: 1, defined_only: true }];
-  bool api_key_configured = 2 [json_name = "api_key_configured"];
-  string sender_email = 3 [json_name = "sender_email", (validate.rules).string = { email: true }];
-  string sender_name = 4 [json_name = "sender_name"];
-}
-
-message EmailProviderUpdateConfig {
-  oneof provider_config {
-    option (validate.required) = true;
-    ResendProviderUpdateConfig resend = 1;
-  }
-}
-
-message EmailProviderConfigResponse {
-  oneof provider_config {
-    option (validate.required) = true;
-    ResendProviderConfigResponse resend = 1;
-  }
-}
-
-message GetEmailProviderReq {}
-
-message GetEmailProviderRes {
-  EmailProviderConfigResponse provider_config = 1 [json_name = "provider_config"];
-}
-
-message SetEmailProviderReq {
-  EmailProviderUpdateConfig provider_config = 1 [
-    json_name = "provider_config",
-    (validate.rules).message.required = true
-  ];
-}
-
-message SetEmailProviderRes {}
 
 service EnterpriseHumanInputAdmin {
   rpc ListContacts(ListContactsReq) returns (ListContactsRes) {
     option (google.api.http) = {
       get: "/v1/dashboard/api/human-input/contacts"
-    };
-  }
-
-  rpc ListOrganizationCandidates(ListOrganizationCandidatesReq) returns (ListOrganizationCandidatesRes) {
-    option (google.api.http) = {
-      get: "/v1/dashboard/api/human-input/organization-candidates"
-    };
-  }
-
-  rpc AddPlatformContacts(AddPlatformContactsReq) returns (AddPlatformContactsRes) {
-    option (google.api.http) = {
-      post: "/v1/dashboard/api/human-input/contacts/platform"
-      body: "*"
-    };
-  }
-
-  rpc CreateExternalContact(CreateExternalContactReq) returns (CreateExternalContactRes) {
-    option (google.api.http) = {
-      post: "/v1/dashboard/api/human-input/contacts/external"
-      body: "*"
-    };
-  }
-
-  rpc UpdateExternalContact(UpdateExternalContactReq) returns (UpdateExternalContactRes) {
-    option (google.api.http) = {
-      patch: "/v1/dashboard/api/human-input/contacts/external/{contact_id}"
-      body: "*"
-    };
-  }
-
-  rpc RemoveContacts(RemoveContactsReq) returns (RemoveContactsRes) {
-    option (google.api.http) = {
-      post: "/v1/dashboard/api/human-input/contacts/remove"
-      body: "*"
-    };
-  }
-
-  rpc BatchGetContacts(BatchGetContactsReq) returns (BatchGetContactsRes) {
-    option (google.api.http) = {
-      get: "/v1/dashboard/api/human-input/contacts/batch"
     };
   }
 
@@ -683,7 +499,7 @@ service EnterpriseHumanInputAdmin {
     };
   }
 
-  rpc UpdateIMIntegration(UpdateIMIntegrationReq) returns (UpdateIMIntegrationRes) {
+  rpc UpsertIMIntegration(UpsertIMIntegrationReq) returns (UpsertIMIntegrationRes) {
     option (google.api.http) = {
       put: "/v1/dashboard/api/human-input/im-integration"
       body: "*"
@@ -727,49 +543,22 @@ service EnterpriseHumanInputAdmin {
     };
   }
 
-  rpc SetContactIMOverride(SetContactIMOverrideReq) returns (SetContactIMOverrideRes) {
-    option (google.api.http) = {
-      put: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-override"
-      body: "*"
-    };
-  }
-
-  rpc ResetContactIMOverride(ResetContactIMOverrideReq) returns (ResetContactIMOverrideRes) {
-    option (google.api.http) = {
-      delete: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-override"
-    };
-  }
-
   rpc CreateIMBinding(CreateIMBindingReq) returns (CreateIMBindingRes) {
     option (google.api.http) = {
-      put: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings"
+      post: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings"
       body: "*"
     };
   }
 
   rpc DeleteIMBinding(DeleteIMBindingReq) returns (DeleteIMBindingRes) {
     option (google.api.http) = {
-      delete: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings"
+      delete: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}"
     };
   }
 
-  rpc CreateNodeDataMigration(CreateNodeDataMigrationReq) returns (CreateNodeDataMigrationRes) {
+  rpc TestIMBinding(TestIMBindingReq) returns (TestIMBindingRes) {
     option (google.api.http) = {
-      post: "/v1/dashboard/api/human-input/node-data-migration"
-      body: "*"
-    };
-  }
-
-  rpc GetEmailProvider(GetEmailProviderReq) returns (GetEmailProviderRes) {
-    option (google.api.http) = {
-      get: "/v1/dashboard/api/human-input/email-provider"
-    };
-  }
-
-  rpc SetEmailProvider(SetEmailProviderReq) returns (SetEmailProviderRes) {
-    option (google.api.http) = {
-      put: "/v1/dashboard/api/human-input/email-provider"
-      body: "*"
+      post: "/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}/test"
     };
   }
 }
@@ -784,6 +573,7 @@ service EnterpriseHumanInputAdmin {
 - CLI todo / approval inbox API
 - 新的 `task` noun 路由
 - 重复的 EE member / workspace CRUD proto
+- EE Platform / External Contact lifecycle、workspace IM override、node-data migration 或 Email provider RPC
 - 与 DSL / enterprise style 脱节的 transport enum
 
 ## 6. 推荐落地顺序

@@ -84,7 +84,7 @@
 #### Scenario: 替换 provider
 
 - **WHEN** 管理员尝试将当前 provider 替换为另一个 provider
-- **THEN** 前端 MUST 在执行 mock mutation 前要求确认，并 MUST 展示 scenario 提供的影响说明
+- **THEN** 前端 MUST 在执行 mock mutation 前要求确认，并 MUST 明确说明旧 provider 的 IM bindings 和 workspace overrides 将失效，且管理员需要为新 provider 重新执行通讯录同步
 
 ### Requirement: 绑定流程必须适配 mock provider definition
 

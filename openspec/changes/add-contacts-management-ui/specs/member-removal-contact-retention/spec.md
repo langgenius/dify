@@ -21,12 +21,12 @@
 
 ### Requirement: CE / SaaS 必须提示 Contact 将同步移除
 
-在 CE / SaaS mock deployment 中，确认 surface MUST 明确说明 active member 被移除后，其 workspace contact 也会从当前 workspace Contacts 移除，且不能继续被新的 HITL 配置选择。
+在 CE / SaaS mock deployment 中，确认 surface MUST 明确说明 active member 被移除后，其 workspace contact identity 会被删除，且不能继续被新的 HITL 配置选择。历史 task 只保留已有快照；成员重新加入时视为新的 Contact identity。
 
 #### Scenario: CE / SaaS 确认移除
 
 - **WHEN** 用户在 CE 或 SaaS 确认移除 active member
-- **THEN** mock repository MUST 移除 member 与对应 workspace contact
+- **THEN** mock repository MUST 移除 member 并删除对应 workspace contact，MUST NOT 保留 inactive contact
 
 #### Scenario: CE / SaaS 不提供保留选项
 

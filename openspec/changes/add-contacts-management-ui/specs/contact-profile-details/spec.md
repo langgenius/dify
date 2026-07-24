@@ -21,7 +21,7 @@
 
 ### Requirement: 详情必须展示 Contact 的通用身份信息
 
-前端 MUST 展示 Figma 定义的 Contact 通用信息，并至少保证名称、Email、Contact 类型、当前状态或归属信息可辨识。
+前端 MUST 展示 Figma 定义的 Contact 通用信息，并至少保证名称、Email、Contact 类型和可用联系方式可辨识。
 
 #### Scenario: 详情加载成功
 
@@ -30,7 +30,7 @@
 
 #### Scenario: 可选信息缺失
 
-- **WHEN** avatar、来源 workspace 或 channel summary 等可选字段缺失
+- **WHEN** avatar 或 channel summary 等可选字段缺失
 - **THEN** 前端 MUST 使用统一 fallback，MUST NOT 伪造值
 
 #### Scenario: 详情数据与列表摘要更新
@@ -50,7 +50,7 @@
 #### Scenario: Platform contact 详情
 
 - **WHEN** Contact `kind` 为 `platform`
-- **THEN** 前端 MUST 展示其 Organization 身份、来源 workspace 摘要以及已加入当前 workspace Contacts 的状态
+- **THEN** 前端 MUST 使用 `Organization` 类型标识展示该 Contact，并展示 Figma 明确提供的通用身份信息和可用联系方式；前端 MUST NOT 要求或推断来源 workspace 或额外 Organization identity
 
 #### Scenario: External contact 详情
 

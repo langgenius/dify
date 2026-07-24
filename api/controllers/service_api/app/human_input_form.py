@@ -8,14 +8,18 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
+from http import HTTPStatus
 from typing import Any
 
-from flask import Response
+from flask import Response, abort, request
 from flask_restx import Resource
 from pydantic import ConfigDict, Field
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
+from controllers.common.human_input_v2_contracts import FormDefinitionResponse as HumanInputV2FormDefinitionResponse
+from controllers.common.human_input_v2_contracts import FormSubmitResponse as HumanInputV2FormSubmitResponse
+from controllers.common.human_input_v2_contracts import HumanInputV2ServiceFormSubmitRequest, ServiceFormQuery
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
@@ -43,8 +47,19 @@ class HumanInputFormSubmitResponse(ResponseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
-register_response_schema_models(service_api_ns, HumanInputFormDefinitionResponse, HumanInputFormSubmitResponse)
+register_schema_models(
+    service_api_ns,
+    HumanInputFormSubmitPayload,
+    HumanInputV2ServiceFormSubmitRequest,
+    ServiceFormQuery,
+)
+register_response_schema_models(
+    service_api_ns,
+    HumanInputFormDefinitionResponse,
+    HumanInputFormSubmitResponse,
+    HumanInputV2FormDefinitionResponse,
+    HumanInputV2FormSubmitResponse,
+)
 
 
 def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] = ()) -> Response:
@@ -188,3 +203,33 @@ class WorkflowHumanInputFormApi(Resource):
             raise NotFound("Form not found")
 
         return {}, 200
+
+
+@service_api_ns.route("/form/human-input/<string:form_token>")
+class WorkflowHumanInputV2FormApi(Resource):
+    """Trusted Service API stub for Human Input v2 forms.
+
+    This route does not alias the v1 handler. The implementation must resolve a
+    v2 form and reject v1 form tokens before reading or submitting it.
+    """
+
+    @service_api_ns.response(
+        200,
+        "Form retrieved successfully",
+        service_api_ns.models[HumanInputV2FormDefinitionResponse.__name__],
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
+    def get(self, app_model: App, end_user: EndUser, form_token: str):
+        ServiceFormQuery.model_validate(request.args.to_dict(flat=True))
+        abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 Service API stub endpoint is not implemented yet.")
+
+    @service_api_ns.expect(service_api_ns.models[HumanInputV2ServiceFormSubmitRequest.__name__])
+    @service_api_ns.response(
+        200,
+        "Form submitted successfully",
+        service_api_ns.models[HumanInputV2FormSubmitResponse.__name__],
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, form_token: str):
+        HumanInputV2ServiceFormSubmitRequest.model_validate(service_api_ns.payload or {})
+        abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 Service API stub endpoint is not implemented yet.")

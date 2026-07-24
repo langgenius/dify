@@ -21,7 +21,7 @@
 
 ### Requirement: 目录必须区分三种 Contact 类型
 
-前端 MUST 使用明确类型标识区分 `workspace contact`、`Platform contact` 和 `External contact`，并 MUST 展示 Figma 要求的关键身份信息。至少名称、Email、Contact 类型以及可用的状态或来源信息 MUST 可被辨识。
+前端 MUST 使用明确类型标识区分 `workspace contact`、`Platform contact` 和 `External contact`，并 MUST 展示 Figma 要求的关键身份信息。至少名称、Email、Contact 类型、可用渠道以及加入时间 MUST 可被辨识。
 
 #### Scenario: 展示 workspace contact
 
@@ -31,7 +31,7 @@
 #### Scenario: 展示 Platform contact
 
 - **WHEN** 列表项的 `kind` 为 `platform`
-- **THEN** 前端 MUST 将其展示为 Organization 内、已加入当前 workspace Contacts 的 Platform contact
+- **THEN** 前端 MUST 在 Platform 分组中展示该 Contact，并 MUST 按 Figma 在类型列中将其标识为 `Organization`；本列表 MUST NOT 要求或推断来源 workspace 等未展示信息
 
 #### Scenario: 展示 External contact
 
