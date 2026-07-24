@@ -39,6 +39,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
@@ -50,7 +51,7 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import DataSourceType, DocumentCreatedFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
@@ -697,11 +698,11 @@ class PipelineGenerator(BaseAppGenerator):
         built_in_field_enabled: bool,
         datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account | EndUser,
         batch: str,
-        document_form: str,
+        document_form: IndexStructureType,
     ):
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
@@ -718,7 +719,7 @@ class PipelineGenerator(BaseAppGenerator):
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=position,
-            data_source_type=datasource_type,
+            data_source_type=DataSourceType(datasource_type),
             data_source_info=json.dumps(datasource_info),
             batch=batch,
             name=name,

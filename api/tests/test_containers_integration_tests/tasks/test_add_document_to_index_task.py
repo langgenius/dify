@@ -90,7 +90,6 @@ class TestAddDocumentToIndexTask:
 
         # Create document
         document = Document(
-            id=fake.uuid4(),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
