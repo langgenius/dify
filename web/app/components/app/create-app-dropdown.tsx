@@ -35,22 +35,21 @@ export function CreateAppDropdown({
   const menu = useStepByStepTourControlledDropdown({
     controlledOpen: stepByStepTourControlledOpen,
   })
-  const isControlledByStepByStepTour = stepByStepTourControlledOpen === true
 
   return (
-    <DropdownMenu
-      key={isControlledByStepByStepTour ? 'step-by-step-tour' : 'interactive'}
-      modal={false}
-      {...(isControlledByStepByStepTour
-        ? { open: menu.open, onOpenChange: menu.onOpenChange }
-        : undefined)}
-    >
+    <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
       <DropdownMenuTrigger
         data-step-by-step-tour-target={stepByStepTourTarget}
         className={cn(
           buttonVariants({ variant: 'primary', size: 'medium' }),
           'gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3',
         )}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' || menu.open) return
+
+          event.preventDefault()
+          menu.onOpenChange(true)
+        }}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         <span className="pl-1">{t(($) => $['operation.create'], { ns: 'common' })}</span>
