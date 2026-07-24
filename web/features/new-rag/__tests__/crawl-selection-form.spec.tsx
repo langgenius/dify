@@ -409,6 +409,31 @@ describe('CrawlSelectionForm', () => {
     expect(routerMock.push).not.toHaveBeenCalled()
   })
 
+  it('keeps Cancel available while the import is pending', async () => {
+    const workflowRequest = deferred<SourceWorkflowRun>()
+    clientMock.getWorkflow.mockReturnValue(workflowRequest.promise)
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    const { onWorkflowPending } = renderSelectionForm(onCancel)
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.getWorkflow).toHaveBeenCalledOnce())
+    const cancel = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.cancelAddSource',
+    })
+    expect(cancel).toBeEnabled()
+    await user.click(cancel)
+    expect(onCancel).toHaveBeenCalledOnce()
+
+    await act(async () =>
+      workflowRequest.resolve({ ...run, checkpoint: 'complete', state: 'completed' }),
+    )
+    await expect(onWorkflowPending.mock.calls[0]?.[0]).resolves.toEqual(
+      expect.objectContaining({ state: 'completed' }),
+    )
+  })
+
   it.each([
     { enabled: true, initialMode: 'interval', mode: 'provider' },
     { enabled: false, initialMode: 'interval', mode: 'manual' },
@@ -645,7 +670,7 @@ describe('CrawlSelectionForm', () => {
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     await user.click(screen.getByText('Guides'))
     expect(screen.getByRole('checkbox', { name: 'Guides' })).not.toBeChecked()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))

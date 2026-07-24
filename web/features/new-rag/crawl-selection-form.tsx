@@ -15,6 +15,7 @@ import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 
 type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
@@ -295,7 +296,7 @@ function ReadyCrawlSelectionForm({
     if (selectionRequestRef.current?.fingerprint !== fingerprint) {
       selectionRequestRef.current = {
         fingerprint,
-        requestId: globalThis.crypto.randomUUID(),
+        requestId: createRequestId(),
       }
     }
 
@@ -541,7 +542,7 @@ function ReadyCrawlSelectionForm({
         </p>
       )}
       <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-        <Button type="button" disabled={formBusy || selectionUncertain} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
         <Button

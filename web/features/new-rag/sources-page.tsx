@@ -408,39 +408,15 @@ function SourcesEmpty({
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div aria-hidden className="flex items-center gap-3">
-        <svg data-brand="firecrawl" viewBox="0 0 28 40" className="size-5">
-          <path
-            fill="#FA5D19"
-            d="M23.36 12.83c-1.55.46-2.71 1.5-3.57 2.62-.18.25-.56.07-.49-.23 1.64-6.73-.52-12.31-7.26-15.07-.34-.14-.7.17-.6.53C14.5 12.98 1.61 11.94 3.24 25.88c.03.24-.24.41-.44.27-.6-.44-1.29-1.36-1.75-2-.14-.19-.44-.14-.5.09A14.3 14.3 0 0 0 0 28.12c0 4.9 2.52 9.21 6.33 11.71.22.14.5-.06.42-.31a7.7 7.7 0 0 1-.31-2.08c0-.44.03-.89.1-1.31.16-1.06.52-2.06 1.14-2.97 2.11-3.17 6.35-6.24 5.67-10.4-.04-.26.27-.43.46-.25 2.99 2.72 3.58 6.39 3.09 9.68-.05.28.31.44.49.21.46-.57 1.01-1.07 1.62-1.45.15-.09.35-.02.41.15.34.98.84 1.9 1.31 2.82.57 1.11.87 2.37.82 3.71a7.7 7.7 0 0 1-.31 1.88c-.08.26.2.47.42.32A14 14 0 0 0 28 28.12c0-1.71-.3-3.38-.86-4.94-1.19-3.29-4.19-5.75-3.43-10.03.04-.2-.15-.38-.35-.32Z"
-          />
-        </svg>
+        <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-5" />
         <span data-brand="jina" className="i-custom-public-llm-jina size-5" />
         <span
           data-brand="notion"
           className="i-custom-public-common-notion size-5 text-text-primary"
         />
-        <svg data-brand="google-drive" viewBox="0 0 24 24" className="size-5">
-          <path fill="#0F9D58" d="M8.2 3h5.1l7.6 13.2h-5.1z" />
-          <path fill="#F4B400" d="M8.2 3 .7 16.2l2.6 4.5 7.5-13.2z" />
-          <path fill="#4285F4" d="M3.3 20.7h15.2l2.4-4.5H5.9z" />
-        </svg>
-        <svg data-brand="confluence" viewBox="0 0 24 24" className="size-5 text-blue-600">
-          <path
-            fill="currentColor"
-            d="M4.1 15.7c-.4.7-.8 1.5-1.1 2.1-.2.5 0 1 .5 1.3l3.4 1.6c.5.2 1 0 1.3-.4.3-.6.7-1.3 1.1-2 2.9-4.8 5.9-4.2 11.1-1.8.5.2 1.1 0 1.3-.5l1.3-3.5c.2-.5-.1-1.1-.6-1.3-7.6-3.5-13.8-3.6-18.3 4.5Z"
-          />
-          <path
-            fill="currentColor"
-            opacity=".55"
-            d="M19.9 8.3c.4-.7.8-1.5 1.1-2.1.2-.5 0-1-.5-1.3l-3.4-1.6c-.5-.2-1 0-1.3.4-.3.6-.7 1.3-1.1 2-2.9 4.8-5.9 4.2-11.1 1.8-.5-.2-1.1 0-1.3.5L1 11.5c-.2.5.1 1.1.6 1.3 7.6 3.5 13.8 3.6 18.3-4.5Z"
-          />
-        </svg>
-        <svg data-brand="dropbox" viewBox="0 0 24 24" className="size-5 text-blue-500">
-          <path
-            fill="currentColor"
-            d="m7 3-5 3.2L7 9.4l5-3.2L7 3Zm10 0-5 3.2 5 3.2 5-3.2L17 3ZM7 10.6l-5 3.2L7 17l5-3.2-5-3.2Zm10 0-5 3.2 5 3.2 5-3.2-5-3.2ZM7.2 18.1l4.8 3 4.8-3-4.8-3-4.8 3Z"
-          />
-        </svg>
+        <span data-brand="google-drive" className="i-custom-public-common-google-drive size-5" />
+        <span data-brand="confluence" className="i-custom-public-common-confluence size-5" />
+        <span data-brand="dropbox" className="i-custom-public-common-dropbox size-5" />
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}

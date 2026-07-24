@@ -154,11 +154,19 @@ describe('SourcesPage', () => {
       'href',
       '/datasets/new/space-1/sources/new',
     )
-    for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'dropbox'])
-      expect(container.querySelector(`[data-brand="${brand}"]`)).toBeInTheDocument()
-    expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('svg')
-    expect(container.querySelector('[data-brand="firecrawl"]')).toHaveClass('size-5')
-    expect(container.querySelector('[data-brand="jina"]')).toHaveClass('i-custom-public-llm-jina')
+    for (const [brand, iconClass] of [
+      ['firecrawl', 'i-custom-public-common-firecrawl'],
+      ['jina', 'i-custom-public-llm-jina'],
+      ['notion', 'i-custom-public-common-notion'],
+      ['google-drive', 'i-custom-public-common-google-drive'],
+      ['confluence', 'i-custom-public-common-confluence'],
+      ['dropbox', 'i-custom-public-common-dropbox'],
+    ] as const) {
+      const icon = container.querySelector(`[data-brand="${brand}"]`)
+      expect(icon).toBeInTheDocument()
+      expect(icon?.tagName).toBe('SPAN')
+      expect(icon).toHaveClass(iconClass)
+    }
   })
 
   it('renders real source statuses and filters by status and search text', async () => {

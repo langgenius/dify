@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { CrawlSelectionForm } from './crawl-selection-form'
+import { createRequestId } from './request-id'
 import {
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
@@ -157,10 +158,6 @@ function latestWorkflowRun(
   if (isTerminal(current.state) !== isTerminal(candidate.state))
     return isTerminal(current.state) ? current : candidate
   return candidate
-}
-
-function createRequestId() {
-  return globalThis.crypto.randomUUID()
 }
 
 async function listWorkflowPageUpdates(

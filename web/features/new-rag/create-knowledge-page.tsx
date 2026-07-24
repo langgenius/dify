@@ -50,6 +50,7 @@ import {
   NAME_MAX_LENGTH,
 } from './create-knowledge-workflow'
 import { CreateSourceSetup } from './create-source-setup'
+import { createRequestId } from './request-id'
 import {
   createNewKnowledgeSourceDraft,
   isValidWebsiteSourceDraft,
@@ -227,7 +228,7 @@ export function CreateKnowledgePage() {
     const normalizedDescription = description.trim()
     if (!normalizedName) return
 
-    idempotencyKeyRef.current ??= globalThis.crypto.randomUUID()
+    idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
       const created = await createMutation.mutateAsync({
@@ -245,7 +246,7 @@ export function CreateKnowledgePage() {
       })
       if (startMode === 'source') {
         try {
-          const sourceDraftKey = globalThis.crypto.randomUUID()
+          const sourceDraftKey = createRequestId()
           globalThis.sessionStorage.setItem(
             newKnowledgeSourceDraftStorageKey(sourceDraftKey),
             JSON.stringify(sourceDraft),
