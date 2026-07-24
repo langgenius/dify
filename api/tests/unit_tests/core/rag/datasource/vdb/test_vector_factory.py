@@ -320,6 +320,29 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
+def test_create_reports_correct_batch_count_in_logs(vector_factory_module, caplog):
+    import logging
+
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._vector_processor = MagicMock()
+
+    # 1001 texts with a batch_size of 1000 must produce exactly 2 batches.
+    docs = [Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}"}) for i in range(1001)]
+    vector._embeddings.embed_documents.side_effect = [
+        [[0.1] for _ in range(1000)],
+        [[0.2]],
+    ]
+
+    with caplog.at_level(logging.INFO, logger="core.rag.datasource.vdb.vector_factory"):
+        vector.create(texts=docs, trace_id="trace-1")
+
+    processing_lines = [r.message for r in caplog.records if "Processing batch" in r.message]
+    assert processing_lines, "expected at least one 'Processing batch' log line"
+    # The denominator (total_batches) must be the batch count, not item count.
+    assert all("/2 " in line for line in processing_lines), processing_lines
+
+
 def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
