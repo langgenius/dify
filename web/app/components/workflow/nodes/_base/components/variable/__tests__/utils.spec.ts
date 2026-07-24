@@ -1,9 +1,17 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { HttpNodeType } from '@/app/components/workflow/nodes/http/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
+import {
+  AuthorizationType,
+  BodyPayloadValueType,
+  BodyType,
+  Method,
+} from '@/app/components/workflow/nodes/http/types'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
   BlockEnum,
@@ -211,6 +219,53 @@ describe('variable utils', () => {
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
     })
+
+    it('should tolerate legacy http request nodes with missing body data', () => {
+      const node = createNode<HttpNodeType>({
+        type: BlockEnum.HttpRequest,
+        title: 'HTTP Request',
+        desc: '',
+        variables: [],
+        method: Method.post,
+        url: 'https://{{#start.host#}}/items',
+        authorization: { type: AuthorizationType.none },
+        headers: 'Authorization: Bearer {{#env.API_KEY#}}',
+        params: '',
+        body: {
+          type: BodyType.json,
+          data: undefined as unknown as HttpNodeType['body']['data'],
+        },
+        timeout: {},
+        ssl_verify: true,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual(
+        expect.arrayContaining([
+          ['start', 'host'],
+          ['env', 'API_KEY'],
+        ]),
+      )
+    })
+
+    it('should ignore iteration nodes without a selected iterator', () => {
+      const node = createNode<IterationNodeType>({
+        type: BlockEnum.Iteration,
+        title: 'Iteration',
+        desc: '',
+        start_node_id: '',
+        iterator_selector: undefined as unknown as IterationNodeType['iterator_selector'],
+        iterator_input_type: VarType.arrayString,
+        output_selector: [],
+        output_type: VarType.arrayString,
+        is_parallel: false,
+        parallel_nums: 10,
+        error_handle_mode: undefined as unknown as IterationNodeType['error_handle_mode'],
+        flatten_output: true,
+        _isShowTips: false,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([])
+    })
   })
 
   describe('updateNodeVars', () => {
@@ -322,6 +377,70 @@ describe('variable utils', () => {
           selector: ['env', 'RENAMED_KEY'],
         },
       })
+    })
+
+    it('should replace http request references and tolerate missing body data', () => {
+      const node = createNode<HttpNodeType>({
+        type: BlockEnum.HttpRequest,
+        title: 'HTTP Request',
+        desc: '',
+        variables: [],
+        method: Method.post,
+        url: 'https://{{#env.API_HOST#}}/items',
+        authorization: { type: AuthorizationType.none },
+        headers: 'Authorization: Bearer {{#env.API_KEY#}}',
+        params: 'page={{#env.PAGE#}}',
+        body: {
+          type: BodyType.formData,
+          data: [
+            {
+              type: BodyPayloadValueType.text,
+              value: '{{#env.API_KEY#}}',
+            },
+            {
+              type: BodyPayloadValueType.file,
+              file: ['env', 'UPLOAD'],
+            },
+          ],
+        },
+        timeout: {},
+        ssl_verify: true,
+      })
+
+      const updatedNode = updateNodeVars(node, ['env', 'API_KEY'], ['env', 'RENAMED_KEY'])
+
+      expect((updatedNode.data as HttpNodeType).url).toBe('https://{{#env.API_HOST#}}/items')
+      expect((updatedNode.data as HttpNodeType).headers).toBe(
+        'Authorization: Bearer {{#env.RENAMED_KEY#}}',
+      )
+      expect((updatedNode.data as HttpNodeType).params).toBe('page={{#env.PAGE#}}')
+      expect((updatedNode.data as HttpNodeType).body.data).toMatchObject([
+        { value: '{{#env.RENAMED_KEY#}}' },
+        { file: ['env', 'UPLOAD'] },
+      ])
+
+      const updatedFileNode = updateNodeVars(node, ['env', 'UPLOAD'], ['env', 'RENAMED_UPLOAD'])
+      expect((updatedFileNode.data as HttpNodeType).body.data).toMatchObject([
+        { value: '{{#env.API_KEY#}}' },
+        { file: ['env', 'RENAMED_UPLOAD'] },
+      ])
+
+      const nodeWithoutBody = createNode<HttpNodeType>({
+        ...node.data,
+        body: undefined as unknown as HttpNodeType['body'],
+      })
+
+      let updatedNodeWithoutBody: Node
+      expect(() => {
+        updatedNodeWithoutBody = updateNodeVars(
+          nodeWithoutBody,
+          ['env', 'API_HOST'],
+          ['env', 'RENAMED_HOST'],
+        )
+      }).not.toThrow()
+      expect((updatedNodeWithoutBody!.data as HttpNodeType).url).toBe(
+        'https://{{#env.RENAMED_HOST#}}/items',
+      )
     })
   })
 })
