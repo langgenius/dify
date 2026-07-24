@@ -96,4 +96,3 @@ Contact persistence ports MUST be organized around snapshot load and lifecycle m
 #### Scenario: Aggregate is loaded
 - **WHEN** Contact logical relationships are needed by an application operation
 - **THEN** the adapter MUST use explicit eager loading and MUST NOT trigger hidden lazy loads
-
