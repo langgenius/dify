@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
-import { Markdown } from '@/app/components/base/markdown'
 import ActionButton from '../../action-button'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
@@ -199,7 +198,7 @@ const Question: FC<QuestionProps> = ({
             />
           )}
           {!isEditing ? (
-            <Markdown content={content} />
+            <div className="break-words whitespace-pre-wrap">{content}</div>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
