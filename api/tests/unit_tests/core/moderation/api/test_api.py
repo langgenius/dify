@@ -2,11 +2,22 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
+import core.moderation.api.api as moderation_module
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint
 from core.moderation.api.api import ApiModeration, ModerationInputParams, ModerationOutputParams
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from models.api_based_extension import APIBasedExtension
+
+
+class _DatabaseBinding:
+    """Expose the real SQLite session used by extension lookup."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
 
 
 class TestApiModeration:
@@ -165,17 +176,27 @@ class TestApiModeration:
         with pytest.raises(ValueError, match="API-based Extension not found"):
             api_moderation._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, {})
 
-    @patch("core.moderation.api.api.db.session.scalar")
-    def test_get_api_based_extension(self, mock_scalar):
-        mock_ext = MagicMock(spec=APIBasedExtension)
-        mock_scalar.return_value = mock_ext
+    @pytest.mark.parametrize("sqlite_session", [(APIBasedExtension,)], indirect=True)
+    def test_get_api_based_extension(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        target = APIBasedExtension(
+            tenant_id="tenant-1",
+            name="Target extension",
+            api_endpoint="https://example.com/moderate",
+            api_key="encrypted-key",
+        )
+        target.id = "ext-1"
+        other_tenant = APIBasedExtension(
+            tenant_id="tenant-2",
+            name="Other extension",
+            api_endpoint="https://example.com/other",
+            api_key="other-key",
+        )
+        other_tenant.id = "ext-2"
+        sqlite_session.add_all((target, other_tenant))
+        sqlite_session.commit()
+        monkeypatch.setattr(moderation_module, "db", _DatabaseBinding(sqlite_session))
 
         result = ApiModeration._get_api_based_extension("tenant-1", "ext-1")
 
-        assert result == mock_ext
-        mock_scalar.assert_called_once()
-        # Verify the call has the correct filters
-        args, kwargs = mock_scalar.call_args
-        stmt = args[0]
-        # We can't easily inspect the statement without complex sqlalchemy tricks,
-        # but calling it is usually enough for unit tests if we mock the result.
+        assert result is target
+        assert ApiModeration._get_api_based_extension("tenant-1", "ext-2") is None
