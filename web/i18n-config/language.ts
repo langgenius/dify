@@ -78,7 +78,6 @@ export const getAccessControlTemplateLanguage = (locale: string): AccessControlT
   return ACCESS_CONTROL_TEMPLATE_LANGUAGE[locale] || 'en'
 }
 
-
 export const NOTICE_I18N = {
   title: {
     en_US: 'Important Notice',
