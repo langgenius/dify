@@ -1,51 +1,76 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
-import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import PluginTypeSwitch from '../plugin-type-switch'
+import HomeCatalogTabs from './home-catalog-tabs'
+import styles from './home-sticky.module.css'
 
 type HomeCatalogNavigationProps = {
+  isPinned?: boolean
   isMarketplacePlatform: boolean
+  onPinnedChange?: (isPinned: boolean) => void
 }
 
-function HomeCatalogNavigation({ isMarketplacePlatform }: HomeCatalogNavigationProps) {
+const STICKY_TOP = 48
+
+function HomeCatalogNavigation({
+  isPinned = false,
+  isMarketplacePlatform,
+  onPinnedChange,
+}: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
-  const templatesHref = isMarketplacePlatform ? '/templates' : getMarketplaceUrl('/templates')
+  const pinTriggerRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!onPinnedChange) return
+
+    const scrollContainer = document.getElementById('marketplace-container')
+    if (!scrollContainer) return
+
+    const updatePinnedState = () => {
+      const pinTrigger = pinTriggerRef.current
+      if (!pinTrigger) return
+
+      const containerTop = scrollContainer.getBoundingClientRect().top
+      const triggerTop = pinTrigger.getBoundingClientRect().top
+      onPinnedChange(triggerTop <= containerTop + STICKY_TOP)
+    }
+
+    updatePinnedState()
+    scrollContainer.addEventListener('scroll', updatePinnedState, { passive: true })
+    window.addEventListener('resize', updatePinnedState)
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', updatePinnedState)
+      window.removeEventListener('resize', updatePinnedState)
+    }
+  }, [onPinnedChange])
 
   return (
-    <section
-      aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
-      className="w-full shrink-0 bg-background-default px-9 pt-6 pb-4"
-    >
-      <div className="w-full">
-        <nav
-          aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
-          className="-ml-2 flex h-8 items-center gap-1"
-        >
-          <span
-            aria-current="page"
-            className="relative flex h-8 items-start px-[9px] pt-2 body-sm-medium text-text-accent"
-          >
-            {t(($) => $['marketplace.home.plugins'], { ns: 'plugin' })}
-            <span
-              aria-hidden
-              className="absolute bottom-0 left-1/2 h-0.5 w-[21px] -translate-x-1/2 rounded-full bg-text-accent"
-            />
-          </span>
-          <Link
-            href={templatesHref}
-            className="flex h-8 items-center gap-2 rounded-[10px] p-2 body-sm-regular text-text-primary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span>{t(($) => $['marketplace.home.templates'], { ns: 'plugin' })}</span>
-            <span className="flex items-center rounded-full bg-saas-dify-blue-accessible px-[5px] py-0.5 system-2xs-regular text-text-primary-on-surface uppercase">
-              {t(($) => $['marketplace.home.new'], { ns: 'plugin' })}
-            </span>
-          </Link>
-        </nav>
-        <PluginTypeSwitch className="mt-4" variant="home" />
-      </div>
-    </section>
+    <>
+      <span ref={pinTriggerRef} aria-hidden className={styles.catalogNavigationTrigger} />
+      <section
+        aria-label={t(($) => $['mainNav.marketplace'], { ns: 'common' })}
+        className={cn(
+          'w-full shrink-0 bg-background-default',
+          styles.catalogNavigation,
+          isPinned && styles.catalogNavigationPinned,
+        )}
+      >
+        <div className="w-full">
+          <HomeCatalogTabs
+            className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}
+            isMarketplacePlatform={isMarketplacePlatform}
+          />
+          <PluginTypeSwitch
+            className={cn('mt-4', isPinned && styles.categoriesPinned)}
+            variant="home"
+          />
+        </div>
+      </section>
+    </>
   )
 }
 
