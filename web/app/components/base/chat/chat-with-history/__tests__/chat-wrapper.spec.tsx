@@ -17,6 +17,12 @@ import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
 
+const mockTrackEvent = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
+
 vi.mock('../../chat/hooks', () => ({
   useChat: vi.fn(),
 }))
@@ -745,6 +751,33 @@ describe('ChatWrapper', () => {
     expect(fetchChatList).toHaveBeenCalledWith('conversation-1', 'webApp', 'test-app-id')
   })
 
+  it('should track the start action when a new agent web app sends a message', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
+      ],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isInstalledApp: false,
+      isNewAgent: true,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    expect(handleSend).toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('app_start_action_time', {
+      app_mode: 'agent-v2',
+    })
+  })
+
   it('should not fetch current conversation messages for non-new-agent chat', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChat).mockReturnValue({
@@ -768,6 +801,7 @@ describe('ChatWrapper', () => {
 
     const options = handleSend.mock.calls[0]![2]
     expect(options.onGetConversationMessages).toBeUndefined()
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {

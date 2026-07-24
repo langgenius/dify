@@ -14,6 +14,8 @@ const toastMock = vi.hoisted(() => ({
 
 const routerPushMock = vi.hoisted(() => vi.fn())
 
+const trackCreateAppMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
     isPending: mutationMock.isPending,
@@ -29,6 +31,10 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: routerPushMock,
   }),
+}))
+
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: trackCreateAppMock,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -106,6 +112,10 @@ describe('CreateAgentDialog', () => {
     })
 
     expect(toastMock.success).toHaveBeenCalledWith('agentV2.roster.createSuccess')
+    expect(trackCreateAppMock).toHaveBeenCalledWith({
+      source: 'studio_blank',
+      appMode: 'agent-v2',
+    })
     expect(routerPushMock).toHaveBeenCalledWith('/agents/agent-1/configure')
   })
 

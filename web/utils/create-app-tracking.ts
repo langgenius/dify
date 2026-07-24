@@ -18,7 +18,7 @@ type SearchParamReader = {
   get: (name: string) => string | null
 }
 
-type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent'
+type OriginalCreateAppMode = 'workflow' | 'chatflow' | 'agent' | 'agent-v2'
 
 type CreateAppSource =
   | 'external'
@@ -77,6 +77,8 @@ const formatCreateAppTime = (date: Date) => {
 
 const mapOriginalCreateAppMode = (appMode: string): OriginalCreateAppMode => {
   if (appMode === AppModeEnum.WORKFLOW) return 'workflow'
+
+  if (appMode === 'agent-v2') return 'agent-v2'
 
   if (appMode === AppModeEnum.AGENT_CHAT || appMode === 'agent') return 'agent'
 
