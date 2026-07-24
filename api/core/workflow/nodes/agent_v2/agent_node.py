@@ -177,7 +177,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 workflow_id=workflow_id,
                 workflow_run_id=workflow_run_id,
                 node_id=self._node_id,
-                node_execution_id=self.id,
+                node_execution_id=self.execution_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -219,7 +219,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             workflow_id=workflow_id,
             workflow_run_id=workflow_run_id,
             node_id=self._node_id,
-            node_execution_id=self.id,
+            node_execution_id=self.execution_id,
             workflow_agent_binding_id=bundle.binding.id,
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
@@ -277,7 +277,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         workflow_id=workflow_id,
                         workflow_run_id=workflow_run_id,
                         node_id=self._node_id,
-                        node_execution_id=self.id,
+                        node_execution_id=self.execution_id,
                         variable_pool=self.graph_runtime_state.variable_pool,
                         binding=bundle.binding,
                         agent=bundle.agent,

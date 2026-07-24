@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
@@ -32,7 +33,10 @@ from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
-from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.agent_v2.runtime_request_builder import (
+    WorkflowAgentRuntimeBuildContext,
+    WorkflowAgentRuntimeRequestBuilder,
+)
 from core.workflow.nodes.agent_v2.session_store import (
     StoredWorkflowAgentSession,
     WorkflowAgentSessionScope,
@@ -309,6 +313,7 @@ def _node(
     declared_outputs: list[dict[str, object]] | None = None,
     agent_backend_client: FakeAgentBackendRunClient | None = None,
     binding_resolver: FakeBindingResolver | None = None,
+    runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -346,9 +351,16 @@ def _node(
         node_id="agent-node",
         data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
         graph_init_params=graph_init_params,
-        graph_runtime_state=cast(GraphRuntimeState, SimpleNamespace(variable_pool=FakeVariablePool())),
+        graph_runtime_state=cast(
+            GraphRuntimeState,
+            SimpleNamespace(
+                variable_pool=FakeVariablePool(),
+                graph_execution=SimpleNamespace(node_executions={}),
+            ),
+        ),
         binding_resolver=binding_resolver,
-        runtime_request_builder=WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
+        runtime_request_builder=runtime_request_builder
+        or WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
@@ -429,7 +441,7 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     events = list(node._run())
 
     assert len(events) == 1
-    assert store.existing_scope_lookups[0]["node_execution_id"] == node.id
+    assert store.existing_scope_lookups[0]["node_execution_id"] == node.execution_id
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
 
@@ -447,6 +459,26 @@ def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() ->
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Workflow node participant Binding is unavailable"
     assert result.error_type == "agent_workflow_node_runtime_error"
+
+
+def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder() -> None:
+    store = FakeSessionStore()
+    request_builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
+    node = _node(session_store=store, runtime_request_builder=request_builder)
+    execution_id = node.ensure_execution_id()
+
+    with patch.object(request_builder, "build", wraps=request_builder.build) as build:
+        list(node._run())
+
+    assert str(UUID(execution_id)) == execution_id
+    assert execution_id != node.id
+    scope = store.resolved_scopes[0]
+    build.assert_called_once()
+    context = cast(WorkflowAgentRuntimeBuildContext, build.call_args.args[0])
+    assert scope.node_id == node.id
+    assert scope.node_execution_id == execution_id
+    assert context.node_id == node.id
+    assert context.node_execution_id == execution_id
 
 
 def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
