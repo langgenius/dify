@@ -63,7 +63,9 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     select: (s) => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList()
+  const { data: installedPluginList } = useInstalledPluginList({
+    category: PluginCategoryEnum.datasource,
+  })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
