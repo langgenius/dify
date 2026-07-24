@@ -6,12 +6,18 @@ IMAGE="${SSRF_PROXY_TEST_IMAGE:-ubuntu/squid:latest}"
 CLIENT_IMAGE="${SSRF_PROXY_TEST_CLIENT_IMAGE:-busybox:latest}"
 CONTAINER_NAME="${SSRF_PROXY_TEST_CONTAINER:-dify-ssrf-proxy-test-$$}"
 SANDBOX_CONTAINER_NAME="${CONTAINER_NAME}-sandbox"
+AGENT_PROXY_CONTAINER_NAME="${CONTAINER_NAME}-agent-proxy"
+API_CONTAINER_NAME="${CONTAINER_NAME}-api"
+AGENT_BACKEND_CONTAINER_NAME="${CONTAINER_NAME}-agent-backend"
 NETWORK_NAME="${SSRF_PROXY_TEST_NETWORK:-dify-ssrf-proxy-test-$$}"
 RUN_PUBLIC_CHECK="${SSRF_PROXY_TEST_PUBLIC_CHECK:-true}"
 
 cleanup() {
   docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
   docker rm -f "$SANDBOX_CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$AGENT_PROXY_CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$AGENT_BACKEND_CONTAINER_NAME" >/dev/null 2>&1 || true
   docker network rm "$NETWORK_NAME" >/dev/null 2>&1 || true
 }
 
@@ -106,6 +112,7 @@ docker run \
   --entrypoint sh \
   --network "$NETWORK_NAME" \
   --volume "$ROOT_DIR/docker/ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template:ro" \
+  --volume "$ROOT_DIR/docker/ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template:ro" \
   --volume "$ROOT_DIR/docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
   --env HTTP_PORT=3128 \
   --env COREDUMP_DIR=/var/spool/squid \
@@ -141,3 +148,79 @@ if [[ "$RUN_PUBLIC_CHECK" == "true" ]]; then
 fi
 
 assert_sandbox_bridge_allowed "http://$CONTAINER_NAME:8194/health"
+
+# ---------------------------------------------------------------------------
+# agent_ssrf_proxy tests
+# ---------------------------------------------------------------------------
+
+# Mock api server: serves /files/* (200) and everything else (404).
+docker run \
+  --detach \
+  --name "$API_CONTAINER_NAME" \
+  --network "$NETWORK_NAME" \
+  --network-alias api \
+  "$CLIENT_IMAGE" \
+  sh -c "mkdir -p /www/files && echo file-ok > /www/files/test && echo denied > /www/index.html && httpd -f -p 5001 -h /www" \
+  >/dev/null
+
+# Mock agent_backend server: serves /agent-stub/* (200) and everything else (404).
+docker run \
+  --detach \
+  --name "$AGENT_BACKEND_CONTAINER_NAME" \
+  --network "$NETWORK_NAME" \
+  --network-alias agent_backend \
+  "$CLIENT_IMAGE" \
+  sh -c "mkdir -p /www/agent-stub && echo stub-ok > /www/agent-stub/config && echo denied > /www/index.html && httpd -f -p 5050 -h /www" \
+  >/dev/null
+
+docker run \
+  --detach \
+  --name "$AGENT_PROXY_CONTAINER_NAME" \
+  --entrypoint sh \
+  --network "$NETWORK_NAME" \
+  --volume "$ROOT_DIR/docker/ssrf_proxy/squid-agent.conf.template:/etc/squid/squid.conf.template:ro" \
+  --volume "$ROOT_DIR/docker/ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template:ro" \
+  --volume "$ROOT_DIR/docker/ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh:ro" \
+  --env HTTP_PORT=3128 \
+  --env COREDUMP_DIR=/var/spool/squid \
+  "$IMAGE" \
+  -c "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" \
+  >/dev/null
+
+agent_proxy_url="http://$AGENT_PROXY_CONTAINER_NAME:3128"
+for _ in {1..30}; do
+  agent_probe_status="$(http_code_for "$agent_proxy_url" "http://127.0.0.1:80/")"
+  if [[ -n "$agent_probe_status" ]]; then
+    break
+  fi
+  sleep 1
+done
+
+if [[ -z "${agent_probe_status:-}" ]]; then
+  echo "Agent SSRF proxy did not respond to probes."
+  docker logs "$AGENT_PROXY_CONTAINER_NAME" >&2 || true
+  exit 1
+fi
+
+# Private targets must be blocked.
+assert_private_target_blocked "$agent_proxy_url" "http://127.0.0.1:80/"
+assert_private_target_blocked "$agent_proxy_url" "http://169.254.169.254/latest/meta-data/"
+
+# agent_backend /agent-stub/* must be allowed.
+assert_public_target_allowed "$agent_proxy_url" "http://agent_backend:5050/agent-stub/config"
+
+# agent_backend non-/agent-stub paths must be blocked (403 from Squid).
+assert_private_target_blocked "$agent_proxy_url" "http://agent_backend:5050/index.html"
+
+# api /files/* must be allowed.
+assert_public_target_allowed "$agent_proxy_url" "http://api:5001/files/test"
+
+# api non-/files paths must be blocked.
+assert_private_target_blocked "$agent_proxy_url" "http://api:5001/index.html"
+
+# External internet must be allowed.
+if [[ "$RUN_PUBLIC_CHECK" == "true" ]]; then
+  assert_public_target_allowed "$agent_proxy_url" "http://example.com/"
+fi
+
+echo "All SSRF proxy tests passed."
