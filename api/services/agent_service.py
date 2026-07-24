@@ -9,6 +9,7 @@ import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.tools.entities.tool_entities import EmojiIconDict
 from core.tools.tool_manager import ToolManager
 from libs.login import current_user
 from models import Account
@@ -114,7 +115,9 @@ class AgentService:
                         tool_provider_type = tool_entity.provider_type
                         tool_provider_id = tool_provider_id or tool_entity.provider_id
 
-                if tool_provider_type != "dataset-retrieval":
+                tool_icon: str | EmojiIconDict = ""
+
+                if tool_provider_type and tool_provider_type != "dataset-retrieval":
                     tool_icon = ToolManager.get_tool_icon(
                         tenant_id=app_model.tenant_id,
                         provider_type=tool_provider_type,
