@@ -87,9 +87,7 @@ describe('HTTP key/value table — trailing-row lifecycle (F-HTTP-PARAMS-TABLE)'
 
     // And its editor must NOT have been remounted (stable instance id) — a remount
     // is what wipes the in-progress keystroke in the real Lexical editor.
-    const sinceIdx = getKeyInputs().findIndex(
-      (el) => (el as HTMLInputElement).value === 'since',
-    )
+    const sinceIdx = getKeyInputs().findIndex((el) => (el as HTMLInputElement).value === 'since')
     const valueIdAfter = getValueInputs()[sinceIdx]!.getAttribute('data-instanceid')
     expect(valueIdAfter).toBe(valueIdBefore)
   })
