@@ -1,7 +1,7 @@
 """add workspace skill management
 
 Revision ID: a4f8d2c9e1b0
-Revises: b8c9d0e1f2a3
+Revises: d2825e7b9c10
 Create Date: 2026-07-09 12:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from models.types import StringUUID
 
 # revision identifiers, used by Alembic.
 revision = "a4f8d2c9e1b0"
-down_revision = "b8c9d0e1f2a3"
+down_revision = "d2825e7b9c10"
 branch_labels = None
 depends_on = None
 
@@ -36,7 +36,6 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(length=128), nullable=False),
         sa.Column("icon", sa.String(length=16), nullable=False, server_default="📄"),
         sa.Column("description", sa.String(length=1024), nullable=False, server_default=""),
-        sa.Column("tags", _long_text(), nullable=False, server_default="[]"),
         sa.Column("name_manually_edited", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("visibility", sa.String(length=32), nullable=False, server_default="workspace"),
         _uuid_column("latest_published_version_id", nullable=True),

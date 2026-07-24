@@ -555,6 +555,34 @@ function setMarkdownDisplayName(content: string, value: string) {
   return addMarkdownMetadata(nextContent, 'display-name', value)
 }
 
+function setMarkdownFrontmatterField(content: string, key: 'description' | 'name', value: string) {
+  const fieldLine = `${key}: ${stringifyYamlValue(value)}`
+
+  if (!content.startsWith('---')) {
+    return `---\n${fieldLine}\n---\n\n${content}`
+  }
+
+  const lines = content.split(/\r?\n/)
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
+  if (closingIndex === -1) {
+    return `---\n${fieldLine}\n---\n\n${content}`
+  }
+
+  for (let index = 1; index < closingIndex; index += 1) {
+    const line = lines[index] ?? ''
+    if (line.startsWith(' ') || line.startsWith('\t')) continue
+
+    const separatorIndex = line.indexOf(':')
+    if (separatorIndex <= 0) continue
+
+    if (line.slice(0, separatorIndex).trim() === key) {
+      return [...lines.slice(0, index), fieldLine, ...lines.slice(index + 1)].join('\n')
+    }
+  }
+
+  return [...lines.slice(0, closingIndex), fieldLine, ...lines.slice(closingIndex)].join('\n')
+}
+
 function removeMarkdownMetadata(content: string, key: string) {
   const trimmedKey = key.trim()
   if (!isEditableMetadataKey(trimmedKey) || isProtectedMarkdownMetadataKey(trimmedKey))
@@ -4338,20 +4366,53 @@ function FileEditor({
                   markdownContent.metadata.length > 0 ||
                   !readonly) && (
                   <div className="mb-8 space-y-5">
-                    {markdownContent.name && (
+                    {(markdownContent.name || !readonly) && (
                       <div className="max-w-full space-y-1">
                         <div className="system-sm-regular text-text-tertiary">name</div>
-                        <div className="max-w-[320px] truncate system-sm-regular text-text-secondary">
-                          {markdownContent.name}
-                        </div>
+                        {readonly ? (
+                          <div className="max-w-[320px] truncate system-sm-regular text-text-secondary">
+                            {markdownContent.name || '-'}
+                          </div>
+                        ) : (
+                          <input
+                            value={markdownContent.name}
+                            className="h-8 w-[280px] max-w-full rounded-lg border border-transparent bg-transparent px-0 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                            onChange={(event) => {
+                              updateDraftContent(
+                                setMarkdownFrontmatterField(
+                                  draftContentRef.current,
+                                  'name',
+                                  event.target.value,
+                                ),
+                              )
+                            }}
+                          />
+                        )}
                       </div>
                     )}
-                    {markdownContent.description && (
+                    {(markdownContent.description || !readonly) && (
                       <div className="max-w-full space-y-1">
                         <div className="system-sm-regular text-text-tertiary">description</div>
-                        <div className="max-w-[520px] system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
-                          {markdownContent.description}
-                        </div>
+                        {readonly ? (
+                          <div className="max-w-[520px] system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
+                            {markdownContent.description || '-'}
+                          </div>
+                        ) : (
+                          <textarea
+                            value={markdownContent.description}
+                            rows={2}
+                            className="min-h-8 w-[520px] max-w-full resize-none rounded-lg border border-transparent bg-transparent px-0 py-1 system-sm-regular text-text-secondary outline-hidden placeholder:text-text-quaternary hover:border-divider-regular hover:bg-background-default hover:px-2.5 focus-visible:border-divider-regular focus-visible:bg-background-default focus-visible:px-2.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                            onChange={(event) => {
+                              updateDraftContent(
+                                setMarkdownFrontmatterField(
+                                  draftContentRef.current,
+                                  'description',
+                                  event.target.value,
+                                ),
+                              )
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                     {(markdownContent.displayName || !readonly) && (

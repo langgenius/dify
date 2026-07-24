@@ -16,6 +16,10 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 vi.mock('@/service/common', () => ({
   fetchSetupStatus: vi.fn(),
   fetchInitValidateStatus: vi.fn(),

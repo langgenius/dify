@@ -11,7 +11,7 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<InputProps, 'aria-label' | 'autoFocus'>
+} & Pick<InputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
 
 export function SearchInput({
   ref,
@@ -20,6 +20,8 @@ export function SearchInput({
   value,
   onValueChange,
   autoFocus,
+  disabled,
+  'aria-describedby': ariaDescribedBy,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
   const { t } = useTranslation()
@@ -48,6 +50,7 @@ export function SearchInput({
         ref={inputRef}
         type="search"
         name="query"
+        aria-describedby={ariaDescribedBy}
         aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
         className={cn(
           'ps-7',
@@ -56,6 +59,7 @@ export function SearchInput({
         )}
         placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
         value={inputValue}
+        disabled={disabled}
         onValueChange={(nextValue) => {
           if (isComposingRef.current) {
             setCompositionValue(nextValue)
@@ -90,7 +94,7 @@ export function SearchInput({
         autoFocus={autoFocus}
         enterKeyHint="search"
       />
-      {!!inputValue && (
+      {!!inputValue && !disabled && (
         <button
           type="button"
           aria-label={t(($) => $['operation.clear'], { ns: 'common' })}

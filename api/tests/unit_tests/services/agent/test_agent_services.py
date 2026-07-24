@@ -135,6 +135,38 @@ def test_get_published_agent_soul_for_app_returns_none_without_backing_agent():
     assert result is None
 
 
+def test_peek_authz_app_id_uses_the_parent_app_not_the_hidden_backing_app():
+    """A workflow-only Agent is authorized against its parent workflow App."""
+    agent = SimpleNamespace(id="agent-1", backing_app_id="backing-app-1", app_id="parent-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "parent-app-1"
+
+
+def test_peek_authz_app_id_uses_the_roster_agent_app():
+    agent = SimpleNamespace(id="agent-1", backing_app_id=None, app_id="roster-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "roster-app-1"
+
+
+def test_peek_authz_app_id_returns_none_without_creating_a_backing_app():
+    """Authorization checks must not materialize the hidden backing App."""
+    session = FakeSession(scalar=[None])
+    service = AgentRosterService(session)
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result is None
+    assert session.added == []
+    assert session.commits == 0
+    assert session.flushes == 0
+
+
 def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
     session = FakeSession()
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
@@ -3464,8 +3496,61 @@ class TestAgentAppBackingAgent:
         assert session.deleted == []
         assert session.commits == 1
 
-    def test_refresh_agent_app_debug_conversation_enqueues_cleanup_for_old_runtime_sessions(
+    def test_refresh_agent_app_debug_conversation_rotates_preview_mapping_each_time(
         self, monkeypatch: pytest.MonkeyPatch
+    ):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        session = FakeSession(scalar=[agent, None])
+        service = AgentRosterService(session)
+        cleanup = MagicMock()
+        monkeypatch.setattr(service, "_cleanup_debug_conversation_runtime_sessions", cleanup)
+
+        first_conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            draft_type=AgentConfigDraftType.DRAFT,
+        )
+        mapping = next(value for value in session.added if isinstance(value, AgentDebugConversation))
+        session._scalar.extend([agent, mapping])
+        second_conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            draft_type=AgentConfigDraftType.DRAFT,
+        )
+
+        assert first_conversation_id != second_conversation_id
+        assert mapping.draft_type == AgentConfigDraftType.DRAFT
+        assert mapping.conversation_id == second_conversation_id
+        assert len([value for value in session.added if isinstance(value, Conversation)]) == 2
+        cleanup.assert_called_once_with(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            draft_type=AgentConfigDraftType.DRAFT,
+            app_id="app-1",
+            conversation_id=first_conversation_id,
+        )
+
+    @pytest.mark.parametrize(
+        "draft_type",
+        [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD],
+    )
+    def test_refresh_agent_app_debug_conversation_enqueues_cleanup_for_old_runtime_sessions(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        draft_type: AgentConfigDraftType,
     ):
         agent = Agent(
             id="agent-1",
@@ -3493,9 +3578,21 @@ class TestAgentAppBackingAgent:
         )
         session = FakeSession(scalar=[agent, mapping])
         service = AgentRosterService(session)
+        events: list[str] = []
+        original_commit = session.commit
+
+        def record_commit() -> None:
+            events.append("commit")
+            original_commit()
+
+        def list_active_sessions(**kwargs: object) -> list[object]:
+            events.append("cleanup")
+            return [stored_session]
+
         cleanup_delay = MagicMock()
         cleanup_store = MagicMock()
-        cleanup_store.list_active_sessions_for_conversation.return_value = [stored_session]
+        cleanup_store.list_active_sessions_for_conversation.side_effect = list_active_sessions
+        monkeypatch.setattr(session, "commit", record_commit)
         monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", lambda: cleanup_store)
         monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
 
@@ -3503,6 +3600,7 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             agent_id="agent-1",
             account_id="account-1",
+            draft_type=draft_type,
         )
 
         cleanup_store.list_active_sessions_for_conversation.assert_called_once_with(
@@ -3514,10 +3612,10 @@ class TestAgentAppBackingAgent:
         payload = cleanup_delay.call_args.args[0]
         assert payload["metadata"]["conversation_id"] == "old-conversation"
         assert payload["metadata"]["agent_id"] == "agent-9"
-        assert payload["metadata"]["draft_type"] == "debug_build"
+        assert payload["metadata"]["draft_type"] == draft_type.value
         assert (
             payload["idempotency_key"]
-            == "tenant-1:agent-1:account-1:debug_build:old-conversation:debug-session-cleanup:"
+            == f"tenant-1:agent-1:account-1:{draft_type.value}:old-conversation:debug-session-cleanup:"
             "agent-9:snap-9:run-old"
         )
         cleanup_store.mark_cleaned.assert_called_once_with(
@@ -3526,6 +3624,41 @@ class TestAgentAppBackingAgent:
         )
         assert mapping.app_id == "app-1"
         assert mapping.conversation_id == conversation_id
+        assert events == ["commit", "cleanup"]
+
+    def test_refresh_agent_app_debug_conversation_does_not_cleanup_when_commit_fails(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+        runtime_store_factory = MagicMock()
+        cleanup_delay = MagicMock()
+        monkeypatch.setattr(session, "commit", MagicMock(side_effect=RuntimeError("database unavailable")))
+        monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", runtime_store_factory)
+        monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            service.refresh_agent_app_debug_conversation_id(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                account_id="account-1",
+                draft_type=AgentConfigDraftType.DRAFT,
+            )
+
+        runtime_store_factory.assert_not_called()
+        cleanup_delay.assert_not_called()
 
     def test_refresh_agent_app_debug_conversation_marks_old_runtime_sessions_clean_when_enqueue_fails(
         self, monkeypatch: pytest.MonkeyPatch

@@ -459,6 +459,76 @@ def test_list_agent_bindings_returns_draft_skill_card_data() -> None:
     assert bindings["data"][0]["latest_published_at"] is None
 
 
+def test_replace_agent_bindings_rejects_skill_name_conflict_with_agent_config_skill() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    with session_factory.create_session() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(
+                config_skills=[
+                    AgentConfigSkillRefConfig(
+                        name="finance-sop",
+                        description="Existing uploaded config skill.",
+                        file_id="tool-file-1",
+                    )
+                ]
+            ),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        session.commit()
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    assert exc_info.value.code == "agent_skill_name_conflict"
+    assert exc_info.value.details == {"names": ["finance-sop"]}
+
+
+def test_replace_agent_bindings_allows_existing_bound_workspace_skill_name_in_agent_config() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+    with session_factory.create_session() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(
+                config_skills=[
+                    AgentConfigSkillRefConfig(
+                        name="finance-sop",
+                        description="Synced workspace skill.",
+                        file_id="tool-file-1",
+                    )
+                ]
+            ),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot.id
+        session.commit()
+
+    result = service.replace_agent_bindings(
+        tenant_id=TENANT,
+        user_id=USER,
+        agent_id=AGENT,
+        skill_ids=[created["id"]],
+    )
+
+    assert result["skill_ids"] == [created["id"]]
+
+
 def test_list_skill_references_resolves_agent_apps_and_inline_workflow_nodes() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(
@@ -630,6 +700,24 @@ def test_publish_updates_referenced_agent_config_skill_archives() -> None:
     )
     inline_agent_id = "77777777-7777-7777-7777-777777777777"
     with session_factory.create_session() as session:
+        session.add(
+            Agent(
+                id=inline_agent_id,
+                tenant_id=TENANT,
+                name="Agent 内嵌节点 C",
+                scope=AgentScope.WORKFLOW_ONLY,
+                source=AgentSource.WORKFLOW,
+                app_id="66666666-6666-6666-6666-666666666666",
+                workflow_id="88888888-8888-8888-8888-888888888888",
+                workflow_node_id="node-c",
+            )
+        )
+        session.commit()
+
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=inline_agent_id, skill_ids=[created["id"]])
+
+    with session_factory.create_session() as session:
         agent_snapshot = AgentConfigSnapshot(
             tenant_id=TENANT,
             agent_id=AGENT,
@@ -675,18 +763,6 @@ def test_publish_updates_referenced_agent_config_skill_archives() -> None:
                 updated_by=USER,
             )
         )
-        session.add(
-            Agent(
-                id=inline_agent_id,
-                tenant_id=TENANT,
-                name="Agent 内嵌节点 C",
-                scope=AgentScope.WORKFLOW_ONLY,
-                source=AgentSource.WORKFLOW,
-                app_id="66666666-6666-6666-6666-666666666666",
-                workflow_id="88888888-8888-8888-8888-888888888888",
-                workflow_node_id="node-c",
-            )
-        )
         inline_snapshot = AgentConfigSnapshot(
             tenant_id=TENANT,
             agent_id=inline_agent_id,
@@ -724,8 +800,6 @@ def test_publish_updates_referenced_agent_config_skill_archives() -> None:
         )
         session.commit()
 
-    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
-    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=inline_agent_id, skill_ids=[created["id"]])
     service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
 
     with session_factory.create_session() as session:
@@ -1032,77 +1106,90 @@ def test_publish_syncs_frontmatter_display_name_from_existing_draft() -> None:
     assert detail["description"] == "Handle refund approvals."
 
 
-def test_replace_draft_tree_rejects_missing_frontmatter_name() -> None:
+def test_replace_draft_tree_allows_missing_frontmatter_name_until_publish() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.replace_draft_tree(
-            tenant_id=TENANT,
-            user_id=USER,
-            skill_id=created["id"],
-            payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": "# Missing frontmatter"}]),
-        )
+    draft = service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": "# Missing frontmatter"}]),
+    )
 
+    assert draft["name"] == "finance-sop"
+    assert next(item for item in draft["files"] if item["path"] == "SKILL.md")["content"] == "# Missing frontmatter"
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     assert exc_info.value.code == "missing_skill_name"
     assert exc_info.value.details == {"path": "SKILL.md", "field": "name", "line": 2}
 
 
-def test_replace_draft_tree_rejects_missing_frontmatter_description() -> None:
+def test_replace_draft_tree_allows_missing_frontmatter_description_until_publish() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.replace_draft_tree(
-            tenant_id=TENANT,
-            user_id=USER,
-            skill_id=created["id"],
-            payload=SkillDraftTreePayload(
-                files=[{"path": "SKILL.md", "content": "---\nname: finance-sop\n---\n# Missing description"}]
-            ),
-        )
+    draft = service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[{"path": "SKILL.md", "content": "---\nname: finance-sop\n---\n# Missing description"}]
+        ),
+    )
 
+    assert draft["description"] == "Describe what this Skill does and when an Agent should use it."
+    assert "description:" not in next(item for item in draft["files"] if item["path"] == "SKILL.md")["content"]
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     assert exc_info.value.code == "missing_skill_description"
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 2}
 
 
-def test_replace_draft_tree_rejects_blank_frontmatter_description() -> None:
+def test_replace_draft_tree_allows_blank_frontmatter_description_until_publish() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.replace_draft_tree(
-            tenant_id=TENANT,
-            user_id=USER,
-            skill_id=created["id"],
-            payload=SkillDraftTreePayload(
-                files=[{"path": "SKILL.md", "content": "---\nname: finance-sop\ndescription: ''\n---\n# Blank"}]
-            ),
-        )
+    draft = service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[{"path": "SKILL.md", "content": "---\nname: finance-sop\ndescription: ''\n---\n# Blank"}]
+        ),
+    )
 
+    assert draft["description"] == "Describe what this Skill does and when an Agent should use it."
+    assert "description: ''" in next(item for item in draft["files"] if item["path"] == "SKILL.md")["content"]
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     assert exc_info.value.code == "missing_skill_description"
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 3}
 
 
-def test_replace_draft_tree_reports_actual_frontmatter_name_line() -> None:
+def test_publish_reports_actual_frontmatter_name_line() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
 
-    with pytest.raises(SkillManagementServiceError) as exc_info:
-        service.replace_draft_tree(
-            tenant_id=TENANT,
-            user_id=USER,
-            skill_id=created["id"],
-            payload=SkillDraftTreePayload(
-                files=[
-                    {
-                        "path": "SKILL.md",
-                        "content": "---\ndescription: x\nmetadata:\nname: bad_name\n---\n# Body",
-                    }
-                ]
-            ),
-        )
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {
+                    "path": "SKILL.md",
+                    "content": "---\ndescription: x\nmetadata:\nname: bad_name\n---\n# Body",
+                }
+            ]
+        ),
+    )
 
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     assert exc_info.value.code == "invalid_skill_name"
     assert exc_info.value.details == {"path": "SKILL.md", "field": "name", "line": 4}
 
@@ -1311,6 +1398,7 @@ def test_delete_skill_requires_confirmation_when_referenced() -> None:
 def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
     with session_factory.create_session() as session:
         agent_snapshot = AgentConfigSnapshot(
             tenant_id=TENANT,
@@ -1365,8 +1453,6 @@ def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
             )
         )
         session.commit()
-
-    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
 
     deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"], confirmation_name="finance-sop")
 
