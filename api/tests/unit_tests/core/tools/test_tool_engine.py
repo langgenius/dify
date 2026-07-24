@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool import Tool
@@ -26,6 +29,45 @@ from core.tools.errors import (
     ToolParameterValidationError,
 )
 from core.tools.tool_engine import ToolEngine
+from models.model import AppMode, Message, MessageFile
+
+
+class _DatabaseBinding:
+    engine: Engine
+
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
+
+
+def _message() -> Message:
+    message = Message(
+        app_id=str(uuid4()),
+        model_provider="provider",
+        model_id="model",
+        override_model_configs=None,
+        conversation_id=str(uuid4()),
+        inputs={},
+        query="query",
+        message="",
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer="",
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        parent_message_id=None,
+        provider_response_latency=0,
+        total_price=0,
+        currency="USD",
+        invoke_from="debugger",
+        from_source="console",
+        from_end_user_id=None,
+        from_account_id=str(uuid4()),
+        app_mode=AppMode.CHAT,
+    )
+    message.id = str(uuid4())
+    return message
 
 
 class _DummyTool(Tool):
@@ -120,52 +162,41 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
-def test_create_message_files_and_invoke_generator():
+@pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
+def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session):
     binaries = [
         ToolInvokeMessageBinary(mimetype="image/png", url="https://example.com/abc.png"),
         ToolInvokeMessageBinary(mimetype="audio/wav", url="https://example.com/def.wav"),
     ]
-    created = []
-
-    def _message_file_factory(**kwargs):
-        obj = SimpleNamespace(id=f"mf-{len(created) + 1}", **kwargs)
-        created.append(obj)
-        return obj
-
-    file_session = MagicMock()
-    session_factory = MagicMock()
-    session_factory.begin.return_value.__enter__.return_value = file_session
-    with (
-        patch("core.tools.tool_engine.MessageFile", side_effect=_message_file_factory),
-        patch("core.tools.tool_engine.db") as mock_db,
-        patch("core.tools.tool_engine.sessionmaker", return_value=session_factory) as mock_sessionmaker,
-    ):
+    agent_message = _message()
+    with patch("core.tools.tool_engine.db", _DatabaseBinding(sqlite_engine)):
         ids = ToolEngine._create_message_files(
             tool_messages=binaries,
-            agent_message=SimpleNamespace(id="msg-1"),
+            agent_message=agent_message,
             invoke_from=InvokeFrom.DEBUGGER,
-            user_id="user-1",
+            user_id=str(uuid4()),
         )
 
-    assert ids == ["mf-1", "mf-2"]
-    mock_sessionmaker.assert_called_once_with(bind=mock_db.engine, expire_on_commit=False)
-    assert file_session.add.call_count == 2
-    mock_db.session.close.assert_not_called()
+    message_files = list(sqlite_session.scalars(select(MessageFile).order_by(MessageFile.created_at)).all())
+    assert ids == [message_file.id for message_file in message_files]
+    assert len(message_files) == 2
+    assert {message_file.message_id for message_file in message_files} == {agent_message.id}
 
     tool = _build_tool()
-    invoked = list(ToolEngine._invoke(MagicMock(), tool, {"a": 1}, user_id="u"))
+    invoked = list(ToolEngine._invoke(sqlite_session, tool, {"a": 1}, user_id="u"))
     assert invoked[0].type == ToolInvokeMessage.MessageType.TEXT
     assert isinstance(invoked[-1], ToolInvokeMeta)
     assert invoked[-1].error is None
 
 
-def test_generic_invoke_success_and_error_paths():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
     tool = _build_tool()
     callback = Mock()
     callback.on_tool_execution.side_effect = lambda **kwargs: kwargs["tool_outputs"]
     response = list(
         ToolEngine.generic_invoke(
-            session=MagicMock(),
+            session=sqlite_session,
             tool=tool,
             tool_parameters={"x": 1},
             user_id="u1",
@@ -186,7 +217,7 @@ def test_generic_invoke_success_and_error_paths():
     with pytest.raises(RuntimeError, match="boom"):
         list(
             ToolEngine.generic_invoke(
-                session=MagicMock(),
+                session=sqlite_session,
                 tool=tool,
                 tool_parameters={"x": 1},
                 user_id="u1",
@@ -197,10 +228,11 @@ def test_generic_invoke_success_and_error_paths():
     error_callback.on_tool_error.assert_called_once()
 
 
-def test_agent_invoke_success():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_success(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()
-    message = SimpleNamespace(id="m1", conversation_id="c1")
+    message = _message()
     meta = ToolInvokeMeta.empty()
 
     with patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])):
@@ -211,7 +243,7 @@ def test_agent_invoke_success():
             with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
                 with patch.object(ToolEngine, "_create_message_files", return_value=[]):
                     result_text, message_files, result_meta = ToolEngine.agent_invoke(
-                        session=MagicMock(),
+                        session=sqlite_session,
                         tool=tool,
                         tool_parameters="hello",
                         user_id="u1",
@@ -228,14 +260,15 @@ def test_agent_invoke_success():
     callback.on_tool_end.assert_called_once()
 
 
-def test_agent_invoke_param_validation_error():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_param_validation_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()
-    message = SimpleNamespace(id="m1", conversation_id="c1")
+    message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
         error_text, files, error_meta = ToolEngine.agent_invoke(
-            session=MagicMock(),
+            session=sqlite_session,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",
@@ -250,15 +283,16 @@ def test_agent_invoke_param_validation_error():
     assert error_meta.error
 
 
-def test_agent_invoke_engine_meta_error():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_engine_meta_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()
-    message = SimpleNamespace(id="m1", conversation_id="c1")
+    message = _message()
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
 
     with patch.object(ToolEngine, "_invoke", side_effect=engine_error):
         error_text, files, error_meta = ToolEngine.agent_invoke(
-            session=MagicMock(),
+            session=sqlite_session,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",
@@ -295,14 +329,15 @@ def test_convert_tool_response_excludes_variable_messages():
     assert "variable_name" not in result
 
 
-def test_agent_invoke_tool_invoke_error():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
     tool = _build_tool(with_llm_parameter=True)
     callback = Mock()
-    message = SimpleNamespace(id="m1", conversation_id="c1")
+    message = _message()
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
         error_text, files, _ = ToolEngine.agent_invoke(
-            session=MagicMock(),
+            session=sqlite_session,
             tool=tool,
             tool_parameters={"a": 1},
             user_id="u1",
