@@ -34,11 +34,13 @@ describe('useInspectVarsCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseConversationVarValues.mockReturnValue({
-      data: [createInspectVar({
-        id: 'conversation-var',
-        name: 'history',
-        selector: ['conversation', 'history'],
-      })],
+      data: [
+        createInspectVar({
+          id: 'conversation-var',
+          name: 'history',
+          selector: ['conversation', 'history'],
+        }),
+      ],
     })
     mockUseSysVarValues.mockReturnValue({
       data: [
@@ -83,20 +85,24 @@ describe('useInspectVarsCrud', () => {
 
     const { result } = renderWorkflowHook(() => useInspectVarsCrud(), {
       initialStoreState: {
-        nodesWithInspectVars: [{
-          nodeId: 'start-node',
-          nodePayload: {
-            type: BlockEnum.Start,
+        nodesWithInspectVars: [
+          {
+            nodeId: 'start-node',
+            nodePayload: {
+              type: BlockEnum.Start,
+              title: 'Start',
+              desc: '',
+            } as never,
+            nodeType: BlockEnum.Start,
             title: 'Start',
-            desc: '',
-          } as never,
-          nodeType: BlockEnum.Start,
-          title: 'Start',
-          vars: [createInspectVar({
-            id: 'start-answer',
-            selector: ['start-node', 'answer'],
-          })],
-        }],
+            vars: [
+              createInspectVar({
+                id: 'start-answer',
+                selector: ['start-node', 'answer'],
+              }),
+            ],
+          },
+        ],
       },
       hooksStoreProps: {
         configsMap: {
@@ -122,8 +128,8 @@ describe('useInspectVarsCrud', () => {
     })
 
     expect(result.current.conversationVars).toHaveLength(1)
-    expect(result.current.systemVars.map(item => item.name)).toEqual(['time'])
-    expect(result.current.nodesWithInspectVars[0]?.vars.map(item => item.name)).toEqual([
+    expect(result.current.systemVars.map((item) => item.name)).toEqual(['time'])
+    expect(result.current.nodesWithInspectVars[0]?.vars.map((item) => item.name)).toEqual([
       'answer',
       'query',
       'files',

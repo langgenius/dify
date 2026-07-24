@@ -12,10 +12,7 @@ type CurrentBlockComponentProps = {
   generatorType: GeneratorType
 }
 
-const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
-  nodeKey,
-  generatorType,
-}) => {
+const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({ nodeKey, generatorType }) => {
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CURRENT_BLOCK_COMMAND)
 
@@ -29,7 +26,9 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
     <div
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] items-center rounded-[5px] border pr-[3px] pl-0.5 text-util-colors-violet-violet-600 select-none hover:border-state-accent-solid hover:bg-state-accent-hover',
-        isSelected ? 'border-state-accent-solid bg-state-accent-hover' : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
+        isSelected
+          ? 'border-state-accent-solid bg-state-accent-hover'
+          : 'border-components-panel-border-subtle bg-components-badge-white-to-dark',
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -37,7 +36,9 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
       ref={ref}
     >
       <Icon className="mr-0.5 h-[14px] w-[14px]" />
-      <div className="text-xs font-medium">{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
+      <div className="text-xs font-medium">
+        {generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}
+      </div>
     </div>
   )
 }

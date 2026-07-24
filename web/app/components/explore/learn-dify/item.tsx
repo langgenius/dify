@@ -4,10 +4,11 @@ import type { KeyboardEvent } from 'react'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type LearnDifyItemProps = {
   canCreate: boolean
@@ -16,14 +17,13 @@ type LearnDifyItemProps = {
   onTry?: (params: TryAppSelection) => void
 }
 
-const LearnDifyItem = ({
-  canCreate,
-  item,
-  onCreate,
-  onTry,
-}: LearnDifyItemProps) => {
+const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps) => {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const appBasicInfo = item.app
-  const canViewApp = IS_CLOUD_EDITION
+  const canViewApp = deploymentEdition === 'CLOUD'
   const canShowCreate = canCreate && !!onCreate
   const isClickable = canViewApp || canShowCreate
 
@@ -38,17 +38,15 @@ const LearnDifyItem = ({
     onTry?.({ appId: item.app_id, app: item })
   }
   const handleCardClick = () => {
-    if (IS_CLOUD_EDITION) {
+    if (canViewApp) {
       handleTryApp()
       return
     }
 
-    if (canShowCreate)
-      onCreate?.(item)
+    if (canShowCreate) onCreate?.(item)
   }
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ')
-      return
+    if (event.key !== 'Enter' && event.key !== ' ') return
 
     event.preventDefault()
     handleCardClick()

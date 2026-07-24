@@ -24,19 +24,19 @@ const Header = () => {
 
   return (
     <div className="flex w-full items-center justify-between p-6">
-      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
-        ? (
-            <img
-              src={systemFeatures.branding.login_page_logo}
-              className="block h-7 w-auto object-contain"
-              alt="logo"
-            />
-          )
-        : <DifyLogo size="large" />}
+      {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
+        <img
+          src={systemFeatures.branding.login_page_logo}
+          className="block h-7 w-auto object-contain"
+          alt="logo"
+        />
+      ) : (
+        <DifyLogo size="large" />
+      )}
       <div className="flex items-center gap-1">
         <LocaleMenu
           value={locale}
-          items={languages.filter(item => item.supported)}
+          items={languages.filter((item) => item.supported)}
           onChange={(value) => {
             setLocaleOnClient(value, false)
           }}

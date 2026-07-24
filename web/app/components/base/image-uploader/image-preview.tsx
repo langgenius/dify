@@ -20,19 +20,12 @@ type ImagePreviewProps = {
 const isBase64 = (str: string): boolean => {
   try {
     return btoa(atob(str)) === str
-  }
-  catch {
+  } catch {
     return false
   }
 }
 
-const ImagePreview: FC<ImagePreviewProps> = ({
-  url,
-  title,
-  onCancel,
-  onPrev,
-  onNext,
-}) => {
+const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onNext }) => {
   const { t } = useTranslation()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -45,13 +38,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http') || url.startsWith('https')) {
       window.open(url, '_blank')
-    }
-    else if (url.startsWith('data:image')) {
+    } else if (url.startsWith('data:image')) {
       // Base64 image
       const win = window.open()
       win?.document.write(`<img src="${url}" alt="${title}" />`)
-    }
-    else {
+    } else {
       toast.error(`Unable to open image: ${url}`)
     }
   }
@@ -66,14 +57,13 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   }
 
   const zoomIn = () => {
-    setScale(prevScale => Math.min(prevScale * 1.2, 15))
+    setScale((prevScale) => Math.min(prevScale * 1.2, 15))
   }
 
   const zoomOut = () => {
     setScale((prevScale) => {
       const newScale = Math.max(prevScale / 1.2, 0.5)
-      if (newScale === 1)
-        setPosition({ x: 0, y: 0 }) // Reset position when fully zoomed out
+      if (newScale === 1) setPosition({ x: 0, y: 0 }) // Reset position when fully zoomed out
 
       return newScale
     })
@@ -86,8 +76,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
       const slice = byteCharacters.slice(offset, offset + 512)
       const byteNumbers = Array.from({ length: slice.length })
-      for (let i = 0; i < slice.length; i++)
-        byteNumbers[i] = slice.charCodeAt(i)
+      for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i)
 
       const byteArray = new Uint8Array(byteNumbers as any)
       byteArrays.push(byteArray)
@@ -109,53 +98,56 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         ])
         setIsCopied(true)
 
-        toast.success(t($ => $['operation.imageCopied'], { ns: 'common' }))
-      }
-      catch (err) {
+        toast.success(t(($) => $['operation.imageCopied'], { ns: 'common' }))
+      } catch (err) {
         console.error('Failed to copy image:', err)
 
         downloadUrl({ url, fileName: `${title}.png` })
 
-        toast.info(t($ => $['operation.imageDownloaded'], { ns: 'common' }))
+        toast.info(t(($) => $['operation.imageDownloaded'], { ns: 'common' }))
       }
     }
     shareImage()
   }, [t, title, url])
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY < 0)
-      zoomIn()
-    else
-      zoomOut()
+    if (e.deltaY < 0) zoomIn()
+    else zoomOut()
   }, [])
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (scale > 1) {
-      setIsDragging(true)
-      dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y }
-    }
-  }, [scale, position])
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging && scale > 1) {
-      const deltaX = e.clientX - dragStartRef.current.x
-      const deltaY = e.clientY - dragStartRef.current.y
-
-      // Calculate boundaries
-      const imgRect = imgRef.current?.getBoundingClientRect()
-      const containerRect = imgRef.current?.parentElement?.getBoundingClientRect()
-
-      if (imgRect && containerRect) {
-        const maxX = (imgRect.width * scale - containerRect.width) / 2
-        const maxY = (imgRect.height * scale - containerRect.height) / 2
-
-        setPosition({
-          x: Math.max(-maxX, Math.min(maxX, deltaX)),
-          y: Math.max(-maxY, Math.min(maxY, deltaY)),
-        })
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (scale > 1) {
+        setIsDragging(true)
+        dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y }
       }
-    }
-  }, [isDragging, scale])
+    },
+    [scale, position],
+  )
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isDragging && scale > 1) {
+        const deltaX = e.clientX - dragStartRef.current.x
+        const deltaY = e.clientY - dragStartRef.current.y
+
+        // Calculate boundaries
+        const imgRect = imgRef.current?.getBoundingClientRect()
+        const containerRect = imgRef.current?.parentElement?.getBoundingClientRect()
+
+        if (imgRect && containerRect) {
+          const maxX = (imgRect.width * scale - containerRect.width) / 2
+          const maxY = (imgRect.height * scale - containerRect.height) / 2
+
+          setPosition({
+            x: Math.max(-maxX, Math.min(maxX, deltaX)),
+            y: Math.max(-maxY, Math.min(maxY, deltaY)),
+          })
+        }
+      }
+    },
+    [isDragging, scale],
+  )
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
@@ -173,19 +165,18 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   useHotkey('ArrowLeft', onPrev || noop)
   useHotkey('ArrowRight', onNext || noop)
 
-  const copyImageLabel = t($ => $['operation.copyImage'], { ns: 'common' })
-  const zoomOutLabel = t($ => $['operation.zoomOut'], { ns: 'common' })
-  const zoomInLabel = t($ => $['operation.zoomIn'], { ns: 'common' })
-  const downloadLabel = t($ => $['operation.download'], { ns: 'common' })
-  const openInNewTabLabel = t($ => $['operation.openInNewTab'], { ns: 'common' })
-  const cancelLabel = t($ => $['operation.cancel'], { ns: 'common' })
+  const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
+  const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
+  const zoomInLabel = t(($) => $['operation.zoomIn'], { ns: 'common' })
+  const downloadLabel = t(($) => $['operation.download'], { ns: 'common' })
+  const openInNewTabLabel = t(($) => $['operation.openInNewTab'], { ns: 'common' })
+  const cancelLabel = t(($) => $['operation.cancel'], { ns: 'common' })
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal
     >
@@ -198,7 +189,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           data-testid="image-preview-container"
           tabIndex={-1}
           className="flex size-full items-center justify-center"
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -219,26 +210,26 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         </div>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={copyImageLabel}
                 className="absolute top-6 right-48 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={imageCopy}
               >
-                {isCopied
-                  ? <span className="i-ri-file-copy-line size-4 text-green-500" aria-hidden="true" />
-                  : <span className="i-ri-file-copy-line size-4 text-gray-500" aria-hidden="true" />}
+                {isCopied ? (
+                  <span className="i-ri-file-copy-line size-4 text-green-500" aria-hidden="true" />
+                ) : (
+                  <span className="i-ri-file-copy-line size-4 text-gray-500" aria-hidden="true" />
+                )}
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {copyImageLabel}
-          </TooltipContent>
+          <TooltipContent>{copyImageLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={zoomOutLabel}
@@ -247,15 +238,13 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               >
                 <span className="i-ri-zoom-out-line size-4 text-gray-500" aria-hidden="true" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {zoomOutLabel}
-          </TooltipContent>
+          <TooltipContent>{zoomOutLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={zoomInLabel}
@@ -264,32 +253,31 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               >
                 <span className="i-ri-zoom-in-line size-4 text-gray-500" aria-hidden="true" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {zoomInLabel}
-          </TooltipContent>
+          <TooltipContent>{zoomInLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={downloadLabel}
                 className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
-                <span className="i-ri-download-cloud-2-line size-4 text-gray-500" aria-hidden="true" />
+                <span
+                  className="i-ri-download-cloud-2-line size-4 text-gray-500"
+                  aria-hidden="true"
+                />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {downloadLabel}
-          </TooltipContent>
+          <TooltipContent>{downloadLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={openInNewTabLabel}
@@ -298,15 +286,13 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               >
                 <span className="i-ri-add-box-line size-4 text-gray-500" aria-hidden="true" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {openInNewTabLabel}
-          </TooltipContent>
+          <TooltipContent>{openInNewTabLabel}</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
-            render={(
+            render={
               <button
                 type="button"
                 aria-label={cancelLabel}
@@ -315,11 +301,9 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               >
                 <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />
               </button>
-            )}
+            }
           />
-          <TooltipContent>
-            {cancelLabel}
-          </TooltipContent>
+          <TooltipContent>{cancelLabel}</TooltipContent>
         </Tooltip>
       </DialogContent>
     </Dialog>

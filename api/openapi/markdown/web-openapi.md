@@ -1058,6 +1058,14 @@ Button styles for user actions.
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
 #### EmailCodeLoginSendPayload
 
 | Name | Type | Description | Required |
@@ -1284,31 +1292,17 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
-#### LicenseLimitationModel
-
-- enabled: whether this limit is enforced
-- size: current usage count
-- limit: maximum allowed count; 0 means unlimited
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | Yes |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
-| size | integer | Number of resources already consumed | Yes |
-
-#### LicenseModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| expired_at | string |  | Yes |
-| status | [LicenseStatus](#licensestatus) |  | Yes |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-
 #### LicenseStatus
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
+
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
 
 #### LoginPayload
 
@@ -1566,6 +1560,7 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
@@ -1576,11 +1571,13 @@ Default configuration for form inputs.
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
+| knowledge_fs_enabled | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
@@ -1641,6 +1638,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
@@ -1730,7 +1728,7 @@ in form definiton, or a variable while the workflow is running.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | string |  | Yes |
+| icon_url | string |  | No |
 | input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |

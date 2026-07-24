@@ -2,7 +2,12 @@ import type { InputVar, Node, ValueSelector, Variable } from '../../types'
 import type { CaseItem, Condition, LoopVariable } from './types'
 import { ValueType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
+import {
+  getNodeInfoById,
+  getNodeUsedVarPassToServerKey,
+  getNodeUsedVars,
+  isSystemVar,
+} from '../_base/components/variable/utils'
 
 export function getVarSelectorsFromCase(caseItem: CaseItem): ValueSelector[] {
   const vars: ValueSelector[] = []
@@ -14,8 +19,7 @@ export function getVarSelectorsFromCase(caseItem: CaseItem): ValueSelector[] {
 
 export function getVarSelectorsFromCondition(condition: Condition): ValueSelector[] {
   const vars: ValueSelector[] = []
-  if (condition.variable_selector)
-    vars.push(condition.variable_selector)
+  if (condition.variable_selector) vars.push(condition.variable_selector)
 
   if (condition.sub_variable_condition?.conditions?.length)
     vars.push(...getVarSelectorsFromCase(condition.sub_variable_condition))
@@ -36,8 +40,7 @@ export const dedupeInputVars = (inputVars: InputVar[]) => {
   const uniqueInputVars: InputVar[] = []
 
   inputVars.forEach((input) => {
-    if (!input || seen[input.variable])
-      return
+    if (!input || seen[input.variable]) return
 
     seen[input.variable] = true
     uniqueInputVars.push(input)
@@ -64,12 +67,10 @@ export const buildUsedOutVars = ({
   const allVarObject: Record<string, { inSingleRunPassedKey: string }> = {}
 
   loopChildrenNodes.forEach((node) => {
-    const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
+    const nodeVars = getNodeUsedVars(node).filter((item) => item && item.length > 0)
     nodeVars.forEach((varSelector) => {
-      if (varSelector[0] === currentNodeId)
-        return
-      if (isNodeInLoop(varSelector[0]!))
-        return
+      if (varSelector[0] === currentNodeId) return
+      if (isNodeInLoop(varSelector[0]!)) return
 
       const varSelectorStr = varSelector.join('.')
       if (!seenVarSelectors[varSelectorStr]) {
@@ -78,8 +79,7 @@ export const buildUsedOutVars = ({
       }
 
       let passToServerKeys = getNodeUsedVarPassToServerKey(node, varSelector)
-      if (typeof passToServerKeys === 'string')
-        passToServerKeys = [passToServerKeys]
+      if (typeof passToServerKeys === 'string') passToServerKeys = [passToServerKeys]
 
       passToServerKeys.forEach((key: string, index: number) => {
         allVarObject[[varSelectorStr, node.id, index].join(DELIMITER)] = {
@@ -89,18 +89,22 @@ export const buildUsedOutVars = ({
     })
   })
 
-  const usedOutVars = toVarInputs(vars.map((valueSelector) => {
-    const varInfo = getNodeInfoById(canChooseVarNodes, valueSelector[0]!)
-    return {
-      label: {
-        nodeType: varInfo?.data.type,
-        nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title!,
-        variable: isSystemVar(valueSelector) ? valueSelector.join('.') : valueSelector[valueSelector.length - 1]!,
-      },
-      variable: valueSelector.join('.'),
-      value_selector: valueSelector,
-    }
-  }))
+  const usedOutVars = toVarInputs(
+    vars.map((valueSelector) => {
+      const varInfo = getNodeInfoById(canChooseVarNodes, valueSelector[0]!)
+      return {
+        label: {
+          nodeType: varInfo?.data.type,
+          nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title!,
+          variable: isSystemVar(valueSelector)
+            ? valueSelector.join('.')
+            : valueSelector[valueSelector.length - 1]!,
+        },
+        variable: valueSelector.join('.'),
+        value_selector: valueSelector,
+      }
+    }),
+  )
 
   return { usedOutVars, allVarObject }
 }
@@ -116,16 +120,15 @@ export const getDependentVarsFromLoopPayload = ({
   breakConditions?: Condition[]
   loopVariables?: LoopVariable[]
 }) => {
-  const vars: ValueSelector[] = usedOutVars.map(item => item.variable.split('.'))
+  const vars: ValueSelector[] = usedOutVars.map((item) => item.variable.split('.'))
 
   breakConditions?.forEach((condition) => {
     vars.push(...getVarSelectorsFromCondition(condition))
   })
 
   loopVariables?.forEach((loopVariable) => {
-    if (loopVariable.value_type === ValueType.variable)
-      vars.push(loopVariable.value)
+    if (loopVariable.value_type === ValueType.variable) vars.push(loopVariable.value)
   })
 
-  return vars.filter(item => item[0] !== nodeId)
+  return vars.filter((item) => item[0] !== nodeId)
 }

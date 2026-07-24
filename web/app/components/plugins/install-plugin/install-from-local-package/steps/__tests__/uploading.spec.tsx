@@ -49,7 +49,11 @@ vi.mock('@/service/plugins', () => ({
 }))
 
 vi.mock('../../../../card', () => ({
-  default: ({ payload, isLoading, loadingFileName }: {
+  default: ({
+    payload,
+    isLoading,
+    loadingFileName,
+  }: {
     payload: { name: string }
     isLoading?: boolean
     loadingFileName?: string
@@ -175,13 +179,7 @@ describe('Uploading', () => {
       })
 
       const onPackageUploaded = vi.fn()
-      render(
-        <Uploading
-          {...defaultProps}
-          isBundle={false}
-          onPackageUploaded={onPackageUploaded}
-        />,
-      )
+      render(<Uploading {...defaultProps} isBundle={false} onPackageUploaded={onPackageUploaded} />)
 
       await waitFor(() => {
         expect(onPackageUploaded).toHaveBeenCalledWith({
@@ -199,13 +197,7 @@ describe('Uploading', () => {
       mockUploadFile.mockResolvedValue(mockResult)
 
       const onPackageUploaded = vi.fn()
-      render(
-        <Uploading
-          {...defaultProps}
-          isBundle={false}
-          onPackageUploaded={onPackageUploaded}
-        />,
-      )
+      render(<Uploading {...defaultProps} isBundle={false} onPackageUploaded={onPackageUploaded} />)
 
       await waitFor(() => {
         expect(onPackageUploaded).toHaveBeenCalledWith({
@@ -222,13 +214,7 @@ describe('Uploading', () => {
       })
 
       const onBundleUploaded = vi.fn()
-      render(
-        <Uploading
-          {...defaultProps}
-          isBundle
-          onBundleUploaded={onBundleUploaded}
-        />,
-      )
+      render(<Uploading {...defaultProps} isBundle onBundleUploaded={onBundleUploaded} />)
 
       await waitFor(() => {
         expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
@@ -240,13 +226,7 @@ describe('Uploading', () => {
       mockUploadFile.mockResolvedValue(mockDependencies)
 
       const onBundleUploaded = vi.fn()
-      render(
-        <Uploading
-          {...defaultProps}
-          isBundle
-          onBundleUploaded={onBundleUploaded}
-        />,
-      )
+      render(<Uploading {...defaultProps} isBundle onBundleUploaded={onBundleUploaded} />)
 
       await waitFor(() => {
         expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
@@ -292,7 +272,9 @@ describe('Uploading', () => {
       render(<Uploading {...defaultProps} file={file} />)
 
       // The message includes the file name as a parameter
-      expect(screen.getByText(/plugin\.installModal\.uploadingPackage/)).toHaveTextContent('special-plugin.difypkg')
+      expect(screen.getByText(/plugin\.installModal\.uploadingPackage/)).toHaveTextContent(
+        'special-plugin.difypkg',
+      )
     })
   })
 
@@ -307,7 +289,9 @@ describe('Uploading', () => {
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
+      render(
+        <Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />,
+      )
 
       await waitFor(() => {
         expect(onPackageUploaded).not.toHaveBeenCalled()
@@ -322,7 +306,9 @@ describe('Uploading', () => {
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
+      render(
+        <Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />,
+      )
 
       await waitFor(() => {
         expect(onPackageUploaded).not.toHaveBeenCalled()
@@ -337,7 +323,9 @@ describe('Uploading', () => {
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />)
+      render(
+        <Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} onFailed={onFailed} />,
+      )
 
       await waitFor(() => {
         expect(onPackageUploaded).not.toHaveBeenCalled()

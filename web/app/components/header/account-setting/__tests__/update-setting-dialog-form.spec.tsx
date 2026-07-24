@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
+import {
+  AUTO_UPDATE_MODE,
+  AUTO_UPDATE_STRATEGY,
+} from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import UpdateSettingDialogForm from '../update-setting-dialog-form'
@@ -8,14 +11,18 @@ import UpdateSettingDialogForm from '../update-setting-dialog-form'
 const mockSetShowAccountSettingModal = vi.fn()
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => typeof mockSetShowAccountSettingModal) => {
+  useModalContextSelector: (
+    selector: (s: {
+      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
+    }) => typeof mockSetShowAccountSettingModal,
+  ) => {
     return selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal })
   },
 }))
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: (defaultNs?: string) => ({
       t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
         const ns = (options?.ns as string | undefined) ?? defaultNs
@@ -26,26 +33,33 @@ vi.mock('react-i18next', async () => {
         changeLanguage: vi.fn(),
       },
     }),
-    Trans: withSelectorKeyProps(({ i18nKey, components }: {
-      i18nKey: string
-      components?: Record<string, React.ReactElement>
-    }) => {
-      const setTimezone = components?.setTimezone
-      if (setTimezone)
-        return React.cloneElement(setTimezone, undefined, i18nKey)
+    Trans: withSelectorKeyProps(
+      ({
+        i18nKey,
+        components,
+      }: {
+        i18nKey: string
+        components?: Record<string, React.ReactElement>
+      }) => {
+        const setTimezone = components?.setTimezone
+        if (setTimezone) return React.cloneElement(setTimezone, undefined, i18nKey)
 
-      return <span>{i18nKey}</span>
-    }),
-  })
+        return <span>{i18nKey}</span>
+      },
+    ),
+  }
 })
 
 vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
   default: () => <div data-testid="time-picker" />,
 }))
 
-vi.mock('@/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker', () => ({
-  default: () => <div data-testid="plugins-picker" />,
-}))
+vi.mock(
+  '@/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker',
+  () => ({
+    default: () => <div data-testid="plugins-picker" />,
+  }),
+)
 
 describe('UpdateSettingDialogForm', () => {
   beforeEach(() => {
@@ -66,15 +80,11 @@ describe('UpdateSettingDialogForm', () => {
         }}
         category={PluginCategoryEnum.tool}
         plugins={[]}
-        scopeOptions={[
-          { value: AUTO_UPDATE_MODE.update_all, label: 'All' },
-        ]}
-        strategyOptions={[
-          { value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' },
-        ]}
+        scopeOptions={[{ value: AUTO_UPDATE_MODE.update_all, label: 'All' }]}
+        strategyOptions={[{ value: AUTO_UPDATE_STRATEGY.fixOnly, label: 'Fix only' }]}
         timezone="UTC"
         updateTimeValue="00:00"
-        minuteFilter={minutes => minutes}
+        minuteFilter={(minutes) => minutes}
         onAutoUpgradeChange={vi.fn()}
         onPluginsChange={vi.fn()}
         onRequestClose={onRequestClose}
@@ -86,6 +96,8 @@ describe('UpdateSettingDialogForm', () => {
     fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
     expect(onRequestClose).toHaveBeenCalledTimes(1)
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.PREFERENCES,
+    })
   })
 })

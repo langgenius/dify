@@ -6,17 +6,11 @@ import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -30,10 +24,14 @@ vi.mock('@/app/components/billing/pricing', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ activeTab, onCancelAction }: { activeTab: string, onCancelAction: () => void }) => (
+  default: ({ activeTab, onCancelAction }: { activeTab: string; onCancelAction: () => void }) => (
     <>
-      <div data-testid="account-setting-active-tab">{activeTab}</div>
-      <button type="button" onClick={onCancelAction}>cancel account setting</button>
+      <div role="status" aria-label="active account setting tab">
+        {activeTab}
+      </div>
+      <button type="button" onClick={onCancelAction}>
+        cancel account setting
+      </button>
     </>
   ),
 }))
@@ -47,38 +45,11 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockUseProviderContext(),
 }))
 
-const mockUseAppContext = vi.fn()
+const mockConsoleStateReader = vi.fn()
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockUseAppContext())
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleStateReader())
 })
 
 type DefaultPlanShape = typeof defaultPlan
@@ -110,14 +81,26 @@ const createPlan = (overrides: PlanOverrides = {}): PlanShape => ({
   },
 })
 
-const renderProvider = (children: React.ReactNode = <div data-testid="modal-context-test-child" />) => renderWithNuqs(
-  <ModalContextProvider>
-    {children}
-  </ModalContextProvider>,
-)
+const renderProvider = (
+  children: React.ReactNode = <div data-testid="modal-context-test-child" />,
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  const wrapper = ({ children: wrapperChildren }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{wrapperChildren}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return render(<ModalContextProvider>{children}</ModalContextProvider>, { wrapper })
+}
 
 const AccountSettingOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+  const setShowAccountSettingModal = useModalContextSelector(
+    (state) => state.setShowAccountSettingModal,
+  )
 
   return (
     <button
@@ -130,7 +113,9 @@ const AccountSettingOpener = () => {
 }
 
 const PreferencesOpener = () => {
-  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+  const setShowAccountSettingModal = useModalContextSelector(
+    (state) => state.setShowAccountSettingModal,
+  )
 
   return (
     <button
@@ -142,13 +127,19 @@ const PreferencesOpener = () => {
   )
 }
 
+const BlockingModalProbe = () => {
+  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
+
+  return <div data-testid="has-blocking-modal-open">{String(hasBlockingModalOpen)}</div>
+}
+
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
-    mockUseAppContext.mockReset()
+    mockConsoleStateReader.mockReset()
     mockUseProviderContext.mockReset()
     mockSetEducationVerifying.mockReset()
     window.localStorage.clear()
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       currentWorkspace: {
         id: 'workspace-1',
       },
@@ -204,7 +195,9 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await user.click(await screen.findByRole('button', { name: 'cancel account setting' }))
 
     expect(mockSetEducationVerifying).toHaveBeenCalledWith(expect.any(Function))
-    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (educationVerifying: string) => string | null
+    const updater = mockSetEducationVerifying.mock.calls[0]?.[0] as (
+      educationVerifying: string,
+    ) => string | null
     expect(updater('yes')).toBeNull()
     expect(updater('no')).toBe('no')
   })
@@ -216,11 +209,27 @@ describe('ModalContextProvider trigger events limit modal', () => {
     })
     const user = userEvent.setup()
 
-    renderProvider(<PreferencesOpener />)
+    renderProvider(
+      <>
+        <BlockingModalProbe />
+        <PreferencesOpener />
+      </>,
+    )
+
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
 
     await user.click(screen.getByRole('button', { name: 'open preferences' }))
 
-    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
+    expect(
+      await screen.findByRole('status', { name: 'active account setting tab' }),
+    ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
+    expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('true')
+
+    await user.click(screen.getByRole('button', { name: 'cancel account setting' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('has-blocking-modal-open')).toHaveTextContent('false')
+    })
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {
@@ -294,7 +303,9 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await user.click(screen.getByText('billing.triggerLimitModal.upgrade'))
 
-    await waitFor(() => expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument(),
+    )
     expect(screen.queryByText('400')).not.toBeInTheDocument()
   })
 })

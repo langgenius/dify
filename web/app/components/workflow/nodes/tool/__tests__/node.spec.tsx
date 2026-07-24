@@ -96,4 +96,19 @@ describe('ToolNode', () => {
       expect(container).toBeEmptyDOMElement()
     })
   })
+
+  it('should render multi-select configuration values', () => {
+    render(
+      <Node
+        id="tool-node-1"
+        data={createNodeData({
+          tool_configurations: {
+            formats: { type: 'constant', value: ['png', 'svg'] },
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByTitle('png, svg')).toHaveTextContent('png, svg')
+  })
 })

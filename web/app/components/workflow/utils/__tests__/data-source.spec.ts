@@ -1,19 +1,19 @@
 import type { DataSourceNodeType } from '../../nodes/data-source/types'
 import type { ToolWithProvider } from '../../types'
-import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import { getDataSourceCheckParams } from '../data-source'
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
-    params.map(p => ({
+    params.map((p) => ({
       variable: p.name,
       label: p.label || { en_US: p.name },
       type: p.type || 'string',
       required: p.required ?? false,
       form: p.form ?? 'llm',
       hide: p.hide ?? false,
-    }))),
+    })),
+  ),
 }))
 
 function createDataSourceData(overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType {
@@ -22,7 +22,7 @@ function createDataSourceData(overrides: Partial<DataSourceNodeType> = {}): Data
     desc: '',
     type: BlockEnum.DataSource,
     plugin_id: 'plugin-ds-1',
-    provider_type: CollectionType.builtIn,
+    provider_type: 'local_file',
     datasource_name: 'mysql_query',
     datasource_parameters: {},
     datasource_configurations: {},
@@ -39,7 +39,12 @@ function createDataSourceCollection(overrides: Partial<ToolWithProvider> = {}): 
       {
         name: 'mysql_query',
         parameters: [
-          { name: 'query', label: { en_US: 'SQL Query', zh_Hans: 'SQL 查询' }, type: 'string', required: true },
+          {
+            name: 'query',
+            label: { en_US: 'SQL Query', zh_Hans: 'SQL 查询' },
+            type: 'string',
+            required: true,
+          },
           { name: 'limit', label: { en_US: 'Limit' }, type: 'number', required: false, hide: true },
         ],
       },
@@ -64,7 +69,7 @@ describe('getDataSourceCheckParams', () => {
     ])
   })
 
-  it('should mark notAuthed for builtin datasource without authorization', () => {
+  it('should mark an unauthorized datasource as not authed', () => {
     const result = getDataSourceCheckParams(
       createDataSourceData(),
       [createDataSourceCollection()],

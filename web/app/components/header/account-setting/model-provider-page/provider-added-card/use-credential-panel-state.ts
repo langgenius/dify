@@ -1,26 +1,24 @@
 import type { ModelProvider } from '../declarations'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import {
-  PreferredProviderTypeEnum,
-} from '../declarations'
+import { PreferredProviderTypeEnum } from '../declarations'
 import { providerSupportsCredits } from '../supports-credits'
 import { useTrialCredits } from './use-trial-credits'
 
 export type UsagePriority = 'credits' | 'apiKey' | 'apiKeyOnly'
 
-export type CardVariant
-  = | 'credits-active'
-    | 'credits-fallback'
-    | 'credits-exhausted'
-    | 'no-usage'
-    | 'api-fallback'
-    | 'api-active'
-    | 'api-required-add'
-    | 'api-required-configure'
-    | 'api-unavailable'
+export type CardVariant =
+  | 'credits-active'
+  | 'credits-fallback'
+  | 'credits-exhausted'
+  | 'no-usage'
+  | 'api-fallback'
+  | 'api-active'
+  | 'api-required-add'
+  | 'api-required-configure'
+  | 'api-unavailable'
 
 export type CredentialPanelState = {
   variant: CardVariant
@@ -39,8 +37,7 @@ const DESTRUCTIVE_VARIANTS = new Set<CardVariant>([
   'api-unavailable',
 ])
 
-export const isDestructiveVariant = (variant: CardVariant) =>
-  DESTRUCTIVE_VARIANTS.has(variant)
+export const isDestructiveVariant = (variant: CardVariant) => DESTRUCTIVE_VARIANTS.has(variant)
 
 function deriveVariant(
   priority: UsagePriority,
@@ -50,23 +47,17 @@ function deriveVariant(
   credentialName: string | undefined,
 ): CardVariant {
   if (priority === 'credits') {
-    if (!isExhausted)
-      return 'credits-active'
-    if (hasCredential && authorized)
-      return 'api-fallback'
-    if (hasCredential && !authorized)
-      return 'no-usage'
+    if (!isExhausted) return 'credits-active'
+    if (hasCredential && authorized) return 'api-fallback'
+    if (hasCredential && !authorized) return 'no-usage'
     return 'credits-exhausted'
   }
 
-  if (hasCredential && authorized)
-    return 'api-active'
+  if (hasCredential && authorized) return 'api-active'
 
-  if (priority === 'apiKey' && !isExhausted)
-    return 'credits-fallback'
+  if (priority === 'apiKey' && !isExhausted) return 'credits-fallback'
 
-  if (priority === 'apiKey' && !hasCredential)
-    return 'no-usage'
+  if (priority === 'apiKey' && !hasCredential) return 'no-usage'
 
   if (hasCredential && !authorized)
     return credentialName ? 'api-unavailable' : 'api-required-configure'
@@ -74,21 +65,23 @@ function deriveVariant(
 }
 
 export function useCredentialPanelState(provider: ModelProvider | undefined): CredentialPanelState {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { isExhausted, credits } = useTrialCredits()
-  const {
-    hasCredential,
-    authorized,
-    current_credential_name,
-  } = useCredentialStatus(provider)
+  const { hasCredential, authorized, current_credential_name } = useCredentialStatus(provider)
 
-  const { data: trialModels = [] } = useQuery(consoleQuery.trialModels.get.queryOptions({
-    enabled: IS_CLOUD_EDITION,
-    select: data => data.trial_models,
-  }))
+  const { data: trialModels = [] } = useQuery(
+    consoleQuery.trialModels.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.trial_models,
+    }),
+  )
 
   const preferredType = provider?.preferred_provider_type
 
-  const supportsCredits = providerSupportsCredits(provider, trialModels)
+  const supportsCredits = providerSupportsCredits(provider, trialModels, deploymentEdition)
 
   const priority: UsagePriority = !supportsCredits
     ? 'apiKeyOnly'
@@ -98,7 +91,13 @@ export function useCredentialPanelState(provider: ModelProvider | undefined): Cr
 
   const showPrioritySwitcher = supportsCredits
 
-  const variant = deriveVariant(priority, isExhausted, hasCredential, !!authorized, current_credential_name)
+  const variant = deriveVariant(
+    priority,
+    isExhausted,
+    hasCredential,
+    !!authorized,
+    current_credential_name,
+  )
 
   return {
     variant,

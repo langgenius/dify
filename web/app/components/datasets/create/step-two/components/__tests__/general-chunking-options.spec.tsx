@@ -1,22 +1,30 @@
 import type { PreProcessingRule } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { GeneralChunkingOptions } from '../general-chunking-options'
 
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
-  default: ({ onSummaryIndexSettingChange }: { onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void }) => (
+  default: ({
+    onSummaryIndexSettingChange,
+  }: {
+    onSummaryIndexSettingChange?: (val: Record<string, unknown>) => void
+  }) => (
     <div data-testid="summary-index-setting">
-      <button data-testid="summary-toggle" onClick={() => onSummaryIndexSettingChange?.({ enable: true })}>Toggle</button>
+      <button
+        data-testid="summary-toggle"
+        onClick={() => onSummaryIndexSettingChange?.({ enable: true })}
+      >
+        Toggle
+      </button>
     </div>
   ),
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: true,
-}))
-
 const ns = 'datasetCreation'
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
 
 const createRules = (): PreProcessingRule[] => [
   { id: 'remove_extra_spaces', enabled: true },
@@ -105,7 +113,13 @@ describe('GeneralChunkingOptions', () => {
 
     it('should call onDocFormChange with text mode when card switched', () => {
       const onDocFormChange = vi.fn()
-      render(<GeneralChunkingOptions {...defaultProps} isActive={false} onDocFormChange={onDocFormChange} />)
+      render(
+        <GeneralChunkingOptions
+          {...defaultProps}
+          isActive={false}
+          onDocFormChange={onDocFormChange}
+        />,
+      )
       // OptionCard fires onSwitched which calls onDocFormChange(ChunkingMode.text)
       // Since isActive=false, clicking the card triggers the switch
       const titleEl = screen.getByText(`${ns}.stepTwo.general`)
@@ -129,14 +143,26 @@ describe('GeneralChunkingOptions', () => {
 
     it('should toggle back to text mode from QA mode', () => {
       const onDocFormChange = vi.fn()
-      render(<GeneralChunkingOptions {...defaultProps} currentDocForm={ChunkingMode.qa} onDocFormChange={onDocFormChange} />)
+      render(
+        <GeneralChunkingOptions
+          {...defaultProps}
+          currentDocForm={ChunkingMode.qa}
+          onDocFormChange={onDocFormChange}
+        />,
+      )
       fireEvent.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
       expect(onDocFormChange).toHaveBeenCalledWith(ChunkingMode.text)
     })
 
     it('should not toggle QA mode when hasCurrentDatasetDocForm is true', () => {
       const onDocFormChange = vi.fn()
-      render(<GeneralChunkingOptions {...defaultProps} hasCurrentDatasetDocForm onDocFormChange={onDocFormChange} />)
+      render(
+        <GeneralChunkingOptions
+          {...defaultProps}
+          hasCurrentDatasetDocForm
+          onDocFormChange={onDocFormChange}
+        />,
+      )
       fireEvent.click(screen.getByText(`${ns}.stepTwo.useQALanguage`))
       expect(onDocFormChange).not.toHaveBeenCalled()
     })
@@ -160,7 +186,13 @@ describe('GeneralChunkingOptions', () => {
 
     it('should call onSummaryIndexSettingChange', () => {
       const onSummaryIndexSettingChange = vi.fn()
-      render(<GeneralChunkingOptions {...defaultProps} showSummaryIndexSetting onSummaryIndexSettingChange={onSummaryIndexSettingChange} />)
+      render(
+        <GeneralChunkingOptions
+          {...defaultProps}
+          showSummaryIndexSetting
+          onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+        />,
+      )
       fireEvent.click(screen.getByTestId('summary-toggle'))
       expect(onSummaryIndexSettingChange).toHaveBeenCalledWith({ enable: true })
     })

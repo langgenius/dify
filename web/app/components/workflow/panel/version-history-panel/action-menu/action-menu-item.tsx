@@ -15,11 +15,7 @@ type ActionMenuItemProps = {
   isDestructive?: boolean
 }
 
-const ActionMenuItem: FC<ActionMenuItemProps> = ({
-  item,
-  onClick,
-  isDestructive = false,
-}) => {
+const ActionMenuItem: FC<ActionMenuItemProps> = ({ item, onClick, isDestructive = false }) => {
   return (
     <DropdownMenuItem
       variant={isDestructive ? 'destructive' : 'default'}
@@ -30,24 +26,21 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({
       onClick={(event) => {
         event.stopPropagation()
         const target = event.target
-        if (target instanceof Element && target.closest('[data-upgrade-action]'))
-          return
+        if (target instanceof Element && target.closest('[data-upgrade-action]')) return
 
         onClick(item.key)
       }}
     >
-      <div className={cn(
-        'flex-1 system-md-regular whitespace-nowrap text-text-primary',
-        isDestructive && 'text-inherit',
-      )}
+      <div
+        className={cn(
+          'flex-1 system-md-regular whitespace-nowrap text-text-primary',
+          isDestructive && 'text-inherit',
+        )}
       >
         {item.name}
       </div>
       {item.showUpgrade && (
-        <div
-          data-upgrade-action
-          className="shrink-0"
-        >
+        <div data-upgrade-action className="shrink-0">
           <UpgradeBtn
             size="custom"
             isShort

@@ -139,6 +139,23 @@ def test_declared_output_child_validates_shape_and_defaults() -> None:
         )
 
 
+def test_declared_output_child_schema_matches_nullable_serialization() -> None:
+    config = DeclaredOutputConfig(
+        name="response",
+        type=DeclaredOutputType.OBJECT,
+        children=[DeclaredOutputChildConfig(name="text", type=DeclaredOutputType.STRING)],
+    )
+    child = config.model_dump(mode="json")["children"][0]
+
+    assert child["file"] is None
+    assert child["array_item"] is None
+
+    children_schema = DeclaredOutputConfig.model_json_schema(mode="serialization")["properties"]["children"]
+    child_properties = children_schema["items"]["properties"]
+    assert {"type": "null"} in child_properties["file"]["anyOf"]
+    assert {"type": "null"} in child_properties["array_item"]["anyOf"]
+
+
 def test_declared_output_validates_shape_and_defaults() -> None:
     file_output = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
     assert file_output.file is not None

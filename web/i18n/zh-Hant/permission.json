@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "{{name}} 的例外權限",
   "accessRule.expandSection": "展開 {{title}}",
   "accessRule.individualPermissionSettings": "個人權限設定",
-  "accessRule.individualPermissionSettingsTip": "為指定協作者或群組設定權限例外。這些設定會覆蓋預設存取層級。",
+  "accessRule.individualPermissionSettingsTip": "為指定協作者或群組設定權限例外。這些設定會覆蓋其角色權限。",
   "accessRule.maintainer": "維護者",
   "accessRule.member": "成員",
   "accessRule.newPermissionSet": "新增權限集",

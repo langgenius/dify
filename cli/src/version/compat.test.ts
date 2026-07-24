@@ -62,7 +62,9 @@ describe('evaluateCompat', () => {
     })
 
     it('strips suffixes on the range bounds too', () => {
-      expect(evaluateCompat('1.6.5', { minDify: '1.6.0-alpha', maxDify: '1.7.0-rc' }).status).toBe('compatible')
+      expect(evaluateCompat('1.6.5', { minDify: '1.6.0-alpha', maxDify: '1.7.0-rc' }).status).toBe(
+        'compatible',
+      )
     })
   })
 

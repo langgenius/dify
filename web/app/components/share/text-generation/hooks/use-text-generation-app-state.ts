@@ -1,5 +1,10 @@
 import type { TextGenerationCustomConfig } from '../types'
-import type { MoreLikeThisConfig, PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
+import type {
+  MoreLikeThisConfig,
+  PromptConfig,
+  SavedMessage,
+  TextToSpeechConfig,
+} from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -12,7 +17,12 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { changeLanguage } from '@/i18n-config/client'
-import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import {
+  AppSourceType,
+  fetchSavedMessage as doFetchSavedMessage,
+  removeMessage,
+  saveMessage,
+} from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 
@@ -37,18 +47,14 @@ const coerceWorkflowUrlDefault = (
   promptVariable: NonNullable<PromptConfig['prompt_variables']>[number],
   rawValue: unknown,
 ) => {
-  if (rawValue === undefined || rawValue === null)
-    return undefined
+  if (rawValue === undefined || rawValue === null) return undefined
 
   if (promptVariable.type === 'checkbox') {
-    if (typeof rawValue === 'boolean')
-      return rawValue
+    if (typeof rawValue === 'boolean') return rawValue
 
     const normalized = String(rawValue).toLowerCase()
-    if (normalized === 'true')
-      return true
-    if (normalized === 'false')
-      return false
+    if (normalized === 'true') return true
+    if (normalized === 'false') return false
 
     return undefined
   }
@@ -58,25 +64,26 @@ const coerceWorkflowUrlDefault = (
     return Number.isNaN(numericValue) ? undefined : numericValue
   }
 
-  if (typeof rawValue !== 'string')
-    return undefined
+  if (typeof rawValue !== 'string') return undefined
 
   if (promptVariable.type === 'select')
     return promptVariable.options?.includes(rawValue) ? rawValue : undefined
 
-  if (promptVariable.max_length)
-    return rawValue.slice(0, promptVariable.max_length)
+  if (promptVariable.max_length) return rawValue.slice(0, promptVariable.max_length)
 
   return rawValue
 }
 
-export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTextGenerationAppStateOptions) => {
+export const useTextGenerationAppState = ({
+  isInstalledApp,
+  isWorkflow,
+}: UseTextGenerationAppStateOptions) => {
   const { t } = useTranslation()
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const appData = useWebAppStore(s => s.appInfo)
-  const appParams = useWebAppStore(s => s.appParams)
-  const accessMode = useWebAppStore(s => s.webAppAccessMode)
+  const appData = useWebAppStore((s) => s.appInfo)
+  const appParams = useWebAppStore((s) => s.appParams)
+  const accessMode = useWebAppStore((s) => s.webAppAccessMode)
   const [appId, setAppId] = useState('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [customConfig, setCustomConfig] = useState<TextGenerationCustomConfig | null>(null)
@@ -90,53 +97,61 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
-  const fetchSavedMessages = useCallback(async (targetAppId = appId) => {
-    if (!targetAppId)
-      return
-    const res = await doFetchSavedMessage(appSourceType, targetAppId) as {
-      data: SavedMessage[]
-    }
-    setSavedMessages(res.data)
-  }, [appId, appSourceType])
-  const handleSaveMessage = useCallback(async (messageId: string) => {
-    if (!appId)
-      return
-    await saveMessage(messageId, appSourceType, appId)
-    toast.success(t($ => $['api.saved'], { ns: 'common' }))
-    await fetchSavedMessages(appId)
-  }, [appId, appSourceType, fetchSavedMessages, t])
-  const handleRemoveSavedMessage = useCallback(async (messageId: string) => {
-    if (!appId)
-      return
-    await removeMessage(messageId, appSourceType, appId)
-    toast.success(t($ => $['api.remove'], { ns: 'common' }))
-    await fetchSavedMessages(appId)
-  }, [appId, appSourceType, fetchSavedMessages, t])
+  const fetchSavedMessages = useCallback(
+    async (targetAppId = appId) => {
+      if (!targetAppId) return
+      const res = (await doFetchSavedMessage(appSourceType, targetAppId)) as {
+        data: SavedMessage[]
+      }
+      setSavedMessages(res.data)
+    },
+    [appId, appSourceType],
+  )
+  const handleSaveMessage = useCallback(
+    async (messageId: string) => {
+      if (!appId) return
+      await saveMessage(messageId, appSourceType, appId)
+      toast.success(t(($) => $['api.saved'], { ns: 'common' }))
+      await fetchSavedMessages(appId)
+    },
+    [appId, appSourceType, fetchSavedMessages, t],
+  )
+  const handleRemoveSavedMessage = useCallback(
+    async (messageId: string) => {
+      if (!appId) return
+      await removeMessage(messageId, appSourceType, appId)
+      toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+      await fetchSavedMessages(appId)
+    },
+    [appId, appSourceType, fetchSavedMessages, t],
+  )
   useEffect(() => {
     let cancelled = false
     const initialize = async () => {
-      if (!appData || !appParams)
-        return
+      if (!appData || !appParams) return
       const { app_id: nextAppId, site, custom_config } = appData
       setAppId(nextAppId)
       setSiteInfo(site as SiteInfo)
       setCustomConfig((custom_config || null) as TextGenerationCustomConfig | null)
       await changeLanguage(site.default_language)
-      const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams as unknown as ShareAppParams
+      const { user_input_form, more_like_this, file_upload, text_to_speech } =
+        appParams as unknown as ShareAppParams
       const promptVariables = userInputsFormToPromptVariables(user_input_form)
       if (isWorkflow && !isInstalledApp) {
         const workflowUrlInputs = await getRawInputsFromUrlParams()
         promptVariables.forEach((promptVariable) => {
-          const workflowDefault = coerceWorkflowUrlDefault(promptVariable, workflowUrlInputs[promptVariable.key])
-          if (workflowDefault !== undefined)
-            promptVariable.default = workflowDefault
+          const workflowDefault = coerceWorkflowUrlDefault(
+            promptVariable,
+            workflowUrlInputs[promptVariable.key],
+          )
+          if (workflowDefault !== undefined) promptVariable.default = workflowDefault
         })
       }
-      if (cancelled)
-        return
+      if (cancelled) return
       setVisionConfig({
         ...file_upload,
-        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
+        transfer_methods:
+          file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       } as VisionSettings)
@@ -146,15 +161,14 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
-      if (!isWorkflow)
-        await fetchSavedMessages(nextAppId)
+      if (!isWorkflow) await fetchSavedMessages(nextAppId)
     }
     void initialize()
     return () => {
       cancelled = true
     }
   }, [appData, appParams, fetchSavedMessages, isInstalledApp, isWorkflow])
-  useDocumentTitle(siteInfo?.title || t($ => $['generation.title'], { ns: 'share' }))
+  useDocumentTitle(siteInfo?.title || t(($) => $['generation.title'], { ns: 'share' }))
   useAppFavicon({
     enable: !isInstalledApp,
     icon_type: siteInfo?.icon_type,
