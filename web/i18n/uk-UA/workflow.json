@@ -445,6 +445,7 @@
   "nodes.agent.pluginNotInstalledDesc": "Цей інтеграція встановлюється з GitHub. Будь ласка, перейдіть до Інтеграції для перевстановлення",
   "nodes.agent.roster.change": "Змінити",
   "nodes.agent.roster.editInConsole": "Редагувати в Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "У вас немає прав на керування Agents",
   "nodes.agent.roster.inlineSetup.description": "Одноразове налаштування, що існує лише в цьому вузлі",
   "nodes.agent.roster.inlineSetup.name": "Вбудоване налаштування",
   "nodes.agent.roster.inlineSetup.title": "Налаштування агента",
