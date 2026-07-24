@@ -246,9 +246,6 @@
     }
   },
   "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
