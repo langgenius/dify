@@ -1,9 +1,12 @@
-"""Persistence stubs for Human Input v2 contacts, delivery, and approval audit.
+"""Persistence models for Human Input v2 contacts, delivery, and approval runtime.
 
 The models intentionally use logical references instead of database foreign keys.
 Every relationship therefore requires an explicit eager-loading strategy, and
 authorization code must scope queries by the owning directory or tenant. Column
 comments name the referenced ``table.column`` for every logical foreign key.
+Human Input v2 forms and every form-scoped child use a dedicated table namespace;
+they never reference the legacy ``human_input_forms`` aggregate. Runtime forms
+bind to the shared workflow pause infrastructure through ``workflow_pause_id``.
 Contacts represent the conceptual Organization boundary through ``tenant_id``:
 EE Organization rows use a null value, while workspace-owned rows reference
 ``tenants.id``. Their immutable ``identity_source`` selects the lifecycle policy;
@@ -44,6 +47,12 @@ from core.human_input_v2.entities import (
     HumanInputSubmissionActorType as _HumanInputSubmissionActorType,
 )
 from core.human_input_v2.entities import (
+    HumanInputV2FormKind as _HumanInputV2FormKind,
+)
+from core.human_input_v2.entities import (
+    HumanInputV2FormStatus as _HumanInputV2FormStatus,
+)
+from core.human_input_v2.entities import (
     IMBindingScope as _IMBindingScope,
 )
 from core.human_input_v2.entities import (
@@ -61,9 +70,9 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.entities import (
     IMSyncRunStatus as _IMSyncRunStatus,
 )
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 from .base import DefaultFieldsDCMixin, TypeBase
-from .human_input import HumanInputForm
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
 
 
@@ -280,8 +289,37 @@ class FormDeliveryProviderResponse(_ImmutableJSONObject):
     """Opaque provider delivery response retained only for diagnostics."""
 
 
-class FormSubmittedData(_ImmutableJSONObject):
-    """Validated structured form values accepted by the winning submission."""
+class HumanInputV2FormDefinition(_ImmutableJSONModel):
+    """Frozen runtime definition used for rendering and submission validation."""
+
+    form_content: str = Field(description="Human-readable form template captured when the form was created.")
+    inputs: tuple[FormInputConfig, ...] = Field(
+        default_factory=tuple,
+        strict=False,
+        description="Resolved input definitions accepted by this form.",
+    )
+    user_actions: tuple[UserActionConfig, ...] = Field(
+        default_factory=tuple,
+        strict=False,
+        description="Resolved actions accepted by this form.",
+    )
+    default_values: dict[str, JsonValue] = Field(
+        default_factory=dict,
+        description="Serialized default input values resolved when the form was created.",
+    )
+    node_title: str | None = Field(default=None, description="Node title captured for display and audit context.")
+    display_in_ui: bool | None = Field(
+        default=None,
+        description="Whether runtime surfaces should expose the form in their UI.",
+    )
+
+
+class FormInputSnapshot(_ImmutableJSONObject):
+    """Unvalidated raw values from the request ``inputs`` object only."""
+
+
+class FormCanonicalValues(_ImmutableJSONObject):
+    """Validated runtime values persisted using current Segment serialization."""
 
 
 class FormAuditEventPayload(_ImmutableJSONObject):
@@ -994,7 +1032,82 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class HumanInputFormApproverGrant(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2Form(DefaultFieldsDCMixin, TypeBase):
+    """Independent Human Input v2 form root.
+
+    Runtime forms bind one shared workflow pause to the exact owning
+    ``workflow_node_executions`` row. ``node_execution_id`` intentionally names
+    the business role while referencing that table's primary key ``id`` rather
+    than its separate runtime ``node_execution_id`` column. ``rendered_content``
+    is retained for current runtime compatibility; ``form_definition`` remains
+    the frozen source used for validation and future rerendering.
+    """
+
+    __tablename__ = "human_input_v2_forms"
+    __table_args__ = (
+        sa.UniqueConstraint("workflow_pause_id", name="hiv2_forms_workflow_pause_uq"),
+        sa.UniqueConstraint("node_execution_id", name="hiv2_forms_node_execution_uq"),
+        sa.CheckConstraint(
+            "form_kind <> 'runtime' OR (workflow_pause_id IS NOT NULL AND node_execution_id IS NOT NULL)",
+            name="runtime_owner",
+        ),
+        sa.Index("hiv2_forms_tenant_status_node_timeout_idx", "tenant_id", "status", "node_timeout_at"),
+        sa.Index("hiv2_forms_tenant_status_global_expiry_idx", "tenant_id", "status", "global_expires_at"),
+        {"comment": "Independent Human Input v2 form roots bound only to shared workflow pause infrastructure."},
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to apps.id.")
+    form_definition: Mapped[HumanInputV2FormDefinition] = mapped_column(
+        FrozenPydanticModelColumn(HumanInputV2FormDefinition),
+        nullable=False,
+        comment="Frozen Human Input v2 form definition used for display and submission validation.",
+    )
+    rendered_content: Mapped[str] = mapped_column(
+        LongText,
+        nullable=False,
+        comment="Rendered content retained for current runtime compatibility; form_definition remains authoritative.",
+    )
+    node_timeout_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        comment="Frozen node-level timeout timestamp used to resume through the timeout branch.",
+    )
+    global_expires_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        comment="Frozen global expiration timestamp after which the form cannot be submitted.",
+    )
+    form_kind: Mapped[_HumanInputV2FormKind] = mapped_column(
+        EnumText(_HumanInputV2FormKind),
+        nullable=False,
+        default=_HumanInputV2FormKind.RUNTIME,
+        comment="Human Input v2 form ownership kind.",
+    )
+    status: Mapped[_HumanInputV2FormStatus] = mapped_column(
+        EnumText(_HumanInputV2FormStatus),
+        nullable=False,
+        default=_HumanInputV2FormStatus.WAITING,
+        comment="Current Human Input v2 form lifecycle state.",
+    )
+    workflow_pause_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Logical foreign key to workflow_pauses.id for the owning shared workflow pause.",
+    )
+    node_execution_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment=(
+            "Logical foreign key to workflow_node_executions.id for the owning node-execution row. "
+            "This intentionally does not reference workflow_node_executions.node_execution_id."
+        ),
+    )
+
+
+class HumanInputV2FormApproverGrant(DefaultFieldsDCMixin, TypeBase):
     """Form-scoped approval authority granted to one canonical business subject.
 
     Contact-backed grants are revalidated through the current Contact lifecycle.
@@ -1003,9 +1116,9 @@ class HumanInputFormApproverGrant(DefaultFieldsDCMixin, TypeBase):
     never substitutes for current-state authorization checks.
     """
 
-    __tablename__ = "human_input_form_approver_grants"
+    __tablename__ = "human_input_v2_form_approver_grants"
     __table_args__ = (
-        sa.UniqueConstraint("form_id", "subject_key", name="human_input_form_grants_form_subject_uq"),
+        sa.UniqueConstraint("form_id", "subject_key", name="hiv2_form_grants_form_subject_uq"),
         sa.CheckConstraint(
             "(subject_type = 'contact' AND contact_id IS NOT NULL AND end_user_id IS NULL "
             "AND normalized_email IS NULL) OR "
@@ -1015,15 +1128,15 @@ class HumanInputFormApproverGrant(DefaultFieldsDCMixin, TypeBase):
             "AND normalized_email IS NOT NULL)",
             name="subject_identity",
         ),
-        sa.Index(None, "form_id", "contact_id"),
-        sa.Index(None, "form_id", "end_user_id"),
-        sa.Index(None, "form_id", "normalized_email"),
-        {"comment": "Frozen form-scoped approval grants resolved from runtime recipient specifications."},
+        sa.Index("hiv2_form_grants_form_contact_idx", "form_id", "contact_id"),
+        sa.Index("hiv2_form_grants_form_end_user_idx", "form_id", "end_user_id"),
+        sa.Index("hiv2_form_grants_form_email_idx", "form_id", "normalized_email"),
+        {"comment": "Frozen Human Input v2 form approval grants resolved from runtime recipients."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_forms.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_forms.id."
     )
     subject_type: Mapped[_HumanInputApproverGrantSubjectType] = mapped_column(
         EnumText(_HumanInputApproverGrantSubjectType),
@@ -1068,24 +1181,24 @@ class HumanInputFormApproverGrant(DefaultFieldsDCMixin, TypeBase):
         comment="Lower-cased mailbox identity for a one-time email-address grant.",
     )
 
-    form: Mapped[HumanInputForm] = relationship(
-        lambda: HumanInputForm,
-        primaryjoin=lambda: orm.foreign(HumanInputFormApproverGrant.form_id) == HumanInputForm.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormApproverGrant.form_id) == HumanInputV2Form.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
     contact: Mapped[HumanInputContact | None] = relationship(
         lambda: HumanInputContact,
-        primaryjoin=lambda: orm.foreign(HumanInputFormApproverGrant.contact_id) == HumanInputContact.id,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormApproverGrant.contact_id) == HumanInputContact.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    endpoints: Mapped[list[HumanInputFormDeliveryEndpoint]] = relationship(
-        lambda: HumanInputFormDeliveryEndpoint,
+    endpoints: Mapped[list[HumanInputV2FormDeliveryEndpoint]] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
         primaryjoin=lambda: (
-            HumanInputFormApproverGrant.id == orm.foreign(HumanInputFormDeliveryEndpoint.approver_grant_id)
+            HumanInputV2FormApproverGrant.id == orm.foreign(HumanInputV2FormDeliveryEndpoint.approver_grant_id)
         ),
         back_populates="approver_grant",
         viewonly=True,
@@ -1094,7 +1207,7 @@ class HumanInputFormApproverGrant(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class HumanInputFormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2FormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
     """Immutable delivery or interaction endpoint belonging to one approver grant.
 
     ``address_hash`` supports portable uniqueness without indexing long recipient
@@ -1110,29 +1223,29 @@ class HumanInputFormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
     Opaque public form tokens are persisted only as hashes.
     """
 
-    __tablename__ = "human_input_form_delivery_endpoints"
+    __tablename__ = "human_input_v2_form_delivery_endpoints"
     __table_args__ = (
         sa.UniqueConstraint(
             "form_id",
             "approver_grant_id",
             "channel",
             "address_hash",
-            name="human_input_form_endpoints_form_grant_channel_address_uq",
+            name="hiv2_form_endpoints_grant_channel_address_uq",
         ),
-        sa.UniqueConstraint("access_token_hash", name="human_input_form_endpoints_token_uq"),
-        sa.Index(None, "form_id", "approver_grant_id", "channel"),
-        sa.Index(None, "im_identity_id", "form_id"),
-        {"comment": "Immutable notification and interaction endpoints for Human Input approver grants."},
+        sa.UniqueConstraint("access_token_hash", name="hiv2_form_endpoints_token_uq"),
+        sa.Index("hiv2_form_endpoints_form_grant_channel_idx", "form_id", "approver_grant_id", "channel"),
+        sa.Index("hiv2_form_endpoints_identity_form_idx", "im_identity_id", "form_id"),
+        {"comment": "Immutable notification and interaction endpoints for Human Input v2 approver grants."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_forms.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_forms.id."
     )
     approver_grant_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_form_approver_grants.id.",
+        comment="Logical foreign key to human_input_v2_form_approver_grants.id.",
     )
     channel: Mapped[_HumanInputDeliveryChannel] = mapped_column(
         EnumText(_HumanInputDeliveryChannel), nullable=False, comment="Delivery or interaction channel."
@@ -1171,26 +1284,28 @@ class HumanInputFormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
         sa.String(64), nullable=True, default=None, comment="SHA-256 hash of an opaque form access token."
     )
 
-    form: Mapped[HumanInputForm] = relationship(
-        lambda: HumanInputForm,
-        primaryjoin=lambda: orm.foreign(HumanInputFormDeliveryEndpoint.form_id) == HumanInputForm.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormDeliveryEndpoint.form_id) == HumanInputV2Form.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    approver_grant: Mapped[HumanInputFormApproverGrant] = relationship(
-        lambda: HumanInputFormApproverGrant,
+    approver_grant: Mapped[HumanInputV2FormApproverGrant] = relationship(
+        lambda: HumanInputV2FormApproverGrant,
         primaryjoin=lambda: (
-            orm.foreign(HumanInputFormDeliveryEndpoint.approver_grant_id) == HumanInputFormApproverGrant.id
+            orm.foreign(HumanInputV2FormDeliveryEndpoint.approver_grant_id) == HumanInputV2FormApproverGrant.id
         ),
         back_populates="endpoints",
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    attempts: Mapped[list[HumanInputFormDeliveryAttempt]] = relationship(
-        lambda: HumanInputFormDeliveryAttempt,
-        primaryjoin=lambda: HumanInputFormDeliveryEndpoint.id == orm.foreign(HumanInputFormDeliveryAttempt.endpoint_id),
+    attempts: Mapped[list[HumanInputV2FormDeliveryAttempt]] = relationship(
+        lambda: HumanInputV2FormDeliveryAttempt,
+        primaryjoin=lambda: (
+            HumanInputV2FormDeliveryEndpoint.id == orm.foreign(HumanInputV2FormDeliveryAttempt.endpoint_id)
+        ),
         back_populates="endpoint",
         viewonly=True,
         lazy="raise",
@@ -1198,25 +1313,25 @@ class HumanInputFormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class HumanInputFormDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2FormDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
     """One delivery attempt whose failure never mutates the form status directly."""
 
-    __tablename__ = "human_input_form_delivery_attempts"
+    __tablename__ = "human_input_v2_form_delivery_attempts"
     __table_args__ = (
-        sa.UniqueConstraint("endpoint_id", "attempt_number", name="human_input_form_attempts_endpoint_number_uq"),
-        sa.Index(None, "form_id", "status", "created_at", "id"),
-        sa.Index(None, "status", "scheduled_at", "id"),
-        {"comment": "Append-oriented delivery attempts for Human Input form endpoints."},
+        sa.UniqueConstraint("endpoint_id", "attempt_number", name="hiv2_form_attempts_endpoint_number_uq"),
+        sa.Index("hiv2_form_attempts_form_status_created_idx", "form_id", "status", "created_at", "id"),
+        sa.Index("hiv2_form_attempts_status_scheduled_idx", "status", "scheduled_at", "id"),
+        {"comment": "Append-oriented delivery attempts for Human Input v2 form endpoints."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Denormalized logical foreign key to human_input_forms.id.",
+        comment="Denormalized logical foreign key to human_input_v2_forms.id.",
     )
     endpoint_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_form_delivery_endpoints.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_form_delivery_endpoints.id."
     )
     attempt_number: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, comment="One-based retry sequence within an endpoint."
@@ -1252,9 +1367,18 @@ class HumanInputFormDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
         comment="Immutable provider response Pydantic model retained for diagnostics.",
     )
 
-    endpoint: Mapped[HumanInputFormDeliveryEndpoint] = relationship(
-        lambda: HumanInputFormDeliveryEndpoint,
-        primaryjoin=lambda: orm.foreign(HumanInputFormDeliveryAttempt.endpoint_id) == HumanInputFormDeliveryEndpoint.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormDeliveryAttempt.form_id) == HumanInputV2Form.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    endpoint: Mapped[HumanInputV2FormDeliveryEndpoint] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
+        primaryjoin=lambda: (
+            orm.foreign(HumanInputV2FormDeliveryAttempt.endpoint_id) == HumanInputV2FormDeliveryEndpoint.id
+        ),
         back_populates="attempts",
         viewonly=True,
         lazy="raise",
@@ -1262,28 +1386,34 @@ class HumanInputFormDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class HumanInputFormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
     """Hashed email proof challenge scoped to one form and approver grant.
 
     Resend replaces the current challenge. The service must lock the grant
     before issuing a replacement so only one pending challenge remains usable.
     """
 
-    __tablename__ = "human_input_form_otp_challenges"
+    __tablename__ = "human_input_v2_form_otp_challenges"
     __table_args__ = (
-        sa.UniqueConstraint("challenge_token_hash", name="human_input_form_otp_challenges_token_uq"),
-        sa.Index(None, "form_id", "approver_grant_id", "status", "created_at"),
-        {"comment": "Hashed OTP proof sessions for email-based Human Input approval."},
+        sa.UniqueConstraint("challenge_token_hash", name="hiv2_form_otp_challenges_token_uq"),
+        sa.Index(
+            "hiv2_form_otp_form_grant_status_created_idx",
+            "form_id",
+            "approver_grant_id",
+            "status",
+            "created_at",
+        ),
+        {"comment": "Hashed OTP proof sessions for email-based Human Input v2 approval."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_forms.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_forms.id."
     )
     approver_grant_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_form_approver_grants.id.",
+        comment="Logical foreign key to human_input_v2_form_approver_grants.id.",
     )
     challenge_token_hash: Mapped[str] = mapped_column(
         sa.String(64), nullable=False, comment="SHA-256 hash of the ephemeral challenge token."
@@ -1317,38 +1447,44 @@ class HumanInputFormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         sa.DateTime, nullable=True, default=None, comment="Timestamp when resend or identity change invalidated it."
     )
 
-    form: Mapped[HumanInputForm] = relationship(
-        lambda: HumanInputForm,
-        primaryjoin=lambda: orm.foreign(HumanInputFormOTPChallenge.form_id) == HumanInputForm.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormOTPChallenge.form_id) == HumanInputV2Form.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    approver_grant: Mapped[HumanInputFormApproverGrant] = relationship(
-        lambda: HumanInputFormApproverGrant,
-        primaryjoin=lambda: orm.foreign(HumanInputFormOTPChallenge.approver_grant_id) == HumanInputFormApproverGrant.id,
+    approver_grant: Mapped[HumanInputV2FormApproverGrant] = relationship(
+        lambda: HumanInputV2FormApproverGrant,
+        primaryjoin=lambda: (
+            orm.foreign(HumanInputV2FormOTPChallenge.approver_grant_id) == HumanInputV2FormApproverGrant.id
+        ),
         viewonly=True,
         lazy="raise",
         init=False,
     )
 
 
-class HumanInputFormSubmission(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2FormSubmission(DefaultFieldsDCMixin, TypeBase):
     """Immutable winning submission for a Human Input form.
 
     The unique ``form_id`` constraint is the database-level first-success-wins
-    guard. Insert this row and transition ``HumanInputForm.status`` in one transaction.
+    guard. Insert this row and transition ``HumanInputV2Form.status`` in one transaction.
     The referenced audit event must be ``submission_authorized`` and must describe
     the same form, approver grant, and optional endpoint; the application service
     creates both records in that transaction.
+    ``input_snapshot`` contains only the unvalidated request ``inputs`` object;
+    it never stores the whole request, action, OTP, token, session, or proof data.
+    ``canonical_values`` contains the validated execution-time source of truth,
+    currently persisted using Segment serialization.
     """
 
-    __tablename__ = "human_input_form_submissions"
+    __tablename__ = "human_input_v2_form_submissions"
     __table_args__ = (
-        sa.UniqueConstraint("form_id", name="human_input_form_submissions_form_uq"),
+        sa.UniqueConstraint("form_id", name="hiv2_form_submissions_form_uq"),
         sa.UniqueConstraint(
             "authorization_audit_event_id",
-            name="hif_submission_authorization_audit_event_uq",
+            name="hiv2_submission_authorization_audit_event_uq",
         ),
         sa.CheckConstraint(
             "(actor_type = 'account' AND actor_account_id IS NOT NULL AND actor_end_user_id IS NULL "
@@ -1359,18 +1495,18 @@ class HumanInputFormSubmission(DefaultFieldsDCMixin, TypeBase):
             "AND actor_normalized_email IS NOT NULL)",
             name="actor_identity",
         ),
-        sa.Index(None, "tenant_id", "submitted_at", "id"),
-        {"comment": "Immutable first successful Human Input submission and its business actor."},
+        sa.Index("hiv2_form_submissions_tenant_submitted_idx", "tenant_id", "submitted_at", "id"),
+        {"comment": "Immutable first successful Human Input v2 submission and its business actor."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_forms.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_forms.id."
     )
     approver_grant_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_form_approver_grants.id for the exercised grant.",
+        comment="Logical foreign key to human_input_v2_form_approver_grants.id for the exercised grant.",
     )
     actor_type: Mapped[_HumanInputSubmissionActorType] = mapped_column(
         EnumText(_HumanInputSubmissionActorType),
@@ -1380,17 +1516,22 @@ class HumanInputFormSubmission(DefaultFieldsDCMixin, TypeBase):
     authorization_audit_event_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to the submission_authorized human_input_form_audit_events.id.",
+        comment="Logical foreign key to the submission_authorized human_input_v2_form_audit_events.id.",
     )
     selected_action_id: Mapped[str] = mapped_column(
         sa.String(200),
         nullable=False,
         comment="Action identifier from the frozen form configuration; not a logical foreign key to a table.",
     )
-    submitted_data: Mapped[FormSubmittedData] = mapped_column(
-        FrozenPydanticModelColumn(FormSubmittedData),
+    input_snapshot: Mapped[FormInputSnapshot] = mapped_column(
+        FrozenPydanticModelColumn(FormInputSnapshot),
         nullable=False,
-        comment="Immutable validated submission-data Pydantic model.",
+        comment="Unvalidated raw form values from request.inputs only; this is not the complete HTTP request.",
+    )
+    canonical_values: Mapped[FormCanonicalValues] = mapped_column(
+        FrozenPydanticModelColumn(FormCanonicalValues),
+        nullable=False,
+        comment="Validated canonical runtime values persisted using Segment serialization; execution source of truth.",
     )
     submitted_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, comment="Timestamp when the first successful submission committed."
@@ -1417,34 +1558,36 @@ class HumanInputFormSubmission(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_form_delivery_endpoints.id, when submitted through an endpoint.",
+        comment="Logical foreign key to human_input_v2_form_delivery_endpoints.id, when submitted through an endpoint.",
     )
 
-    form: Mapped[HumanInputForm] = relationship(
-        lambda: HumanInputForm,
-        primaryjoin=lambda: orm.foreign(HumanInputFormSubmission.form_id) == HumanInputForm.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormSubmission.form_id) == HumanInputV2Form.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    approver_grant: Mapped[HumanInputFormApproverGrant] = relationship(
-        lambda: HumanInputFormApproverGrant,
-        primaryjoin=lambda: orm.foreign(HumanInputFormSubmission.approver_grant_id) == HumanInputFormApproverGrant.id,
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    endpoint: Mapped[HumanInputFormDeliveryEndpoint | None] = relationship(
-        lambda: HumanInputFormDeliveryEndpoint,
-        primaryjoin=lambda: orm.foreign(HumanInputFormSubmission.endpoint_id) == HumanInputFormDeliveryEndpoint.id,
-        viewonly=True,
-        lazy="raise",
-        init=False,
-    )
-    authorization_audit_event: Mapped[HumanInputFormAuditEvent] = relationship(
-        lambda: HumanInputFormAuditEvent,
+    approver_grant: Mapped[HumanInputV2FormApproverGrant] = relationship(
+        lambda: HumanInputV2FormApproverGrant,
         primaryjoin=lambda: (
-            orm.foreign(HumanInputFormSubmission.authorization_audit_event_id) == HumanInputFormAuditEvent.id
+            orm.foreign(HumanInputV2FormSubmission.approver_grant_id) == HumanInputV2FormApproverGrant.id
+        ),
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    endpoint: Mapped[HumanInputV2FormDeliveryEndpoint | None] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormSubmission.endpoint_id) == HumanInputV2FormDeliveryEndpoint.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    authorization_audit_event: Mapped[HumanInputV2FormAuditEvent] = relationship(
+        lambda: HumanInputV2FormAuditEvent,
+        primaryjoin=lambda: (
+            orm.foreign(HumanInputV2FormSubmission.authorization_audit_event_id) == HumanInputV2FormAuditEvent.id
         ),
         viewonly=True,
         lazy="raise",
@@ -1452,30 +1595,30 @@ class HumanInputFormSubmission(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class HumanInputFormAuditEvent(DefaultFieldsDCMixin, TypeBase):
+class HumanInputV2FormAuditEvent(DefaultFieldsDCMixin, TypeBase):
     """Append-only audit fact for resolution, access, delivery, or submission.
 
     A successful submission references its ``submission_authorized`` event, whose
     ``authorization_proof`` retains verified evidence without reusable secrets.
-    Its business actor remains exclusively on ``HumanInputFormSubmission``;
+    Its business actor remains exclusively on ``HumanInputV2FormSubmission``;
     rejected attempts remain audit-only facts because they produce no Submission.
     """
 
-    __tablename__ = "human_input_form_audit_events"
+    __tablename__ = "human_input_v2_form_audit_events"
     __table_args__ = (
-        sa.Index(None, "form_id", "occurred_at", "id"),
-        sa.Index(None, "tenant_id", "occurred_at", "id"),
+        sa.Index("hiv2_form_audit_form_occurred_idx", "form_id", "occurred_at", "id"),
+        sa.Index("hiv2_form_audit_tenant_occurred_idx", "tenant_id", "occurred_at", "id"),
         sa.CheckConstraint(
             "event_type <> 'submission_authorized' OR "
             "(approver_grant_id IS NOT NULL AND authorization_proof IS NOT NULL)",
-            name="submission_authorized_proof",
+            name="authorized_proof",
         ),
-        {"comment": "Append-only Human Input audit facts for security and operational queries."},
+        {"comment": "Append-only Human Input v2 audit facts for security and operational queries."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     form_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to human_input_forms.id."
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_v2_forms.id."
     )
     event_type: Mapped[str] = mapped_column(
         sa.String(64), nullable=False, comment="Stable event name such as access_checked or submission_rejected."
@@ -1487,13 +1630,13 @@ class HumanInputFormAuditEvent(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_form_approver_grants.id, when a grant was resolved.",
+        comment="Logical foreign key to human_input_v2_form_approver_grants.id, when a grant was resolved.",
     )
     endpoint_id: Mapped[str | None] = mapped_column(
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to human_input_form_delivery_endpoints.id, when an endpoint was involved.",
+        comment="Logical foreign key to human_input_v2_form_delivery_endpoints.id, when an endpoint was involved.",
     )
     channel: Mapped[_HumanInputDeliveryChannel | None] = mapped_column(
         EnumText(_HumanInputDeliveryChannel),
@@ -1528,23 +1671,120 @@ class HumanInputFormAuditEvent(DefaultFieldsDCMixin, TypeBase):
         comment="Immutable event-specific Pydantic model not used as a primary query predicate.",
     )
 
-    form: Mapped[HumanInputForm] = relationship(
-        lambda: HumanInputForm,
-        primaryjoin=lambda: orm.foreign(HumanInputFormAuditEvent.form_id) == HumanInputForm.id,
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormAuditEvent.form_id) == HumanInputV2Form.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    approver_grant: Mapped[HumanInputFormApproverGrant | None] = relationship(
-        lambda: HumanInputFormApproverGrant,
-        primaryjoin=lambda: orm.foreign(HumanInputFormAuditEvent.approver_grant_id) == HumanInputFormApproverGrant.id,
+    approver_grant: Mapped[HumanInputV2FormApproverGrant | None] = relationship(
+        lambda: HumanInputV2FormApproverGrant,
+        primaryjoin=lambda: (
+            orm.foreign(HumanInputV2FormAuditEvent.approver_grant_id) == HumanInputV2FormApproverGrant.id
+        ),
         viewonly=True,
         lazy="raise",
         init=False,
     )
-    endpoint: Mapped[HumanInputFormDeliveryEndpoint | None] = relationship(
-        lambda: HumanInputFormDeliveryEndpoint,
-        primaryjoin=lambda: orm.foreign(HumanInputFormAuditEvent.endpoint_id) == HumanInputFormDeliveryEndpoint.id,
+    endpoint: Mapped[HumanInputV2FormDeliveryEndpoint | None] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormAuditEvent.endpoint_id) == HumanInputV2FormDeliveryEndpoint.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+
+
+class HumanInputV2FormUploadToken(DefaultFieldsDCMixin, TypeBase):
+    """Hashed upload capability scoped to one Human Input v2 delivery endpoint.
+
+    The opaque token is returned only at creation time. Persistence retains its
+    SHA-256 hash so an upload credential cannot be recovered from the database.
+    Endpoint scoping keeps public upload access within the same form surface that
+    issued the capability.
+    """
+
+    __tablename__ = "human_input_v2_form_upload_tokens"
+    __table_args__ = (
+        sa.UniqueConstraint("upload_token_hash", name="hiv2_form_upload_tokens_hash_uq"),
+        sa.Index("hiv2_form_upload_tokens_form_endpoint_idx", "form_id", "endpoint_id"),
+        {"comment": "Hashed endpoint-scoped upload capabilities for Human Input v2 forms."},
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to apps.id.")
+    form_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to human_input_v2_forms.id.",
+    )
+    endpoint_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to human_input_v2_form_delivery_endpoints.id.",
+    )
+    upload_token_hash: Mapped[str] = mapped_column(
+        sa.String(64),
+        nullable=False,
+        comment="SHA-256 hash of the opaque upload token; plaintext tokens are never persisted.",
+    )
+
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormUploadToken.form_id) == HumanInputV2Form.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    endpoint: Mapped[HumanInputV2FormDeliveryEndpoint] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormUploadToken.endpoint_id) == HumanInputV2FormDeliveryEndpoint.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+
+
+class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
+    """Durable association between a v2 form upload capability and one file."""
+
+    __tablename__ = "human_input_v2_form_upload_files"
+    __table_args__ = (
+        sa.UniqueConstraint("upload_file_id", name="hiv2_form_upload_files_file_uq"),
+        sa.Index("hiv2_form_upload_files_form_idx", "form_id"),
+        sa.Index("hiv2_form_upload_files_token_idx", "upload_token_id"),
+        {"comment": "Durable Human Input v2 form, upload-token, and file associations."},
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to apps.id.")
+    form_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to human_input_v2_forms.id.",
+    )
+    upload_file_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to upload_files.id.",
+    )
+    upload_token_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to human_input_v2_form_upload_tokens.id.",
+    )
+
+    form: Mapped[HumanInputV2Form] = relationship(
+        lambda: HumanInputV2Form,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormUploadFile.form_id) == HumanInputV2Form.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    upload_token: Mapped[HumanInputV2FormUploadToken] = relationship(
+        lambda: HumanInputV2FormUploadToken,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormUploadFile.upload_token_id) == HumanInputV2FormUploadToken.id,
         viewonly=True,
         lazy="raise",
         init=False,
@@ -1560,23 +1800,28 @@ __all__ = [
     "FormApproverGrantSubjectSnapshot",
     "FormAuditEventPayload",
     "FormAuthorizationProof",
+    "FormCanonicalValues",
     "FormDeliveryProviderResponse",
-    "FormSubmittedData",
+    "FormInputSnapshot",
     "HumanInputContact",
     "HumanInputContactIdentitySource",
     "HumanInputEmailProvider",
-    "HumanInputFormApproverGrant",
-    "HumanInputFormAuditEvent",
-    "HumanInputFormDeliveryAttempt",
-    "HumanInputFormDeliveryEndpoint",
-    "HumanInputFormOTPChallenge",
-    "HumanInputFormSubmission",
     "HumanInputIMBinding",
     "HumanInputIMIdentity",
     "HumanInputIMIntegration",
     "HumanInputIMSyncResult",
     "HumanInputIMSyncRun",
     "HumanInputPlatformContactWorkspaceEntry",
+    "HumanInputV2Form",
+    "HumanInputV2FormApproverGrant",
+    "HumanInputV2FormAuditEvent",
+    "HumanInputV2FormDefinition",
+    "HumanInputV2FormDeliveryAttempt",
+    "HumanInputV2FormDeliveryEndpoint",
+    "HumanInputV2FormOTPChallenge",
+    "HumanInputV2FormSubmission",
+    "HumanInputV2FormUploadFile",
+    "HumanInputV2FormUploadToken",
     "IMIdentityAuthorizationProof",
     "IMIdentityRawPayload",
     "IMIntegrationEncryptedCredentials",

@@ -26,6 +26,22 @@ class HumanInputSubmissionActorType(StrEnum):
     EMAIL_ADDRESS = "email_address"
 
 
+class HumanInputV2FormKind(StrEnum):
+    """Persistence kind for an independently stored Human Input v2 form."""
+
+    RUNTIME = "runtime"
+    DELIVERY_TEST = "delivery_test"
+
+
+class HumanInputV2FormStatus(StrEnum):
+    """Lifecycle state of an independently stored Human Input v2 form."""
+
+    WAITING = "waiting"
+    EXPIRED = "expired"
+    SUBMITTED = "submitted"
+    TIMEOUT = "timeout"
+
+
 class HumanInputAuthorizationProofType(StrEnum):
     """Verified evidence type retained for a Human Input authorization audit event."""
 
@@ -158,6 +174,8 @@ __all__ = [
     "HumanInputDeliveryChannel",
     "HumanInputOTPChallengeStatus",
     "HumanInputSubmissionActorType",
+    "HumanInputV2FormKind",
+    "HumanInputV2FormStatus",
     "IMBindingId",
     "IMBindingScope",
     "IMIdentityBindingStatus",
