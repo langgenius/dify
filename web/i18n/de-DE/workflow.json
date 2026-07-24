@@ -1199,6 +1199,8 @@
   "panel.goTo": "Gehe zu",
   "panel.goToFix": "Zur Behebung",
   "panel.helpLink": "Hilfe",
+  "panel.locateNodeNotFound": "Knoten nicht gefunden: {{nodeId}}",
+  "panel.locateNodeSuccess": "Knoten gefunden: {{title}}",
   "panel.nextStep": "Nächster Schritt",
   "panel.openWorkflow": "Workflow öffnen",
   "panel.optional": "(optional)",

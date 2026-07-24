@@ -1,5 +1,7 @@
-import { KnowledgeRoutePlaceholder } from '@/features/new-rag/knowledge-route-placeholder'
+import { SourcesPage } from '@/features/new-rag/sources-page'
 
-export default function Page() {
-  return <KnowledgeRoutePlaceholder type="sources" />
+export default async function Page({ params }: { params: Promise<{ knowledgeSpaceId: string }> }) {
+  const { knowledgeSpaceId } = await params
+
+  return <SourcesPage knowledgeSpaceId={knowledgeSpaceId} />
 }

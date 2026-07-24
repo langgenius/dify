@@ -1199,6 +1199,8 @@
   "panel.goTo": "Du-te la",
   "panel.goToFix": "Mergi la remediere",
   "panel.helpLink": "Ajutor",
+  "panel.locateNodeNotFound": "Nod negăsit: {{nodeId}}",
+  "panel.locateNodeSuccess": "Nod localizat: {{title}}",
   "panel.nextStep": "Pasul următor",
   "panel.openWorkflow": "Deschide fluxul de lucru",
   "panel.optional": "(opțional)",

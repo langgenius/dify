@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any
 
 import sqlalchemy as sa
@@ -650,8 +651,7 @@ class AgentObservabilityService:
 
     @staticmethod
     def _enum_value(value: object) -> str:
-        enum_value = getattr(value, "value", value)
-        return str(enum_value)
+        return str(value.value) if isinstance(value, Enum) else str(value)
 
     @staticmethod
     def _int_value(value: object) -> int:
