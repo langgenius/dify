@@ -159,7 +159,7 @@ class TestModelProviderServiceConfiguration:
         )
         monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
 
-        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1", model_type=ModelType.LLM)
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
 
         assert len(providers) == 1
         assert providers[0].provider == provider.provider
@@ -183,7 +183,7 @@ class TestModelProviderServiceConfiguration:
         assert call_order == ["bindings", "providers"]
         manager_constructor.assert_not_called()
 
-    def test_get_provider_summary_list_filters_metadata_before_building_response(
+    def test_get_provider_summary_list_returns_all_unique_provider_metadata(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         service = ModelProviderService()
@@ -237,9 +237,12 @@ class TestModelProviderServiceConfiguration:
         monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
         monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
 
-        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1", model_type=ModelType.LLM)
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
 
-        assert [provider.provider for provider in providers] == ["langgenius/openai/openai"]
+        assert [provider.provider for provider in providers] == [
+            "langgenius/openai/openai",
+            "langgenius/embedding/embedding",
+        ]
         assert providers[0].is_configured is False
         assert providers[0].custom_configuration.status.value == "no-configure"
         assert providers[0].custom_configuration.available_credentials == []

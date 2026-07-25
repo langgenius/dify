@@ -3760,12 +3760,6 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
 
-export const zGetWorkspacesCurrentModelProvidersSummaryQuery = z.object({
-  model_type: z
-    .enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts'])
-    .optional(),
-})
-
 /**
  * Model provider summaries retrieved successfully
  */

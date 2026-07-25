@@ -71,7 +71,6 @@ import {
   zGetWorkspacesCurrentModelProvidersByProviderModelsResponse,
   zGetWorkspacesCurrentModelProvidersQuery,
   zGetWorkspacesCurrentModelProvidersResponse,
-  zGetWorkspacesCurrentModelProvidersSummaryQuery,
   zGetWorkspacesCurrentModelProvidersSummaryResponse,
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
   zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
@@ -1077,7 +1076,6 @@ export const get12 = oc
     path: '/workspaces/current/model-providers/summary',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersSummaryQuery.optional() }))
   .output(zGetWorkspacesCurrentModelProvidersSummaryResponse)
 
 export const summary = {

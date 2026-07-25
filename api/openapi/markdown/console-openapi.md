@@ -10554,12 +10554,6 @@ Update a plugin endpoint
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/summary
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| model_type | query | Enum class for model type. | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
-
 #### Responses
 
 | Code | Description | Schema |

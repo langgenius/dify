@@ -190,7 +190,7 @@ class TestModelProviderSummaryListApi:
         )
 
         with (
-            app.test_request_context("/?model_type=llm"),
+            app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.model_providers.ModelProviderService.get_provider_summary_list",
                 return_value=([provider], {"langgenius/openai": plugin}),
@@ -198,7 +198,7 @@ class TestModelProviderSummaryListApi:
         ):
             result = method(api, "tenant1")
 
-        get_provider_summary_list.assert_called_once_with(tenant_id="tenant1", model_type=ModelType.LLM)
+        get_provider_summary_list.assert_called_once_with(tenant_id="tenant1")
         assert result["data"][0]["provider"] == "langgenius/openai/openai"
         assert "tenant_id" not in result["data"][0]
         assert result["data"][0]["custom_configuration"] == {

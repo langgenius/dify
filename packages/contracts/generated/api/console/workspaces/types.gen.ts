@@ -3078,9 +3078,7 @@ export type GetWorkspacesCurrentModelProvidersResponse =
 export type GetWorkspacesCurrentModelProvidersSummaryData = {
   body?: never
   path?: never
-  query?: {
-    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-  }
+  query?: never
   url: '/workspaces/current/model-providers/summary'
 }
 

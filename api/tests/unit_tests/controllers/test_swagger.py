@@ -708,8 +708,7 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path)
     console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
     operation = payload["paths"]["/workspaces/current/model-providers/summary"]["get"]
-    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
-    assert parameters["model_type"]["required"] is False
+    assert operation.get("parameters", []) == []
 
     response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
         "#/components/schemas/"

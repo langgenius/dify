@@ -305,11 +305,9 @@ class ModelProviderService:
         return ProviderType.CUSTOM
 
     def get_provider_summary_list(
-        self, tenant_id: str, model_type: ModelType | str | None = None
+        self, tenant_id: str
     ) -> tuple[list[ModelProviderSummaryResponse], dict[str, ModelProviderPluginSummaryResponse]]:
-        """Build the first-screen provider projection without assembling provider configurations."""
-        model_type_entity = ModelType(model_type) if model_type else None
-
+        """Build the complete first-screen provider projection without assembling provider configurations."""
         # Read bindings first: remote-debug identity changes invalidate provider metadata
         # before the provider cache is consulted.
         bindings = PluginService.list_model_provider_bindings(tenant_id)
@@ -331,8 +329,6 @@ class ModelProviderService:
         provider_summaries: list[ModelProviderSummaryResponse] = []
         emitted_provider_names: set[str] = set()
         for provider_entity in provider_entities:
-            if model_type_entity and model_type_entity not in provider_entity.supported_model_types:
-                continue
             if is_filtered(
                 include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
                 exclude_set=dify_config.POSITION_PROVIDER_EXCLUDES_SET,

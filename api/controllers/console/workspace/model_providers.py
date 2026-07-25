@@ -152,7 +152,6 @@ class ModelProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/summary")
 class ModelProviderSummaryListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(ParserModelList))
     @console_ns.response(
         200,
         "Model provider summaries retrieved successfully",
@@ -163,11 +162,7 @@ class ModelProviderSummaryListApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        args = ParserModelList.model_validate(request.args.to_dict(flat=True))
-        providers, plugins = ModelProviderService().get_provider_summary_list(
-            tenant_id=tenant_id,
-            model_type=args.model_type,
-        )
+        providers, plugins = ModelProviderService().get_provider_summary_list(tenant_id=tenant_id)
         return dump_response(
             ModelProviderSummaryListResponse,
             {"data": providers, "plugins": plugins},
