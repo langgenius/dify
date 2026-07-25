@@ -14,14 +14,19 @@ const InfoPanel = () => {
         </div>
         <p className="flex flex-col items-start gap-2 self-stretch">
           <span className="self-stretch system-xl-semibold text-text-secondary">
-            {t('connectDatasetIntro.title', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.title'], { ns: 'dataset' })}
           </span>
           <span className="system-sm-regular text-text-tertiary">
-            {t('connectDatasetIntro.content.front', { ns: 'dataset' })}
-            <a className="ml-1 system-sm-regular text-text-accent" href={docLink('/use-dify/knowledge/external-knowledge-api')} target="_blank" rel="noopener noreferrer">
-              {t('connectDatasetIntro.content.link', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.content.front'], { ns: 'dataset' })}
+            <a
+              className="ml-1 system-sm-regular text-text-accent"
+              href={docLink('/use-dify/knowledge/external-knowledge-api')}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t(($) => $['connectDatasetIntro.content.link'], { ns: 'dataset' })}
             </a>
-            {t('connectDatasetIntro.content.end', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.content.end'], { ns: 'dataset' })}
           </span>
           <a
             className="self-stretch system-sm-regular text-text-accent"
@@ -29,7 +34,7 @@ const InfoPanel = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('connectDatasetIntro.learnMore', { ns: 'dataset' })}
+            {t(($) => $['connectDatasetIntro.learnMore'], { ns: 'dataset' })}
           </a>
         </p>
       </div>

@@ -559,6 +559,8 @@ def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPa
     """Resolve Account and set tenant in worker context."""
     tenant = SimpleNamespace(id="tenant_id")
     account = SimpleNamespace(id="account_id", current_tenant=None)
+    set_current_tenant = Mock(side_effect=lambda tenant, *, session: setattr(account, "current_tenant", tenant))
+    account.set_current_tenant_with_session = set_current_tenant
     session = StubSession(scalar_results=[tenant, account])
 
     monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session)
@@ -568,6 +570,7 @@ def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPa
     resolved = tool._resolve_user_from_database(user_id="account_id")
     assert resolved is account
     assert account.current_tenant is tenant
+    set_current_tenant.assert_called_once_with(tenant, session=session)
     assert session.expunge_calls == [account]
 
 

@@ -6,7 +6,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function CreateDeploymentPage() {
   const { t } = useTranslation('deployments')
-  useDocumentTitle(t('documentTitle.create'))
+  useDocumentTitle(t(($) => $['documentTitle.create']))
 
   return <CreateDeploymentGuide />
 }

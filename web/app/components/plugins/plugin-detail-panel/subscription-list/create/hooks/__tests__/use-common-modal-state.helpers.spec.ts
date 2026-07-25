@@ -4,6 +4,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildSubscriptionPayload,
   DEFAULT_FORM_VALUES,
@@ -19,10 +20,7 @@ type BuilderResponse = {
   subscription_builder: TriggerSubscriptionBuilder
 }
 
-const {
-  mockToastError,
-  mockIsPrivateOrLocalAddress,
-} = vi.hoisted(() => ({
+const { mockToastError, mockIsPrivateOrLocalAddress } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
   mockIsPrivateOrLocalAddress: vi.fn(),
 }))
@@ -48,18 +46,22 @@ describe('use-common-modal-state helpers', () => {
   })
 
   it('returns form values from the form ref when available', () => {
-    expect(getFormValues({
-      current: {
-        getFormValues: () => ({ values: { subscription_name: 'Sub' }, isCheckValidated: true }),
-      },
-    } as unknown as React.RefObject<FormRefObject | null>)).toEqual({
+    expect(
+      getFormValues({
+        current: {
+          getFormValues: () => ({ values: { subscription_name: 'Sub' }, isCheckValidated: true }),
+        },
+      } as unknown as React.RefObject<FormRefObject | null>),
+    ).toEqual({
       values: { subscription_name: 'Sub' },
       isCheckValidated: true,
     })
   })
 
   it('derives the first field name from values or schema fallback', () => {
-    expect(getFirstFieldName({ callback_url: 'https://example.com' }, [{ name: 'fallback' }])).toBe('callback_url')
+    expect(getFirstFieldName({ callback_url: 'https://example.com' }, [{ name: 'fallback' }])).toBe(
+      'callback_url',
+    )
     expect(getFirstFieldName({}, [{ name: 'fallback' }])).toBe('fallback')
     expect(getFirstFieldName({}, [])).toBe('')
   })
@@ -75,32 +77,39 @@ describe('use-common-modal-state helpers', () => {
   })
 
   it('builds subscription payloads for automatic and manual creation', () => {
-    expect(buildSubscriptionPayload({
-      provider: 'provider-a',
-      subscriptionBuilderId: 'builder-a',
-      createType: SupportedCreationMethods.APIKEY,
-      subscriptionFormValues: { values: { subscription_name: 'My Sub' }, isCheckValidated: true },
-      autoCommonParametersSchemaLength: 1,
-      autoCommonParametersFormValues: { values: { api_key: '123' }, isCheckValidated: true },
-      manualPropertiesSchemaLength: 0,
-      manualPropertiesFormValues: undefined,
-    })).toEqual({
+    expect(
+      buildSubscriptionPayload({
+        provider: 'provider-a',
+        subscriptionBuilderId: 'builder-a',
+        createType: SupportedCreationMethods.APIKEY,
+        subscriptionFormValues: { values: { subscription_name: 'My Sub' }, isCheckValidated: true },
+        autoCommonParametersSchemaLength: 1,
+        autoCommonParametersFormValues: { values: { api_key: '123' }, isCheckValidated: true },
+        manualPropertiesSchemaLength: 0,
+        manualPropertiesFormValues: undefined,
+      }),
+    ).toEqual({
       provider: 'provider-a',
       subscriptionBuilderId: 'builder-a',
       name: 'My Sub',
       parameters: { api_key: '123' },
     })
 
-    expect(buildSubscriptionPayload({
-      provider: 'provider-a',
-      subscriptionBuilderId: 'builder-a',
-      createType: SupportedCreationMethods.MANUAL,
-      subscriptionFormValues: { values: { subscription_name: 'Manual Sub' }, isCheckValidated: true },
-      autoCommonParametersSchemaLength: 0,
-      autoCommonParametersFormValues: undefined,
-      manualPropertiesSchemaLength: 1,
-      manualPropertiesFormValues: { values: { custom: 'value' }, isCheckValidated: true },
-    })).toEqual({
+    expect(
+      buildSubscriptionPayload({
+        provider: 'provider-a',
+        subscriptionBuilderId: 'builder-a',
+        createType: SupportedCreationMethods.MANUAL,
+        subscriptionFormValues: {
+          values: { subscription_name: 'Manual Sub' },
+          isCheckValidated: true,
+        },
+        autoCommonParametersSchemaLength: 0,
+        autoCommonParametersFormValues: undefined,
+        manualPropertiesSchemaLength: 1,
+        manualPropertiesFormValues: { values: { custom: 'value' }, isCheckValidated: true },
+      }),
+    ).toEqual({
       provider: 'provider-a',
       subscriptionBuilderId: 'builder-a',
       name: 'Manual Sub',
@@ -108,34 +117,43 @@ describe('use-common-modal-state helpers', () => {
   })
 
   it('returns null when required validation is missing', () => {
-    expect(buildSubscriptionPayload({
-      provider: 'provider-a',
-      subscriptionBuilderId: 'builder-a',
-      createType: SupportedCreationMethods.APIKEY,
-      subscriptionFormValues: { values: {}, isCheckValidated: false },
-      autoCommonParametersSchemaLength: 1,
-      autoCommonParametersFormValues: { values: {}, isCheckValidated: true },
-      manualPropertiesSchemaLength: 0,
-      manualPropertiesFormValues: undefined,
-    })).toBeNull()
+    expect(
+      buildSubscriptionPayload({
+        provider: 'provider-a',
+        subscriptionBuilderId: 'builder-a',
+        createType: SupportedCreationMethods.APIKEY,
+        subscriptionFormValues: { values: {}, isCheckValidated: false },
+        autoCommonParametersSchemaLength: 1,
+        autoCommonParametersFormValues: { values: {}, isCheckValidated: true },
+        manualPropertiesSchemaLength: 0,
+        manualPropertiesFormValues: undefined,
+      }),
+    ).toBeNull()
   })
 
   it('builds confirm button text for verify and create states', () => {
-    const t = (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`
+    const t = withSelectorKey(
+      (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
+      'pluginTrigger',
+    )
 
-    expect(getConfirmButtonText({
-      isVerifyStep: true,
-      isVerifyingCredentials: false,
-      isBuilding: false,
-      t,
-    })).toBe('pluginTrigger.modal.common.verify')
+    expect(
+      getConfirmButtonText({
+        isVerifyStep: true,
+        isVerifyingCredentials: false,
+        isBuilding: false,
+        t,
+      }),
+    ).toBe('pluginTrigger.modal.common.verify')
 
-    expect(getConfirmButtonText({
-      isVerifyStep: false,
-      isVerifyingCredentials: false,
-      isBuilding: true,
-      t,
-    })).toBe('pluginTrigger.modal.common.creating')
+    expect(
+      getConfirmButtonText({
+        isVerifyStep: false,
+        isVerifyingCredentials: false,
+        isBuilding: true,
+        t,
+      }),
+    ).toBe('pluginTrigger.modal.common.creating')
   })
 
   it('initializes the subscription builder once when provider is available', async () => {
@@ -147,14 +165,19 @@ describe('use-common-modal-state helpers', () => {
     }) => Promise<BuilderResponse>
     const setSubscriptionBuilder = vi.fn()
 
-    renderHook(() => useInitializeSubscriptionBuilder({
-      createBuilder,
-      credentialType: 'oauth',
-      provider: 'provider-a',
-      subscriptionBuilder: undefined,
-      setSubscriptionBuilder,
-      t: (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
-    }))
+    renderHook(() =>
+      useInitializeSubscriptionBuilder({
+        createBuilder,
+        credentialType: 'oauth',
+        provider: 'provider-a',
+        subscriptionBuilder: undefined,
+        setSubscriptionBuilder,
+        t: withSelectorKey(
+          (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
+          'pluginTrigger',
+        ),
+      }),
+    )
 
     await waitFor(() => {
       expect(createBuilder).toHaveBeenCalledWith({
@@ -178,19 +201,26 @@ describe('use-common-modal-state helpers', () => {
       },
     } as unknown as RefObject<FormRefObject | null>
 
-    renderHook(() => useSyncSubscriptionEndpoint({
-      endpoint: 'http://127.0.0.1/callback',
-      isConfigurationStep: true,
-      subscriptionFormRef,
-      t: (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
-    }))
+    renderHook(() =>
+      useSyncSubscriptionEndpoint({
+        endpoint: 'http://127.0.0.1/callback',
+        isConfigurationStep: true,
+        subscriptionFormRef,
+        t: withSelectorKey(
+          (key: string, options?: Record<string, unknown>) => `${options?.ns}.${key}`,
+          'pluginTrigger',
+        ),
+      }),
+    )
 
     await waitFor(() => {
       expect(setFieldValue).toHaveBeenCalledWith('callback_url', 'http://127.0.0.1/callback')
-      expect(setFields).toHaveBeenCalledWith([{
-        name: 'callback_url',
-        warnings: ['pluginTrigger.modal.form.callbackUrl.privateAddressWarning'],
-      }])
+      expect(setFields).toHaveBeenCalledWith([
+        {
+          name: 'callback_url',
+          warnings: ['pluginTrigger.modal.form.callbackUrl.privateAddressWarning'],
+        },
+      ])
     })
   })
 })

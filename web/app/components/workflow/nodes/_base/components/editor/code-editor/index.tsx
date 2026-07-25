@@ -5,9 +5,7 @@ import Editor, { loader } from '@monaco-editor/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  getFilesInLogs,
-} from '@/app/components/base/file-uploader/utils'
+import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -83,8 +81,7 @@ const CodeEditor: FC<Props> = ({
   }, [value])
 
   const fileList = useMemo(() => {
-    if (typeof value === 'object')
-      return getFilesInLogs(value)
+    if (typeof value === 'object') return getFilesInLogs(value)
     return []
   }, [value])
 
@@ -121,19 +118,16 @@ const CodeEditor: FC<Props> = ({
   }
 
   const outPutValue = (() => {
-    if (!isJSONStringifyBeauty)
-      return value as string
+    if (!isJSONStringifyBeauty) return value as string
     try {
       return JSON.stringify(value as object, null, 2)
-    }
-    catch {
+    } catch {
       return value as string
     }
   })()
 
   const theme = useMemo(() => {
-    if (appTheme === Theme.light)
-      return 'light'
+    if (appTheme === Theme.light) return 'light'
     return 'vs-dark'
   }, [appTheme])
 
@@ -167,45 +161,47 @@ const CodeEditor: FC<Props> = ({
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && !isFocus && <div className="pointer-events-none absolute top-0 left-[36px] text-[13px] leading-[18px] font-normal text-components-input-text-placeholder">{placeholder}</div>}
+      {!outPutValue && !isFocus && (
+        <div className="pointer-events-none absolute top-0 left-[36px] text-[13px] leading-[18px] font-normal text-components-input-text-placeholder">
+          {placeholder}
+        </div>
+      )}
     </>
   )
 
   return (
     <div className={cn(isExpand && 'h-full', className)}>
-      {noWrapper
-        ? (
-            <div
-              className="no-wrapper relative"
-              style={{
-                height: isExpand ? '100%' : (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
-                minHeight: CODE_EDITOR_LINE_HEIGHT,
-              }}
-            >
-              {main}
-            </div>
-          )
-        : (
-            <Base
-              nodeId={nodeId}
-              className="relative"
-              title={title}
-              value={outPutValue}
-              headerRight={headerRight}
-              isFocus={isFocus && !readOnly}
-              minHeight={minHeight}
-              isInNode={isInNode}
-              onGenerated={onGenerated}
-              codeLanguages={language}
-              fileList={fileList as any}
-              showFileList={showFileList}
-              showCodeGenerator={showCodeGenerator}
-              tip={tip}
-              footer={footer}
-            >
-              {main}
-            </Base>
-          )}
+      {noWrapper ? (
+        <div
+          className="no-wrapper relative"
+          style={{
+            height: isExpand ? '100%' : editorContentHeight / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
+            minHeight: CODE_EDITOR_LINE_HEIGHT,
+          }}
+        >
+          {main}
+        </div>
+      ) : (
+        <Base
+          nodeId={nodeId}
+          className="relative"
+          title={title}
+          value={outPutValue}
+          headerRight={headerRight}
+          isFocus={isFocus && !readOnly}
+          minHeight={minHeight}
+          isInNode={isInNode}
+          onGenerated={onGenerated}
+          codeLanguages={language}
+          fileList={fileList as any}
+          showFileList={showFileList}
+          showCodeGenerator={showCodeGenerator}
+          tip={tip}
+          footer={footer}
+        >
+          {main}
+        </Base>
+      )}
     </div>
   )
 }

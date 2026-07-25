@@ -14,7 +14,7 @@ describe('proxy frame options', () => {
     expect(canEmbedPath('/agents')).toBe(false)
     expect(canEmbedPath('/agent-settings')).toBe(false)
     expect(canEmbedPath('/agentic')).toBe(false)
-    expect(canEmbedPath('/roster/agent/agent-1/access')).toBe(false)
+    expect(canEmbedPath('/agents/agent-1/access')).toBe(false)
     expect(canEmbedPath('/apps')).toBe(false)
   })
 })

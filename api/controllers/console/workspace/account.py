@@ -46,6 +46,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
@@ -262,7 +263,7 @@ class AccountInitApi(Resource):
         payload = console_ns.payload or {}
         args = AccountInitPayload.model_validate(payload)
 
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             if not args.invitation_code:
                 raise ValueError("invitation_code is required")
 
@@ -317,7 +318,7 @@ class AccountNameApi(Resource):
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
-        updated_account = AccountService.update_account(current_user, session=db.session, name=args.name)
+        updated_account = AccountService.update_account(current_user, session=db.session(), name=args.name)
 
         return dump_response(AccountResponse, updated_account)
 
@@ -363,7 +364,7 @@ class AccountAvatarApi(Resource):
         payload = console_ns.payload or {}
         args = AccountAvatarPayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, session=db.session, avatar=args.avatar)
+        updated_account = AccountService.update_account(current_user, session=db.session(), avatar=args.avatar)
 
         return dump_response(AccountResponse, updated_account)
 
@@ -381,7 +382,7 @@ class AccountInterfaceLanguageApi(Resource):
         args = AccountInterfaceLanguagePayload.model_validate(payload)
 
         updated_account = AccountService.update_account(
-            current_user, session=db.session, interface_language=args.interface_language
+            current_user, session=db.session(), interface_language=args.interface_language
         )
 
         return dump_response(AccountResponse, updated_account)
@@ -400,7 +401,7 @@ class AccountInterfaceThemeApi(Resource):
         args = AccountInterfaceThemePayload.model_validate(payload)
 
         updated_account = AccountService.update_account(
-            current_user, session=db.session, interface_theme=args.interface_theme
+            current_user, session=db.session(), interface_theme=args.interface_theme
         )
 
         return dump_response(AccountResponse, updated_account)
@@ -418,7 +419,7 @@ class AccountTimezoneApi(Resource):
         payload = console_ns.payload or {}
         args = AccountTimezonePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, session=db.session, timezone=args.timezone)
+        updated_account = AccountService.update_account(current_user, session=db.session(), timezone=args.timezone)
 
         return dump_response(AccountResponse, updated_account)
 
@@ -437,7 +438,7 @@ class AccountPasswordApi(Resource):
 
         try:
             assert args.password is not None
-            AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session)
+            AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session())
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
@@ -514,7 +515,7 @@ class AccountDeleteApi(Resource):
         if not AccountService.verify_account_deletion_code(args.token, args.code):
             raise InvalidAccountDeletionCodeError()
 
-        AccountService.delete_account(account)
+        AccountService.delete_account(account, session=db.session())
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -726,7 +727,7 @@ class ChangeEmailResetApi(Resource):
         if AccountService.is_account_in_freeze(normalized_new_email):
             raise AccountInFreezeError()
 
-        if not AccountService.check_email_unique(normalized_new_email, session=db.session):
+        if not AccountService.check_email_unique(normalized_new_email, session=db.session()):
             raise EmailAlreadyInUseError()
 
         reset_data = AccountService.get_change_email_data(args.token)
@@ -751,7 +752,7 @@ class ChangeEmailResetApi(Resource):
         AccountService.revoke_change_email_token(args.token)
 
         updated_account = AccountService.update_account_email(
-            current_user, email=normalized_new_email, session=db.session
+            current_user, email=normalized_new_email, session=db.session()
         )
 
         AccountService.send_change_email_completed_notify_email(
@@ -772,6 +773,6 @@ class CheckEmailUnique(Resource):
         normalized_email = args.email.lower()
         if AccountService.is_account_in_freeze(normalized_email):
             raise AccountInFreezeError()
-        if not AccountService.check_email_unique(normalized_email, session=db.session):
+        if not AccountService.check_email_unique(normalized_email, session=db.session()):
             raise EmailAlreadyInUseError()
         return SimpleResultResponse(result="success").model_dump(mode="json")

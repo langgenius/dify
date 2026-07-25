@@ -2409,8 +2409,8 @@ export const zDeploymentServiceListEnvironmentDeploymentsPath = z.object({
 /**
  * OK
  */
-export const zDeploymentServiceListEnvironmentDeploymentsResponse
-  = zListEnvironmentDeploymentsResponse
+export const zDeploymentServiceListEnvironmentDeploymentsResponse =
+  zListEnvironmentDeploymentsResponse
 
 export const zAccessServiceGetAccessPolicyPath = z.object({
   appInstanceId: z.string(),
@@ -2600,8 +2600,8 @@ export const zReleaseServiceComputeReleaseDeploymentViewQuery = z.object({
 /**
  * OK
  */
-export const zReleaseServiceComputeReleaseDeploymentViewResponse
-  = zComputeReleaseDeploymentViewResponse
+export const zReleaseServiceComputeReleaseDeploymentViewResponse =
+  zComputeReleaseDeploymentViewResponse
 
 export const zAppInstanceServiceGetAppInstanceOverviewPath = z.object({
   appInstanceId: z.string(),
@@ -2691,8 +2691,8 @@ export const zReleaseServiceListReleaseCredentialCandidatesPath = z.object({
 /**
  * OK
  */
-export const zReleaseServiceListReleaseCredentialCandidatesResponse
-  = zListReleaseCredentialCandidatesResponse
+export const zReleaseServiceListReleaseCredentialCandidatesResponse =
+  zListReleaseCredentialCandidatesResponse
 
 export const zReleaseServiceComputeDeploymentOptionsBody = zComputeDeploymentOptionsRequest
 

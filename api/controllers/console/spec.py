@@ -1,8 +1,9 @@
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from flask_restx import Resource
-from pydantic import RootModel
+from pydantic import Field, RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.console.wraps import (
@@ -10,6 +11,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.schemas.schema_manager import SchemaManager
+from fields.base import ResponseModel
 from libs.login import login_required
 
 from . import console_ns
@@ -17,11 +19,17 @@ from . import console_ns
 logger = logging.getLogger(__name__)
 
 
-class SchemaDefinitionsResponse(RootModel[Any]):
-    root: Any
+class SchemaDefinitionItemResponse(ResponseModel):
+    name: str
+    label: str
+    schema_: Mapping[str, Any] = Field(alias="schema")
 
 
-register_response_schema_models(console_ns, SchemaDefinitionsResponse)
+class SchemaDefinitionsResponse(RootModel[list[SchemaDefinitionItemResponse]]):
+    pass
+
+
+register_response_schema_models(console_ns, SchemaDefinitionItemResponse, SchemaDefinitionsResponse)
 
 
 @console_ns.route("/spec/schema-definitions")

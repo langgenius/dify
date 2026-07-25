@@ -33,15 +33,6 @@ from tests.helpers.legacy_model_type_migration import (
 
 
 @pytest.fixture
-def sqlite_engine(tmp_path: Path) -> sa.Engine:
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'legacy_model_type_migration.sqlite'}")
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
 def dirty_fixture(sqlite_engine: sa.Engine):
     return seed_legacy_model_type_dirty_data(sqlite_engine)
 

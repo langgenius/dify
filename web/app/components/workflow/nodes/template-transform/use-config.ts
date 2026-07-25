@@ -2,9 +2,7 @@ import type { Var, Variable } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
-import {
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '../../store'
@@ -13,14 +11,17 @@ import useVarList from '../_base/hooks/use-var-list'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
+  const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type]
 
   const { inputs, setInputs: doSetInputs } = useNodeCrud<TemplateTransformNodeType>(id, payload)
   const inputsRef = useRef(inputs)
-  const setInputs = useCallback((newPayload: TemplateTransformNodeType) => {
-    doSetInputs(newPayload)
-    inputsRef.current = newPayload
-  }, [doSetInputs])
+  const setInputs = useCallback(
+    (newPayload: TemplateTransformNodeType) => {
+      doSetInputs(newPayload)
+      inputsRef.current = newPayload
+    },
+    [doSetInputs],
+  )
 
   const { availableVars } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
@@ -32,31 +33,39 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     setInputs,
   })
 
-  const handleVarListChange = useCallback((newList: Variable[]) => {
-    const newInputs = produce(inputsRef.current, (draft: any) => {
-      draft.variables = newList
-    })
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleVarListChange = useCallback(
+    (newList: Variable[]) => {
+      const newInputs = produce(inputsRef.current, (draft: any) => {
+        draft.variables = newList
+      })
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
-  const handleAddVariable = useCallback((payload: Variable) => {
-    const newInputs = produce(inputsRef.current, (draft: any) => {
-      draft.variables.push(payload)
-    })
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleAddVariable = useCallback(
+    (payload: Variable) => {
+      const newInputs = produce(inputsRef.current, (draft: any) => {
+        draft.variables.push(payload)
+      })
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
   // rename var in code
-  const handleVarNameChange = useCallback((oldName: string, newName: string) => {
-    const newInputs = produce(inputsRef.current, (draft: any) => {
-      draft.template = draft.template.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
-    })
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleVarNameChange = useCallback(
+    (oldName: string, newName: string) => {
+      const newInputs = produce(inputsRef.current, (draft: any) => {
+        draft.template = draft.template.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
+      })
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
   useEffect(() => {
-    if (inputs.template)
-      return
+    if (inputs.template) return
 
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
@@ -67,15 +76,28 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     }
   }, [defaultConfig])
 
-  const handleCodeChange = useCallback((template: string) => {
-    const newInputs = produce(inputsRef.current, (draft: any) => {
-      draft.template = template
-    })
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleCodeChange = useCallback(
+    (template: string) => {
+      const newInputs = produce(inputsRef.current, (draft: any) => {
+        draft.template = template
+      })
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string, VarType.number, VarType.boolean, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject].includes(varPayload.type)
+    return [
+      VarType.string,
+      VarType.number,
+      VarType.boolean,
+      VarType.object,
+      VarType.array,
+      VarType.arrayNumber,
+      VarType.arrayString,
+      VarType.arrayBoolean,
+      VarType.arrayObject,
+    ].includes(varPayload.type)
   }, [])
 
   return {

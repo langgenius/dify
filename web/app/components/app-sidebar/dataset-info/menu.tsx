@@ -1,9 +1,4 @@
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-  RiFileDownloadLine,
-  RiLock2Line,
-} from '@remixicon/react'
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine, RiLock2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -32,7 +27,7 @@ const Menu = ({
   openAccessConfig,
 }: MenuProps) => {
   const { t } = useTranslation()
-  const runtimeMode = useDatasetDetailContextWithSelector(state => state.dataset?.runtime_mode)
+  const runtimeMode = useDatasetDetailContextWithSelector((state) => state.dataset?.runtime_mode)
 
   return (
     <div className="flex w-[200px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -40,21 +35,21 @@ const Menu = ({
         {showEdit && (
           <MenuItem
             Icon={RiEditLine}
-            name={t('operation.edit', { ns: 'common' })}
+            name={t(($) => $['operation.edit'], { ns: 'common' })}
             handleClick={openRenameModal}
           />
         )}
         {showExportPipeline && runtimeMode === 'rag_pipeline' && (
           <MenuItem
             Icon={RiFileDownloadLine}
-            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            name={t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
           />
         )}
         {showAccessConfig && (
           <MenuItem
             Icon={RiLock2Line}
-            name={t('settings.resourceAccess', { ns: 'common' })}
+            name={t(($) => $['settings.resourceAccess'], { ns: 'common' })}
             handleClick={openAccessConfig}
           />
         )}
@@ -65,7 +60,7 @@ const Menu = ({
           <div className="flex flex-col p-1">
             <MenuItem
               Icon={RiDeleteBinLine}
-              name={t('operation.delete', { ns: 'common' })}
+              name={t(($) => $['operation.delete'], { ns: 'common' })}
               handleClick={detectIsUsedByApp}
             />
           </div>

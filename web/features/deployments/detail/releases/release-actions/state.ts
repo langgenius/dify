@@ -4,7 +4,7 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { atomWithLazy } from 'jotai/utils'
+import { atomWithLazy, selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 
@@ -35,6 +35,19 @@ export const deployReleaseMenuEnvironmentDeploymentsQueryAtom = atomWithQuery((g
   })
 })
 
+export const deployReleaseMenuEnvironmentDeploymentsAtom = selectAtom(
+  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  (query) => query.data,
+)
+export const deployReleaseMenuEnvironmentDeploymentsIsLoadingAtom = selectAtom(
+  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  (query) => query.isLoading,
+)
+export const deployReleaseMenuEnvironmentDeploymentsIsErrorAtom = selectAtom(
+  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  (query) => query.isError,
+)
+
 export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const menuOpen = get(deployReleaseMenuOpenAtom)
@@ -48,6 +61,11 @@ export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
     enabled: Boolean(appInstanceId && menuOpen),
   })
 })
+
+export const deployReleaseMenuAppInstanceNameAtom = selectAtom(
+  deployReleaseMenuAppInstanceQueryAtom,
+  (query) => query.data?.appInstance.displayName,
+)
 
 export const openEditReleaseDialogAtom = atom(null, (_get, set) => {
   set(deployReleaseMenuOpenAtom, false)

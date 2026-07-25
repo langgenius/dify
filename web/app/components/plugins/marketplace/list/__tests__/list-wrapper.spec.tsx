@@ -14,21 +14,31 @@ const mockMarketplaceData = vi.hoisted(() => ({
   page: 1,
 }))
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, num?: number }) =>
-      key === 'marketplace.pluginsResult' && options?.ns === 'plugin'
-        ? `${options.num} plugins found`
-        : options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey((key: string, options?: { ns?: string; num?: number }) =>
+        key === 'marketplace.pluginsResult' && options?.ns === 'plugin'
+          ? `${options.num} plugins found`
+          : options?.ns
+            ? `${options.ns}.${key}`
+            : key,
+      ),
+    }),
+  }
+})
 
 vi.mock('../../state', () => ({
   useMarketplaceData: () => mockMarketplaceData,
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="loading" className={className}>loading</div>,
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="loading" className={className}>
+      loading
+    </div>
+  ),
 }))
 
 vi.mock('../../sort-dropdown', () => ({
@@ -36,7 +46,9 @@ vi.mock('../../sort-dropdown', () => ({
 }))
 
 vi.mock('../index', () => ({
-  default: ({ plugins }: { plugins?: Plugin[] }) => <div data-testid="list">{plugins?.length ?? 'collections'}</div>,
+  default: ({ plugins }: { plugins?: Plugin[] }) => (
+    <div data-testid="list">{plugins?.length ?? 'collections'}</div>
+  ),
 }))
 
 describe('ListWrapper', () => {

@@ -6,17 +6,27 @@ import OperationSelector from '../operation-selector'
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div>{children}</div>
       </DropdownMenuContext>

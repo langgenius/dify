@@ -1,13 +1,8 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -15,10 +10,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import {
-  deploymentActionAppInstanceAtom,
-  editDeploymentDialogOpenAtom,
-} from './state'
+import { deploymentActionAppInstanceAtom, editDeploymentDialogOpenAtom } from './state'
 
 type EditDeploymentFormValues = {
   name: string
@@ -32,21 +24,22 @@ function normalizedEditDeploymentFormValues(value: EditDeploymentFormValues) {
   }
 }
 
-function canSubmitEditDeploymentForm(initialValues: EditDeploymentFormValues, value: EditDeploymentFormValues) {
+function canSubmitEditDeploymentForm(
+  initialValues: EditDeploymentFormValues,
+  value: EditDeploymentFormValues,
+) {
   const normalizedValues = normalizedEditDeploymentFormValues(value)
 
   return Boolean(
-    normalizedValues.name
-    && (
-      normalizedValues.name !== initialValues.name
-      || normalizedValues.description !== initialValues.description
-    ),
+    normalizedValues.name &&
+    (normalizedValues.name !== initialValues.name ||
+      normalizedValues.description !== initialValues.description),
   )
 }
 
 function EditDeploymentForm() {
   const { t } = useTranslation('deployments')
-  const nameLabel = t('settings.name')
+  const nameLabel = t(($) => $['settings.name'])
   const appInstance = useAtomValue(deploymentActionAppInstanceAtom)
   const appInstanceId = appInstance.id
   const initialValues = {
@@ -54,18 +47,18 @@ function EditDeploymentForm() {
     description: appInstance.description,
   }
   const setOpen = useSetAtom(editDeploymentDialogOpenAtom)
-  const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
+  const updateInstance = useMutation(
+    consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions(),
+  )
 
   function handleClose() {
-    if (updateInstance.isPending)
-      return
+    if (updateInstance.isPending) return
 
     setOpen(false)
   }
 
   function handleSubmit(values: EditDeploymentFormValues) {
-    if (!canSubmitEditDeploymentForm(initialValues, values))
-      return
+    if (!canSubmitEditDeploymentForm(initialValues, values)) return
 
     const normalizedValues = normalizedEditDeploymentFormValues(values)
 
@@ -82,11 +75,11 @@ function EditDeploymentForm() {
       },
       {
         onSuccess: () => {
-          toast.success(t('settings.updated'))
+          toast.success(t(($) => $['settings.updated']))
           setOpen(false)
         },
         onError: () => {
-          toast.error(t('settings.updateFailed'))
+          toast.error(t(($) => $['settings.updateFailed']))
         },
       },
     )
@@ -96,27 +89,21 @@ function EditDeploymentForm() {
     <>
       <DialogCloseButton disabled={updateInstance.isPending} />
       <Form<EditDeploymentFormValues> className="flex flex-col gap-4" onFormSubmit={handleSubmit}>
-        <FieldRoot name="name" className="gap-2">
+        <Field name="name" className="gap-2">
           <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
             {nameLabel}
           </FieldLabel>
-          <FieldControl
-            type="text"
-            required
-            defaultValue={initialValues.name}
-            className="h-8"
-          />
-          <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
-        </FieldRoot>
-        <FieldRoot name="description" className="gap-2">
+          <FieldControl type="text" required defaultValue={initialValues.name} className="h-8" />
+          <FieldError match="valueMissing">
+            {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
+          </FieldError>
+        </Field>
+        <Field name="description" className="gap-2">
           <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
-            {t('settings.description')}
+            {t(($) => $['settings.description'])}
           </FieldLabel>
-          <Textarea
-            defaultValue={initialValues.description}
-            className="min-h-24"
-          />
-        </FieldRoot>
+          <Textarea defaultValue={initialValues.description} className="min-h-24" />
+        </Field>
         <div className="flex justify-end gap-2 pt-2">
           <Button
             type="button"
@@ -124,7 +111,7 @@ function EditDeploymentForm() {
             disabled={updateInstance.isPending}
             onClick={handleClose}
           >
-            {t('createModal.cancel')}
+            {t(($) => $['createModal.cancel'])}
           </Button>
           <Button
             type="submit"
@@ -132,7 +119,7 @@ function EditDeploymentForm() {
             disabled={updateInstance.isPending}
             loading={updateInstance.isPending}
           >
-            {t('settings.save')}
+            {t(($) => $['settings.save'])}
           </Button>
         </div>
       </Form>
@@ -148,7 +135,7 @@ function EditDeploymentDialogContent() {
     <>
       <div className="border-b border-divider-subtle px-6 py-5">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {t('card.menu.editInfo')}
+          {t(($) => $['card.menu.editInfo'])}
         </DialogTitle>
       </div>
       <div className="px-6 py-5">

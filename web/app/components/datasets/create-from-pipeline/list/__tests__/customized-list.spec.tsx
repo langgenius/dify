@@ -1,11 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import CustomizedList from '../customized-list'
 
 // Mock TemplateCard
 vi.mock('../template-card', () => ({
-  default: ({ type, pipeline }: { type: string, pipeline: { name: string } }) => (
+  default: ({ type, pipeline }: { type: string; pipeline: { name: string } }) => (
     <div data-testid="template-card" data-type={type}>
       {pipeline.name}
     </div>
@@ -66,9 +65,7 @@ describe('CustomizedList', () => {
     it('should render title when list has items', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: {
-          pipeline_templates: [
-            { name: 'Pipeline 1' },
-          ],
+          pipeline_templates: [{ name: 'Pipeline 1' }],
         },
         isLoading: false,
       })
@@ -78,11 +75,7 @@ describe('CustomizedList', () => {
     })
 
     it('should render TemplateCard for each pipeline', () => {
-      const mockPipelines = [
-        { name: 'Pipeline 1' },
-        { name: 'Pipeline 2' },
-        { name: 'Pipeline 3' },
-      ]
+      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }, { name: 'Pipeline 3' }]
       mockUsePipelineTemplateList.mockReturnValue({
         data: { pipeline_templates: mockPipelines },
         isLoading: false,
@@ -133,7 +126,12 @@ describe('CustomizedList', () => {
       const { container } = render(<CustomizedList />)
       const grid = container.querySelector('.grid')
       expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
-      expect(grid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4')
+      expect(grid).not.toHaveClass(
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'md:grid-cols-3',
+        'lg:grid-cols-4',
+      )
     })
   })
 })

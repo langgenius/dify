@@ -120,7 +120,7 @@ class RecommendedAppListApi(Resource):
         language_prefix = _resolve_language(args.language, current_user)
 
         return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(db.session, language_prefix),
+            RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
             from_attributes=True,
         ).model_dump(mode="json")
 
@@ -137,7 +137,7 @@ class LearnDifyAppListApi(Resource):
         language_prefix = _resolve_language(args.language, current_user)
 
         return LearnDifyAppListResponse.model_validate(
-            RecommendedAppService.get_learn_dify_apps(db.session, language_prefix),
+            RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
             from_attributes=True,
         ).model_dump(mode="json")
 
@@ -148,4 +148,4 @@ class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(db.session, str(app_id))
+        return RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())

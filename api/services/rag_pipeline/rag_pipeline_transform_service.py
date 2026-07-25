@@ -96,7 +96,7 @@ class RagPipelineTransformService:
         # deal document data
         self._deal_document_data(dataset, session)
 
-        session.flush()
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset_id,
@@ -194,6 +194,7 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        *,
         session: Session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
@@ -291,7 +292,7 @@ class RagPipelineTransformService:
             logger.debug("Installing missing pipeline plugins %s", package_identifiers_to_install)
             PluginService.install_from_marketplace_pkg(tenant_id, package_identifiers_to_install)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset, session: Session):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, *, session: Session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
@@ -306,7 +307,7 @@ class RagPipelineTransformService:
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(dataset)
-        session.flush()
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,

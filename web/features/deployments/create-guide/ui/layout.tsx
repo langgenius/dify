@@ -9,27 +9,22 @@ import { TitleTooltip } from '@/features/deployments/shared/components/title-too
 
 const GUIDE_PROGRESS_STEPS: GuideStep[] = ['source', 'release', 'target']
 
-function GuideStepIntro({ activeStep }: {
-  activeStep: GuideStep
-}) {
+function GuideStepIntro({ activeStep }: { activeStep: GuideStep }) {
   const { t } = useTranslation('deployments')
 
   let title: string
   let description: string
 
   if (activeStep === 'source') {
-    title = t('createGuide.source.title')
-    description = t('createGuide.method.description')
-  }
-  else if (activeStep === 'release') {
-    title = t('createGuide.release.title')
-    description = t('createGuide.release.description')
-  }
-  else if (activeStep === 'target') {
-    title = t('createGuide.target.title')
-    description = t('createGuide.target.description')
-  }
-  else {
+    title = t(($) => $['createGuide.source.title'])
+    description = t(($) => $['createGuide.method.description'])
+  } else if (activeStep === 'release') {
+    title = t(($) => $['createGuide.release.title'])
+    description = t(($) => $['createGuide.release.description'])
+  } else if (activeStep === 'target') {
+    title = t(($) => $['createGuide.target.title'])
+    description = t(($) => $['createGuide.target.description'])
+  } else {
     return null
   }
 
@@ -41,9 +36,7 @@ function GuideStepIntro({ activeStep }: {
   )
 }
 
-function GuideProgress({ activeStep }: {
-  activeStep: GuideStep
-}) {
+function GuideProgress({ activeStep }: { activeStep: GuideStep }) {
   const { t } = useTranslation('deployments')
   const activeIndex = GUIDE_PROGRESS_STEPS.indexOf(activeStep)
 
@@ -52,7 +45,7 @@ function GuideProgress({ activeStep }: {
       {GUIDE_PROGRESS_STEPS.map((step, index) => {
         const isActive = step === activeStep
         const isComplete = index < activeIndex
-        const label = t(`createGuide.steps.${step}`)
+        const label = t(($) => $[`createGuide.steps.${step}`])
 
         return (
           <TitleTooltip key={step} content={label}>
@@ -87,34 +80,25 @@ function GuideProgress({ activeStep }: {
   )
 }
 
-function GuideProgressSummary({ activeStep }: {
-  activeStep: GuideStep
-}) {
+function GuideProgressSummary({ activeStep }: { activeStep: GuideStep }) {
   const { t } = useTranslation('deployments')
   const activeIndex = GUIDE_PROGRESS_STEPS.indexOf(activeStep)
   const activeStepNumber = activeIndex + 1
 
   let activeStepLabel: string
-  if (activeStep === 'source')
-    activeStepLabel = t('createGuide.steps.source')
-  else if (activeStep === 'release')
-    activeStepLabel = t('createGuide.steps.release')
-  else if (activeStep === 'target')
-    activeStepLabel = t('createGuide.steps.target')
-  else
-    return null
+  if (activeStep === 'source') activeStepLabel = t(($) => $['createGuide.steps.source'])
+  else if (activeStep === 'release') activeStepLabel = t(($) => $['createGuide.steps.release'])
+  else if (activeStep === 'target') activeStepLabel = t(($) => $['createGuide.steps.target'])
+  else return null
 
-  if (activeIndex < 0)
-    return null
+  if (activeIndex < 0) return null
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <span className="truncate system-sm-medium text-text-secondary">{activeStepLabel}</span>
         <span className="shrink-0 system-xs-regular text-text-quaternary">
-          {activeStepNumber}
-          /
-          {GUIDE_PROGRESS_STEPS.length}
+          {activeStepNumber}/{GUIDE_PROGRESS_STEPS.length}
         </span>
       </div>
       <div className="grid grid-cols-3 gap-1" aria-hidden="true">
@@ -132,7 +116,14 @@ function GuideProgressSummary({ activeStep }: {
   )
 }
 
-export function StepShell({ title, description, descriptionClassName, hideHeader, className, children }: {
+export function StepShell({
+  title,
+  description,
+  descriptionClassName,
+  hideHeader,
+  className,
+  children,
+}: {
   title: string
   description: string
   descriptionClassName?: string
@@ -141,11 +132,16 @@ export function StepShell({ title, description, descriptionClassName, hideHeader
   children: ReactNode
 }) {
   return (
-    <section aria-label={hideHeader ? title : undefined} className={cn('flex min-w-0 flex-col gap-4', className)}>
+    <section
+      aria-label={hideHeader ? title : undefined}
+      className={cn('flex min-w-0 flex-col gap-4', className)}
+    >
       {!hideHeader && (
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="system-md-semibold text-text-primary">{title}</h2>
-          <p className={cn('system-sm-regular text-text-tertiary', descriptionClassName)}>{description}</p>
+          <p className={cn('system-sm-regular text-text-tertiary', descriptionClassName)}>
+            {description}
+          </p>
         </div>
       )}
       {children}
@@ -153,36 +149,39 @@ export function StepShell({ title, description, descriptionClassName, hideHeader
   )
 }
 
-export function GuideCard({ children, actions, contentScrollable = true }: {
+export function GuideCard({
+  children,
+  actions,
+  contentScrollable = true,
+}: {
   children: ReactNode
   actions: ReactNode
   contentScrollable?: boolean
 }) {
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
-      {contentScrollable
-        ? (
-            <ScrollArea
-              className="min-h-0 flex-1"
-              slotClassNames={{
-                viewport: 'overscroll-contain',
-                content: 'min-h-full pt-0.5 pb-6',
-              }}
-            >
-              {children}
-            </ScrollArea>
-          )
-        : (
-            <div className="min-h-0 flex-1 overflow-hidden pt-0.5 pb-6">
-              {children}
-            </div>
-          )}
+      {contentScrollable ? (
+        <ScrollArea
+          className="min-h-0 flex-1"
+          slotClassNames={{
+            viewport: 'overscroll-contain',
+            content: 'min-h-full pt-0.5 pb-6',
+          }}
+        >
+          {children}
+        </ScrollArea>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-hidden pt-0.5 pb-6">{children}</div>
+      )}
       {actions}
     </div>
   )
 }
 
-export function GuideFrame({ activeStep, children }: {
+export function GuideFrame({
+  activeStep,
+  children,
+}: {
   activeStep: GuideStep
   children: ReactNode
 }) {
@@ -192,12 +191,14 @@ export function GuideFrame({ activeStep, children }: {
     <div className="relative flex h-full min-h-0 overflow-hidden bg-background-default-subtle">
       <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-hidden">
         <section
-          aria-label={t('createGuide.title')}
+          aria-label={t(($) => $['createGuide.title'])}
           className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
         >
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
-            <h1 className="title-2xl-semi-bold text-text-primary">{t('createGuide.title')}</h1>
+            <h1 className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['createGuide.title'])}
+            </h1>
             <div className="hidden w-[184px] shrink-0 min-[1120px]:block">
               <GuideProgressSummary activeStep={activeStep} />
             </div>

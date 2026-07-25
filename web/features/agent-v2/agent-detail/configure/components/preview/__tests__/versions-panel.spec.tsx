@@ -1,5 +1,6 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import { AgentPreviewVersionsPanel } from '../versions-panel'
 
 const versions: AgentConfigSnapshotSummaryResponse[] = [
@@ -58,16 +59,16 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { userProfile: { id: string, name: string, email: string } }) => T) =>
-    selector({
-      userProfile: {
-        id: 'user-1',
-        name: 'Alice',
-        email: 'alice@example.com',
-      },
-    }),
-}))
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
+    userProfile: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+  }))
+})
 
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {

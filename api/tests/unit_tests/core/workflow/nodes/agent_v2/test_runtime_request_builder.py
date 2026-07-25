@@ -429,6 +429,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert "final_output.report" in output_description
     assert "never invent the `reference` value" in output_description
     assert "Do not call `final_output` before the upload command succeeds" in output_description
+    assert "accepted file-mapping shape and the returned `reference`" in output_description
+    assert "include the returned `download_url` in that reply" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
@@ -665,6 +667,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/time/time",
+                        "provider_type": "plugin",
                         "tool_name": "current_time",
                         "credential_type": "unauthorized",
                     }
@@ -728,7 +731,11 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "top_k": 6,
                                 "score_threshold": 0.4,
                                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                                "weights": {
+                                    "weight_type": "weighted_score",
+                                    "vector_setting": {"vector_weight": 0.7},
+                                    "keyword_setting": {"keyword_weight": 0.3},
+                                },
                             },
                             "metadata_filtering": {
                                 "mode": "manual",
@@ -795,7 +802,10 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                 "reranking_mode": "reranking_model",
                 "reranking_enable": True,
                 "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
-                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                "weights": {
+                    "vector_setting": {"vector_weight": 0.7},
+                    "keyword_setting": {"keyword_weight": 0.3},
+                },
                 "model": None,
             },
             "metadata_filtering": {
@@ -1174,6 +1184,37 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
     }
 
 
+def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context():
+    file_reference = build_file_reference(record_id="tool-file-1")
+
+    class FileMappingVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "report"]:
+                return SimpleNamespace(
+                    value={
+                        "filename": "report.pdf",
+                        "transfer_method": "tool_file",
+                        "reference": file_reference,
+                        "external": True,
+                    }
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=FileMappingVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.report#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.report") == {
+        "transfer_method": "tool_file",
+        "reference": file_reference,
+    }
+
+
 def test_scalar_previous_node_output_appears_in_workflow_context_section():
     context = _context()
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
@@ -1511,6 +1552,29 @@ def test_build_config_layer_config_missing_mentions_warn_without_catalog():
     assert config.mentioned_skill_names == []
     assert config.mentioned_file_names == []
     assert [w["code"] for w in warnings] == ["mention_target_missing"]
+
+
+def test_build_config_layer_config_excludes_missing_assets_from_runtime():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "prompt": {"system_prompt": "Use [§skill:missing-skill:Missing Skill§]."},
+            "config_skills": [{"name": "missing-skill", "file_id": "", "is_missing": True}],
+            "config_files": [{"name": "missing.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
+        }
+    )
+
+    config, warnings = build_config_layer_config(soul)
+
+    assert config.skills == []
+    assert config.files == []
+    assert config.mentioned_skill_names == []
+    assert [warning["code"] for warning in warnings] == [
+        "config_asset_missing",
+        "config_asset_missing",
+        "mention_target_missing",
+    ]
 
 
 # ── ENG-635: ask_human layer gating + feature manifest ───────────────────────

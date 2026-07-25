@@ -2,9 +2,7 @@ import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
 import { produce } from 'immer'
 import { useState } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
-import {
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useFormContent from './use-form-content'
@@ -33,8 +31,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
 
   const handleUserActionChange = (index: number, updatedAction: UserAction) => {
     const newActions = produce(inputs.user_actions, (draft) => {
-      if (draft[index])
-        draft[index] = updatedAction
+      if (draft[index]) draft[index] = updatedAction
     })
     setInputs({
       ...inputs,
@@ -51,7 +48,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
   }
 
   const handleUserActionDelete = (actionId: string) => {
-    const newActions = inputs.user_actions.filter(action => action.id !== actionId)
+    const newActions = inputs.user_actions.filter((action) => action.id !== actionId)
     setInputs({
       ...inputs,
       user_actions: newActions,
@@ -60,7 +57,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     handleEdgeDeleteByDeleteBranch(id, actionId)
   }
 
-  const handleTimeoutChange = ({ timeout, unit }: { timeout: number, unit: 'hour' | 'day' }) => {
+  const handleTimeoutChange = ({ timeout, unit }: { timeout: number; unit: 'hour' | 'day' }) => {
     setInputs({
       ...inputs,
       timeout,

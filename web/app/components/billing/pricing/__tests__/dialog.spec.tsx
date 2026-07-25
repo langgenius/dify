@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
-import { render } from '@testing-library/react'
-import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { render } from '@/test/console/render'
 import { Plan } from '../../type'
 import Pricing from '../index'
 
@@ -15,20 +14,23 @@ type DialogProps = {
 }
 
 let latestOnOpenChange: DialogProps['onOpenChange']
+let mockConsoleState: Record<string, unknown> = {}
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
     latestOnOpenChange = onOpenChange
-    return <div data-testid="dialog">{children}</div>
+    return <div>{children}</div>
   },
-  DialogContent: ({ children, className }: { children: ReactNode, className?: string }) => (
+  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }))
 
 vi.mock('../header', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
-    <button data-testid="pricing-header-close" onClick={onClose}>close</button>
+    <button type="button" onClick={onClose}>
+      close
+    </button>
   ),
 }))
 
@@ -44,9 +46,10 @@ vi.mock('../footer', () => ({
   default: () => <div>footer</div>,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -70,10 +73,9 @@ describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestOnOpenChange = undefined
-    ;(useAppContext as Mock).mockReturnValue({
+    mockConsoleState = {
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['billing.manage'],
-    })
+    }
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,

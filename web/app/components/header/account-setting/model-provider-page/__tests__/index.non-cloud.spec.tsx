@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -20,27 +20,29 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: false,
   }
 })
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    modelProviders: [{
-      provider: 'openai',
-      label: { en_US: 'OpenAI' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.active },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+    modelProviders: [
+      {
+        provider: 'openai',
+        label: { en_US: 'OpenAI' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.active },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    }],
+    ],
   }),
 }))
 
 vi.mock('../hooks', () => ({
   useDefaultModel: () => ({ data: null, isLoading: false }),
+  useLanguage: () => 'en_US',
 }))
 
 vi.mock('../provider-added-card', () => ({
@@ -84,9 +86,11 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: () => ({
+  useInstalledPluginList: () => ({
     data: { plugins: [] },
   }),
+  useInvalidateInstalledPluginList: () => vi.fn(),
+  useInvalidateCheckInstalled: () => vi.fn(),
   usePluginAutoUpgradeSettings: () => ({
     data: {
       category: 'model',
@@ -132,7 +136,15 @@ vi.mock('@/service/client', async (importOriginal) => {
                     ids: {
                       post: {
                         queryOptions: () => ({
-                          queryKey: ['workspaces', 'current', 'plugin', 'list', 'installations', 'ids', 'post'],
+                          queryKey: [
+                            'workspaces',
+                            'current',
+                            'plugin',
+                            'list',
+                            'installations',
+                            'ids',
+                            'post',
+                          ],
                           queryFn: () => new Promise(() => {}),
                         }),
                       },
@@ -141,7 +153,14 @@ vi.mock('@/service/client', async (importOriginal) => {
                   latestVersions: {
                     post: {
                       queryOptions: () => ({
-                        queryKey: ['workspaces', 'current', 'plugin', 'list', 'latestVersions', 'post'],
+                        queryKey: [
+                          'workspaces',
+                          'current',
+                          'plugin',
+                          'list',
+                          'latestVersions',
+                          'post',
+                        ],
                         queryFn: () => new Promise(() => {}),
                       }),
                     },
@@ -159,7 +178,7 @@ vi.mock('@/service/client', async (importOriginal) => {
 
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
+    renderWithConsoleQuery(<ModelProviderPage searchText="" />, {
       systemFeatures: { enable_marketplace: false },
     })
 

@@ -12,15 +12,14 @@ type ProcessingProps = {
   documents: InitialDocumentDetail[]
 }
 
-const Processing = ({
-  batchId,
-  documents,
-}: ProcessingProps) => {
+const Processing = ({ batchId, documents }: ProcessingProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
-  const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict?.search_method)
+  const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset?.id)
+  const indexingType = useDatasetDetailContextWithSelector((s) => s.dataset?.indexing_technique)
+  const retrievalMethod = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.retrieval_model_dict?.search_method,
+  )
 
   return (
     <div className="flex size-full justify-center overflow-hidden">
@@ -41,15 +40,19 @@ const Processing = ({
             <RiBookOpenLine className="size-5 text-text-accent" />
           </div>
           <div className="flex flex-col gap-y-2">
-            <div className="system-xl-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
-            <div className="system-sm-regular text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
+            <div className="system-xl-semibold text-text-secondary">
+              {t(($) => $['stepThree.sideTipTitle'], { ns: 'datasetCreation' })}
+            </div>
+            <div className="system-sm-regular text-text-tertiary">
+              {t(($) => $['stepThree.sideTipContent'], { ns: 'datasetCreation' })}
+            </div>
             <a
               href={docLink('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')}
               target="_blank"
               rel="noreferrer noopener"
               className="system-sm-regular text-text-accent"
             >
-              {t('addDocuments.stepThree.learnMore', { ns: 'datasetPipeline' })}
+              {t(($) => $['addDocuments.stepThree.learnMore'], { ns: 'datasetPipeline' })}
             </a>
           </div>
         </div>

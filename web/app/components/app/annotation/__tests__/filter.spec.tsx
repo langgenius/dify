@@ -16,21 +16,18 @@ const mockUseAnnotationsCount = useLogModule.useAnnotationsCount as Mock
 // Test Utilities
 // ============================================================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // ============================================================================
@@ -74,11 +71,7 @@ describe('Filter', () => {
 
       // Act
       const { container } = renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -95,11 +88,7 @@ describe('Filter', () => {
 
       // Act
       const { container } = renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -119,11 +108,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -149,11 +134,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -174,11 +155,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -204,11 +181,7 @@ describe('Filter', () => {
       const setQueryParams = vi.fn()
 
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={setQueryParams}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -233,11 +206,7 @@ describe('Filter', () => {
       const setQueryParams = vi.fn()
 
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={setQueryParams}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -265,11 +234,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={{ keyword: '' }}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={{ keyword: '' }} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -289,11 +254,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={{ keyword: undefined }}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={{ keyword: undefined }} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -313,11 +274,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )

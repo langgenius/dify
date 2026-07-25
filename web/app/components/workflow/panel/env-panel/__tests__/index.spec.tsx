@@ -25,8 +25,12 @@ const {
   mockDoSyncWorkflowDraft: vi.fn(() => Promise.resolve()),
   mockGetNodes: vi.fn<() => MockWorkflowNode[]>(() => []),
   mockSetNodes: vi.fn<(nodes: MockWorkflowNode[]) => void>(),
-  mockFindUsedVarNodes: vi.fn<(selector: string[], nodes: MockWorkflowNode[]) => MockWorkflowNode[]>(() => []),
-  mockUpdateNodeVars: vi.fn<(node: MockWorkflowNode, currentSelector: string[], nextSelector: string[]) => MockWorkflowNode>((node, _currentSelector, nextSelector) => ({
+  mockFindUsedVarNodes: vi.fn<
+    (selector: string[], nodes: MockWorkflowNode[]) => MockWorkflowNode[]
+  >(() => []),
+  mockUpdateNodeVars: vi.fn<
+    (node: MockWorkflowNode, currentSelector: string[], nextSelector: string[]) => MockWorkflowNode
+  >((node, _currentSelector, nextSelector) => ({
     ...node,
     data: {
       ...node.data,
@@ -36,8 +40,12 @@ const {
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
-  mockUpdateEnvironmentVariables: vi.fn<(payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => Promise<unknown>>(() => Promise.resolve({})),
-  mockGetSocket: vi.fn<(appId: string) => { emit: (event: string, payload: unknown) => void } | null>(() => null),
+  mockUpdateEnvironmentVariables: vi.fn<
+    (payload: { appId: string; environmentVariables: EnvironmentVariable[] }) => Promise<unknown>
+  >(() => Promise.resolve({})),
+  mockGetSocket: vi.fn<
+    (appId: string) => { emit: (event: string, payload: unknown) => void } | null
+  >(() => null),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
@@ -61,7 +69,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () =>
 }))
 
 vi.mock('@/service/workflow', () => ({
-  updateEnvironmentVariables: (payload: { appId: string, environmentVariables: EnvironmentVariable[] }) => mockUpdateEnvironmentVariables(payload),
+  updateEnvironmentVariables: (payload: {
+    appId: string
+    environmentVariables: EnvironmentVariable[]
+  }) => mockUpdateEnvironmentVariables(payload),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -79,14 +90,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-conf
     isShow: boolean
     onCancel: () => void
     onConfirm: () => void
-  }) => isShow
-    ? (
-        <div>
-          <button onClick={onCancel}>Cancel remove</button>
-          <button onClick={onConfirm}>Confirm remove</button>
-        </div>
-      )
-    : null,
+  }) =>
+    isShow ? (
+      <div>
+        <button onClick={onCancel}>Cancel remove</button>
+        <button onClick={onConfirm}>Confirm remove</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/workflow/panel/env-panel/env-item', () => ({
@@ -101,16 +111,8 @@ vi.mock('@/app/components/workflow/panel/env-panel/env-item', () => ({
   }) => (
     <div>
       <span>{env.name}</span>
-      <button onClick={() => onEdit(env)}>
-        Edit
-        {' '}
-        {env.name}
-      </button>
-      <button onClick={() => onDelete(env)}>
-        Delete
-        {' '}
-        {env.name}
-      </button>
+      <button onClick={() => onEdit(env)}>Edit {env.name}</button>
+      <button onClick={() => onDelete(env)}>Delete {env.name}</button>
     </div>
   ),
 }))
@@ -132,19 +134,22 @@ vi.mock('@/app/components/workflow/panel/env-panel/variable-trigger', () => ({
     <div>
       <span>
         Variable trigger:
-        {open ? 'open' : 'closed'}
-        :
-        {env?.name || 'new'}
+        {open ? 'open' : 'closed'}:{env?.name || 'new'}
       </span>
       <button onClick={() => setOpen(true)}>Open variable modal</button>
       <button
-        onClick={() => onSave(mockVariableTriggerState.savePayload || env || {
-          id: 'env-created',
-          name: 'created_name',
-          value: 'created-value',
-          value_type: 'string',
-          description: 'created',
-        })}
+        onClick={() =>
+          onSave(
+            mockVariableTriggerState.savePayload ||
+              env || {
+                id: 'env-created',
+                name: 'created_name',
+                value: 'created-value',
+                value_type: 'string',
+                description: 'created',
+              },
+          )
+        }
       >
         Save variable
       </button>
@@ -162,20 +167,13 @@ const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVar
   ...overrides,
 })
 
-const renderWithProviders = (
-  ui: ReactElement,
-  storeState: Partial<Shape> = {},
-) => {
+const renderWithProviders = (ui: ReactElement, storeState: Partial<Shape> = {}) => {
   const store = createWorkflowStore({})
   store.setState(storeState)
 
   return {
     store,
-    ...render(
-      <WorkflowContext value={store}>
-        {ui}
-      </WorkflowContext>,
-    ),
+    ...render(<WorkflowContext value={store}>{ui}</WorkflowContext>),
   }
 }
 

@@ -122,11 +122,24 @@ export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
     type: string
   }
 }
-export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number, max?: number, placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[], placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & {
+  min?: number
+  max?: number
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & {
+  options: FormOption[]
+  placeholder?: TypeWithI18N
+}
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
-export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
-export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
+export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & {
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchema =
+  | CredentialFormSchemaTextInput
+  | CredentialFormSchemaSelect
+  | CredentialFormSchemaRadio
+  | CredentialFormSchemaSecretInput
 
 export type ModelItem = {
   model: string

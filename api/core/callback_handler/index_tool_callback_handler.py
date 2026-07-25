@@ -2,7 +2,7 @@ import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -30,7 +30,7 @@ class DatasetIndexToolCallbackHandler:
         self._user_id = user_id
         self._invoke_from = invoke_from
 
-    def on_query(self, query: str, dataset_id: str, session: scoped_session):
+    def on_query(self, query: str, dataset_id: str, session: Session):
         """
         Handle query.
         """
@@ -52,7 +52,7 @@ class DatasetIndexToolCallbackHandler:
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as independent_session:
             independent_session.add(dataset_query)
 
-    def on_tool_end(self, documents: list[Document], session: scoped_session):
+    def on_tool_end(self, documents: list[Document], session: Session):
         """Handle tool end."""
         # Use an independent session so hit-count updates do not
         # interfere with the caller's request-scoped session.

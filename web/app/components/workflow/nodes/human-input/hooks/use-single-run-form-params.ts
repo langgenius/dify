@@ -35,75 +35,85 @@ const useSingleRunFormParams = ({
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
   const [requiredInputs, setRequiredInputs] = useState<Record<string, string>>({})
   const generatedInputs = useMemo(() => {
-    const formInputDependencyInputs = getHumanInputFormDependencySelectors(inputs.inputs)
-      .map(selector => `{{#${selector.join('.')}#}}`)
-    const allInputs = getInputVars([...formInputDependencyInputs, inputs.form_content || '']).filter(item => !isOutput(item.value_selector || []))
+    const formInputDependencyInputs = getHumanInputFormDependencySelectors(inputs.inputs).map(
+      (selector) => `{{#${selector.join('.')}#}}`,
+    )
+    const allInputs = getInputVars([
+      ...formInputDependencyInputs,
+      inputs.form_content || '',
+    ]).filter((item) => !isOutput(item.value_selector || []))
     return allInputs
   }, [getInputVars, inputs.form_content, inputs.inputs])
 
   const forms = useMemo(() => {
-    const forms: FormProps[] = [{
-      label: t(`${i18nPrefix}.singleRun.label`, { ns: 'workflow' })!,
-      inputs: generatedInputs,
-      values: runInputData,
-      onChange: setRunInputData,
-    }]
+    const forms: FormProps[] = [
+      {
+        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflow' })!,
+        inputs: generatedInputs,
+        values: runInputData,
+        onChange: setRunInputData,
+      },
+    ]
     return forms
   }, [t, generatedInputs, runInputData, setRunInputData])
 
   const getDependentVars = () => {
-    return generatedInputs.map((item) => {
-      // Guard against null/undefined variable to prevent app crash
-      if (!item.variable || typeof item.variable !== 'string')
-        return []
+    return generatedInputs
+      .map((item) => {
+        // Guard against null/undefined variable to prevent app crash
+        if (!item.variable || typeof item.variable !== 'string') return []
 
-      return item.variable.slice(1, -1).split('.')
-    }).filter(arr => arr.length > 0)
+        return item.variable.slice(1, -1).split('.')
+      })
+      .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore(s => s.appDetail)
+  const appDetail = useAppStore((s) => s.appDetail)
   const appId = appDetail?.id
   const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const fetchURL = useMemo(() => {
-    if (!appId)
-      return ''
+    if (!appId) return ''
     if (!isWorkflowMode) {
       return `/apps/${appId}/advanced-chat/workflows/draft/human-input/nodes/${id}/form`
-    }
-    else {
+    } else {
       return `/apps/${appId}/workflows/draft/human-input/nodes/${id}/form`
     }
   }, [appId, id, isWorkflowMode])
 
-  const handleFetchFormContent = useCallback(async (inputs: Record<string, string>) => {
-    if (!fetchURL)
-      return null
-    let requestParamsObj: Record<string, string> = {}
-    Object.keys(inputs).forEach((key) => {
-      if (inputs[key] === undefined) {
-        delete inputs[key]
-      }
-    })
-    requestParamsObj = { ...inputs }
-    const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
-    setFormData(data)
-    setRequiredInputs(requestParamsObj)
-    return data
-  }, [fetchURL])
+  const handleFetchFormContent = useCallback(
+    async (inputs: Record<string, string>) => {
+      if (!fetchURL) return null
+      let requestParamsObj: Record<string, string> = {}
+      Object.keys(inputs).forEach((key) => {
+        if (inputs[key] === undefined) {
+          delete inputs[key]
+        }
+      })
+      requestParamsObj = { ...inputs }
+      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
+      setFormData(data)
+      setRequiredInputs(requestParamsObj)
+      return data
+    },
+    [fetchURL],
+  )
 
-  const handleSubmitHumanInputForm = useCallback(async (submission: {
-    inputs: Record<string, HumanInputFieldValue> | undefined
-    form_inputs: Record<string, HumanInputFieldValue> | undefined
-    action: string
-  }) => {
-    const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
+  const handleSubmitHumanInputForm = useCallback(
+    async (submission: {
+      inputs: Record<string, HumanInputFieldValue> | undefined
+      form_inputs: Record<string, HumanInputFieldValue> | undefined
+      action: string
+    }) => {
+      const formInputs = formData?.inputs?.length ? formData.inputs : inputs.inputs
 
-    await submitHumanInputNodeStepRunForm(fetchURL, {
-      inputs: requiredInputs,
-      form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
-      action: submission.action,
-    })
-  }, [fetchURL, formData?.inputs, inputs.inputs, requiredInputs])
+      await submitHumanInputNodeStepRunForm(fetchURL, {
+        inputs: requiredInputs,
+        form_inputs: getProcessedHumanInputFormInputs(formInputs, submission.inputs),
+        action: submission.action,
+      })
+    },
+    [fetchURL, formData?.inputs, inputs.inputs, requiredInputs],
+  )
 
   const handleShowGeneratedForm = async (formValue: Record<string, string>) => {
     setShowGeneratedForm(true)

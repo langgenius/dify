@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
@@ -259,14 +260,16 @@ def test_get_project_url_success(trace_instance: AliyunDataTrace):
     assert trace_instance.get_project_url() == "project-url"
 
 
-def test_get_project_url_error(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+def test_get_project_url_error(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     monkeypatch.setattr(trace_instance.trace_client, "get_project_url", MagicMock(side_effect=Exception("boom")))
-    logger_mock = MagicMock()
-    monkeypatch.setattr(aliyun_trace_module, "logger", logger_mock)
 
+    caplog.set_level(logging.INFO, logger=aliyun_trace_module.logger.name)
     with pytest.raises(ValueError, match=r"Aliyun get project url failed: boom"):
         trace_instance.get_project_url()
-    logger_mock.info.assert_called()
+
+    assert "Aliyun get project url failed: boom" in caplog.text
 
 
 def test_workflow_trace_adds_workflow_and_node_spans(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):

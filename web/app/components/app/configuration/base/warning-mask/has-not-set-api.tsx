@@ -7,9 +7,7 @@ type IHasNotSetAPIProps = {
   onSetting: () => void
 }
 
-const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
-  onSetting,
-}) => {
+const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({ onSetting }) => {
   const { t } = useTranslation()
 
   return (
@@ -21,15 +19,21 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
           </div>
         </div>
         <div className="flex flex-col gap-1">
-          <div className="system-md-semibold text-text-secondary">{t('noModelProviderConfigured', { ns: 'appDebug' })}</div>
-          <div className="system-xs-regular text-text-tertiary">{t('noModelProviderConfiguredTip', { ns: 'appDebug' })}</div>
+          <div className="system-md-semibold text-text-secondary">
+            {t(($) => $.noModelProviderConfigured, { ns: 'appDebug' })}
+          </div>
+          <div className="system-xs-regular text-text-tertiary">
+            {t(($) => $.noModelProviderConfiguredTip, { ns: 'appDebug' })}
+          </div>
         </div>
         <button
           type="button"
           className="flex w-fit items-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]"
           onClick={onSetting}
         >
-          <span className="system-sm-medium text-components-button-secondary-accent-text">{t('manageModels', { ns: 'appDebug' })}</span>
+          <span className="system-sm-medium text-components-button-secondary-accent-text">
+            {t(($) => $.manageModels, { ns: 'appDebug' })}
+          </span>
           <span className="i-ri-arrow-right-line size-4 text-components-button-secondary-accent-text" />
         </button>
       </div>

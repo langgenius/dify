@@ -23,14 +23,15 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
     @override
     def get_pipeline_templates(
-        self, session: Session, language: str, current_tenant_id: str | None = None
+        self, language: str, current_tenant_id: str | None = None, *, session: Session
     ) -> dict[str, Any]:
-        del current_tenant_id
+        del current_tenant_id, session
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 
     @override
-    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
+        del session
         result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result
 

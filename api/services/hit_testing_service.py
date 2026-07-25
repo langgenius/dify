@@ -4,7 +4,7 @@ import time
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
@@ -56,9 +56,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def _dump_retrieval_records(
-        cls, session: Session | scoped_session, records: list[RetrievalSegments]
-    ) -> list[dict[str, Any]]:
+    def _dump_retrieval_records(cls, session: Session, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
         document_ids = {
             document_id
             for record in records
@@ -105,7 +103,6 @@ class HitTestingService:
     @classmethod
     def retrieve(
         cls,
-        session: Session,
         dataset: Dataset,
         query: str,
         account: Account,
@@ -113,6 +110,8 @@ class HitTestingService:
         external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
+        *,
+        session: Session,
     ):
         start = time.perf_counter()
 
@@ -144,7 +143,7 @@ class HitTestingService:
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
             if metadata_condition and not document_ids_filter:
-                return cls.compact_retrieve_response(session, query, [])
+                return cls.compact_retrieve_response(query, [], session=session)
         all_documents = RetrievalService.retrieve(
             retrieval_method=RetrievalMethod(
                 resolved_retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)
@@ -186,17 +185,18 @@ class HitTestingService:
             session.add(dataset_query)
         session.commit()
 
-        return cls.compact_retrieve_response(session, query, all_documents)
+        return cls.compact_retrieve_response(query, all_documents, session=session)
 
     @classmethod
     def external_retrieve(
         cls,
-        session: Session,
         dataset: Dataset,
         query: str,
         account: Account,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
+        *,
+        session: Session,
     ):
         if dataset.provider != "external":
             return {
@@ -233,9 +233,10 @@ class HitTestingService:
 
     @classmethod
     def compact_retrieve_response(
-        cls, session: Session | scoped_session, query: str, documents: list[Document]
+        cls, query: str, documents: list[Document], *, session: Session
     ) -> RetrieveResponseDict:
-        records = RetrievalService.format_retrieval_documents(documents)
+        with Session(bind=session.get_bind()) as format_session:
+            records = RetrievalService.format_retrieval_documents(format_session, documents)
 
         return {
             "query": {

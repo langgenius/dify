@@ -50,11 +50,13 @@ const createPayload = (overrides: Partial<ListFilterNodeType> = {}): ListFilterN
   item_var_type: VarType.file,
   filter_by: {
     enabled: false,
-    conditions: [{
-      key: '',
-      comparison_operator: ComparisonOperator.contains,
-      value: '',
-    }],
+    conditions: [
+      {
+        key: '',
+        comparison_operator: ComparisonOperator.contains,
+        value: '',
+      },
+    ],
   },
   extract_by: {
     enabled: false,
@@ -81,13 +83,13 @@ describe('list-operator/use-config', () => {
     mockIsChatMode = false
     mockGetBeforeNodesInSameBranch.mockReturnValue([{ id: 'before-node' }])
     mockGetNodes.mockReturnValue([{ id: 'list-node' }])
-    mockGetCurrentVariableType.mockImplementation(({ valueSelector }: { valueSelector: string[] }) => {
-      if (valueSelector[1] === 'files')
-        return VarType.arrayFile
-      if (valueSelector[1] === 'numbers')
-        return VarType.arrayNumber
-      return VarType.arrayString
-    })
+    mockGetCurrentVariableType.mockImplementation(
+      ({ valueSelector }: { valueSelector: string[] }) => {
+        if (valueSelector[1] === 'files') return VarType.arrayFile
+        if (valueSelector[1] === 'numbers') return VarType.arrayNumber
+        return VarType.arrayString
+      },
+    )
   })
 
   it('should expose derived state and update inputs through the helper pipeline', () => {
@@ -115,51 +117,71 @@ describe('list-operator/use-config', () => {
     result.current.handleOrderByKeyChange('size')
     result.current.handleOrderByTypeChange(OrderBy.DESC)()
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variable: ['node-2', 'numbers'],
-      var_type: VarType.arrayNumber,
-      item_var_type: VarType.number,
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      filter_by: expect.objectContaining({
-        enabled: true,
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variable: ['node-2', 'numbers'],
+        var_type: VarType.arrayNumber,
+        item_var_type: VarType.number,
       }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      filter_by: expect.objectContaining({
-        conditions: [{
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter_by: expect.objectContaining({
+          enabled: true,
+        }),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter_by: expect.objectContaining({
+          conditions: [
+            {
+              key: 'size',
+              comparison_operator: ComparisonOperator.largerThan,
+              value: '2',
+            },
+          ],
+        }),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: { enabled: true, size: 3 },
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extract_by: { enabled: true, serial: '1' },
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extract_by: { enabled: false, serial: '5' },
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_by: expect.objectContaining({
+          enabled: true,
+          key: 'name',
+          value: OrderBy.ASC,
+        }),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_by: expect.objectContaining({
           key: 'size',
-          comparison_operator: ComparisonOperator.largerThan,
-          value: '2',
-        }],
+        }),
       }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      limit: { enabled: true, size: 3 },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      extract_by: { enabled: true, serial: '1' },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      extract_by: { enabled: false, serial: '5' },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        enabled: true,
-        key: 'name',
-        value: OrderBy.ASC,
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_by: expect.objectContaining({
+          value: OrderBy.DESC,
+        }),
       }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        key: 'size',
-      }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        value: OrderBy.DESC,
-      }),
-    }))
+    )
   })
 
   it('should derive parent nodes from iteration and loop contexts', () => {
@@ -172,33 +194,49 @@ describe('list-operator/use-config', () => {
       { id: 'loop-parent' },
     ])
 
-    const { result: iterationResult } = renderHook(() => useConfig('list-node', createPayload({
-      isInIteration: true,
-      variable: ['iteration', 'files'],
-    })))
-    const { result: loopResult } = renderHook(() => useConfig('loop-node', createPayload({
-      isInLoop: true,
-      isInIteration: false,
-      variable: ['loop', 'names'],
-    })))
+    const { result: iterationResult } = renderHook(() =>
+      useConfig(
+        'list-node',
+        createPayload({
+          isInIteration: true,
+          variable: ['iteration', 'files'],
+        }),
+      ),
+    )
+    const { result: loopResult } = renderHook(() =>
+      useConfig(
+        'loop-node',
+        createPayload({
+          isInLoop: true,
+          isInIteration: false,
+          variable: ['loop', 'names'],
+        }),
+      ),
+    )
 
     iterationResult.current.handleVarChanges(['iteration', 'files'])
     loopResult.current.handleOrderByEnabledChange(true)
 
     expect(iterationResult.current.readOnly).toBe(true)
-    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(expect.objectContaining({
-      parentNode: expect.objectContaining({ id: 'iteration-parent' }),
-      isChatMode: true,
-    }))
-    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(expect.objectContaining({
-      parentNode: expect.objectContaining({ id: 'loop-parent' }),
-      valueSelector: ['loop', 'names'],
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      order_by: expect.objectContaining({
-        enabled: true,
-        key: '',
+    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentNode: expect.objectContaining({ id: 'iteration-parent' }),
+        isChatMode: true,
       }),
-    }))
+    )
+    expect(mockGetCurrentVariableType).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentNode: expect.objectContaining({ id: 'loop-parent' }),
+        valueSelector: ['loop', 'names'],
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_by: expect.objectContaining({
+          enabled: true,
+          key: '',
+        }),
+      }),
+    )
   })
 })

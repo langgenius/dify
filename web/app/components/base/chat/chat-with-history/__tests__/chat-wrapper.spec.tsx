@@ -6,13 +6,13 @@ import type { HumanInputFormData } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
+  fetchChatList,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { useChat } from '../../chat/hooks'
-
 import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
@@ -42,6 +42,7 @@ vi.mock('../../utils', () => ({
 }))
 
 vi.mock('@/service/share', () => ({
+  fetchChatList: vi.fn(),
   fetchSuggestedQuestions: vi.fn(),
   getUrl: vi.fn(() => 'mock-url'),
   stopChatMessageResponding: vi.fn(),
@@ -96,10 +97,14 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
   appPrevChatTree: [],
   newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+  newConversationInputsRef: {
+    current: {},
+  } as ChatWithHistoryContextValue['newConversationInputsRef'],
   inputsForms: [],
   isInstalledApp: false,
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef'],
+  currentChatInstanceRef: {
+    current: { handleStop: vi.fn() },
+  } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
   appChatListDataLoading: false,
@@ -154,7 +159,9 @@ describe('ChatWrapper', () => {
     })
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1', 'Q2'] }],
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1', 'Q2'] },
+      ],
       handleSend,
       suggestedQuestions: ['Q1', 'Q2'],
     } as unknown as ChatHookReturn)
@@ -240,7 +247,9 @@ describe('ChatWrapper', () => {
 
     rerender(<ChatWrapper />)
 
-    const stopButton = await screen.findByRole('button', { name: /appDebug.operation.stopResponding/i })
+    const stopButton = await screen.findByRole('button', {
+      name: /appDebug.operation.stopResponding/i,
+    })
     fireEvent.click(stopButton)
     expect(handleStop).toHaveBeenCalled()
   })
@@ -252,7 +261,15 @@ describe('ChatWrapper', () => {
       ...defaultChatHookReturn,
       chatList: [
         { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: 'A1',
+          parentMessageId: 'q1',
+          siblingCount: 2,
+          siblingIndex: 0,
+          nextSibling: 'a2',
+        },
       ],
       handleSend,
       handleSwitchSibling,
@@ -261,7 +278,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       expect(handleSend).toHaveBeenCalled()
@@ -291,7 +310,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       expect(handleSend).toHaveBeenCalled()
@@ -323,7 +344,9 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: {},
-      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: {},
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -340,7 +363,9 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: { req: 'value' },
-      newConversationInputsRef: { current: { req: 'value' } } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: { req: 'value' },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -354,12 +379,14 @@ describe('ChatWrapper', () => {
   it('should disable input when file is uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [{
-        variable: 'file',
-        label: 'File',
-        type: InputVarType.singleFile,
-        required: true,
-      }],
+      inputsForms: [
+        {
+          variable: 'file',
+          label: 'File',
+          type: InputVarType.singleFile,
+          required: true,
+        },
+      ],
       newConversationInputsRef: {
         current: {
           file: { transferMethod: TransferMethod.local_file, uploadedId: undefined },
@@ -378,12 +405,14 @@ describe('ChatWrapper', () => {
   it('should not disable input when file is fully uploaded', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [{
-        variable: 'file',
-        label: 'File',
-        type: InputVarType.singleFile,
-        required: true,
-      }],
+      inputsForms: [
+        {
+          variable: 'file',
+          label: 'File',
+          type: InputVarType.singleFile,
+          required: true,
+        },
+      ],
       newConversationInputsRef: {
         current: {
           file: { transferMethod: TransferMethod.local_file, uploadedId: '123' },
@@ -401,12 +430,14 @@ describe('ChatWrapper', () => {
   it('should disable input when multiple files are uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [{
-        variable: 'files',
-        label: 'Files',
-        type: InputVarType.multiFiles,
-        required: true,
-      }],
+      inputsForms: [
+        {
+          variable: 'files',
+          label: 'Files',
+          type: InputVarType.multiFiles,
+          required: true,
+        },
+      ],
       newConversationInputsRef: {
         current: {
           files: [
@@ -428,12 +459,14 @@ describe('ChatWrapper', () => {
   it('should not disable when all files are uploaded', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      inputsForms: [{
-        variable: 'files',
-        label: 'Files',
-        type: InputVarType.multiFiles,
-        required: true,
-      }],
+      inputsForms: [
+        {
+          variable: 'files',
+          label: 'Files',
+          type: InputVarType.multiFiles,
+          required: true,
+        },
+      ],
       newConversationInputsRef: {
         current: {
           files: [
@@ -475,7 +508,9 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       inputsForms: [{ variable: 'req', label: 'Required', type: 'text-input', required: true }],
       newConversationInputs: {},
-      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: {},
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
       allInputsHidden: true,
     })
@@ -496,14 +531,16 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [{
-        id: '1',
-        content: 'Answer',
-        isAnswer: true,
-        workflow_run_id: 'w1',
-        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-        children: [],
-      }],
+      appPrevChatTree: [
+        {
+          id: '1',
+          content: 'Answer',
+          isAnswer: true,
+          workflow_run_id: 'w1',
+          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+          children: [],
+        },
+      ],
     })
 
     render(<ChatWrapper />)
@@ -520,14 +557,16 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [{
-        id: 'resume-node',
-        content: 'Paused answer',
-        isAnswer: true,
-        workflow_run_id: 'workflow-1',
-        humanInputFormDataList: [{ label: 'resume' }] as unknown as HumanInputFormData[],
-        children: [],
-      }],
+      appPrevChatTree: [
+        {
+          id: 'resume-node',
+          content: 'Paused answer',
+          isAnswer: true,
+          workflow_run_id: 'workflow-1',
+          humanInputFormDataList: [{ label: 'resume' }] as unknown as HumanInputFormData[],
+          children: [],
+        },
+      ],
     })
 
     render(<ChatWrapper />)
@@ -535,7 +574,11 @@ describe('ChatWrapper', () => {
     expect(handleSwitchSibling).toHaveBeenCalledWith('resume-node', expect.any(Object))
     const resumeOptions = handleSwitchSibling.mock.calls[0]![1]
     resumeOptions.onGetSuggestedQuestions('response-from-resume')
-    expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-from-resume', 'webApp', 'test-app-id')
+    expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
+      'response-from-resume',
+      'webApp',
+      'test-app-id',
+    )
   })
 
   it('should handle workflow resumption with nested children (DFS)', () => {
@@ -548,28 +591,30 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [{
-        id: '1',
-        content: 'First',
-        isAnswer: true,
-        children: [
-          {
-            id: '2',
-            content: 'Second',
-            isAnswer: false,
-            children: [
-              {
-                id: '3',
-                content: 'Third',
-                isAnswer: true,
-                workflow_run_id: 'w2',
-                humanInputFormDataList: [{ label: 'third' }] as unknown as HumanInputFormData[],
-                children: [],
-              },
-            ],
-          },
-        ],
-      }],
+      appPrevChatTree: [
+        {
+          id: '1',
+          content: 'First',
+          isAnswer: true,
+          children: [
+            {
+              id: '2',
+              content: 'Second',
+              isAnswer: false,
+              children: [
+                {
+                  id: '3',
+                  content: 'Third',
+                  isAnswer: true,
+                  workflow_run_id: 'w2',
+                  humanInputFormDataList: [{ label: 'third' }] as unknown as HumanInputFormData[],
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     })
 
     render(<ChatWrapper />)
@@ -586,12 +631,14 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
-      appPrevChatTree: [{
-        id: '1',
-        content: 'Answer',
-        isAnswer: true,
-        children: [],
-      }],
+      appPrevChatTree: [
+        {
+          id: '1',
+          content: 'Answer',
+          isAnswer: true,
+          children: [],
+        },
+      ],
     })
 
     render(<ChatWrapper />)
@@ -631,7 +678,12 @@ describe('ChatWrapper', () => {
 
     const onStopCallback = vi.mocked(useChat).mock.calls[0]![3] as (taskId: string) => void
     onStopCallback('taskId-123')
-    expect(stopChatMessageResponding).toHaveBeenCalledWith('', 'taskId-123', 'webApp', 'test-app-id')
+    expect(stopChatMessageResponding).toHaveBeenCalledWith(
+      '',
+      'taskId-123',
+      'webApp',
+      'test-app-id',
+    )
   })
 
   it('should call fetchSuggestedQuestions in doSend options', async () => {
@@ -639,7 +691,9 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       handleSend,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] }],
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
+      ],
       suggestedQuestions: ['Q1'],
     } as unknown as ChatHookReturn)
 
@@ -663,6 +717,59 @@ describe('ChatWrapper', () => {
     expect(fetchSuggestedQuestions).toHaveBeenCalledWith('response-id', 'webApp', 'test-app-id')
   })
 
+  it('should fetch current conversation messages after new agent send completes', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
+      ],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isNewAgent: true,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    const options = handleSend.mock.calls[0]![2]
+    await options.onGetConversationMessages('conversation-1')
+
+    expect(fetchChatList).toHaveBeenCalledWith('conversation-1', 'webApp', 'test-app-id')
+  })
+
+  it('should not fetch current conversation messages for non-new-agent chat', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
+      ],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isNewAgent: false,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    const options = handleSend.mock.calls[0]![2]
+    expect(options.onGetConversationMessages).toBeUndefined()
+  })
+
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {
     const handleSwitchSibling = vi.fn()
     vi.mocked(useChat).mockReturnValue({
@@ -670,7 +777,15 @@ describe('ChatWrapper', () => {
       handleSwitchSibling,
       chatList: [
         { id: 'q1', content: 'Q1' },
-        { id: 'a1', isAnswer: true, content: 'A1', parentMessageId: 'q1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: 'A1',
+          parentMessageId: 'q1',
+          siblingCount: 2,
+          siblingIndex: 0,
+          nextSibling: 'a2',
+        },
       ],
     } as unknown as ChatHookReturn)
 
@@ -709,7 +824,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
 
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
@@ -741,7 +858,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
 
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
@@ -768,17 +887,28 @@ describe('ChatWrapper', () => {
           id: 'a1',
           isAnswer: true,
           content: '',
-          humanInputFormDataList: [{
-            id: 'node1',
-            form_id: 'form1',
-            form_token: 'token1',
-            node_id: 'node1',
-            node_title: 'Node 1',
-            display_in_ui: true,
-            form_content: '{{#$output.test#}}',
-            inputs: [{ variable: 'test', label: 'Test', type: 'paragraph', required: true, output_variable_name: 'test', default: { type: 'text', value: '' } }],
-            actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-          }] as unknown as HumanInputFormData[],
+          humanInputFormDataList: [
+            {
+              id: 'node1',
+              form_id: 'form1',
+              form_token: 'token1',
+              node_id: 'node1',
+              node_title: 'Node 1',
+              display_in_ui: true,
+              form_content: '{{#$output.test#}}',
+              inputs: [
+                {
+                  variable: 'test',
+                  label: 'Test',
+                  type: 'paragraph',
+                  required: true,
+                  output_variable_name: 'test',
+                  default: { type: 'text', value: '' },
+                },
+              ],
+              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+            },
+          ] as unknown as HumanInputFormData[],
         },
       ],
     } as unknown as ChatHookReturn)
@@ -786,7 +916,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     expect(await screen.findByText('Node 1'))!.toBeInTheDocument()
 
-    const input = screen.getAllByRole('textbox').find(el => el.closest('.chat-answer-container')) || screen.getAllByRole('textbox')[0]
+    const input =
+      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
+      screen.getAllByRole('textbox')[0]
     fireEvent.change(input!, { target: { value: 'test' } })
 
     const runButton = screen.getByText('Run')
@@ -811,17 +943,28 @@ describe('ChatWrapper', () => {
           id: 'a1',
           isAnswer: true,
           content: '',
-          humanInputFormDataList: [{
-            id: 'node1',
-            form_id: 'form1',
-            form_token: 'token-web-1',
-            node_id: 'node1',
-            node_title: 'Node Web 1',
-            display_in_ui: true,
-            form_content: '{{#$output.test#}}',
-            inputs: [{ variable: 'test', label: 'Test', type: 'paragraph', required: true, output_variable_name: 'test', default: { type: 'text', value: '' } }],
-            actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-          }] as unknown as HumanInputFormData[],
+          humanInputFormDataList: [
+            {
+              id: 'node1',
+              form_id: 'form1',
+              form_token: 'token-web-1',
+              node_id: 'node1',
+              node_title: 'Node Web 1',
+              display_in_ui: true,
+              form_content: '{{#$output.test#}}',
+              inputs: [
+                {
+                  variable: 'test',
+                  label: 'Test',
+                  type: 'paragraph',
+                  required: true,
+                  output_variable_name: 'test',
+                  default: { type: 'text', value: '' },
+                },
+              ],
+              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+            },
+          ] as unknown as HumanInputFormData[],
         },
       ],
     } as unknown as ChatHookReturn)
@@ -829,7 +972,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
 
-    const input = screen.getAllByRole('textbox').find(el => el.closest('.chat-answer-container')) || screen.getAllByRole('textbox')[0]
+    const input =
+      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
+      screen.getAllByRole('textbox')[0]
     fireEvent.change(input!, { target: { value: 'web-test' } })
     fireEvent.click(screen.getByText('Run'))
 
@@ -925,8 +1070,7 @@ describe('ChatWrapper', () => {
     if (welcomeElement) {
       const welcomeContainer = welcomeElement.closest('.min-h-\\[50vh\\]')
       expect(welcomeContainer).toBeNull()
-    }
-    else {
+    } else {
       expect(welcomeElement).toBeNull()
     }
   })
@@ -1028,7 +1172,9 @@ describe('ChatWrapper', () => {
 
   it('should set handleStop on currentChatInstanceRef', () => {
     const handleStop = vi.fn()
-    const currentChatInstanceRef = { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef']
+    const currentChatInstanceRef = {
+      current: { handleStop: vi.fn() },
+    } as ChatWithHistoryContextValue['currentChatInstanceRef']
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -1104,7 +1250,9 @@ describe('ChatWrapper', () => {
         { variable: 'check', label: 'Checkbox', type: InputVarType.checkbox, required: true },
       ],
       newConversationInputs: { check: true },
-      newConversationInputsRef: { current: { check: true } } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: { check: true },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -1166,7 +1314,14 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: 'A1',
+          siblingCount: 2,
+          siblingIndex: 0,
+          nextSibling: 'a2',
+        },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1228,7 +1383,13 @@ describe('ChatWrapper', () => {
     })
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [{ id: '1', isOpeningStatement: true, content: 'Custom introduction from conversation item' }],
+      chatList: [
+        {
+          id: '1',
+          isOpeningStatement: true,
+          content: 'Custom introduction from conversation item',
+        },
+      ],
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
@@ -1245,7 +1406,9 @@ describe('ChatWrapper', () => {
         { variable: 'field2', label: 'Field 2', type: 'text-input', required: true },
       ],
       newConversationInputs: {},
-      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: {},
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -1374,7 +1537,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 198-200 when parentAnswer is not valid
@@ -1393,7 +1558,14 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: 'A1',
+          siblingCount: 2,
+          siblingIndex: 0,
+          nextSibling: 'a2',
+        },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1407,9 +1579,12 @@ describe('ChatWrapper', () => {
       if (nextButton) {
         fireEvent.click(nextButton)
         // This tests line 205 with existing conversation
-        expect(handleSwitchSibling).toHaveBeenCalledWith('a2', expect.objectContaining({
-          onConversationComplete: undefined,
-        }))
+        expect(handleSwitchSibling).toHaveBeenCalledWith(
+          'a2',
+          expect.objectContaining({
+            onConversationComplete: undefined,
+          }),
+        )
       }
     }
   })
@@ -1487,14 +1662,16 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       currentConversationId: '',
       handleNewConversationCompleted,
-      appPrevChatTree: [{
-        id: '1',
-        content: 'Answer',
-        isAnswer: true,
-        workflow_run_id: 'w1',
-        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-        children: [],
-      }],
+      appPrevChatTree: [
+        {
+          id: '1',
+          content: 'Answer',
+          isAnswer: true,
+          workflow_run_id: 'w1',
+          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+          children: [],
+        },
+      ],
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1504,9 +1681,12 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    expect(handleSwitchSibling).toHaveBeenCalledWith('1', expect.objectContaining({
-      onConversationComplete: handleNewConversationCompleted,
-    }))
+    expect(handleSwitchSibling).toHaveBeenCalledWith(
+      '1',
+      expect.objectContaining({
+        onConversationComplete: handleNewConversationCompleted,
+      }),
+    )
   })
 
   it('should handle workflow resumption in existing conversation', () => {
@@ -1517,14 +1697,16 @@ describe('ChatWrapper', () => {
       ...defaultContextValue,
       currentConversationId: '123',
       handleNewConversationCompleted,
-      appPrevChatTree: [{
-        id: '1',
-        content: 'Answer',
-        isAnswer: true,
-        workflow_run_id: 'w1',
-        humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
-        children: [],
-      }],
+      appPrevChatTree: [
+        {
+          id: '1',
+          content: 'Answer',
+          isAnswer: true,
+          workflow_run_id: 'w1',
+          humanInputFormDataList: [{ label: 'test' }] as unknown as HumanInputFormData[],
+          children: [],
+        },
+      ],
     })
 
     vi.mocked(useChat).mockReturnValue({
@@ -1534,9 +1716,12 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    expect(handleSwitchSibling).toHaveBeenCalledWith('1', expect.objectContaining({
-      onConversationComplete: undefined,
-    }))
+    expect(handleSwitchSibling).toHaveBeenCalledWith(
+      '1',
+      expect.objectContaining({
+        onConversationComplete: undefined,
+      }),
+    )
   })
 
   it('should handle null appPrevChatTree', () => {
@@ -1585,16 +1770,17 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Question' },
-      ],
+      chatList: [{ id: 'q1', content: 'Question' }],
       handleSend,
     } as unknown as ChatHookReturn)
 
     render(<ChatWrapper />)
 
     // Simulate regenerate with no parent - this tests line 190 with null
-    const regenerateBtn = screen.getByText('Question').closest('.chat-answer-container')?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = screen
+      .getByText('Question')
+      .closest('.chat-answer-container')
+      ?.querySelector('button .ri-reset-left-line')?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
     }
@@ -1675,7 +1861,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 - question.message_files branch
@@ -1696,7 +1884,14 @@ describe('ChatWrapper', () => {
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
       chatList: [
-        { id: 'a1', isAnswer: true, content: 'A1', siblingCount: 2, siblingIndex: 0, nextSibling: 'a2' },
+        {
+          id: 'a1',
+          isAnswer: true,
+          content: 'A1',
+          siblingCount: 2,
+          siblingIndex: 0,
+          nextSibling: 'a2',
+        },
       ],
       handleSwitchSibling,
     } as unknown as ChatHookReturn)
@@ -1736,7 +1931,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 when isValidGeneratedAnswer returns false
@@ -1762,7 +1959,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 200 when isValidGeneratedAnswer returns true
@@ -1793,7 +1992,9 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
 
     const answerContainer = screen.getByText('A1').closest('.chat-answer-container')
-    const regenerateBtn = answerContainer?.querySelector('button .ri-reset-left-line')?.parentElement
+    const regenerateBtn = answerContainer?.querySelector(
+      'button .ri-reset-left-line',
+    )?.parentElement
     if (regenerateBtn) {
       fireEvent.click(regenerateBtn)
       // This tests line 190 - the isRegenerate ? parentAnswer?.id branch
@@ -1817,7 +2018,9 @@ describe('ChatWrapper', () => {
         { variable: 'optional', label: 'Optional', type: 'text-input', required: false },
       ],
       newConversationInputs: {},
-      newConversationInputsRef: { current: {} } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      newConversationInputsRef: {
+        current: {},
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
       currentConversationId: '',
     })
 
@@ -1868,7 +2071,9 @@ describe('ChatWrapper', () => {
       appParams: undefined as unknown as ChatConfig,
       appId: '',
       currentConversationId: '',
-      currentChatInstanceRef: { current: null } as unknown as ChatWithHistoryContextValue['currentChatInstanceRef'],
+      currentChatInstanceRef: {
+        current: null,
+      } as unknown as ChatWithHistoryContextValue['currentChatInstanceRef'],
     })
 
     vi.mocked(useChat).mockReturnValue({

@@ -14,9 +14,9 @@ describe('SuggestedQuestions', () => {
   const mockOnSend = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.clearAllMocks()
     // Use 'as Mock' instead of 'as any'
-    (useChatContext as Mock).mockReturnValue({
+    ;(useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: false,
     })
@@ -59,14 +59,16 @@ describe('SuggestedQuestions', () => {
     expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
 
     // Use 'as IChatItem' instead of 'as any'
-    render(<SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />)
+    render(
+      <SuggestedQuestions item={{ ...mockItem, suggestedQuestions: undefined } as IChatItem} />,
+    )
     expect(screen.queryByTestId('suggested-question')).not.toBeInTheDocument()
   })
 
   it('should be disabled and not call onSend when readonly is true', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup()
     // Use 'as Mock' instead of 'as any'
-    (useChatContext as Mock).mockReturnValue({
+    ;(useChatContext as Mock).mockReturnValue({
       onSend: mockOnSend,
       readonly: true,
     })

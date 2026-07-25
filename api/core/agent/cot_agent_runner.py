@@ -114,7 +114,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             message_file_ids: list[str] = []
 
             agent_thought_id = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+                message_id=message.id,
+                message="",
+                tool_name="",
+                tool_input="",
+                messages_ids=message_file_ids,
             )
 
             if iteration_step > 1:
@@ -125,6 +129,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
+            # Release any setup/tool transaction before waiting on the provider stream.
+            session.commit()
+            session.close()
+
             # invoke model
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -333,6 +342,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             agent_tool_callback=self.agent_callback,
             trace_manager=trace_manager,
         )
+        session.commit()
+        session.close()
 
         # publish files
         for message_file_id in message_files:

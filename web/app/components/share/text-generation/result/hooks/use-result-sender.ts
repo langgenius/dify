@@ -1,21 +1,16 @@
+import type { TextGenerationTranslate } from '../../types'
 import type { ResultInputValue } from '../result-request'
 import type { ResultRunStateController } from './use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
-import {
-  AppSourceType,
-  sendCompletionMessage,
-  sendWorkflowMessage,
-} from '@/service/share'
+import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
 import { sleep } from '@/utils'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
 import { createWorkflowStreamHandlers } from '../workflow-stream-handlers'
 
-type Notify = (payload: { type: 'error' | 'info' | 'warning', message: string }) => void
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
+type Notify = (payload: { type: 'error' | 'info' | 'warning'; message: string }) => void
 type UseResultSenderOptions = {
   appId?: string
   appSourceType: AppSourceType
@@ -32,7 +27,7 @@ type UseResultSenderOptions = {
   onShowRes: () => void
   promptConfig: PromptConfig | null
   runState: ResultRunStateController
-  t: Translate
+  t: TextGenerationTranslate
   taskId?: number
   visionConfig: VisionSettings
 }
@@ -66,7 +61,10 @@ export const useResultSender = ({
 
   const handleSend = useCallback(async () => {
     if (runState.isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      notify({
+        type: 'info',
+        message: t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }),
+      })
       return false
     }
 
@@ -143,46 +141,57 @@ export const useResultSender = ({
       return true
     }
 
-    void sendCompletionMessage(data, {
-      onData: (chunk, _isFirstMessage, { messageId, taskId: nextTaskId }) => {
-        tempMessageId = messageId
-        if (nextTaskId && nextTaskId.trim() !== '')
-          runState.setCurrentTaskId(prev => prev ?? nextTaskId)
+    void sendCompletionMessage(
+      data,
+      {
+        onData: (chunk, _isFirstMessage, { messageId, taskId: nextTaskId }) => {
+          tempMessageId = messageId
+          if (nextTaskId && nextTaskId.trim() !== '')
+            runState.setCurrentTaskId((prev) => prev ?? nextTaskId)
 
-        completionChunks.push(chunk)
-        runState.setCompletionRes(completionChunks.join(''))
-      },
-      onCompleted: () => {
-        if (isTimeout) {
-          notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
-          return
-        }
+          completionChunks.push(chunk)
+          runState.setCompletionRes(completionChunks.join(''))
+        },
+        onCompleted: () => {
+          if (isTimeout) {
+            notify({
+              type: 'warning',
+              message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
+            })
+            return
+          }
 
-        runState.setRespondingFalse()
-        runState.resetRunState()
-        runState.setMessageId(tempMessageId)
-        onCompleted(runState.getCompletionRes(), taskId, true)
-        isEnd = true
-      },
-      onMessageReplace: (messageReplace) => {
-        completionChunks = [messageReplace.answer]
-        runState.setCompletionRes(completionChunks.join(''))
-      },
-      onError: () => {
-        if (isTimeout) {
-          notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
-          return
-        }
+          runState.setRespondingFalse()
+          runState.resetRunState()
+          runState.setMessageId(tempMessageId)
+          onCompleted(runState.getCompletionRes(), taskId, true)
+          isEnd = true
+        },
+        onMessageReplace: (messageReplace) => {
+          completionChunks = [messageReplace.answer]
+          runState.setCompletionRes(completionChunks.join(''))
+        },
+        onError: () => {
+          if (isTimeout) {
+            notify({
+              type: 'warning',
+              message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
+            })
+            return
+          }
 
-        runState.setRespondingFalse()
-        runState.resetRunState()
-        onCompleted(runState.getCompletionRes(), taskId, false)
-        isEnd = true
+          runState.setRespondingFalse()
+          runState.resetRunState()
+          onCompleted(runState.getCompletionRes(), taskId, false)
+          isEnd = true
+        },
+        getAbortController: (abortController) => {
+          runState.abortControllerRef.current = abortController
+        },
       },
-      getAbortController: (abortController) => {
-        runState.abortControllerRef.current = abortController
-      },
-    }, appSourceType, appId)
+      appSourceType,
+      appId,
+    )
 
     return true
   }, [
@@ -211,16 +220,14 @@ export const useResultSender = ({
   }, [handleSend])
 
   useEffect(() => {
-    if (!controlSend)
-      return
+    if (!controlSend) return
 
     void handleSendRef.current()
     clearMoreLikeThis()
   }, [clearMoreLikeThis, controlSend])
 
   useEffect(() => {
-    if (!controlRetry)
-      return
+    if (!controlRetry) return
 
     void handleSendRef.current()
   }, [controlRetry])

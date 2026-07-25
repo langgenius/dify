@@ -55,10 +55,7 @@ const ParagraphListSkeleton = () => {
       {Array.from({ length: 10 }).map((_, index) => {
         return (
           <div key={index} className="flex items-start gap-x-2">
-            <CheckboxSkeleton
-              key={`${index}-checkbox`}
-              className="mt-3.5 shrink-0"
-            />
+            <CheckboxSkeleton key={`${index}-checkbox`} className="mt-3.5 shrink-0" />
             <div className="grow">
               <CardSkelton />
               {index !== 9 && (

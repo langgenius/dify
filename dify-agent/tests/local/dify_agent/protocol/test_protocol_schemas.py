@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
@@ -42,7 +44,11 @@ from dify_agent.layers.dify_plugin.configs import (
 def test_run_event_adapter_round_trips_typed_variants() -> None:
     events = [
         RunStartedEvent(run_id="run-1"),
-        PydanticAIStreamRunEvent(run_id="run-1", data=FinalResultEvent(tool_name=None, tool_call_id=None)),
+        PydanticAIStreamRunEvent(
+            run_id="run-1",
+            data=FinalResultEvent(tool_name=None, tool_call_id=None),
+            agent_message_delta="hello",
+        ),
         RunSucceededEvent(
             run_id="run-1",
             data=RunSucceededEventData(
@@ -101,6 +107,7 @@ def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is
 
 def test_protocol_package_no_longer_exports_execution_context_dto() -> None:
     assert not hasattr(protocol_exports, "ExecutionContext")
+    assert not hasattr(protocol_exports, "RunPurpose")
 
 
 def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_graph_config() -> None:
@@ -131,7 +138,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         }
     )
     request = CreateRunRequest(
-        purpose="workflow_node",
         idempotency_key="workflow-run-1:node-execution-1",
         metadata={"source": "unit_test"},
         composition=RunComposition(
@@ -177,7 +183,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         "invoke_from": "service-api",
         "trace_id": "trace-1",
     }
-    assert payload["purpose"] == "workflow_node"
     assert payload["idempotency_key"] == "workflow-run-1:node-execution-1"
     assert payload["metadata"] == {"source": "unit_test"}
     assert payload["composition"]["layers"][0]["config"] == {"prefix": "system", "user": "hello", "suffix": []}
@@ -426,6 +431,45 @@ def test_run_succeeded_event_round_trips_usage() -> None:
     assert b'"usage"' in payload
 
 
+def test_run_succeeded_event_round_trips_complete_pricing_usage() -> None:
+    event = RunSucceededEvent(
+        run_id="run-priced-usage",
+        data=RunSucceededEventData(
+            output="done",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000050"),
+                completion_tokens=2,
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000060"),
+                total_tokens=12,
+                total_price=Decimal("0.000110"),
+                currency="USD",
+                latency=0.4,
+                time_to_first_token=0.1,
+                time_to_generate=0.3,
+            ),
+        ),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunSucceededEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_price == Decimal("0.000050")
+    assert decoded.data.usage.completion_price == Decimal("0.000060")
+    assert decoded.data.usage.total_price == Decimal("0.000110")
+    assert decoded.data.usage.currency == "USD"
+    assert decoded.data.usage.latency == 0.4
+    assert decoded.data.usage.time_to_first_token == 0.1
+    assert decoded.data.usage.time_to_generate == 0.3
+
+
 def test_on_exit_accept_layer_overrides() -> None:
     request = CreateRunRequest.model_validate(
         {
@@ -452,6 +496,16 @@ def test_create_run_request_rejects_removed_top_level_execution_context() -> Non
                     "agent_mode": "workflow_run",
                     "invoke_from": "service-api",
                 },
+            }
+        )
+
+
+def test_create_run_request_rejects_removed_top_level_purpose() -> None:
+    with pytest.raises(ValidationError):
+        _ = CreateRunRequest.model_validate(
+            {
+                "composition": {"layers": []},
+                "purpose": "session_cleanup",
             }
         )
 

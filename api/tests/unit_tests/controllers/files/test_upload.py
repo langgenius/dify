@@ -34,11 +34,11 @@ class DummyFile:
 
 
 class DummyToolFile:
-    def __init__(self):
+    def __init__(self, name="test.txt", mimetype="text/plain"):
         self.id = "file-id"
-        self.name = "test.txt"
+        self.name = name
         self.size = 10
-        self.mimetype = "text/plain"
+        self.mimetype = mimetype
         self.original_url = "http://original"
         self.user_id = "user-1"
         self.tenant_id = "tenant-1"
@@ -56,7 +56,7 @@ class TestPluginUploadFileApi:
         mock_get_user,
         mock_verify_signature,
     ):
-        dummy_file = DummyFile()
+        dummy_file = DummyFile(filename="report.docx", mimetype="application/octet-stream")
 
         module.request = fake_request(
             {
@@ -71,7 +71,10 @@ class TestPluginUploadFileApi:
         )
 
         tool_file_manager_instance = mock_tool_file_manager.return_value
-        tool_file_manager_instance.create_file_by_raw.return_value = DummyToolFile()
+        tool_file_manager_instance.create_file_by_raw.return_value = DummyToolFile(
+            name="report.docx",
+            mimetype="application/octet-stream",
+        )
 
         mock_tool_file_manager.sign_file.return_value = "signed-url"
 
@@ -84,10 +87,12 @@ class TestPluginUploadFileApi:
         assert result["id"] == "file-id"
         assert result["reference"] == build_file_reference(record_id="file-id")
         assert result["preview_url"] == "signed-url"
+        assert result["extension"] == ".docx"
         mock_verify_signature.assert_called_once()
         assert mock_verify_signature.call_args.kwargs["conversation_id"] == "conversation-1"
         tool_file_manager_instance.create_file_by_raw.assert_called_once()
         assert tool_file_manager_instance.create_file_by_raw.call_args.kwargs["conversation_id"] == "conversation-1"
+        mock_tool_file_manager.sign_file.assert_called_once_with(tool_file_id="file-id", extension=".docx")
 
     def test_missing_file(self):
         module.request = fake_request(

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, override
 
 from flask import current_app
+from sqlalchemy.orm import Session
 
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
@@ -22,17 +23,19 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         return RecommendAppType.BUILDIN
 
     @override
-    def get_recommended_apps_and_categories(self, language: str):
+    def get_recommended_apps_and_categories(self, language: str, *, session: Session):
+        del session
         result = self.fetch_recommended_apps_from_builtin(language)
         return result
 
     @override
-    def get_learn_dify_apps(self, language: str):
-        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+    def get_learn_dify_apps(self, language: str, *, session: Session):
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language, session=session)
         return result
 
     @override
-    def get_recommend_app_detail(self, app_id: str):
+    def get_recommend_app_detail(self, app_id: str, *, session: Session):
+        del session
         result = self.fetch_recommended_app_detail_from_builtin(app_id)
         return result
 

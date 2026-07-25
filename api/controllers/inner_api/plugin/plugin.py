@@ -476,6 +476,7 @@ class PluginDownloadFileRequestApi(Resource):
             user_from=payload.user_from,
             invoke_from=payload.invoke_from,
             file_mapping=payload.file.model_dump(mode="python", exclude_none=True),
+            for_external=payload.for_external,
         )
         return BaseBackwardsInvocationResponse(
             data={

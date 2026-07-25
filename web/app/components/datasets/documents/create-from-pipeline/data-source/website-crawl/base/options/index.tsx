@@ -10,7 +10,10 @@ import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import {
+  useConfigurations,
+  useInitialData,
+} from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { CrawlStep } from '@/models/datasets'
 
 const I18N_PREFIX = 'stepOne.website'
@@ -22,12 +25,7 @@ type OptionsProps = {
   onSubmit: (data: Record<string, any>) => void
 }
 
-const Options = ({
-  variables,
-  step,
-  runDisabled,
-  onSubmit,
-}: OptionsProps) => {
+const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
   const { t } = useTranslation()
   const initialData = useInitialData(variables)
   const configurations = useConfigurations(variables)
@@ -55,18 +53,12 @@ const Options = ({
     },
   })
 
-  const [fold, {
-    toggle: foldToggle,
-    setTrue: foldHide,
-    setFalse: foldShow,
-  }] = useBoolean(false)
+  const [fold, { toggle: foldToggle, setTrue: foldHide, setFalse: foldShow }] = useBoolean(false)
 
   useEffect(() => {
     // When the step change
-    if (step !== CrawlStep.init)
-      foldHide()
-    else
-      foldShow()
+    if (step !== CrawlStep.init) foldHide()
+    else foldShow()
   }, [step])
 
   const isRunning = useMemo(() => step === CrawlStep.running, [step])
@@ -86,9 +78,11 @@ const Options = ({
           onClick={foldToggle}
         >
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t(`${I18N_PREFIX}.options`, { ns: 'datasetCreation' })}
+            {t(($) => $[`${I18N_PREFIX}.options`], { ns: 'datasetCreation' })}
           </span>
-          <ArrowDownRoundFill className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')} />
+          <ArrowDownRoundFill
+            className={cn('size-4 shrink-0 text-text-quaternary', fold && '-rotate-90')}
+          />
         </div>
         <Button
           variant="primary"
@@ -98,7 +92,11 @@ const Options = ({
           className="shrink-0 gap-x-0.5"
         >
           <RiPlayLargeLine className="size-4" />
-          <span className="px-0.5">{!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.running`, { ns: 'datasetCreation' })}</span>
+          <span className="px-0.5">
+            {!isRunning
+              ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' })
+              : t(($) => $[`${I18N_PREFIX}.running`], { ns: 'datasetCreation' })}
+          </span>
         </Button>
       </div>
       {!fold && (

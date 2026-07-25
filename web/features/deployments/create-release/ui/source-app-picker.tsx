@@ -21,19 +21,27 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { TitleTooltip } from '../../shared/components/title-tooltip'
 import {
+  createReleaseSourceAppsAtom,
   createReleaseSourceAppSearchTextAtom,
-  createReleaseSourceAppsQueryAtom,
+  createReleaseSourceAppsErrorAtom,
+  createReleaseSourceAppsFetchNextPageAtom,
+  createReleaseSourceAppsHasNextPageAtom,
+  createReleaseSourceAppsIsFetchingAtom,
+  createReleaseSourceAppsIsFetchingNextPageAtom,
+  createReleaseSourceAppsIsLoadingAtom,
 } from '../state'
 
-const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
+const SOURCE_APP_PICKER_SKELETON_KEYS = [
+  'first-source-app',
+  'second-source-app',
+  'third-source-app',
+]
 
 function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
-function SourceAppTrigger({ app }: {
-  app?: SourceAppPickerValue
-}) {
+function SourceAppTrigger({ app }: { app?: SourceAppPickerValue }) {
   const { t } = useTranslation('deployments')
 
   return (
@@ -65,7 +73,7 @@ function SourceAppTrigger({ app }: {
               : 'system-sm-regular text-components-input-text-placeholder',
           )}
         >
-          {app?.name ?? t('createModal.appPickerPlaceholder')}
+          {app?.name ?? t(($) => $['createModal.appPickerPlaceholder'])}
         </span>
       </TitleTooltip>
       <span
@@ -80,14 +88,9 @@ function SourceAppTrigger({ app }: {
   )
 }
 
-function SourceAppOption({ app }: {
-  app: App
-}) {
+function SourceAppOption({ app }: { app: App }) {
   return (
-    <ComboboxItem
-      value={app}
-      className="mx-0 grid-cols-[minmax(0,1fr)] gap-3 py-1 pr-3 pl-2"
-    >
+    <ComboboxItem value={app} className="mx-0 grid-cols-[minmax(0,1fr)] gap-3 py-1 pr-3 pl-2">
       <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
         <AppIcon
           className="shrink-0"
@@ -100,11 +103,7 @@ function SourceAppOption({ app }: {
         <TitleTooltip content={`${app.name} (${app.id})`}>
           <span className="flex min-w-0 grow items-center gap-1 truncate system-sm-medium text-components-input-text-filled">
             <span className="truncate">{app.name}</span>
-            <span className="shrink-0 text-text-tertiary">
-              (
-              {app.id.slice(0, 8)}
-              )
-            </span>
+            <span className="shrink-0 text-text-tertiary">({app.id.slice(0, 8)})</span>
           </span>
         </TitleTooltip>
       </ComboboxItemText>
@@ -115,7 +114,7 @@ function SourceAppOption({ app }: {
 function SourceAppPickerSkeleton() {
   return (
     <div className="flex flex-col gap-2 px-3 py-3">
-      {SOURCE_APP_PICKER_SKELETON_KEYS.map(key => (
+      {SOURCE_APP_PICKER_SKELETON_KEYS.map((key) => (
         <SkeletonRow key={key} className="h-7 gap-3">
           <SkeletonRectangle className="my-0 size-5 animate-pulse rounded-md" />
           <SkeletonRectangle className="h-3 w-32 animate-pulse" />
@@ -125,7 +124,11 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-export function SourceAppPicker({ value, onChange, disabled = false }: {
+export function SourceAppPicker({
+  value,
+  onChange,
+  disabled = false,
+}: {
   value?: SourceAppPickerValue
   onChange: (app: App) => void
   disabled?: boolean
@@ -134,20 +137,28 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
   const [isShow, setIsShow] = useState(false)
   const searchText = useAtomValue(createReleaseSourceAppSearchTextAtom)
   const setSearchText = useSetAtom(createReleaseSourceAppSearchTextAtom)
-  const sourceAppsQuery = useAtomValue(createReleaseSourceAppsQueryAtom)
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-  } = sourceAppsQuery
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(sourceAppsQuery, {
-    enabled: isShow && !disabled,
-    rootMargin: '0px 0px 160px 0px',
-    threshold: 0.1,
-  })
-
-  const apps = data?.pages.flatMap(page => page.data) ?? []
+  const apps = useAtomValue(createReleaseSourceAppsAtom)
+  const sourceAppsError = useAtomValue(createReleaseSourceAppsErrorAtom)
+  const sourceAppsFetchNextPage = useAtomValue(createReleaseSourceAppsFetchNextPageAtom)
+  const sourceAppsHasNextPage = useAtomValue(createReleaseSourceAppsHasNextPageAtom)
+  const sourceAppsIsFetching = useAtomValue(createReleaseSourceAppsIsFetchingAtom)
+  const sourceAppsIsFetchingNextPage = useAtomValue(createReleaseSourceAppsIsFetchingNextPageAtom)
+  const sourceAppsIsLoading = useAtomValue(createReleaseSourceAppsIsLoadingAtom)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(
+    {
+      error: sourceAppsError,
+      fetchNextPage: sourceAppsFetchNextPage,
+      hasNextPage: sourceAppsHasNextPage,
+      isFetching: sourceAppsIsFetching,
+      isFetchingNextPage: sourceAppsIsFetchingNextPage,
+      isLoading: sourceAppsIsLoading,
+    },
+    {
+      enabled: isShow && !disabled,
+      rootMargin: '0px 0px 160px 0px',
+      threshold: 0.1,
+    },
+  )
 
   return (
     <Combobox<App>
@@ -158,26 +169,21 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
         setIsShow(disabled ? false : open)
       }}
       onInputValueChange={(value) => {
-        if (!disabled)
-          setSearchText(value)
+        if (!disabled) setSearchText(value)
       }}
       onValueChange={(app) => {
-        if (disabled)
-          return
-        if (!app)
-          return
+        if (disabled) return
+        if (!app) return
         onChange(app)
         setIsShow(false)
       }}
       itemToStringLabel={(app) => {
-        if (!app)
-          return ''
+        if (!app) return ''
 
         return app.name
       }}
       itemToStringValue={(app) => {
-        if (!app)
-          return ''
+        if (!app) return ''
 
         return app.id
       }}
@@ -185,7 +191,7 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
       disabled={disabled}
     >
       <ComboboxTrigger
-        aria-label={t('versions.sourceAppOption')}
+        aria-label={t(($) => $['versions.sourceAppOption'])}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
@@ -199,32 +205,33 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
         <div className="relative flex max-h-100 min-h-20 w-89 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
-              <span className="i-ri-search-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+              <span
+                className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                aria-hidden="true"
+              />
               <ComboboxInput
-                aria-label={t('createModal.appSearchPlaceholder')}
-                placeholder={t('createModal.appSearchPlaceholder')}
+                aria-label={t(($) => $['createModal.appSearchPlaceholder'])}
+                placeholder={t(($) => $['createModal.appSearchPlaceholder'])}
                 className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
               />
             </ComboboxInputGroup>
           </div>
           <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto p-1">
-            {(isLoading || isFetchingNextPage) && apps.length === 0 && <SourceAppPickerSkeleton />}
-            <ComboboxList className="max-h-none p-0">
-              {(app: App) => (
-                <SourceAppOption key={app.id} app={app} />
-              )}
-            </ComboboxList>
-            {!(isLoading || isFetchingNextPage) && (
-              <ComboboxEmpty>
-                {t('createModal.appSearchEmpty')}
-              </ComboboxEmpty>
+            {(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && apps.length === 0 && (
+              <SourceAppPickerSkeleton />
             )}
-            {isFetchingNextPage && apps.length > 0 && (
+            <ComboboxList className="max-h-none p-0">
+              {(app: App) => <SourceAppOption key={app.id} app={app} />}
+            </ComboboxList>
+            {!(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && (
+              <ComboboxEmpty>{t(($) => $['createModal.appSearchEmpty'])}</ComboboxEmpty>
+            )}
+            {sourceAppsIsFetchingNextPage && apps.length > 0 && (
               <div className="px-3 py-2 text-center system-xs-regular text-text-tertiary">
-                {t('createModal.loadingApps')}
+                {t(($) => $['createModal.loadingApps'])}
               </div>
             )}
-            {hasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
+            {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
           </div>
         </div>
       </ComboboxContent>

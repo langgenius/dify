@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
@@ -16,7 +16,6 @@ const mockTrackCreateApp = vi.fn()
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
-let mockIsCurrentWorkspaceEditor = true
 const mockUserProfile = { id: 'user-1' }
 
 vi.mock('ahooks', () => ({
@@ -29,13 +28,22 @@ vi.mock('ahooks', () => ({
     }
   },
 }))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: mockUserProfile,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
 vi.mock('nuqs', () => ({
   useQueryState: () => ['Recommended', vi.fn()],
 }))
@@ -43,18 +51,48 @@ vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => mockUseExploreAppList(),
 }))
 vi.mock('@/app/components/app/type-selector', () => ({
-  default: ({ value, onChange }: { value: AppModeEnum[], onChange: (value: AppModeEnum[]) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: AppModeEnum[]
+    onChange: (value: AppModeEnum[]) => void
+  }) => (
     <div>
-      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>{value.join(',')}</button>
-      <button data-testid="type-selector-advanced" onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}>advanced</button>
-      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>agent</button>
-      <button data-testid="type-selector-completion" onClick={() => onChange([AppModeEnum.COMPLETION])}>completion</button>
-      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>workflow</button>
+      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>
+        {value.join(',')}
+      </button>
+      <button
+        data-testid="type-selector-advanced"
+        onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}
+      >
+        advanced
+      </button>
+      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>
+        agent
+      </button>
+      <button
+        data-testid="type-selector-completion"
+        onClick={() => onChange([AppModeEnum.COMPLETION])}
+      >
+        completion
+      </button>
+      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>
+        workflow
+      </button>
     </div>
   ),
 }))
 vi.mock('../../app-card', () => ({
-  default: ({ app, canCreate, onCreate }: { app: { app: { name: string } }, canCreate: boolean, onCreate: () => void }) => (
+  default: ({
+    app,
+    canCreate,
+    onCreate,
+  }: {
+    app: { app: { name: string } }
+    canCreate: boolean
+    onCreate: () => void
+  }) => (
     <button
       type="button"
       data-testid="app-card"
@@ -67,7 +105,11 @@ vi.mock('../../app-card', () => ({
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({ onConfirm, onHide, show }: {
+  default: ({
+    onConfirm,
+    onHide,
+    show,
+  }: {
     onConfirm: (payload: {
       name: string
       icon_type: string
@@ -77,25 +119,28 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
     }) => Promise<void>
     onHide: () => void
     show: boolean
-  }) => show
-    ? (
-        <div data-testid="create-from-template-modal">
-          <button
-            data-testid="confirm-create"
-            onClick={() => onConfirm({
+  }) =>
+    show ? (
+      <div data-testid="create-from-template-modal">
+        <button
+          data-testid="confirm-create"
+          onClick={() =>
+            onConfirm({
               name: 'Created App',
               icon_type: 'emoji',
               icon: '🙂',
               icon_background: '#fff',
               description: 'created from template',
-            })}
-          >
-            confirm-create
-          </button>
-          <button data-testid="hide-create-modal" onClick={onHide}>hide-create-modal</button>
-        </div>
-      )
-    : null,
+            })
+          }
+        >
+          confirm-create
+        </button>
+        <button data-testid="hide-create-modal" onClick={onHide}>
+          hide-create-modal
+        </button>
+      </div>
+    ) : null,
 }))
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -117,7 +162,8 @@ vi.mock('@/service/explore', () => ({
 }))
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
-    handleCheckPluginDependencies: (...args: unknown[]) => mockHandleCheckPluginDependencies(...args),
+    handleCheckPluginDependencies: (...args: unknown[]) =>
+      mockHandleCheckPluginDependencies(...args),
   }),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -183,7 +229,6 @@ describe('Apps', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockWorkspacePermissionKeys = ['app.create_and_management']
-    mockIsCurrentWorkspaceEditor = true
     mockUseExploreAppList.mockReturnValue({
       data: defaultData,
       isLoading: false,
@@ -215,7 +260,6 @@ describe('Apps', () => {
   })
 
   it('passes app.create_and_management permission to template cards even when user is not a workspace editor', () => {
-    mockIsCurrentWorkspaceEditor = false
     mockWorkspacePermissionKeys = ['app.create_and_management']
 
     render(<Apps />)
@@ -224,7 +268,6 @@ describe('Apps', () => {
   })
 
   it('does not allow template creation when app.create_and_management permission is missing', () => {
-    mockIsCurrentWorkspaceEditor = true
     mockWorkspacePermissionKeys = []
 
     render(<Apps />)
@@ -278,10 +321,12 @@ describe('Apps', () => {
 
     await waitFor(() => {
       expect(mockFetchAppDetail).toHaveBeenCalledWith('Alpha')
-      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
-        yaml_content: 'dsl',
-        name: 'Created App',
-      }))
+      expect(mockImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml_content: 'dsl',
+          name: 'Created App',
+        }),
+      )
     })
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -294,16 +339,20 @@ describe('Apps', () => {
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
-    expect(mockGetRedirection).toHaveBeenCalledWith({
-      id: 'created-app-id',
-      mode: AppModeEnum.CHAT,
-      permission_keys: ['app.acl.view_layout'],
-    }, mockPush, {
-      currentUserId: 'user-1',
-      resourceMaintainer: 'user-1',
-      workspacePermissionKeys: ['app.create_and_management'],
-      isRbacEnabled: false,
-    })
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      {
+        id: 'created-app-id',
+        mode: AppModeEnum.CHAT,
+        permission_keys: ['app.acl.view_layout'],
+      },
+      mockPush,
+      {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      },
+    )
   })
 
   it('passes creator context when template import response has no permission keys', async () => {
@@ -318,16 +367,20 @@ describe('Apps', () => {
     fireEvent.click(screen.getByTestId('confirm-create'))
 
     await waitFor(() => {
-      expect(mockGetRedirection).toHaveBeenCalledWith({
-        id: 'created-without-permissions',
-        mode: AppModeEnum.WORKFLOW,
-        permission_keys: undefined,
-      }, mockPush, {
-        currentUserId: 'user-1',
-        resourceMaintainer: 'user-1',
-        workspacePermissionKeys: ['app.create_and_management'],
-        isRbacEnabled: false,
-      })
+      expect(mockGetRedirection).toHaveBeenCalledWith(
+        {
+          id: 'created-without-permissions',
+          mode: AppModeEnum.WORKFLOW,
+          permission_keys: undefined,
+        },
+        mockPush,
+        {
+          currentUserId: 'user-1',
+          resourceMaintainer: 'user-1',
+          workspacePermissionKeys: ['app.create_and_management'],
+          isRbacEnabled: false,
+        },
+      )
     })
   })
 

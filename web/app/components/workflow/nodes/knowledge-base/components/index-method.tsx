@@ -1,22 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Economic,
-  HighQuality,
-} from '@/app/components/base/icons/src/vender/knowledge'
+import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-} from '../types'
+import { ChunkStructureEnum, IndexMethodEnum } from '../types'
 import OptionCard from './option-card'
 
 type IndexMethodProps = {
@@ -36,96 +27,98 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
-  const keywordNumberLabel = t('form.numberOfKeywords', { ns: 'datasetSettings' })
+  const keywordNumberLabel = t(($) => $['form.numberOfKeywords'], { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
 
-  const handleIndexMethodChange = useCallback((newIndexMethod: IndexMethodEnum) => {
-    onIndexMethodChange(newIndexMethod)
-  }, [onIndexMethodChange])
+  const handleIndexMethodChange = useCallback(
+    (newIndexMethod: IndexMethodEnum) => {
+      onIndexMethodChange(newIndexMethod)
+    },
+    [onIndexMethodChange],
+  )
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Number(e.target.value)
-    if (!Number.isNaN(value))
-      onKeywordNumberChange(value)
-  }, [onKeywordNumberChange])
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = Number(e.target.value)
+      if (!Number.isNaN(value)) onKeywordNumberChange(value)
+    },
+    [onKeywordNumberChange],
+  )
 
   return (
     <Field
       fieldTitleProps={{
-        title: t('stepTwo.indexMode', { ns: 'datasetCreation' }),
+        title: t(($) => $['stepTwo.indexMode'], { ns: 'datasetCreation' }),
       }}
     >
       <div className="space-y-1">
         <OptionCard<IndexMethodEnum>
           id={IndexMethodEnum.QUALIFIED}
           selectedId={indexMethod}
-          icon={(
+          icon={
             <HighQuality
               className={cn(
                 'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
                 isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
-          )}
-          title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-          description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+          }
+          title={t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
+          description={t(($) => $['form.indexMethodHighQualityTip'], { ns: 'datasetSettings' })}
           onClick={handleIndexMethodChange}
           isRecommended
           effectColor="orange"
-        >
-        </OptionCard>
-        {
-          chunkStructure === ChunkStructureEnum.general && (
-            <OptionCard
-              id={IndexMethodEnum.ECONOMICAL}
-              selectedId={indexMethod}
-              icon={(
-                <Economic
-                  className={cn(
-                    'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
-                    isEconomy && 'text-util-colors-indigo-indigo-500',
-                  )}
-                />
-              )}
-              title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-              description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
-              onClick={handleIndexMethodChange}
-              effectColor="blue"
-            >
-              <FieldsetRoot className="flex items-center">
-                <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
-                <div className="flex grow items-center">
-                  <div className="truncate system-xs-medium text-text-secondary">
-                    {keywordNumberLabel}
-                  </div>
-                  <Infotip
-                    aria-label={keywordNumberLabel}
-                    className="ml-0.5 size-3.5"
-                  >
-                    {keywordNumberLabel}
-                  </Infotip>
+        ></OptionCard>
+        {chunkStructure === ChunkStructureEnum.general && (
+          <OptionCard
+            id={IndexMethodEnum.ECONOMICAL}
+            selectedId={indexMethod}
+            icon={
+              <Economic
+                className={cn(
+                  'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                  isEconomy && 'text-util-colors-indigo-indigo-500',
+                )}
+              />
+            }
+            title={t(($) => $['form.indexMethodEconomy'], { ns: 'datasetSettings' })}
+            description={t(($) => $['form.indexMethodEconomyTip'], {
+              ns: 'datasetSettings',
+              count: keywordNumber,
+            })}
+            onClick={handleIndexMethodChange}
+            effectColor="blue"
+          >
+            <Fieldset className="flex items-center">
+              <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
+              <div className="flex grow items-center">
+                <div className="truncate system-xs-medium text-text-secondary">
+                  {keywordNumberLabel}
                 </div>
-                <Slider
-                  disabled={readonly}
-                  className="mr-3 w-24 shrink-0"
-                  value={keywordNumber}
-                  onValueChange={onKeywordNumberChange}
-                  aria-label={keywordNumberLabel}
-                />
-                <Input
-                  aria-label={keywordNumberLabel}
-                  disabled={readonly}
-                  className="shrink-0"
-                  wrapperClassName="shrink-0 w-[72px]"
-                  type="number"
-                  value={keywordNumber}
-                  onChange={handleInputChange}
-                />
-              </FieldsetRoot>
-            </OptionCard>
-          )
-        }
+                <Infotip aria-label={keywordNumberLabel} className="ml-0.5 size-3.5">
+                  {keywordNumberLabel}
+                </Infotip>
+              </div>
+              <Slider
+                disabled={readonly}
+                className="mr-3 w-24 shrink-0"
+                value={keywordNumber}
+                onValueChange={onKeywordNumberChange}
+                aria-label={keywordNumberLabel}
+              />
+              <Input
+                aria-label={keywordNumberLabel}
+                disabled={readonly}
+                className="shrink-0"
+                wrapperClassName="shrink-0 w-[72px]"
+                type="number"
+                value={keywordNumber}
+                onChange={handleInputChange}
+              />
+            </Fieldset>
+          </OptionCard>
+        )}
       </div>
     </Field>
   )

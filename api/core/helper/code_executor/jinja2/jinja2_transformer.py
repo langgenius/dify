@@ -11,7 +11,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
 
     @classmethod
     @override
-    def transform_response(cls, response: str):
+    def transform_response(cls, response: str) -> dict[str, Any]:
         """
         Transform response to dict
         :param response: response

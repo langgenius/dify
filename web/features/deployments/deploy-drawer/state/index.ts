@@ -18,6 +18,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
+import { selectAtom } from 'jotai/utils'
 import { consoleQuery } from '@/service/client'
 import { envVarBindingSlotFromContract } from '../../shared/components/env-var-bindings-utils'
 import {
@@ -81,6 +82,19 @@ export const releaseDeploymentViewQueryAtom = atomWithQuery((get) => {
   })
 })
 
+export const releaseDeploymentViewAtom = selectAtom(
+  releaseDeploymentViewQueryAtom,
+  (query) => query.data,
+)
+export const releaseDeploymentViewIsLoadingAtom = selectAtom(
+  releaseDeploymentViewQueryAtom,
+  (query) => query.isLoading,
+)
+export const releaseDeploymentViewIsErrorAtom = selectAtom(
+  releaseDeploymentViewQueryAtom,
+  (query) => query.isError,
+)
+
 const selectedEnvIdAtom = atom<string | undefined>(undefined)
 const selectedReleaseIdAtom = atom<string | undefined>(undefined)
 const manualBindingsAtom = atom<RuntimeCredentialBindingSelections>({})
@@ -96,8 +110,7 @@ export const deployReadyFormLocalAtoms = [
 
 function formConfig(get: Getter) {
   const config = get(deployReadyFormConfigAtom)
-  if (!config)
-    throw new Error('Missing deploy ready form config.')
+  if (!config) throw new Error('Missing deploy ready form config.')
 
   return config
 }
@@ -128,7 +141,9 @@ export const deployShowValidationErrorsAtom = atom((get) => {
 
 const deployPresetReleaseAtom = atom((get) => {
   const config = formConfig(get)
-  return config.presetReleaseId ? config.releases.find(r => r.id === config.presetReleaseId) : undefined
+  return config.presetReleaseId
+    ? config.releases.find((r) => r.id === config.presetReleaseId)
+    : undefined
 })
 
 export const deployDisplayedReleaseAtom = atom((get): Release | undefined => {
@@ -165,7 +180,7 @@ const deploySelectedEnvironmentAtom = atom((get) => {
   const config = formConfig(get)
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
   return selectedEnvironmentId
-    ? config.environments.find(env => env.id === selectedEnvironmentId)
+    ? config.environments.find((env) => env.id === selectedEnvironmentId)
     : undefined
 })
 
@@ -179,7 +194,7 @@ const deploySelectedReleaseAtom = atom((get) => {
   const config = formConfig(get)
   const selectedReleaseId = get(deploySelectedReleaseIdAtom)
   return selectedReleaseId
-    ? config.releases.find(release => release.id === selectedReleaseId)
+    ? config.releases.find((release) => release.id === selectedReleaseId)
     : undefined
 })
 
@@ -190,7 +205,7 @@ const deployTargetReleaseAtom = atom((get) => {
 export const deployLockedEnvironmentAtom = atom((get) => {
   const config = formConfig(get)
   return config.lockedEnvId
-    ? config.environments.find(environment => environment.id === config.lockedEnvId)
+    ? config.environments.find((environment) => environment.id === config.lockedEnvId)
     : undefined
 })
 
@@ -210,105 +225,134 @@ const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   const hasRequiredInput = Boolean(releaseId && selectedEnvironmentId)
 
   return consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-    input: releaseId && selectedEnvironmentId
-      ? {
-          body: {
-            releaseId,
-            environmentId: selectedEnvironmentId,
-          },
-        }
-      : skipToken,
+    input:
+      releaseId && selectedEnvironmentId
+        ? {
+            body: {
+              releaseId,
+              environmentId: selectedEnvironmentId,
+            },
+          }
+        : skipToken,
     enabled: hasRequiredInput && hasSelectedEnvironment,
     retry: false,
   })
 })
 
-export const deployBindingSlotsAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
+const releaseDeploymentOptionsAtom = selectAtom(
+  releaseDeploymentOptionsQueryAtom,
+  (query) => query.data,
+)
+const releaseDeploymentOptionsIsLoadingAtom = selectAtom(
+  releaseDeploymentOptionsQueryAtom,
+  (query) => query.isLoading,
+)
+const releaseDeploymentOptionsIsFetchingAtom = selectAtom(
+  releaseDeploymentOptionsQueryAtom,
+  (query) => query.isFetching,
+)
+const releaseDeploymentOptionsIsErrorAtom = selectAtom(
+  releaseDeploymentOptionsQueryAtom,
+  (query) => query.isError,
+)
 
-  return deploymentOptionsQuery.data?.options.credentialSlots.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+export const deployBindingSlotsAtom = atom((get) => {
+  const deploymentOptions = get(releaseDeploymentOptionsAtom)
+
+  return (
+    deploymentOptions?.options.credentialSlots.filter((slot) => runtimeCredentialSlotKey(slot)) ??
+    []
+  )
 })
 
 export const deployEnvVarSlotsAtom = atom((get): EnvVarBindingSlot[] => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
+  const deploymentOptions = get(releaseDeploymentOptionsAtom)
 
-  return deploymentOptionsQuery.data?.options.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
-    const bindingSlot = envVarBindingSlotFromContract(slot)
-    return bindingSlot ? [bindingSlot] : []
-  }) ?? []
+  return (
+    deploymentOptions?.options.envVarSlots.flatMap((slot): EnvVarBindingSlot[] => {
+      const bindingSlot = envVarBindingSlotFromContract(slot)
+      return bindingSlot ? [bindingSlot] : []
+    }) ?? []
+  )
 })
 
 export const deployIsBindingOptionsLoadingAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
 
   return Boolean(
-    releaseId
-    && get(deployHasSelectedEnvironmentAtom)
-    && (deploymentOptionsQuery.isLoading || deploymentOptionsQuery.isFetching),
+    releaseId &&
+    get(deployHasSelectedEnvironmentAtom) &&
+    (get(releaseDeploymentOptionsIsLoadingAtom) || get(releaseDeploymentOptionsIsFetchingAtom)),
   )
 })
 
 export const deployHasBindingOptionsErrorAtom = atom((get) => {
-  return get(releaseDeploymentOptionsQueryAtom).isError
+  return get(releaseDeploymentOptionsIsErrorAtom)
 })
 
 const deployIsBindingOptionsReadyAtom = atom((get) => {
-  const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
 
   return Boolean(
-    releaseId
-    && get(deployHasSelectedEnvironmentAtom)
-    && deploymentOptionsQuery.data
-    && !get(deployIsBindingOptionsLoadingAtom)
-    && !get(deployHasBindingOptionsErrorAtom),
+    releaseId &&
+    get(deployHasSelectedEnvironmentAtom) &&
+    get(releaseDeploymentOptionsAtom) &&
+    !get(deployIsBindingOptionsLoadingAtom) &&
+    !get(deployHasBindingOptionsErrorAtom),
   )
 })
 
-function deployEnvVarValueSource(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | undefined) {
-  return selection?.valueSource
-    ?? (slot.hasLastValue
+function deployEnvVarValueSource(
+  slot: EnvVarBindingSlot,
+  selection: EnvVarValueSelection | undefined,
+) {
+  return (
+    selection?.valueSource ??
+    (slot.hasLastValue
       ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT
       : slot.hasDefaultValue
         ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
         : ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL)
+  )
 }
 
-function deployEnvVarInput(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | undefined): EnvVarInput[] {
+function deployEnvVarInput(
+  slot: EnvVarBindingSlot,
+  selection: EnvVarValueSelection | undefined,
+): EnvVarInput[] {
   const valueSource = deployEnvVarValueSource(slot, selection)
 
   if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT) {
-    return slot.hasLastValue
-      ? [{ key: slot.key, valueSource }]
-      : []
+    return slot.hasLastValue ? [{ key: slot.key, valueSource }] : []
   }
 
   if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT) {
-    return slot.hasDefaultValue
-      ? [{ key: slot.key, valueSource }]
-      : []
+    return slot.hasDefaultValue ? [{ key: slot.key, valueSource }] : []
   }
 
   if (!selection?.value || (slot.valueType === 'number' && Number.isNaN(Number(selection.value))))
     return []
 
-  return [{
-    key: slot.key,
-    value: selection.value,
-    valueSource,
-  }]
+  return [
+    {
+      key: slot.key,
+      value: selection.value,
+      valueSource,
+    },
+  ]
 }
 
-function deployEnvVarSelectionReady(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | undefined) {
+function deployEnvVarSelectionReady(
+  slot: EnvVarBindingSlot,
+  selection: EnvVarValueSelection | undefined,
+) {
   const valueSource = deployEnvVarValueSource(slot, selection)
 
   if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT)
     return Boolean(slot.hasLastValue)
   if (valueSource === ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT)
     return Boolean(slot.hasDefaultValue)
-  if (!selection?.value)
-    return false
+  if (!selection?.value) return false
 
   return slot.valueType !== 'number' || !Number.isNaN(Number(selection.value))
 }
@@ -318,27 +362,36 @@ export const deploySelectedBindingsAtom = atom((get) => {
 })
 
 const deployDeploymentCredentialsAtom = atom((get) => {
-  return selectedDeploymentRuntimeCredentials(get(deployBindingSlotsAtom), get(deploySelectedBindingsAtom))
+  return selectedDeploymentRuntimeCredentials(
+    get(deployBindingSlotsAtom),
+    get(deploySelectedBindingsAtom),
+  )
 })
 
 const deployDeploymentEnvVarsAtom = atom((get) => {
   const envVarValues = get(deployEnvVarValuesAtom)
 
-  return get(deployEnvVarSlotsAtom).flatMap(slot => deployEnvVarInput(slot, envVarValues[slot.key]))
+  return get(deployEnvVarSlotsAtom).flatMap((slot) =>
+    deployEnvVarInput(slot, envVarValues[slot.key]),
+  )
 })
 
 const deployRequiredBindingsReadyAtom = atom((get) => {
   const selectedBindings = get(deploySelectedBindingsAtom)
 
-  return get(deployBindingSlotsAtom).every(slot =>
-    !hasMissingRequiredRuntimeCredentialBinding(slot, selectedBindings[runtimeCredentialSlotKey(slot)]),
+  return get(deployBindingSlotsAtom).every(
+    (slot) =>
+      !hasMissingRequiredRuntimeCredentialBinding(
+        slot,
+        selectedBindings[runtimeCredentialSlotKey(slot)],
+      ),
   )
 })
 
 const deployRequiredEnvVarsReadyAtom = atom((get) => {
   const envVarValues = get(deployEnvVarValuesAtom)
 
-  return get(deployEnvVarSlotsAtom).every(slot =>
+  return get(deployEnvVarSlotsAtom).every((slot) =>
     deployEnvVarSelectionReady(slot, envVarValues[slot.key]),
   )
 })
@@ -350,12 +403,15 @@ export const selectDeployBindingAtom = atom(null, (get, set, slot: string, value
   })
 })
 
-export const setDeployEnvVarAtom = atom(null, (get, set, key: string, value: EnvVarValueSelection) => {
-  set(deployEnvVarValuesAtom, {
-    ...get(deployEnvVarValuesAtom),
-    [key]: value,
-  })
-})
+export const setDeployEnvVarAtom = atom(
+  null,
+  (get, set, key: string, value: EnvVarValueSelection) => {
+    set(deployEnvVarValuesAtom, {
+      ...get(deployEnvVarValuesAtom),
+      [key]: value,
+    })
+  },
+)
 
 const promoteReleaseMutationAtom = atomWithMutation(() =>
   consoleQuery.enterprise.deploymentService.promote.mutationOptions(),
@@ -371,54 +427,80 @@ export const isDeployReleaseSubmittingAtom = atom((get) => {
 
 export const canAttemptDeployAtom = atom((get) => {
   return Boolean(
-    get(deploySelectedEnvironmentIdAtom)
-    && get(deploySelectedEnvironmentAtom)
-    && get(deployTargetReleaseIdAtom)
-    && get(deployIsBindingOptionsReadyAtom)
-    && !get(isDeployReleaseSubmittingAtom),
+    get(deploySelectedEnvironmentIdAtom) &&
+    get(deploySelectedEnvironmentAtom) &&
+    get(deployTargetReleaseIdAtom) &&
+    get(deployIsBindingOptionsReadyAtom) &&
+    !get(isDeployReleaseSubmittingAtom),
   )
 })
 
 export const canSubmitDeployAtom = atom((get) => {
   return Boolean(
-    get(canAttemptDeployAtom)
-    && get(deployRequiredBindingsReadyAtom)
-    && get(deployRequiredEnvVarsReadyAtom),
+    get(canAttemptDeployAtom) &&
+    get(deployRequiredBindingsReadyAtom) &&
+    get(deployRequiredEnvVarsReadyAtom),
   )
 })
 
-export const deployReleaseSubmissionAtom = atom(null, (get, set, {
-  deployFailedMessage,
-}: {
-  deployFailedMessage: string
-}) => {
-  const config = formConfig(get)
-  const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
-  const targetRelease = get(deployTargetReleaseAtom)
-  const targetReleaseId = get(deployTargetReleaseIdAtom)
-
-  if (!targetReleaseId || !selectedEnvironmentId)
-    return
-
-  const idempotencyKey = createDeploymentIdempotencyKey()
-  const currentRelease = config.runtimeRows.find(row => row.environment.id === selectedEnvironmentId)?.currentRelease
-  const action = releaseDeploymentAction({
-    targetRelease,
-    currentRelease,
-    releaseRows: config.releases,
-    isExistingRelease: true,
-  })
-  const mutationOptions = {
-    onSuccess: () => {
-      set(closeDeployDrawerAtom)
+export const deployReleaseSubmissionAtom = atom(
+  null,
+  (
+    get,
+    set,
+    {
+      deployFailedMessage,
+    }: {
+      deployFailedMessage: string
     },
-    onError: () => {
-      toast.error(deployFailedMessage)
-    },
-  }
+  ) => {
+    const config = formConfig(get)
+    const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
+    const targetRelease = get(deployTargetReleaseAtom)
+    const targetReleaseId = get(deployTargetReleaseIdAtom)
 
-  if (action === 'rollback') {
-    get(rollbackReleaseMutationAtom).mutate(
+    if (!targetReleaseId || !selectedEnvironmentId) return
+
+    const idempotencyKey = createDeploymentIdempotencyKey()
+    const currentRelease = config.runtimeRows.find(
+      (row) => row.environment.id === selectedEnvironmentId,
+    )?.currentRelease
+    const action = releaseDeploymentAction({
+      targetRelease,
+      currentRelease,
+      releaseRows: config.releases,
+      isExistingRelease: true,
+    })
+    const mutationOptions = {
+      onSuccess: () => {
+        set(closeDeployDrawerAtom)
+      },
+      onError: () => {
+        toast.error(deployFailedMessage)
+      },
+    }
+
+    if (action === 'rollback') {
+      get(rollbackReleaseMutationAtom).mutate(
+        {
+          params: {
+            appInstanceId: config.appInstanceId,
+            environmentId: selectedEnvironmentId,
+          },
+          body: {
+            appInstanceId: config.appInstanceId,
+            environmentId: selectedEnvironmentId,
+            targetReleaseId,
+            idempotencyKey,
+          },
+        },
+        mutationOptions,
+      )
+      return
+    }
+
+    const deploymentEnvVars = get(deployDeploymentEnvVarsAtom)
+    get(promoteReleaseMutationAtom).mutate(
       {
         params: {
           appInstanceId: config.appInstanceId,
@@ -427,31 +509,13 @@ export const deployReleaseSubmissionAtom = atom(null, (get, set, {
         body: {
           appInstanceId: config.appInstanceId,
           environmentId: selectedEnvironmentId,
-          targetReleaseId,
+          releaseId: targetReleaseId,
+          credentials: get(deployDeploymentCredentialsAtom),
+          envVars: deploymentEnvVars.length > 0 ? deploymentEnvVars : undefined,
           idempotencyKey,
         },
       },
       mutationOptions,
     )
-    return
-  }
-
-  const deploymentEnvVars = get(deployDeploymentEnvVarsAtom)
-  get(promoteReleaseMutationAtom).mutate(
-    {
-      params: {
-        appInstanceId: config.appInstanceId,
-        environmentId: selectedEnvironmentId,
-      },
-      body: {
-        appInstanceId: config.appInstanceId,
-        environmentId: selectedEnvironmentId,
-        releaseId: targetReleaseId,
-        credentials: get(deployDeploymentCredentialsAtom),
-        envVars: deploymentEnvVars.length > 0 ? deploymentEnvVars : undefined,
-        idempotencyKey,
-      },
-    },
-    mutationOptions,
-  )
-})
+  },
+)

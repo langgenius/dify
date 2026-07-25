@@ -12,7 +12,7 @@ const createDataSourceItem = (overrides: Partial<DataSourceItem> = {}): DataSour
   provider: 'provider-a',
   declaration: {
     credentials_schema: [{ name: 'api_key' }],
-    provider_type: 'hosted',
+    provider_type: 'local_file',
     identity: {
       author: 'Dify',
       description: createLocalizedText('Datasource provider'),
@@ -58,7 +58,7 @@ describe('transformDataSourceToTool', () => {
       description: createLocalizedText('Datasource provider'),
       icon: 'provider-icon',
       label: createLocalizedText('Provider A'),
-      type: 'hosted',
+      type: 'local_file',
       allow_delete: true,
       is_authorized: true,
       is_team_authorization: true,
@@ -92,7 +92,8 @@ describe('transformDataSourceToTool', () => {
     const dataSourceItem = createDataSourceItem({
       declaration: {
         ...baseDataSourceItem.declaration,
-        credentials_schema: undefined as unknown as DataSourceItem['declaration']['credentials_schema'],
+        credentials_schema:
+          undefined as unknown as DataSourceItem['declaration']['credentials_schema'],
         identity: {
           ...baseDataSourceItem.declaration.identity,
           tags: undefined as unknown as DataSourceItem['declaration']['identity']['tags'],

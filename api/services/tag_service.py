@@ -6,7 +6,7 @@ from flask_login import current_user
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
@@ -14,7 +14,6 @@ from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from models.snippet import CustomizedSnippet
 
-type _SessionLike = Session | scoped_session
 type _TagTypeLike = TagType | str
 
 
@@ -41,7 +40,7 @@ class TagBindingDeletePayload(BaseModel):
 
 class TagService:
     @staticmethod
-    def get_tags(session: Session, tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None):
+    def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
         stmt = (
             select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
@@ -61,7 +60,7 @@ class TagService:
         tag_type: _TagTypeLike,
         current_tenant_id: str,
         tag_ids: list[str],
-        session: _SessionLike,
+        session: Session,
         *,
         match_all: bool = False,
     ):
@@ -107,7 +106,7 @@ class TagService:
         return tag_bindings
 
     @staticmethod
-    def get_tag_by_tag_name(tag_type: _TagTypeLike, current_tenant_id: str, tag_name: str, session: _SessionLike):
+    def get_tag_by_tag_name(tag_type: _TagTypeLike, current_tenant_id: str, tag_name: str, session: Session):
         if not tag_type or not tag_name:
             return []
         tags = list(
@@ -120,7 +119,7 @@ class TagService:
         return tags
 
     @staticmethod
-    def get_tags_by_target_id(tag_type: _TagTypeLike, current_tenant_id: str, target_id: str, session: _SessionLike):
+    def get_tags_by_target_id(tag_type: _TagTypeLike, current_tenant_id: str, target_id: str, session: Session):
         tags = session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -135,7 +134,7 @@ class TagService:
         return tags or []
 
     @staticmethod
-    def save_tags(payload: SaveTagPayload, session: _SessionLike) -> Tag:
+    def save_tags(payload: SaveTagPayload, session: Session) -> Tag:
         if TagService.get_tag_by_tag_name(payload.type, current_user.current_tenant_id, payload.name, session):
             raise ValueError("Tag name already exists")
         tag = Tag(
@@ -151,7 +150,7 @@ class TagService:
 
     @staticmethod
     def update_tags(
-        payload: UpdateTagPayload, tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None
+        payload: UpdateTagPayload, tag_id: str, session: Session, *, tag_type: TagType | None = None
     ) -> Tag:
         current_tenant_id = current_user.current_tenant_id
         stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
@@ -178,7 +177,7 @@ class TagService:
         return tag
 
     @staticmethod
-    def get_tag_binding_count(tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None) -> int:
+    def get_tag_binding_count(tag_id: str, session: Session, *, tag_type: TagType | None = None) -> int:
         current_tenant_id = current_user.current_tenant_id
         stmt = (
             select(func.count(TagBinding.id))
@@ -191,7 +190,7 @@ class TagService:
         return count
 
     @staticmethod
-    def delete_tag(tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None):
+    def delete_tag(tag_id: str, session: Session, *, tag_type: TagType | None = None):
         current_tenant_id = current_user.current_tenant_id
         stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
         if tag_type is not None:
@@ -210,7 +209,7 @@ class TagService:
         session.commit()
 
     @staticmethod
-    def save_tag_binding(payload: TagBindingCreatePayload, session: _SessionLike):
+    def save_tag_binding(payload: TagBindingCreatePayload, session: Session):
         TagService.check_target_exists(payload.type, payload.target_id, session)
         valid_tag_ids = session.scalars(
             select(Tag.id).where(
@@ -237,7 +236,7 @@ class TagService:
         session.commit()
 
     @staticmethod
-    def delete_tag_binding(payload: TagBindingDeletePayload, session: _SessionLike):
+    def delete_tag_binding(payload: TagBindingDeletePayload, session: Session):
         TagService.check_target_exists(payload.type, payload.target_id, session)
         result = cast(
             CursorResult,
@@ -260,7 +259,7 @@ class TagService:
             session.commit()
 
     @staticmethod
-    def check_target_exists(type: _TagTypeLike, target_id: str, session: _SessionLike):
+    def check_target_exists(type: _TagTypeLike, target_id: str, session: Session):
         if type == "knowledge":
             dataset = session.scalar(
                 select(Dataset)

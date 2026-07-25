@@ -7,10 +7,7 @@ export function DeploymentDetailSidebar() {
   return (
     <DetailSidebarFrame
       renderTop={({ expand, onToggle }) => (
-        <DeploymentDetailTop
-          expand={expand}
-          onToggle={onToggle}
-        />
+        <DeploymentDetailTop expand={expand} onToggle={onToggle} />
       )}
       renderSection={({ expand }) => <DeploymentDetailSection expand={expand} />}
     />

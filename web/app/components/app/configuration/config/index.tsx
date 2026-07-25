@@ -30,7 +30,9 @@ const Config: FC = () => {
     setPrevPromptConfig,
     dataSets,
   } = useContext(ConfigContext)
-  const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(mode)
+  const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(
+    mode,
+  )
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const promptTemplate = modelConfig.configs.prompt_template
@@ -41,8 +43,7 @@ const Config: FC = () => {
       draft.configs.prompt_template = newTemplate
       draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...newVariables]
     })
-    if (modelConfig.configs.prompt_template !== newTemplate)
-      formattingChangedDispatcher()
+    if (modelConfig.configs.prompt_template !== newTemplate) formattingChangedDispatcher()
 
     setPrevPromptConfig(modelConfig.configs)
     setModelConfig(newModelConfig)
@@ -58,9 +59,7 @@ const Config: FC = () => {
 
   return (
     <>
-      <div
-        className="relative h-0 grow overflow-y-auto px-6 pb-[50px]"
-      >
+      <div className="relative h-0 grow overflow-y-auto px-6 pb-[50px]">
         {/* Template */}
         <ConfigPrompt
           mode={mode}
@@ -81,15 +80,10 @@ const Config: FC = () => {
 
         {/* Dataset */}
         {!(readonly && dataSets.length === 0) && (
-          <DatasetConfig
-            readonly={readonly}
-            hideMetadataFilter={readonly}
-          />
+          <DatasetConfig readonly={readonly} hideMetadataFilter={readonly} />
         )}
         {/* Tools */}
-        {isAgent && !(readonly && modelConfig.agentConfig.tools.length === 0) && (
-          <AgentTools />
-        )}
+        {isAgent && !(readonly && modelConfig.agentConfig.tools.length === 0) && <AgentTools />}
 
         <ConfigVision />
 

@@ -249,6 +249,7 @@ class AgentStubFileDownloadRequest(BaseModel):
     """Request body for one signed download URL allocation."""
 
     file: AgentStubFileMapping
+    for_external: bool = True
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

@@ -5,16 +5,6 @@ import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
-      return key
-    },
-  }),
-}))
-
 vi.mock('@/service/use-log', () => ({
   useAnnotationsCount: () => ({
     data: mockAnnotationsCountData,
@@ -29,12 +19,12 @@ vi.mock('@/app/components/base/chip', () => ({
     onSelect,
     onClear,
   }: {
-    items: Array<{ value: string, name: string }>
+    items: Array<{ value: string; name: string }>
     value?: string
-    onSelect: (item: { value: string, name: string }) => void
+    onSelect: (item: { value: string; name: string }) => void
     onClear: () => void
   }) => {
-    const currentItem = items.find(item => item.value === value) ?? items[0]
+    const currentItem = items.find((item) => item.value === value) ?? items[0]
     return (
       <div>
         <div>{currentItem?.name}</div>
@@ -46,11 +36,9 @@ vi.mock('@/app/components/base/chip', () => ({
 }))
 
 vi.mock('@/app/components/base/sort', () => ({
-  default: ({
-    onSelect,
-  }: {
-    onSelect: (value: string) => void
-  }) => <button onClick={() => onSelect('-updated_at')}>select-sort</button>,
+  default: ({ onSelect }: { onSelect: (value: string) => void }) => (
+    <button onClick={() => onSelect('-updated_at')}>select-sort</button>
+  ),
 }))
 
 describe('Filter', () => {
@@ -77,7 +65,7 @@ describe('Filter', () => {
     it('should render filter components', () => {
       render(<Filter {...defaultProps} />)
 
-      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should return null when loading', () => {
@@ -89,19 +77,29 @@ describe('Filter', () => {
     it('should render sort component in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode />)
 
-      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should not render sort component when not in chat mode', () => {
       render(<Filter {...defaultProps} isChatMode={false} />)
 
-      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
     })
   })
 
   describe('TIME_PERIOD_MAPPING', () => {
     it('should have correct period keys', () => {
-      expect(Object.keys(TIME_PERIOD_MAPPING)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+      expect(Object.keys(TIME_PERIOD_MAPPING)).toEqual([
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+      ])
     })
 
     it('should have today period with value 0', () => {
@@ -129,7 +127,7 @@ describe('Filter', () => {
     it('should update keyword when typing in search input', () => {
       render(<Filter {...defaultProps} />)
 
-      const searchInput = screen.getByPlaceholderText('operation.search')
+      const searchInput = screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/)
       fireEvent.change(searchInput, { target: { value: 'test search' } })
 
       expect(mockSetQueryParams).toHaveBeenCalledWith({
@@ -146,7 +144,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithKeyword} />)
 
-      const clearButton = screen.getByRole('button', { name: 'operation.clear' })
+      const clearButton = screen.getByRole('button', { name: /(?:^|\.)operation\.clear(?=$|:)/ })
       fireEvent.click(clearButton)
 
       expect(mockSetQueryParams).toHaveBeenCalledWith({
@@ -201,7 +199,7 @@ describe('Filter', () => {
 
       // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
       // Period '1' maps to 'today' in TIME_PERIOD_MAPPING
-      expect(screen.getByText('filter.period.today'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)filter\.period\.today(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should display "last7days" when period is set to 2', () => {
@@ -212,7 +210,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithPeriod} />)
 
-      expect(screen.getByText('filter.period.last7days'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)filter\.period\.last7days(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should display "allTime" when period is set to 9', () => {
@@ -220,7 +218,7 @@ describe('Filter', () => {
 
       // Default period is '9' which maps to 'allTime'
       // Default period is '9' which maps to 'allTime'
-      expect(screen.getByText('filter.period.allTime'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)filter\.period\.allTime(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should display annotated status with count when annotation_status is annotated', () => {
@@ -233,7 +231,7 @@ describe('Filter', () => {
 
       // The mock returns count: 10, so the text should include the count
       // The mock returns count: 10, so the text should include the count
-      expect(screen.getByText('filter.annotation.annotated (10)'))!.toBeInTheDocument()
+      expect(screen.getByText(/filter\.annotation\.annotated.*10/))!.toBeInTheDocument()
     })
 
     it('should display not_annotated status when annotation_status is not_annotated', () => {
@@ -244,7 +242,9 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithNotAnnotated} />)
 
-      expect(screen.getByText('filter.annotation.not_annotated'))!.toBeInTheDocument()
+      expect(
+        screen.getByText(/(?:^|\.)filter\.annotation\.not_annotated(?=$|:)/),
+      )!.toBeInTheDocument()
     })
 
     it('should display all annotation status when annotation_status is all', () => {
@@ -252,7 +252,7 @@ describe('Filter', () => {
 
       // Default annotation_status is 'all'
       // Default annotation_status is 'all'
-      expect(screen.getByText('filter.annotation.all'))!.toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)filter\.annotation\.all(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should return null when annotation count data is unavailable', () => {
@@ -273,7 +273,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithSort} />)
 
-      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
     })
 
     it('should handle descending sort order', () => {
@@ -285,7 +285,7 @@ describe('Filter', () => {
 
       render(<Filter {...propsWithDescSort} />)
 
-      expect(screen.getByPlaceholderText('operation.search'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/(?:^|\.)operation\.search(?=$|:)/))!.toBeInTheDocument()
     })
   })
 })

@@ -20,4 +20,7 @@ export const InstallationScope = {
   NONE: 'none',
   OFFICIAL_ONLY: 'official_only',
   OFFICIAL_AND_PARTNER: 'official_and_specific_partners',
-} as const satisfies Record<string, GetSystemFeaturesResponse['plugin_installation_permission']['plugin_installation_scope']>
+} as const satisfies Record<
+  string,
+  GetSystemFeaturesResponse['plugin_installation_permission']['plugin_installation_scope']
+>

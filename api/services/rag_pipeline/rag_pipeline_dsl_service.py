@@ -15,7 +15,7 @@ from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
@@ -83,7 +83,7 @@ class RagPipelineDslService:
     when generated IDs are needed mid-operation; they never commit or rollback.
     """
 
-    def __init__(self, session: Session | scoped_session):
+    def __init__(self, session: Session):
         self._session = session
 
     def import_rag_pipeline(

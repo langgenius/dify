@@ -3,6 +3,9 @@
 The API and agent layers are clients of the plugin daemon, not direct hosts of provider SDK
 implementations. This adapter therefore targets the plugin-daemon dispatch protocol and maps
 Pydantic AI messages into the daemon's Graphon-compatible request and stream response schema.
+Pydantic AI keeps token counts only, so the adapter separately accumulates the daemon's complete
+Graphon usage for the lifetime of one model instance. The Agent runner creates one adapter per run
+and reads that accumulated usage after all model/tool rounds finish.
 """
 
 from __future__ import annotations
@@ -86,7 +89,12 @@ class _DifyRequestInput:
 
 @dataclass(slots=True)
 class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
-    """Use a Dify plugin-daemon transport plus request-level model identity."""
+    """Use a Dify plugin-daemon transport and retain complete usage for one Agent run.
+
+    A model instance belongs to one runner invocation. Pydantic AI may call it repeatedly while
+    resolving tools or retrying structured output; those sequential requests are accumulated so
+    the terminal event reflects every billed model round.
+    """
 
     model: str
     daemon_provider: DifyPluginDaemonProvider
@@ -95,6 +103,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     credentials: dict[str, object] = field(default_factory=dict, repr=False)
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
+    _accumulated_usage: LLMUsage | None = field(default=None, init=False, repr=False)
 
     def __post_init__(
         self,
@@ -121,6 +130,11 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     @override
     def system(self) -> str:
         return self.daemon_provider.name
+
+    @property
+    def accumulated_usage(self) -> LLMUsage | None:
+        """Return complete daemon usage accumulated across successful model requests."""
+        return self._accumulated_usage
 
     @override
     async def request(
@@ -149,7 +163,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         )
         async for _event in response:
             pass
-        return response.get()
+        model_response = response.get()
+        self._record_usage(response.dify_usage)
+        return model_response
 
     @asynccontextmanager
     @override
@@ -164,7 +180,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
         request_input = self._build_request_input(messages, prepared_settings, prepared_params)
 
-        yield DifyStreamedResponse(
+        response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
             chunks=self.daemon_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
@@ -179,6 +195,17 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
             response_model_name=self.model_name,
             provider_name_value=self.system,
         )
+        yield response
+        self._record_usage(response.dify_usage)
+
+    def _record_usage(self, usage: LLMUsage | None) -> None:
+        """Add one completed daemon request to this run's usage total."""
+        if usage is None:
+            return
+        if self._accumulated_usage is None:
+            self._accumulated_usage = usage.model_copy(deep=True)
+            return
+        self._accumulated_usage = self._accumulated_usage.plus(usage)
 
     def _build_request_input(
         self,
@@ -197,16 +224,25 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
 @dataclass
 class DifyStreamedResponse(StreamedResponse):
+    """Map one daemon response while retaining its latest complete usage payload.
+
+    Some providers may repeat cumulative usage on more than one stream chunk. Keeping the latest
+    payload lets the owning model count each request exactly once instead of summing stream chunks.
+    """
+
     chunks: AsyncIterator[LLMResultChunk]
     response_model_name: str
     provider_name_value: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
+    _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
+        chunk_sequence = 0
         async for chunk in self.chunks:
             if chunk.delta.usage is not None:
+                self._dify_usage = chunk.delta.usage
                 self._usage: RequestUsage = _map_usage(chunk.delta.usage)
             if chunk.delta.finish_reason is not None:
                 self.finish_reason: FinishReason | None = _normalize_finish_reason(chunk.delta.finish_reason)
@@ -216,11 +252,18 @@ class DifyStreamedResponse(StreamedResponse):
                 chunk,
                 self.provider_name_value,
                 self._embedded_thinking_parser,
+                chunk_sequence,
             ):
                 yield event
+            chunk_sequence += 1
 
         for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
+
+    @property
+    def dify_usage(self) -> LLMUsage | None:
+        """Return the daemon's complete usage for this model request."""
+        return self._dify_usage
 
     @property
     @override
@@ -334,7 +377,7 @@ def _map_model_response_to_prompt_message(
     content_parts: list[PromptMessageContentUnionTypes] = []
     tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-    for part in message.parts:
+    for index, part in enumerate(message.parts):
         if isinstance(part, TextPart):
             if part.content:
                 content_parts.append(TextPromptMessageContent(data=part.content))
@@ -346,7 +389,7 @@ def _map_model_response_to_prompt_message(
         elif isinstance(part, ToolCallPart):
             tool_calls.append(
                 AssistantPromptMessage.ToolCall(
-                    id=part.tool_call_id or f"tool-call-{part.tool_name}",
+                    id=part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
                     type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                         name=part.tool_name,
@@ -551,11 +594,21 @@ def _normalize_finish_reason(finish_reason: str) -> FinishReason:
     return "error"
 
 
+def _normalize_tool_call_id(tool_call_id: str | None) -> str | None:
+    if tool_call_id is None:
+        return None
+    normalized = tool_call_id.strip()
+    if not normalized or normalized.lower() in {"none", "null"}:
+        return None
+    return normalized
+
+
 def _chunk_to_stream_events(
     parts_manager: ModelResponsePartsManager,
     chunk: LLMResultChunk,
     provider_name: str,
     embedded_thinking_parser: "_EmbeddedThinkingParser",
+    chunk_sequence: int,
 ) -> list[ModelResponseStreamEvent]:
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
@@ -571,13 +624,14 @@ def _chunk_to_stream_events(
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for index, tool_call in enumerate(message.tool_calls):
-        vendor_id = tool_call.id or f"chunk-{chunk.delta.index}-tool-{index}"
+        tool_call_id = _normalize_tool_call_id(tool_call.id)
+        vendor_id = tool_call_id or f"chunk-{chunk_sequence}-tool-{index}"
         events.append(
             parts_manager.handle_tool_call_part(
                 vendor_part_id=vendor_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
-                tool_call_id=tool_call.id,
+                tool_call_id=tool_call_id or vendor_id,
                 provider_name=provider_name,
             )
         )

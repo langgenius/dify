@@ -161,6 +161,8 @@ class DifyApiAgentStubFileRequestHandler:
             "invoke_from": execution_context.invoke_from,
             "file": request.file.model_dump(mode="json", exclude_none=True),
         }
+        if request.for_external is False:
+            payload["for_external"] = False
         data = await self._post_inner_api("/inner/api/download/file/request", payload)
         try:
             return AgentStubFileDownloadResponse.model_validate(data)

@@ -112,7 +112,7 @@ class APIBasedExtensionAPI(Resource):
     def get(self, current_tenant_id: str):
         return dump_response(
             APIBasedExtensionListResponse,
-            APIBasedExtensionService.get_all_by_tenant_id(db.session(), current_tenant_id),
+            APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id, session=db.session()),
         )
 
     @console_ns.doc("create_api_based_extension")
@@ -133,7 +133,7 @@ class APIBasedExtensionAPI(Resource):
             api_key=payload.api_key,
         )
 
-        extension = APIBasedExtensionService.save(db.session(), extension_data)
+        extension = APIBasedExtensionService.save(extension_data, session=db.session())
         return APIBasedExtensionResponse(
             id=extension.id,
             name=extension.name,
@@ -158,7 +158,9 @@ class APIBasedExtensionDetailAPI(Resource):
 
         return dump_response(
             APIBasedExtensionResponse,
-            APIBasedExtensionService.get_with_tenant_id(db.session(), current_tenant_id, api_based_extension_id),
+            APIBasedExtensionService.get_with_tenant_id(
+                current_tenant_id, api_based_extension_id, session=db.session()
+            ),
         )
 
     @console_ns.doc("update_api_based_extension")
@@ -174,7 +176,7 @@ class APIBasedExtensionDetailAPI(Resource):
         api_based_extension_id = str(id)
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            db.session(), current_tenant_id, api_based_extension_id
+            current_tenant_id, api_based_extension_id, session=db.session()
         )
 
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
@@ -187,7 +189,7 @@ class APIBasedExtensionDetailAPI(Resource):
             extension_data_from_db.api_key = payload.api_key
             api_key_for_response = payload.api_key
 
-        APIBasedExtensionService.save(db.session(), extension_data_from_db)
+        APIBasedExtensionService.save(extension_data_from_db, session=db.session())
         return APIBasedExtensionResponse(
             id=extension_data_from_db.id,
             name=extension_data_from_db.name,
@@ -208,9 +210,9 @@ class APIBasedExtensionDetailAPI(Resource):
         api_based_extension_id = str(id)
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            db.session(), current_tenant_id, api_based_extension_id
+            current_tenant_id, api_based_extension_id, session=db.session()
         )
 
-        APIBasedExtensionService.delete(db.session(), extension_data_from_db)
+        APIBasedExtensionService.delete(extension_data_from_db, session=db.session())
 
         return "", 204

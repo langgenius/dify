@@ -44,24 +44,24 @@ const getDefaultPeriodQuery = () => {
   }
 }
 
-export function AgentMonitoringPage({
-  agentId,
-}: AgentMonitoringPageProps) {
+export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const docLink = useDocLink()
   const [period, setPeriod] = useState(() => ({
-    name: t('agentDetail.monitoring.timeRanges.today'),
+    name: t(($) => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
   }))
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all')
-  const logSourcesQuery = useQuery(consoleQuery.agent.byAgentId.logSources.get.queryOptions({
-    input: {
-      params: {
-        agent_id: agentId,
+  const logSourcesQuery = useQuery(
+    consoleQuery.agent.byAgentId.logSources.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
       },
-    },
-  }))
+    }),
+  )
   const statisticsQuery = useQuery({
     ...consoleQuery.agent.byAgentId.statistics.summary.get.queryOptions({
       input: {
@@ -76,13 +76,13 @@ export function AgentMonitoringPage({
     }),
     placeholderData: keepPreviousData,
   })
-  const sources = (logSourcesQuery.data?.groups ?? []).flatMap(group => group.sources ?? [])
+  const sources = (logSourcesQuery.data?.groups ?? []).flatMap((group) => group.sources ?? [])
   const sourceItems: SourceFilterItem[] = [
     {
       value: 'all' as const,
-      name: t('agentDetail.monitoring.sources.all'),
+      name: t(($) => $['agentDetail.monitoring.sources.all']),
     },
-    ...sources.map(source => ({
+    ...sources.map((source) => ({
       value: source.id,
       name: source.app_name,
     })),
@@ -92,36 +92,33 @@ export function AgentMonitoringPage({
   const shouldShowError = statisticsQuery.isError && !statisticsQuery.data
 
   return (
-    <AgentDetailSectionSurface label={t('agentDetail.sections.monitoring')}>
+    <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.monitoring'])}>
       <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
-            {t('agentDetail.monitoring.title')}
+            {t(($) => $['agentDetail.monitoring.title'])}
           </h2>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t('agentDetail.monitoring.description')}</span>
+            <span>{t(($) => $['agentDetail.monitoring.description'])}</span>
             <a
               href={docLink('/use-dify/monitor/logs')}
               target="_blank"
               rel="noreferrer"
               className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              {t('agentDetail.monitoring.learnMore')}
+              {t(($) => $['agentDetail.monitoring.learnMore'])}
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
           </p>
         </div>
 
         <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-          <AgentMonitoringTimeRangePicker
-            value={period}
-            onChange={setPeriod}
-          />
+          <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
 
           <AgentMonitoringSourceFilter
             value={sourceFilter}
             items={sourceItems}
-            label={t('agentDetail.metadata.sourceLabel')}
+            label={t(($) => $['agentDetail.metadata.sourceLabel'])}
             onSelect={(item) => {
               setSourceFilter(item.value)
             }}
@@ -142,7 +139,7 @@ export function AgentMonitoringPage({
         {shouldShowError && (
           <AgentMonitoringState>
             <div className="flex items-center justify-center gap-2">
-              <span>{t('agentDetail.monitoring.loadFailed')}</span>
+              <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
               <Button
                 variant="secondary"
                 size="small"
@@ -150,14 +147,14 @@ export function AgentMonitoringPage({
                   void statisticsQuery.refetch()
                 }}
               >
-                {tCommon('operation.retry')}
+                {tCommon(($) => $['operation.retry'])}
               </Button>
             </div>
           </AgentMonitoringState>
         )}
         {!shouldShowInitialSkeleton && !shouldShowError && (
           <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            {metrics.map(metric => (
+            {metrics.map((metric) => (
               <AgentMonitoringChart
                 key={metric.id}
                 titleKey={metric.titleKey}
@@ -191,24 +188,24 @@ function AgentMonitoringSourceFilter({
   onClear: () => void
 }) {
   const { t } = useTranslation('common')
-  const selectedItem = items.find(item => Object.is(item.value, value))
+  const selectedItem = items.find((item) => Object.is(item.value, value))
   const selectedName = selectedItem?.name ?? ''
   const triggerLabel = selectedName ? `${label} ${selectedName}` : label
   const clearLabel = selectedName
-    ? `${t('operation.clear')} ${triggerLabel}`
-    : t('operation.clear')
+    ? `${t(($) => $['operation.clear'])} ${triggerLabel}`
+    : t(($) => $['operation.clear'])
 
   return (
     <Select
       value={selectedItem?.value ?? null}
-      itemToStringLabel={(itemValue: SourceFilterValue) => items.find(item => Object.is(item.value, itemValue))?.name ?? ''}
-      itemToStringValue={itemValue => String(itemValue)}
+      itemToStringLabel={(itemValue: SourceFilterValue) =>
+        items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
+      }
+      itemToStringValue={(itemValue) => String(itemValue)}
       onValueChange={(nextValue) => {
-        if (nextValue === null)
-          return
-        const selected = items.find(item => Object.is(item.value, nextValue))
-        if (selected)
-          onSelect(selected)
+        if (nextValue === null) return
+        const selected = items.find((item) => Object.is(item.value, nextValue))
+        if (selected) onSelect(selected)
       }}
     >
       <div className="relative w-fit max-w-full">
@@ -218,12 +215,8 @@ function AgentMonitoringSourceFilter({
         >
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">
-              <span className="shrink-0 system-sm-regular text-text-tertiary">
-                {label}
-              </span>
-              <span className="truncate system-sm-medium text-text-secondary">
-                {selectedName}
-              </span>
+              <span className="shrink-0 system-sm-regular text-text-tertiary">{label}</span>
+              <span className="truncate system-sm-medium text-text-secondary">{selectedName}</span>
             </span>
           </span>
         </SelectTrigger>
@@ -233,7 +226,10 @@ function AgentMonitoringSourceFilter({
           className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={onClear}
         >
-          <span aria-hidden className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+          <span
+            aria-hidden
+            className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
+          />
         </button>
         <SelectContent
           placement="bottom-start"
@@ -241,11 +237,8 @@ function AgentMonitoringSourceFilter({
           popupClassName="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
           listClassName="max-h-72 p-1"
         >
-          {items.map(item => (
-            <SelectItem
-              key={item.value}
-              value={item.value}
-            >
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
               <SelectItemText title={item.name}>{item.name}</SelectItemText>
               <SelectItemIndicator />
             </SelectItem>
@@ -256,11 +249,7 @@ function AgentMonitoringSourceFilter({
   )
 }
 
-function AgentMonitoringState({
-  children,
-}: {
-  children: ReactNode
-}) {
+function AgentMonitoringState({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-[316px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-6 py-8 text-center system-sm-regular text-text-tertiary">
       {children}

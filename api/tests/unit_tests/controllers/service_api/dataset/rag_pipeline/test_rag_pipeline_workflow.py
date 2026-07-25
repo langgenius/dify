@@ -549,16 +549,14 @@ class TestPipelineRunApiPost:
         new_callable=lambda: Mock(spec=Account),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success_streaming(
-        self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
-    ):
+    def test_post_success_streaming(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
 
-        mock_db.session.scalar.return_value = Mock()
+        session = Mock()
+        session.scalar.return_value = Mock()
 
         mock_ns.payload = {
             "inputs": {"key": "val"},
@@ -579,27 +577,33 @@ class TestPipelineRunApiPost:
 
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
-            response = api.post(tenant_id=tenant_id, dataset_id=dataset_id)
+            response = api.post.__wrapped__(api, session, tenant_id=tenant_id, dataset_id=dataset_id)
 
         assert response == {"result": "ok"}
+        mock_svc_cls.assert_called_once_with(session)
         mock_gen_svc.generate.assert_called_once()
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_post_not_found(self, mock_db, app: Flask):
+    def test_post_not_found(self, app: Flask):
         """Test NotFound when dataset check fails."""
-        mock_db.session.scalar.return_value = None
+        session = Mock()
+        session.scalar.return_value = None
 
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
             with pytest.raises(NotFound):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+                api.post.__wrapped__(
+                    api,
+                    session,
+                    tenant_id=str(uuid.uuid4()),
+                    dataset_id=str(uuid.uuid4()),
+                )
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_forbidden_non_account_user(self, mock_ns, mock_db, app: Flask):
+    def test_post_forbidden_non_account_user(self, mock_ns, app: Flask):
         """Test Forbidden when current_user is not an Account."""
-        mock_db.session.scalar.return_value = Mock()
+        session = Mock()
+        session.scalar.return_value = Mock()
         mock_ns.payload = {
             "inputs": {},
             "datasource_type": "online_document",
@@ -612,7 +616,12 @@ class TestPipelineRunApiPost:
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
             with pytest.raises(Forbidden):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
+                api.post.__wrapped__(
+                    api,
+                    session,
+                    tenant_id=str(uuid.uuid4()),
+                    dataset_id=str(uuid.uuid4()),
+                )
 
 
 class TestFileUploadApiPost:

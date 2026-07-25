@@ -10,15 +10,30 @@ const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 const mockChunkStructure = vi.hoisted(() => vi.fn(() => <div data-testid="chunk-structure" />))
 const mockEmbeddingModel = vi.hoisted(() => vi.fn(() => <div data-testid="embedding-model" />))
-const mockSummaryIndexSetting = vi.hoisted(() => vi.fn(() => <div data-testid="summary-index-setting" />))
+const mockSummaryIndexSetting = vi.hoisted(() =>
+  vi.fn(() => <div data-testid="summary-index-setting" />),
+)
 const mockQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: mockUseQuery,
+  useSuspenseQuery: ({ select }: { select: (value: unknown) => unknown }) => ({
+    data: select({ deployment_edition: 'COMMUNITY' }),
+  }),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          ...options,
+        }),
+      },
+    },
     workspaces: {
       current: {
         modelProviders: {
@@ -70,19 +85,22 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CE_EDITION: true,
-  }
-})
-
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,
-  BoxGroup: ({ children }: { children: ReactNode }) => <div data-testid="box-group">{children}</div>,
-  BoxGroupField: ({ children, fieldProps }: { children: ReactNode, fieldProps: { fieldTitleProps: { warningDot?: boolean } } }) => (
-    <div data-testid="box-group-field" data-warning-dot={String(!!fieldProps.fieldTitleProps.warningDot)}>
+  BoxGroup: ({ children }: { children: ReactNode }) => (
+    <div data-testid="box-group">{children}</div>
+  ),
+  BoxGroupField: ({
+    children,
+    fieldProps,
+  }: {
+    children: ReactNode
+    fieldProps: { fieldTitleProps: { warningDot?: boolean } }
+  }) => (
+    <div
+      data-testid="box-group-field"
+      data-warning-dot={String(!!fieldProps.fieldTitleProps.warningDot)}
+    >
       {children}
     </div>
   ),
@@ -149,10 +167,12 @@ describe('KnowledgeBasePanel', () => {
     mockUseModelList.mockImplementation((modelType: ModelTypeEnum) => {
       if (modelType === ModelTypeEnum.textEmbedding) {
         return {
-          data: [{
-            provider: 'openai',
-            models: [{ model: 'text-embedding-3-large' }],
-          }],
+          data: [
+            {
+              provider: 'openai',
+              models: [{ model: 'text-embedding-3-large' }],
+            },
+          ],
         }
       }
       return { data: [] }
@@ -161,30 +181,52 @@ describe('KnowledgeBasePanel', () => {
   })
 
   it('should show a warning dot on chunk structure and skip nested sections when chunk structure is missing', () => {
-    render(<Panel id="knowledge-base-1" data={createData({ chunk_structure: undefined }) as never} panelProps={panelProps} />)
+    render(
+      <Panel
+        id="knowledge-base-1"
+        data={createData({ chunk_structure: undefined }) as never}
+        panelProps={panelProps}
+      />,
+    )
 
-    expect(mockChunkStructure).toHaveBeenCalledWith(expect.objectContaining({
-      warningDot: true,
-    }), undefined)
+    expect(mockChunkStructure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warningDot: true,
+      }),
+      undefined,
+    )
     expect(screen.queryByTestId('box-group-field')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      enabled: true,
-    }))
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    )
   })
 
   it('should pass warning dots and render summary settings when the qualified configuration needs attention', () => {
     mockUseEmbeddingModelStatus.mockReturnValue({ status: 'disabled' })
 
-    render(<Panel id="knowledge-base-1" data={createData({ index_chunk_variable_selector: [] }) as never} panelProps={panelProps} />)
+    render(
+      <Panel
+        id="knowledge-base-1"
+        data={createData({ index_chunk_variable_selector: [] }) as never}
+        panelProps={panelProps}
+      />,
+    )
 
     expect(screen.getByTestId('box-group-field')).toHaveAttribute('data-warning-dot', 'true')
-    expect(mockEmbeddingModel).toHaveBeenCalledWith(expect.objectContaining({
-      warningDot: true,
-    }), undefined)
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      input: { params: { provider: 'openai' } },
-      enabled: true,
-    }))
+    expect(mockEmbeddingModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warningDot: true,
+      }),
+      undefined,
+    )
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { params: { provider: 'openai' } },
+        enabled: true,
+      }),
+    )
     expect(screen.getByTestId('summary-index-setting')).toBeInTheDocument()
   })
 
@@ -199,8 +241,10 @@ describe('KnowledgeBasePanel', () => {
 
     expect(screen.queryByTestId('embedding-model')).not.toBeInTheDocument()
     expect(screen.queryByTestId('summary-index-setting')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
-      enabled: false,
-    }))
+    expect(mockQueryOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    )
   })
 })

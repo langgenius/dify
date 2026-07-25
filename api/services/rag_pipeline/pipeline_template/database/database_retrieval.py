@@ -41,21 +41,21 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
     @override
     def get_pipeline_templates(
-        self, session: Session, language: str, current_tenant_id: str | None = None
+        self, language: str, current_tenant_id: str | None = None, *, session: Session
     ) -> dict[str, Any]:
         del current_tenant_id
-        return self.fetch_pipeline_templates_from_db(session, language)
+        return self.fetch_pipeline_templates_from_db(language, session=session)
 
     @override
-    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
-        return self.fetch_pipeline_template_detail_from_db(session, template_id)
+    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
+        return self.fetch_pipeline_template_detail_from_db(template_id, session=session)
 
     @override
     def get_type(self) -> str:
         return PipelineTemplateType.DATABASE
 
     @classmethod
-    def fetch_pipeline_templates_from_db(cls, session: Session, language: str) -> dict[str, Any]:
+    def fetch_pipeline_templates_from_db(cls, language: str, *, session: Session) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param language: language
@@ -83,7 +83,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, session: Session, template_id: str) -> dict[str, Any] | None:
+    def fetch_pipeline_template_detail_from_db(cls, template_id: str, *, session: Session) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID

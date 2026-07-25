@@ -16,42 +16,44 @@ type ICategoryProps = {
   allCategoriesEn: string
 }
 
-function Category({
-  className,
-  list,
-  value,
-  onChange,
-  allCategoriesEn,
-}: ICategoryProps) {
+function Category({ className, list, value, onChange, allCategoriesEn }: ICategoryProps) {
   const { t } = useTranslation()
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
   const selectedCategory = isAllCategories ? allCategoriesEn : value
 
   const renderCategoryName = (name: AppCategory) => {
     const categoryKey = `category.${name}` as keyof typeof exploreI18n
-    return categoryKey in exploreI18n ? t(categoryKey, { ns: 'explore' }) : name
+    return categoryKey in exploreI18n ? t(($) => $[categoryKey], { ns: 'explore' }) : name
   }
 
   const handleValueChange = (nextCategory: string) => {
-    if (nextCategory)
-      onChange(nextCategory)
+    if (nextCategory) onChange(nextCategory)
   }
 
   return (
     <RadioGroup
-      aria-label={t('tryApp.category', { ns: 'explore' })}
-      className={cn(className, 'flex max-w-full flex-wrap items-start gap-1 overflow-visible rounded-none bg-transparent p-0 text-[13px]')}
+      aria-label={t(($) => $['tryApp.category'], { ns: 'explore' })}
+      className={cn(
+        className,
+        'flex max-w-full flex-wrap items-start gap-1 overflow-visible rounded-none bg-transparent p-0 text-[13px]',
+      )}
       value={selectedCategory}
       onValueChange={handleValueChange}
     >
       {[
-        { name: allCategoriesEn, label: t('apps.allCategories', { ns: 'explore' }), isAll: true },
-        ...list.filter(name => name !== allCategoriesEn).map(name => ({
-          name,
-          label: renderCategoryName(name),
-          isAll: false,
-        })),
-      ].map(item => (
+        {
+          name: allCategoriesEn,
+          label: t(($) => $['apps.allCategories'], { ns: 'explore' }),
+          isAll: true,
+        },
+        ...list
+          .filter((name) => name !== allCategoriesEn)
+          .map((name) => ({
+            name,
+            label: renderCategoryName(name),
+            isAll: false,
+          })),
+      ].map((item) => (
         <RadioItem
           key={item.isAll ? 'all' : item.name}
           value={item.name}

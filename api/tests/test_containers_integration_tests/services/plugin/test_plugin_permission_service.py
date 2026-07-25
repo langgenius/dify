@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -38,7 +37,7 @@ class TestGetPermission:
         db_session_with_containers.add(permission)
         db_session_with_containers.commit()
 
-        result = PluginPermissionService.get_permission(tenant_id)
+        result = PluginPermissionService.get_permission(tenant_id, session=db_session_with_containers)
 
         assert result is not None
         assert result.id == permission.id
@@ -46,9 +45,8 @@ class TestGetPermission:
         assert result.install_permission == TenantPluginInstallPermission.ADMINS
         assert result.debug_permission == TenantPluginDebugPermission.EVERYONE
 
-    @pytest.mark.usefixtures("flask_app_with_containers")
-    def test_returns_none_when_not_found(self) -> None:
-        result = PluginPermissionService.get_permission(_tenant_id())
+    def test_returns_none_when_not_found(self, db_session_with_containers: Session) -> None:
+        result = PluginPermissionService.get_permission(_tenant_id(), session=db_session_with_containers)
 
         assert result is None
 
@@ -63,6 +61,7 @@ class TestChangePermission:
             tenant_id,
             TenantPluginInstallPermission.EVERYONE,
             TenantPluginDebugPermission.EVERYONE,
+            session=db_session_with_containers,
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)
@@ -85,6 +84,7 @@ class TestChangePermission:
             tenant_id,
             TenantPluginInstallPermission.ADMINS,
             TenantPluginDebugPermission.ADMINS,
+            session=db_session_with_containers,
         )
 
         permission = _get_permission(db_session_with_containers, tenant_id)

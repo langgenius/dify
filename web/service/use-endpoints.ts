@@ -1,11 +1,5 @@
-import type {
-  EndpointsResponse,
-} from '@/app/components/plugins/types'
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import type { EndpointsResponse } from '@/app/components/plugins/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
 
 const NAME_SPACE = 'endpoints'
@@ -13,24 +7,23 @@ const NAME_SPACE = 'endpoints'
 export const useEndpointList = (pluginID: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'list', pluginID],
-    queryFn: () => get<EndpointsResponse>('/workspaces/current/endpoints/list/plugin', {
-      params: {
-        plugin_id: pluginID,
-        page: 1,
-        page_size: 100,
-      },
-    }),
+    queryFn: () =>
+      get<EndpointsResponse>('/workspaces/current/endpoints/list/plugin', {
+        params: {
+          plugin_id: pluginID,
+          page: 1,
+          page_size: 100,
+        },
+      }),
   })
 }
 
 export const useInvalidateEndpointList = () => {
   const queryClient = useQueryClient()
   return (pluginID: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'list', pluginID],
-      },
-    )
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'list', pluginID],
+    })
   }
 }
 
@@ -43,7 +36,7 @@ export const useCreateEndpoint = ({
 }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create'],
-    mutationFn: (payload: { pluginUniqueID: string, state: Record<string, any> }) => {
+    mutationFn: (payload: { pluginUniqueID: string; state: Record<string, any> }) => {
       const { pluginUniqueID, state } = payload
       const newName = state.name
       delete state.name
@@ -69,7 +62,7 @@ export const useUpdateEndpoint = ({
 }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (payload: { endpointID: string, state: Record<string, any> }) => {
+    mutationFn: (payload: { endpointID: string; state: Record<string, any> }) => {
       const { endpointID, state } = payload
       const newName = state.name
       delete state.name

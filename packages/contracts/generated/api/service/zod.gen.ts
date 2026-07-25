@@ -6,7 +6,7 @@ import * as z from 'zod'
  * Annotation
  */
 export const zAnnotation = z.object({
-  content: z.string().nullish(),
+  answer: z.string().nullish(),
   created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
@@ -22,12 +22,20 @@ export const zAnnotationCreatePayload = z.object({
 })
 
 /**
+ * AnnotationJobStatusDetailResponse
+ */
+export const zAnnotationJobStatusDetailResponse = z.object({
+  error_msg: z.string().optional().default(''),
+  job_id: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+})
+
+/**
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  error_msg: z.string().nullish(),
   job_id: z.string(),
-  job_status: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
 })
 
 /**
@@ -104,7 +112,9 @@ export const zAppMetaResponse = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * AudioTranscriptResponse
@@ -116,7 +126,9 @@ export const zAudioTranscriptResponse = z.object({
 /**
  * BinaryFileResponse
  */
-export const zBinaryFileResponse = z.custom<Blob | File>()
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * ButtonStyle
@@ -761,34 +773,36 @@ export const zDocumentMetadataResponse = z.object({
  * DocumentDetailResponse
  */
 export const zDocumentDetailResponse = z.object({
-  archived: z.boolean().nullish(),
-  average_segment_length: z.number().nullish(),
+  archived: z.boolean().optional(),
+  average_segment_length: z.union([z.int(), z.number()]).optional(),
   completed_at: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule: z.record(z.string(), z.unknown()).nullish(),
+  created_at: z.int().optional(),
+  created_by: z.string().optional(),
+  created_from: z.string().optional(),
+  data_source_info: z.record(z.string(), z.unknown()).optional(),
+  data_source_type: z.string().optional(),
+  dataset_process_rule: z.record(z.string(), z.unknown()).optional(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
   disabled_by: z.string().nullish(),
   display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
+  doc_form: z.string().optional(),
   doc_language: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).nullish(),
+  doc_metadata: z
+    .union([z.array(zDocumentMetadataResponse), z.record(z.string(), z.unknown())])
+    .nullish(),
   doc_type: z.string().nullish(),
-  document_process_rule: z.record(z.string(), z.unknown()).nullish(),
-  enabled: z.boolean().nullish(),
+  document_process_rule: z.record(z.string(), z.unknown()).optional(),
+  enabled: z.boolean().optional(),
   error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  hit_count: z.int().optional(),
   id: z.string(),
   indexing_latency: z.number().nullish(),
-  indexing_status: z.string().nullish(),
-  name: z.string().nullish(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  segment_count: z.int().nullish(),
+  indexing_status: z.string().optional(),
+  name: z.string().optional(),
+  need_summary: z.boolean().optional(),
+  position: z.int().optional(),
+  segment_count: z.int().optional(),
   summary_index_status: z.string().nullish(),
   tokens: z.int().nullish(),
   updated_at: z.int().nullish(),
@@ -1129,6 +1143,7 @@ export const zJsonValue = z
  * AgentThought
  */
 export const zAgentThought = z.object({
+  answer: z.string().nullish(),
   chain_id: z.string().nullish(),
   created_at: z.int().nullish(),
   files: z.array(z.string()),
@@ -1963,18 +1978,27 @@ export const zHumanInputContent = z.object({
 export const zMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
+  currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
   feedback: zSimpleFeedback.nullish(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
   parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
   status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+  total_tokens: z.int().readonly(),
 })
 
 /**
@@ -2300,6 +2324,43 @@ export const zGeneratedAppResponseWritable = zJsonValue
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
 
 /**
+ * MessageListItem
+ */
+export const zMessageListItemWritable = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  answer_tokens: z.int().optional().default(0),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  currency: z.string().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int().optional().default(0),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().optional().default(0),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
+    .nullish(),
+})
+
+/**
+ * MessageInfiniteScrollPagination
+ */
+export const zMessageInfiniteScrollPaginationWritable = z.object({
+  data: z.array(zMessageListItemWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -2353,7 +2414,8 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
 /**
  * Successfully retrieved task status.
  */
-export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse = zAnnotationJobStatusResponse
+export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse =
+  zAnnotationJobStatusDetailResponse
 
 export const zGetAppsAnnotationsQuery = z.object({
   keyword: z.string().optional().default(''),
@@ -2394,7 +2456,7 @@ export const zPutAppsAnnotationsByAnnotationIdPath = z.object({
 export const zPutAppsAnnotationsByAnnotationIdResponse = zAnnotation
 
 export const zPostAudioToTextBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   user: z.string().optional(),
 })
 
@@ -2411,7 +2473,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
+export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2432,7 +2494,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2496,11 +2558,11 @@ export const zGetConversationsByCIdVariablesQuery = z.object({
 /**
  * Successfully retrieved conversation variables.
  */
-export const zGetConversationsByCIdVariablesResponse
-  = zConversationVariableInfiniteScrollPaginationResponse
+export const zGetConversationsByCIdVariablesResponse =
+  zConversationVariableInfiniteScrollPaginationResponse
 
-export const zPutConversationsByCIdVariablesByVariableIdBody
-  = zConversationVariableUpdatePayloadWithUser
+export const zPutConversationsByCIdVariablesByVariableIdBody =
+  zConversationVariableUpdatePayloadWithUser
 
 export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
   c_id: z.uuid(),
@@ -2533,7 +2595,7 @@ export const zPostDatasetsBody = zDatasetCreatePayload
 export const zPostDatasetsResponse = zDatasetDetailResponse
 
 export const zPostDatasetsPipelineFileUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**
@@ -2612,7 +2674,7 @@ export const zPatchDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMember
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFileBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFilePath = z.object({
@@ -2637,7 +2699,7 @@ export const zPostDatasetsByDatasetIdDocumentCreateByTextResponse = zDocumentAnd
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Body = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
@@ -2687,7 +2749,9 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 /**
  * ZIP archive containing the requested documents.
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.custom<Blob | File>()
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostDatasetsByDatasetIdDocumentsMetadataBody = zMetadataOperationData
 
@@ -2720,8 +2784,8 @@ export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.objec
 /**
  * Indexing status for documents in the batch.
  */
-export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
-  = zDocumentStatusListResponse
+export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse =
+  zDocumentStatusListResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2749,7 +2813,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = zDocumentDet
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
@@ -2758,7 +2822,7 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
 })
 
 /**
- * Document updated successfully
+ * Document updated successfully.
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse = zDocumentAndBatchResponse
 
@@ -2799,8 +2863,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.objec
 /**
  * Chunks created successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = zSegmentCreateListResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  zSegmentCreateListResponse
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2822,11 +2886,11 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath
 /**
  * Chunk details.
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = zSegmentDetailResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  zSegmentDetailResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody
-  = zSegmentUpdatePayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody =
+  zSegmentUpdatePayload
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.uuid(),
@@ -2837,18 +2901,18 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPat
 /**
  * Chunk updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = zSegmentDetailResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  zSegmentDetailResponse
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
-  = z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
+  z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
   })
 
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery
-  = z.object({
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery =
+  z.object({
     keyword: z.string().optional(),
     limit: z.int().gte(1).optional().default(20),
     page: z.int().gte(1).optional().default(1),
@@ -2857,14 +2921,14 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 /**
  * List of child chunks.
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = zChildChunkListResponse
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  zChildChunkListResponse
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody
-  = zChildChunkCreatePayload
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody =
+  zChildChunkCreatePayload
 
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath
-  = z.object({
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath =
+  z.object({
     dataset_id: z.uuid(),
     document_id: z.uuid(),
     segment_id: z.uuid(),
@@ -2873,11 +2937,11 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 /**
  * Child chunk created successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = zChildChunkDetailResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  zChildChunkDetailResponse
 
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
-  = z.object({
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
+  z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2887,14 +2951,14 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
 /**
  * Success.
  */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.void()
+export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  z.void()
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
-  = zChildChunkUpdatePayload
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody =
+  zChildChunkUpdatePayload
 
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
-  = z.object({
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath =
+  z.object({
     child_chunk_id: z.uuid(),
     dataset_id: z.uuid(),
     document_id: z.uuid(),
@@ -2904,12 +2968,12 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 /**
  * Child chunk updated successfully.
  */
-export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = zChildChunkDetailResponse
+export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  zChildChunkDetailResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.object({
@@ -2920,8 +2984,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.o
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
-  = zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse =
+  zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody = zDocumentTextUpdate
 
@@ -2933,12 +2997,12 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath = z.o
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
-  = zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
+  zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.object({
@@ -2949,8 +3013,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.
 /**
  * Document updated successfully.
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
-  = zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response =
+  zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body = zDocumentTextUpdate
 
@@ -2962,8 +3026,8 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path = z.
 /**
  * Document updated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response
-  = zDocumentAndBatchResponse
+export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response =
+  zDocumentAndBatchResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 
@@ -3013,8 +3077,8 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 /**
  * Built-in metadata field toggled successfully.
  */
-export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = zDatasetMetadataActionResponse
+export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
+  zDatasetMetadataActionResponse
 
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
   dataset_id: z.uuid(),
@@ -3049,11 +3113,11 @@ export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery = z.object({
 /**
  * List of datasource nodes configured in the pipeline.
  */
-export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
-  = zDatasourcePluginListResponse
+export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse =
+  zDatasourcePluginListResponse
 
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody
-  = zDatasourceNodeRunPayload
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody =
+  zDatasourceNodeRunPayload
 
 export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.object({
   dataset_id: z.uuid(),
@@ -3109,7 +3173,7 @@ export const zGetEndUsersByEndUserIdPath = z.object({
 export const zGetEndUsersByEndUserIdResponse = zEndUserDetail
 
 export const zPostFilesUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   user: z.string().optional(),
 })
 
@@ -3130,7 +3194,9 @@ export const zGetFilesByFileIdPreviewQuery = z.object({
 /**
  * Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`.
  */
-export const zGetFilesByFileIdPreviewResponse = z.custom<Blob | File>()
+export const zGetFilesByFileIdPreviewResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
@@ -3213,7 +3279,9 @@ export const zPostTextToAudioBody = zTextToAudioPayloadWithUser
 /**
  * Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly.
  */
-export const zPostTextToAudioResponse = z.custom<Blob | File>()
+export const zPostTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetWorkflowByTaskIdEventsPath = z.object({
   task_id: z.string(),
@@ -3297,5 +3365,5 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
 /**
  * Available models for the specified type.
  */
-export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse
-  = zProviderWithModelsListResponse
+export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
+  zProviderWithModelsListResponse

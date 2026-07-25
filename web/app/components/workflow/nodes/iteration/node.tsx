@@ -3,27 +3,16 @@ import type { IterationNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  memo,
-  useEffect,
-  useState,
-} from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Background,
-  useNodesInitialized,
-  useViewport,
-} from 'reactflow'
+import { Background, useNodesInitialized, useViewport } from 'reactflow'
 import { IterationStartNodeDumb } from '../iteration-start'
 import AddBlock from './add-block'
 import { useNodeIterationInteractions } from './use-interactions'
 
 const i18nPrefix = 'nodes.iteration'
 
-const Node: FC<NodeProps<IterationNodeType>> = ({
-  id,
-  data,
-}) => {
+const Node: FC<NodeProps<IterationNodeType>> = ({ id, data }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
@@ -31,18 +20,18 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
-    if (nodesInitialized)
-      handleNodeIterationRerender(id)
+    if (nodesInitialized) handleNodeIterationRerender(id)
     if (data.is_parallel && showTips) {
-      toast.warning(t(`${i18nPrefix}.answerNodeWarningDesc`, { ns: 'workflow' }))
+      toast.warning(t(($) => $[`${i18nPrefix}.answerNodeWarningDesc`], { ns: 'workflow' }))
       setShowTips(false)
     }
   }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])
 
   return (
-    <div className={cn(
-      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
-    )}
+    <div
+      className={cn(
+        'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
+      )}
     >
       <Background
         id={`iteration-background-${id}`}
@@ -51,19 +40,8 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
         size={2 / zoom}
         color="var(--color-workflow-canvas-workflow-dot-color)"
       />
-      {
-        data._isCandidate && (
-          <IterationStartNodeDumb />
-        )
-      }
-      {
-        data._children?.length === 1 && (
-          <AddBlock
-            iterationNodeId={id}
-            iterationNodeData={data}
-          />
-        )
-      }
+      {data._isCandidate && <IterationStartNodeDumb />}
+      {data._children?.length === 1 && <AddBlock iterationNodeId={id} iterationNodeData={data} />}
     </div>
   )
 }

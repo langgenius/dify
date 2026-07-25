@@ -1,25 +1,31 @@
-import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type {
+  CommonNodeType,
+  InputVar,
+  TriggerNodeType,
+  ValueSelector,
+  Var,
+  Variable,
+} from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useStoreApi,
-} from 'reactflow'
+import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import {
-  useIsChatMode,
-  useNodeDataUpdate,
-  useWorkflow,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode, useNodeDataUpdate, useWorkflow } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  getNodeInfoById,
+  isConversationVar,
+  isENV,
+  isSystemVar,
+  toNodeOutputVars,
+} from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
@@ -53,7 +59,12 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { useInvalidLastRun } from '@/service/use-workflow'
-import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
+import {
+  fetchNodeInspectVars,
+  getIterationSingleNodeRunUrl,
+  getLoopSingleNodeRunUrl,
+  singleNodeRun,
+} from '@/service/workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
 const { checkValid: checkLLMValid } = LLMDefault
@@ -72,7 +83,7 @@ const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
 const { checkValid: checkHumanInputValid } = HumanInputDefault
 
-// eslint-disable-next-line ts/no-unsafe-function-type
+// oxlint-disable-next-line typescript/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
@@ -109,27 +120,32 @@ export type Params<T> = {
   isPaused: boolean
 }
 
-const varTypeToInputVarType = (type: VarType, {
-  isSelect,
-  isParagraph,
-}: {
-  isSelect: boolean
-  isParagraph: boolean
-}) => {
-  if (isSelect)
-    return InputVarType.select
-  if (isParagraph)
-    return InputVarType.paragraph
-  if (type === VarType.number)
-    return InputVarType.number
-  if (type === VarType.boolean)
-    return InputVarType.checkbox
-  if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
+const varTypeToInputVarType = (
+  type: VarType,
+  {
+    isSelect,
+    isParagraph,
+  }: {
+    isSelect: boolean
+    isParagraph: boolean
+  },
+) => {
+  if (isSelect) return InputVarType.select
+  if (isParagraph) return InputVarType.paragraph
+  if (type === VarType.number) return InputVarType.number
+  if (type === VarType.boolean) return InputVarType.checkbox
+  if (
+    [
+      VarType.object,
+      VarType.array,
+      VarType.arrayNumber,
+      VarType.arrayString,
+      VarType.arrayObject,
+    ].includes(type)
+  )
     return InputVarType.json
-  if (type === VarType.file)
-    return InputVarType.singleFile
-  if (type === VarType.arrayFile)
-    return InputVarType.multiFiles
+  if (type === VarType.file) return InputVarType.singleFile
+  if (type === VarType.arrayFile) return InputVarType.multiFiles
 
   return InputVarType.textInput
 }
@@ -147,8 +163,9 @@ const useOneStepRun = <T>({
   isPaused,
 }: Params<T>) => {
   const { t } = useTranslation()
-  const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
-  const conversationVariables = useStore(s => s.conversationVariables)
+  const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } =
+    useWorkflow() as any
+  const conversationVariables = useStore((s) => s.conversationVariables)
   const isChatMode = useIsChatMode()
   const isIteration = data.type === BlockEnum.Iteration
   const isLoop = data.type === BlockEnum.Loop
@@ -166,9 +183,7 @@ const useOneStepRun = <T>({
 
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     const isSystem = valueSelector[0] === 'sys'
-    const {
-      dataSourceList,
-    } = workflowStore.getState()
+    const { dataSourceList } = workflowStore.getState()
     const allPluginInfoList = {
       buildInTools: buildInTools || [],
       customTools: customTools || [],
@@ -177,15 +192,25 @@ const useOneStepRun = <T>({
       dataSourceList: dataSourceList || [],
     }
 
-    const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
+    const allOutputVars = toNodeOutputVars(
+      availableNodes,
+      isChatMode,
+      undefined,
+      undefined,
+      conversationVariables,
+      [],
+      allPluginInfoList,
+      schemaTypeDefinitions,
+    )
     if (isSystem) {
       const selectorKey = valueSelector.join('.')
-      return allOutputVars.flatMap(item => item.vars).find(item => item.variable === selectorKey)
+      return allOutputVars
+        .flatMap((item) => item.vars)
+        .find((item) => item.variable === selectorKey)
     }
 
-    const targetVar = allOutputVars.find(item => item.nodeId === valueSelector[0])
-    if (!targetVar)
-      return undefined
+    const targetVar = allOutputVars.find((item) => item.nodeId === valueSelector[0])
+    if (!targetVar) return undefined
 
     let curr: any = targetVar.vars
     for (let i = 1; i < valueSelector.length; i++) {
@@ -195,10 +220,8 @@ const useOneStepRun = <T>({
       if (Array.isArray(curr))
         curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
 
-      if (isLast)
-        return curr
-      else if (curr?.type === VarType.object || curr?.type === VarType.file)
-        curr = curr.children
+      if (isLast) return curr
+      else if (curr?.type === VarType.object || curr?.type === VarType.file) curr = curr.children
     }
 
     return undefined
@@ -225,52 +248,46 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
     setShowVariableInspectPanel,
   } = workflowStore.getState()
-  const updateNodeInspectRunningState = useCallback((nodeId: string, isRunning: boolean) => {
-    const {
-      nodesWithInspectVars,
-      setNodesWithInspectVars,
-    } = workflowStore.getState()
+  const updateNodeInspectRunningState = useCallback(
+    (nodeId: string, isRunning: boolean) => {
+      const { nodesWithInspectVars, setNodesWithInspectVars } = workflowStore.getState()
 
-    let hasChanges = false
-    const nodes = produce(nodesWithInspectVars, (draft) => {
-      const index = draft.findIndex(node => node.nodeId === nodeId)
-      if (index !== -1) {
-        const targetNode = draft[index]
-        if (targetNode!.isSingRunRunning !== isRunning) {
-          targetNode!.isSingRunRunning = isRunning
-          if (isRunning)
-            targetNode!.isValueFetched = false
-          hasChanges = true
+      let hasChanges = false
+      const nodes = produce(nodesWithInspectVars, (draft) => {
+        const index = draft.findIndex((node) => node.nodeId === nodeId)
+        if (index !== -1) {
+          const targetNode = draft[index]
+          if (targetNode!.isSingRunRunning !== isRunning) {
+            targetNode!.isSingRunRunning = isRunning
+            if (isRunning) targetNode!.isValueFetched = false
+            hasChanges = true
+          }
+        } else if (isRunning) {
+          const { getNodes } = store.getState()
+          const target = getNodes().find((node) => node.id === nodeId)
+          if (target) {
+            draft.unshift({
+              nodeId,
+              nodeType: target.data.type,
+              title: target.data.title,
+              vars: [],
+              nodePayload: target.data,
+              isSingRunRunning: true,
+              isValueFetched: false,
+            })
+            hasChanges = true
+          }
         }
-      }
-      else if (isRunning) {
-        const { getNodes } = store.getState()
-        const target = getNodes().find(node => node.id === nodeId)
-        if (target) {
-          draft.unshift({
-            nodeId,
-            nodeType: target.data.type,
-            title: target.data.title,
-            vars: [],
-            nodePayload: target.data,
-            isSingRunRunning: true,
-            isValueFetched: false,
-          })
-          hasChanges = true
-        }
-      }
-    })
+      })
 
-    if (hasChanges)
-      setNodesWithInspectVars(nodes)
-  }, [workflowStore, store])
+      if (hasChanges) setNodesWithInspectVars(nodes)
+    },
+    [workflowStore, store],
+  )
   const invalidLastRun = useInvalidLastRun(flowType, flowId!, id)
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
-  const {
-    appendNodeInspectVars,
-    invalidateSysVarValues,
-    invalidateConversationVarValues,
-  } = useInspectVarsCrud()
+  const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
+    useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const webhookSingleRunActiveRef = useRef(false)
   const webhookSingleRunAbortRef = useRef<AbortController | null>(null)
@@ -293,34 +310,50 @@ const useOneStepRun = <T>({
   const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
   const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
-  const setRunResult = useCallback(async (data: NodeRunResult | null) => {
-    const isPaused = isPausedRef.current
+  const setRunResult = useCallback(
+    async (data: NodeRunResult | null) => {
+      const isPaused = isPausedRef.current
 
-    // The backend don't support pause the single run, so the frontend handle the pause state.
-    if (isPaused)
-      return
+      // The backend don't support pause the single run, so the frontend handle the pause state.
+      if (isPaused) return
 
-    const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
-    if (!canRunLastRun) {
-      doSetRunResult(data)
-      return
-    }
+      const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
+      if (!canRunLastRun) {
+        doSetRunResult(data)
+        return
+      }
 
-    // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(flowType, flowId!, id)
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    appendNodeInspectVars(id, vars, nodes)
-    updateNodeInspectRunningState(id, false)
-    if (data?.status === NodeRunningStatus.Succeeded) {
-      invalidLastRun()
-      if (isStartNode || isTriggerNode)
-        invalidateSysVarValues()
-      invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
-    }
-  }, [isRunAfterSingleRun, runningStatus, flowType, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, isTriggerNode, invalidateSysVarValues, invalidateConversationVarValues])
+      // run fail may also update the inspect vars when the node set the error default output.
+      const vars = await fetchNodeInspectVars(flowType, flowId!, id)
+      const { getNodes } = store.getState()
+      const nodes = getNodes()
+      appendNodeInspectVars(id, vars, nodes)
+      updateNodeInspectRunningState(id, false)
+      if (data?.status === NodeRunningStatus.Succeeded) {
+        invalidLastRun()
+        if (isStartNode || isTriggerNode) invalidateSysVarValues()
+        invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
+      }
+    },
+    [
+      isRunAfterSingleRun,
+      runningStatus,
+      flowType,
+      flowId,
+      id,
+      store,
+      appendNodeInspectVars,
+      updateNodeInspectRunningState,
+      invalidLastRun,
+      isStartNode,
+      isTriggerNode,
+      invalidateSysVarValues,
+      invalidateConversationVarValues,
+    ],
+  )
 
-  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
+  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } =
+    useNodeDataUpdate()
   const setNodeRunning = () => {
     handleNodeDataUpdate({
       id,
@@ -334,8 +367,7 @@ const useOneStepRun = <T>({
   const cancelWebhookSingleRun = useCallback(() => {
     webhookSingleRunActiveRef.current = false
     webhookSingleRunTokenRef.current += 1
-    if (webhookSingleRunAbortRef.current)
-      webhookSingleRunAbortRef.current.abort()
+    if (webhookSingleRunAbortRef.current) webhookSingleRunAbortRef.current.abort()
     webhookSingleRunAbortRef.current = null
     if (webhookSingleRunTimeoutRef.current !== undefined) {
       window.clearTimeout(webhookSingleRunTimeoutRef.current)
@@ -350,8 +382,7 @@ const useOneStepRun = <T>({
   const cancelPluginSingleRun = useCallback(() => {
     pluginSingleRunActiveRef.current = false
     pluginSingleRunTokenRef.current += 1
-    if (pluginSingleRunAbortRef.current)
-      pluginSingleRunAbortRef.current.abort()
+    if (pluginSingleRunAbortRef.current) pluginSingleRunAbortRef.current.abort()
     pluginSingleRunAbortRef.current = null
     if (pluginSingleRunTimeoutRef.current !== undefined) {
       window.clearTimeout(pluginSingleRunTimeoutRef.current)
@@ -364,8 +395,7 @@ const useOneStepRun = <T>({
   }, [])
 
   const startTriggerListening = useCallback(() => {
-    if (!isTriggerNode)
-      return
+    if (!isTriggerNode) return
 
     setIsListening(true)
     setShowVariableInspectPanel(true)
@@ -386,8 +416,7 @@ const useOneStepRun = <T>({
   ])
 
   const stopTriggerListening = useCallback(() => {
-    if (!isTriggerNode)
-      return
+    if (!isTriggerNode) return
 
     setIsListening(false)
     setListeningTriggerType(null)
@@ -412,13 +441,14 @@ const useOneStepRun = <T>({
       })
 
       if (!response) {
-        const message = t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
-        const message = response?.message || t('common.scheduleTriggerRunFailed', { ns: 'workflow' })
+        const message =
+          response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
         toast.error(message)
         throw new Error(message)
       }
@@ -433,8 +463,7 @@ const useOneStepRun = <T>({
       })
 
       return response as NodeRunResult
-    }
-    catch (error) {
+    } catch (error) {
       console.error('handleRun: schedule trigger single run error', error)
       handleNodeDataUpdate({
         id,
@@ -444,7 +473,7 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error(t('common.scheduleTriggerRunFailed', { ns: 'workflow' }))
+      toast.error(t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
       throw error
     }
   }, [flowId, id, handleNodeDataUpdate, data, t])
@@ -469,7 +498,8 @@ const useOneStepRun = <T>({
           return null
 
         if (!response) {
-          const message = response?.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          const message =
+            response?.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -485,10 +515,14 @@ const useOneStepRun = <T>({
             const timeoutId = window.setTimeout(resolve, delay)
             webhookSingleRunTimeoutRef.current = timeoutId
             webhookSingleRunDelayResolveRef.current = resolve
-            controller.signal.addEventListener('abort', () => {
-              window.clearTimeout(timeoutId)
-              resolve()
-            }, { once: true })
+            controller.signal.addEventListener(
+              'abort',
+              () => {
+                window.clearTimeout(timeoutId)
+                resolve()
+              },
+              { once: true },
+            )
           })
 
           webhookSingleRunTimeoutRef.current = undefined
@@ -497,7 +531,8 @@ const useOneStepRun = <T>({
         }
 
         if (response?.status === 'error') {
-          const message = response.message || t('common.webhookDebugFailed', { ns: 'workflow' })
+          const message =
+            response.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
           toast.error(message)
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -514,20 +549,19 @@ const useOneStepRun = <T>({
 
         cancelWebhookSingleRun()
         return response
-      }
-      catch (error) {
-        if (controller.signal.aborted && (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current))
+      } catch (error) {
+        if (
+          controller.signal.aborted &&
+          (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+        )
           return null
-        if (controller.signal.aborted)
-          return null
+        if (controller.signal.aborted) return null
 
-        toast.error(t('common.webhookDebugRequestFailed', { ns: 'workflow' }))
+        toast.error(t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }))
         cancelWebhookSingleRun()
-        if (error instanceof Error)
-          throw error
+        if (error instanceof Error) throw error
         throw new Error(String(error))
-      }
-      finally {
+      } finally {
         webhookSingleRunAbortRef.current = null
       }
     }
@@ -549,24 +583,25 @@ const useOneStepRun = <T>({
       const response: any = await post(urlPath, {
         body: JSON.stringify({}),
         signal: controller.signal,
-      }).catch(async (error: Response) => {
-        const data = await error.clone().json() as Record<string, any>
-        const { error: respError, status } = data || {}
-        requestError = {
-          message: respError,
-          status,
-        }
-        return null
-      }).finally(() => {
-        pluginSingleRunAbortRef.current = null
       })
+        .catch(async (error: Response) => {
+          const data = (await error.clone().json()) as Record<string, any>
+          const { error: respError, status } = data || {}
+          requestError = {
+            message: respError,
+            status,
+          }
+          return null
+        })
+        .finally(() => {
+          pluginSingleRunAbortRef.current = null
+        })
 
       if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
         return null
 
       if (requestError) {
-        if (controller.signal.aborted)
-          return null
+        if (controller.signal.aborted) return null
 
         toast.error(requestError.message)
         cancelPluginSingleRun()
@@ -589,10 +624,14 @@ const useOneStepRun = <T>({
           const timeoutId = window.setTimeout(resolve, delay)
           pluginSingleRunTimeoutRef.current = timeoutId
           pluginSingleRunDelayResolveRef.current = resolve
-          controller.signal.addEventListener('abort', () => {
-            window.clearTimeout(timeoutId)
-            resolve()
-          }, { once: true })
+          controller.signal.addEventListener(
+            'abort',
+            () => {
+              window.clearTimeout(timeoutId)
+              resolve()
+            },
+            { once: true },
+          )
         })
 
         pluginSingleRunTimeoutRef.current = undefined
@@ -624,8 +663,7 @@ const useOneStepRun = <T>({
   }, [flowId, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
 
   const checkValidWrap = () => {
-    if (!checkValid)
-      return { isValid: true, errorMessage: '' }
+    if (!checkValid) return { isValid: true, errorMessage: '' }
     const res = checkValid(data, t, moreDataForCheckValid)
     if (!res.isValid) {
       handleNodeDataUpdate({
@@ -635,8 +673,7 @@ const useOneStepRun = <T>({
           _isSingleRun: false,
         },
       })
-      if (res.errorMessage)
-        toast.error(res.errorMessage)
+      if (res.errorMessage) toast.error(res.errorMessage)
     }
     return res
   }
@@ -679,20 +716,17 @@ const useOneStepRun = <T>({
       },
     })
   }
-  const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
+  const isCompleted =
+    runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
-    if (isWebhookTriggerNode)
-      cancelWebhookSingleRun()
-    if (isPluginTriggerNode)
-      cancelPluginSingleRun()
+    if (isWebhookTriggerNode) cancelWebhookSingleRun()
+    if (isPluginTriggerNode) cancelPluginSingleRun()
 
     updateNodeInspectRunningState(id, true)
 
-    if (isTriggerNode)
-      startTriggerListening()
-    else
-      stopTriggerListening()
+    if (isTriggerNode) startTriggerListening()
+    else stopTriggerListening()
 
     handleNodeDataUpdate({
       id,
@@ -710,8 +744,7 @@ const useOneStepRun = <T>({
       if (!isIteration && !isLoop) {
         if (isScheduleTriggerNode) {
           res = await runScheduleSingleRun()
-        }
-        else if (isWebhookTriggerNode) {
+        } else if (isWebhookTriggerNode) {
           res = await runWebhookSingleRun()
           if (!res) {
             if (webhookSingleRunActiveRef.current) {
@@ -726,8 +759,7 @@ const useOneStepRun = <T>({
             }
             return false
           }
-        }
-        else if (isPluginTriggerNode) {
+        } else if (isPluginTriggerNode) {
           res = await runPluginSingleRun()
           if (!res) {
             if (pluginSingleRunActiveRef.current) {
@@ -742,26 +774,22 @@ const useOneStepRun = <T>({
             }
             return false
           }
-        }
-        else {
+        } else {
           const isStartNode = data.type === BlockEnum.Start
           const postData: Record<string, any> = {}
           if (isStartNode) {
             const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
-            if (isChatMode)
-              postData.conversation_id = ''
+            if (isChatMode) postData.conversation_id = ''
 
             postData.inputs = inputs
             postData.query = query
             postData.files = files || []
-          }
-          else {
+          } else {
             postData.inputs = submitData
           }
-          res = await singleNodeRun(flowType, flowId!, id, postData) as any
+          res = (await singleNodeRun(flowType, flowId!, id, postData)) as any
         }
-      }
-      else if (isIteration) {
+      } else if (isIteration) {
         setIterationRunResult([])
         let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
@@ -771,8 +799,7 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
-              if (isPausedRef.current)
-                return
+              if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -804,7 +831,9 @@ const useOneStepRun = <T>({
               _runResult = params.data
               setRunResult(_runResult)
               const iterationRunResult = _iterationResult
-              const currentIndex = iterationRunResult.findIndex(trace => trace.id === params.data.id)
+              const currentIndex = iterationRunResult.findIndex(
+                (trace) => trace.id === params.data.id,
+              )
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
@@ -830,7 +859,7 @@ const useOneStepRun = <T>({
               const iterationRunResult = _iterationResult
 
               const { data } = params
-              const currentIndex = iterationRunResult.findIndex(trace => trace.id === data.id)
+              const currentIndex = iterationRunResult.findIndex((trace) => trace.id === data.id)
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
@@ -850,8 +879,7 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onError: () => {
-              if (isPausedRef.current)
-                return
+              if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -863,8 +891,7 @@ const useOneStepRun = <T>({
             },
           },
         )
-      }
-      else if (isLoop) {
+      } else if (isLoop) {
         setLoopRunResult([])
         let _loopResult: NodeTracing[] = []
         let _runResult: any = null
@@ -874,8 +901,7 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
-              if (isPausedRef.current)
-                return
+              if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -900,15 +926,14 @@ const useOneStepRun = <T>({
             },
             onLoopNext: () => {
               // loop next trigger time is triggered one more time than loopTimes
-              if (_loopResult.length >= loopTimes!)
-                return _loopResult.length >= loopTimes!
+              if (_loopResult.length >= loopTimes!) return _loopResult.length >= loopTimes!
             },
             onLoopFinish: (params) => {
               _runResult = params.data
               setRunResult(_runResult)
 
               const loopRunResult = _loopResult
-              const currentIndex = loopRunResult.findIndex(trace => trace.id === params.data.id)
+              const currentIndex = loopRunResult.findIndex((trace) => trace.id === params.data.id)
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
@@ -934,7 +959,7 @@ const useOneStepRun = <T>({
               const loopRunResult = _loopResult
 
               const { data } = params
-              const currentIndex = loopRunResult.findIndex(trace => trace.id === data.id)
+              const currentIndex = loopRunResult.findIndex((trace) => trace.id === data.id)
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
@@ -954,8 +979,7 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onError: () => {
-              if (isPausedRef.current)
-                return
+              if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -964,21 +988,23 @@ const useOneStepRun = <T>({
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
-              trackEvent('workflow_run_failed', { workflow_id: flowId, node_id: id, reason: res.error, node_type: data?.type })
+              trackEvent('workflow_run_failed', {
+                workflow_id: flowId,
+                node_id: id,
+                reason: res.error,
+                node_type: data?.type,
+              })
             },
           },
         )
       }
-      if (res && res.error)
-        throw new Error(res.error)
-    }
-    catch (e: any) {
+      if (res && res.error) throw new Error(res.error)
+    } catch (e: any) {
       console.error(e)
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {
-        if (isPausedRef.current)
-          return
+        if (isPausedRef.current) return
         handleNodeDataUpdate({
           id,
           data: {
@@ -989,16 +1015,11 @@ const useOneStepRun = <T>({
         })
         return false
       }
-    }
-    finally {
-      if (isWebhookTriggerNode)
-        cancelWebhookSingleRun()
-      if (isPluginTriggerNode)
-        cancelPluginSingleRun()
-      if (isTriggerNode)
-        stopTriggerListening()
-      if (!isIteration && !isLoop)
-        updateNodeInspectRunningState(id, false)
+    } finally {
+      if (isWebhookTriggerNode) cancelWebhookSingleRun()
+      if (isPluginTriggerNode) cancelPluginSingleRun()
+      if (isTriggerNode) stopTriggerListening()
+      if (!isIteration && !isLoop) updateNodeInspectRunningState(id, false)
       if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
@@ -1007,12 +1028,10 @@ const useOneStepRun = <T>({
         })
       }
     }
-    if (isPausedRef.current)
-      return
+    if (isPausedRef.current) return
 
     if (!isIteration && !isLoop && !hasError) {
-      if (isPausedRef.current)
-        return
+      if (isPausedRef.current) return
       handleNodeDataUpdate({
         id,
         data: {
@@ -1026,13 +1045,12 @@ const useOneStepRun = <T>({
 
   const handleStop = useCallback(() => {
     if (isTriggerNode) {
-      const isTriggerActive = runningStatus === NodeRunningStatus.Listening
-        || webhookSingleRunActiveRef.current
-        || pluginSingleRunActiveRef.current
-      if (!isTriggerActive)
-        return
-    }
-    else if (runningStatus !== NodeRunningStatus.Running) {
+      const isTriggerActive =
+        runningStatus === NodeRunningStatus.Listening ||
+        webhookSingleRunActiveRef.current ||
+        pluginSingleRunActiveRef.current
+      if (!isTriggerActive) return
+    } else if (runningStatus !== NodeRunningStatus.Running) {
       return
     }
 
@@ -1054,13 +1072,19 @@ const useOneStepRun = <T>({
       deleteNodeInspectVars,
     } = workflowStore.getState()
     if (workflowRunningData) {
-      setWorkflowRunningData(produce(workflowRunningData, (draft) => {
-        draft.result.status = WorkflowRunningStatus.Stopped
-      }))
+      setWorkflowRunningData(
+        produce(workflowRunningData, (draft) => {
+          draft.result.status = WorkflowRunningStatus.Stopped
+        }),
+      )
     }
 
-    const inspectNode = nodesWithInspectVars.find(node => node.nodeId === id)
-    if (inspectNode && !inspectNode.isValueFetched && (!inspectNode.vars || inspectNode.vars.length === 0))
+    const inspectNode = nodesWithInspectVars.find((node) => node.nodeId === id)
+    if (
+      inspectNode &&
+      !inspectNode.isValueFetched &&
+      (!inspectNode.vars || inspectNode.vars.length === 0)
+    )
       deleteNodeInspectVars(id)
   }, [
     isTriggerNode,
@@ -1075,38 +1099,40 @@ const useOneStepRun = <T>({
   ])
 
   const toVarInputs = (variables: Variable[]): InputVar[] => {
-    if (!variables)
-      return []
+    if (!variables) return []
 
-    const varInputs = variables.filter(item => !isENV(item.value_selector)).map((item) => {
-      const originalVar = getVar(item.value_selector)
-      if (!originalVar) {
-        const fallbackType = item.value_type
-          ? varTypeToInputVarType(item.value_type, {
-              isSelect: !!item.options?.length,
-              isParagraph: !!item.isParagraph,
-            })
-          : InputVarType.textInput
-        return {
-          label: item.label || item.variable,
-          variable: item.variable,
-          type: fallbackType,
-          required: true,
-          value_selector: item.value_selector,
-          options: item.options,
+    const varInputs = variables
+      .filter((item) => !isENV(item.value_selector))
+      .map((item) => {
+        const originalVar = getVar(item.value_selector)
+        if (!originalVar) {
+          const fallbackType = item.value_type
+            ? varTypeToInputVarType(item.value_type, {
+                isSelect: !!item.options?.length,
+                isParagraph: !!item.isParagraph,
+              })
+            : InputVarType.textInput
+          return {
+            label: item.label || item.variable,
+            variable: item.variable,
+            type: fallbackType,
+            required: true,
+            value_selector: item.value_selector,
+            options: item.options,
+          }
         }
-      }
-      return {
-        label: (typeof item.label === 'object' ? item.label.variable : item.label) || item.variable,
-        variable: item.variable,
-        type: varTypeToInputVarType(originalVar.type, {
-          isSelect: !!originalVar.isSelect,
-          isParagraph: !!originalVar.isParagraph,
-        }),
-        required: item.required !== false,
-        options: originalVar.options,
-      }
-    })
+        return {
+          label:
+            (typeof item.label === 'object' ? item.label.variable : item.label) || item.variable,
+          variable: item.variable,
+          type: varTypeToInputVarType(originalVar.type, {
+            isSelect: !!originalVar.isSelect,
+            isParagraph: !!originalVar.isParagraph,
+          }),
+          required: item.required !== false,
+          options: originalVar.options,
+        }
+      })
 
     return varInputs
   }
@@ -1117,7 +1143,7 @@ const useOneStepRun = <T>({
       valueSelectors.push(...doGetInputVars(text))
     })
 
-    const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
+    const variables = unionBy(valueSelectors, (item) => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0]!)?.data
 
       return {
@@ -1137,14 +1163,15 @@ const useOneStepRun = <T>({
   }
 
   const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
-    return valueSelectors.filter(item => !!item).map((item) => {
-      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]!
-    })
+    return valueSelectors
+      .filter((item) => !!item)
+      .map((item) => {
+        return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]!
+      })
   }
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP)
-      handleStop()
+    if (v.type === EVENT_WORKFLOW_STOP) handleStop()
   })
 
   return {

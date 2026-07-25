@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppACLPermission } from '@/utils/permission'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -15,6 +15,13 @@ const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
 const mockOnWorkflowUpdate = vi.hoisted(() => vi.fn())
 const mockOnSyncRequest = vi.hoisted(() => vi.fn())
+const mockOnGraphReloadRequired = vi.hoisted(() => vi.fn())
+const mockOnGraphReadyChange = vi.hoisted(() => vi.fn())
+const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
+const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
+const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
+const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
+const mockRetryGraphReload = vi.hoisted(() => vi.fn())
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -55,8 +62,8 @@ const hookFns = {
 const collaborationRuntime = vi.hoisted(() => ({
   startCursorTracking: vi.fn(),
   stopCursorTracking: vi.fn(),
-  onlineUsers: [] as Array<{ user_id: string, username: string, avatar: string, sid: string }>,
-  cursors: {} as Record<string, { x: number, y: number, userId: string, timestamp: number }>,
+  onlineUsers: [] as Array<{ user_id: string; username: string; avatar: string; sid: string }>,
+  cursors: {} as Record<string, { x: number; y: number; userId: string; timestamp: number }>,
   isConnected: false,
   isEnabled: false,
 }))
@@ -64,15 +71,34 @@ const collaborationRuntime = vi.hoisted(() => ({
 const collaborationListeners = vi.hoisted(() => ({
   varsAndFeaturesUpdate: null as null | ((update: unknown) => void | Promise<void>),
   workflowUpdate: null as null | (() => void | Promise<void>),
-  syncRequest: null as null | (() => void),
+  syncRequest: null as
+    | null
+    | ((request: {
+        requestId: string
+        acknowledge: (result: { success: boolean; hash?: string; updatedAt?: number }) => void
+      }) => void),
+  graphReloadRequired: null as
+    | null
+    | ((request: { generation: number; token: number; attempt: number }) => void | Promise<void>),
+  graphReadyChange: null as null | ((isReady: boolean) => void),
 }))
 
 let capturedContextProps: Record<string, unknown> | null = null
 
-type MockWorkflowWithInnerContextProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'> & {
+type MockWorkflowWithInnerContextProps = Pick<
+  WorkflowProps,
+  'nodes' | 'edges' | 'viewport' | 'onWorkflowDataUpdate' | 'cursors' | 'myUserId' | 'onlineUsers'
+> & {
   hooksStore?: Record<string, unknown>
   children?: ReactNode
 }
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeaturesStore: () => ({
@@ -83,9 +109,10 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: { appId: string }) => T) => selector({
-    appId: 'app-1',
-  }),
+  useStore: <T,>(selector: (state: { appId: string }) => T) =>
+    selector({
+      appId: 'app-1',
+    }),
   useWorkflowStore: () => ({
     getState: () => ({
       setConversationVariables: mockSetConversationVariables,
@@ -122,18 +149,42 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation((handler: (update: unknown) => void | Promise<void>) => {
-      collaborationListeners.varsAndFeaturesUpdate = handler
-      return vi.fn()
-    }),
-    onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation((handler: () => void | Promise<void>) => {
-      collaborationListeners.workflowUpdate = handler
-      return vi.fn()
-    }),
-    onSyncRequest: mockOnSyncRequest.mockImplementation((handler: () => void) => {
-      collaborationListeners.syncRequest = handler
-      return vi.fn()
-    }),
+    onVarsAndFeaturesUpdate: mockOnVarsAndFeaturesUpdate.mockImplementation(
+      (handler: (update: unknown) => void | Promise<void>) => {
+        collaborationListeners.varsAndFeaturesUpdate = handler
+        return vi.fn()
+      },
+    ),
+    onWorkflowUpdate: mockOnWorkflowUpdate.mockImplementation(
+      (handler: () => void | Promise<void>) => {
+        collaborationListeners.workflowUpdate = handler
+        return vi.fn()
+      },
+    ),
+    onSyncRequest: mockOnSyncRequest.mockImplementation(
+      (handler: typeof collaborationListeners.syncRequest) => {
+        collaborationListeners.syncRequest = handler
+        return vi.fn()
+      },
+    ),
+    onGraphReloadRequired: mockOnGraphReloadRequired.mockImplementation(
+      (handler: typeof collaborationListeners.graphReloadRequired) => {
+        collaborationListeners.graphReloadRequired = handler
+        return vi.fn()
+      },
+    ),
+    onGraphReadyChange: mockOnGraphReadyChange.mockImplementation(
+      (handler: typeof collaborationListeners.graphReadyChange) => {
+        collaborationListeners.graphReadyChange = handler
+        handler?.(true)
+        return vi.fn()
+      },
+    ),
+    refreshGraphSynchronously: mockRefreshGraphSynchronously,
+    replaceGraphFromReactFlow: mockReplaceGraphFromReactFlow,
+    canPersistLocalGraph: mockCanPersistLocalGraph,
+    isGraphReloadCurrent: mockIsGraphReloadCurrent,
+    retryGraphReload: mockRetryGraphReload,
   },
 }))
 
@@ -166,48 +217,55 @@ vi.mock('@/app/components/workflow', () => ({
       <div data-testid="workflow-inner-context">
         <button
           type="button"
-          onClick={() => onWorkflowDataUpdate?.({
-            nodes: [],
-            edges: [],
-            features: { file_upload: { enabled: true } },
-            conversation_variables: [{
-              id: 'conversation-1',
-              name: 'conversation-1',
-              value_type: ChatVarType.String,
-              value: '',
-              description: '',
-            }],
-            environment_variables: [{
-              id: 'env-1',
-              name: 'env-1',
-              value: '',
-              value_type: 'string',
-              description: '',
-            }],
-          })}
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              nodes: [],
+              edges: [],
+              features: { file_upload: { enabled: true } },
+              conversation_variables: [
+                {
+                  id: 'conversation-1',
+                  name: 'conversation-1',
+                  value_type: ChatVarType.String,
+                  value: '',
+                  description: '',
+                },
+              ],
+              environment_variables: [
+                {
+                  id: 'env-1',
+                  name: 'env-1',
+                  value: '',
+                  value_type: 'string',
+                  description: '',
+                },
+              ],
+            })
+          }
         >
           update-workflow-data
         </button>
         <button
           type="button"
-          onClick={() => onWorkflowDataUpdate?.({
-            nodes: [],
-            edges: [],
-            conversation_variables: [{
-              id: 'conversation-only',
-              name: 'conversation-only',
-              value_type: ChatVarType.String,
-              value: '',
-              description: '',
-            }],
-          })}
+          onClick={() =>
+            onWorkflowDataUpdate?.({
+              nodes: [],
+              edges: [],
+              conversation_variables: [
+                {
+                  id: 'conversation-only',
+                  name: 'conversation-only',
+                  value_type: ChatVarType.String,
+                  value: '',
+                  description: '',
+                },
+              ],
+            })
+          }
         >
           update-conversation-only
         </button>
-        <button
-          type="button"
-          onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}
-        >
+        <button type="button" onClick={() => onWorkflowDataUpdate?.({ nodes: [], edges: [] })}>
           update-empty-payload
         </button>
         {children}
@@ -217,10 +275,16 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow-app/hooks', () => ({
-  useAvailableNodesMetaData: () => ({ nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } }),
+  useAvailableNodesMetaData: () => ({
+    nodes: [{ id: 'start' }],
+    nodesMap: { start: { id: 'start' } },
+  }),
   useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
   useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
-  useDSLByCanEdit: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
+  useDSLByCanEdit: () => ({
+    exportCheck: hookFns.exportCheck,
+    handleExportDSL: hookFns.handleExportDSL,
+  }),
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
   useInspectVarsCrud: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
@@ -249,7 +313,9 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   useSetWorkflowVarsWithValue: () => ({
     fetchInspectVars: hookFns.fetchInspectVars,
   }),
-  useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft }),
+  useWorkflowRefreshDraft: () => ({
+    handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
+  }),
   useWorkflowRun: () => ({
     handleBackupDraft: hookFns.handleBackupDraft,
     handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
@@ -286,7 +352,11 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
 
 vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: { nodes?: unknown[], edges?: unknown[], viewport?: unknown }) => ({
+    getWorkflowDraftGraphForCanvas: (graph?: {
+      nodes?: unknown[]
+      edges?: unknown[]
+      viewport?: unknown
+    }) => ({
       nodes: graph?.nodes?.length
         ? graph.nodes
         : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
@@ -298,7 +368,11 @@ vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas
 
 vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({
-    getWorkflowDraftGraphForCanvas: (graph?: { nodes?: unknown[], edges?: unknown[], viewport?: unknown }) => ({
+    getWorkflowDraftGraphForCanvas: (graph?: {
+      nodes?: unknown[]
+      edges?: unknown[]
+      viewport?: unknown
+    }) => ({
       nodes: graph?.nodes?.length
         ? graph.nodes
         : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
@@ -311,6 +385,14 @@ vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas
 vi.mock('../workflow-children', () => ({
   default: () => <div data-testid="workflow-children">workflow-children</div>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('WorkflowMain', () => {
   beforeEach(() => {
@@ -325,7 +407,14 @@ describe('WorkflowMain', () => {
     collaborationListeners.varsAndFeaturesUpdate = null
     collaborationListeners.workflowUpdate = null
     collaborationListeners.syncRequest = null
+    collaborationListeners.graphReloadRequired = null
+    collaborationListeners.graphReadyChange = null
     mockFetchWorkflowDraft.mockReset()
+    mockCanPersistLocalGraph.mockReturnValue(true)
+    mockIsGraphReloadCurrent.mockReturnValue(true)
+    mockReplaceGraphFromReactFlow.mockReturnValue(true)
+    hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
+    hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
     useAppStore.setState({ appDetail: undefined })
   })
 
@@ -334,13 +423,7 @@ describe('WorkflowMain', () => {
     const edges = [{ id: 'edge-1' }]
     const viewport = { x: 1, y: 2, zoom: 1.5 }
 
-    render(
-      <WorkflowMain
-        nodes={nodes as never}
-        edges={edges as never}
-        viewport={viewport}
-      />,
-    )
+    render(<WorkflowMain nodes={nodes as never} edges={edges as never} viewport={viewport} />)
 
     expect(screen.getByTestId('workflow-inner-context')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-children')).toBeInTheDocument()
@@ -352,47 +435,37 @@ describe('WorkflowMain', () => {
   })
 
   it('should update features and workflow variables when workflow data changes', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
 
-    expect(mockSetFeatures).toHaveBeenCalledWith(expect.objectContaining({
-      file: expect.objectContaining({ enabled: true }),
-    }))
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-1' })])
-    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'env-1' })])
+    expect(mockSetFeatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: expect.objectContaining({ enabled: true }),
+      }),
+    )
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-1' }),
+    ])
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'env-1' }),
+    ])
   })
 
   it('should only update the workflow store slices present in the payload', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-conversation-only/i }))
 
-    expect(mockSetConversationVariables).toHaveBeenCalledWith([expect.objectContaining({ id: 'conversation-only' })])
+    expect(mockSetConversationVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'conversation-only' }),
+    ])
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should ignore empty workflow data updates', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     fireEvent.click(screen.getByRole('button', { name: /update-empty-payload/i }))
 
@@ -402,13 +475,7 @@ describe('WorkflowMain', () => {
   })
 
   it('should expose the composed workflow action hooks through hooksStore', () => {
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     expect(capturedContextProps?.hooksStore).toMatchObject({
       syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
@@ -422,7 +489,8 @@ describe('WorkflowMain', () => {
       handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
-      handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow:
+        hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
       handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
@@ -435,45 +503,19 @@ describe('WorkflowMain', () => {
     })
   })
 
-  it('should pass view-layout ACL permission as comment-only workflow access', () => {
-    useAppStore.setState({
-      appDetail: {
-        permission_keys: [AppACLPermission.ViewLayout],
-      } as never,
-    })
-
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
-
-    expect(capturedContextProps?.hooksStore).toMatchObject({
-      accessControl: {
-        canEdit: false,
-        canComment: true,
-        canRun: false,
-      },
-    })
-  })
-
   it('passes collaboration props and tracks cursors when collaboration is enabled', () => {
     collaborationRuntime.isEnabled = true
     collaborationRuntime.isConnected = true
-    collaborationRuntime.onlineUsers = [{ user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' }]
+    collaborationRuntime.onlineUsers = [
+      { user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' },
+    ]
     collaborationRuntime.cursors = {
       'current-user': { x: 1, y: 2, userId: 'current-user', timestamp: 1 },
       'user-other': { x: 20, y: 30, userId: 'user-other', timestamp: 2 },
     }
 
     const { unmount } = render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
+      <WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />,
     )
 
     expect(collaborationRuntime.startCursorTracking).toHaveBeenCalled()
@@ -487,6 +529,20 @@ describe('WorkflowMain', () => {
 
     unmount()
     expect(collaborationRuntime.stopCursorTracking).toHaveBeenCalled()
+  })
+
+  it('blocks canvas input until the collaborative graph is ready', () => {
+    collaborationRuntime.isEnabled = true
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    expect(screen.queryByTestId('collaboration-graph-loading')).not.toBeInTheDocument()
+
+    act(() => collaborationListeners.graphReadyChange?.(false))
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.common.syncingData')
+
+    act(() => collaborationListeners.graphReadyChange?.(true))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
@@ -505,20 +561,25 @@ describe('WorkflowMain', () => {
       },
     })
 
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     expect(mockOnVarsAndFeaturesUpdate).toHaveBeenCalled()
     expect(mockOnWorkflowUpdate).toHaveBeenCalled()
     expect(mockOnSyncRequest).toHaveBeenCalled()
 
-    collaborationListeners.syncRequest?.()
-    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalled()
+    const acknowledge = vi.fn()
+    collaborationListeners.syncRequest?.({ requestId: 'request-1', acknowledge })
+    expect(mockRefreshGraphSynchronously).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledWith(false, undefined, {
+        forceLocal: true,
+      })
+      expect(acknowledge).toHaveBeenCalledWith({
+        success: true,
+        hash: 'saved-hash',
+        updatedAt: 2,
+      })
+    })
 
     await collaborationListeners.varsAndFeaturesUpdate?.({})
     await collaborationListeners.workflowUpdate?.()
@@ -534,6 +595,55 @@ describe('WorkflowMain', () => {
     })
   })
 
+  it('reloads the HTTP draft before trusting a reconnected leader document', async () => {
+    collaborationRuntime.isEnabled = true
+    const request = { generation: 2, token: 1, attempt: 0 }
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    await collaborationListeners.graphReloadRequired?.(request)
+
+    expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
+      shouldApply: expect.any(Function),
+    })
+    expect(mockReplaceGraphFromReactFlow).toHaveBeenCalledWith(request)
+  })
+
+  it('rejects a directed save without importing an untrusted CRDT graph', () => {
+    collaborationRuntime.isEnabled = true
+    mockCanPersistLocalGraph.mockReturnValue(false)
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    const acknowledge = vi.fn()
+    collaborationListeners.syncRequest?.({ requestId: 'request-untrusted', acknowledge })
+
+    expect(acknowledge).toHaveBeenCalledWith({
+      success: false,
+      error: 'Collaborative graph is not ready to save.',
+    })
+    expect(mockRefreshGraphSynchronously).not.toHaveBeenCalled()
+    expect(hookFns.doSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('retries an authoritative graph reload after a transient fetch failure', async () => {
+    vi.useFakeTimers()
+    try {
+      collaborationRuntime.isEnabled = true
+      hookFns.handleRefreshWorkflowDraft.mockResolvedValue(false)
+      const request = { generation: 2, token: 1, attempt: 0 }
+
+      render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+      await collaborationListeners.graphReloadRequired?.(request)
+
+      expect(mockRetryGraphReload).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1000)
+      expect(mockRetryGraphReload).toHaveBeenCalledWith(request)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('restores a local start placeholder for empty collaboration workflow updates', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -547,13 +657,7 @@ describe('WorkflowMain', () => {
       },
     })
 
-    render(
-      <WorkflowMain
-        nodes={[]}
-        edges={[]}
-        viewport={{ x: 0, y: 0, zoom: 1 }}
-      />,
-    )
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
 
     await collaborationListeners.workflowUpdate?.()
 

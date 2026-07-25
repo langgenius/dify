@@ -50,7 +50,9 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="password"]')) as [HTMLInputElement, HTMLInputElement]
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
+      ) as [HTMLInputElement, HTMLInputElement]
       fireEvent.change(inputs[0], { target: { value: VALID_PASSWORD } })
       fireEvent.change(inputs[1], { target: { value: VALID_PASSWORD } })
 
@@ -80,7 +82,9 @@ describe('ChangePasswordForm', () => {
     it('shows invalid token state and no form', () => {
       render(<ChangePasswordForm />)
       expect(screen.getByText('login.invalid')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /common\.operation\.reset/ })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /common\.operation\.reset/ }),
+      ).not.toBeInTheDocument()
     })
   })
 })

@@ -13,6 +13,7 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType, WorkflowNodeExecutionStatus
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.filters import ResponseStreamFilter
 from graphon.graph import Graph
 from graphon.graph_events import GraphRunFailedEvent
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMUsage
@@ -241,6 +242,37 @@ class TestWorkflowChildEngineBuilder:
         )
 
 
+def _build_minimal_workflow_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    response_stream_filter: ResponseStreamFilter | None = None,
+) -> workflow_entry.WorkflowEntry:
+    """Construct a minimal WorkflowEntry with GraphEngine construction mocked out."""
+    graph_engine = MagicMock()
+    graph_runtime_state = SimpleNamespace(execution_context=None)
+
+    monkeypatch.setattr(workflow_entry, "capture_current_context", lambda: sentinel.execution_context)
+    monkeypatch.setattr(workflow_entry, "GraphEngine", MagicMock(return_value=graph_engine))
+    monkeypatch.setattr(workflow_entry, "GraphEngineConfig", MagicMock(return_value=sentinel.graph_engine_config))
+    monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
+    monkeypatch.setattr(workflow_entry, "LLMQuotaLayer", MagicMock(return_value=sentinel.llm_quota_layer))
+
+    return workflow_entry.WorkflowEntry(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        workflow_id="workflow-id",
+        graph_config={"nodes": [], "edges": []},
+        graph=sentinel.graph,
+        user_id="user-id",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+        variable_pool=sentinel.variable_pool,
+        graph_runtime_state=graph_runtime_state,
+        response_stream_filter=response_stream_filter,
+    )
+
+
 class TestWorkflowEntryInit:
     def test_rejects_call_depth_above_limit(self):
         call_depth = workflow_entry.dify_config.WORKFLOW_CALL_MAX_DEPTH + 1
@@ -329,12 +361,24 @@ class TestWorkflowEntryInit:
             ((observability_layer,), {}),
         ]
 
+    def test_workflow_entry_stores_supplied_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        supplied_filter = ResponseStreamFilter()
+        entry = _build_minimal_workflow_entry(monkeypatch, response_stream_filter=supplied_filter)
+
+        assert entry._response_stream_filter is supplied_filter
+
+    def test_workflow_entry_defaults_to_fresh_response_stream_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        entry = _build_minimal_workflow_entry(monkeypatch, response_stream_filter=None)
+
+        assert isinstance(entry._response_stream_filter, ResponseStreamFilter)
+
 
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
+        entry._response_stream_filter = ResponseStreamFilter()
 
         assert list(entry.run()) == []
 
@@ -373,6 +417,7 @@ class TestWorkflowEntryRun:
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = sentinel.graph_engine
+        entry._response_stream_filter = sentinel.response_stream_filter
 
         with patch.object(
             workflow_entry,
@@ -382,12 +427,13 @@ class TestWorkflowEntryRun:
             events = list(entry.run())
 
         assert events == [sentinel.filtered_event]
-        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine)
+        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine, sentinel.response_stream_filter)
 
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
         entry.graph_engine.run.side_effect = RuntimeError("boom")
+        entry._response_stream_filter = ResponseStreamFilter()
 
         events = list(entry.run())
 

@@ -1,8 +1,5 @@
 import type { SnippetWorkflow } from '@/types/snippet'
-import {
-  renderHook,
-  waitFor,
-} from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSnippetInit } from '../use-snippet-init'
 
@@ -37,8 +34,12 @@ vi.mock('@/service/use-snippets', async (importOriginal) => {
 
 vi.mock('@/service/use-snippet-workflows', () => ({
   fetchSnippetDraftWorkflow: (snippetId: string) => mockFetchSnippetDraftWorkflow(snippetId),
-  useSnippetDefaultBlockConfigs: (snippetId: string, onSuccess?: (data: unknown) => void) => mockUseSnippetDefaultBlockConfigs(snippetId, onSuccess),
-  useSnippetPublishedWorkflow: (snippetId: string, onSuccess?: (data: { created_at: number }) => void) => mockUseSnippetPublishedWorkflow(snippetId, onSuccess),
+  useSnippetDefaultBlockConfigs: (snippetId: string, onSuccess?: (data: unknown) => void) =>
+    mockUseSnippetDefaultBlockConfigs(snippetId, onSuccess),
+  useSnippetPublishedWorkflow: (
+    snippetId: string,
+    onSuccess?: (data: { created_at: number }) => void,
+  ) => mockUseSnippetPublishedWorkflow(snippetId, onSuccess),
 }))
 
 const createDraftWorkflow = (overrides: Partial<SnippetWorkflow> = {}): SnippetWorkflow => ({
@@ -124,16 +125,18 @@ describe('useSnippetInit', () => {
       error: null,
       isLoading: false,
     })
-    mockFetchSnippetDraftWorkflow.mockResolvedValue(createDraftWorkflow({
-      input_fields: [
-        {
-          label: 'Draft field',
-          variable: 'draft_field',
-          type: 'text-input',
-          required: true,
-        },
-      ],
-    }))
+    mockFetchSnippetDraftWorkflow.mockResolvedValue(
+      createDraftWorkflow({
+        input_fields: [
+          {
+            label: 'Draft field',
+            variable: 'draft_field',
+            type: 'text-input',
+            required: true,
+          },
+        ],
+      }),
+    )
 
     const { result } = renderHook(() => useSnippetInit('snippet-1'))
 
@@ -152,15 +155,17 @@ describe('useSnippetInit', () => {
   })
 
   it('should sync draft metadata before returning initialized data', async () => {
-    mockFetchSnippetDraftWorkflow.mockResolvedValue(createDraftWorkflow({
-      hash: 'fetched-draft-hash',
-      updated_at: 1_712_345_678,
-      graph: {
-        nodes: [{ id: 'node-1' }],
-        edges: [],
-        viewport: { x: 10, y: 20, zoom: 1.2 },
-      },
-    }))
+    mockFetchSnippetDraftWorkflow.mockResolvedValue(
+      createDraftWorkflow({
+        hash: 'fetched-draft-hash',
+        updated_at: 1_712_345_678,
+        graph: {
+          nodes: [{ id: 'node-1' }],
+          edges: [],
+          viewport: { x: 10, y: 20, zoom: 1.2 },
+        },
+      }),
+    )
 
     const { result } = renderHook(() => useSnippetInit('snippet-1'))
 
@@ -207,15 +212,17 @@ describe('useSnippetInit', () => {
         })
       }
 
-      return Promise.resolve(createDraftWorkflow({
-        id: 'draft-2',
-        hash: 'snippet-2-hash',
-        graph: {
-          nodes: [{ id: 'snippet-2-node' }],
-          edges: [],
-          viewport: { x: 2, y: 2, zoom: 1 },
-        },
-      }))
+      return Promise.resolve(
+        createDraftWorkflow({
+          id: 'draft-2',
+          hash: 'snippet-2-hash',
+          graph: {
+            nodes: [{ id: 'snippet-2-node' }],
+            edges: [],
+            viewport: { x: 2, y: 2, zoom: 1 },
+          },
+        }),
+      )
     })
 
     const { result, rerender } = renderHook(({ snippetId }) => useSnippetInit(snippetId), {
@@ -228,14 +235,16 @@ describe('useSnippetInit', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    resolveFirstDraft(createDraftWorkflow({
-      hash: 'stale-snippet-1-hash',
-      graph: {
-        nodes: [{ id: 'stale-node' }],
-        edges: [],
-        viewport: { x: 1, y: 1, zoom: 1 },
-      },
-    }))
+    resolveFirstDraft(
+      createDraftWorkflow({
+        hash: 'stale-snippet-1-hash',
+        graph: {
+          nodes: [{ id: 'stale-node' }],
+          edges: [],
+          viewport: { x: 1, y: 1, zoom: 1 },
+        },
+      }),
+    )
     await Promise.resolve()
 
     expect(result.current.data?.draft.graph.nodes).toEqual([{ id: 'snippet-2-node' }])
@@ -244,13 +253,15 @@ describe('useSnippetInit', () => {
   })
 
   it('should normalize array default block configs into workflow store state', () => {
-    mockUseSnippetDefaultBlockConfigs.mockImplementation((_snippetId: string, onSuccess?: (data: unknown) => void) => {
-      onSuccess?.([
-        { type: 'llm', config: { model: 'gpt-4.1' } },
-        { type: 'code', config: { language: 'python3' } },
-      ])
-      return { data: undefined, isLoading: false }
-    })
+    mockUseSnippetDefaultBlockConfigs.mockImplementation(
+      (_snippetId: string, onSuccess?: (data: unknown) => void) => {
+        onSuccess?.([
+          { type: 'llm', config: { model: 'gpt-4.1' } },
+          { type: 'code', config: { language: 'python3' } },
+        ])
+        return { data: undefined, isLoading: false }
+      },
+    )
 
     renderHook(() => useSnippetInit('snippet-1'))
 
@@ -263,12 +274,14 @@ describe('useSnippetInit', () => {
   })
 
   it('should keep object default block configs as-is', () => {
-    mockUseSnippetDefaultBlockConfigs.mockImplementation((_snippetId: string, onSuccess?: (data: unknown) => void) => {
-      onSuccess?.({
-        llm: { model: 'gpt-4.1' },
-      })
-      return { data: undefined, isLoading: false }
-    })
+    mockUseSnippetDefaultBlockConfigs.mockImplementation(
+      (_snippetId: string, onSuccess?: (data: unknown) => void) => {
+        onSuccess?.({
+          llm: { model: 'gpt-4.1' },
+        })
+        return { data: undefined, isLoading: false }
+      },
+    )
 
     renderHook(() => useSnippetInit('snippet-1'))
 
@@ -280,12 +293,14 @@ describe('useSnippetInit', () => {
   })
 
   it('should sync published created_at into workflow store', () => {
-    mockUseSnippetPublishedWorkflow.mockImplementation((_snippetId: string, onSuccess?: (data: { created_at: number }) => void) => {
-      onSuccess?.({
-        created_at: 1_712_345_678,
-      })
-      return { data: { created_at: 1_712_345_678 }, isLoading: false }
-    })
+    mockUseSnippetPublishedWorkflow.mockImplementation(
+      (_snippetId: string, onSuccess?: (data: { created_at: number }) => void) => {
+        onSuccess?.({
+          created_at: 1_712_345_678,
+        })
+        return { data: { created_at: 1_712_345_678 }, isLoading: false }
+      },
+    )
 
     renderHook(() => useSnippetInit('snippet-1'))
 

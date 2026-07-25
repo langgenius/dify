@@ -33,9 +33,7 @@ const SideBar = () => {
   const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
-  const [isFold, {
-    toggle: toggleIsFold,
-  }] = useBoolean(false)
+  const [isFold, { toggle: toggleIsFold }] = useBoolean(false)
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
@@ -43,103 +41,134 @@ const SideBar = () => {
     const id = currId
     await uninstallApp(id)
     setShowConfirm(false)
-    toast.success(t('api.remove', { ns: 'common' }))
+    toast.success(t(($) => $['api.remove'], { ns: 'common' }))
   }
 
   const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
     await updatePinStatus({ appId: id, isPinned })
-    toast.success(t('api.success', { ns: 'common' }))
+    toast.success(t(($) => $['api.success'], { ns: 'common' }))
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   const webAppsLabelId = React.useId()
-  const installedAppItems = installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
-    <React.Fragment key={id}>
-      <Item
-        name={name}
-        icon_type={icon_type}
-        icon={icon}
-        icon_background={icon_background}
-        icon_url={icon_url}
-        id={id}
-        isSelected={lastSegment?.toLowerCase() === id}
-        isPinned={is_pinned}
-        togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
-        uninstallable={uninstallable}
-        onDelete={(id) => {
-          setCurrId(id)
-          setShowConfirm(true)
-        }}
-      />
-      {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
-    </React.Fragment>
-  ))
+  const installedAppItems = installedApps.map(
+    (
+      { id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } },
+      index,
+    ) => (
+      <React.Fragment key={id}>
+        <Item
+          name={name}
+          icon_type={icon_type}
+          icon={icon}
+          icon_background={icon_background}
+          icon_url={icon_url}
+          id={id}
+          isSelected={lastSegment?.toLowerCase() === id}
+          isPinned={is_pinned}
+          togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
+          uninstallable={uninstallable}
+          onDelete={(id) => {
+            setCurrId(id)
+            setShowConfirm(true)
+          }}
+        />
+        {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
+      </React.Fragment>
+    ),
+  )
 
   return (
     <div
       data-folded={isFold ? 'true' : undefined}
-      className={cn('group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}
+      className={cn(
+        'group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]',
+        isFold && 'sm:w-[56px]',
+      )}
     >
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/"
-          aria-label={isFold ? t('sidebar.title', { ns: 'explore' }) : undefined}
-          className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 w-full items-center justify-start gap-2 rounded-lg px-1')}
+          aria-label={isFold ? t(($) => $['sidebar.title'], { ns: 'explore' }) : undefined}
+          className={cn(
+            isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover',
+            'flex h-8 w-full items-center justify-start gap-2 rounded-lg px-1',
+          )}
         >
           <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-            <span aria-hidden="true" className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
+            <span
+              aria-hidden="true"
+              className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100"
+            />
           </div>
-          {!isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
+          {!isFold && (
+            <div
+              className={cn(
+                'truncate',
+                isDiscoverySelected
+                  ? 'system-sm-semibold text-components-menu-item-text-active'
+                  : 'system-sm-regular text-components-menu-item-text',
+              )}
+            >
+              {t(($) => $['sidebar.title'], { ns: 'explore' })}
+            </div>
+          )}
         </Link>
       </div>
 
-      {!isPending && installedApps.length === 0 && !isFold
-        && (
-          <div className="mt-5">
-            <NoApps />
-          </div>
-        )}
+      {!isPending && installedApps.length === 0 && !isFold && (
+        <div className="mt-5">
+          <NoApps />
+        </div>
+      )}
 
       {installedApps.length > 0 && (
         <div className="mt-5 flex min-h-0 flex-1 flex-col">
-          {!isFold && <p id={webAppsLabelId} className="mb-1.5 pl-2 system-xs-medium-uppercase break-all text-text-tertiary uppercase">{t('sidebar.webApps', { ns: 'explore' })}</p>}
-          {!isFold
-            ? (
-                <div className="min-h-0 flex-1">
-                  <ScrollArea
-                    className="h-full"
-                    slotClassNames={{
-                      viewport: 'overscroll-contain',
-                      content: 'space-y-0.5 pr-3',
-                    }}
-                    labelledBy={webAppsLabelId}
-                  >
-                    {installedAppItems}
-                  </ScrollArea>
-                </div>
-              )
-            : (
-                <div
-                  className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto"
-                >
-                  {installedAppItems}
-                </div>
-              )}
+          {!isFold && (
+            <p
+              id={webAppsLabelId}
+              className="mb-1.5 pl-2 system-xs-medium-uppercase break-all text-text-tertiary uppercase"
+            >
+              {t(($) => $['sidebar.webApps'], { ns: 'explore' })}
+            </p>
+          )}
+          {!isFold ? (
+            <div className="min-h-0 flex-1">
+              <ScrollArea
+                className="h-full"
+                slotClassNames={{
+                  viewport: 'overscroll-contain',
+                  content: 'space-y-0.5 pr-3',
+                }}
+                labelledBy={webAppsLabelId}
+              >
+                {installedAppItems}
+              </ScrollArea>
+            </div>
+          ) : (
+            <div className="h-full min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto">
+              {installedAppItems}
+            </div>
+          )}
         </div>
       )}
 
       <div className="mt-auto flex py-3">
         <button
           type="button"
-          aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
+          aria-label={
+            isFold
+              ? t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })
+              : t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })
+          }
           className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden"
           onClick={toggleIsFold}
         >
-          {isFold
-            ? <span aria-hidden="true" className="i-ri-expand-right-line" />
-            : (
-                <span aria-hidden="true" className="i-ri-layout-left-2-line" />
-              )}
+          {isFold ? (
+            <span aria-hidden="true" className="i-ri-expand-right-line" />
+          ) : (
+            <span aria-hidden="true" className="i-ri-layout-left-2-line" />
+          )}
         </button>
       </div>
 
@@ -147,18 +176,22 @@ const SideBar = () => {
         <AlertDialogContent>
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-              {t('sidebar.delete.title', { ns: 'explore' })}
+              {t(($) => $['sidebar.delete.title'], { ns: 'explore' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('sidebar.delete.content', { ns: 'explore' })}
+              {t(($) => $['sidebar.delete.content'], { ns: 'explore' })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton disabled={isUninstalling}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isUninstalling} disabled={isUninstalling} onClick={handleDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+            <AlertDialogConfirmButton
+              loading={isUninstalling}
+              disabled={isUninstalling}
+              onClick={handleDelete}
+            >
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -13,12 +13,9 @@ type SubmittedFieldValuesProps = {
   values: Record<string, HumanInputFormValue>
 }
 
-const SubmittedFieldValues = ({
-  fields,
-  values,
-}: SubmittedFieldValuesProps) => {
-  const fieldNames = fields?.map(field => field.output_variable_name) ?? Object.keys(values)
-  const fieldMap = new Map(fields?.map(field => [field.output_variable_name, field]) ?? [])
+const SubmittedFieldValues = ({ fields, values }: SubmittedFieldValuesProps) => {
+  const fieldNames = fields?.map((field) => field.output_variable_name) ?? Object.keys(values)
+  const fieldMap = new Map(fields?.map((field) => [field.output_variable_name, field]) ?? [])
 
   return (
     <div className="flex flex-col gap-3" data-testid="submitted-field-values">
@@ -26,24 +23,17 @@ const SubmittedFieldValues = ({
         const field = fieldMap.get(fieldName)
         const value = values[fieldName]
 
-        if (value == null)
-          return null
+        if (value == null) return null
 
         let valueKind: 'text' | 'file' | 'file-list' = 'text'
-        if (field && isFileFormInput(field))
-          valueKind = 'file'
-        else if (field && isFileListFormInput(field))
-          valueKind = 'file-list'
-        else if (typeof value === 'string')
-          valueKind = 'text'
-        else if (Array.isArray(value))
-          valueKind = 'file-list'
-        else
-          valueKind = 'file'
+        if (field && isFileFormInput(field)) valueKind = 'file'
+        else if (field && isFileListFormInput(field)) valueKind = 'file-list'
+        else if (typeof value === 'string') valueKind = 'text'
+        else if (Array.isArray(value)) valueKind = 'file-list'
+        else valueKind = 'file'
 
         if (valueKind === 'file') {
-          if (typeof value === 'string' || Array.isArray(value))
-            return null
+          if (typeof value === 'string' || Array.isArray(value)) return null
 
           return (
             <div key={fieldName} data-testid={`submitted-field-${fieldName}`}>
@@ -57,8 +47,7 @@ const SubmittedFieldValues = ({
         }
 
         if (valueKind === 'file-list') {
-          if (typeof value === 'string' || !Array.isArray(value))
-            return null
+          if (typeof value === 'string' || !Array.isArray(value)) return null
 
           return (
             <div key={fieldName} data-testid={`submitted-field-${fieldName}`}>

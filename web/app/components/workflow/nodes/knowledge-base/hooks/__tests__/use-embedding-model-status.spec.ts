@@ -11,9 +11,12 @@ import { useEmbeddingModelStatus } from '../use-embedding-model-status'
 const mockUseCredentialPanelState = vi.hoisted(() => vi.fn())
 const mockUseProviderContext = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: mockUseCredentialPanelState,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
+  () => ({
+    useCredentialPanelState: mockUseCredentialPanelState,
+  }),
+)
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: mockUseProviderContext,
@@ -23,9 +26,11 @@ describe('useEmbeddingModelStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseProviderContext.mockReturnValue({
-      modelProviders: [createProviderMeta({
-        supported_model_types: [ModelTypeEnum.textEmbedding],
-      })],
+      modelProviders: [
+        createProviderMeta({
+          supported_model_types: [ModelTypeEnum.textEmbedding],
+        }),
+      ],
     })
     mockUseCredentialPanelState.mockReturnValue(createCredentialState())
   })
@@ -35,11 +40,13 @@ describe('useEmbeddingModelStatus', () => {
     it('should return the matched provider, current model, and active status', () => {
       const embeddingModelList = [createModel()]
 
-      const { result } = renderHook(() => useEmbeddingModelStatus({
-        embeddingModel: 'text-embedding-3-large',
-        embeddingModelProvider: 'openai',
-        embeddingModelList,
-      }))
+      const { result } = renderHook(() =>
+        useEmbeddingModelStatus({
+          embeddingModel: 'text-embedding-3-large',
+          embeddingModelProvider: 'openai',
+          embeddingModelList,
+        }),
+      )
 
       expect(result.current.providerMeta?.provider).toBe('openai')
       expect(result.current.modelProvider?.provider).toBe('openai')
@@ -54,11 +61,13 @@ describe('useEmbeddingModelStatus', () => {
         }),
       ]
 
-      const { result } = renderHook(() => useEmbeddingModelStatus({
-        embeddingModel: 'text-embedding-3-large',
-        embeddingModelProvider: 'openai',
-        embeddingModelList,
-      }))
+      const { result } = renderHook(() =>
+        useEmbeddingModelStatus({
+          embeddingModel: 'text-embedding-3-large',
+          embeddingModelProvider: 'openai',
+          embeddingModelList,
+        }),
+      )
 
       expect(result.current.providerMeta?.provider).toBe('openai')
       expect(result.current.currentModel).toBeUndefined()
@@ -66,11 +75,13 @@ describe('useEmbeddingModelStatus', () => {
     })
 
     it('should return empty when no embedding model is configured', () => {
-      const { result } = renderHook(() => useEmbeddingModelStatus({
-        embeddingModel: undefined,
-        embeddingModelProvider: undefined,
-        embeddingModelList: [],
-      }))
+      const { result } = renderHook(() =>
+        useEmbeddingModelStatus({
+          embeddingModel: undefined,
+          embeddingModelProvider: undefined,
+          embeddingModelList: [],
+        }),
+      )
 
       expect(result.current.providerMeta).toBeUndefined()
       expect(result.current.modelProvider).toBeUndefined()

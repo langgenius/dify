@@ -1,64 +1,55 @@
 import type { IterationNodeType } from './types'
-import type {
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { RiAddLine } from '@remixicon/react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '../../hooks'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useAvailableBlocks, useNodesInteractions, useNodesReadOnly } from '../../hooks'
 
 type AddBlockProps = {
   iterationNodeId: string
   iterationNodeData: IterationNodeType
 }
-const AddBlock = ({
-  iterationNodeData,
-}: AddBlockProps) => {
+const AddBlock = ({ iterationNodeData }: AddBlockProps) => {
   const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeAdd } = useNodesInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
 
-  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
-    handleNodeAdd(
-      {
-        nodeType: type,
-        pluginDefaultValue,
-      },
-      {
-        prevNodeId: iterationNodeData.start_node_id,
-        prevNodeSourceHandle: 'source',
-      },
-    )
-  }, [handleNodeAdd, iterationNodeData.start_node_id])
+  const handleSelect = useCallback<OnSelectBlock>(
+    (type, pluginDefaultValue) => {
+      handleNodeAdd(
+        {
+          nodeType: type,
+          pluginDefaultValue,
+        },
+        {
+          prevNodeId: iterationNodeData.start_node_id,
+          prevNodeSourceHandle: 'source',
+        },
+      )
+    },
+    [handleNodeAdd, iterationNodeData.start_node_id],
+  )
 
-  const renderTriggerElement = useCallback((open: boolean) => {
-    return (
-      <div className={cn(
-        'relative inline-flex h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover',
-        `${nodesReadOnly && 'cursor-not-allowed! bg-components-button-secondary-bg-disabled'}`,
-        open && 'bg-components-button-secondary-bg-hover',
-      )}
-      >
-        <RiAddLine className="mr-1 size-4" />
-        {t('common.addBlock', { ns: 'workflow' })}
-      </div>
-    )
-  }, [nodesReadOnly, t])
+  const renderTriggerElement = useCallback(
+    (open: boolean) => {
+      return (
+        <Button
+          variant="secondary"
+          size="medium"
+          className={cn('relative', open && 'bg-components-button-secondary-bg-hover')}
+        >
+          <RiAddLine aria-hidden className="mr-1 size-4" />
+          {t(($) => $['common.addBlock'], { ns: 'workflow' })}
+        </Button>
+      )
+    },
+    [nodesReadOnly, t],
+  )
 
   return (
     <div className="absolute top-7 left-14 z-10 flex h-8 items-center">
@@ -73,7 +64,6 @@ const AddBlock = ({
           prevNodeSourceHandle: 'source',
         }}
         trigger={renderTriggerElement}
-        triggerInnerClassName="inline-flex"
         popupClassName="min-w-[256px]!"
         availableBlocksTypes={availableNextBlocks}
       />

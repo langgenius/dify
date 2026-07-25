@@ -1,8 +1,9 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
+import { render } from '@/test/console/render'
 import { TagManagementModal } from '../components/tag-management-modal'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
@@ -36,7 +37,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
@@ -44,11 +45,12 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -58,7 +60,11 @@ vi.mock('@/service/client', () => ({
       },
       post: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' | 'snippet' } }) => createTag(body.name, body.type),
+          mutationFn: ({
+            body,
+          }: {
+            body: { name: string; type: 'app' | 'knowledge' | 'snippet' }
+          }) => createTag(body.name, body.type),
         }),
       },
       byTagId: {
@@ -101,8 +107,17 @@ describe('TagManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
-    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: '' })
+    mockWorkspacePermissionKeys.value = [
+      'app.tag.manage',
+      'dataset.tag.manage',
+      'snippets.create_and_modify',
+    ]
+    vi.mocked(createTag).mockResolvedValue({
+      id: 'new-tag',
+      name: 'NewTag',
+      type: 'app',
+      binding_count: '',
+    })
   })
 
   describe('Rendering', () => {
@@ -279,7 +294,12 @@ describe('TagManagementModal', () => {
 
     it('should handle tag creation with knowledge type', async () => {
       const user = userEvent.setup()
-      vi.mocked(createTag).mockResolvedValue({ id: 'new-k', name: 'KnowledgeTag', type: 'knowledge', binding_count: '' })
+      vi.mocked(createTag).mockResolvedValue({
+        id: 'new-k',
+        name: 'KnowledgeTag',
+        type: 'knowledge',
+        binding_count: '',
+      })
 
       render(<TagManagementModal {...defaultProps} type="knowledge" />)
 

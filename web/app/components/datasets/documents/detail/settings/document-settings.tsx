@@ -22,7 +22,11 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useRouter } from '@/next/navigation'
-import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import {
+  useDocumentDetail,
+  useInvalidDocumentDetail,
+  useInvalidDocumentList,
+} from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -58,7 +62,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const dataSourceInfo = documentDetail?.data_source_info
 
   // Type guards for DataSourceInfo union
-  const isLegacyDataSourceInfo = (info: DataSourceInfo | undefined): info is LegacyDataSourceInfo => {
+  const isLegacyDataSourceInfo = (
+    info: DataSourceInfo | undefined,
+  ): info is LegacyDataSourceInfo => {
     return !!info && 'upload_file' in info
   }
   const isWebsiteCrawlInfo = (info: DataSourceInfo | undefined): info is WebsiteCrawlInfo => {
@@ -105,10 +111,12 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const files = useMemo<CustomFile[]>(() => {
     // Handle upload_file_id format
     if (uploadFileIdInfo) {
-      return [{
-        id: uploadFileIdInfo.upload_file_id,
-        name: documentDetail?.name || '',
-      } as unknown as CustomFile]
+      return [
+        {
+          id: uploadFileIdInfo.upload_file_id,
+          name: documentDetail?.name || '',
+        } as unknown as CustomFile,
+      ]
     }
 
     // Handle legacy upload_file format
@@ -119,36 +127,50 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     // Handle local file info format
     if (localFileInfo) {
       const { related_id, name, extension } = localFileInfo
-      return [{
-        id: related_id,
-        name,
-        extension,
-      } as unknown as CustomFile]
+      return [
+        {
+          id: related_id,
+          name,
+          extension,
+        } as unknown as CustomFile,
+      ]
     }
 
     return []
   }, [uploadFileIdInfo, legacyInfo?.upload_file, localFileInfo, documentDetail?.name])
 
   const websitePages = useMemo(() => {
-    if (!websiteInfo)
-      return []
-    return [{
-      title: websiteInfo.title,
-      source_url: websiteInfo.source_url,
-      markdown: websiteInfo.content,
-      description: websiteInfo.description,
-    }]
+    if (!websiteInfo) return []
+    return [
+      {
+        title: websiteInfo.title,
+        source_url: websiteInfo.source_url,
+        markdown: websiteInfo.content,
+        description: websiteInfo.description,
+      },
+    ]
   }, [websiteInfo])
 
-  const crawlOptions = (dataSourceInfo && typeof dataSourceInfo === 'object' && 'includes' in dataSourceInfo && 'excludes' in dataSourceInfo)
-    ? dataSourceInfo as unknown as CrawlOptions
-    : undefined
+  const crawlOptions =
+    dataSourceInfo &&
+    typeof dataSourceInfo === 'object' &&
+    'includes' in dataSourceInfo &&
+    'excludes' in dataSourceInfo
+      ? (dataSourceInfo as unknown as CrawlOptions)
+      : undefined
 
-  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as DataSourceProvider | undefined
+  const websiteCrawlProvider = (websiteInfo?.provider ?? legacyInfo?.provider) as
+    | DataSourceProvider
+    | undefined
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return (
+      <AppUnavailable
+        code={500}
+        unknownReason={t(($) => $['error.unavailable'], { ns: 'datasetCreation' }) as string}
+      />
+    )
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
@@ -161,7 +183,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type as DataSourceType}
             notionPages={currentPage ? [currentPage as unknown as NotionPage] : []}
-            notionCredentialId={legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''}
+            notionCredentialId={
+              legacyInfo?.credential_id || onlineDocumentInfo?.credential_id || ''
+            }
             websitePages={websitePages}
             websiteCrawlProvider={websiteCrawlProvider}
             websiteCrawlJobId={websiteCrawlJobId || ''}

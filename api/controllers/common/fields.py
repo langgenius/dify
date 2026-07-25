@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, computed_field
 
@@ -50,6 +50,11 @@ class AudioBinaryResponse(RootModel[bytes]):
 
 class AudioTranscriptResponse(ResponseModel):
     text: str
+
+
+class ValidationResultResponse(ResponseModel):
+    result: Literal["success", "error"]
+    error: str | None = None
 
 
 class SimpleResultMessageResponse(ResponseModel):

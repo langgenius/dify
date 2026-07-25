@@ -5,7 +5,9 @@
             "name": "Python: API (gevent)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/api/app.py",
+            "module": "gevent.monkey",
+            "args": ["--module", "app"],
+            "gevent": true,
             "jinja": true,
             "justMyCode": true,
             "cwd": "${workspaceFolder}/api",
@@ -33,22 +35,6 @@
             "justMyCode": false,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
-        },
-        {
-            "name": "Next.js: debug full stack",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/web/node_modules/next/dist/bin/next",
-            "runtimeArgs": ["--inspect"],
-            "skipFiles": ["<node_internals>/**"],
-            "serverReadyAction": {
-              "action": "debugWithChrome",
-              "killOnServerStop": true,
-              "pattern": "- Local:.+(https?://.+)",
-              "uriFormat": "%s",
-              "webRoot": "${workspaceFolder}/web"
-            },
-            "cwd": "${workspaceFolder}/web"
-          }
+        }
     ]
 }

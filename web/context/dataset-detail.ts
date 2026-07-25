@@ -6,13 +6,17 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 type DatasetDetailContextValue = {
   indexingTechnique?: IndexingType
   dataset?: DataSet
-  mutateDatasetRes?: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<DataSet, Error>>
+  mutateDatasetRes?: (
+    options?: RefetchOptions | undefined,
+  ) => Promise<QueryObserverResult<DataSet, Error>>
 }
 const DatasetDetailContext = createContext<DatasetDetailContextValue>({})
 
 export const useDatasetDetailContext = () => useContext(DatasetDetailContext)
 
-export const useDatasetDetailContextWithSelector = <T>(selector: (value: DatasetDetailContextValue) => T): T => {
+export const useDatasetDetailContextWithSelector = <T>(
+  selector: (value: DatasetDetailContextValue) => T,
+): T => {
   return useContextSelector(DatasetDetailContext, selector)
 }
 export default DatasetDetailContext

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 from pytest_mock import MockerFixture
 
 from core.helper.marketplace import (
@@ -51,6 +52,16 @@ def test_batch_fetch_plugin_by_ids_returns_plugins_from_response(mocker: MockerF
     assert plugins == [{"id": "p1"}]
     post_mock.assert_called_once()
     response.raise_for_status.assert_called_once()
+
+
+def test_batch_fetch_plugin_by_ids_rejects_invalid_plugins_response(mocker: MockerFixture) -> None:
+    response = MagicMock()
+    response.json.return_value = {"data": {"plugins": ["p1"]}}
+    response.raise_for_status.return_value = None
+    mocker.patch("core.helper.marketplace.httpx.post", return_value=response)
+
+    with pytest.raises(ValueError, match="plugins list"):
+        batch_fetch_plugin_by_ids(["p1"])
 
 
 def test_batch_fetch_plugin_manifests_returns_empty_for_empty_input(mocker: MockerFixture) -> None:

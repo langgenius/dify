@@ -16,8 +16,10 @@ const NAME_SPACE = 'workspace-access-rules'
 type WorkspaceAccessRulesQueryParams = Omit<WorkspaceAccessRulesRequest, 'page'>
 
 const workspaceAccessRulesQueryKeys = {
-  app: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'app', params] as const : [NAME_SPACE, 'app'] as const,
-  dataset: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'dataset', params] as const : [NAME_SPACE, 'dataset'] as const,
+  app: (params?: WorkspaceAccessRulesQueryParams) =>
+    params ? ([NAME_SPACE, 'app', params] as const) : ([NAME_SPACE, 'app'] as const),
+  dataset: (params?: WorkspaceAccessRulesQueryParams) =>
+    params ? ([NAME_SPACE, 'dataset', params] as const) : ([NAME_SPACE, 'dataset'] as const),
 }
 
 export const useInfiniteWorkspaceAppAccessRules = (params: WorkspaceAccessRulesRequest = {}) => {
@@ -25,41 +27,46 @@ export const useInfiniteWorkspaceAppAccessRules = (params: WorkspaceAccessRulesR
 
   return useInfiniteQuery({
     queryKey: workspaceAccessRulesQueryKeys.app(queryParams),
-    queryFn: ({ pageParam }) => get<GetAppAccessPoliciesResponse>('/workspaces/current/rbac/workspace/apps/access-policy', {
-      params: {
-        ...queryParams,
-        page: pageParam,
-      },
-    }),
+    queryFn: ({ pageParam }) =>
+      get<GetAppAccessPoliciesResponse>('/workspaces/current/rbac/workspace/apps/access-policy', {
+        params: {
+          ...queryParams,
+          page: pageParam,
+        },
+      }),
     initialPageParam: page,
     getNextPageParam: (lastPage) => {
       const { current_page, total_pages } = lastPage.pagination
 
-      if (current_page < total_pages)
-        return current_page + 1
+      if (current_page < total_pages) return current_page + 1
 
       return undefined
     },
   })
 }
 
-export const useInfiniteWorkspaceDatasetAccessRules = (params: WorkspaceAccessRulesRequest = {}) => {
+export const useInfiniteWorkspaceDatasetAccessRules = (
+  params: WorkspaceAccessRulesRequest = {},
+) => {
   const { page = 1, ...queryParams } = params
 
   return useInfiniteQuery({
     queryKey: workspaceAccessRulesQueryKeys.dataset(queryParams),
-    queryFn: ({ pageParam }) => get<GetDatasetAccessPoliciesResponse>('/workspaces/current/rbac/workspace/datasets/access-policy', {
-      params: {
-        ...queryParams,
-        page: pageParam,
-      },
-    }),
+    queryFn: ({ pageParam }) =>
+      get<GetDatasetAccessPoliciesResponse>(
+        '/workspaces/current/rbac/workspace/datasets/access-policy',
+        {
+          params: {
+            ...queryParams,
+            page: pageParam,
+          },
+        },
+      ),
     initialPageParam: page,
     getNextPageParam: (lastPage) => {
       const { current_page, total_pages } = lastPage.pagination
 
-      if (current_page < total_pages)
-        return current_page + 1
+      if (current_page < total_pages) return current_page + 1
 
       return undefined
     },
@@ -83,7 +90,12 @@ export const useCreateAccessRule = () => {
       })
     },
     onSuccess: (_, { resourceType }) => {
-      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
+      queryClient.invalidateQueries({
+        queryKey:
+          resourceType === 'app'
+            ? workspaceAccessRulesQueryKeys.app()
+            : workspaceAccessRulesQueryKeys.dataset(),
+      })
     },
   })
 }
@@ -105,7 +117,12 @@ export const useUpdateAccessRule = () => {
       })
     },
     onSuccess: (_, { resourceType }) => {
-      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
+      queryClient.invalidateQueries({
+        queryKey:
+          resourceType === 'app'
+            ? workspaceAccessRulesQueryKeys.app()
+            : workspaceAccessRulesQueryKeys.dataset(),
+      })
     },
   })
 }
@@ -119,7 +136,12 @@ export const useCopyAccessRule = (resourceType: AccessPolicyResourceType) => {
       return post<AccessPolicy>(`/workspaces/current/rbac/access-policies/${id}/copy`, {})
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
+      queryClient.invalidateQueries({
+        queryKey:
+          resourceType === 'app'
+            ? workspaceAccessRulesQueryKeys.app()
+            : workspaceAccessRulesQueryKeys.dataset(),
+      })
     },
   })
 }
@@ -133,7 +155,12 @@ export const useDeleteAccessRule = (resourceType: AccessPolicyResourceType) => {
       return del<CommonResponse>(`/workspaces/current/rbac/access-policies/${id}`, {})
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
+      queryClient.invalidateQueries({
+        queryKey:
+          resourceType === 'app'
+            ? workspaceAccessRulesQueryKeys.app()
+            : workspaceAccessRulesQueryKeys.dataset(),
+      })
     },
   })
 }

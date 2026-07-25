@@ -17,8 +17,6 @@ jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4
-    env:
-      VITEST_COVERAGE_SCOPE: app-components
     strategy:
       fail-fast: false
       matrix:

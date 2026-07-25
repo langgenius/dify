@@ -18,23 +18,25 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(self, template_id: str, *, session: Session) -> dict[str, Any] | None:
         try:
             return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(session, template_id)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(
+                template_id, session=session
+            )
 
     @override
     def get_pipeline_templates(
-        self, session: Session, language: str, current_tenant_id: str | None = None
+        self, language: str, current_tenant_id: str | None = None, *, session: Session
     ) -> dict[str, Any]:
         del current_tenant_id
         try:
             return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
-            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(session, language)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language, session=session)
 
     @override
     def get_type(self) -> str:

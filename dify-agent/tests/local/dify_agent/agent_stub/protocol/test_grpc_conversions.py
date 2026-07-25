@@ -13,9 +13,14 @@ from dify_agent.agent_stub.grpc.conversions import (
     connect_response_from_proto,
     file_download_request_from_proto,
     proto_connect_request,
+    proto_file_download_request,
     proto_file_download_response,
 )
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubConnectResponse, AgentStubFileDownloadResponse
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConnectResponse,
+    AgentStubFileDownloadResponse,
+    AgentStubFileMapping,
+)
 
 
 def _reference(record_id: str) -> str:
@@ -48,6 +53,32 @@ def test_file_download_request_from_proto_respects_optional_reference() -> None:
 
     assert request.file.reference == _reference("tool-file-1")
     assert request.file.url is None
+    assert request.for_external is True
+
+
+def test_file_download_request_from_proto_preserves_explicit_internal_audience() -> None:
+    message = agent_stub_pb2.FileDownloadRequest(
+        file=agent_stub_pb2.FileMapping(
+            transfer_method="tool_file",
+            reference=_reference("tool-file-1"),
+        ),
+        for_external=False,
+    )
+
+    request = file_download_request_from_proto(message)
+
+    assert request.for_external is False
+
+
+def test_proto_file_download_request_preserves_selected_audience() -> None:
+    message = proto_file_download_request(
+        agent_stub_pb2,
+        file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+        for_external=False,
+    )
+
+    assert message.HasField("for_external") is True
+    assert message.for_external is False
 
 
 def test_connect_request_from_proto_rejects_invalid_metadata_json() -> None:

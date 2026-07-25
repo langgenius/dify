@@ -602,10 +602,7 @@ class TestDatasetServiceUpdateAndDeleteDataset:
         # Act / Assert
         with pytest.raises(ValueError, match="Dataset name already exists"):
             DatasetService.update_dataset(
-                db_session_with_containers,
-                source_dataset.id,
-                {"name": "Existing Dataset"},
-                account,
+                source_dataset.id, {"name": "Existing Dataset"}, account, session=db_session_with_containers
             )
 
     def test_delete_dataset_with_documents_success(self, db_session_with_containers: Session):
@@ -728,7 +725,7 @@ class TestDatasetServiceRetrievalConfiguration:
         }
 
         # Act
-        result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, account)
+        result = DatasetService.update_dataset(dataset.id, update_data, account, session=db_session_with_containers)
 
         # Assert
         db_session_with_containers.refresh(dataset)

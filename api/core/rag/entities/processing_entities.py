@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, WithJsonSchema
+from pydantic import AliasChoices, BaseModel, Field, WithJsonSchema
 
 
 class ParentMode(StrEnum):
@@ -26,7 +26,14 @@ class PreProcessingRule(BaseModel):
 
 
 class Segmentation(BaseModel):
-    separator: str = Field(default="\n", description="Custom separator for splitting text.")
+    # TODO: there are internally mismatched / inconsistent naming
+    # between `separator` and `delimiter` across the codebase.
+    # Taking `separator` as the canonical.
+    separator: str = Field(
+        default="\n",
+        description="Custom separator for splitting text.",
+        validation_alias=AliasChoices("separator", "delimiter"),
+    )
     max_tokens: int = Field(description="Maximum token count per chunk.")
     chunk_overlap: int = Field(default=0, description="Token overlap between chunks.")
 

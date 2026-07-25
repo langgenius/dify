@@ -65,10 +65,6 @@ class _DummyModelConf:
         self.model = "mock"
 
 
-class _FakeDb:
-    engine: object = object()
-
-
 class _UnknownQueueEvent:
     pass
 
@@ -203,6 +199,7 @@ def _agent_thought() -> MessageAgentThought:
         tool="tool",
         tool_labels_str="{}",
         tool_input="input",
+        answer="answer",
         message_files="[]",
     )
     thought.id = "thought"
@@ -394,12 +391,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         responses = list(pipeline._process_stream_response(publisher=None))
@@ -573,12 +566,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return _Result(message_files if self.calls == 1 else upload_files)
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
         monkeypatch.setattr(
             "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
@@ -640,7 +629,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline._message_cycle_manager,
             "handle_annotation_reply",
-            lambda event: _AnnotationReply(content="annotated"),
+            lambda event, session: _AnnotationReply(content="annotated"),
         )
         _set_method(pipeline, "_agent_thought_to_stream_response", _agent_thought_response)
         _set_method(pipeline._message_cycle_manager, "message_file_to_stream_response", _file_response)
@@ -662,12 +651,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return None
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         responses = list(pipeline._process_stream_response(publisher=None))
@@ -678,7 +663,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert agent_response.answer == "agent"
         assert isinstance(responses[-1], ErrorStreamResponse)
         assert isinstance(responses[-1].err, ValueError)
-        assert pipeline._task_state.llm_result.message.content == "annotatedagent"
+        assert pipeline._task_state.llm_result.message.content == "annotated"
 
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -708,18 +693,15 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return agent_thought
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
-        )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
 
         assert response is not None
         assert response.id == "thought"
+        assert response.thought == "t"
 
     def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
@@ -735,6 +717,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         agent_thought = _agent_thought()
         agent_thought.thought = None
+        agent_thought.answer = None
         agent_thought.observation = None
         agent_thought.tool = None
         agent_thought.tool_input = None
@@ -754,14 +737,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return agent_thought
 
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
-            _Session,
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
-        monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
-        )
-
         response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
 
         assert response is not None
@@ -1060,10 +1038,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def commit(self):
                 return None
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         responses = list(pipeline._process_stream_response(publisher=None))
@@ -1318,10 +1295,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def scalars(self, *args, **kwargs):
                 return _Result()
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         response = pipeline._message_end_to_stream_response()
@@ -1358,10 +1334,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def scalars(self, *args, **kwargs):
                 return _Result()
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         response = pipeline._message_end_to_stream_response()
@@ -1423,10 +1398,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 self.calls += 1
                 return _Result(message_files if self.calls == 1 else [])
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
         monkeypatch.setattr(
             "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
@@ -1485,10 +1459,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             def scalar(self, *args, **kwargs):
                 return None
 
-        monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session", _Session)
         monkeypatch.setattr(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
-            _FakeDb(),
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
         )
 
         response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="missing"))

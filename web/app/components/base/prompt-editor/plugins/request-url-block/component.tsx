@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiGlobalLine } from '@remixicon/react'
-
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_REQUEST_URL_BLOCK_COMMAND } from './index'
@@ -10,9 +9,7 @@ type RequestURLBlockComponentProps = {
   nodeKey: string
 }
 
-const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
-  nodeKey,
-}) => {
+const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({ nodeKey }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_REQUEST_URL_BLOCK_COMMAND)
 
@@ -25,7 +22,9 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
       ref={ref}
     >
       <RiGlobalLine className="mr-0.5 size-3.5 text-util-colors-violet-violet-600" />
-      <div className="system-xs-medium text-util-colors-violet-violet-600">{t('promptEditor.requestURL.item.title', { ns: 'common' })}</div>
+      <div className="system-xs-medium text-util-colors-violet-violet-600">
+        {t(($) => $['promptEditor.requestURL.item.title'], { ns: 'common' })}
+      </div>
     </div>
   )
 }

@@ -59,6 +59,9 @@ class DifyConfigLayerConfig(LayerConfig):
 class DifyConfigRuntimeState(BaseModel):
     """Serializable config-layer values computed once during context entry.
 
+    ``config_cli_help`` stores pre-rendered shell-visible ``dify-agent`` help snippets
+    for config commands and file upload/download commands.
+
     The ``push_spec_*`` fields are compatibility leftovers from the removed root
     JSON-spec config mutation workflow. This change keeps them in the runtime-state
     schema to avoid snapshot churn, but new code should treat them as inert

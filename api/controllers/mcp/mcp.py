@@ -2,11 +2,11 @@ from typing import Any, Union
 
 from flask import Response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.mcp import mcp_ns
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
@@ -33,7 +33,12 @@ class MCPRequestPayload(BaseModel):
     id: int | str | None = Field(default=None, description="Request ID for tracking responses")
 
 
+class MCPJSONRPCResponse(RootModel[mcp_types.JSONRPCResponse | mcp_types.JSONRPCError]):
+    pass
+
+
 register_schema_model(mcp_ns, MCPRequestPayload)
+register_response_schema_models(mcp_ns, MCPJSONRPCResponse)
 
 
 @mcp_ns.route("/server/<string:server_code>/mcp")
@@ -42,13 +47,10 @@ class MCPAppApi(Resource):
     @mcp_ns.doc("handle_mcp_request")
     @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")
     @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})
-    @mcp_ns.doc(
-        responses={
-            200: "MCP response successfully processed",
-            400: "Invalid MCP request or parameters",
-            404: "Server or app not found",
-        }
-    )
+    @mcp_ns.response(200, "MCP JSON-RPC response", mcp_ns.models[MCPJSONRPCResponse.__name__])
+    @mcp_ns.response(202, "MCP notification accepted")
+    @mcp_ns.response(400, "Invalid MCP request or parameters")
+    @mcp_ns.response(404, "Server or app not found")
     def post(self, server_code: str):
         """Handle MCP requests for a specific server.
 
@@ -64,6 +66,7 @@ class MCPAppApi(Resource):
         Raises:
             ValidationError: Invalid request format or parameters
         """
+        # response-contract:ignore MCP route returns Flask Response from JSON-RPC handler
         args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
         request_id: Union[int, str] | None = args.id
         mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))

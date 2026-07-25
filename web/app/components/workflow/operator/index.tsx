@@ -15,18 +15,18 @@ type OperatorProps = {
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
-  const bottomPanelSizeRef = useRef<{ width?: number, height?: number }>({})
+  const bottomPanelSizeRef = useRef<{ width?: number; height?: number }>({})
   const bottomPanelResizeFrameRef = useRef<number | undefined>(undefined)
   const [showMiniMap, setShowMiniMap] = useState(true)
-  const showUserCursors = useStore(s => s.showUserCursors)
-  const setShowUserCursors = useStore(s => s.setShowUserCursors)
-  const showUserComments = useStore(s => s.showUserComments)
-  const setShowUserComments = useStore(s => s.setShowUserComments)
-  const controlMode = useStore(s => s.controlMode)
+  const showUserCursors = useStore((s) => s.showUserCursors)
+  const setShowUserCursors = useStore((s) => s.setShowUserCursors)
+  const showUserComments = useStore((s) => s.showUserComments)
+  const setShowUserComments = useStore((s) => s.setShowUserComments)
+  const controlMode = useStore((s) => s.controlMode)
   const isCommentMode = controlMode === ControlMode.Comment
 
   const handleToggleMiniMap = useCallback(() => {
-    setShowMiniMap(prev => !prev)
+    setShowMiniMap((prev) => !prev)
   }, [])
 
   const handleToggleUserCursors = useCallback(() => {
@@ -37,15 +37,14 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     setShowUserComments(!showUserComments)
   }, [showUserComments, setShowUserComments])
 
-  const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
-  const rightPanelWidth = useStore(s => s.rightPanelWidth)
-  const setBottomPanelWidth = useStore(s => s.setBottomPanelWidth)
-  const setBottomPanelHeight = useStore(s => s.setBottomPanelHeight)
+  const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
+  const rightPanelWidth = useStore((s) => s.rightPanelWidth)
+  const setBottomPanelWidth = useStore((s) => s.setBottomPanelWidth)
+  const setBottomPanelHeight = useStore((s) => s.setBottomPanelHeight)
 
   const bottomPanelWidth = useMemo(() => {
-    if (!workflowCanvasWidth || !rightPanelWidth)
-      return 'auto'
-    return Math.max((workflowCanvasWidth - rightPanelWidth), 400)
+    if (!workflowCanvasWidth || !rightPanelWidth) return 'auto'
+    return Math.max(workflowCanvasWidth - rightPanelWidth, 400)
   }, [workflowCanvasWidth, rightPanelWidth])
 
   const getMiniMapNodeClassName = useCallback((node: Node) => {
@@ -58,7 +57,10 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   useEffect(() => {
     if (bottomPanelRef.current) {
       const updateBottomPanelSize = (width: number, height: number) => {
-        if (bottomPanelSizeRef.current.width === width && bottomPanelSizeRef.current.height === height)
+        if (
+          bottomPanelSizeRef.current.width === width &&
+          bottomPanelSizeRef.current.height === height
+        )
           return
 
         bottomPanelSizeRef.current = { width, height }
@@ -93,11 +95,9 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
     <div
       ref={bottomPanelRef}
       className="absolute inset-x-0 bottom-0 z-10 px-1"
-      style={
-        {
-          width: bottomPanelWidth,
-        }
-      }
+      style={{
+        width: bottomPanelWidth,
+      }}
     >
       <div className="flex justify-between px-1 pb-2">
         <div className="flex items-center gap-2">
@@ -116,8 +116,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               maskColor="var(--color-workflow-minimap-bg)"
               nodeClassName={getMiniMapNodeClassName}
               nodeStrokeWidth={3}
-              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
-            border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
+              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
             />
           )}
           <ZoomInOut

@@ -60,6 +60,7 @@ export const zOAuthClientPayload = z.object({
 export const zOAuthProviderAccountResponse = z.object({
   avatar: z.string().nullish(),
   email: z.string(),
+  id: z.string(),
   interface_language: z.string(),
   name: z.string(),
   timezone: z.string(),
@@ -137,18 +138,18 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.o
 /**
  * Datasource OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Tool OAuth authorization URL generated successfully
  */
-export const zGetOauthPluginByProviderToolAuthorizationUrlResponse
-  = zPluginOAuthAuthorizationUrlResponse
+export const zGetOauthPluginByProviderToolAuthorizationUrlResponse =
+  zPluginOAuthAuthorizationUrlResponse
 
 export const zPostOauthProviderBody = zOAuthProviderRequest
 
