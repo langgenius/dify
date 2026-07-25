@@ -179,3 +179,39 @@ def test_contact_rejects_blank_name_and_inconsistent_email_values() -> None:
             updated_at=_NOW,
         )
     assert inconsistent_email.value.code is ContactRejectionCode.INVALID_EMAIL
+
+
+def test_contact_rejects_normalized_email_without_deliverable_email() -> None:
+    with pytest.raises(ContactDirectoryError) as error:
+        Contact(
+            id=ContactId("contact-1"),
+            identity_source=ContactIdentitySource.ORGANIZATION_ACCOUNT,
+            owner=OrganizationAccountOwner(AccountId("account-1")),
+            name="Ada",
+            normalized_name="ada",
+            email=None,
+            normalized_email=NormalizedEmail("ada@example.com"),
+            avatar_file_id=None,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+
+    assert error.value.code is ContactRejectionCode.INVALID_EMAIL
+
+
+def test_contact_canonicalizes_persisted_name_values() -> None:
+    contact = Contact(
+        id=ContactId("contact-1"),
+        identity_source=ContactIdentitySource.ORGANIZATION_ACCOUNT,
+        owner=OrganizationAccountOwner(AccountId("account-1")),
+        name=" Ada ",
+        normalized_name="stale-name",
+        email=None,
+        normalized_email=None,
+        avatar_file_id=None,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+    assert contact.name == "Ada"
+    assert contact.normalized_name == "ada"

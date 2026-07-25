@@ -141,6 +141,20 @@ def test_hard_deletion_rejects_cross_organization_contact() -> None:
     assert error.value.code is ContactRejectionCode.CROSS_ORGANIZATION
 
 
+def test_hard_deletion_accepts_contact_from_owner_workspace_without_mutation() -> None:
+    contact = Contact.external(
+        contact_id=ContactId("external-contact"),
+        workspace_id=_WORKSPACE_ID,
+        name="Reviewer",
+        email="reviewer@example.com",
+        now=_NOW,
+    )
+
+    ContactDirectoryPolicy.ensure_external_deletable(contact, _WORKSPACE_ID)
+
+    assert contact.owner.workspace_id == _WORKSPACE_ID
+
+
 def test_workspace_member_resolution_rejects_cross_organization_use() -> None:
     contact = _workspace_member_contact()
     snapshot = ContactDirectorySnapshot(workspace_id=WorkspaceId("workspace-2"), contacts=(contact,))

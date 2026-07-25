@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import event, select
-from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -56,7 +56,7 @@ def _account(account_id: str, *, status: AccountStatus = AccountStatus.ACTIVE) -
     return account
 
 
-def _organization_contact(contact_id: str, account_id: str, email: str) -> Contact:
+def _organization_contact(contact_id: str, account_id: str, email: str | None) -> Contact:
     return Contact.organization_account(
         contact_id=ContactId(contact_id),
         account_id=AccountId(account_id),
@@ -441,6 +441,41 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
     assert restored.owner == original.owner
 
 
+def test_contact_update_rejects_account_owner_takeover(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add_all([_account("account-1"), _account("account-2")])
+    original = repository.save_organization_contact(
+        _organization_contact("organization", "account-1", "ada@example.com")
+    )
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.save_organization_contact(_organization_contact("organization", "account-2", "grace@example.com"))
+
+    assert error.value.code is ContactRejectionCode.INVALID_OWNER
+    with session_maker() as session:
+        stored_contact = session.get_one(HumanInputContact, str(original.id))
+    assert stored_contact.account_id == "account-1"
+    assert stored_contact.normalized_email == "ada@example.com"
+
+
+def test_organization_contact_without_email_still_reserves_account_identity(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.add(_account("account-1"))
+    original = repository.save_organization_contact(_organization_contact("organization", "account-1", None))
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.save_organization_contact(_organization_contact("duplicate", "account-1", None))
+
+    assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
+    with session_maker() as session:
+        stored_contacts = session.scalars(
+            select(HumanInputContact).where(HumanInputContact.account_id == "account-1")
+        ).all()
+    assert [stored_contact.id for stored_contact in stored_contacts] == [str(original.id)]
+
+
 def test_account_backed_admission_rejects_unavailable_account(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
@@ -507,3 +542,54 @@ def test_mysql_platform_enable_statement_uses_idempotent_duplicate_key_update() 
     statement = session.execute.call_args.args[0]
     compiled_statement = str(statement.compile(dialect=mysql.dialect()))
     assert "ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)" in compiled_statement
+
+
+def test_postgresql_platform_enable_statement_uses_named_idempotency_constraint() -> None:
+    session = MagicMock(spec=Session)
+    session.get_bind.return_value.dialect.name = "postgresql"
+
+    SQLAlchemyContactDirectoryRepository._insert_platform_entry_idempotently(
+        session,
+        PlatformWorkspaceEntry(
+            id=PlatformEntryId("entry-1"),
+            workspace_id=_WORKSPACE_ID,
+            contact_id=ContactId("contact-1"),
+            added_by_account_id=AccountId("account-1"),
+            created_at=_NOW,
+            updated_at=_NOW,
+        ),
+    )
+
+    statement = session.execute.call_args.args[0]
+    compiled_statement = str(statement.compile(dialect=postgresql.dialect()))
+    assert "ON CONFLICT ON CONSTRAINT hipcwe_tenant_contact_uq DO NOTHING" in compiled_statement
+
+
+def test_platform_enable_rejects_unsupported_database_dialect() -> None:
+    session = MagicMock(spec=Session)
+    session.get_bind.return_value.dialect.name = "oracle"
+
+    with pytest.raises(ContactDirectoryError) as error:
+        SQLAlchemyContactDirectoryRepository._insert_platform_entry_idempotently(
+            session,
+            PlatformWorkspaceEntry(
+                id=PlatformEntryId("entry-1"),
+                workspace_id=_WORKSPACE_ID,
+                contact_id=ContactId("contact-1"),
+                added_by_account_id=AccountId("account-1"),
+                created_at=_NOW,
+                updated_at=_NOW,
+            ),
+        )
+
+    assert error.value.code is ContactRejectionCode.PERSISTENCE_FAILURE
+    session.execute.assert_not_called()
+
+
+def test_postgresql_snapshot_configures_repeatable_read_transaction() -> None:
+    session = MagicMock(spec=Session)
+    session.get_bind.return_value.dialect.name = "postgresql"
+
+    SQLAlchemyContactDirectoryRepository._configure_snapshot_transaction(session)
+
+    session.connection.assert_called_once_with(execution_options={"isolation_level": "REPEATABLE READ"})
