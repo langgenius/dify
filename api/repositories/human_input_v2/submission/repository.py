@@ -1,10 +1,11 @@
 """Form-locked SQLAlchemy adapter for Human Input v2 first-success submission.
 
-One transaction locks the tenant-owned Form, loads the target grant, endpoint,
-and current identity facts, then keeps that immutable context authoritative for
-the write set. The commit path never reloads Contact or IM binding state. Audit
-insert, unique Submission insert, and Form transition share one savepoint so a
-unique-form race can become a stable loser result without retaining its audit.
+One repeatable-read transaction locks the tenant-owned Form, loads the target
+grant, endpoint, and current identity facts, then keeps that immutable context
+authoritative for the write set. The commit path never reloads Contact or IM
+binding state. Audit insert, unique Submission insert, and Form transition share
+one savepoint so a unique-form race becomes a stable loser result without
+retaining its audit.
 """
 
 from __future__ import annotations
@@ -83,11 +84,19 @@ class SQLAlchemySubmissionRepository:
 
         try:
             with self._session_maker() as session, session.begin():
+                self._configure_snapshot_transaction(session)
                 yield SQLAlchemySubmissionTransaction(session, scope)
         except SubmissionPersistenceError:
             raise
         except SQLAlchemyError as error:
             raise SubmissionPersistenceError("submission transaction failed") from error
+
+    @staticmethod
+    def _configure_snapshot_transaction(session: Session) -> None:
+        """Establish one MVCC snapshot before the transaction's first query."""
+
+        if session.get_bind().dialect.name in {"mysql", "postgresql"}:
+            session.connection(execution_options={"isolation_level": "REPEATABLE READ"})
 
 
 class SQLAlchemySubmissionTransaction:
@@ -315,20 +324,14 @@ class SQLAlchemySubmissionTransaction:
         if integration is None:
             return None
         priority = sa.case((HumanInputIMBinding.scope == IMBindingScope.WORKSPACE, 0), else_=1)
-        row = self._session.execute(
+        binding_row = self._session.execute(
             select(HumanInputIMBinding, HumanInputIMIdentity)
-            .join(
+            .outerjoin(
                 HumanInputIMIdentity,
-                sa.and_(
-                    HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id,
-                    HumanInputIMIdentity.integration_id == HumanInputIMBinding.integration_id,
-                    HumanInputIMIdentity.provider == HumanInputIMBinding.provider,
-                ),
+                HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id,
             )
             .where(
-                HumanInputIMBinding.integration_id == integration.id,
                 HumanInputIMBinding.contact_id == str(current_contact.contact_id),
-                HumanInputIMBinding.provider == proof.provider,
                 sa.or_(
                     sa.and_(
                         HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
@@ -344,8 +347,16 @@ class SQLAlchemySubmissionTransaction:
             .limit(1)
         ).one_or_none()
         binding_id: IMBindingId | None = None
-        if row is not None:
-            binding_record, identity_record = row
+        if binding_row is not None:
+            binding_record, identity_record = binding_row
+            if binding_record.integration_id != integration.id or binding_record.provider is not proof.provider:
+                return None
+            if (
+                identity_record is None
+                or identity_record.integration_id != integration.id
+                or identity_record.provider is not proof.provider
+            ):
+                return None
             binding_id = IMBindingId(binding_record.id)
         elif current_contact.normalized_email is not None:
             identity_record = self._session.scalar(

@@ -170,6 +170,7 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
     assert record_value.model_dump(mode="json") == {
         "type": "email_otp",
         "otp_challenge_id": "challenge-1",
+        "workspace_id": "workspace-1",
         "form_id": "form-1",
         "approver_grant_id": "grant-1",
         "subject_type": "contact",
@@ -179,6 +180,19 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
     }
     assert not any("hash" in key or "code" in key for key in type(record_value).model_fields)
     assert proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1")) == proof
+
+
+def test_verified_proof_mapper_rejects_a_record_from_another_workspace() -> None:
+    proof = VerifiedEmailOTPProof(
+        challenge_ref=_GRANT_REF.challenge(OTPChallengeId("challenge-1")),
+        subject=_CONTACT_SUBJECT,
+        normalized_email=NormalizedEmail("reviewer@example.com"),
+        verified_at=_NOW,
+    )
+    record_value = proof_to_record_value(proof).model_copy(update={"workspace_id": "workspace-2"})
+
+    with pytest.raises(ValueError, match="proof owner"):
+        proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1"))
 
 
 def test_verified_proof_mapper_rejects_malformed_subject_values() -> None:

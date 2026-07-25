@@ -81,6 +81,7 @@ def proof_to_record_value(proof: VerifiedSubmissionProof) -> FormAuthorizationPr
                 contact_id = str(email_proof.subject.contact_id)
             return EmailOTPAuthorizationProof(
                 otp_challenge_id=str(email_proof.challenge_ref.challenge_id),
+                workspace_id=str(email_proof.challenge_ref.form_ref.workspace_id),
                 form_id=str(email_proof.challenge_ref.form_ref.form_id),
                 approver_grant_id=str(email_proof.challenge_ref.grant_ref.grant_id),
                 subject_type=subject_type,
@@ -113,6 +114,8 @@ def proof_from_record_value(
         case TrustedEndUserAuthorizationProof(app_id=app_id, end_user_id=end_user_id):
             return VerifiedTrustedEndUserProof(EndUserId(end_user_id), AppId(app_id))
         case EmailOTPAuthorizationProof() as email_proof:
+            if email_proof.workspace_id != str(workspace_id):
+                raise ValueError("authorized Email proof owner does not match the audit event")
             normalized_email = NormalizedEmail(email_proof.verified_email)
             subject: EmailOTPSubject
             if email_proof.subject_type is HumanInputApproverGrantSubjectType.CONTACT:
@@ -242,6 +245,7 @@ def submission_from_record(record: HumanInputV2FormSubmission) -> FormSubmission
 def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2FormAuditEvent:
     """Map one immutable shared audit fact to its append-only record."""
 
+    event.validate_authorization_proof_owner()
     record = HumanInputV2FormAuditEvent(
         tenant_id=str(event.form_ref.workspace_id),
         form_id=str(event.form_ref.form_id),

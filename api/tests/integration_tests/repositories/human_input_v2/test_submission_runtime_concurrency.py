@@ -5,14 +5,16 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
-from threading import Barrier, Lock
+from threading import Barrier, Event, Lock, get_ident
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.approval import (
     ApproverGrant,
+    AuthorizationContext,
     AuthorizedSubmissionCommit,
     CanonicalSubjectKey,
     ContactApprovalSubject,
@@ -100,6 +102,8 @@ class _SeededScenario:
     normalized_email: NormalizedEmail
     provider_tenant_id: str
     provider_user_id: str
+    workflow_pause_id: str
+    node_execution_id: str
 
 
 class _RecordingResumePort:
@@ -141,6 +145,8 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
     normalized_email = NormalizedEmail(f"submission-{uuidv7()}@example.com")
     provider_tenant_id = f"provider-tenant-{uuidv7()}"
     provider_user_id = f"provider-user-{uuidv7()}"
+    workflow_pause_id = str(uuidv7())
+    node_execution_id = str(uuidv7())
     subject = ContactApprovalSubject(contact_id)
     grant = ApproverGrant(
         ref=form_ref.grant(grant_id),
@@ -167,8 +173,8 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
         global_expires_at=UtcTimestamp(now.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
-        workflow_pause_id=str(uuidv7()),
-        node_execution_id=str(uuidv7()),
+        workflow_pause_id=workflow_pause_id,
+        node_execution_id=node_execution_id,
         grants=(grant,),
         created_at=now,
         updated_at=now,
@@ -289,6 +295,8 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
         normalized_email=normalized_email,
         provider_tenant_id=provider_tenant_id,
         provider_user_id=provider_user_id,
+        workflow_pause_id=workflow_pause_id,
+        node_execution_id=node_execution_id,
     )
 
 
@@ -354,8 +362,72 @@ def _command(scenario: _SeededScenario, *, proof: object, endpoint_id: DeliveryE
         submission_id=SubmissionId(str(uuidv7())),
         authorization_audit_event_id=AuditEventId(str(uuidv7())),
         rejection_audit_event_id=AuditEventId(str(uuidv7())),
+        resume_identity=WorkflowResumeIdentity(
+            workspace_id=scenario.form_ref.workspace_id,
+            form_id=scenario.form_ref.form_id,
+            workflow_pause_id=scenario.workflow_pause_id,
+            node_execution_id=scenario.node_execution_id,
+        ),
         now=UtcTimestamp.now(),
     )
+
+
+def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries(flask_req_ctx) -> None:
+    _require_postgresql()
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    scenario = _seed_scenario(session_maker)
+    repository = SQLAlchemySubmissionRepository(session_maker)
+    scope = SubmissionAttemptScope(scenario.form_ref, scenario.grant_id, scenario.im_endpoint_id)
+    proof = _im_proof(scenario)
+    contact_query_finished = Event()
+    mutation_committed = Event()
+    loader_thread_id: list[int] = []
+
+    def pause_after_contact_query(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        normalized_statement = " ".join(statement.lower().split())
+        if (
+            loader_thread_id
+            and get_ident() == loader_thread_id[0]
+            and normalized_statement.startswith("select")
+            and "from human_input_contacts" in normalized_statement
+        ):
+            contact_query_finished.set()
+            assert mutation_committed.wait(timeout=10)
+
+    def load_context() -> AuthorizationContext:
+        loader_thread_id.append(get_ident())
+        with repository.transaction(scope) as transaction:
+            return transaction.load_authorization_context(proof=proof)
+
+    event.listen(db.engine, "after_cursor_execute", pause_after_contact_query)
+    future = None
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(load_context)
+            assert contact_query_finished.wait(timeout=10)
+            with session_maker.begin() as mutation_session:
+                mutation_session.execute(
+                    sa.delete(TenantAccountJoin).where(
+                        TenantAccountJoin.tenant_id == str(scenario.workspace_id),
+                        TenantAccountJoin.account_id == str(scenario.account_id),
+                    )
+                )
+                mutation_session.execute(
+                    sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.id == str(scenario.binding_id))
+                )
+            mutation_committed.set()
+            context = future.result(timeout=10)
+
+        assert context.current_contact is not None
+        assert context.current_contact.workspace_available is True
+        assert context.current_im_binding is not None
+        assert context.current_im_binding.binding_id == scenario.binding_id
+    finally:
+        mutation_committed.set()
+        event.remove(db.engine, "after_cursor_execute", pause_after_contact_query)
+        if future is not None and not future.done():
+            future.result(timeout=10)
+        _cleanup_scenario(session_maker, scenario)
 
 
 def test_concurrent_email_and_im_submission_has_exactly_one_winner(flask_req_ctx) -> None:

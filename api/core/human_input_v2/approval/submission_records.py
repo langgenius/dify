@@ -21,7 +21,7 @@ from core.human_input_v2.shared import (
 
 from .frozen_values import FrozenJSONObject
 from .grants import FormRef
-from .submission_authorization import SubmissionActor, VerifiedSubmissionProof
+from .submission_authorization import SubmissionActor, VerifiedEmailOTPProof, VerifiedSubmissionProof
 
 
 class FormAuthorizationAuditEventType(StrEnum):
@@ -56,8 +56,21 @@ class FormAuthorizationAuditEvent:
                 raise ValueError("authorized audit event requires a grant and verified proof")
             if self.reason_code is not None:
                 raise ValueError("authorized audit event cannot contain a rejection reason")
+            self.validate_authorization_proof_owner()
         if self.event_type is FormAuthorizationAuditEventType.SUBMISSION_REJECTED and not self.reason_code:
             raise ValueError("rejected audit event requires a stable reason code")
+
+    def validate_authorization_proof_owner(self) -> None:
+        """Reject authorized Email evidence captured for another form or grant."""
+
+        proof = self.authorization_proof
+        if not isinstance(proof, VerifiedEmailOTPProof):
+            return
+        if (
+            proof.challenge_ref.form_ref != self.form_ref
+            or proof.challenge_ref.grant_ref.grant_id != self.approver_grant_id
+        ):
+            raise ValueError("authorized Email proof owner does not match the audit event")
 
 
 @dataclass(frozen=True, slots=True)

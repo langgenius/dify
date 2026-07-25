@@ -135,6 +135,7 @@ def proof_to_record_value(proof: VerifiedEmailOTPProof) -> EmailOTPAuthorization
         subject_type = HumanInputApproverGrantSubjectType.EMAIL_ADDRESS
     return EmailOTPAuthorizationProof(
         otp_challenge_id=str(proof.challenge_ref.challenge_id),
+        workspace_id=str(proof.challenge_ref.form_ref.workspace_id),
         form_id=str(proof.challenge_ref.form_ref.form_id),
         approver_grant_id=str(proof.challenge_ref.grant_ref.grant_id),
         subject_type=subject_type,
@@ -151,6 +152,8 @@ def proof_from_record_value(
 ) -> VerifiedEmailOTPProof:
     """Rebuild one proof value after validating its captured subject shape."""
 
+    if record_value.workspace_id != str(workspace_id):
+        raise ValueError("OTP proof owner does not match the requested workspace")
     normalized_email = NormalizedEmail(record_value.verified_email)
     subject: EmailOTPSubject
     if record_value.subject_type is HumanInputApproverGrantSubjectType.CONTACT:

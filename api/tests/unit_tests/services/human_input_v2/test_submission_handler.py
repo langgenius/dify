@@ -52,9 +52,21 @@ _GRANT_ID = ApproverGrantId("grant-1")
 _ACCOUNT_ID = AccountId("account-1")
 _CONTACT_ID = ContactId("contact-1")
 _SCOPE = SubmissionAttemptScope(_FORM_REF, _GRANT_ID, None)
+_RESUME_IDENTITY = WorkflowResumeIdentity(
+    workspace_id=_FORM_REF.workspace_id,
+    form_id=_FORM_REF.form_id,
+    workflow_pause_id="pause-1",
+    node_execution_id="node-execution-1",
+)
 
 
-def _context(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) -> AuthorizationContext:
+def _context(
+    *,
+    status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING,
+    kind: HumanInputV2FormKind = HumanInputV2FormKind.RUNTIME,
+    workflow_pause_id: str | None = "pause-1",
+    node_execution_id: str | None = "node-execution-1",
+) -> AuthorizationContext:
     subject = ContactApprovalSubject(_CONTACT_ID)
     grant = ApproverGrant(
         ref=_FORM_REF.grant(_GRANT_ID),
@@ -79,10 +91,10 @@ def _context(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING)
         rendered_content="Approve",
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
-        kind=HumanInputV2FormKind.RUNTIME,
+        kind=kind,
         status=status,
-        workflow_pause_id="pause-1",
-        node_execution_id="node-execution-1",
+        workflow_pause_id=workflow_pause_id,
+        node_execution_id=node_execution_id,
         grants=(grant,),
         created_at=_NOW,
         updated_at=_NOW,
@@ -103,7 +115,11 @@ def _context(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING)
     )
 
 
-def _command(*, proof: object | None = None) -> SubmitFormCommand:
+def _command(
+    *,
+    proof: object | None = None,
+    resume_identity: WorkflowResumeIdentity | None = _RESUME_IDENTITY,
+) -> SubmitFormCommand:
     return SubmitFormCommand(
         scope=_SCOPE,
         proof=proof if proof is not None else VerifiedAccountSessionProof(_ACCOUNT_ID),
@@ -113,6 +129,7 @@ def _command(*, proof: object | None = None) -> SubmitFormCommand:
         submission_id=SubmissionId("submission-1"),
         authorization_audit_event_id=AuditEventId("audit-authorized"),
         rejection_audit_event_id=AuditEventId("audit-rejected"),
+        resume_identity=resume_identity,
         now=_NOW,
     )
 
@@ -125,9 +142,15 @@ class _RecordingTransaction:
         fail_persistence: bool = False,
         commit_status: SubmissionCommitStatus = SubmissionCommitStatus.COMMITTED,
         context_status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING,
+        context_kind: HumanInputV2FormKind = HumanInputV2FormKind.RUNTIME,
     ) -> None:
         self.events = events
-        self.context = _context(status=context_status)
+        self.context = _context(
+            status=context_status,
+            kind=context_kind,
+            workflow_pause_id=None if context_kind is HumanInputV2FormKind.DELIVERY_TEST else "pause-1",
+            node_execution_id=None if context_kind is HumanInputV2FormKind.DELIVERY_TEST else "node-execution-1",
+        )
         self.fail_persistence = fail_persistence
         self.commit_status = commit_status
 
@@ -161,11 +184,13 @@ class _RecordingRepository:
         fail_persistence: bool = False,
         commit_status: SubmissionCommitStatus = SubmissionCommitStatus.COMMITTED,
         context_status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING,
+        context_kind: HumanInputV2FormKind = HumanInputV2FormKind.RUNTIME,
     ) -> None:
         self.events = events
         self.fail_persistence = fail_persistence
         self.commit_status = commit_status
         self.context_status = context_status
+        self.context_kind = context_kind
 
     @contextmanager
     def transaction(self, scope: SubmissionAttemptScope):
@@ -176,6 +201,7 @@ class _RecordingRepository:
             fail_persistence=self.fail_persistence,
             commit_status=self.commit_status,
             context_status=self.context_status,
+            context_kind=self.context_kind,
         )
         yield transaction
         self.events.append("transaction_commit")
@@ -211,6 +237,79 @@ def test_handler_commits_before_enqueuing_workflow_resume() -> None:
         "transaction_commit",
         "resume_enqueue",
     ]
+
+
+def test_missing_runtime_resume_identity_rejects_delivery_test_before_repository_access() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events, context_kind=HumanInputV2FormKind.DELIVERY_TEST),
+        _IdempotentRecordingResumePort(events),
+    )
+
+    with pytest.raises(ValueError, match="runtime resume identity"):
+        handler.handle(_command(resume_identity=None))
+
+    assert events == []
+
+
+@pytest.mark.parametrize(
+    "identity",
+    [
+        WorkflowResumeIdentity(WorkspaceId("workspace-2"), _FORM_REF.form_id, "pause-1", "node-execution-1"),
+        WorkflowResumeIdentity(_FORM_REF.workspace_id, FormId("form-2"), "pause-1", "node-execution-1"),
+    ],
+)
+def test_resume_identity_owner_mismatch_is_rejected_before_repository_access(identity: WorkflowResumeIdentity) -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(_RecordingRepository(events), _IdempotentRecordingResumePort(events))
+
+    with pytest.raises(ValueError, match="form owner"):
+        handler.handle(_command(resume_identity=identity))
+
+    assert events == []
+
+
+def test_delivery_test_form_is_rejected_before_any_persistence_write() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events, context_kind=HumanInputV2FormKind.DELIVERY_TEST),
+        _IdempotentRecordingResumePort(events),
+    )
+
+    with pytest.raises(ValueError, match="runtime forms only"):
+        handler.handle(_command())
+
+    assert events == ["transaction_begin", "context_loaded"]
+
+
+def test_loaded_runtime_form_must_match_prevalidated_resume_identity() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(_RecordingRepository(events), _IdempotentRecordingResumePort(events))
+    identity = WorkflowResumeIdentity(
+        _FORM_REF.workspace_id,
+        _FORM_REF.form_id,
+        "pause-other",
+        "node-execution-other",
+    )
+
+    with pytest.raises(ValueError, match="loaded form"):
+        handler.handle(_command(resume_identity=identity))
+
+    assert events == ["transaction_begin", "context_loaded"]
+
+
+@pytest.mark.parametrize(
+    ("workflow_pause_id", "node_execution_id"),
+    [(" ", "node-execution-1"), ("pause-1", " ")],
+)
+def test_resume_identity_values_must_not_be_blank(workflow_pause_id: str, node_execution_id: str) -> None:
+    with pytest.raises(ValueError, match="must not be blank"):
+        WorkflowResumeIdentity(
+            _FORM_REF.workspace_id,
+            _FORM_REF.form_id,
+            workflow_pause_id,
+            node_execution_id,
+        )
 
 
 def test_persistence_failure_prevents_resume_enqueue() -> None:

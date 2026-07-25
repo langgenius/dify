@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 import sqlalchemy as sa
@@ -367,6 +368,43 @@ def test_form_lock_statement_contains_complete_owner_predicates_and_for_update()
     assert "FOR UPDATE" in compiled
 
 
+@pytest.mark.parametrize("dialect_name", ["postgresql", "mysql"])
+def test_transaction_configures_repeatable_read_before_yield_for_snapshot_dialects(dialect_name: str) -> None:
+    events: list[str] = []
+    session = MagicMock(spec=Session)
+    session.__enter__.return_value = session
+    session.__exit__.return_value = False
+    session.begin.return_value.__enter__.side_effect = lambda: events.append("transaction_entered")
+    session.begin.return_value.__exit__.side_effect = lambda *_args: events.append("transaction_exited")
+    session.get_bind.return_value.dialect.name = dialect_name
+    session.connection.side_effect = lambda **_kwargs: events.append("isolation_configured")
+    repository = SQLAlchemySubmissionRepository(MagicMock(return_value=session))
+
+    with repository.transaction(_SCOPE):
+        events.append("transaction_yielded")
+
+    session.connection.assert_called_once_with(execution_options={"isolation_level": "REPEATABLE READ"})
+    assert events == [
+        "transaction_entered",
+        "isolation_configured",
+        "transaction_yielded",
+        "transaction_exited",
+    ]
+
+
+def test_transaction_preserves_sqlite_default_isolation() -> None:
+    session = MagicMock(spec=Session)
+    session.__enter__.return_value = session
+    session.__exit__.return_value = False
+    session.get_bind.return_value.dialect.name = "sqlite"
+    repository = SQLAlchemySubmissionRepository(MagicMock(return_value=session))
+
+    with repository.transaction(_SCOPE):
+        pass
+
+    session.connection.assert_not_called()
+
+
 def test_context_load_is_coherent_bounded_and_tenant_scoped(repository_context) -> None:
     repository, session_maker = repository_context
     statements: list[str] = []
@@ -491,6 +529,152 @@ def test_im_context_uses_current_email_identity_when_no_explicit_binding_exists(
     assert context.current_im_binding.identity_id == _IDENTITY_ID
     assert context.current_im_binding.binding_id is None
     assert _authorized(context, proof).actor == AccountSubmissionActor(_ACCOUNT_ID)
+
+
+def test_invalid_workspace_binding_does_not_fall_back_to_valid_organization_binding(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
+        workspace_binding.im_identity_id = "missing-workspace-identity"
+        organization_binding = HumanInputIMBinding(
+            integration_id=str(_INTEGRATION_ID),
+            scope=IMBindingScope.ORGANIZATION,
+            scope_id=str(_INTEGRATION_ID),
+            contact_id=str(_CONTACT_ID),
+            im_identity_id=str(_IDENTITY_ID),
+            provider=IMProvider.SLACK,
+            bound_by_account_id=str(_ACCOUNT_ID),
+        )
+        _set_record_identity(organization_binding, "binding-organization")
+        session.add(organization_binding)
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is None
+
+
+def test_invalid_workspace_binding_does_not_fall_back_to_matching_email_identity(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
+        workspace_binding.im_identity_id = "missing-workspace-identity"
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is None
+
+
+def test_workspace_binding_with_wrong_provider_does_not_fall_back_to_matching_email(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
+        workspace_binding.provider = IMProvider.FEISHU
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is None
+
+
+def test_workspace_binding_rejects_identity_owned_by_another_integration(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        identity = session.get_one(HumanInputIMIdentity, str(_IDENTITY_ID))
+        identity.integration_id = "integration-other"
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is None
+
+
+def test_im_context_rejects_integration_owned_by_another_workspace_before_fallback(repository_context) -> None:
+    repository, session_maker = repository_context
+    cross_workspace_integration_id = IntegrationId("integration-cross-workspace")
+    with session_maker.begin() as session:
+        integration = HumanInputIMIntegration(
+            provider=IMProvider.SLACK,
+            encrypted_credentials=SlackIMIntegrationEncryptedCredentials(
+                client_id="client-cross-workspace",
+                encrypted_client_secret="encrypted-client-secret",
+                encrypted_signing_secret="encrypted-signing-secret",
+                encrypted_bot_token="encrypted-bot-token",
+            ),
+            tenant_id="workspace-2",
+            provider_tenant_id="provider-tenant-cross-workspace",
+            status=IMIntegrationStatus.CONNECTED,
+            config_version=1,
+            configured_by_account_id=str(_ACCOUNT_ID),
+            callback_url=None,
+            safe_status_reason=None,
+            last_checked_at=_NOW.value,
+        )
+        _set_record_identity(integration, str(cross_workspace_integration_id))
+        identity = HumanInputIMIdentity(
+            integration_id=str(cross_workspace_integration_id),
+            provider=IMProvider.SLACK,
+            provider_user_id="provider-user-cross-workspace",
+            display_name="Cross Workspace Reviewer",
+            normalized_name="cross workspace reviewer",
+            email="reviewer@example.com",
+            normalized_email="reviewer@example.com",
+            raw_payload=IMIdentityRawPayload({}),
+            last_seen_sync_run_id=None,
+            last_seen_at=_NOW.value,
+        )
+        _set_record_identity(identity, "identity-cross-workspace")
+        session.add_all([integration, identity])
+    proof = VerifiedIMIdentityProof(
+        integration_id=cross_workspace_integration_id,
+        identity_id=IMIdentityId("identity-cross-workspace"),
+        binding_id=None,
+        provider=IMProvider.SLACK,
+        provider_tenant_id="provider-tenant-cross-workspace",
+        provider_user_id="provider-user-cross-workspace",
+    )
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=proof)
+
+    assert context.current_im_binding is None
+
+
+def test_valid_workspace_binding_wins_over_valid_organization_binding(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        organization_identity = HumanInputIMIdentity(
+            integration_id=str(_INTEGRATION_ID),
+            provider=IMProvider.SLACK,
+            provider_user_id="provider-user-organization",
+            display_name="Organization Reviewer",
+            normalized_name="organization reviewer",
+            email="organization@example.com",
+            normalized_email="organization@example.com",
+            raw_payload=IMIdentityRawPayload({}),
+            last_seen_sync_run_id=None,
+            last_seen_at=_NOW.value,
+        )
+        _set_record_identity(organization_identity, "identity-organization")
+        organization_binding = HumanInputIMBinding(
+            integration_id=str(_INTEGRATION_ID),
+            scope=IMBindingScope.ORGANIZATION,
+            scope_id=str(_INTEGRATION_ID),
+            contact_id=str(_CONTACT_ID),
+            im_identity_id=organization_identity.id,
+            provider=IMProvider.SLACK,
+            bound_by_account_id=str(_ACCOUNT_ID),
+        )
+        _set_record_identity(organization_binding, "binding-organization")
+        session.add_all([organization_identity, organization_binding])
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is not None
+    assert context.current_im_binding.binding_id == _BINDING_ID
+    assert context.current_im_binding.identity_id == _IDENTITY_ID
 
 
 def test_authorized_commit_persists_audit_submission_and_form_transition_atomically(repository_context) -> None:

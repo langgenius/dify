@@ -19,12 +19,14 @@ from core.human_input_v2.approval import (
     FormAuthorizationAuditEventType,
     FormSubmission,
     FrozenJSONObject,
+    HumanInputForm,
     SubmissionAttemptScope,
     SubmissionAuthorizationRejection,
     SubmissionAuthorizer,
     SubmissionCommitStatus,
     SubmissionRepository,
 )
+from core.human_input_v2.entities import HumanInputV2FormKind
 from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, UtcTimestamp, WorkspaceId
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,10 @@ class WorkflowResumeIdentity:
     form_id: FormId
     workflow_pause_id: str
     node_execution_id: str
+
+    def __post_init__(self) -> None:
+        if not self.workflow_pause_id.strip() or not self.node_execution_id.strip():
+            raise ValueError("workflow resume identity values must not be blank")
 
 
 class WorkflowResumeEnqueueError(RuntimeError):
@@ -62,6 +68,7 @@ class SubmitFormCommand:
     submission_id: SubmissionId
     authorization_audit_event_id: AuditEventId
     rejection_audit_event_id: AuditEventId
+    resume_identity: WorkflowResumeIdentity | None
     now: UtcTimestamp
 
 
@@ -93,11 +100,13 @@ class SubmitHumanInputFormHandler:
     def handle(self, command: SubmitFormCommand) -> SubmitFormResult:
         """Return a stable outcome while preserving commit-before-enqueue ordering."""
 
+        identity = self._prevalidate_resume_identity(command)
         context = None
         commit_result = None
         rejection = None
         with self._repository.transaction(command.scope) as transaction:
             context = transaction.load_authorization_context(proof=command.proof)
+            self._validate_runtime_form_identity(context.form, identity)
             decision = SubmissionAuthorizer.authorize(
                 context=context,
                 proof=command.proof,
@@ -140,21 +149,10 @@ class SubmitHumanInputFormHandler:
             if rejection is SubmissionAuthorizationRejection.FORM_ALREADY_SUBMITTED:
                 return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
             return SubmitFormResult(SubmitFormResultStatus.REJECTED, None, rejection, False)
-        assert context is not None
         assert commit_result is not None
         if commit_result.status is SubmissionCommitStatus.ALREADY_COMPLETED:
             return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
 
-        workflow_pause_id = context.form.workflow_pause_id
-        node_execution_id = context.form.node_execution_id
-        if workflow_pause_id is None or node_execution_id is None:
-            raise RuntimeError("committed runtime submission is missing workflow resume identity")
-        identity = WorkflowResumeIdentity(
-            workspace_id=context.form.ref.workspace_id,
-            form_id=context.form.ref.form_id,
-            workflow_pause_id=workflow_pause_id,
-            node_execution_id=node_execution_id,
-        )
         try:
             self._resume_port.enqueue_once(identity)
         except WorkflowResumeEnqueueError:
@@ -178,6 +176,25 @@ class SubmitHumanInputFormHandler:
             None,
             True,
         )
+
+    @staticmethod
+    def _prevalidate_resume_identity(command: SubmitFormCommand) -> WorkflowResumeIdentity:
+        identity = command.resume_identity
+        if identity is None:
+            raise ValueError("runtime resume identity is required before submission persistence")
+        if (
+            identity.workspace_id != command.scope.form_ref.workspace_id
+            or identity.form_id != command.scope.form_ref.form_id
+        ):
+            raise ValueError("runtime resume identity does not match the submission form owner")
+        return identity
+
+    @staticmethod
+    def _validate_runtime_form_identity(form: HumanInputForm, identity: WorkflowResumeIdentity) -> None:
+        if form.kind is not HumanInputV2FormKind.RUNTIME:
+            raise ValueError("submission handler accepts runtime forms only")
+        if form.workflow_pause_id != identity.workflow_pause_id or form.node_execution_id != identity.node_execution_id:
+            raise ValueError("runtime resume identity does not match the loaded form")
 
 
 __all__ = [

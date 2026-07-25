@@ -293,6 +293,7 @@ def test_email_proof_mapper_rejects_inconsistent_subject_columns(
 ) -> None:
     record_value = EmailOTPAuthorizationProof(
         otp_challenge_id="challenge-1",
+        workspace_id=str(_FORM_REF.workspace_id),
         form_id="form-1",
         approver_grant_id="grant-1",
         subject_type=subject_type,
@@ -308,6 +309,7 @@ def test_email_proof_mapper_rejects_inconsistent_subject_columns(
 def test_email_proof_mapper_rejects_unsupported_subject_type() -> None:
     record_value = EmailOTPAuthorizationProof.model_construct(
         otp_challenge_id="challenge-1",
+        workspace_id=str(_FORM_REF.workspace_id),
         form_id="form-1",
         approver_grant_id="grant-1",
         subject_type="end_user",
@@ -318,6 +320,108 @@ def test_email_proof_mapper_rejects_unsupported_subject_type() -> None:
 
     with pytest.raises(ValueError, match="unsupported subject type"):
         proof_from_record_value(record_value, workspace_id=_FORM_REF.workspace_id)
+
+
+@pytest.mark.parametrize(
+    ("proof_form_ref", "proof_grant_id"),
+    [
+        (FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id), _GRANT_ID),
+        (FormRef(_FORM_REF.workspace_id, FormId("form-2")), _GRANT_ID),
+        (_FORM_REF, ApproverGrantId("grant-2")),
+    ],
+)
+def test_authorized_email_audit_event_rejects_proof_from_another_owner(
+    proof_form_ref: FormRef,
+    proof_grant_id: ApproverGrantId,
+) -> None:
+    proof = VerifiedEmailOTPProof(
+        challenge_ref=proof_form_ref.grant(proof_grant_id).challenge(OTPChallengeId("challenge-1")),
+        subject=ContactOTPSubject(ContactId("contact-1")),
+        normalized_email=_EMAIL,
+        verified_at=_NOW,
+    )
+
+    with pytest.raises(ValueError, match="proof owner"):
+        FormAuthorizationAuditEvent(
+            id=AuditEventId("audit-1"),
+            event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED,
+            form_ref=_FORM_REF,
+            approver_grant_id=_GRANT_ID,
+            endpoint_id=_ENDPOINT_ID,
+            channel=HumanInputDeliveryChannel.EMAIL,
+            reason_code=None,
+            reason_message=None,
+            authorization_proof=proof,
+            payload=None,
+            occurred_at=_NOW,
+            created_at=_NOW,
+            updated_at=_NOW,
+        )
+
+
+def test_audit_mapper_write_revalidates_authorized_email_proof_owner() -> None:
+    event = FormAuthorizationAuditEvent(
+        id=AuditEventId("audit-1"),
+        event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED,
+        form_ref=_FORM_REF,
+        approver_grant_id=_GRANT_ID,
+        endpoint_id=_ENDPOINT_ID,
+        channel=HumanInputDeliveryChannel.EMAIL,
+        reason_code=None,
+        reason_message=None,
+        authorization_proof=_email_proof(),
+        payload=None,
+        occurred_at=_NOW,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    object.__setattr__(event, "form_ref", FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id))
+
+    with pytest.raises(ValueError, match="proof owner"):
+        audit_event_to_record(event)
+
+
+@pytest.mark.parametrize(
+    ("proof_workspace_id", "proof_form_id", "proof_grant_id"),
+    [
+        ("workspace-2", "form-1", "grant-1"),
+        ("workspace-1", "form-2", "grant-1"),
+        ("workspace-1", "form-1", "grant-2"),
+    ],
+)
+def test_audit_mapper_read_rejects_authorized_email_proof_from_another_owner(
+    proof_workspace_id: str,
+    proof_form_id: str,
+    proof_grant_id: str,
+) -> None:
+    record = HumanInputV2FormAuditEvent(
+        tenant_id="workspace-1",
+        form_id="form-1",
+        event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED.value,
+        occurred_at=_NOW.value,
+        approver_grant_id="grant-1",
+        endpoint_id=None,
+        channel=HumanInputDeliveryChannel.EMAIL,
+        reason_code=None,
+        reason_message=None,
+        authorization_proof=EmailOTPAuthorizationProof(
+            otp_challenge_id="challenge-1",
+            workspace_id=proof_workspace_id,
+            form_id=proof_form_id,
+            approver_grant_id=proof_grant_id,
+            subject_type=HumanInputApproverGrantSubjectType.CONTACT,
+            contact_id="contact-1",
+            verified_email=str(_EMAIL),
+            verified_at=_NOW.value,
+        ),
+        event_payload=None,
+    )
+    record.id = "audit-1"
+    record.created_at = _NOW.value
+    record.updated_at = _NOW.value
+
+    with pytest.raises(ValueError, match="proof owner"):
+        audit_event_from_record(record)
 
 
 def test_audit_mapper_rejects_unknown_event_type_and_malformed_payload() -> None:
