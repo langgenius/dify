@@ -12,16 +12,16 @@ function noopSubscribe() {
   return () => {}
 }
 
-function getClientPlatform() {
+function getPlatformSnapshot() {
   return detectPlatform()
 }
 
-function getServerPlatform() {
+function getServerPlatformSnapshot() {
   return 'linux' as const
 }
 
 function useDisplayPlatform() {
-  return useSyncExternalStore(noopSubscribe, getClientPlatform, getServerPlatform)
+  return useSyncExternalStore(noopSubscribe, getPlatformSnapshot, getServerPlatformSnapshot)
 }
 
 export function MainNavSearchButton() {
