@@ -20,6 +20,7 @@ from controllers.common.controller_schemas import DocumentBatchDownloadZipPayloa
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
+from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.entities.knowledge_entities import IndexingEstimate
@@ -366,6 +367,17 @@ class GetProcessRuleApi(Resource):
                 DatasetService.check_dataset_permission(dataset, current_user, session)
             except services.errors.account.NoPermissionError as e:
                 raise Forbidden(str(e))
+
+            # The dataset comes from a query-string document id, so this route cannot use the
+            # rbac_permission_required decorator and enforces access once the dataset is resolved.
+            enforce_rbac_access(
+                # check_dataset_permission above already asserts this matches the caller's tenant.
+                tenant_id=dataset.tenant_id,
+                account_id=current_user.id,
+                resource_type=RBACResourceScope.DATASET,
+                scene=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+                path_args={"dataset_id": dataset.id},
+            )
 
             dataset_process_rule = dataset.get_latest_process_rule(session=session)
             if dataset_process_rule:

@@ -36,6 +36,7 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
+from controllers.console.wraps import RBACPermission, RBACResourceScope
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset
@@ -269,6 +270,43 @@ class TestGetProcessRuleApi:
         assert response["rules"]["segmentation"]["separator"] == "---"
         assert response["rules"]["segmentation"]["max_tokens"] == 123
         assert "delimiter" not in response["rules"]["segmentation"]
+
+    def test_get_with_document_enforces_rbac_access_on_resolved_dataset(self, app: Flask, patch_tenant):
+        # The dataset is resolved from a query-string document id, so the route cannot use the
+        # rbac_permission_required decorator and has to enforce access once the dataset is known.
+        api = GetProcessRuleApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        document = MagicMock(dataset_id="ds-1")
+        session = MagicMock()
+        dataset = MagicMock(id="ds-1", tenant_id=tenant_id)
+        dataset.get_latest_process_rule.return_value = None
+
+        with (
+            app.test_request_context("/?document_id=doc-1"),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.get_document_by_id",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch("controllers.console.datasets.datasets_document.enforce_rbac_access") as enforce_access,
+        ):
+            method(api, session, user)
+
+        enforce_access.assert_called_once_with(
+            tenant_id=dataset.tenant_id,
+            account_id=user.id,
+            resource_type=RBACResourceScope.DATASET,
+            scene=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+            path_args={"dataset_id": dataset.id},
+        )
 
     def test_get_with_document_preserves_null_rules(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
