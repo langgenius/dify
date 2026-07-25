@@ -103,6 +103,9 @@ def test_upgrade_matches_form_core_model_columns_constraints_and_indexes() -> No
         "hiv2_forms_tenant_status_global_expiry_idx",
         "hiv2_forms_tenant_status_node_timeout_idx",
     }
+    assert {index["name"] for index in inspector.get_indexes("human_input_v2_form_delivery_endpoints")} == {
+        "hiv2_form_endpoints_identity_form_idx"
+    }
     assert {index["name"] for index in inspector.get_indexes("human_input_v2_form_upload_files")} == {
         "hiv2_form_upload_files_form_endpoint_idx",
         "hiv2_form_upload_files_token_idx",

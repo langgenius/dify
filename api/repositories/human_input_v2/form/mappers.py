@@ -332,8 +332,19 @@ def endpoint_from_record(record: HumanInputV2FormDeliveryEndpoint) -> DeliveryEn
         case HumanInputDeliveryChannel.EMAIL:
             if record.email_address is None:
                 raise ValueError("email endpoint record is missing email_address")
+            if (
+                record.integration_id is not None
+                or record.provider is not None
+                or record.provider_tenant_id is not None
+                or record.provider_user_id is not None
+                or record.im_identity_id is not None
+                or record.im_binding_id is not None
+            ):
+                raise ValueError("email endpoint record contains invalid channel configuration")
             configuration = EmailEndpointConfiguration(NormalizedEmail(record.email_address))
         case HumanInputDeliveryChannel.IM:
+            if record.email_address is not None:
+                raise ValueError("IM endpoint record contains invalid channel configuration")
             if (
                 record.integration_id is None
                 or record.provider is None
@@ -350,10 +361,24 @@ def endpoint_from_record(record: HumanInputV2FormDeliveryEndpoint) -> DeliveryEn
                 binding_id=IMBindingId(record.im_binding_id) if record.im_binding_id is not None else None,
                 provider_user_id=record.provider_user_id,
             )
-        case HumanInputDeliveryChannel.WEB:
-            configuration = WebEndpointConfiguration()
-        case HumanInputDeliveryChannel.CONSOLE:
-            configuration = ConsoleEndpointConfiguration()
+        case HumanInputDeliveryChannel.WEB | HumanInputDeliveryChannel.CONSOLE:
+            if (
+                record.email_address is not None
+                or record.integration_id is not None
+                or record.provider is not None
+                or record.provider_tenant_id is not None
+                or record.provider_user_id is not None
+                or record.im_identity_id is not None
+                or record.im_binding_id is not None
+            ):
+                raise ValueError(f"{record.channel.value} endpoint record contains invalid channel configuration")
+            configuration = (
+                WebEndpointConfiguration()
+                if record.channel is HumanInputDeliveryChannel.WEB
+                else ConsoleEndpointConfiguration()
+            )
+        case _:
+            raise ValueError(f"unsupported delivery channel: {record.channel!r}")
     capability = (
         EndpointAccessCapability(endpoint_ref, record.access_token_hash)
         if record.access_token_hash is not None

@@ -216,8 +216,13 @@ class DeliveryAttempt:
     def __post_init__(self) -> None:
         if self.attempt_number < 1:
             raise ValueError("delivery attempt number must be positive")
-        if self.status is HumanInputDeliveryAttemptStatus.FAILED and self.finished_at is None:
-            raise ValueError("failed delivery attempt requires finished_at")
+        if self.status is HumanInputDeliveryAttemptStatus.FAILED:
+            if self.finished_at is None:
+                raise ValueError("failed delivery attempt requires finished_at")
+            has_failure_code = self.failure_code is not None and bool(self.failure_code.strip())
+            has_failure_reason = self.failure_reason is not None and bool(self.failure_reason.strip())
+            if not has_failure_code and not has_failure_reason and self.provider_response is None:
+                raise ValueError("failed delivery attempt requires a failure diagnostic")
         if self.status is not HumanInputDeliveryAttemptStatus.FAILED and (
             self.failure_code is not None or self.failure_reason is not None
         ):

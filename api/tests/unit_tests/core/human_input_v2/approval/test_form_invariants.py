@@ -171,6 +171,19 @@ def test_recursive_frozen_json_accepts_all_json_shapes_and_rejects_invalid_value
         FrozenJSONObject((("key", 1), ("key", 2)))
 
 
+def test_direct_frozen_json_construction_rejects_mutable_and_non_finite_nested_values() -> None:
+    nested_array = FrozenJSONArray((1, FrozenJSONObject((("nested", True),))))
+    nested_object = FrozenJSONObject((("array", nested_array),))
+
+    assert nested_object.to_mapping() == {"array": [1, {"nested": True}]}
+    with pytest.raises(TypeError, match="frozen JSON"):
+        FrozenJSONArray(([1],))
+    with pytest.raises(TypeError, match="frozen JSON"):
+        FrozenJSONObject((("nested", {"value": 1}),))
+    with pytest.raises(ValueError, match="finite"):
+        FrozenJSONArray((nan,))
+
+
 def test_grant_rejects_mutable_sources_and_mismatched_subject_key() -> None:
     approver = _email_approver()
 
@@ -353,6 +366,72 @@ def test_delivery_attempt_validates_sequence_terminal_time_and_failure_diagnosti
         _NOW,
     )
     assert queued.status is HumanInputDeliveryAttemptStatus.QUEUED
+
+
+@pytest.mark.parametrize(
+    ("failure_code", "failure_reason", "provider_response"),
+    [
+        (None, None, None),
+        ("", " ", None),
+    ],
+)
+def test_failed_delivery_attempt_requires_at_least_one_diagnostic(
+    failure_code: str | None,
+    failure_reason: str | None,
+    provider_response: FrozenJSONObject | None,
+) -> None:
+    endpoint_ref = _FORM_REF.grant(ApproverGrantId("grant-1")).endpoint(DeliveryEndpointId("endpoint-1"))
+
+    with pytest.raises(ValueError, match="failure diagnostic"):
+        DeliveryAttempt(
+            DeliveryAttemptId("attempt-1"),
+            endpoint_ref,
+            1,
+            HumanInputDeliveryAttemptStatus.FAILED,
+            _NOW,
+            _NOW,
+            _NOW,
+            None,
+            failure_code,
+            failure_reason,
+            provider_response,
+            _NOW,
+            _NOW,
+        )
+
+
+@pytest.mark.parametrize(
+    ("failure_code", "failure_reason", "provider_response"),
+    [
+        ("provider_rejected", None, None),
+        (None, "Recipient unavailable", None),
+        (None, None, FrozenJSONObject.from_mapping({"status": 400})),
+    ],
+)
+def test_failed_delivery_attempt_accepts_each_supported_diagnostic(
+    failure_code: str | None,
+    failure_reason: str | None,
+    provider_response: FrozenJSONObject | None,
+) -> None:
+    endpoint_ref = _FORM_REF.grant(ApproverGrantId("grant-1")).endpoint(DeliveryEndpointId("endpoint-1"))
+
+    attempt = DeliveryAttempt(
+        DeliveryAttemptId("attempt-1"),
+        endpoint_ref,
+        1,
+        HumanInputDeliveryAttemptStatus.FAILED,
+        _NOW,
+        _NOW,
+        _NOW,
+        None,
+        failure_code,
+        failure_reason,
+        provider_response,
+        _NOW,
+        _NOW,
+    )
+
+    assert attempt.status is HumanInputDeliveryAttemptStatus.FAILED
 
 
 def test_upload_file_requires_a_non_blank_file_identifier() -> None:

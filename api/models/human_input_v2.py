@@ -1258,8 +1258,9 @@ class HumanInputV2FormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
     Email endpoints set only ``email_address``; IM endpoints set
     ``integration_id``, ``provider``, ``provider_user_id``, and
     ``im_identity_id``. Web and Console endpoints set none of those fields. The
-    database intentionally does not duplicate this discriminated-union rule.
-    Opaque public form tokens are persisted only as hashes.
+    database intentionally does not duplicate this discriminated-union rule;
+    the repository mapper rejects missing or cross-channel persisted fields on
+    load. Opaque public form tokens are persisted only as hashes.
     """
 
     __tablename__ = "human_input_v2_form_delivery_endpoints"
@@ -1272,7 +1273,6 @@ class HumanInputV2FormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
             name="hiv2_form_endpoints_grant_channel_address_uq",
         ),
         sa.UniqueConstraint("access_token_hash", name="hiv2_form_endpoints_token_uq"),
-        sa.Index("hiv2_form_endpoints_form_grant_channel_idx", "form_id", "approver_grant_id", "channel"),
         sa.Index("hiv2_form_endpoints_identity_form_idx", "im_identity_id", "form_id"),
         {"comment": "Immutable notification and interaction endpoints for Human Input v2 approver grants."},
     )

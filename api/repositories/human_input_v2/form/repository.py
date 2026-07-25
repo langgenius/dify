@@ -31,6 +31,7 @@ from models.human_input_v2 import (
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormUploadToken,
 )
+from models.model import UploadFile
 
 from .mappers import (
     delivery_attempt_from_record,
@@ -182,7 +183,7 @@ class SQLAlchemyFormRepository:
             raise FormPersistenceError("failed to create Human Input upload capability") from error
 
     def associate_upload_file(self, association: UploadFileAssociation) -> UploadFileAssociation:
-        """Persist a file only after resolving the full token owner predicate."""
+        """Persist a file only after resolving its token and UploadFile workspace owners."""
 
         capability_ref = association.capability_ref
         endpoint_ref = capability_ref.endpoint_ref
@@ -217,6 +218,14 @@ class SQLAlchemyFormRepository:
                 if row is None:
                     raise ValueError("upload file capability scope does not match")
                 capability_record, endpoint_record = row
+                upload_file_id = session.scalar(
+                    select(UploadFile.id).where(
+                        UploadFile.id == association.upload_file_id,
+                        UploadFile.tenant_id == str(endpoint_ref.form_ref.workspace_id),
+                    )
+                )
+                if upload_file_id is None:
+                    raise ValueError("upload file workspace scope does not exist")
                 record = upload_file_to_record(association)
                 session.add(record)
                 session.flush()

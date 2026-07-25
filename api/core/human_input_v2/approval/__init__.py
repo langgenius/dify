@@ -1,9 +1,8 @@
-"""Pure recipient resolution for Human Input v2 approval plans.
+"""Human Input v2 recipient planning and frozen Form aggregate boundaries.
 
-The package accepts immutable workflow recipient specifications and current
-Contact/endpoint capability snapshots. It returns immutable domain decisions;
-transport DTOs, provider clients, database sessions, and ORM records remain at
-their respective adapters.
+The package resolves immutable approval plans, owns Form lifecycle, grant,
+delivery, and upload facts, and exposes persistence ports without importing
+transport, provider, database-session, or ORM concerns.
 """
 
 from .delivery import (

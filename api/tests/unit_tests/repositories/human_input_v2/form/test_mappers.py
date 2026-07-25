@@ -399,6 +399,71 @@ def test_endpoint_mapper_rejects_each_missing_im_provider_value(missing_field: s
         endpoint_from_record(record)
 
 
+@pytest.mark.parametrize(
+    ("channel", "contaminated_field", "contaminated_value"),
+    [
+        (HumanInputDeliveryChannel.EMAIL, "integration_id", "integration-1"),
+        (HumanInputDeliveryChannel.EMAIL, "provider", IMProvider.FEISHU),
+        (HumanInputDeliveryChannel.EMAIL, "provider_tenant_id", "provider-tenant-1"),
+        (HumanInputDeliveryChannel.EMAIL, "provider_user_id", "provider-user-1"),
+        (HumanInputDeliveryChannel.EMAIL, "im_identity_id", "identity-1"),
+        (HumanInputDeliveryChannel.EMAIL, "im_binding_id", "binding-1"),
+        (HumanInputDeliveryChannel.IM, "email_address", "reviewer@example.com"),
+        (HumanInputDeliveryChannel.WEB, "email_address", "reviewer@example.com"),
+        (HumanInputDeliveryChannel.WEB, "integration_id", "integration-1"),
+        (HumanInputDeliveryChannel.WEB, "provider", IMProvider.FEISHU),
+        (HumanInputDeliveryChannel.WEB, "provider_tenant_id", "provider-tenant-1"),
+        (HumanInputDeliveryChannel.WEB, "provider_user_id", "provider-user-1"),
+        (HumanInputDeliveryChannel.WEB, "im_identity_id", "identity-1"),
+        (HumanInputDeliveryChannel.WEB, "im_binding_id", "binding-1"),
+        (HumanInputDeliveryChannel.CONSOLE, "email_address", "reviewer@example.com"),
+        (HumanInputDeliveryChannel.CONSOLE, "integration_id", "integration-1"),
+        (HumanInputDeliveryChannel.CONSOLE, "provider", IMProvider.FEISHU),
+        (HumanInputDeliveryChannel.CONSOLE, "provider_tenant_id", "provider-tenant-1"),
+        (HumanInputDeliveryChannel.CONSOLE, "provider_user_id", "provider-user-1"),
+        (HumanInputDeliveryChannel.CONSOLE, "im_identity_id", "identity-1"),
+        (HumanInputDeliveryChannel.CONSOLE, "im_binding_id", "binding-1"),
+    ],
+)
+def test_endpoint_mapper_rejects_cross_channel_field_contamination(
+    channel: HumanInputDeliveryChannel,
+    contaminated_field: str,
+    contaminated_value: str | IMProvider,
+) -> None:
+    endpoint_by_channel = {
+        HumanInputDeliveryChannel.EMAIL: _endpoint(),
+        HumanInputDeliveryChannel.IM: _im_endpoint(binding_id=IMBindingId("binding-1")),
+        HumanInputDeliveryChannel.WEB: DeliveryEndpoint.from_plan(
+            endpoint_id=DeliveryEndpointId("endpoint-web"),
+            grant_ref=_grant().ref,
+            endpoint_plan=WebEndpointPlan(),
+            access_capability=None,
+            now=_NOW,
+        ),
+        HumanInputDeliveryChannel.CONSOLE: DeliveryEndpoint.from_plan(
+            endpoint_id=DeliveryEndpointId("endpoint-console"),
+            grant_ref=_grant().ref,
+            endpoint_plan=ConsoleEndpointPlan(),
+            access_capability=None,
+            now=_NOW,
+        ),
+    }
+    record = endpoint_to_record(endpoint_by_channel[channel])
+    setattr(record, contaminated_field, contaminated_value)
+
+    with pytest.raises(ValueError, match="channel configuration"):
+        endpoint_from_record(record)
+
+
+def test_endpoint_mapper_rejects_unsupported_channel_explicitly() -> None:
+    record = endpoint_to_record(_endpoint())
+    channel_field = "channel"
+    setattr(record, channel_field, "sms")
+
+    with pytest.raises(ValueError, match="unsupported delivery channel"):
+        endpoint_from_record(record)
+
+
 def test_optional_mapper_values_round_trip_when_absent() -> None:
     endpoint = _endpoint()
     queued_attempt = DeliveryAttempt(

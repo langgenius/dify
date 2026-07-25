@@ -185,11 +185,6 @@ def upgrade() -> None:
         comment="Immutable notification and interaction endpoints for Human Input v2 approver grants.",
     )
     op.create_index(
-        "hiv2_form_endpoints_form_grant_channel_idx",
-        "human_input_v2_form_delivery_endpoints",
-        ["form_id", "approver_grant_id", "channel"],
-    )
-    op.create_index(
         "hiv2_form_endpoints_identity_form_idx",
         "human_input_v2_form_delivery_endpoints",
         ["im_identity_id", "form_id"],

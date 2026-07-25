@@ -49,6 +49,8 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
     WorkspaceId,
 )
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
 from models.human_input_v2 import (
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
@@ -57,6 +59,7 @@ from models.human_input_v2 import (
     HumanInputV2FormUploadFile,
     HumanInputV2FormUploadToken,
 )
+from models.model import UploadFile
 from repositories.human_input_v2.form.repository import FormPersistenceError, SQLAlchemyFormRepository
 
 _NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
@@ -83,6 +86,7 @@ def repository_context(
     sqlite_engine: Engine,
 ) -> Iterator[tuple[SQLAlchemyFormRepository, sessionmaker[Session]]]:
     tables = [
+        UploadFile.__table__,
         HumanInputV2Form.__table__,
         HumanInputV2FormApproverGrant.__table__,
         HumanInputV2FormDeliveryEndpoint.__table__,
@@ -163,6 +167,24 @@ def _attempt(endpoint: DeliveryEndpoint, *, attempt_id: str = "attempt-1") -> De
         created_at=_NOW,
         updated_at=_NOW,
     )
+
+
+def _upload_file(*, file_id: str, tenant_id: str) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/{file_id}.txt",
+        name=f"{file_id}.txt",
+        size=1,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=_NOW.value,
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
 
 
 def test_create_form_persists_form_grants_and_endpoints_in_one_transaction(repository_context) -> None:
@@ -270,6 +292,13 @@ def test_upload_file_association_requires_matching_form_endpoint_app_and_token_s
         updated_at=_NOW,
     )
     repository.create_upload_capability(capability)
+    with session_maker() as session, session.begin():
+        session.add_all(
+            [
+                _upload_file(file_id="file-1", tenant_id="workspace-1"),
+                _upload_file(file_id="file-2", tenant_id="workspace-1"),
+            ]
+        )
     association = UploadFileAssociation(
         id=UploadFileAssociationId("upload-association-1"),
         capability_ref=capability.ref,
@@ -295,6 +324,48 @@ def test_upload_file_association_requires_matching_form_endpoint_app_and_token_s
         assert [(record.form_id, record.endpoint_id, record.upload_token_id) for record in records] == [
             ("form-1", "endpoint-1", "upload-capability-1")
         ]
+
+
+@pytest.mark.parametrize(
+    ("upload_file_id", "seed_tenant_id"),
+    [
+        ("missing-file", None),
+        ("cross-tenant-file", "workspace-2"),
+    ],
+)
+def test_upload_file_association_fails_closed_without_inserting_a_row(
+    repository_context,
+    upload_file_id: str,
+    seed_tenant_id: str | None,
+) -> None:
+    repository, session_maker = repository_context
+    creation = _creation()
+    repository.create_form(creation)
+    capability = UploadCapability(
+        id=UploadCapabilityId("upload-capability-1"),
+        endpoint_ref=creation.endpoints[0].ref,
+        app_id=creation.form.app_id,
+        token_hash="c" * 64,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    repository.create_upload_capability(capability)
+    if seed_tenant_id is not None:
+        with session_maker() as session, session.begin():
+            session.add(_upload_file(file_id=upload_file_id, tenant_id=seed_tenant_id))
+    association = UploadFileAssociation(
+        id=UploadFileAssociationId("upload-association-1"),
+        capability_ref=capability.ref,
+        upload_file_id=upload_file_id,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+    with pytest.raises(ValueError, match="workspace scope does not exist"):
+        repository.associate_upload_file(association)
+
+    with session_maker() as session:
+        assert session.scalar(select(sa.func.count(HumanInputV2FormUploadFile.id))) == 0
 
 
 def test_delivery_projection_is_scoped_to_the_complete_endpoint_owner_chain(repository_context) -> None:
@@ -367,7 +438,7 @@ def test_upload_capability_requires_an_existing_endpoint_and_matching_app(reposi
 
 
 def test_append_operations_translate_unique_constraint_failures(repository_context) -> None:
-    repository, _session_maker = repository_context
+    repository, session_maker = repository_context
     creation = _creation()
     repository.create_form(creation)
     endpoint = creation.endpoints[0]
@@ -387,6 +458,9 @@ def test_append_operations_translate_unique_constraint_failures(repository_conte
         created_at=_NOW,
         updated_at=_NOW,
     )
+
+    with session_maker() as session, session.begin():
+        session.add(_upload_file(file_id="file-1", tenant_id="workspace-1"))
 
     repository.append_delivery_attempt(attempt)
     repository.create_upload_capability(capability)

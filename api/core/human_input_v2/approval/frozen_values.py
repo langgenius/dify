@@ -16,6 +16,18 @@ type JSONPrimitive = JSONScalar | list[JSONPrimitive] | dict[str, JSONPrimitive]
 type FrozenJSONValue = JSONScalar | FrozenJSONArray | FrozenJSONObject
 
 
+def _validate_frozen_json(value: object) -> None:
+    if value is None or isinstance(value, (str, bool, int)):
+        return
+    if isinstance(value, float):
+        if not isfinite(value):
+            raise ValueError("JSON numbers must be finite")
+        return
+    if isinstance(value, (FrozenJSONArray, FrozenJSONObject)):
+        return
+    raise TypeError(f"frozen JSON values cannot contain {type(value).__name__}")
+
+
 def _freeze_json(value: object) -> FrozenJSONValue:
     if value is None or isinstance(value, (str, bool, int)):
         return value
@@ -47,6 +59,8 @@ class FrozenJSONArray:
     def __post_init__(self) -> None:
         if not isinstance(self.values, tuple):
             raise TypeError("frozen JSON array values must be an immutable tuple")
+        for value in self.values:
+            _validate_frozen_json(value)
 
     def to_list(self) -> list[JSONPrimitive]:
         return [_thaw_json(value) for value in self.values]
@@ -62,12 +76,16 @@ class FrozenJSONObject:
         if not isinstance(self.entries, tuple):
             raise TypeError("frozen JSON object entries must be an immutable tuple")
         seen_keys: set[str] = set()
-        for key, _value in self.entries:
+        for entry in self.entries:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise TypeError("frozen JSON object entries must be key-value tuples")
+            key, value = entry
             if not isinstance(key, str):
                 raise TypeError("JSON objects require string keys")
             if key in seen_keys:
                 raise ValueError(f"duplicate JSON object key: {key}")
             seen_keys.add(key)
+            _validate_frozen_json(value)
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> FrozenJSONObject:
