@@ -137,13 +137,15 @@ class ActivateApi(Resource):
         console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
-    @with_session(write=True)
+    # Account and tenant services commit internally, so avoid wrapping their
+    # sequential operations in Session.begin().
+    @with_session(write=False)
     def post(self, session: Session):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None
         invitation = RegisterService.get_invitation_with_case_fallback(
-            args.workspace_id, args.email, args.token, session=db.session
+            args.workspace_id, args.email, args.token, session=session
         )
         if invitation is None:
             raise AlreadyActivateError()
@@ -161,7 +163,7 @@ class ActivateApi(Resource):
         if not TenantAccountRole.is_non_owner_role(role):
             role = TenantAccountRole.NORMAL
 
-        membership_id = db.session.scalar(
+        membership_id = session.scalar(
             select(TenantAccountJoin.id).where(
                 TenantAccountJoin.tenant_id == tenant.id,
                 TenantAccountJoin.account_id == account.id,
@@ -181,7 +183,7 @@ class ActivateApi(Resource):
         RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         if membership_id is None:
-            TenantService.create_tenant_member(tenant, account, db.session, role=role)
+            TenantService.create_tenant_member(tenant, account, session, role=role)
 
         if setup_fields:
             account.name = setup_fields[0]

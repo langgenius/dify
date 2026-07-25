@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -114,14 +115,12 @@ class TestForgotPasswordCheckApi:
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
-    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_fetches_account_with_original_email(
         self,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_db,
         mock_get_account,
         mock_update_account,
         app: Flask,
@@ -129,7 +128,8 @@ class TestForgotPasswordResetApi:
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
-        mock_db.session.merge.return_value = mock_account
+        mock_session = MagicMock()
+        mock_session.merge.return_value = mock_account
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
         with (
@@ -145,12 +145,13 @@ class TestForgotPasswordResetApi:
                     "password_confirm": "ValidPass123!",
                 },
             ):
-                response = ForgotPasswordResetApi().post()
+                response = unwrap(ForgotPasswordResetApi.post)(ForgotPasswordResetApi(), mock_session)
 
         assert response == {"result": "success"}
         mock_get_reset_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
-        mock_update_account.assert_called_once()
+        mock_get_account.assert_called_once_with(mock_session, "User@Example.com")
+        mock_update_account.assert_called_once_with(mock_account, ANY, ANY, mock_session)
 
 
 def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():

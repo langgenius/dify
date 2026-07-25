@@ -8,6 +8,7 @@ This module tests the account activation mechanism including:
 - Initial login after activation
 """
 
+from inspect import unwrap
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -16,12 +17,6 @@ from flask import Flask
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from models.account import AccountStatus, TenantAccountRole
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestActivateCheckApi:
@@ -541,10 +536,8 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_for_existing_active_account_creates_membership_on_acceptance(
         self,
-        mock_db: MagicMock,
         mock_revoke_token: MagicMock,
         mock_get_invitation: MagicMock,
         mock_create_tenant_member: MagicMock,
@@ -557,7 +550,8 @@ class TestActivateApi:
         mock_invitation["data"]["role"] = "admin"
         mock_invitation["data"]["requires_setup"] = False
         mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         with app.test_request_context(
             "/activate",
@@ -568,22 +562,20 @@ class TestActivateApi:
                 "token": "valid_token",
             },
         ):
-            response = ActivateApi().post()
+            response = unwrap(ActivateApi.post)(ActivateApi(), mock_session)
 
         assert response["result"] == "success"
         mock_create_tenant_member.assert_called_once_with(
-            mock_invitation["tenant"], mock_account, mock_db.session, role=TenantAccountRole.ADMIN
+            mock_invitation["tenant"], mock_account, mock_session, role=TenantAccountRole.ADMIN
         )
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
+        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=mock_session)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_legacy_active_member_invitation_does_not_require_setup(
         self,
-        mock_db: MagicMock,
         mock_revoke_token: MagicMock,
         mock_get_invitation: MagicMock,
         mock_create_tenant_member: MagicMock,
@@ -594,7 +586,8 @@ class TestActivateApi:
     ):
         mock_account.status = AccountStatus.ACTIVE
         mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = "membership-id"
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = "membership-id"
 
         with app.test_request_context(
             "/activate",
@@ -605,9 +598,9 @@ class TestActivateApi:
                 "token": "valid_token",
             },
         ):
-            response = ActivateApi().post()
+            response = unwrap(ActivateApi.post)(ActivateApi(), mock_session)
 
         assert response["result"] == "success"
         mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
+        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=mock_session)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

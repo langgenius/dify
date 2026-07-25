@@ -19,6 +19,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
+from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password
 from services.account_service import AccountService, TenantService
@@ -158,7 +159,8 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
-    @with_session(write=True)
+    # The reset flow commits explicitly after updating the account.
+    @with_session(write=False)
     def post(self, session: Session):
         args = ForgotPasswordResetPayload.model_validate(console_ns.payload)
 
@@ -182,28 +184,28 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(session, email)
 
         if account:
             account = session.merge(account)
-            self._update_existing_account(account, password_hashed, salt)
+            self._update_existing_account(account, password_hashed, salt, session)
             session.commit()
         else:
             raise AccountNotFound()
 
         return {"result": "success"}
 
-    def _update_existing_account(self, account, password_hashed, salt):
+    def _update_existing_account(self, account, password_hashed, salt, session: Session):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
 
         # Create workspace if needed
         if (
-            not TenantService.get_join_tenants(account, session=db.session)
+            not TenantService.get_join_tenants(account, session=session)
             and FeatureService.get_system_features().is_allow_create_workspace
         ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
-            TenantService.create_tenant_member(tenant, account, db.session, role="owner")
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=session)
+            TenantService.create_tenant_member(tenant, account, session, role="owner")
             account.current_tenant = tenant
             tenant_was_created.send(tenant)
