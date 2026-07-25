@@ -40,9 +40,10 @@ class RecommendedAppService:
 
         if FeatureService.get_system_features().enable_trial_app:
             apps = result["recommended_apps"]
+            trial_apps = cls._get_trial_apps(session, [app["app_id"] for app in apps])
             for app in apps:
                 app_id = app["app_id"]
-                trial_app = cls._get_trial_app(session, app_id)
+                trial_app = trial_apps.get(app_id)
                 app["can_trial"] = trial_app is not None
                 app["trial_limit"] = trial_app.trial_limit if trial_app else None
         return result
@@ -59,8 +60,10 @@ class RecommendedAppService:
         result = retrieval_instance.get_learn_dify_apps(language, session=session)
 
         if FeatureService.get_system_features().enable_trial_app:
-            for app in result["recommended_apps"]:
-                trial_app = cls._get_trial_app(session, app["app_id"])
+            apps = result["recommended_apps"]
+            trial_apps = cls._get_trial_apps(session, [app["app_id"] for app in apps])
+            for app in apps:
+                trial_app = trial_apps.get(app["app_id"])
                 app["can_trial"] = trial_app is not None
                 app["trial_limit"] = trial_app.trial_limit if trial_app else None
 
@@ -105,3 +108,11 @@ class RecommendedAppService:
     @staticmethod
     def _get_trial_app(session: Session, app_id: str) -> TrialApp | None:
         return session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
+
+    @staticmethod
+    def _get_trial_apps(session: Session, app_ids: list[str]) -> dict[str, TrialApp]:
+        if not app_ids:
+            return {}
+
+        trial_apps = session.scalars(select(TrialApp).where(TrialApp.app_id.in_(app_ids))).all()
+        return {trial_app.app_id: trial_app for trial_app in trial_apps}

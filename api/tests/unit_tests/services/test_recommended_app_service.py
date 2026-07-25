@@ -7,7 +7,7 @@ from typing import TypedDict, Unpack, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from enums.deployment_edition import DeploymentEdition
@@ -440,14 +440,14 @@ class TestRecommendedAppServiceGetLearnDifyApps:
             ),
         )
         trial_app = TrialApp(app_id="app-1", tenant_id=str(uuid.uuid4()), trial_limit=4)
-        get_trial_app_mock = MagicMock(return_value=trial_app)
-        monkeypatch.setattr(RecommendedAppService, "_get_trial_app", get_trial_app_mock)
+        get_trial_apps_mock = MagicMock(return_value={"app-1": trial_app})
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_apps", get_trial_apps_mock)
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
         assert result["recommended_apps"][0]["can_trial"] is True
         assert result["recommended_apps"][0]["trial_limit"] == 4
-        get_trial_app_mock.assert_called_once_with(sqlite_session, "app-1")
+        get_trial_apps_mock.assert_called_once_with(sqlite_session, ["app-1"])
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -506,9 +506,29 @@ class TestRecommendedAppServiceTrialFeatures:
             ),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
+        trial_app_query_count = 0
+
+        def count_trial_app_queries(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: bool,
+        ) -> None:
+            nonlocal trial_app_query_count
+            if "FROM trial_apps" in statement:
+                trial_app_query_count += 1
+
+        bind = sqlite_session.get_bind()
+        event.listen(bind, "before_cursor_execute", count_trial_app_queries)
+        try:
+            result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
+        finally:
+            event.remove(bind, "before_cursor_execute", count_trial_app_queries)
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
+        assert trial_app_query_count == 1
         assert result["recommended_apps"][0]["can_trial"] is True
         assert result["recommended_apps"][0]["trial_limit"] == 3
         assert result["recommended_apps"][1]["can_trial"] is False
