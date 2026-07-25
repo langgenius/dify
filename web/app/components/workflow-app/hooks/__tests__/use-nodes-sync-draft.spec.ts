@@ -634,4 +634,21 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
 
     expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
   })
+
+  it('should still flush with keepalive on page close when collaboration is enabled but never connected', () => {
+    // Without a connection there is no leader election, so the collaborative flush guard can never
+    // be satisfied. Skipping the save here would silently drop the edits made before leaving.
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+  })
 })

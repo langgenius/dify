@@ -26,6 +26,7 @@ const reactFlowBridge = vi.hoisted(() => ({
 
 const collaborationBridge = vi.hoisted(() => ({
   canFlushGraphOnPageClose: vi.fn(),
+  isConnected: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -199,6 +200,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
+    isConnected: collaborationBridge.isConnected,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -528,6 +530,7 @@ describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
+    collaborationBridge.isConnected.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -680,6 +683,22 @@ describe('Workflow edge event wiring', () => {
 
     expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('should still save on unmount when collaboration is enabled but never connected', () => {
+    // No connection means no leader election, so the collaborative flush guard can never be
+    // satisfied. Skipping the save here would silently discard unsaved edits.
+    collaborationBridge.isConnected.mockReturnValue(false)
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
+
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
+
+    unmount()
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalled()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {
