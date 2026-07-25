@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.approval import (
@@ -30,6 +32,7 @@ from core.human_input_v2.approval import (
     FrozenJSONObject,
     HumanInputForm,
     IMEndpointConfiguration,
+    RetryableSubmissionPersistenceError,
     SubjectSnapshot,
     SubmissionAttemptScope,
     SubmissionAuthorizer,
@@ -65,6 +68,7 @@ from core.human_input_v2.shared import (
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
 from models.human_input_v2 import (
+    FeishuIMIntegrationEncryptedCredentials,
     HumanInputContact,
     HumanInputContactIdentitySource,
     HumanInputIMBinding,
@@ -326,6 +330,49 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
         )
 
 
+def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-feishu-binding") -> None:
+    integration = HumanInputIMIntegration(
+        provider=IMProvider.FEISHU,
+        encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
+            app_id="feishu-app-1",
+            encrypted_app_secret="encrypted-feishu-secret",
+        ),
+        tenant_id=None,
+        provider_tenant_id="feishu-provider-tenant-1",
+        status=IMIntegrationStatus.CONNECTED,
+        config_version=1,
+        configured_by_account_id=str(_ACCOUNT_ID),
+        callback_url=None,
+        safe_status_reason=None,
+        last_checked_at=_NOW.value,
+    )
+    _set_record_identity(integration, "integration-feishu")
+    identity = HumanInputIMIdentity(
+        integration_id=integration.id,
+        provider=IMProvider.FEISHU,
+        provider_user_id="feishu-provider-user-1",
+        display_name="Feishu Reviewer",
+        normalized_name="feishu reviewer",
+        email="reviewer@example.com",
+        normalized_email="reviewer@example.com",
+        raw_payload=IMIdentityRawPayload({}),
+        last_seen_sync_run_id=None,
+        last_seen_at=_NOW.value,
+    )
+    _set_record_identity(identity, "identity-feishu")
+    binding = HumanInputIMBinding(
+        integration_id=integration.id,
+        scope=IMBindingScope.WORKSPACE,
+        scope_id=str(_WORKSPACE_ID),
+        contact_id=str(_CONTACT_ID),
+        im_identity_id=identity.id,
+        provider=IMProvider.FEISHU,
+        bound_by_account_id=str(_ACCOUNT_ID),
+    )
+    _set_record_identity(binding, binding_id)
+    session.add_all([integration, identity, binding])
+
+
 def _im_proof() -> VerifiedIMIdentityProof:
     return VerifiedIMIdentityProof(
         integration_id=_INTEGRATION_ID,
@@ -403,6 +450,71 @@ def test_transaction_preserves_sqlite_default_isolation() -> None:
         pass
 
     session.connection.assert_not_called()
+
+
+def _transaction_session_mock() -> MagicMock:
+    session = MagicMock(spec=Session)
+    session.__enter__.return_value = session
+    session.__exit__.return_value = False
+    session.get_bind.return_value.dialect.name = "sqlite"
+    return session
+
+
+class _SQLStateDriverError(RuntimeError):
+    sqlstate: str
+
+    def __init__(self, sqlstate: str) -> None:
+        super().__init__(f"database error {sqlstate}")
+        self.sqlstate = sqlstate
+
+
+def _raise_persistence_wrapped_serialization_failure(sqlalchemy_error: OperationalError) -> None:
+    try:
+        raise sqlalchemy_error
+    except OperationalError as error:
+        raise SubmissionPersistenceError("write failed") from error
+
+
+def test_transaction_translates_wrapped_postgresql_serialization_failure_to_retry_signal() -> None:
+    session = _transaction_session_mock()
+    repository = SQLAlchemySubmissionRepository(MagicMock(return_value=session))
+    driver_error = RuntimeError("driver wrapper")
+    driver_error.__cause__ = _SQLStateDriverError("40001")
+    sqlalchemy_error = OperationalError("SELECT FOR UPDATE", {}, driver_error)
+
+    with pytest.raises(RetryableSubmissionPersistenceError):
+        with repository.transaction(_SCOPE):
+            raise sqlalchemy_error
+
+
+def test_transaction_translates_serialization_failure_wrapped_by_persistence_error() -> None:
+    session = _transaction_session_mock()
+    repository = SQLAlchemySubmissionRepository(MagicMock(return_value=session))
+    sqlalchemy_error = OperationalError(
+        "UPDATE human_input_v2_forms",
+        {},
+        SimpleNamespace(sqlstate="40001"),
+    )
+
+    with pytest.raises(RetryableSubmissionPersistenceError):
+        with repository.transaction(_SCOPE):
+            _raise_persistence_wrapped_serialization_failure(sqlalchemy_error)
+
+
+def test_transaction_does_not_translate_non_serialization_database_failure_to_retry_signal() -> None:
+    session = _transaction_session_mock()
+    repository = SQLAlchemySubmissionRepository(MagicMock(return_value=session))
+    sqlalchemy_error = OperationalError(
+        "SELECT FOR UPDATE",
+        {},
+        SimpleNamespace(sqlstate="40P01"),
+    )
+
+    with pytest.raises(SubmissionPersistenceError) as raised:
+        with repository.transaction(_SCOPE):
+            raise sqlalchemy_error
+
+    assert not isinstance(raised.value, RetryableSubmissionPersistenceError)
 
 
 def test_context_load_is_coherent_bounded_and_tenant_scoped(repository_context) -> None:
@@ -531,6 +643,63 @@ def test_im_context_uses_current_email_identity_when_no_explicit_binding_exists(
     assert _authorized(context, proof).actor == AccountSubmissionActor(_ACCOUNT_ID)
 
 
+def test_unrelated_provider_workspace_binding_does_not_shadow_requested_workspace_binding(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        _add_feishu_workspace_binding(session)
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is not None
+    assert context.current_im_binding.integration_id == _INTEGRATION_ID
+    assert context.current_im_binding.provider is IMProvider.SLACK
+    assert context.current_im_binding.binding_id == _BINDING_ID
+
+
+def test_unrelated_provider_workspace_binding_does_not_shadow_requested_organization_binding(
+    repository_context,
+) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        requested_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
+        requested_binding.scope = IMBindingScope.ORGANIZATION
+        requested_binding.scope_id = str(_INTEGRATION_ID)
+        _add_feishu_workspace_binding(session)
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=_im_proof())
+
+    assert context.current_im_binding is not None
+    assert context.current_im_binding.integration_id == _INTEGRATION_ID
+    assert context.current_im_binding.provider is IMProvider.SLACK
+    assert context.current_im_binding.binding_id == _BINDING_ID
+
+
+def test_unrelated_provider_workspace_binding_allows_requested_email_fallback(repository_context) -> None:
+    repository, session_maker = repository_context
+    with session_maker.begin() as session:
+        session.delete(session.get_one(HumanInputIMBinding, str(_BINDING_ID)))
+        _add_feishu_workspace_binding(session)
+    proof = VerifiedIMIdentityProof(
+        integration_id=_INTEGRATION_ID,
+        identity_id=_IDENTITY_ID,
+        binding_id=None,
+        provider=IMProvider.SLACK,
+        provider_tenant_id="provider-tenant-1",
+        provider_user_id="provider-user-1",
+    )
+
+    with repository.transaction(_SCOPE) as transaction:
+        context = transaction.load_authorization_context(proof=proof)
+
+    assert context.current_im_binding is not None
+    assert context.current_im_binding.integration_id == _INTEGRATION_ID
+    assert context.current_im_binding.provider is IMProvider.SLACK
+    assert context.current_im_binding.identity_id == _IDENTITY_ID
+    assert context.current_im_binding.binding_id is None
+
+
 def test_invalid_workspace_binding_does_not_fall_back_to_valid_organization_binding(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
@@ -566,16 +735,26 @@ def test_invalid_workspace_binding_does_not_fall_back_to_matching_email_identity
     assert context.current_im_binding is None
 
 
-def test_workspace_binding_with_wrong_provider_does_not_fall_back_to_matching_email(repository_context) -> None:
+def test_wrong_provider_binding_is_ignored_before_requested_email_fallback(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         workspace_binding = session.get_one(HumanInputIMBinding, str(_BINDING_ID))
         workspace_binding.provider = IMProvider.FEISHU
+    proof = VerifiedIMIdentityProof(
+        integration_id=_INTEGRATION_ID,
+        identity_id=_IDENTITY_ID,
+        binding_id=None,
+        provider=IMProvider.SLACK,
+        provider_tenant_id="provider-tenant-1",
+        provider_user_id="provider-user-1",
+    )
 
     with repository.transaction(_SCOPE) as transaction:
-        context = transaction.load_authorization_context(proof=_im_proof())
+        context = transaction.load_authorization_context(proof=proof)
 
-    assert context.current_im_binding is None
+    assert context.current_im_binding is not None
+    assert context.current_im_binding.identity_id == _IDENTITY_ID
+    assert context.current_im_binding.binding_id is None
 
 
 def test_workspace_binding_rejects_identity_owned_by_another_integration(repository_context) -> None:

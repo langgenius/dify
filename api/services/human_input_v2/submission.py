@@ -4,6 +4,8 @@ The handler keeps authorization and persistence behind their deep domain and
 repository interfaces. Its only application-layer policy is the post-commit
 boundary: a winning runtime submission is committed before workflow resume is
 requested, and a known enqueue failure never changes the persisted outcome.
+Retryable transaction conflicts restart the complete use case with a fresh
+snapshot; partial authorization or persistence steps are never retried alone.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from core.human_input_v2.approval import (
     FormSubmission,
     FrozenJSONObject,
     HumanInputForm,
+    RetryableSubmissionPersistenceError,
     SubmissionAttemptScope,
     SubmissionAuthorizationRejection,
     SubmissionAuthorizer,
@@ -30,6 +33,8 @@ from core.human_input_v2.entities import HumanInputV2FormKind
 from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, UtcTimestamp, WorkspaceId
 
 logger = logging.getLogger(__name__)
+
+_MAX_SUBMISSION_TRANSACTION_RETRIES = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +96,7 @@ class SubmitFormResult:
 
 
 class SubmitHumanInputFormHandler:
-    """Authorize and persist once, then request idempotent workflow resume."""
+    """Authorize and persist once, retrying only complete transient transactions."""
 
     def __init__(self, repository: SubmissionRepository, resume_port: WorkflowResumePort) -> None:
         self._repository = repository
@@ -101,9 +106,61 @@ class SubmitHumanInputFormHandler:
         """Return a stable outcome while preserving commit-before-enqueue ordering."""
 
         identity = self._prevalidate_resume_identity(command)
-        context = None
-        commit_result = None
-        rejection = None
+        transaction_result = self._handle_transaction_with_retry(command, identity)
+        if transaction_result.status is not SubmitFormResultStatus.SUBMITTED:
+            return transaction_result
+
+        try:
+            self._resume_port.enqueue_once(identity)
+        except WorkflowResumeEnqueueError:
+            logger.exception(
+                "Failed to enqueue Human Input v2 workflow resume after submission commit: "
+                "workspace_id=%s form_id=%s workflow_pause_id=%s node_execution_id=%s",
+                identity.workspace_id,
+                identity.form_id,
+                identity.workflow_pause_id,
+                identity.node_execution_id,
+            )
+            return SubmitFormResult(
+                SubmitFormResultStatus.SUBMITTED,
+                transaction_result.submission,
+                None,
+                False,
+            )
+        return SubmitFormResult(
+            SubmitFormResultStatus.SUBMITTED,
+            transaction_result.submission,
+            None,
+            True,
+        )
+
+    def _handle_transaction_with_retry(
+        self,
+        command: SubmitFormCommand,
+        identity: WorkflowResumeIdentity,
+    ) -> SubmitFormResult:
+        for retry_count in range(_MAX_SUBMISSION_TRANSACTION_RETRIES + 1):
+            try:
+                return self._handle_transaction_once(command, identity)
+            except RetryableSubmissionPersistenceError:
+                if retry_count == _MAX_SUBMISSION_TRANSACTION_RETRIES:
+                    raise
+                logger.warning(
+                    "Retrying Human Input v2 submission after transaction serialization failure: "
+                    "workspace_id=%s form_id=%s retry_count=%s",
+                    identity.workspace_id,
+                    identity.form_id,
+                    retry_count + 1,
+                )
+        raise AssertionError("submission transaction retry loop must return or raise")
+
+    def _handle_transaction_once(
+        self,
+        command: SubmitFormCommand,
+        identity: WorkflowResumeIdentity,
+    ) -> SubmitFormResult:
+        """Run one complete load, authorization, Form decision, and commit attempt."""
+
         with self._repository.transaction(command.scope) as transaction:
             context = transaction.load_authorization_context(proof=command.proof)
             self._validate_runtime_form_identity(context.form, identity)
@@ -115,6 +172,8 @@ class SubmitHumanInputFormHandler:
             )
             if decision.rejection is not None:
                 rejection = decision.rejection
+                if rejection is SubmissionAuthorizationRejection.FORM_ALREADY_SUBMITTED:
+                    return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
                 transaction.append_rejection_audit(
                     FormAuthorizationAuditEvent(
                         id=command.rejection_audit_event_id,
@@ -132,50 +191,22 @@ class SubmitHumanInputFormHandler:
                         updated_at=command.now,
                     )
                 )
-            else:
-                authorized = decision.authorized
-                assert authorized is not None
-                commit_result = transaction.commit_authorized_submission_once(
-                    AuthorizedSubmissionCommit(
-                        submission_id=command.submission_id,
-                        authorization_audit_event_id=command.authorization_audit_event_id,
-                        authorized=authorized,
-                        input_snapshot=command.input_snapshot,
-                        canonical_values=command.canonical_values,
-                    )
+                return SubmitFormResult(SubmitFormResultStatus.REJECTED, None, rejection, False)
+
+            authorized = decision.authorized
+            assert authorized is not None
+            commit_result = transaction.commit_authorized_submission_once(
+                AuthorizedSubmissionCommit(
+                    submission_id=command.submission_id,
+                    authorization_audit_event_id=command.authorization_audit_event_id,
+                    authorized=authorized,
+                    input_snapshot=command.input_snapshot,
+                    canonical_values=command.canonical_values,
                 )
-
-        if rejection is not None:
-            if rejection is SubmissionAuthorizationRejection.FORM_ALREADY_SUBMITTED:
+            )
+            if commit_result.status is SubmissionCommitStatus.ALREADY_COMPLETED:
                 return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
-            return SubmitFormResult(SubmitFormResultStatus.REJECTED, None, rejection, False)
-        assert commit_result is not None
-        if commit_result.status is SubmissionCommitStatus.ALREADY_COMPLETED:
-            return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
-
-        try:
-            self._resume_port.enqueue_once(identity)
-        except WorkflowResumeEnqueueError:
-            logger.exception(
-                "Failed to enqueue Human Input v2 workflow resume after submission commit: "
-                "workspace_id=%s form_id=%s workflow_pause_id=%s node_execution_id=%s",
-                identity.workspace_id,
-                identity.form_id,
-                identity.workflow_pause_id,
-                identity.node_execution_id,
-            )
-            return SubmitFormResult(
-                SubmitFormResultStatus.SUBMITTED,
-                commit_result.submission,
-                None,
-                False,
-            )
-        return SubmitFormResult(
-            SubmitFormResultStatus.SUBMITTED,
-            commit_result.submission,
-            None,
-            True,
-        )
+            return SubmitFormResult(SubmitFormResultStatus.SUBMITTED, commit_result.submission, None, False)
 
     @staticmethod
     def _prevalidate_resume_identity(command: SubmitFormCommand) -> WorkflowResumeIdentity:

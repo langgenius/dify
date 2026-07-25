@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
-from threading import Barrier, Event, Lock, get_ident
+from threading import Event, Lock, get_ident
+from time import monotonic, sleep
 
 import pytest
 import sqlalchemy as sa
@@ -21,7 +23,7 @@ from core.human_input_v2.approval import (
     ContactOTPSubject,
     DeliveryEndpoint,
     EmailEndpointConfiguration,
-    FormAuthorizationAuditEventType,
+    FormAuthorizationAuditEvent,
     FormRef,
     FrozenFormAction,
     FrozenFormDefinition,
@@ -31,7 +33,10 @@ from core.human_input_v2.approval import (
     SubjectSnapshot,
     SubmissionAttemptScope,
     SubmissionAuthorizer,
+    SubmissionCommitResult,
     SubmissionCommitStatus,
+    SubmissionRepository,
+    SubmissionTransaction,
     VerifiedEmailOTPProof,
     VerifiedIMIdentityProof,
 )
@@ -116,9 +121,113 @@ class _RecordingResumePort:
             self.identities.add(identity)
 
 
+class _PausingSubmissionTransaction:
+    def __init__(
+        self,
+        delegate: SubmissionTransaction,
+        *,
+        context_loaded: Event,
+        release_transaction: Event,
+    ) -> None:
+        self._delegate = delegate
+        self._context_loaded = context_loaded
+        self._release_transaction = release_transaction
+
+    def load_authorization_context(self, *, proof: object) -> AuthorizationContext:
+        context = self._delegate.load_authorization_context(proof=proof)
+        self._context_loaded.set()
+        if not self._release_transaction.wait(timeout=10):
+            raise AssertionError("winner transaction was not released")
+        return context
+
+    def append_rejection_audit(self, event: FormAuthorizationAuditEvent) -> None:
+        self._delegate.append_rejection_audit(event)
+
+    def commit_authorized_submission_once(
+        self,
+        commit: AuthorizedSubmissionCommit,
+    ) -> SubmissionCommitResult:
+        return self._delegate.commit_authorized_submission_once(commit)
+
+
+class _PausingSubmissionRepository:
+    def __init__(
+        self,
+        delegate: SubmissionRepository,
+        *,
+        context_loaded: Event,
+        release_transaction: Event,
+    ) -> None:
+        self._delegate = delegate
+        self._context_loaded = context_loaded
+        self._release_transaction = release_transaction
+
+    @contextmanager
+    def transaction(self, scope: SubmissionAttemptScope):
+        with self._delegate.transaction(scope) as transaction:
+            yield _PausingSubmissionTransaction(
+                transaction,
+                context_loaded=self._context_loaded,
+                release_transaction=self._release_transaction,
+            )
+
+
+class _CountingSubmissionRepository:
+    def __init__(self, delegate: SubmissionRepository) -> None:
+        self._delegate = delegate
+        self._lock = Lock()
+        self.attempt_count = 0
+
+    @contextmanager
+    def transaction(self, scope: SubmissionAttemptScope):
+        with self._lock:
+            self.attempt_count += 1
+        with self._delegate.transaction(scope) as transaction:
+            yield transaction
+
+
+class _NamedPostgreSQLSession(Session):
+    """Test-only Session that labels its PostgreSQL backend for lock observation."""
+
+
+@event.listens_for(_NamedPostgreSQLSession, "after_begin")
+def _set_postgresql_application_name(session: Session, _transaction, connection) -> None:
+    application_name = session.info.get("application_name")
+    if isinstance(application_name, str):
+        connection.execute(
+            sa.text("SET LOCAL application_name = :application_name"),
+            {"application_name": application_name},
+        )
+
+
 def _require_postgresql() -> None:
     if db.engine.dialect.name != "postgresql":
         pytest.skip("requires the CI PostgreSQL integration database")
+
+
+def _wait_for_postgresql_lock_wait(
+    session_maker: sessionmaker[Session],
+    *,
+    application_name: str,
+) -> tuple[int, tuple[int, ...]]:
+    deadline = monotonic() + 10
+    while monotonic() < deadline:
+        with session_maker() as session:
+            row = session.execute(
+                sa.text(
+                    "SELECT pid, pg_blocking_pids(pid) AS blocking_pids "
+                    "FROM pg_stat_activity "
+                    "WHERE datname = current_database() "
+                    "AND application_name = :application_name "
+                    "AND wait_event_type = 'Lock' "
+                    "ORDER BY backend_start DESC LIMIT 1"
+                ),
+                {"application_name": application_name},
+            ).one_or_none()
+        if row is not None and row.blocking_pids:
+            return row.pid, tuple(row.blocking_pids)
+        sleep(0.05)
+    raise AssertionError("loser PostgreSQL backend did not enter a row-lock wait")
 
 
 type _TimestampedRecord = HumanInputContact | HumanInputIMBinding | HumanInputIMIdentity | HumanInputIMIntegration
@@ -430,30 +539,64 @@ def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries
         _cleanup_scenario(session_maker, scenario)
 
 
-def test_concurrent_email_and_im_submission_has_exactly_one_winner(flask_req_ctx) -> None:
+def test_row_lock_serialization_loser_retries_and_observes_completed_form(flask_req_ctx) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     scenario = _seed_scenario(session_maker)
     resume_port = _RecordingResumePort()
-    barrier = Barrier(2)
-    commands = (
-        _command(scenario, proof=_email_proof(scenario), endpoint_id=scenario.email_endpoint_id),
-        _command(scenario, proof=_im_proof(scenario), endpoint_id=scenario.im_endpoint_id),
+    winner_context_loaded = Event()
+    release_winner = Event()
+    winner_repository = _PausingSubmissionRepository(
+        SQLAlchemySubmissionRepository(session_maker),
+        context_loaded=winner_context_loaded,
+        release_transaction=release_winner,
+    )
+    loser_application_name = f"submission-serialization-loser-{uuidv7()}"
+    loser_session_maker = sessionmaker(
+        bind=db.engine,
+        class_=_NamedPostgreSQLSession,
+        expire_on_commit=False,
+        info={"application_name": loser_application_name},
+    )
+    loser_repository = _CountingSubmissionRepository(SQLAlchemySubmissionRepository(loser_session_maker))
+    winner_command = _command(
+        scenario,
+        proof=_email_proof(scenario),
+        endpoint_id=scenario.email_endpoint_id,
+    )
+    loser_command = _command(
+        scenario,
+        proof=_im_proof(scenario),
+        endpoint_id=scenario.im_endpoint_id,
     )
 
-    def submit(command: SubmitFormCommand) -> SubmitFormResult:
-        barrier.wait()
-        return SubmitHumanInputFormHandler(
-            SQLAlchemySubmissionRepository(session_maker),
-            resume_port,
-        ).handle(command)
+    def submit(repository: SubmissionRepository, command: SubmitFormCommand) -> SubmitFormResult:
+        return SubmitHumanInputFormHandler(repository, resume_port).handle(command)
 
+    winner_future = None
+    loser_future = None
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(submit, commands))
+            winner_future = executor.submit(submit, winner_repository, winner_command)
+            assert winner_context_loaded.wait(timeout=10)
+            loser_future = executor.submit(submit, loser_repository, loser_command)
+            try:
+                loser_pid, blocking_pids = _wait_for_postgresql_lock_wait(
+                    session_maker,
+                    application_name=loser_application_name,
+                )
+                assert loser_pid not in blocking_pids
+                assert blocking_pids
+            finally:
+                release_winner.set()
+            winner_result = winner_future.result(timeout=10)
+            loser_result = loser_future.result(timeout=10)
 
-        assert [result.status for result in results].count(SubmitFormResultStatus.SUBMITTED) == 1
-        assert [result.status for result in results].count(SubmitFormResultStatus.ALREADY_COMPLETED) == 1
+        assert winner_result.status is SubmitFormResultStatus.SUBMITTED
+        assert winner_result.resume_enqueued is True
+        assert loser_result.status is SubmitFormResultStatus.ALREADY_COMPLETED
+        assert loser_result.resume_enqueued is False
+        assert loser_repository.attempt_count == 2
         assert len(resume_port.identities) == 1
         with session_maker() as session:
             assert (
@@ -467,9 +610,7 @@ def test_concurrent_email_and_im_submission_has_exactly_one_winner(flask_req_ctx
             assert (
                 session.scalar(
                     sa.select(sa.func.count(HumanInputV2FormAuditEvent.id)).where(
-                        HumanInputV2FormAuditEvent.form_id == str(scenario.form_ref.form_id),
-                        HumanInputV2FormAuditEvent.event_type
-                        == FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED.value,
+                        HumanInputV2FormAuditEvent.form_id == str(scenario.form_ref.form_id)
                     )
                 )
                 == 1
@@ -479,6 +620,11 @@ def test_concurrent_email_and_im_submission_has_exactly_one_winner(flask_req_ctx
                 is HumanInputV2FormStatus.SUBMITTED
             )
     finally:
+        release_winner.set()
+        if winner_future is not None and not winner_future.done():
+            winner_future.result(timeout=10)
+        if loser_future is not None and not loser_future.done():
+            loser_future.result(timeout=10)
         _cleanup_scenario(session_maker, scenario)
 
 

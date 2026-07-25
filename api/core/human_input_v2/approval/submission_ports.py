@@ -26,6 +26,10 @@ from .submission_authorization import AuthorizationContext, AuthorizedSubmission
 from .submission_records import FormAuthorizationAuditEvent, FormSubmission
 
 
+class RetryableSubmissionPersistenceError(RuntimeError):
+    """A complete submission transaction must be retried with a fresh snapshot."""
+
+
 @dataclass(frozen=True, slots=True)
 class SubmissionAttemptScope:
     """Complete logical owner chain selected before the transaction begins."""
@@ -104,6 +108,7 @@ class SubmissionRepository(Protocol):
 
 __all__ = [
     "AuthorizedSubmissionCommit",
+    "RetryableSubmissionPersistenceError",
     "SubmissionAttemptScope",
     "SubmissionCommitResult",
     "SubmissionCommitStatus",

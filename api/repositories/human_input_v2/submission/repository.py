@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 import sqlalchemy as sa
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.approval import (
@@ -28,6 +28,7 @@ from core.human_input_v2.approval import (
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
     FrozenJSONObject,
+    RetryableSubmissionPersistenceError,
     SubmissionAttemptScope,
     SubmissionCommitResult,
     SubmissionCommitStatus,
@@ -61,6 +62,8 @@ from repositories.human_input_v2.form.mappers import endpoint_from_record, form_
 
 from .mappers import audit_event_to_record, submission_to_record
 
+_POSTGRESQL_SERIALIZATION_FAILURE_SQLSTATE = "40001"
+
 
 class SubmissionPersistenceError(RuntimeError):
     """A submission transaction failed and rolled back its complete write set."""
@@ -86,9 +89,13 @@ class SQLAlchemySubmissionRepository:
             with self._session_maker() as session, session.begin():
                 self._configure_snapshot_transaction(session)
                 yield SQLAlchemySubmissionTransaction(session, scope)
-        except SubmissionPersistenceError:
+        except SubmissionPersistenceError as error:
+            if _is_postgresql_serialization_failure(error):
+                raise RetryableSubmissionPersistenceError("submission transaction must be retried") from error
             raise
         except SQLAlchemyError as error:
+            if _is_postgresql_serialization_failure(error):
+                raise RetryableSubmissionPersistenceError("submission transaction must be retried") from error
             raise SubmissionPersistenceError("submission transaction failed") from error
 
     @staticmethod
@@ -331,6 +338,8 @@ class SQLAlchemySubmissionTransaction:
                 HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id,
             )
             .where(
+                HumanInputIMBinding.integration_id == integration.id,
+                HumanInputIMBinding.provider == proof.provider,
                 HumanInputIMBinding.contact_id == str(current_contact.contact_id),
                 sa.or_(
                     sa.and_(
@@ -411,6 +420,39 @@ class SQLAlchemySubmissionTransaction:
     def _is_form_submission_unique_conflict(error: IntegrityError) -> bool:
         message = str(error.orig).lower()
         return "hiv2_form_submissions_form_uq" in message or "human_input_v2_form_submissions.form_id" in message
+
+
+def _is_postgresql_serialization_failure(error: BaseException) -> bool:
+    """Inspect SQLAlchemy and public driver exception links for SQLSTATE 40001."""
+
+    pending: list[object] = [error]
+    visited: set[int] = set()
+    while pending:
+        current = pending.pop()
+        current_id = id(current)
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+        if _structured_sqlstate(current) == _POSTGRESQL_SERIALIZATION_FAILURE_SQLSTATE:
+            return True
+        if isinstance(current, DBAPIError):
+            pending.append(current.orig)
+        if isinstance(current, BaseException):
+            if current.__cause__ is not None:
+                pending.append(current.__cause__)
+            if current.__context__ is not None:
+                pending.append(current.__context__)
+    return False
+
+
+def _structured_sqlstate(error: object) -> str | None:
+    """Read documented psycopg/psycopg2 SQLSTATE attributes at the driver boundary."""
+
+    for attribute_name in ("sqlstate", "pgcode"):
+        raw_code = getattr(error, attribute_name, None)
+        if isinstance(raw_code, str):
+            return raw_code
+    return None
 
 
 __all__ = [

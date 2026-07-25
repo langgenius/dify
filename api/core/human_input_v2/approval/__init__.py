@@ -112,6 +112,7 @@ from .submission_authorization import (
 )
 from .submission_ports import (
     AuthorizedSubmissionCommit,
+    RetryableSubmissionPersistenceError,
     SubmissionAttemptScope,
     SubmissionCommitResult,
     SubmissionCommitStatus,
@@ -205,6 +206,7 @@ __all__ = [
     "RejectedRecipient",
     "ResolvedApprovalPlan",
     "ResolvedApprover",
+    "RetryableSubmissionPersistenceError",
     "SubjectSnapshot",
     "SubmissionActor",
     "SubmissionAttemptScope",

@@ -20,6 +20,7 @@ from core.human_input_v2.approval import (
     FrozenFormDefinition,
     FrozenJSONObject,
     HumanInputForm,
+    RetryableSubmissionPersistenceError,
     SubjectSnapshot,
     SubmissionAttemptScope,
     SubmissionCommitResult,
@@ -207,6 +208,36 @@ class _RecordingRepository:
         self.events.append("transaction_commit")
 
 
+class _RetryingRepository:
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        context_statuses: tuple[HumanInputV2FormStatus, ...],
+        retryable_attempts: frozenset[int],
+    ) -> None:
+        self.events = events
+        self.context_statuses = context_statuses
+        self.retryable_attempts = retryable_attempts
+        self.attempt_count = 0
+
+    @contextmanager
+    def transaction(self, scope: SubmissionAttemptScope):
+        assert scope == _SCOPE
+        attempt_index = self.attempt_count
+        self.attempt_count += 1
+        self.events.append(f"transaction_begin:{attempt_index + 1}")
+        transaction = _RecordingTransaction(
+            self.events,
+            context_status=self.context_statuses[attempt_index],
+        )
+        yield transaction
+        if attempt_index in self.retryable_attempts:
+            self.events.append(f"serialization_failure:{attempt_index + 1}")
+            raise RetryableSubmissionPersistenceError("serialization failure")
+        self.events.append(f"transaction_commit:{attempt_index + 1}")
+
+
 class _IdempotentRecordingResumePort:
     def __init__(self, events: list[str], *, fail: bool = False) -> None:
         self.events = events
@@ -324,6 +355,74 @@ def test_persistence_failure_prevents_resume_enqueue() -> None:
 
     assert "resume_enqueue" not in events
     assert "transaction_commit" not in events
+    assert events.count("transaction_begin") == 1
+
+
+def test_retryable_persistence_failure_restarts_the_complete_transaction_before_resume() -> None:
+    events: list[str] = []
+    repository = _RetryingRepository(
+        events,
+        context_statuses=(HumanInputV2FormStatus.WAITING, HumanInputV2FormStatus.WAITING),
+        retryable_attempts=frozenset({0}),
+    )
+    handler = SubmitHumanInputFormHandler(repository, _IdempotentRecordingResumePort(events))
+
+    result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.SUBMITTED
+    assert result.resume_enqueued is True
+    assert repository.attempt_count == 2
+    assert events.count("context_loaded") == 2
+    assert events.count("persistence_write") == 2
+    assert events == [
+        "transaction_begin:1",
+        "context_loaded",
+        "persistence_write",
+        "serialization_failure:1",
+        "transaction_begin:2",
+        "context_loaded",
+        "persistence_write",
+        "transaction_commit:2",
+        "resume_enqueue",
+    ]
+
+
+def test_serialization_loser_reloads_current_form_and_returns_already_completed_without_side_effects() -> None:
+    events: list[str] = []
+    repository = _RetryingRepository(
+        events,
+        context_statuses=(HumanInputV2FormStatus.WAITING, HumanInputV2FormStatus.SUBMITTED),
+        retryable_attempts=frozenset({0}),
+    )
+    handler = SubmitHumanInputFormHandler(repository, _IdempotentRecordingResumePort(events))
+
+    result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.ALREADY_COMPLETED
+    assert result.resume_enqueued is False
+    assert repository.attempt_count == 2
+    assert events.count("context_loaded") == 2
+    assert events.count("persistence_write") == 1
+    assert not any(event.startswith("rejection_audit:") for event in events)
+    assert "resume_enqueue" not in events
+
+
+def test_retryable_persistence_failure_is_reraised_after_one_retry() -> None:
+    events: list[str] = []
+    repository = _RetryingRepository(
+        events,
+        context_statuses=(HumanInputV2FormStatus.WAITING, HumanInputV2FormStatus.WAITING),
+        retryable_attempts=frozenset({0, 1}),
+    )
+    handler = SubmitHumanInputFormHandler(repository, _IdempotentRecordingResumePort(events))
+
+    with pytest.raises(RetryableSubmissionPersistenceError, match="serialization failure"):
+        handler.handle(_command())
+
+    assert repository.attempt_count == 2
+    assert events.count("context_loaded") == 2
+    assert events.count("persistence_write") == 2
+    assert "resume_enqueue" not in events
 
 
 def test_enqueue_failure_preserves_submitted_result_and_logs_actionable_identifiers(caplog) -> None:
@@ -416,6 +515,5 @@ def test_form_already_submitted_rejection_maps_to_stable_already_completed_resul
     assert events == [
         "transaction_begin",
         "context_loaded",
-        "rejection_audit:form_already_submitted",
         "transaction_commit",
     ]
