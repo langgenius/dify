@@ -390,10 +390,6 @@ export type PluginInstallationScope =
   | 'official_and_specific_partners'
   | 'official_only'
 
-export type PluginManagerModel = {
-  enabled: boolean
-}
-
 export type RemoteFileInfo = {
   file_length: number
   file_type: string
@@ -516,14 +512,11 @@ export type SystemFeatureModel = {
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
   enable_trial_app: boolean
-  is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
   license: LicenseStatusModel
-  max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string

@@ -9475,16 +9475,11 @@ Used for frontend component type mapping
 | 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
 
 ### [GET] /system-features
-**Get system-wide feature configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system-wide feature configuration
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for dashboard initialization.
-
-Authentication would create circular dependency (can't login without dashboard loading).
-
-Only non-sensitive configuration data should be returned by this endpoint. Authenticated
-license detail is served separately by SystemFeatureLicenseApi.
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
+Authentication configuration must be available before the authentication flow can be selected.
+Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
 #### Responses
 
@@ -20521,12 +20516,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | plugins | [ [PluginEntity](#pluginentity) ] |  | Yes |
 | total | integer |  | Yes |
 
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-
 #### PluginManifestResponse
 
 | Name | Type | Description | Required |
@@ -22052,6 +22041,8 @@ Model class for provider system configuration response.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
@@ -22068,14 +22059,11 @@ Model class for provider system configuration response.
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |

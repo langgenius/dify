@@ -21,11 +21,9 @@ const baseSystemFeatures = {
   enable_email_password_login: true,
   enable_social_oauth_login: false,
   enable_collaboration_mode: true,
-  is_allow_create_workspace: false,
   is_allow_register: false,
   is_email_setup: false,
   enable_change_email: true,
-  max_plugin_package_size: 15728640,
   license: {
     status: LicenseStatus.NONE,
   },
@@ -49,9 +47,6 @@ const baseSystemFeatures = {
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
     restrict_to_marketplace_only: false,
-  },
-  plugin_manager: {
-    enabled: false,
   },
   rbac_enabled: false,
   enable_creators_platform: false,
@@ -101,10 +96,6 @@ export const createSystemFeaturesFixture = (
   license: {
     ...baseSystemFeatures.license,
     ...overrides.license,
-  },
-  plugin_manager: {
-    ...baseSystemFeatures.plugin_manager,
-    ...overrides.plugin_manager,
   },
 })
 

@@ -19,14 +19,11 @@ export type SystemFeatureModel = {
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
   enable_trial_app: boolean
-  is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
   license: LicenseStatusModel
-  max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
@@ -57,10 +54,6 @@ export type LicenseStatusModel = {
 export type PluginInstallationPermissionModel = {
   plugin_installation_scope: PluginInstallationScope
   restrict_to_marketplace_only: boolean
-}
-
-export type PluginManagerModel = {
-  enabled: boolean
 }
 
 export type WebAppAuthModel = {

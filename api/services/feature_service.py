@@ -161,30 +161,25 @@ class KnowledgeRateLimitModel(FeatureResponseModel):
     subscription_plan: str = ""
 
 
-class PluginManagerModel(FeatureResponseModel):
-    enabled: bool = False
-
-
 class SystemFeatureModel(FeatureResponseModel):
+    """Non-sensitive bootstrap snapshot exposed before Console or Web authentication."""
+
     deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
-    max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
     enable_collaboration_mode: bool = True
     is_allow_register: bool = False
-    is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseStatusModel = LicenseStatusModel()
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
-    plugin_manager: PluginManagerModel = PluginManagerModel()
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
@@ -266,7 +261,6 @@ class FeatureService:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
-            system_features.plugin_manager.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
@@ -276,6 +270,21 @@ class FeatureService:
             system_features.enable_creators_platform = True
 
         return system_features
+
+    @classmethod
+    def is_workspace_creation_allowed(cls) -> bool:
+        """Resolve the backend workspace-creation policy, including the Enterprise override."""
+        is_allowed = dify_config.ALLOW_CREATE_WORKSPACE
+        if not dify_config.ENTERPRISE_ENABLED:
+            return is_allowed
+
+        enterprise_info = EnterpriseService.get_info()
+        return bool(enterprise_info.get("IsAllowCreateWorkspace", is_allowed))
+
+    @classmethod
+    def is_plugin_manager_enabled(cls) -> bool:
+        """Return whether Enterprise plugin credential policies must be enforced."""
+        return dify_config.ENTERPRISE_ENABLED
 
     @classmethod
     def get_license(cls) -> LicenseModel:
@@ -299,7 +308,6 @@ class FeatureService:
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
         system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
-        system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
@@ -464,9 +472,6 @@ class FeatureService:
 
         if "IsAllowRegister" in enterprise_info:
             features.is_allow_register = enterprise_info["IsAllowRegister"]
-
-        if "IsAllowCreateWorkspace" in enterprise_info:
-            features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
 
         if "EnableAppDeploy" in enterprise_info:
             features.enable_app_deploy = enterprise_info["EnableAppDeploy"]

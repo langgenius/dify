@@ -285,7 +285,6 @@ class TestFeatureService:
             mock_config.ALLOW_REGISTER = False
             mock_config.ALLOW_CREATE_WORKSPACE = False
             mock_config.MAIL_TYPE = "smtp"
-            mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             # Act: Execute the method under test
             result = FeatureService.get_system_features()
@@ -309,7 +308,6 @@ class TestFeatureService:
         assert result.enable_email_password_login is False
         assert result.enable_collaboration_mode is True
         assert result.is_allow_register is False
-        assert result.is_allow_create_workspace is False
 
         # Verify branding configuration
         assert result.branding.application_title == "Test Enterprise"
@@ -480,14 +478,10 @@ class TestFeatureService:
             assert result.enable_social_oauth_login is False
             assert result.enable_collaboration_mode is False
             assert result.is_allow_register is True
-            assert result.is_allow_create_workspace is True
             assert result.is_email_setup is True
 
             # Verify marketplace configuration
             assert result.enable_marketplace is False
-
-            # Verify plugin package size (uses default value from dify_config)
-            assert result.max_plugin_package_size == 15728640
 
     def test_get_features_billing_disabled(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -683,14 +677,10 @@ class TestFeatureService:
             assert result.enable_email_password_login is True
             assert result.enable_social_oauth_login is True
             assert result.is_allow_register is False
-            assert result.is_allow_create_workspace is False
             assert result.is_email_setup is False
 
             # Verify marketplace configuration
             assert result.enable_marketplace is True
-
-            # Verify plugin package size (uses default value from dify_config)
-            assert result.max_plugin_package_size == 15728640
 
             # Verify default license status
             assert result.license.status == "none"
@@ -923,7 +913,6 @@ class TestFeatureService:
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
-        assert result.is_allow_create_workspace is False
 
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
@@ -1672,7 +1661,6 @@ class TestFeatureService:
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
-        assert result.is_allow_create_workspace is False
 
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
@@ -1851,7 +1839,6 @@ class TestFeatureService:
         assert result.enable_email_code_login is False
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
-        assert result.is_allow_create_workspace is False
         assert result.license.status == LicenseStatus.LOST
 
         # Verify mock interactions
