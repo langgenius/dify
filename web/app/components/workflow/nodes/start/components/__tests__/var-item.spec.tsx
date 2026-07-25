@@ -32,4 +32,29 @@ describe('StartVarItem', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(handleRemove).toHaveBeenCalledTimes(1)
   })
+
+  it('renders the default value indicator when a field has a default', () => {
+    render(<VarItem readonly={false} payload={createPayload({ default: 'hello' })} />)
+
+    const value = screen.getByTestId('var-item-default-value')
+    expect(value).toHaveTextContent('hello')
+    expect(value).toHaveAttribute('title', 'hello')
+  })
+
+  it('renders no default indicator when a field has no default', () => {
+    render(<VarItem readonly={false} payload={createPayload()} />)
+
+    expect(screen.queryByTestId('var-item-default-value')).toBeNull()
+  })
+
+  it('truncates a long default while keeping the full value in the tooltip', () => {
+    const longDefault = 'x'.repeat(200)
+    render(<VarItem readonly={false} payload={createPayload({ default: longDefault })} />)
+
+    const value = screen.getByTestId('var-item-default-value')
+    // Full value is preserved for the hover tooltip...
+    expect(value).toHaveAttribute('title', longDefault)
+    // ...while the visible text is clipped via the truncate utility, keeping row height fixed.
+    expect(value).toHaveClass('truncate')
+  })
 })

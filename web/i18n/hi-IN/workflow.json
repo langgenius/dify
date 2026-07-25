@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "विषय नाम",
   "nodes.questionClassifiers.topicPlaceholder": "अपना विषय नाम लिखें",
   "nodes.start.builtInVar": "निर्मित वेरिएबल्स",
+  "nodes.start.defaultValue": "डिफ़ॉल्ट",
   "nodes.start.inputField": "इनपुट फील्ड",
   "nodes.start.noVarTip": "वर्कफ्लो में उपयोग के लिए इनपुट्स सेट करें",
   "nodes.start.outputVars.files": "फ़ाइल सूची",

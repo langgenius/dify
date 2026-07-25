@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Tên chủ đề",
   "nodes.questionClassifiers.topicPlaceholder": "Viết tên chủ đề của bạn",
   "nodes.start.builtInVar": "Biến tích hợp sẵn",
+  "nodes.start.defaultValue": "mặc định",
   "nodes.start.inputField": "Trường đầu vào",
   "nodes.start.noVarTip": "Đặt các đầu vào có thể sử dụng trong Quy trình làm việc",
   "nodes.start.outputVars.files": "Danh sách tệp",

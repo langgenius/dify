@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Nom du sujet",
   "nodes.questionClassifiers.topicPlaceholder": "Écrivez le nom de votre sujet",
   "nodes.start.builtInVar": "Variables intégrées",
+  "nodes.start.defaultValue": "par défaut",
   "nodes.start.inputField": "Champ de saisie",
   "nodes.start.noVarTip": "Définir les entrées qui peuvent être utilisées dans le flux de travail",
   "nodes.start.outputVars.files": "Liste de fichiers",

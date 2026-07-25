@@ -52,6 +52,13 @@ const VarItem: FC<Props> = ({
     },
     [onChange, hideEditVarModal],
   )
+
+  // A default value can legitimately be `false` or `0`, so guard on nullish/empty
+  // rather than falsiness. Rows without a default render nothing extra.
+  const hasDefault =
+    payload.default !== undefined && payload.default !== null && payload.default !== ''
+  const defaultText = hasDefault ? String(payload.default) : ''
+
   return (
     <div
       ref={ref}
@@ -93,6 +100,20 @@ const VarItem: FC<Props> = ({
           <>
             {!isHovering || readonly ? (
               <>
+                {hasDefault && (
+                  <div className="mr-2 flex items-center text-xs font-normal text-text-tertiary">
+                    <span className="shrink-0">
+                      {t(($) => $['nodes.start.defaultValue'], { ns: 'workflow' })}:
+                    </span>
+                    <span
+                      title={defaultText}
+                      data-testid="var-item-default-value"
+                      className="ml-1 max-w-[120px] truncate"
+                    >
+                      {defaultText}
+                    </span>
+                  </div>
+                )}
                 {payload.required && (
                   <div className="mr-2 text-xs font-normal text-text-tertiary">
                     {t(($) => $['nodes.start.required'], { ns: 'workflow' })}

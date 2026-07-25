@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Nume subiect",
   "nodes.questionClassifiers.topicPlaceholder": "Scrieți numele subiectului",
   "nodes.start.builtInVar": "Variabile integrate",
+  "nodes.start.defaultValue": "implicit",
   "nodes.start.inputField": "Câmp de intrare",
   "nodes.start.noVarTip": "Setați intrările care pot fi utilizate în fluxul de lucru",
   "nodes.start.outputVars.files": "Listă de fișiere",

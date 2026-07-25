@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Назва теми",
   "nodes.questionClassifiers.topicPlaceholder": "Напишіть назву вашої теми",
   "nodes.start.builtInVar": "Вбудовані змінні",
+  "nodes.start.defaultValue": "за замовчуванням",
   "nodes.start.inputField": "Поле введення",
   "nodes.start.noVarTip": "Встановіть вхідні дані, які можуть бути використані у робочому потоці",
   "nodes.start.outputVars.files": "Список файлів",
