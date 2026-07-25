@@ -22,11 +22,3 @@ export const useBillingUrl = (enabled: boolean) => {
     },
   })
 }
-
-export const useCurrentPlanVectorSpace = (enabled = true) => {
-  return useQuery({
-    queryKey: consoleQuery.features.vectorSpace.get.queryKey(),
-    queryFn: () => consoleClient.features.vectorSpace.get(),
-    enabled,
-  })
-}
