@@ -19312,10 +19312,10 @@ Enum class for model property key.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
 | current_credential_id | string |  | No |
 | current_credential_name | string |  | No |
 | current_credential_usable | boolean |  | Yes |
-| has_credentials | boolean |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
 
 #### ModelProviderListResponse
