@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -63,57 +64,71 @@ const VarItem: FC<Props> = ({
     <div
       ref={ref}
       className={cn(
-        'flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md',
+        'flex min-h-8 cursor-pointer items-start justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-1 shadow-xs hover:shadow-md',
         className,
       )}
     >
-      <div className="flex w-0 grow items-center space-x-1">
-        <Variable02
-          className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
-        />
-        <div
-          title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
-        >
-          {payload.variable}
-        </div>
-        {payload.label && (
-          <>
-            <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
-            <div
-              title={payload.label as string}
-              className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
-            >
-              {payload.label as string}
-            </div>
-          </>
-        )}
-        {showLegacyBadge && (
-          <Badge
-            text="LEGACY"
-            className="shrink-0 border-text-accent-secondary text-text-accent-secondary"
+      <div className="flex w-0 grow flex-col gap-0.5">
+        {/* Identity line: variable name · label */}
+        <div className="flex h-6 min-w-0 items-center space-x-1">
+          <Variable02
+            className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
           />
+          <div
+            title={payload.variable}
+            className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
+          >
+            {payload.variable}
+          </div>
+          {payload.label && (
+            <>
+              <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
+              <div
+                title={payload.label as string}
+                className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
+              >
+                {payload.label as string}
+              </div>
+            </>
+          )}
+          {showLegacyBadge && (
+            <Badge
+              text="LEGACY"
+              className="shrink-0 border-text-accent-secondary text-text-accent-secondary"
+            />
+          )}
+        </div>
+
+        {/* Default-value indicator: its own line beneath the name, left-aligned. The full
+            value is shown via the house Tooltip (portal-based) so it survives the row
+            re-render that hover triggers — a native `title` here disappears on hover. */}
+        {hasDefault && (
+          <div
+            data-testid="var-item-default"
+            className="flex min-w-0 items-center pl-[18px] text-xs font-normal text-text-tertiary"
+          >
+            <span className="shrink-0">
+              {t(($) => $['nodes.start.defaultValue'], { ns: 'workflow' })}:
+            </span>
+            <Tooltip>
+              <TooltipTrigger
+                data-testid="var-item-default-value"
+                render={<span />}
+                className="ml-1 min-w-0 cursor-default truncate"
+              >
+                {defaultText}
+              </TooltipTrigger>
+              <TooltipContent>{defaultText}</TooltipContent>
+            </Tooltip>
+          </div>
         )}
       </div>
-      <div className="ml-2 flex shrink-0 items-center">
+
+      <div className="ml-2 flex h-6 shrink-0 items-center">
         {rightContent || (
           <>
             {!isHovering || readonly ? (
               <>
-                {hasDefault && (
-                  <div className="mr-2 flex items-center text-xs font-normal text-text-tertiary">
-                    <span className="shrink-0">
-                      {t(($) => $['nodes.start.defaultValue'], { ns: 'workflow' })}:
-                    </span>
-                    <span
-                      title={defaultText}
-                      data-testid="var-item-default-value"
-                      className="ml-1 max-w-[120px] truncate"
-                    >
-                      {defaultText}
-                    </span>
-                  </div>
-                )}
                 {payload.required && (
                   <div className="mr-2 text-xs font-normal text-text-tertiary">
                     {t(($) => $['nodes.start.required'], { ns: 'workflow' })}
