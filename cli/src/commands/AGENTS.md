@@ -38,6 +38,7 @@ registry discovery and from coverage checks.
 
 ## Adding an agent guide
 
+<!-- prettier-ignore -->
 1. Create `src/commands/<topic>/<verb>/guide.ts` exporting a plain string:
    ```ts
    export const agentGuide = `

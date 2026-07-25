@@ -15,12 +15,7 @@ type Params = {
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
-const useSingleRunFormParams = ({
-  id,
-  payload,
-  runInputData,
-  setRunInputData,
-}: Params) => {
+const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
 
@@ -49,14 +44,12 @@ const useSingleRunFormParams = ({
       required: false,
     })
 
-    forms.push(
-      {
-        label: t($ => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
-        inputs,
-        values: runInputData,
-        onChange: setRunInputData,
-      },
-    )
+    forms.push({
+      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
+      inputs,
+      values: runInputData,
+      onChange: setRunInputData,
+    })
 
     return forms
   })()
@@ -67,8 +60,7 @@ const useSingleRunFormParams = ({
     })
     const vars: ValueSelector[] = [...inputVars, ['sys', 'files']]
 
-    if (isChatMode)
-      vars.push(['sys', 'query'])
+    if (isChatMode) vars.push(['sys', 'query'])
 
     return vars
   }

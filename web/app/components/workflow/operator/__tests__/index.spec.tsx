@@ -62,25 +62,24 @@ class MockResizeObserver {
 }
 
 const renderOperator = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowFlowComponent(
-    <Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />,
-    {
-      nodes: [createNode({
+  return renderWorkflowFlowComponent(<Operator handleUndo={vi.fn()} handleRedo={vi.fn()} />, {
+    nodes: [
+      createNode({
         id: 'node-1',
         data: {
           type: BlockEnum.Code,
           title: 'Code',
           desc: '',
         },
-      })],
+      }),
+    ],
+    edges: [],
+    initialStoreState,
+    historyStore: {
+      nodes: [],
       edges: [],
-      initialStoreState,
-      historyStore: {
-        nodes: [],
-        edges: [],
-      },
     },
-  )
+  })
 }
 
 describe('Operator', () => {
@@ -119,11 +118,14 @@ describe('Operator', () => {
     expect(observeSpy).toHaveBeenCalled()
 
     act(() => {
-      resizeObserverCallback?.([
-        {
-          borderBoxSize: [{ inlineSize: 512, blockSize: 188 }],
-        } as unknown as ResizeObserverEntry,
-      ], {} as ResizeObserver)
+      resizeObserverCallback?.(
+        [
+          {
+            borderBoxSize: [{ inlineSize: 512, blockSize: 188 }],
+          } as unknown as ResizeObserverEntry,
+        ],
+        {} as ResizeObserver,
+      )
     })
 
     await waitFor(() => {

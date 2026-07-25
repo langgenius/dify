@@ -11,17 +11,13 @@ export const hasLegacyPluginPermissionAccess = ({
   permission,
   rbacEnabled,
 }: LegacyPluginPermissionAccessOptions) => {
-  if (rbacEnabled !== false)
-    return true
+  if (rbacEnabled !== false) return true
 
-  if (!permission)
-    return false
+  if (!permission) return false
 
-  if (permission === PermissionType.everyone)
-    return true
+  if (permission === PermissionType.everyone) return true
 
-  if (permission === PermissionType.admin)
-    return isAdminOrOwner
+  if (permission === PermissionType.admin) return isAdminOrOwner
 
   return false
 }

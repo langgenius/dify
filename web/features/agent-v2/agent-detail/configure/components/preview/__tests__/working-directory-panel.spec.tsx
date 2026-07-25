@@ -111,7 +111,9 @@ vi.mock('@/service/client', () => ({
                     },
                     upload: {
                       post: {
-                        mutationOptions: () => ({ mutationFn: mocks.workflowSandboxFileUploadMutationFn }),
+                        mutationOptions: () => ({
+                          mutationFn: mocks.workflowSandboxFileUploadMutationFn,
+                        }),
                       },
                     },
                   },
@@ -204,9 +206,11 @@ describe('AgentWorkingDirectoryPanel', () => {
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('notes.md'))
-    await user.click(await screen.findByRole('button', {
-      name: /common\.operation\.download.*notes\.md/i,
-    }))
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*notes\.md/i,
+      }),
+    )
 
     const downloadingButton = await screen.findByRole('button', {
       name: /common\.operation\.downloading.*notes\.md/i,
@@ -242,10 +246,14 @@ describe('AgentWorkingDirectoryPanel', () => {
 
     await user.click(await screen.findByText('model.bin'))
 
-    expect(await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
 
-    const downloadingLink = await screen.findByRole('link', { name: /common\.operation\.downloading/i })
+    const downloadingLink = await screen.findByRole('link', {
+      name: /common\.operation\.downloading/i,
+    })
     expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
     const headerDownloadButton = screen.getByRole('button', {
       name: /common\.operation\.download.*model\.bin/i,
@@ -275,6 +283,8 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should preview sandbox images with the uploaded file url', async () => {
     const user = userEvent.setup()
+    const upload = createDeferred<{ url: string }>()
+    mocks.sandboxFileUploadClientPost.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
@@ -282,6 +292,8 @@ describe('AgentWorkingDirectoryPanel', () => {
     await waitFor(() => {
       expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalled()
     })
+    upload.resolve({ url: 'https://example.com/chart.png' })
+
     const image = await screen.findByAltText('chart.png')
     expect(image).toHaveAttribute('src', 'https://example.com/chart.png')
     expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalledWith({
@@ -293,7 +305,9 @@ describe('AgentWorkingDirectoryPanel', () => {
         path: '~/workspace/chart.png',
       },
     })
-    expect(screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported'),
+    ).not.toBeInTheDocument()
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 })

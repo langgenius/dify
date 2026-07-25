@@ -14,12 +14,7 @@ type Props = Readonly<{
   nodeType?: BlockEnum
 }>
 
-const VarFullPathPanel: FC<Props> = ({
-  nodeName,
-  path,
-  varType,
-  nodeType = BlockEnum.LLM,
-}) => {
+const VarFullPathPanel: FC<Props> = ({ nodeName, path, varType, nodeType = BlockEnum.LLM }) => {
   const schema: StructuredOutput = (() => {
     const schema: StructuredOutput['schema'] = {
       type: Type.object,
@@ -35,7 +30,12 @@ const VarFullPathPanel: FC<Props> = ({
         type: isLast ? varType : Type.object,
         properties: {},
       } as Field
-      current = current.properties[name!] as { type: Type.object, properties: { [key: string]: Field }, required: never[], additionalProperties: false }
+      current = current.properties[name!] as {
+        type: Type.object
+        properties: { [key: string]: Field }
+        required: never[]
+        additionalProperties: false
+      }
     }
     return {
       schema,
@@ -47,12 +47,7 @@ const VarFullPathPanel: FC<Props> = ({
         <BlockIcon size="xs" type={nodeType} />
         <div className="w-0 grow truncate system-xs-medium text-text-secondary">{nodeName}</div>
       </div>
-      <Panel
-        className="px-1 pt-2 pb-3"
-        root={{ attrName: path[0]! }}
-        payload={schema}
-        readonly
-      />
+      <Panel className="px-1 pt-2 pb-3" root={{ attrName: path[0]! }} payload={schema} readonly />
     </div>
   )
 }

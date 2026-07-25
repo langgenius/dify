@@ -22,11 +22,7 @@ type DropdownItemProps = {
   text: string
 }
 
-function DropdownItem({
-  href,
-  icon,
-  text,
-}: DropdownItemProps) {
+function DropdownItem({ href, icon, text }: DropdownItemProps) {
   return (
     <DropdownMenuLinkItem
       href={href}
@@ -41,7 +37,11 @@ function DropdownItem({
   )
 }
 
-type OptionLabelKey = 'requestAPlugin' | 'pluginDevelopmentGuide' | 'pluginPublishGuide' | 'templatePublishingGuide'
+type OptionLabelKey =
+  | 'requestAPlugin'
+  | 'pluginDevelopmentGuide'
+  | 'pluginPublishGuide'
+  | 'templatePublishingGuide'
 
 function getOptions(docLink: (path: DocPathWithoutLang) => string): {
   href: string
@@ -76,9 +76,7 @@ type SubmitRequestDropdownProps = {
   dividerAfterFirst?: boolean
 }
 
-export function SubmitRequestDropdown({
-  dividerAfterFirst,
-}: SubmitRequestDropdownProps) {
+export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const docLink = useDocLink()
@@ -87,9 +85,12 @@ export function SubmitRequestDropdown({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <Button
-            aria-label={t($ => $.requestSubmit, { ns: 'plugin', defaultValue: t($ => $.requestAPlugin, { ns: 'plugin' }) })}
+            aria-label={t(($) => $.requestSubmit, {
+              ns: 'plugin',
+              defaultValue: t(($) => $.requestAPlugin, { ns: 'plugin' }),
+            })}
             variant="ghost"
             className={cn(
               'size-8 p-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -98,22 +99,16 @@ export function SubmitRequestDropdown({
           >
             <span className="i-ri-book-open-line size-4 shrink-0" />
           </Button>
-        )}
+        }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[200px] p-1"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px] p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
-            {dividerAfterFirst && index === 1 && (
-              <DropdownMenuSeparator className="my-1" />
-            )}
+            {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}
             <DropdownItem
               href={option.href}
               icon={option.icon}
-              text={t($ => $[option.labelKey], { ns: 'plugin' })}
+              text={t(($) => $[option.labelKey], { ns: 'plugin' })}
             />
           </Fragment>
         ))}

@@ -21,13 +21,14 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.ext_database import db
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
+from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
+        session: Session,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -54,6 +56,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
+        session: Session,
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -65,6 +68,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
+        session: Session,
     ) -> Mapping | Generator[Mapping | str, None, None]: ...
 
     def generate(
@@ -75,6 +79,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
+        session: Session,
     ) -> Mapping | Generator[Mapping | str, None, None]:
         """
         Generate App response.
@@ -108,10 +113,14 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session()
+                app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
         # get app model config
-        app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
+        app_model_config = self._get_app_model_config(
+            app_model=app_model,
+            conversation=conversation,
+            session=session,
+        )
 
         # validate override model config
         override_model_config_dict = None
@@ -123,10 +132,15 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_model_config_dict = AgentChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id,
                 config=args["model_config"],
+                session=session,
             )
 
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
+
+        annotation_reply = (
+            None if override_model_config_dict else load_annotation_reply_config(session, app_model_config.app_id)
+        )
 
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
@@ -137,7 +151,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files = args.get("files") or []
             file_extra_config = FileUploadConfigManager.convert(
-                override_model_config_dict or app_model_config.to_dict()
+                override_model_config_dict or app_model_config.to_dict(annotation_reply=annotation_reply)
             )
             if file_extra_config:
                 file_objs = file_factory.build_from_mappings(
@@ -155,6 +169,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 app_model_config=app_model_config,
                 conversation=conversation,
                 override_config_dict=override_model_config_dict,
+                annotation_reply=annotation_reply,
             )
 
             # get tracing instance
@@ -186,7 +201,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             )
 
             # init generate records
-            (conversation, message) = self._init_generate_records(application_generate_entity, conversation)
+            (conversation, message) = self._init_generate_records(
+                application_generate_entity,
+                conversation,
+                session=session,
+            )
 
             # init queue manager
             queue_manager = MessageBasedAppQueueManager(
@@ -205,7 +224,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 target=self._generate_worker,
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
-                    "session": db.session(),
                     "context": context,
                     "application_generate_entity": application_generate_entity,
                     "queue_manager": queue_manager,
@@ -230,7 +248,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
-        session: Session,
         context: contextvars.Context,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
@@ -255,13 +272,14 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
 
                 # chatbot app
                 runner = AgentChatAppRunner()
-                runner.run(
-                    session=session,
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message,
-                )
+                with session_factory.create_session() as session:
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message,
+                        session=session,
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -278,5 +296,3 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()

@@ -28,9 +28,19 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const [description, setDescription] = useState<string>(dataset.description)
   const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
   const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(dataset.icon_info?.icon_type === 'image'
-    ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }
-    : { type: 'emoji' as const, icon: dataset.icon_info?.icon || '', background: dataset.icon_info?.icon_background || '' })
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+    dataset.icon_info?.icon_type === 'image'
+      ? {
+          type: 'image' as const,
+          url: dataset.icon_info?.icon_url || '',
+          fileId: dataset.icon_info?.icon || '',
+        }
+      : {
+          type: 'emoji' as const,
+          icon: dataset.icon_info?.icon || '',
+          background: dataset.icon_info?.icon_background || '',
+        },
+  )
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
@@ -40,7 +50,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   }, [])
   const onConfirm: MouseEventHandler = useCallback(async () => {
     if (!name.trim()) {
-      toast.error(t($ => $['form.nameError'], { ns: 'datasetSettings' }))
+      toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
     try {
@@ -66,28 +76,36 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      if (onSuccess)
-        onSuccess()
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      if (onSuccess) onSuccess()
       onClose()
-    }
-    catch {
-      toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-    }
-    finally {
+    } catch {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } finally {
       setLoading(false)
     }
-  }, [appIcon, description, dataset.id, externalKnowledgeApiId, externalKnowledgeId, name, onClose, onSuccess, t])
+  }, [
+    appIcon,
+    description,
+    dataset.id,
+    externalKnowledgeApiId,
+    externalKnowledgeId,
+    name,
+    onClose,
+    onSuccess,
+    t,
+  ])
   return (
     <Dialog open={show}>
       <DialogContent className="w-full max-w-[520px] overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
-
         <div className="flex items-center justify-between pb-2">
-          <div className="text-xl leading-[30px] font-medium text-text-primary">{t($ => $.title, { ns: 'datasetSettings' })}</div>
+          <div className="text-xl leading-[30px] font-medium text-text-primary">
+            {t(($) => $.title, { ns: 'datasetSettings' })}
+          </div>
           <button
             type="button"
             className="cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t($ => $['operation.close'], { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -96,32 +114,58 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         <div>
           <div className={cn('flex flex-col py-4')}>
             <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
-              {t($ => $['form.name'], { ns: 'datasetSettings' })}
+              {t(($) => $['form.name'], { ns: 'datasetSettings' })}
             </div>
             <div className="flex items-center gap-x-2">
-              <AppIcon size="medium" onClick={handleOpenAppIconPicker} className="cursor-pointer" iconType={appIcon.type} icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon} background={appIcon.type === 'image' ? undefined : appIcon.background} imageUrl={appIcon.type === 'image' ? appIcon.url : undefined} showEditIcon />
-              <Input value={name} onChange={e => setName(e.target.value)} className="h-9 grow" placeholder={t($ => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''} />
+              <AppIcon
+                size="medium"
+                onClick={handleOpenAppIconPicker}
+                className="cursor-pointer"
+                iconType={appIcon.type}
+                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                background={appIcon.type === 'image' ? undefined : appIcon.background}
+                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                showEditIcon
+              />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 grow"
+                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+              />
             </div>
           </div>
           <div className={cn('flex flex-col py-4')}>
             <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
-              {t($ => $['form.desc'], { ns: 'datasetSettings' })}
+              {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
             </div>
             <div className="w-full">
-              <Textarea aria-label={t($ => $['form.desc'], { ns: 'datasetSettings' })} value={description} onValueChange={value => setDescription(value)} className="resize-none" placeholder={t($ => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''} />
+              <Textarea
+                aria-label={t(($) => $['form.desc'], { ns: 'datasetSettings' })}
+                value={description}
+                onValueChange={(value) => setDescription(value)}
+                className="resize-none"
+                placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+              />
             </div>
           </div>
         </div>
         <div className="flex justify-end pt-6">
-          <Button className="mr-2" onClick={onClose}>{t($ => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button disabled={loading} variant="primary" onClick={onConfirm}>{t($ => $['operation.save'], { ns: 'common' })}</Button>
+          <Button className="mr-2" onClick={onClose}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button disabled={loading} variant="primary" onClick={onConfirm}>
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
         </div>
         {showAppIconPicker && (
           <AppIconPicker
             open={showAppIconPicker}
-            initialEmoji={appIcon.type === 'emoji'
-              ? { icon: appIcon.icon, background: appIcon.background }
-              : undefined}
+            initialEmoji={
+              appIcon.type === 'emoji'
+                ? { icon: appIcon.icon, background: appIcon.background }
+                : undefined
+            }
             onOpenChange={setShowAppIconPicker}
             onSelect={handleSelectAppIcon}
           />

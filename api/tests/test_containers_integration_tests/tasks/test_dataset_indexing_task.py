@@ -213,6 +213,10 @@ class TestDatasetIndexingTaskIntegration:
         assert len(opened) >= 2
         assert opened_ids <= closed_ids
 
+    def _runner_documents_arg(self, patched_external_dependencies) -> Sequence[Document]:
+        """Return the document batch passed to the runner."""
+        return patched_external_dependencies["indexing_runner_instance"].run.call_args.args[0]
+
     def test_legacy_document_indexing_task_still_works(
         self, db_session_with_containers: Session, patched_external_dependencies
     ):
@@ -241,7 +245,7 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
@@ -298,7 +302,8 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [])
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert self._runner_documents_arg(patched_external_dependencies) == []
 
     def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers: Session, patched_external_dependencies
@@ -512,7 +517,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, mixed_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 2
         self._assert_documents_parsing(db_session_with_containers, existing_ids)
 
@@ -602,7 +607,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, large_document_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 100
         self._assert_documents_parsing(db_session_with_containers, large_document_ids)
 
@@ -662,7 +667,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [document_id])
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 1
         self._assert_documents_parsing(db_session_with_containers, [document_id])
 
@@ -746,6 +751,6 @@ class TestDatasetIndexingTaskIntegration:
             _document_indexing(dataset.id, document_ids)
 
         # Assert
-        run_args = patched_external_dependencies["indexing_runner_instance"].run.call_args[0][0]
+        run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == batch_limit
         self._assert_documents_parsing(db_session_with_containers, document_ids)

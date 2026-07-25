@@ -97,7 +97,9 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const createEnvironmentVariable = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
+const createEnvironmentVariable = (
+  overrides: Partial<EnvironmentVariable> = {},
+): EnvironmentVariable => ({
   id: 'env-1',
   name: 'API_KEY',
   value: 'env-value',
@@ -107,18 +109,15 @@ const createEnvironmentVariable = (overrides: Partial<EnvironmentVariable> = {})
 })
 
 const renderPanel = (initialStoreState: Record<string, unknown> = {}) => {
-  return renderWorkflowFlowComponent(
-    <Panel />,
-    {
+  return renderWorkflowFlowComponent(<Panel />, {
+    nodes: [],
+    edges: [],
+    initialStoreState,
+    historyStore: {
       nodes: [],
       edges: [],
-      initialStoreState,
-      historyStore: {
-        nodes: [],
-        edges: [],
-      },
     },
-  )
+  })
 }
 
 describe('VariableInspect Panel', () => {
@@ -137,7 +136,9 @@ describe('VariableInspect Panel', () => {
       listeningTriggerType: BlockEnum.TriggerWebhook,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+    )
 
     expect(screen.getByText('workflow.debug.variableInspect.listening.title'))!.toBeInTheDocument()
     expect(mockEmit).toHaveBeenCalledWith({

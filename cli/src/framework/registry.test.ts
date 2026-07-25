@@ -225,7 +225,9 @@ describe('findSuggestions — cross-namespace fallback', () => {
 
   it('produces a deterministic, stable result across runs', () => {
     expect(findSuggestions(realish, ['login'])).toEqual(findSuggestions(realish, ['login']))
-    expect(findSuggestions(realish, ['device', 'list'])).toEqual(findSuggestions(realish, ['device', 'list']))
+    expect(findSuggestions(realish, ['device', 'list'])).toEqual(
+      findSuggestions(realish, ['device', 'list']),
+    )
   })
 })
 

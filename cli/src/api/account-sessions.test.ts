@@ -19,7 +19,7 @@ describe('AccountSessionsClient.list', () => {
   })
 
   it('GETs account/sessions with no query when paging is unset', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list()
 
@@ -29,7 +29,7 @@ describe('AccountSessionsClient.list', () => {
   })
 
   it('forwards page/limit when supplied', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, LIST_BODY, cap))
 
     await makeClient(stub.url).list({ page: 2, limit: 25 })
 
@@ -50,7 +50,7 @@ describe('AccountSessionsClient.revoke', () => {
     // The server replies 200 + {status:"revoked"}; revoke() returns void but the
     // typed client still parses the body — this guards against a regression where
     // a non-empty 200 body trips JSON handling.
-    stub = await startStubServer(cap => jsonResponder(200, { status: 'revoked' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, { status: 'revoked' }, cap))
 
     await expect(makeClient(stub.url).revoke('sess-1')).resolves.toBeUndefined()
     expect(stub.captured.method).toBe('DELETE')
@@ -58,7 +58,7 @@ describe('AccountSessionsClient.revoke', () => {
   })
 
   it('URL-encodes the session id', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, { status: 'revoked' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, { status: 'revoked' }, cap))
 
     await makeClient(stub.url).revoke('sess/1 2')
 
@@ -66,16 +66,17 @@ describe('AccountSessionsClient.revoke', () => {
   })
 
   it('propagates 404 as a classified BaseError', async () => {
-    stub = await startStubServer(cap =>
-      jsonResponder(404, { error: { code: 'not_found', message: 'session not found' } }, cap))
+    stub = await startStubServer((cap) =>
+      jsonResponder(404, { error: { code: 'not_found', message: 'session not found' } }, cap),
+    )
 
     await expect(makeClient(stub.url).revoke('missing')).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 404,
+      (err) => isHttpClientError(err) && err.httpStatus === 404,
     )
   })
 
   it('revokeSelf DELETEs the self subresource', async () => {
-    stub = await startStubServer(cap => jsonResponder(200, { status: 'revoked' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, { status: 'revoked' }, cap))
 
     await expect(makeClient(stub.url).revokeSelf()).resolves.toBeUndefined()
     expect(stub.captured.method).toBe('DELETE')

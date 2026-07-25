@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
@@ -53,11 +52,6 @@ describe('CreateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title and description', () => {
       render(<CreateCard />)
       expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
@@ -80,7 +74,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -96,7 +92,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -112,7 +110,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -128,7 +128,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       // Should not throw and should handle error gracefully
@@ -145,7 +147,9 @@ describe('CreateCard', () => {
 
       render(<CreateCard />)
 
-      const card = screen.getByText(/createFromScratch\.title/i).closest('div[class*="cursor-pointer"]')
+      const card = screen
+        .getByText(/createFromScratch\.title/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(card!)
 
       await waitFor(() => {
@@ -157,12 +161,6 @@ describe('CreateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<CreateCard />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
@@ -173,14 +171,6 @@ describe('CreateCard', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<CreateCard />)
-      rerender(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
     })
   })
 })

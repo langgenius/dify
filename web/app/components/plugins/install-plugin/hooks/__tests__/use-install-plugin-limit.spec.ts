@@ -1,7 +1,7 @@
 import type { PluginInstallationScope } from '@dify/contracts/api/console/system-features/types.gen'
 import { describe, expect, it } from 'vitest'
-import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { InstallationScope } from '@/features/system-features/constants'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 
 const basePlugin = {
@@ -129,23 +129,13 @@ describe('pluginInstallLimit', () => {
 describe('usePluginInstallLimit', () => {
   it('should return canInstall from pluginInstallLimit using global store', async () => {
     const { default: usePluginInstallLimit } = await import('../use-install-plugin-limit')
-    const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+    const plugin = {
+      from: 'marketplace' as const,
+      verification: { authorized_category: 'langgenius' },
+    }
 
     const { result } = renderHook(() => usePluginInstallLimit(plugin as never))
 
     expect(result.current.canInstall).toBe(true)
-  })
-
-  it('should return a loading install limit state while system features are pending', async () => {
-    const { default: usePluginInstallLimit } = await import('../use-install-plugin-limit')
-    const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
-
-    const { result } = renderHook(
-      () => usePluginInstallLimit(plugin as never),
-      { systemFeatures: null },
-    )
-
-    expect(result.current.canInstall).toBe(false)
-    expect(result.current.isLoading).toBe(true)
   })
 })

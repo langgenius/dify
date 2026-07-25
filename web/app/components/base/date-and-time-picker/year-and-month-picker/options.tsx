@@ -18,37 +18,33 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
     <div className="grid grid-cols-2 gap-x-1 p-2">
       {/* Month Picker */}
       <OptionList>
-        {
-          months.map((month, index) => {
-            const isSelected = selectedMonth === index
-            return (
-              <OptionListItem
-                key={month}
-                isSelected={isSelected}
-                onClick={handleMonthSelect.bind(null, index)}
-              >
-                {month}
-              </OptionListItem>
-            )
-          })
-        }
+        {months.map((month, index) => {
+          const isSelected = selectedMonth === index
+          return (
+            <OptionListItem
+              key={month}
+              isSelected={isSelected}
+              onClick={handleMonthSelect.bind(null, index)}
+            >
+              {month}
+            </OptionListItem>
+          )
+        })}
       </OptionList>
       {/* Year Picker */}
       <OptionList>
-        {
-          yearOptions.map((year) => {
-            const isSelected = selectedYear === year
-            return (
-              <OptionListItem
-                key={year}
-                isSelected={isSelected}
-                onClick={handleYearSelect.bind(null, year)}
-              >
-                {year}
-              </OptionListItem>
-            )
-          })
-        }
+        {yearOptions.map((year) => {
+          const isSelected = selectedYear === year
+          return (
+            <OptionListItem
+              key={year}
+              isSelected={isSelected}
+              onClick={handleYearSelect.bind(null, year)}
+            >
+              {year}
+            </OptionListItem>
+          )
+        })}
       </OptionList>
     </div>
   )

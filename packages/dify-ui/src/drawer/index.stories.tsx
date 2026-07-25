@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { DrawerRootSnapPoint } from '.'
+import type { DrawerSnapPoint } from '.'
 import * as React from 'react'
 import {
   createDrawerHandle,
@@ -30,9 +30,12 @@ import {
   ScrollAreaViewport,
 } from '../scroll-area'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const textCloseClassName = 'inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] font-medium text-components-button-secondary-text shadow-xs outline-hidden hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const primaryCloseClassName = 'inline-flex h-8 items-center justify-center rounded-lg border-components-button-primary-border bg-components-button-primary-bg px-3.5 text-[13px] font-medium text-components-button-primary-text shadow outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const triggerButtonClassName =
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const textCloseClassName =
+  'inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] font-medium text-components-button-secondary-text shadow-xs outline-hidden hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const primaryCloseClassName =
+  'inline-flex h-8 items-center justify-center rounded-lg border-components-button-primary-border bg-components-button-primary-bg px-3.5 text-[13px] font-medium text-components-button-primary-text shadow outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 const handleClassName = 'mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-state-base-handle'
 const bottomHandleClassName = 'mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-state-base-handle'
 
@@ -43,7 +46,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound drawer built on Base UI Drawer. Use it for side panels, bottom sheets, nested editor panels, snap-point sheets, and mobile navigation surfaces that need swipe gestures. If the panel only needs modal focus management without gestures, use Dialog instead.',
+        component:
+          'Compound drawer built on Base UI Drawer. Use it for side panels, bottom sheets, nested editor panels, snap-point sheets, and mobile navigation surfaces that need swipe gestures. If the panel only needs modal focus management without gestures, use Dialog instead.',
       },
     },
   },
@@ -84,7 +88,10 @@ export const Default: Story = {
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="grid gap-3">
                   {settingRows.map(([label, value]) => (
-                    <div key={label} className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3">
+                    <div
+                      key={label}
+                      className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3"
+                    >
                       <div className="text-xs font-medium text-text-tertiary">{label}</div>
                       <div className="mt-1 text-sm font-medium text-text-secondary">{value}</div>
                     </div>
@@ -111,11 +118,7 @@ function ControlledDemo() {
       <Button variant="secondary" onClick={() => setOpen(true)}>
         Open controlled drawer
       </Button>
-      <span className="text-xs text-text-tertiary">
-        State:
-        {' '}
-        {open ? 'open' : 'closed'}
-      </span>
+      <span className="text-xs text-text-tertiary">State: {open ? 'open' : 'closed'}</span>
       <Drawer open={open} onOpenChange={setOpen} swipeDirection="right">
         <DrawerPortal>
           <DrawerBackdrop className="fixed" />
@@ -128,15 +131,23 @@ function ControlledDemo() {
                       Controlled drawer
                     </DrawerTitle>
                     <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                      Use open and onOpenChange when the owning feature needs to react to close events.
+                      Use open and onOpenChange when the owning feature needs to react to close
+                      events.
                     </DrawerDescription>
                   </div>
                   <DrawerCloseButton className="shrink-0" />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                  <label className="grid gap-1 text-sm font-medium text-text-secondary" htmlFor="controlled-workspace-name">
+                  <label
+                    className="grid gap-1 text-sm font-medium text-text-secondary"
+                    htmlFor="controlled-workspace-name"
+                  >
                     Workspace name
-                    <Input id="controlled-workspace-name" defaultValue="Acme workspace" autoComplete="organization" />
+                    <Input
+                      id="controlled-workspace-name"
+                      defaultValue="Acme workspace"
+                      autoComplete="organization"
+                    />
                   </label>
                 </div>
                 <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -174,14 +185,16 @@ export const Positions: Story = {
                       Right panel
                     </DrawerTitle>
                     <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                      This drawer is positioned with swipeDirection="right" and the Dify default popup styles.
+                      This drawer is positioned with swipeDirection="right" and the Dify default
+                      popup styles.
                     </DrawerDescription>
                   </div>
                   <DrawerCloseButton className="shrink-0" />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
-                    Position is controlled by Base UI data attributes and the drawer popup classes, not by a separate wrapper component.
+                    Position is controlled by Base UI data attributes and the drawer popup classes,
+                    not by a separate wrapper component.
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -207,14 +220,16 @@ export const Positions: Story = {
                       Left panel
                     </DrawerTitle>
                     <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                      This drawer is positioned with swipeDirection="left" and the Dify default popup styles.
+                      This drawer is positioned with swipeDirection="left" and the Dify default
+                      popup styles.
                     </DrawerDescription>
                   </div>
                   <DrawerCloseButton className="shrink-0" />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
-                    Position is controlled by Base UI data attributes and the drawer popup classes, not by a separate wrapper component.
+                    Position is controlled by Base UI data attributes and the drawer popup classes,
+                    not by a separate wrapper component.
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -232,7 +247,7 @@ export const Positions: Story = {
         <DrawerPortal>
           <DrawerBackdrop className="fixed" />
           <DrawerViewport className="flex items-end justify-center">
-            <DrawerPopup className="-mb-12 touch-auto data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+            <DrawerPopup className="-mb-12 touch-auto data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))]">
               <div className={handleClassName} />
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-12">
                 <div className="mx-auto w-full max-w-lg px-6 pt-6 pb-4 text-center">
@@ -263,7 +278,7 @@ export const Positions: Story = {
         <DrawerPortal>
           <DrawerBackdrop className="fixed" />
           <DrawerViewport className="flex items-start justify-center">
-            <DrawerPopup className="-mt-12 touch-auto data-[swipe-direction=up]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=up]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))] data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+            <DrawerPopup className="-mt-12 touch-auto data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-[swipe-direction=up]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=up]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))] data-starting-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))]">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pt-12">
                 <div className="mx-auto w-full max-w-128 px-6 pt-6 pb-4 text-center">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
@@ -293,11 +308,11 @@ export const Positions: Story = {
 
 const snapTopMarginRem = 1
 const visibleSnapPointRem = 30
-const initialSnapPoint: DrawerRootSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
-const snapPoints = [initialSnapPoint, 1] satisfies DrawerRootSnapPoint[]
+const initialSnapPoint: DrawerSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
+const snapPoints = [initialSnapPoint, 1] satisfies DrawerSnapPoint[]
 
 function SnapPointsDemo() {
-  const [snapPoint, setSnapPoint] = React.useState<DrawerRootSnapPoint | null>(initialSnapPoint)
+  const [snapPoint, setSnapPoint] = React.useState<DrawerSnapPoint | null>(initialSnapPoint)
 
   return (
     <Drawer
@@ -314,12 +329,12 @@ function SnapPointsDemo() {
         <DrawerViewport className="flex touch-none items-end justify-center">
           <DrawerPopup
             className={cn(
-              'relative overflow-visible touch-none',
+              'relative touch-none overflow-visible',
               '[--bleed:3rem] [--top-margin:1rem]',
               'pb-[max(0px,calc(var(--drawer-snap-point-offset,0px)_+_var(--drawer-swipe-movement-y,0px)))]',
               'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-(--bleed) after:bg-inherit after:content-[""]',
               'data-[swipe-direction=down]:max-h-[calc(100dvh_-_var(--top-margin))]',
-              'data-starting-style:pb-0 data-ending-style:pb-0',
+              'data-ending-style:pb-0 data-starting-style:pb-0',
             )}
           >
             <div className="shrink-0 touch-none border-b-[0.5px] border-divider-subtle px-6 pt-3.5 pb-4">
@@ -339,7 +354,10 @@ function SnapPointsDemo() {
                 </div>
                 <div className="mb-6 grid gap-2" aria-hidden>
                   {Array.from({ length: 20 }, (_, index) => (
-                    <div key={index} className="flex h-12 items-center gap-3 rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3">
+                    <div
+                      key={index}
+                      className="flex h-12 items-center gap-3 rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3"
+                    >
                       <span className="flex size-7 items-center justify-center rounded-lg bg-state-base-hover text-xs font-medium text-text-secondary">
                         {index + 1}
                       </span>
@@ -374,13 +392,13 @@ export const NestedDrawers: Story = {
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              '[--bleed:3rem] [--stack-step:0.05] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))]',
+              '[--bleed:3rem] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))] [--stack-step:0.05]',
               '[--stack-height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height))_-_var(--bleed)))]',
-              '-mb-12 touch-auto origin-bottom',
-              'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[""] after:transition-[background-color] after:duration-200',
+              '-mb-12 origin-bottom touch-auto',
+              'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:transition-[background-color] after:duration-200 after:content-[""]',
               'data-[swipe-direction=down]:h-(--drawer-height) data-[swipe-direction=down]:max-h-[calc(82dvh_+_3rem)]',
               'data-[swipe-direction=down]:transform-[translateY(calc(var(--drawer-snap-point-offset,0px)_+_var(--drawer-swipe-movement-y,0px)))_scale(var(--stack-scale))]',
-              'data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
+              'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
               'data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]',
               'data-nested-drawer-open:data-[swipe-direction=down]:h-[calc(var(--stack-height)_+_var(--bleed))]',
               'data-nested-drawer-open:overflow-hidden data-nested-drawer-open:shadow-lg',
@@ -389,8 +407,14 @@ export const NestedDrawers: Story = {
               'data-nested-drawer-open:[&_[data-nested-handle]]:opacity-0 data-nested-drawer-swiping:[&_[data-nested-handle]]:opacity-100',
             )}
           >
-            <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
-            <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
+            <div
+              data-nested-handle
+              className={cn(handleClassName, 'transition-opacity duration-200')}
+            />
+            <DrawerContent
+              data-nested-content
+              className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200"
+            >
               <div className="shrink-0 px-6 pt-6 pb-4 text-center">
                 <div className="mx-auto max-w-96">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
@@ -404,20 +428,22 @@ export const NestedDrawers: Story = {
               <div className="min-h-0 flex-1 px-6 pb-6" />
               <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
                 <Drawer>
-                  <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+                  <DrawerTrigger
+                    render={<button type="button" className={triggerButtonClassName} />}
+                  >
                     Security settings
                   </DrawerTrigger>
                   <DrawerPortal>
                     <DrawerViewport className="flex items-end justify-center">
                       <DrawerPopup
                         className={cn(
-                          '[--bleed:3rem] [--stack-step:0.05] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))]',
+                          '[--bleed:3rem] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))] [--stack-step:0.05]',
                           '[--stack-height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height))_-_var(--bleed)))]',
-                          '-mb-12 touch-auto origin-bottom',
-                          'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[""] after:transition-[background-color] after:duration-200',
+                          '-mb-12 origin-bottom touch-auto',
+                          'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:transition-[background-color] after:duration-200 after:content-[""]',
                           'data-[swipe-direction=down]:h-(--drawer-height) data-[swipe-direction=down]:max-h-[calc(82dvh_+_3rem)]',
                           'data-[swipe-direction=down]:transform-[translateY(calc(var(--drawer-snap-point-offset,0px)_+_var(--drawer-swipe-movement-y,0px)))_scale(var(--stack-scale))]',
-                          'data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
+                          'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
                           'data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]',
                           'data-nested-drawer-open:data-[swipe-direction=down]:h-[calc(var(--stack-height)_+_var(--bleed))]',
                           'data-nested-drawer-open:overflow-hidden data-nested-drawer-open:shadow-lg',
@@ -426,8 +452,14 @@ export const NestedDrawers: Story = {
                           'data-nested-drawer-open:[&_[data-nested-handle]]:opacity-0 data-nested-drawer-swiping:[&_[data-nested-handle]]:opacity-100',
                         )}
                       >
-                        <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
-                        <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
+                        <div
+                          data-nested-handle
+                          className={cn(handleClassName, 'transition-opacity duration-200')}
+                        />
+                        <DrawerContent
+                          data-nested-content
+                          className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200"
+                        >
                           <div className="shrink-0 px-6 pt-6 pb-4 text-center">
                             <div className="mx-auto max-w-96">
                               <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
@@ -440,27 +472,35 @@ export const NestedDrawers: Story = {
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                             <ul className="grid gap-2 text-sm text-text-secondary">
-                              <li className="rounded-xl bg-background-section-burn p-3">Passkeys enabled</li>
-                              <li className="rounded-xl bg-background-section-burn p-3">2FA via authenticator app</li>
-                              <li className="rounded-xl bg-background-section-burn p-3">3 signed-in devices</li>
+                              <li className="rounded-xl bg-background-section-burn p-3">
+                                Passkeys enabled
+                              </li>
+                              <li className="rounded-xl bg-background-section-burn p-3">
+                                2FA via authenticator app
+                              </li>
+                              <li className="rounded-xl bg-background-section-burn p-3">
+                                3 signed-in devices
+                              </li>
                             </ul>
                           </div>
                           <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
                             <Drawer>
-                              <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+                              <DrawerTrigger
+                                render={<button type="button" className={triggerButtonClassName} />}
+                              >
                                 Advanced options
                               </DrawerTrigger>
                               <DrawerPortal>
                                 <DrawerViewport className="flex items-end justify-center">
                                   <DrawerPopup
                                     className={cn(
-                                      '[--bleed:3rem] [--stack-step:0.05] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))]',
+                                      '[--bleed:3rem] [--stack-scale:calc(1_-_(var(--nested-drawers,0)_*_var(--stack-step)))] [--stack-step:0.05]',
                                       '[--stack-height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height))_-_var(--bleed)))]',
-                                      '-mb-12 touch-auto origin-bottom',
-                                      'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[""] after:transition-[background-color] after:duration-200',
+                                      '-mb-12 origin-bottom touch-auto',
+                                      'after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:transition-[background-color] after:duration-200 after:content-[""]',
                                       'data-[swipe-direction=down]:h-(--drawer-height) data-[swipe-direction=down]:max-h-[calc(82dvh_+_3rem)]',
                                       'data-[swipe-direction=down]:transform-[translateY(calc(var(--drawer-snap-point-offset,0px)_+_var(--drawer-swipe-movement-y,0px)))_scale(var(--stack-scale))]',
-                                      'data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
+                                      'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_var(--bleed)_+_2px))]',
                                       'data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]',
                                       'data-nested-drawer-open:data-[swipe-direction=down]:h-[calc(var(--stack-height)_+_var(--bleed))]',
                                       'data-nested-drawer-open:overflow-hidden data-nested-drawer-open:shadow-lg',
@@ -469,26 +509,41 @@ export const NestedDrawers: Story = {
                                       'data-nested-drawer-open:[&_[data-nested-handle]]:opacity-0 data-nested-drawer-swiping:[&_[data-nested-handle]]:opacity-100',
                                     )}
                                   >
-                                    <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
-                                    <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
+                                    <div
+                                      data-nested-handle
+                                      className={cn(
+                                        handleClassName,
+                                        'transition-opacity duration-200',
+                                      )}
+                                    />
+                                    <DrawerContent
+                                      data-nested-content
+                                      className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200"
+                                    >
                                       <div className="shrink-0 px-6 pt-6 pb-4 text-center">
                                         <div className="mx-auto max-w-96">
                                           <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
                                             Advanced
                                           </DrawerTitle>
                                           <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                                            The stack uses Base UI nested drawer data attributes for visual treatment.
+                                            The stack uses Base UI nested drawer data attributes for
+                                            visual treatment.
                                           </DrawerDescription>
                                         </div>
                                       </div>
                                       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                                        <label className="grid gap-1 text-sm font-medium text-text-secondary" htmlFor="device-name">
+                                        <label
+                                          className="grid gap-1 text-sm font-medium text-text-secondary"
+                                          htmlFor="device-name"
+                                        >
                                           Device name
                                           <Input id="device-name" defaultValue="Personal laptop" />
                                         </label>
                                       </div>
                                       <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
-                                        <DrawerClose className={primaryCloseClassName}>Done</DrawerClose>
+                                        <DrawerClose className={primaryCloseClassName}>
+                                          Done
+                                        </DrawerClose>
                                       </div>
                                     </DrawerContent>
                                   </DrawerPopup>
@@ -517,7 +572,10 @@ function IndentEffectDemo() {
 
   return (
     <DrawerProvider>
-      <div ref={setPortalContainer} className="relative h-[420px] w-[640px] overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-background-default">
+      <div
+        ref={setPortalContainer}
+        className="relative h-[420px] w-[640px] overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-background-default"
+      >
         <DrawerIndentBackground className="absolute inset-0 bg-state-accent-hover opacity-0 transition-opacity duration-200 data-active:opacity-100" />
         <DrawerIndent className="relative flex size-full flex-col items-center justify-center gap-4 bg-background-body transition-[border-radius,transform] duration-200 data-active:scale-[0.96] data-active:rounded-[20px]">
           <div className="grid max-w-sm gap-2 text-center">
@@ -533,7 +591,7 @@ function IndentEffectDemo() {
             <DrawerPortal container={portalContainer}>
               <DrawerBackdrop />
               <DrawerViewport className="absolute flex items-end justify-center">
-                <DrawerPopup className="absolute -mb-12 touch-auto data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+                <DrawerPopup className="absolute -mb-12 touch-auto data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))]">
                   <div className={handleClassName} />
                   <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-12">
                     <div className="mx-auto w-full max-w-96 px-6 pt-6 pb-4 text-center">
@@ -541,12 +599,14 @@ function IndentEffectDemo() {
                         Notifications
                       </DrawerTitle>
                       <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                        The indented shell uses DrawerProvider, DrawerIndentBackground, and DrawerIndent.
+                        The indented shell uses DrawerProvider, DrawerIndentBackground, and
+                        DrawerIndent.
                       </DrawerDescription>
                     </div>
                     <div className="mx-auto min-h-0 w-full max-w-96 flex-1 px-6 pb-4">
                       <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-center text-sm/5 text-text-secondary">
-                        The app shell scales behind this sheet while the drawer stays inside the local portal container.
+                        The app shell scales behind this sheet while the drawer stays inside the
+                        local portal container.
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center justify-center gap-2 px-6 py-4">
@@ -579,18 +639,14 @@ function NonModalDemo() {
         <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
           Open non-modal drawer
         </DrawerTrigger>
-        <Button variant="secondary" onClick={() => setBackgroundClicks(count => count + 1)}>
+        <Button variant="secondary" onClick={() => setBackgroundClicks((count) => count + 1)}>
           Background action
         </Button>
-        <span className="text-xs text-text-tertiary">
-          Background clicks:
-          {' '}
-          {backgroundClicks}
-        </span>
+        <span className="text-xs text-text-tertiary">Background clicks: {backgroundClicks}</span>
       </div>
       <DrawerPortal>
         <DrawerViewport className="pointer-events-none">
-          <DrawerPopup className="pointer-events-auto touch-auto data-[swipe-direction=right]:right-3 data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-r-[0.5px]">
+          <DrawerPopup className="pointer-events-auto touch-auto data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-3 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-r-[0.5px]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
@@ -605,7 +661,8 @@ function NonModalDemo() {
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
-                  The background action remains clickable while this drawer is open. Outside clicks do not dismiss it.
+                  The background action remains clickable while this drawer is open. Outside clicks
+                  do not dismiss it.
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -652,7 +709,8 @@ export const MobileNavigation: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Based on the Base UI mobile navigation example. Open this story in a mobile or narrow viewport to evaluate the full-screen sheet behavior, long-list scrolling, and flick-to-dismiss gesture.',
+        story:
+          'Based on the Base UI mobile navigation example. Open this story in a mobile or narrow viewport to evaluate the full-screen sheet behavior, long-list scrolling, and flick-to-dismiss gesture.',
       },
     },
   },
@@ -666,12 +724,19 @@ export const MobileNavigation: Story = {
         <DrawerViewport className="group">
           <ScrollAreaRoot
             style={{ position: undefined }}
-            className="h-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none group-data-starting-style:translate-y-[100dvh] group-data-ending-style:pointer-events-none"
+            className="h-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-ending-style:pointer-events-none group-data-starting-style:translate-y-[100dvh] motion-reduce:transition-none"
           >
-            <ScrollAreaViewport className="size-full touch-auto overscroll-contain" role="region" aria-label="Mobile drawer viewport">
+            <ScrollAreaViewport
+              className="size-full touch-auto overscroll-contain"
+              role="region"
+              aria-label="Mobile drawer viewport"
+            >
               <ScrollAreaContent className="flex min-h-full min-w-0 items-end justify-center pt-8 min-[42rem]:px-16 min-[42rem]:py-16">
-                <DrawerPopup className="relative w-full max-w-[42rem] touch-auto overflow-visible transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-swiping:select-none data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)_+_2px))] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px] min-[42rem]:border-b-[0.5px]">
-                  <nav aria-label="Mobile navigation" className="relative flex flex-col bg-components-panel-bg">
+                <DrawerPopup className="relative w-full max-w-[42rem] touch-auto overflow-visible transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-swiping:select-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)_+_2px))] motion-reduce:transition-none min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px] min-[42rem]:border-b-[0.5px]">
+                  <nav
+                    aria-label="Mobile navigation"
+                    className="relative flex flex-col bg-components-panel-bg"
+                  >
                     <div className="grid grid-cols-[1fr_auto_1fr] items-start px-6 pt-4">
                       <div aria-hidden className="h-9 w-9" />
                       <div className="h-1 w-12 justify-self-center rounded-full bg-state-base-handle" />
@@ -679,25 +744,33 @@ export const MobileNavigation: Story = {
                     </div>
                     <DrawerContent className="w-full flex-none overflow-visible overscroll-auto p-0 pb-0">
                       <div className="px-6 pt-5 pb-4">
-                        <DrawerTitle className="text-lg/6 font-semibold text-text-primary">Menu</DrawerTitle>
+                        <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                          Menu
+                        </DrawerTitle>
                         <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
                           Scroll the long list. Flick down from the top to dismiss.
                         </DrawerDescription>
                       </div>
                       <div className="px-6 pb-8">
                         <ul className="m-0 grid list-none gap-1 p-0">
-                          {mobilePrimaryLinks.map(item => (
+                          {mobilePrimaryLinks.map((item) => (
                             <li key={item.label} className="flex">
-                              <a href={item.href} className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+                              <a
+                                href={item.href}
+                                className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                              >
                                 <span className="truncate">{item.label}</span>
                               </a>
                             </li>
                           ))}
                         </ul>
                         <ul aria-label="Component links" className="mt-6 grid list-none gap-1 p-0">
-                          {mobileComponentLinks.map(item => (
+                          {mobileComponentLinks.map((item) => (
                             <li key={item.label} className="flex">
-                              <a href={item.href} className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+                              <a
+                                href={item.href}
+                                className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                              >
                                 <span className="truncate">{item.label}</span>
                               </a>
                             </li>
@@ -726,7 +799,10 @@ function SwipeToOpenDemo() {
   const [portalContainer, setPortalContainer] = React.useState<HTMLDivElement | null>(null)
 
   return (
-    <div ref={setPortalContainer} className="relative h-[360px] w-[560px] overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-background-body">
+    <div
+      ref={setPortalContainer}
+      className="relative h-[360px] w-[560px] overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-background-body"
+    >
       <Drawer swipeDirection="right" modal={false}>
         <DrawerSwipeArea className="absolute inset-y-0 right-0 z-10 flex w-10 touch-none items-center justify-center bg-state-accent-hover text-text-accent">
           <span className="rotate-90 text-xs font-medium">Swipe</span>
@@ -734,7 +810,9 @@ function SwipeToOpenDemo() {
         <div className="flex size-full items-center justify-center px-8 text-center">
           <div className="grid gap-2">
             <div className="text-lg font-semibold text-text-primary">Swipe area</div>
-            <div className="text-sm text-text-tertiary">Drag from the highlighted right edge to open the drawer.</div>
+            <div className="text-sm text-text-tertiary">
+              Drag from the highlighted right edge to open the drawer.
+            </div>
             <div className="flex justify-center pt-2">
               <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
                 Open drawer
@@ -745,7 +823,7 @@ function SwipeToOpenDemo() {
         <DrawerPortal container={portalContainer}>
           <DrawerBackdrop className="absolute" />
           <DrawerViewport className="absolute">
-            <DrawerPopup className="absolute touch-auto data-[swipe-direction=right]:-right-12 data-[swipe-direction=right]:h-full data-[swipe-direction=right]:w-[calc(22.5rem_+_3rem)] data-[swipe-direction=right]:max-w-[calc(100%_+_3rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+            <DrawerPopup className="absolute touch-auto data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-[swipe-direction=right]:-right-12 data-[swipe-direction=right]:h-full data-[swipe-direction=right]:w-[calc(22.5rem_+_3rem)] data-[swipe-direction=right]:max-w-[calc(100%_+_3rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_-_3rem_+_2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_-_3rem_+_2px))]">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pr-12 pb-0">
                 <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                   <div className="min-w-0">
@@ -792,13 +870,16 @@ function ActionSheetDemo() {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport className="flex items-end justify-center">
-          <DrawerPopup className="pointer-events-none relative flex w-full max-w-80 flex-col gap-3 overflow-visible border-none bg-transparent px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))] shadow-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+          <DrawerPopup className="pointer-events-none relative flex w-full max-w-80 flex-col gap-3 overflow-visible border-none bg-transparent px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))] shadow-none data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))]">
             <DrawerContent className="pointer-events-auto flex-none overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-0 pb-0 shadow-xl">
               <DrawerTitle className="sr-only">App actions</DrawerTitle>
               <DrawerDescription className="sr-only">
                 Choose an action for Customer support assistant.
               </DrawerDescription>
-              <ul className="m-0 list-none divide-y divide-divider-subtle p-0" aria-label="App actions">
+              <ul
+                className="m-0 list-none divide-y divide-divider-subtle p-0"
+                aria-label="App actions"
+              >
                 {actionItems.map(([label, description]) => (
                   <li key={label}>
                     <DrawerClose
@@ -859,17 +940,24 @@ function DetachedTriggersDemo() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-text-primary">External trigger surface</div>
-            <div className="text-xs text-text-tertiary">These triggers are rendered before the shared Drawer.Root.</div>
+            <div className="text-xs text-text-tertiary">
+              These triggers are rendered before the shared Drawer.Root.
+            </div>
           </div>
           <span className="shrink-0 rounded-full bg-background-section-burn px-2 py-1 font-mono text-xs text-text-tertiary">
             handle
           </span>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {detachedPayloads.map(payload => (
-            <div key={payload.title} className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-3">
+          {detachedPayloads.map((payload) => (
+            <div
+              key={payload.title}
+              className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-3"
+            >
               <div className="mb-2 min-w-0">
-                <div className="truncate text-sm font-medium text-text-secondary">{payload.title}</div>
+                <div className="truncate text-sm font-medium text-text-secondary">
+                  {payload.title}
+                </div>
                 <div className="truncate text-xs text-text-tertiary">{`payload: ${payload.fields.join(', ')}`}</div>
               </div>
               <DrawerTrigger
@@ -884,7 +972,8 @@ function DetachedTriggersDemo() {
         </div>
       </div>
       <div className="rounded-2xl border-[0.5px] border-dashed border-divider-subtle bg-background-section-burn p-4 text-sm text-text-secondary">
-        One Drawer.Root is mounted separately below this trigger surface and reads the payload from whichever detached trigger opened it.
+        One Drawer.Root is mounted separately below this trigger surface and reads the payload from
+        whichever detached trigger opened it.
       </div>
       <Drawer handle={drawerHandle} swipeDirection="right">
         {({ payload }) => (
@@ -899,7 +988,8 @@ function DetachedTriggersDemo() {
                         {payload?.title ?? 'Detached drawer'}
                       </DrawerTitle>
                       <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                        {payload?.description ?? 'This drawer is opened by a trigger outside Drawer.Root.'}
+                        {payload?.description ??
+                          'This drawer is opened by a trigger outside Drawer.Root.'}
                       </DrawerDescription>
                     </div>
                     <DrawerCloseButton className="shrink-0" />
@@ -909,8 +999,11 @@ function DetachedTriggersDemo() {
                       Opened by detached trigger payload
                     </div>
                     <div className="grid gap-2">
-                      {(payload?.fields ?? ['Detached trigger']).map(field => (
-                        <div key={field} className="rounded-xl border-[0.5px] border-divider-subtle px-3 py-2 text-sm text-text-secondary">
+                      {(payload?.fields ?? ['Detached trigger']).map((field) => (
+                        <div
+                          key={field}
+                          className="rounded-xl border-[0.5px] border-divider-subtle px-3 py-2 text-sm text-text-secondary"
+                        >
                           {field}
                         </div>
                       ))}
@@ -942,15 +1035,19 @@ export const StackingAndAnimations: Story = {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport>
-          <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-swiping:shadow-none data-nested-drawer-open:brightness-95 data-nested-drawer-open:[&_[data-animation-content]]:opacity-0 data-nested-drawer-swiping:[&_[data-animation-content]]:opacity-100">
-            <DrawerContent data-animation-content className="flex min-h-0 flex-1 flex-col p-0 pb-0 transition-opacity duration-300">
+          <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-nested-drawer-open:brightness-95 data-swiping:shadow-none data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-nested-drawer-open:[&_[data-animation-content]]:opacity-0 data-nested-drawer-swiping:[&_[data-animation-content]]:opacity-100">
+            <DrawerContent
+              data-animation-content
+              className="flex min-h-0 flex-1 flex-col p-0 pb-0 transition-opacity duration-300"
+            >
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
                     Right panel animation
                   </DrawerTitle>
                   <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                    This panel slides in from the right using Base UI starting, ending, swiping, and nested data attributes.
+                    This panel slides in from the right using Base UI starting, ending, swiping, and
+                    nested data attributes.
                   </DrawerDescription>
                 </div>
                 <DrawerCloseButton className="shrink-0" />
@@ -958,15 +1055,18 @@ export const StackingAndAnimations: Story = {
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="grid gap-3">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
-                    Open the nested right panel to see the parent drawer dim while the frontmost drawer keeps the same right-side motion.
+                    Open the nested right panel to see the parent drawer dim while the frontmost
+                    drawer keeps the same right-side motion.
                   </div>
                   <Drawer swipeDirection="right">
-                    <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+                    <DrawerTrigger
+                      render={<button type="button" className={triggerButtonClassName} />}
+                    >
                       Open nested right panel
                     </DrawerTrigger>
                     <DrawerPortal>
                       <DrawerViewport>
-                        <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-swiping:shadow-none">
+                        <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-swiping:shadow-none data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))]">
                           <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                             <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                               <div className="min-w-0">
@@ -974,18 +1074,22 @@ export const StackingAndAnimations: Story = {
                                   Nested right panel
                                 </DrawerTitle>
                                 <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                                  The front drawer uses the same right-side entering, ending, and swipe transition classes.
+                                  The front drawer uses the same right-side entering, ending, and
+                                  swipe transition classes.
                                 </DrawerDescription>
                               </div>
                               <DrawerCloseButton className="shrink-0" />
                             </div>
                             <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                               <div className="rounded-xl bg-background-section-burn p-3 text-sm/5 text-text-secondary">
-                                Close this drawer to watch focus and visual stacking return to the parent drawer.
+                                Close this drawer to watch focus and visual stacking return to the
+                                parent drawer.
                               </div>
                             </div>
                             <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
-                              <DrawerClose className={primaryCloseClassName}>Close nested</DrawerClose>
+                              <DrawerClose className={primaryCloseClassName}>
+                                Close nested
+                              </DrawerClose>
                             </div>
                           </DrawerContent>
                         </DrawerPopup>
@@ -1027,7 +1131,7 @@ export const InstantRightPanel: Story = {
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerViewport className="pointer-events-none">
-          <DrawerPopup className="pointer-events-auto transition-none duration-0 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(0)] data-ending-style:data-[swipe-direction=right]:transform-[translateX(0)] data-swiping:shadow-none">
+          <DrawerPopup className="pointer-events-auto transition-none duration-0 data-swiping:shadow-none data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(0)] data-starting-style:data-[swipe-direction=right]:transform-[translateX(0)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
@@ -1035,14 +1139,16 @@ export const InstantRightPanel: Story = {
                     Instant right panel
                   </DrawerTitle>
                   <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                    This non-modal drawer opens without a slide-in animation and ignores outside clicks.
+                    This non-modal drawer opens without a slide-in animation and ignores outside
+                    clicks.
                   </DrawerDescription>
                 </div>
                 <DrawerCloseButton className="shrink-0" />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
-                  The page stays interactive because this drawer is non-modal. Starting and ending styles both keep the panel at translateX(0), so open and close are instant.
+                  The page stays interactive because this drawer is non-modal. Starting and ending
+                  styles both keep the panel at translateX(0), so open and close are instant.
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">

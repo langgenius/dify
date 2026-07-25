@@ -24,44 +24,43 @@ type TriggerByDisplayProps = {
   triggerMetadata?: TriggerMetadata
 }
 
-const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: TFunction, metadata?: TriggerMetadata) => {
+const getTriggerDisplayName = (
+  triggeredFrom: WorkflowRunTriggeredFrom,
+  t: TFunction,
+  metadata?: TriggerMetadata,
+) => {
   if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
     return metadata.event_name
 
   const nameMap: Record<WorkflowRunTriggeredFrom, string> = {
-    'debugging': t($ => $['triggerBy.debugging'], { ns: 'appLog' }),
-    'app-run': t($ => $['triggerBy.appRun'], { ns: 'appLog' }),
-    'webhook': t($ => $['triggerBy.webhook'], { ns: 'appLog' }),
-    'schedule': t($ => $['triggerBy.schedule'], { ns: 'appLog' }),
-    'plugin': t($ => $['triggerBy.plugin'], { ns: 'appLog' }),
-    'rag-pipeline-run': t($ => $['triggerBy.ragPipelineRun'], { ns: 'appLog' }),
-    'rag-pipeline-debugging': t($ => $['triggerBy.ragPipelineDebugging'], { ns: 'appLog' }),
+    debugging: t(($) => $['triggerBy.debugging'], { ns: 'appLog' }),
+    'app-run': t(($) => $['triggerBy.appRun'], { ns: 'appLog' }),
+    webhook: t(($) => $['triggerBy.webhook'], { ns: 'appLog' }),
+    schedule: t(($) => $['triggerBy.schedule'], { ns: 'appLog' }),
+    plugin: t(($) => $['triggerBy.plugin'], { ns: 'appLog' }),
+    'rag-pipeline-run': t(($) => $['triggerBy.ragPipelineRun'], { ns: 'appLog' }),
+    'rag-pipeline-debugging': t(($) => $['triggerBy.ragPipelineDebugging'], { ns: 'appLog' }),
   }
 
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
 const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
-  if (!metadata)
-    return null
+  if (!metadata) return null
 
-  const icon = theme === Theme.dark
-    ? metadata.icon_dark || metadata.icon
-    : metadata.icon || metadata.icon_dark
+  const icon =
+    theme === Theme.dark ? metadata.icon_dark || metadata.icon : metadata.icon || metadata.icon_dark
 
-  if (!icon)
-    return null
+  if (!icon) return null
 
-  return (
-    <BlockIcon
-      type={BlockEnum.TriggerPlugin}
-      size="md"
-      toolIcon={icon}
-    />
-  )
+  return <BlockIcon type={BlockEnum.TriggerPlugin} size="md" toolIcon={icon} />
 }
 
-const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: TriggerMetadata | undefined, theme: Theme) => {
+const getTriggerIcon = (
+  triggeredFrom: WorkflowRunTriggeredFrom,
+  metadata: TriggerMetadata | undefined,
+  theme: Theme,
+) => {
   switch (triggeredFrom) {
     case 'webhook':
       return (
@@ -76,11 +75,8 @@ const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: Trigg
         </div>
       )
     case 'plugin':
-      return getPluginIcon(metadata, theme) || (
-        <BlockIcon
-          type={BlockEnum.TriggerPlugin}
-          size="md"
-        />
+      return (
+        getPluginIcon(metadata, theme) || <BlockIcon type={BlockEnum.TriggerPlugin} size="md" />
       )
     case 'debugging':
       return (
@@ -120,14 +116,8 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      <div className="flex items-center justify-center">
-        {icon}
-      </div>
-      {showText && (
-        <span className="system-sm-regular text-text-secondary">
-          {displayName}
-        </span>
-      )}
+      <div className="flex items-center justify-center">{icon}</div>
+      {showText && <span className="system-sm-regular text-text-secondary">{displayName}</span>}
     </div>
   )
 }

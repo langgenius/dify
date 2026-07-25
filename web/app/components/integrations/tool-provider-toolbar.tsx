@@ -52,28 +52,16 @@ export function ToolProviderToolbar({
       )}
     >
       {!isRouteCategory && (
-        <TabSliderNew
-          value={activeTab}
-          onChange={onCategoryChange}
-          options={options}
-        />
+        <TabSliderNew value={activeTab} onChange={onCategoryChange} options={options} />
       )}
       <div className="flex min-w-[200px] flex-1 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          {showLabelFilter && (
-            <LabelFilter value={tagFilterValue} onChange={onTagsChange} />
-          )}
-          <SearchInput
-            className="w-[200px]"
-            value={keywords}
-            onValueChange={onKeywordsChange}
-          />
+          {showLabelFilter && <LabelFilter value={tagFilterValue} onChange={onTagsChange} />}
+          <SearchInput className="w-[200px]" value={keywords} onValueChange={onKeywordsChange} />
         </div>
         {toolbarAction}
         {!toolbarAction && showToolsUpdateSetting && (
-          <UpdateSettingDialog
-            category={PluginCategoryEnum.tool}
-          />
+          <UpdateSettingDialog category={PluginCategoryEnum.tool} />
         )}
       </div>
     </div>

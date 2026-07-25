@@ -73,7 +73,11 @@ def enable_annotation_reply_task(
                             collection_binding_id=old_dataset_collection_binding.id,
                         )
 
-                        old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                        old_vector = Vector(
+                            old_dataset,
+                            attributes=["doc_id", "annotation_id", "app_id"],
+                            session=session,
+                        )
                         try:
                             old_vector.delete()
                         except Exception as e:
@@ -109,7 +113,7 @@ def enable_annotation_reply_task(
                     )
                     documents.append(document)
 
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                 try:
                     vector.delete_by_metadata_field("app_id", app_id)
                 except Exception as e:

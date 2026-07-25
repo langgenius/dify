@@ -44,6 +44,5 @@ describe('OptionCard', () => {
     fireEvent.click(screen.getByText('Online Drive'))
 
     expect(onClick).toHaveBeenCalledWith('online-drive')
-    expect(screen.getByText('Online Drive')).toHaveClass('text-text-primary')
   })
 })

@@ -24,19 +24,23 @@ function StoreSnapshot() {
   return (
     <dl>
       <dt>draft</dt>
-      <dd data-testid="draft-prompt">{draft.prompt}</dd>
+      <dd>{draft.prompt}</dd>
       <dt>original draft</dt>
-      <dd data-testid="original-draft-prompt">{originalDraft?.prompt}</dd>
+      <dd>{originalDraft?.prompt}</dd>
       <dt>published draft</dt>
-      <dd data-testid="published-draft-prompt">{publishedDraft?.prompt}</dd>
+      <dd>{publishedDraft?.prompt}</dd>
       <dt>original config</dt>
-      <dd data-testid="original-config-prompt">{originalConfig?.prompt?.system_prompt}</dd>
+      <dd>{originalConfig?.prompt?.system_prompt}</dd>
       <dt>dirty</dt>
-      <dd data-testid="dirty">{String(isDirty)}</dd>
+      <dd>{String(isDirty)}</dd>
       <dt>unpublished</dt>
-      <dd data-testid="unpublished">{String(hasUnpublishedChanges)}</dd>
+      <dd>{String(hasUnpublishedChanges)}</dd>
     </dl>
   )
+}
+
+function getDefinition(term: string) {
+  return screen.getByText(term, { selector: 'dt' }).nextElementSibling
 }
 
 describe('AgentComposerProvider', () => {
@@ -60,12 +64,12 @@ describe('AgentComposerProvider', () => {
       </AgentComposerProvider>,
     )
 
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('original-draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('published-draft-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('original-config-prompt')).toHaveTextContent('Be precise.')
-    expect(screen.getByTestId('dirty')).toHaveTextContent('false')
-    expect(screen.getByTestId('unpublished')).toHaveTextContent('false')
+    expect(getDefinition('draft')).toHaveTextContent('Be precise.')
+    expect(getDefinition('original draft')).toHaveTextContent('Be precise.')
+    expect(getDefinition('published draft')).toHaveTextContent('Be precise.')
+    expect(getDefinition('original config')).toHaveTextContent('Be precise.')
+    expect(getDefinition('dirty')).toHaveTextContent('false')
+    expect(getDefinition('unpublished')).toHaveTextContent('false')
   })
 
   it('creates a new scoped store when the composer session key changes', () => {
@@ -83,7 +87,7 @@ describe('AgentComposerProvider', () => {
       </AgentComposerProvider>,
     )
 
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Agent one draft')
+    expect(getDefinition('draft')).toHaveTextContent('Agent one draft')
 
     rerender(
       <AgentComposerProvider key="agent-2:draft" initialDraft={secondDraft}>
@@ -91,8 +95,8 @@ describe('AgentComposerProvider', () => {
       </AgentComposerProvider>,
     )
 
-    expect(screen.getByTestId('draft-prompt')).toHaveTextContent('Agent two draft')
-    expect(screen.getByTestId('original-draft-prompt')).toHaveTextContent('Agent two draft')
-    expect(screen.getByTestId('published-draft-prompt')).toHaveTextContent('Agent two draft')
+    expect(getDefinition('draft')).toHaveTextContent('Agent two draft')
+    expect(getDefinition('original draft')).toHaveTextContent('Agent two draft')
+    expect(getDefinition('published draft')).toHaveTextContent('Agent two draft')
   })
 })

@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Kelola Agents",
   "api_extension.manage": "Kelola konfigurasi ekstensi API",
   "app.access_config": "Konfigurasikan izin akses aplikasi",
   "app.acl.access_config": "Konfigurasikan izin akses aplikasi",

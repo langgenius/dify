@@ -9,9 +9,7 @@ import {
   useSelectOrDelete,
   useTrigger,
 } from '../hooks'
-import {
-  DELETE_CONTEXT_BLOCK_COMMAND,
-} from '../plugins/context-block'
+import { DELETE_CONTEXT_BLOCK_COMMAND } from '../plugins/context-block'
 import { ContextBlockNode } from '../plugins/context-block/node'
 import { DELETE_HISTORY_BLOCK_COMMAND } from '../plugins/history-block'
 import { HistoryBlockNode } from '../plugins/history-block/node'
@@ -53,7 +51,7 @@ const mockState = vi.hoisted(() => {
     node: null as MockNode | null,
     mergeRegister: vi.fn((...cleanups: Array<() => void>) => {
       return () => {
-        cleanups.forEach(cleanup => cleanup())
+        cleanups.forEach((cleanup) => cleanup())
       }
     }),
     removePlainTextTransform: vi.fn(),
@@ -88,7 +86,10 @@ vi.mock('lexical', async (importOriginal) => {
   }
 })
 
-const SelectOrDeleteHarness = ({ nodeKey, command }: {
+const SelectOrDeleteHarness = ({
+  nodeKey,
+  command,
+}: {
   nodeKey: string
   command?: SelectOrDeleteCommand
 }) => {
@@ -104,7 +105,10 @@ const SelectOrDeleteHarness = ({ nodeKey, command }: {
   )
 }
 
-const SelectOrDeleteNoRefHarness = ({ nodeKey, command }: {
+const SelectOrDeleteNoRefHarness = ({
+  nodeKey,
+  command,
+}: {
   nodeKey: string
   command?: SelectOrDeleteCommand
 }) => {
@@ -116,7 +120,9 @@ const TriggerHarness = () => {
   const [ref, open] = useTrigger()
   return (
     <div>
-      <div ref={ref} data-testid="trigger-target">toggle</div>
+      <div ref={ref} data-testid="trigger-target">
+        toggle
+      </div>
       <span>{open ? 'open' : 'closed'}</span>
     </div>
   )
@@ -157,12 +163,7 @@ describe('prompt-editor/hooks', () => {
   describe('useSelectOrDelete', () => {
     it('should register delete and backspace commands and select node on click', async () => {
       const user = userEvent.setup()
-      render(
-        <SelectOrDeleteHarness
-          nodeKey="node-1"
-          command={DELETE_CONTEXT_BLOCK_COMMAND}
-        />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
 
       expect(mockState.editor.registerCommand).toHaveBeenCalledWith(
         KEY_DELETE_COMMAND,
@@ -188,12 +189,7 @@ describe('prompt-editor/hooks', () => {
         isNodeSelection: false,
       }
 
-      render(
-        <SelectOrDeleteHarness
-          nodeKey="node-1"
-          command={DELETE_CONTEXT_BLOCK_COMMAND}
-        />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
 
       const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
       expect(deleteHandler).toBeDefined()
@@ -201,7 +197,10 @@ describe('prompt-editor/hooks', () => {
       const handled = deleteHandler?.(new KeyboardEvent('keydown'))
 
       expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_CONTEXT_BLOCK_COMMAND, undefined)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
+        DELETE_CONTEXT_BLOCK_COMMAND,
+        undefined,
+      )
     })
 
     it('should dispatch delete command when unselected history block is focused', () => {
@@ -211,18 +210,16 @@ describe('prompt-editor/hooks', () => {
         isNodeSelection: false,
       }
 
-      render(
-        <SelectOrDeleteHarness
-          nodeKey="node-1"
-          command={DELETE_HISTORY_BLOCK_COMMAND}
-        />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_HISTORY_BLOCK_COMMAND} />)
 
       const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
       const handled = deleteHandler?.(new KeyboardEvent('keydown'))
 
       expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_HISTORY_BLOCK_COMMAND, undefined)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
+        DELETE_HISTORY_BLOCK_COMMAND,
+        undefined,
+      )
     })
 
     it('should dispatch delete command when unselected query block is focused', () => {
@@ -232,18 +229,16 @@ describe('prompt-editor/hooks', () => {
         isNodeSelection: false,
       }
 
-      render(
-        <SelectOrDeleteHarness
-          nodeKey="node-1"
-          command={DELETE_QUERY_BLOCK_COMMAND}
-        />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
 
       const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
       const handled = deleteHandler?.(new KeyboardEvent('keydown'))
 
       expect(handled).toBe(false)
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_QUERY_BLOCK_COMMAND, undefined)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
+        DELETE_QUERY_BLOCK_COMMAND,
+        undefined,
+      )
     })
 
     it('should prevent default and remove selected decorator node on delete', () => {
@@ -259,12 +254,7 @@ describe('prompt-editor/hooks', () => {
         remove,
       }
 
-      render(
-        <SelectOrDeleteHarness
-          nodeKey="node-1"
-          command={DELETE_QUERY_BLOCK_COMMAND}
-        />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
 
       const backspaceHandler = mockState.commandHandlers.get(KEY_BACKSPACE_COMMAND)
       expect(backspaceHandler).toBeDefined()
@@ -273,7 +263,10 @@ describe('prompt-editor/hooks', () => {
 
       expect(handled).toBe(true)
       expect(preventDefault).toHaveBeenCalled()
-      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(DELETE_QUERY_BLOCK_COMMAND, undefined)
+      expect(mockState.editor.dispatchCommand).toHaveBeenCalledWith(
+        DELETE_QUERY_BLOCK_COMMAND,
+        undefined,
+      )
       expect(remove).toHaveBeenCalled()
     })
 
@@ -306,9 +299,7 @@ describe('prompt-editor/hooks', () => {
       }
       mockState.node = { isDecorator: false, remove: vi.fn() }
 
-      render(
-        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_QUERY_BLOCK_COMMAND} />)
 
       const deleteHandler = mockState.commandHandlers.get(KEY_DELETE_COMMAND)
       const handled = deleteHandler?.({ preventDefault } as unknown as KeyboardEvent)
@@ -316,9 +307,7 @@ describe('prompt-editor/hooks', () => {
     })
 
     it('should not select when metaKey is pressed on click', () => {
-      render(
-        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
 
       const node = screen.getByTestId('select-or-delete-node')
       node.dispatchEvent(new MouseEvent('click', { bubbles: true, metaKey: true }))
@@ -328,9 +317,7 @@ describe('prompt-editor/hooks', () => {
     })
 
     it('should not select when ctrlKey is pressed on click', () => {
-      render(
-        <SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
-      )
+      render(<SelectOrDeleteHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />)
 
       const node = screen.getByTestId('select-or-delete-node')
       node.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }))
@@ -344,7 +331,9 @@ describe('prompt-editor/hooks', () => {
         <SelectOrDeleteNoRefHarness nodeKey="node-1" command={DELETE_CONTEXT_BLOCK_COMMAND} />,
       )
 
-      screen.getByTestId('select-or-delete-no-ref').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      screen
+        .getByTestId('select-or-delete-no-ref')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
       expect(mockState.clearSelection).not.toHaveBeenCalled()
       expect(mockState.setSelected).not.toHaveBeenCalled()
@@ -384,7 +373,7 @@ describe('prompt-editor/hooks', () => {
   // Lexical entity hook should register and cleanup transforms.
   describe('useLexicalTextEntity', () => {
     it('should register lexical text entity transforms and cleanup on unmount', () => {
-      class MockTargetNode { }
+      class MockTargetNode {}
       const getMatch: LexicalTextEntityGetMatch = vi.fn(() => null)
       const createNode: LexicalTextEntityCreateNode = vi.fn((textNode: TextNode) => textNode)
 
@@ -418,10 +407,12 @@ describe('prompt-editor/hooks', () => {
   // Regex trigger matcher behavior for typeahead text detection.
   describe('useBasicTypeaheadTriggerMatch', () => {
     it('should return match details when input satisfies trigger and length rules', () => {
-      const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
-        minLength: 2,
-        maxLength: 5,
-      }))
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('@', {
+          minLength: 2,
+          maxLength: 5,
+        }),
+      )
 
       const match = result.current('prefix @ab', {} as LexicalEditor)
       expect(match).toEqual({
@@ -432,27 +423,33 @@ describe('prompt-editor/hooks', () => {
     })
 
     it('should return null when matching text is shorter than minLength', () => {
-      const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
-        minLength: 2,
-        maxLength: 5,
-      }))
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('@', {
+          minLength: 2,
+          maxLength: 5,
+        }),
+      )
 
       expect(result.current('prefix @a', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when matching text exceeds maxLength', () => {
-      const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
-        minLength: 1,
-        maxLength: 2,
-      }))
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('@', {
+          minLength: 1,
+          maxLength: 2,
+        }),
+      )
       expect(result.current('prefix @abc', {} as LexicalEditor)).toBeNull()
     })
 
     it('should return null when text has no trigger character', () => {
-      const { result } = renderHook(() => useBasicTypeaheadTriggerMatch('@', {
-        minLength: 1,
-        maxLength: 75,
-      }))
+      const { result } = renderHook(() =>
+        useBasicTypeaheadTriggerMatch('@', {
+          minLength: 1,
+          maxLength: 75,
+        }),
+      )
       expect(result.current('no trigger here', {} as LexicalEditor)).toBeNull()
     })
   })

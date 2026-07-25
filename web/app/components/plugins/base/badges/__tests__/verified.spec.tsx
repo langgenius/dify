@@ -15,7 +15,12 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('../icon-with-tooltip', () => ({
-  default: ({ popupContent, BadgeIconLight, BadgeIconDark, theme }: {
+  default: ({
+    popupContent,
+    BadgeIconLight,
+    BadgeIconDark,
+    theme,
+  }: {
     popupContent: string
     BadgeIconLight: React.FC
     BadgeIconDark: React.FC

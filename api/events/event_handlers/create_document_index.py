@@ -19,31 +19,33 @@ logger = logging.getLogger(__name__)
 def handle(sender, **kwargs):
     dataset_id = sender
     document_ids = kwargs.get("document_ids", [])
-    documents = []
     start_at = time.perf_counter()
-    with session_factory.create_session() as session:
-        for document_id in document_ids:
-            logger.info(click.style(f"Start process document: {document_id}", fg="green"))
-
-            document = session.scalar(
-                select(Document).where(
-                    Document.id == document_id,
-                    Document.dataset_id == dataset_id,
-                )
-            )
-
-            if not document:
-                raise NotFound("Document not found")
-
-            document.indexing_status = IndexingStatus.PARSING
-            document.processing_started_at = naive_utc_now()
-            documents.append(document)
-            session.add(document)
-        session.commit()
-
     try:
         indexing_runner = IndexingRunner()
-        indexing_runner.run(documents)
+        with session_factory.create_session() as session:
+            documents = []
+            for document_id in document_ids:
+                logger.info(click.style(f"Start process document: {document_id}", fg="green"))
+
+                document = session.scalar(
+                    select(Document).where(
+                        Document.id == document_id,
+                        Document.dataset_id == dataset_id,
+                    )
+                )
+
+                if not document:
+                    raise NotFound("Document not found")
+
+                document.indexing_status = IndexingStatus.PARSING
+                document.processing_started_at = naive_utc_now()
+                documents.append(document)
+                session.add(document)
+            # Persist the status transition before extraction and indexing begin.
+            session.commit()
+
+            indexing_runner.run(documents, session)
+            session.commit()
         end_at = time.perf_counter()
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:

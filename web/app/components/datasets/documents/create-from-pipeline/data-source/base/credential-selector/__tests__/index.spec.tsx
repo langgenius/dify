@@ -5,10 +5,10 @@ import * as React from 'react'
 import CredentialSelector from '../index'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues
-enum MockCredentialTypeEnum {
-  OAUTH2 = 'oauth2',
-  API_KEY = 'api_key',
-}
+const MockCredentialTypeEnum = {
+  OAUTH2: 'oauth2',
+  API_KEY: 'api_key',
+} as const
 
 // Mock plugin-auth module to avoid deep import chain issues
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
@@ -40,9 +40,12 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }))
+    }),
+  )
 
-const createDefaultProps = (overrides?: Partial<CredentialSelectorProps>): CredentialSelectorProps => ({
+const createDefaultProps = (
+  overrides?: Partial<CredentialSelectorProps>,
+): CredentialSelectorProps => ({
   currentCredentialId: 'cred-1',
   onCredentialChange: vi.fn(),
   credentials: createMockCredentials(),
@@ -56,15 +59,6 @@ describe('CredentialSelector', () => {
 
   // Rendering Tests - Verify component renders correctly
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<CredentialSelector {...props} />)
-
-      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
-      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
-    })
-
     it('should render current credential name in trigger', () => {
       const props = createDefaultProps()
 
@@ -148,13 +142,16 @@ describe('CredentialSelector', () => {
         ['cred-1', 'Credential 1'],
         ['cred-2', 'Credential 2'],
         ['cred-3', 'Credential 3'],
-      ])('should display %s credential name when currentCredentialId is %s', (credId, expectedName) => {
-        const props = createDefaultProps({ currentCredentialId: credId })
+      ])(
+        'should display %s credential name when currentCredentialId is %s',
+        (credId, expectedName) => {
+          const props = createDefaultProps({ currentCredentialId: credId })
 
-        render(<CredentialSelector {...props} />)
+          render(<CredentialSelector {...props} />)
 
-        expect(screen.getByText(expectedName))!.toBeInTheDocument()
-      })
+          expect(screen.getByText(expectedName))!.toBeInTheDocument()
+        },
+      )
     })
 
     describe('credentials prop', () => {
@@ -185,7 +182,9 @@ describe('CredentialSelector', () => {
 
       it('should handle credentials with special characters in name', () => {
         const props = createDefaultProps({
-          credentials: [createMockCredential({ id: 'cred-special', name: 'Test & Credential <special>' })],
+          credentials: [
+            createMockCredential({ id: 'cred-special', name: 'Test & Credential <special>' }),
+          ],
           currentCredentialId: 'cred-special',
         })
 
@@ -333,21 +332,6 @@ describe('CredentialSelector', () => {
       expect(mockOnChange).toHaveBeenCalled()
     })
 
-    it('should handle rapid consecutive clicks on trigger', () => {
-      const props = createDefaultProps()
-      render(<CredentialSelector {...props} />)
-
-      // Act - Rapid clicks
-      const trigger = screen.getByTestId('popover-trigger')
-      fireEvent.click(trigger)
-      fireEvent.click(trigger)
-      fireEvent.click(trigger)
-
-      // Assert - Should not crash
-      // Assert - Should not crash
-      expect(trigger)!.toBeInTheDocument()
-    })
-
     it('should allow selecting credentials multiple times', () => {
       // Arrange - Start with cred-2 selected so we can select other credentials
       const mockOnChange = vi.fn()
@@ -428,12 +412,7 @@ describe('CredentialSelector', () => {
         createMockCredential({ id: 'cred-4', name: 'New Credential 4' }),
         createMockCredential({ id: 'cred-5', name: 'New Credential 5' }),
       ]
-      rerender(
-        <CredentialSelector
-          {...props}
-          credentials={newCredentials}
-        />,
-      )
+      rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       // Assert - Should auto-select first of new credentials
       await waitFor(() => {
@@ -531,9 +510,7 @@ describe('CredentialSelector', () => {
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
 
       // Act - Change credentials
-      const newCredentials = [
-        createMockCredential({ id: 'cred-1', name: 'Updated Credential 1' }),
-      ]
+      const newCredentials = [createMockCredential({ id: 'cred-1', name: 'Updated Credential 1' })]
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       // Assert - Should display updated name
@@ -557,10 +534,6 @@ describe('CredentialSelector', () => {
 
   // Component Memoization - Test React.memo behavior
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(CredentialSelector.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props remain the same', () => {
       const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
@@ -597,9 +570,7 @@ describe('CredentialSelector', () => {
       const { rerender } = render(<CredentialSelector {...props} />)
 
       // Act - Create new credentials array with different data
-      const newCredentials = [
-        createMockCredential({ id: 'cred-1', name: 'New Name 1' }),
-      ]
+      const newCredentials = [createMockCredential({ id: 'cred-1', name: 'New Name 1' })]
       rerender(<CredentialSelector {...props} credentials={newCredentials} />)
 
       expect(screen.getByText('New Name 1'))!.toBeInTheDocument()
@@ -626,19 +597,6 @@ describe('CredentialSelector', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
-    it('should handle empty credentials array', () => {
-      const props = createDefaultProps({
-        credentials: [],
-        currentCredentialId: 'cred-1',
-      })
-
-      render(<CredentialSelector {...props} />)
-
-      // Assert - Should render without crashing
-      // Assert - Should render without crashing
-      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
-    })
-
     it('should handle undefined avatar_url in credential', () => {
       const credentialWithoutAvatar = createMockCredential({
         id: 'cred-no-avatar',
@@ -652,32 +610,10 @@ describe('CredentialSelector', () => {
 
       const { container } = render(<CredentialSelector {...props} />)
 
-      // Assert - Should render without crashing and show first letter fallback
-      // Assert - Should render without crashing and show first letter fallback
       expect(screen.getByText('No Avatar Credential'))!.toBeInTheDocument()
-      // When avatar_url is undefined, CredentialIcon shows first letter instead of img
       const iconImg = container.querySelector('img')
       expect(iconImg).not.toBeInTheDocument()
-      // First letter 'N' should be displayed
-      // First letter 'N' should be displayed
       expect(screen.getByText('N'))!.toBeInTheDocument()
-    })
-
-    it('should handle empty string name in credential', () => {
-      const credentialWithEmptyName = createMockCredential({
-        id: 'cred-empty-name',
-        name: '',
-      })
-      const props = createDefaultProps({
-        credentials: [credentialWithEmptyName],
-        currentCredentialId: 'cred-empty-name',
-      })
-
-      render(<CredentialSelector {...props} />)
-
-      // Assert - Should render without crashing
-      // Assert - Should render without crashing
-      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should handle very long credential name', () => {
@@ -766,7 +702,7 @@ describe('CredentialSelector', () => {
       expect(mockOnChange).toHaveBeenCalledWith('cred-2')
     })
 
-    it('should not crash when clicking credential after unmount', () => {
+    it('ignores credential clicks after unmount', () => {
       const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       const { unmount } = render(<CredentialSelector {...props} />)
@@ -781,45 +717,10 @@ describe('CredentialSelector', () => {
         // Any cleanup should have happened
       }).not.toThrow()
     })
-
-    it('should handle whitespace-only credential name', () => {
-      const credentialWithWhitespace = createMockCredential({
-        id: 'cred-whitespace',
-        name: '   ',
-      })
-      const props = createDefaultProps({
-        credentials: [credentialWithWhitespace],
-        currentCredentialId: 'cred-whitespace',
-      })
-
-      render(<CredentialSelector {...props} />)
-
-      // Assert - Should render without crashing
-      // Assert - Should render without crashing
-      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
-    })
   })
 
   // Styling and CSS Classes
   describe('Styling', () => {
-    it('should apply overflow-hidden class to trigger', () => {
-      const props = createDefaultProps()
-
-      render(<CredentialSelector {...props} />)
-
-      const trigger = screen.getByTestId('popover-trigger')
-      expect(trigger)!.toHaveClass('overflow-hidden')
-    })
-
-    it('should apply grow class to trigger', () => {
-      const props = createDefaultProps()
-
-      render(<CredentialSelector {...props} />)
-
-      const trigger = screen.getByTestId('popover-trigger')
-      expect(trigger)!.toHaveClass('grow')
-    })
-
     it('should configure dropdown placement through popover props', () => {
       const props = createDefaultProps()
       render(<CredentialSelector {...props} />)

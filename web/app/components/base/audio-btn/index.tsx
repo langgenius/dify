@@ -19,13 +19,7 @@ type AudioBtnProps = {
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
-const AudioBtn = ({
-  id,
-  voice,
-  value,
-  className,
-  isAudition,
-}: AudioBtnProps) => {
+const AudioBtn = ({ id, voice, value, className, isAudition }: AudioBtnProps) => {
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
@@ -55,37 +49,39 @@ const AudioBtn = ({
   if (params.token) {
     url = '/text-to-audio'
     isPublic = true
-  }
-  else if (params.appId) {
-    if (isInstalledAppPath(pathname))
-      url = `/installed-apps/${params.appId}/text-to-audio`
-    else
-      url = `/apps/${params.appId}/text-to-audio`
+  } else if (params.appId) {
+    if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/text-to-audio`
+    else url = `/apps/${params.appId}/text-to-audio`
   }
   const handleToggle = async () => {
     if (audioState === 'playing' || audioState === 'loading') {
       setTimeout(() => setAudioState('paused'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).pauseAudio()
-    }
-    else {
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .pauseAudio()
+    } else {
       setTimeout(() => setAudioState('loading'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).playAudio()
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .playAudio()
     }
   }
 
   const tooltipContent = {
-    initial: t($ => $.play, { ns: 'appApi' }),
-    ended: t($ => $.play, { ns: 'appApi' }),
-    paused: t($ => $.pause, { ns: 'appApi' }),
-    playing: t($ => $.playing, { ns: 'appApi' }),
-    loading: t($ => $.loading, { ns: 'appApi' }),
+    initial: t(($) => $.play, { ns: 'appApi' }),
+    ended: t(($) => $.play, { ns: 'appApi' }),
+    paused: t(($) => $.pause, { ns: 'appApi' }),
+    playing: t(($) => $.playing, { ns: 'appApi' }),
+    loading: t(($) => $.loading, { ns: 'appApi' }),
   }[audioState]
 
   return (
-    <div className={`inline-flex items-center justify-center ${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
+    <div
+      className={`inline-flex items-center justify-center ${audioState === 'loading' || audioState === 'playing' ? 'mr-1' : className}`}
+    >
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <span className="inline-flex">
               <button
                 type="button"
@@ -94,24 +90,22 @@ const AudioBtn = ({
                 className={`box-border flex size-6 cursor-pointer items-center justify-center border-none bg-transparent ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
                 onClick={handleToggle}
               >
-                {audioState === 'loading'
-                  ? (
-                      <div className="flex size-full items-center justify-center rounded-md">
-                        <Loading />
-                      </div>
-                    )
-                  : (
-                      <div className="flex size-full items-center justify-center rounded-md hover:bg-gray-50">
-                        <div className={`size-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
-                      </div>
-                    )}
+                {audioState === 'loading' ? (
+                  <div className="flex size-full items-center justify-center rounded-md">
+                    <Loading />
+                  </div>
+                ) : (
+                  <div className="flex size-full items-center justify-center rounded-md hover:bg-gray-50">
+                    <div
+                      className={`size-4 ${audioState === 'playing' ? s.pauseIcon : s.playIcon}`}
+                    ></div>
+                  </div>
+                )}
               </button>
             </span>
-          )}
+          }
         />
-        <TooltipContent>
-          {tooltipContent}
-        </TooltipContent>
+        <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
     </div>
   )

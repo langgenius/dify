@@ -39,24 +39,14 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
-        variant="primary"
-        size="large"
-        className="w-full gap-2"
-        onClick={onAccount}
-      >
+      <Button variant="primary" size="large" className="w-full gap-2" onClick={onAccount}>
         <span className="i-ri-user-3-line h-4 w-4" />
-        {t($ => $['chooser.signInAccount'])}
+        {t(($) => $['chooser.signInAccount'])}
       </Button>
       {ssoAvailable && (
-        <Button
-          variant="secondary"
-          size="large"
-          className="w-full gap-2"
-          onClick={onSSO}
-        >
+        <Button variant="secondary" size="large" className="w-full gap-2" onClick={onSSO}>
           <span className="i-ri-shield-line h-4 w-4" />
-          {t($ => $['chooser.signInSSO'])}
+          {t(($) => $['chooser.signInSSO'])}
         </Button>
       )}
     </div>

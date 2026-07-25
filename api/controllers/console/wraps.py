@@ -20,6 +20,7 @@ from controllers.common.wraps import (
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
@@ -28,6 +29,7 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
+from services.billing_service import BillingService
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
@@ -128,7 +130,7 @@ def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., 
 def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if dify_config.EDITION != "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             abort(404)
 
         return view(*args, **kwargs)
@@ -150,7 +152,7 @@ def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if dify_config.EDITION != "SELF_HOSTED":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             abort(404)
 
         return view(*args, **kwargs)
@@ -163,6 +165,21 @@ def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.BILLING_ENABLED:
             abort(403, "Billing feature is not enabled.")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _, current_tenant_id = current_account_with_tenant()
+        billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
+        if not billing_info["enabled"] or billing_info["subscription"]["plan"] not in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        ):
+            abort(403, "This feature requires a paid plan.")
         return view(*args, **kwargs)
 
     return decorated
@@ -311,7 +328,7 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
         # The overloads keep Resource methods method-aware for pyrefly while
         # preserving support for plain functions used in tests and utilities.
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and not _is_setup_completed():
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and not _is_setup_completed():
             if os.environ.get("INIT_PASSWORD"):
                 raise NotInitValidateError()
             raise NotSetupError()

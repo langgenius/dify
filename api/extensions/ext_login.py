@@ -1,22 +1,27 @@
 import json
-from typing import cast, override
+import logging
+from typing import assert_never, cast, override
 
 import flask_login
 from flask import Request, Response, request
 from flask_login import user_loaded_from_request, user_logged_in
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
+from core.db.session_factory import session_factory
+from core.logging.context import set_identity_context
 from dify_app import DifyApp
-from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
+
+logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
 
@@ -46,6 +51,12 @@ login_manager = DifyLoginManager()
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login: Request) -> LoginUser | None:
     """Load user based on the request."""
+    with session_factory.create_session() as session:
+        return _load_user_from_request(request_from_flask_login, session)
+
+
+def _load_user_from_request(request_from_flask_login: Request, session: Session) -> LoginUser | None:
+    """Load user based on the request using an explicit database session."""
     del request_from_flask_login
 
     # Skip authentication for documentation endpoints
@@ -60,7 +71,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         if admin_api_key and admin_api_key == auth_token:
             workspace_id = request.headers.get("X-WORKSPACE-ID")
             if workspace_id:
-                tenant_account_join = db.session.execute(
+                tenant_account_join = session.execute(
                     select(Tenant, TenantAccountJoin)
                     .where(Tenant.id == workspace_id)
                     .where(TenantAccountJoin.tenant_id == Tenant.id)
@@ -68,9 +79,9 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
                 ).one_or_none()
                 if tenant_account_join:
                     tenant, ta = tenant_account_join
-                    account = db.session.scalar(select(Account).where(Account.id == ta.account_id))
+                    account = session.scalar(select(Account).where(Account.id == ta.account_id))
                     if account:
-                        account.current_tenant = tenant
+                        account.set_current_tenant_with_session(tenant, session=session)
                         return account
 
     if request.blueprint in {"console", "inner_api"}:
@@ -84,7 +95,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = AccountService.load_logged_in_account(account_id=user_id, session=db.session())
+        logged_in_account = AccountService.load_logged_in_account(account_id=user_id, session=session)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /
@@ -103,7 +114,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         source = decoded.get("token_source")
         if source or not user_id:
             return None
-        return AccountService.load_logged_in_account(account_id=user_id, session=db.session())
+        return AccountService.load_logged_in_account(account_id=user_id, session=session)
     elif request.blueprint == "web":
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         webapp_token = extract_webapp_passport(app_code, request) if app_code else None
@@ -113,7 +124,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
             end_user_id = decoded.get("end_user_id")
             if not end_user_id:
                 raise Unauthorized("Invalid Authorization token.")
-            end_user = db.session.scalar(select(EndUser).where(EndUser.id == end_user_id))
+            end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
             if not end_user:
                 raise NotFound("End user not found.")
             return end_user
@@ -123,7 +134,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
             decoded = PassportService().verify(auth_token)
             end_user_id = decoded.get("end_user_id")
             if end_user_id:
-                end_user = db.session.scalar(select(EndUser).where(EndUser.id == end_user_id))
+                end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
                 if not end_user:
                     raise NotFound("End user not found.")
                 return end_user
@@ -133,10 +144,10 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         server_code = request.view_args.get("server_code") if request.view_args else None
         if not server_code:
             raise Unauthorized("Invalid Authorization token.")
-        app_mcp_server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1))
+        app_mcp_server = session.scalar(select(AppMCPServer).where(AppMCPServer.server_code == server_code).limit(1))
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
-        end_user = db.session.scalar(
+        end_user = session.scalar(
             select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == EndUserType.MCP).limit(1)
         )
         if not end_user:
@@ -149,13 +160,24 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_logged_in(_sender: object, user: LoginUser) -> None:
-    """Called when a user logged in.
+    """Snapshot authenticated identity into the side-effect-free logging context.
 
     Note: AccountService.load_logged_in_account will populate user.current_tenant_id
-    through the load_user method, which calls account.set_tenant_id().
+    through the load_user method, which calls account.set_tenant_id_with_session().
     """
-    # tenant_id context variable removed - using current_user.current_tenant_id directly
-    pass
+    set_identity_context()
+    try:
+        match user:
+            case Account():
+                set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
+            case EndUser():
+                set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+            case _ as unreachable:
+                assert_never(unreachable)
+    except Exception:
+        # Logging enrichment must never make authentication fail.
+        logger.exception("Failed to set logging identity context")
+        return
 
 
 @login_manager.unauthorized_handler

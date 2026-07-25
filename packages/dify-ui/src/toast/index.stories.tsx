@@ -1,9 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, within } from 'storybook/test'
 import { toast, ToastHost } from '.'
+import { Button } from '../button'
 
-const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
+const longToastTitle =
+  'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+const longToastDescription =
+  'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+
+const buttonClassName =
+  'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const cardClassName =
+  'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
 
 const ExampleCard = ({
   eyebrow,
@@ -19,19 +28,11 @@ const ExampleCard = ({
   return (
     <section className={cardClassName}>
       <div className="space-y-2">
-        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
-          {eyebrow}
-        </div>
-        <h3 className="text-base leading-6 font-semibold text-text-primary">
-          {title}
-        </h3>
-        <p className="text-sm leading-6 text-text-secondary">
-          {description}
-        </p>
+        <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">{eyebrow}</div>
+        <h3 className="text-base leading-6 font-semibold text-text-primary">{title}</h3>
+        <p className="text-sm leading-6 text-text-secondary">{description}</p>
       </div>
-      <div className="mt-auto flex flex-wrap gap-3">
-        {children}
-      </div>
+      <div className="mt-auto flex flex-wrap gap-3">{children}</div>
     </section>
   )
 }
@@ -68,13 +69,21 @@ const VariantExamples = () => {
       title="Tone-specific notifications"
       description="Trigger the four supported tones from the shared viewport to validate iconography, gradient treatment, and copy density."
     >
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('success')}>
+      <button
+        type="button"
+        className={buttonClassName}
+        onClick={() => createVariantToast('success')}
+      >
         Success
       </button>
       <button type="button" className={buttonClassName} onClick={() => createVariantToast('info')}>
         Info
       </button>
-      <button type="button" className={buttonClassName} onClick={() => createVariantToast('warning')}>
+      <button
+        type="button"
+        className={buttonClassName}
+        onClick={() => createVariantToast('warning')}
+      >
         Warning
       </button>
       <button type="button" className={buttonClassName} onClick={() => createVariantToast('error')}>
@@ -119,7 +128,8 @@ const StackExamples = () => {
 
   const createVaryingHeightStack = () => {
     toast.info('Long background toast', {
-      description: 'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
+      description:
+        'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
     })
     toast.success('Short front toast', {
       description: 'Short message.',
@@ -146,58 +156,62 @@ const StackExamples = () => {
 }
 
 const PromiseExamples = () => {
-  const createPromiseToast = () => {
-    const request = new Promise<string>((resolve) => {
-      window.setTimeout(() => resolve('The deployment is now available in production.'), 1400)
+  const [pendingExample, setPendingExample] = React.useState<'success' | 'error' | null>(null)
+
+  const exportDsl = async (outcome: 'success' | 'error') => {
+    if (pendingExample) return
+
+    setPendingExample(outcome)
+    const request = new Promise<string>((resolve, reject) => {
+      window.setTimeout(() => {
+        if (outcome === 'success') resolve('customer-support-agent.yml')
+        else reject(new Error('The DSL could not be generated.'))
+      }, 1400)
     })
 
-    void toast.promise(request, {
-      loading: {
-        type: 'info',
-        title: 'Deploying workflow',
-        description: 'Provisioning runtime and publishing the latest version.',
-      },
-      success: result => ({
-        type: 'success',
-        title: 'Deployment complete',
-        description: result,
-      }),
-      error: () => ({
-        type: 'error',
-        title: 'Deployment failed',
-        description: 'The release could not be completed.',
-      }),
-    })
-  }
+    await toast
+      .promise(request, {
+        loading: {
+          title: 'Preparing DSL export',
+          description: 'Collecting the app configuration and generating a YAML file.',
+        },
+        success: (fileName) => ({
+          title: 'Download started',
+          description: `${fileName} was sent to your browser.`,
+          timeout: 3000,
+        }),
+        error: () => ({
+          title: 'Export failed',
+          description: 'The DSL could not be generated. Try again.',
+        }),
+      })
+      .catch(() => undefined)
 
-  const createRejectingPromiseToast = () => {
-    const request = new Promise<string>((_, reject) => {
-      window.setTimeout(() => reject(new Error('intentional story failure')), 1200)
-    })
-
-    void toast.promise(request, {
-      loading: 'Validating model credentials…',
-      success: 'Credentials verified',
-      error: () => ({
-        type: 'error',
-        title: 'Credentials rejected',
-        description: 'The model provider returned an authentication error.',
-      }),
-    })
+    setPendingExample(null)
   }
 
   return (
     <ExampleCard
       eyebrow="Promise"
-      title="Async lifecycle"
-      description="The promise helper should swap the same toast through loading, success, and error states instead of growing the stack unnecessarily."
+      title="Export lifecycle"
+      description="A single toast follows the export from preparation to browser handoff, while the trigger prevents duplicate requests."
     >
-      <button type="button" className={buttonClassName} onClick={createPromiseToast}>
-        Promise success
-      </button>
-      <button type="button" className={buttonClassName} onClick={createRejectingPromiseToast}>
-        Promise error
-      </button>
+      <Button
+        variant="secondary"
+        loading={pendingExample === 'success'}
+        disabled={pendingExample === 'error'}
+        onClick={() => exportDsl('success')}
+      >
+        Export DSL
+      </Button>
+      <Button
+        variant="secondary"
+        loading={pendingExample === 'error'}
+        disabled={pendingExample === 'success'}
+        onClick={() => exportDsl('error')}
+      >
+        Simulate failure
+      </Button>
     </ExampleCard>
   )
 }
@@ -221,8 +235,8 @@ const ActionExamples = () => {
   }
 
   const createLongCopyToast = () => {
-    toast.info('Knowledge ingestion in progress', {
-      description: 'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
+    toast.error(longToastTitle, {
+      description: longToastDescription,
       actionProps: {
         children: 'View details',
         onClick: () => {
@@ -255,9 +269,10 @@ const DeduplicateExamples = () => {
     saveCountRef.current += 1
     toast.success('Draft saved', {
       id: 'draft-save-status',
-      description: saveCountRef.current === 1
-        ? 'Click again while this toast is visible to update the same mounted toast.'
-        : `Same toast updated ${saveCountRef.current} times.`,
+      description:
+        saveCountRef.current === 1
+          ? 'Click again while this toast is visible to update the same mounted toast.'
+          : `Same toast updated ${saveCountRef.current} times.`,
     })
   }
 
@@ -325,7 +340,9 @@ const ToastDocsDemo = () => {
               Shared stacked toast examples
             </h2>
             <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-              Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
+              Each example card below triggers the same shared toast viewport in the top-right
+              corner, so you can review stacking, state transitions, actions, and tone variants the
+              same way the official Base UI documentation demonstrates toast behavior.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -349,7 +366,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Dify toast host built on Base UI Toast. The story is organized as multiple example panels that all feed the same shared toast viewport, matching the way the Base UI documentation showcases toast behavior.',
+        component:
+          'Dify toast host built on Base UI Toast. The story is organized as multiple example panels that all feed the same shared toast viewport, matching the way the Base UI documentation showcases toast behavior.',
       },
     },
   },
@@ -361,4 +379,14 @@ type Story = StoryObj<typeof meta>
 
 export const DocsPattern: Story = {
   render: () => <ToastDocsDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Long content' }))
+
+    const title = await body.findByText(longToastTitle)
+    const description = await body.findByText(longToastDescription)
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
+  },
 }

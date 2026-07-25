@@ -72,13 +72,7 @@ describe('list-operator/limit-config', () => {
     const handleChange = vi.fn()
     const config: Limit = { enabled: false, size: 10 }
 
-    render(
-      <LimitConfig
-        readonly={false}
-        config={config}
-        onChange={handleChange}
-      />,
-    )
+    render(<LimitConfig readonly={false} config={config} onChange={handleChange} />)
 
     expect(screen.getByText('workflow.nodes.listFilter.limit'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'slider:10:false' })).not.toBeInTheDocument()
@@ -95,12 +89,7 @@ describe('list-operator/limit-config', () => {
     const config: Limit = { enabled: true, size: 6 }
 
     render(
-      <LimitConfig
-        className="custom-limit"
-        readonly
-        config={config}
-        onChange={handleChange}
-      />,
+      <LimitConfig className="custom-limit" readonly config={config} onChange={handleChange} />,
     )
 
     expect(screen.getByRole('button', { name: 'slider:6:true' }))!.toBeInTheDocument()

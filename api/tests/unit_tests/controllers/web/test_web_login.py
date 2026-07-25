@@ -14,6 +14,7 @@ import services.errors.account
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
 from models.model import DifySetup
+from enums.deployment_edition import DeploymentEdition
 from services.entities.auth_entities import LoginFailureReason
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
@@ -44,7 +45,7 @@ def _patch_wraps(
     sqlite_session: Session,
 ):
     wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
+    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
     sqlite_session.add(DifySetup(version="test"))
     sqlite_session.commit()

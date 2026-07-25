@@ -48,7 +48,9 @@ const createVariable = (overrides: Partial<Variable> = {}): Variable => ({
   ...overrides,
 })
 
-const createData = (overrides: Partial<TemplateTransformNodeType> = {}): TemplateTransformNodeType => ({
+const createData = (
+  overrides: Partial<TemplateTransformNodeType> = {},
+): TemplateTransformNodeType => ({
   title: 'Template Transform',
   desc: '',
   type: BlockEnum.TemplateTransform,
@@ -67,7 +69,12 @@ describe('template-transform/use-config', () => {
         nodesDefaultConfigs: {
           [BlockEnum.TemplateTransform]: {
             template: '{{ default_input }}',
-            variables: [createVariable({ variable: 'default_input', value_selector: ['node-2', 'default_input'] })],
+            variables: [
+              createVariable({
+                variable: 'default_input',
+                value_selector: ['node-2', 'default_input'],
+              }),
+            ],
           },
         },
       })
@@ -92,9 +99,11 @@ describe('template-transform/use-config', () => {
     renderHook(() => useConfig('template-node', createData({ template: '', variables: [] })))
 
     await waitFor(() => {
-      expect(doSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-        template: '{{ default_input }}',
-      }))
+      expect(doSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          template: '{{ default_input }}',
+        }),
+      )
     })
   })
 
@@ -105,30 +114,45 @@ describe('template-transform/use-config', () => {
     } as ReturnType<typeof useNodeCrud>)
 
     const { result } = renderHook(() => useConfig('template-node', createData()))
-    const nextVariable = createVariable({ variable: 'renamed_input', value_selector: ['node-2', 'renamed_input'] })
+    const nextVariable = createVariable({
+      variable: 'renamed_input',
+      value_selector: ['node-2', 'renamed_input'],
+    })
 
     result.current.handleVarListChange([nextVariable])
-    result.current.handleAddVariable(createVariable({ variable: 'extra_input', value_selector: ['node-3', 'extra_input'] }))
+    result.current.handleAddVariable(
+      createVariable({ variable: 'extra_input', value_selector: ['node-3', 'extra_input'] }),
+    )
     result.current.handleVarNameChange('input_text', 'renamed_input')
     result.current.handleCodeChange('{{ output }}')
 
-    expect(result.current.availableVars).toEqual([['node-1', { variable: 'input_text', type: VarType.string }]])
+    expect(result.current.availableVars).toEqual([
+      ['node-1', { variable: 'input_text', type: VarType.string }],
+    ])
     expect(result.current.handleAddEmptyVariable).toBe(handleAddEmptyVariable)
-    expect(doSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: [nextVariable],
-    }))
-    expect(doSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      variables: expect.arrayContaining([
-        expect.objectContaining({ variable: 'renamed_input' }),
-        expect.objectContaining({ variable: 'extra_input' }),
-      ]),
-    }))
-    expect(doSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      template: '{{ renamed_input }}',
-    }))
-    expect(doSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      template: '{{ output }}',
-    }))
+    expect(doSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: [nextVariable],
+      }),
+    )
+    expect(doSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.arrayContaining([
+          expect.objectContaining({ variable: 'renamed_input' }),
+          expect.objectContaining({ variable: 'extra_input' }),
+        ]),
+      }),
+    )
+    expect(doSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: '{{ renamed_input }}',
+      }),
+    )
+    expect(doSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: '{{ output }}',
+      }),
+    )
   })
 
   it('filters to scalar and collection variables used by template interpolation', () => {

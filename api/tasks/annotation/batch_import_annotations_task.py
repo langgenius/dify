@@ -77,7 +77,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                         collection_binding_id=dataset_collection_binding.id,
                     )
 
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                     vector.create(documents, duplicate_check=True)
 
                 session.commit()

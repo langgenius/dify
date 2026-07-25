@@ -75,7 +75,10 @@ describe('DeploymentDetailTop', () => {
     )
 
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: 'common.menus.deployments' })).toHaveAttribute('href', '/deployments')
+    expect(screen.getByRole('link', { name: 'common.menus.deployments' })).toHaveAttribute(
+      'href',
+      '/deployments',
+    )
     expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 })

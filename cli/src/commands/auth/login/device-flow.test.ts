@@ -27,8 +27,7 @@ class FakeClock implements Clock {
 
   async sleepMs(ms: number): Promise<void> {
     this.sleeps.push(ms)
-    if (this.cancelAt !== undefined && this.sleeps.length >= this.cancelAt)
-      this.cancelled = true
+    if (this.cancelAt !== undefined && this.sleeps.length >= this.cancelAt) this.cancelled = true
   }
 
   isCancelled(): boolean {
@@ -41,8 +40,7 @@ function fakeApi(scripted: PollResult[]): { pollOnce: (req: PollRequest) => Prom
   return {
     pollOnce: async () => {
       const r = scripted[i++]
-      if (r === undefined)
-        throw new Error('scripted-api: out of responses')
+      if (r === undefined) throw new Error('scripted-api: out of responses')
       return r
     },
   }
@@ -119,10 +117,7 @@ describe('awaitAuthorization', () => {
   })
 
   it('uses default interval when CodeResponse.interval is 0', async () => {
-    const api = fakeApi([
-      { status: 'pending' },
-      { status: 'approved', success: successPayload },
-    ])
+    const api = fakeApi([{ status: 'pending' }, { status: 'approved', success: successPayload }])
     const clock = new FakeClock()
     await awaitAuthorization(api, { ...code, interval: 0 }, { clock })
     expect(clock.sleeps[0]).toBe(DEFAULT_INTERVAL_MS)
@@ -165,7 +160,11 @@ describe('awaitAuthorization', () => {
 
   it('propagates BaseError thrown by api.pollOnce', async () => {
     const api = {
-      pollOnce: vi.fn().mockRejectedValue(new BaseError({ code: ErrorCode.UnsupportedEndpoint, message: 'old server' })),
+      pollOnce: vi
+        .fn()
+        .mockRejectedValue(
+          new BaseError({ code: ErrorCode.UnsupportedEndpoint, message: 'old server' }),
+        ),
     }
     const clock = new FakeClock()
     await expect(awaitAuthorization(api, code, { clock })).rejects.toThrow(/old server/)

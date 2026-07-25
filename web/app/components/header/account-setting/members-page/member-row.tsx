@@ -35,7 +35,7 @@ const MemberRow = ({
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const roleNames = roles.map(role => role.name)
+  const roleNames = roles.map((role) => role.name)
 
   const openDetails = useCallback(() => {
     onOpenDetails(member)
@@ -48,7 +48,7 @@ const MemberRow = ({
     >
       <button
         type="button"
-        aria-label={t($ => $['members.memberDetails.openAria'], {
+        aria-label={t(($) => $['members.memberDetails.openAria'], {
           ns: 'common',
           name: member.name,
           defaultValue: 'Open member details for {{name}}',
@@ -66,12 +66,12 @@ const MemberRow = ({
               {member.name}
               {member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
-                  {t($ => $['members.pending'], { ns: 'common' })}
+                  {t(($) => $['members.pending'], { ns: 'common' })}
                 </span>
               )}
               {isCurrentUser && (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t($ => $['members.you'], { ns: 'common' })}
+                  {t(($) => $['members.you'], { ns: 'common' })}
                 </span>
               )}
             </span>
@@ -79,22 +79,13 @@ const MemberRow = ({
           </span>
         </span>
         <span className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
-          {formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
+          {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
         </span>
-        <span
-          className="flex min-w-0 grow items-center gap-2 px-3"
-          role="presentation"
-        >
-          <RoleBadges
-            className="grow"
-            roleNames={roleNames}
-          />
+        <span className="flex min-w-0 grow items-center gap-2 px-3" role="presentation">
+          <RoleBadges className="grow" roleNames={roleNames} />
         </span>
       </button>
-      <div
-        className="absolute inset-y-0 right-0 flex items-center px-3"
-        role="presentation"
-      >
+      <div className="absolute inset-y-0 right-0 flex items-center px-3" role="presentation">
         {canManage && (
           <MemberMenu
             member={member}

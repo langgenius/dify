@@ -88,7 +88,7 @@ const createNode = (variables: string[]): Node<StartNodeData> => ({
     type: BlockEnum.Start,
     title: 'Start',
     desc: '',
-    variables: variables.map(name => ({
+    variables: variables.map((name) => ({
       variable: name,
       label: name,
       type: 'text-input',
@@ -130,7 +130,9 @@ const createLLMNode = (templates: PromptTemplateItem[]): Node<LLMNodeData> => ({
   },
 })
 
-const createParameterExtractorNode = (parameters: ParameterItem[]): Node<ParameterExtractorNodeData> => ({
+const createParameterExtractorNode = (
+  parameters: ParameterItem[],
+): Node<ParameterExtractorNodeData> => ({
   id: PARAM_NODE_ID,
   type: 'custom',
   position: { x: 400, y: 120 },
@@ -228,7 +230,11 @@ describe('Loro merge behavior smoke test', () => {
         text: 'hello from docA',
       },
     ]
-    syncNodes(managerA, [createLLMNode(deepClone(baseTemplate))], [createLLMNode(deepClone(additionTemplate))])
+    syncNodes(
+      managerA,
+      [createLLMNode(deepClone(baseTemplate))],
+      [createLLMNode(deepClone(additionTemplate))],
+    )
 
     const editedTemplate = [
       {
@@ -237,7 +243,11 @@ describe('Loro merge behavior smoke test', () => {
         text: 'updated by docB',
       },
     ]
-    syncNodes(managerB, [createLLMNode(deepClone(baseTemplate))], [createLLMNode(deepClone(editedTemplate))])
+    syncNodes(
+      managerB,
+      [createLLMNode(deepClone(baseTemplate))],
+      [createLLMNode(deepClone(editedTemplate))],
+    )
 
     const updateForA = docB.export({ mode: 'update', from: docA.version() })
     docA.import(updateForA)
@@ -245,8 +255,12 @@ describe('Loro merge behavior smoke test', () => {
     const updateForB = docA.export({ mode: 'update', from: docB.version() })
     docB.import(updateForB)
 
-    const finalA = exportNodes(managerA).find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
-    const finalB = exportNodes(managerB).find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    const finalA = exportNodes(managerA).find((node) => node.id === LLM_NODE_ID) as
+      | Node<LLMNodeData>
+      | undefined
+    const finalB = exportNodes(managerB).find((node) => node.id === LLM_NODE_ID) as
+      | Node<LLMNodeData>
+      | undefined
 
     expect(finalA).toBeDefined()
     expect(finalB).toBeDefined()
@@ -309,10 +323,10 @@ describe('Loro merge behavior smoke test', () => {
     const updateForB = docA.export({ mode: 'update', from: docB.version() })
     docB.import(updateForB)
 
-    const finalA = exportNodes(managerA).find(node => node.id === PARAM_NODE_ID) as
+    const finalA = exportNodes(managerA).find((node) => node.id === PARAM_NODE_ID) as
       | Node<ParameterExtractorNodeData>
       | undefined
-    const finalB = exportNodes(managerB).find(node => node.id === PARAM_NODE_ID) as
+    const finalB = exportNodes(managerB).find((node) => node.id === PARAM_NODE_ID) as
       | Node<ParameterExtractorNodeData>
       | undefined
 
