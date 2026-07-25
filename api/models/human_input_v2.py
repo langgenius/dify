@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, RootModel, TypeAda
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from core.human_input_v2.approval.recipient_resolution import RecipientSourceKind as _RecipientSourceKind
 from core.human_input_v2.entities import (
     EmailProviderType as _EmailProviderType,
 )
@@ -209,13 +210,21 @@ class IMSyncIdentitySnapshot(_ImmutableJSONModel):
     email: str | None = Field(default=None, description="Provider email captured by the result.")
 
 
+class FormApproverGrantMatchedSource(_ImmutableJSONModel):
+    """One ordered recipient source retained by a historical grant."""
+
+    kind: _RecipientSourceKind = Field(strict=False, description="Stable recipient source discriminator.")
+    position: int = Field(ge=0, description="Original recipient configuration position.")
+    reference: str | None = Field(default=None, description="Saved source reference when one existed.")
+
+
 class FormApproverGrantMatchedSources(_ImmutableJSONModel):
     """Immutable recipient sources merged into one form approver grant."""
 
-    sources: tuple[str, ...] = Field(
+    sources: tuple[FormApproverGrantMatchedSource, ...] = Field(
         default_factory=tuple,
         strict=False,
-        description="Canonical recipient source values merged into this approver grant.",
+        description="Ordered recipient source snapshots merged into this approver grant.",
     )
 
 
@@ -1128,6 +1137,14 @@ class HumanInputV2Form(DefaultFieldsDCMixin, TypeBase):
         ),
     )
 
+    grants: Mapped[list[HumanInputV2FormApproverGrant]] = relationship(
+        lambda: HumanInputV2FormApproverGrant,
+        primaryjoin=lambda: HumanInputV2Form.id == orm.foreign(HumanInputV2FormApproverGrant.form_id),
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+
 
 class HumanInputV2FormApproverGrant(DefaultFieldsDCMixin, TypeBase):
     """Form-scoped approval authority granted to one canonical business subject.
@@ -1296,11 +1313,23 @@ class HumanInputV2FormDeliveryEndpoint(DefaultFieldsDCMixin, TypeBase):
         default=None,
         comment="Frozen provider-side user identifier for IM endpoints; null otherwise.",
     )
+    provider_tenant_id: Mapped[str | None] = mapped_column(
+        sa.String(255),
+        nullable=True,
+        default=None,
+        comment="Frozen provider-side tenant identity for IM endpoints; null otherwise.",
+    )
     im_identity_id: Mapped[str | None] = mapped_column(
         StringUUID,
         nullable=True,
         default=None,
         comment="Logical foreign key to human_input_im_identities.id.",
+    )
+    im_binding_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Historical logical foreign key to human_input_im_bindings.id for IM endpoints.",
     )
     access_token_hash: Mapped[str | None] = mapped_column(
         sa.String(64), nullable=True, default=None, comment="SHA-256 hash of an opaque form access token."
@@ -1769,14 +1798,14 @@ class HumanInputV2FormUploadToken(DefaultFieldsDCMixin, TypeBase):
 
 
 class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
-    """Durable association between a v2 form upload capability and one file."""
+    """Durable association between one endpoint-scoped upload capability and file."""
 
     __tablename__ = "human_input_v2_form_upload_files"
     __table_args__ = (
         sa.UniqueConstraint("upload_file_id", name="hiv2_form_upload_files_file_uq"),
-        sa.Index("hiv2_form_upload_files_form_idx", "form_id"),
+        sa.Index("hiv2_form_upload_files_form_endpoint_idx", "form_id", "endpoint_id"),
         sa.Index("hiv2_form_upload_files_token_idx", "upload_token_id"),
-        {"comment": "Durable Human Input v2 form, upload-token, and file associations."},
+        {"comment": "Durable Human Input v2 form, endpoint, upload-token, and file associations."},
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
@@ -1785,6 +1814,11 @@ class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=False,
         comment="Logical foreign key to human_input_v2_forms.id.",
+    )
+    endpoint_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        comment="Logical foreign key to human_input_v2_form_delivery_endpoints.id.",
     )
     upload_file_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -1811,6 +1845,13 @@ class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
         lazy="raise",
         init=False,
     )
+    endpoint: Mapped[HumanInputV2FormDeliveryEndpoint] = relationship(
+        lambda: HumanInputV2FormDeliveryEndpoint,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormUploadFile.endpoint_id) == HumanInputV2FormDeliveryEndpoint.id,
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
 
 
 __all__ = [
@@ -1818,6 +1859,7 @@ __all__ = [
     "DingTalkIMIntegrationEncryptedCredentials",
     "EmailOTPAuthorizationProof",
     "FeishuIMIntegrationEncryptedCredentials",
+    "FormApproverGrantMatchedSource",
     "FormApproverGrantMatchedSources",
     "FormApproverGrantSubjectSnapshot",
     "FormAuditEventPayload",

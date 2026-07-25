@@ -46,6 +46,38 @@ class WorkspaceId(_Identifier):
     """Identifier of the workspace that owns or resolves a Contact."""
 
 
+class AppId(_Identifier):
+    """Identifier of the application that owns a Human Input form."""
+
+
+class FormId(_Identifier):
+    """Identifier of one Human Input v2 form root."""
+
+
+class ApproverGrantId(_Identifier):
+    """Identifier of one form-scoped approver grant."""
+
+
+class DeliveryEndpointId(_Identifier):
+    """Identifier of one frozen form delivery endpoint."""
+
+
+class DeliveryAttemptId(_Identifier):
+    """Identifier of one append-only delivery attempt."""
+
+
+class EmailProviderId(_Identifier):
+    """Identifier of one workspace email provider configuration."""
+
+
+class UploadCapabilityId(_Identifier):
+    """Identifier of one endpoint-scoped upload capability."""
+
+
+class UploadFileAssociationId(_Identifier):
+    """Identifier of one durable uploaded-file association."""
+
+
 class IntegrationId(_Identifier):
     """Identifier of one IM Integration configuration identity."""
 
