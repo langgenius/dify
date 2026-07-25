@@ -1,5 +1,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
+import Cookies from 'js-cookie'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/preference'
 import { updateAppModelConfig } from '@/service/apps'
 import { renderHook } from '@/test/console/render'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -8,7 +10,6 @@ import { useConfiguration } from '../use-configuration'
 
 const mockSetShowAccountSettingModal = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
-const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -101,10 +102,6 @@ vi.mock('@/app/components/app/store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/detail-sidebar/storage', () => ({
-  useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
-}))
-
 vi.mock('@/service/use-common', () => ({
   useFileUploadConfig: () => ({
     data: undefined,
@@ -195,6 +192,7 @@ vi.mock('@/utils/completion-params', () => ({
 describe('useConfiguration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME, { path: '/' })
     latestAdvancedPromptConfigOptions = undefined
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
@@ -492,7 +490,7 @@ describe('useConfiguration', () => {
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
-    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',

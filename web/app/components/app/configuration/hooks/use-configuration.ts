@@ -28,7 +28,7 @@ import type { VisionSettings } from '@/types/app'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -38,7 +38,7 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
+import { detailSidebarModeAtom } from '@/app/components/detail-sidebar/state'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   ModelFeatureEnum,
@@ -138,7 +138,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
         setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
       })),
     )
-  const setDetailSidebarMode = useSetDetailSidebarMode()
+  const setDetailSidebarMode = useSetAtom(detailSidebarModeAtom)
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])

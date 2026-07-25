@@ -16,7 +16,6 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { Plan } from '@/app/components/billing/type'
-import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -656,7 +655,6 @@ describe('MainNav', () => {
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
-    localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
     mockPathname = '/'
 
     renderMainNav()

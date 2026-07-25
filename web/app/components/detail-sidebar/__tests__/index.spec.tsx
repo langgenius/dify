@@ -1,7 +1,8 @@
 import { act, fireEvent, screen } from '@testing-library/react'
+import Cookies from 'js-cookie'
 import { render } from '@/test/console/render'
 import { DetailSidebarFrame } from '..'
-import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '../preference'
 
 const { hotkeyRegistrations } = vi.hoisted(() => ({
   hotkeyRegistrations: new Map<
@@ -80,7 +81,7 @@ function renderDetailSidebarFrame() {
 
 describe('DetailSidebarFrame', () => {
   beforeEach(() => {
-    localStorage.clear()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME, { path: '/' })
     hotkeyRegistrations.clear()
     mockConsoleState.current = {
       langGeniusVersionInfo: {
@@ -123,7 +124,7 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'false')
     expect(screen.queryByText('Environment tag')).not.toBeInTheDocument()
-    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
 
   it('shows a floating preview on collapsed hover without changing persisted state', () => {
@@ -134,7 +135,7 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
   })
 
   it('persists expansion without width animation when the hovered preview toggle is clicked', () => {
@@ -147,6 +148,6 @@ describe('DetailSidebarFrame', () => {
     expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
+    expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('expand')
   })
 })

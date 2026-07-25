@@ -3,14 +3,14 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
-import { useDetailSidebarMode } from './storage'
+import { detailSidebarModeAtom } from './state'
 
 type DetailSidebarRenderProps = {
   expand: boolean
@@ -39,8 +39,7 @@ export function DetailSidebarFrame({
   renderSection,
 }: DetailSidebarFrameProps) {
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
-  const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
+  const [detailNavigationMode, setDetailNavigationMode] = useAtom(detailSidebarModeAtom)
   const detailNavigationExpanded = detailNavigationMode === 'expand'
   const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
   const [detailNavigationTransitionDisabled, setDetailNavigationTransitionDisabled] =
@@ -64,7 +63,7 @@ export function DetailSidebarFrame({
 
       setDetailNavigationTransitionDisabled(true)
       setDetailNavigationHoverPreviewOpen(false)
-      setStoredDetailSidebarExpand('expand')
+      setDetailNavigationMode('expand')
       detailNavigationTransitionTimerRef.current = setTimeout(() => {
         setDetailNavigationTransitionDisabled(false)
       }, 200)
@@ -73,7 +72,7 @@ export function DetailSidebarFrame({
 
     const nextMode = detailNavigationExpanded ? 'collapse' : 'expand'
     setDetailNavigationHoverPreviewOpen(false)
-    setStoredDetailSidebarExpand(nextMode)
+    setDetailNavigationMode(nextMode)
   }
 
   function openDetailNavigationHoverPreview() {
