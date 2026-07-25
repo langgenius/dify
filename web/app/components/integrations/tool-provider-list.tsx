@@ -33,7 +33,12 @@ import ProviderDetail from '@/app/components/tools/provider/detail'
 import { ToolProviderGrid } from '@/app/components/tools/tool-provider-grid'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useAllToolProviders } from '@/service/use-tools'
+import {
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllToolProviders,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import { useToolMarketplacePanel } from './hooks/use-tool-marketplace-panel'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
@@ -44,6 +49,8 @@ type ProviderListProps = {
   contentInset?: ToolsContentInset
   layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
 }
+
+const EMPTY_COLLECTIONS: Collection[] = []
 
 type BuiltinMarketplacePanelProps = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -118,11 +125,25 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const {
-    data: collectionList = [],
-    isLoading: isCollectionListLoading,
-    refetch,
-  } = useAllToolProviders()
+  const allToolProvidersQuery = useAllToolProviders(activeTab === 'builtin')
+  const customToolsQuery = useAllCustomTools(activeTab === 'api')
+  const workflowToolsQuery = useAllWorkflowTools(activeTab === 'workflow')
+  const mcpToolsQuery = useAllMCPTools(activeTab === 'mcp')
+  const { refetch: refetchMcpTools } = mcpToolsQuery
+  const activeToolsQuery =
+    activeTab === 'api'
+      ? customToolsQuery
+      : activeTab === 'workflow'
+        ? workflowToolsQuery
+        : activeTab === 'mcp'
+          ? mcpToolsQuery
+          : allToolProvidersQuery
+  const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
+  const isCollectionListLoading = activeToolsQuery.isLoading
+  const refetch = activeToolsQuery.refetch
+  const refreshMcpTools = useCallback(async () => {
+    await refetchMcpTools()
+  }, [refetchMcpTools])
   const activeTabCollectionList = useMemo(() => {
     return collectionList.filter((collection) => collection.type === activeTab)
   }, [activeTab, collectionList])
@@ -249,10 +270,13 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               )}
               {activeTab === 'mcp' && (
                 <MCPList
+                  providers={mcpToolsQuery.data ?? []}
+                  isLoading={mcpToolsQuery.isLoading}
                   searchText={keywords}
                   contentInset={contentInset}
                   createdProviderId={createdMCPProviderId}
                   showCreateCard={shouldShowMCPCreateCard}
+                  onRefresh={refreshMcpTools}
                   onCreatedProviderHandled={handleCreatedMCPProviderHandled}
                 />
               )}

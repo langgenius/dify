@@ -1,35 +1,53 @@
+import type { ComponentProps } from 'react'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@/test/console/render'
-import MCPList from '../index'
-
-type MockProvider = {
-  id: string
-  name: string | Record<string, string>
-  type: string
-}
-
-type MockDetail = MockProvider | undefined
+import MCPListComponent from '../index'
 
 // Mock dependencies
-const mockRefetch = vi.fn()
-const mockUseAllToolProviders = vi.fn()
-let mockProviders: MockProvider[] = []
+const mockOnRefresh = vi.fn<() => Promise<void>>()
+let mockProviders: ToolWithProvider[] = []
 let mockIsLoadingToolProviders = false
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean) => {
-    mockUseAllToolProviders(enabled)
-    return {
-      data: mockProviders,
-      isLoading: mockIsLoadingToolProviders,
-      refetch: mockRefetch,
-    }
-  },
-}))
+const createProvider = (
+  id: string,
+  name: string,
+  type: ToolWithProvider['type'] = 'mcp',
+): ToolWithProvider => ({
+  id,
+  name,
+  type,
+  author: 'Dify',
+  description: { en_US: name, zh_Hans: name },
+  icon: 'icon-mcp',
+  label: { en_US: name, zh_Hans: name },
+  team_credentials: {},
+  is_team_authorization: false,
+  allow_delete: true,
+  labels: [],
+  tools: [],
+  meta: { version: '1.0.0' },
+})
+
+vi.mock('@/service/use-tools', () => ({}))
+
+type MCPListTestProps = Omit<
+  ComponentProps<typeof MCPListComponent>,
+  'isLoading' | 'onRefresh' | 'providers'
+>
+
+const MCPList = (props: MCPListTestProps) => (
+  <MCPListComponent
+    {...props}
+    providers={mockProviders}
+    isLoading={mockIsLoadingToolProviders}
+    onRefresh={mockOnRefresh}
+  />
+)
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -75,16 +93,15 @@ vi.mock('../provider-card', () => ({
     onUpdate,
     onDeleted,
   }: {
-    data: MockProvider
+    data: ToolWithProvider
     handleSelect: (id: string) => void
     onUpdate: (id: string) => void
     onDeleted: () => void
   }) => {
-    const displayName = typeof data.name === 'string' ? data.name : Object.values(data.name)[0]
     return (
       <div data-testid={`provider-card-${data.id}`}>
         <button type="button" onClick={() => handleSelect(data.id)}>
-          {displayName}
+          {data.name}
         </button>
         <button data-testid={`update-btn-${data.id}`} onClick={() => onUpdate(data.id)}>
           Update
@@ -105,17 +122,13 @@ vi.mock('../detail/provider-detail', () => ({
     isTriggerAuthorize,
     onFirstCreate,
   }: {
-    detail: MockDetail
+    detail: ToolWithProvider | undefined
     onHide: () => void
     onUpdate: () => void
     isTriggerAuthorize: boolean
     onFirstCreate: () => void
   }) => {
-    const displayName = detail?.name
-      ? typeof detail.name === 'string'
-        ? detail.name
-        : Object.values(detail.name)[0]
-      : ''
+    const displayName = detail?.name ?? ''
     return (
       <div data-testid="detail-panel">
         <div data-testid="detail-name">{displayName}</div>
@@ -141,7 +154,7 @@ describe('MCPList', () => {
     mockProviders = []
     mockIsLoadingToolProviders = false
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
-    mockRefetch.mockResolvedValue(undefined)
+    mockOnRefresh.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -157,17 +170,16 @@ describe('MCPList', () => {
 
     it('should render providers read-only when user lacks mcp.manage', () => {
       mockConsoleState.workspacePermissionKeys = []
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
 
       render(<MCPList searchText="" />)
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
       expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
     })
 
     it('should hide create card when parent moves creation into the toolbar', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
 
       render(<MCPList searchText="" showCreateCard={false} />)
 
@@ -192,7 +204,7 @@ describe('MCPList', () => {
     })
 
     it('should not render skeleton cards when providers exist', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
       render(<MCPList searchText="" />)
 
       expect(screen.queryByTestId('mcp-card-skeleton')).not.toBeInTheDocument()
@@ -202,9 +214,9 @@ describe('MCPList', () => {
   describe('With Providers', () => {
     beforeEach(() => {
       mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-        { id: '2', name: 'Provider 2', type: 'mcp' },
-        { id: '3', name: 'API Tool', type: 'api' },
+        createProvider('1', 'Provider 1'),
+        createProvider('2', 'Provider 2'),
+        createProvider('3', 'API Tool', 'api'),
       ]
     })
 
@@ -257,9 +269,9 @@ describe('MCPList', () => {
   describe('Search Filtering', () => {
     beforeEach(() => {
       mockProviders = [
-        { id: '1', name: { 'en-US': 'Search Tool' }, type: 'mcp' },
-        { id: '2', name: { 'en-US': 'Another Provider' }, type: 'mcp' },
-        { id: '3', name: { 'en-US': 'Search API Tool' }, type: 'api' },
+        createProvider('1', 'Search Tool'),
+        createProvider('2', 'Another Provider'),
+        createProvider('3', 'Search API Tool', 'api'),
       ]
     })
 
@@ -278,10 +290,7 @@ describe('MCPList', () => {
     })
 
     it('should show all MCP type providers when search is empty', () => {
-      mockProviders = [
-        { id: '1', name: 'Provider 1', type: 'mcp' },
-        { id: '2', name: 'Provider 2', type: 'mcp' },
-      ]
+      mockProviders = [createProvider('1', 'Provider 1'), createProvider('2', 'Provider 2')]
       render(<MCPList searchText="" />)
 
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
@@ -305,11 +314,11 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(mockOnRefresh).toHaveBeenCalled()
     })
 
     it('should show detail panel with trigger authorize after create', async () => {
-      mockProviders = [{ id: 'new-id', name: 'New Provider', type: 'mcp' }]
+      mockProviders = [createProvider('new-id', 'New Provider')]
 
       render(<MCPList searchText="" />)
 
@@ -326,7 +335,7 @@ describe('MCPList', () => {
     })
 
     it('should reset trigger authorize when onFirstCreate is called', async () => {
-      mockProviders = [{ id: 'new-id', name: 'New Provider', type: 'mcp' }]
+      mockProviders = [createProvider('new-id', 'New Provider')]
 
       render(<MCPList searchText="" />)
 
@@ -351,7 +360,7 @@ describe('MCPList', () => {
     })
 
     it('should refetch and open detail when provider is created from the toolbar', async () => {
-      mockProviders = [{ id: 'toolbar-id', name: 'Toolbar Provider', type: 'mcp' }]
+      mockProviders = [createProvider('toolbar-id', 'Toolbar Provider')]
       const onCreatedProviderHandled = vi.fn()
 
       await act(async () => {
@@ -366,7 +375,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
       expect(screen.getByTestId('detail-name')).toHaveTextContent('Toolbar Provider')
       expect(screen.getByTestId('trigger-authorize')).toHaveTextContent('true')
@@ -376,7 +385,7 @@ describe('MCPList', () => {
 
   describe('Update Provider', () => {
     beforeEach(() => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
     })
 
     it('should call refetch and set provider after update', async () => {
@@ -390,7 +399,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(mockOnRefresh).toHaveBeenCalled()
     })
 
     it('should show detail panel with trigger authorize after update', async () => {
@@ -411,7 +420,7 @@ describe('MCPList', () => {
 
   describe('Delete Provider', () => {
     beforeEach(() => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
     })
 
     it('should call refetch after delete', async () => {
@@ -424,7 +433,7 @@ describe('MCPList', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(mockRefetch).toHaveBeenCalled()
+      expect(mockOnRefresh).toHaveBeenCalled()
     })
   })
 
@@ -449,7 +458,7 @@ describe('MCPList', () => {
     })
 
     it('should not have overflow hidden when loading is complete', () => {
-      mockProviders = [{ id: '1', name: 'Provider 1', type: 'mcp' }]
+      mockProviders = [createProvider('1', 'Provider 1')]
       render(<MCPList searchText="" />)
 
       const grid = document.querySelector('.grid')
