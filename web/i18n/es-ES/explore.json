@@ -47,5 +47,5 @@
   "tryApp.requirements": "Requisitos",
   "tryApp.tabHeader.detail": "Detalles de Orquestación",
   "tryApp.tabHeader.try": "Probar",
-  "tryApp.tryInfo": "Esta es una aplicación de ejemplo. Puedes probar hasta 5 mensajes. Para seguir usándola, haz clic en \"Crear desde esta aplicación de ejemplo\" y configúrala!"
+  "tryApp.tryInfo": "Esta es una aplicación de ejemplo. Puedes probar hasta {{trialLimit}} mensajes. Para seguir usándola, haz clic en \"Crear desde esta aplicación de ejemplo\" y configúrala!"
 }

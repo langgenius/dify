@@ -23,10 +23,11 @@ import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme
 type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
+  trialLimit?: number | null
   className: string
 }>
 
-const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
+const TryApp: FC<Props> = ({ appId, appDetail, trialLimit, className }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -92,10 +93,13 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
           </div>
         </div>
         <div className="mx-auto mt-4 flex h-0 w-[769px] grow flex-col">
-          {!isHideTryNotice && (
+          {!isHideTryNotice && trialLimit != null && (
             <Alert
               className="mb-4 shrink-0"
-              message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
+              message={t(($) => $['tryApp.tryInfo'], {
+                ns: 'explore',
+                trialLimit,
+              })}
               onHide={hideTryNotice}
             />
           )}

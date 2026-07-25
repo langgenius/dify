@@ -47,5 +47,5 @@
   "tryApp.requirements": "必須配置項",
   "tryApp.tabHeader.detail": "編排詳情",
   "tryApp.tabHeader.try": "試用",
-  "tryApp.tryInfo": "這是一個範例應用程式，您可以試用最多 5 則訊息。如需繼續使用，請點擊「從此範本建立應用」並完成設定！"
+  "tryApp.tryInfo": "這是一個範例應用程式，您可以試用最多 {{trialLimit}} 則訊息。如需繼續使用，請點擊「從此範本建立應用」並完成設定！"
 }

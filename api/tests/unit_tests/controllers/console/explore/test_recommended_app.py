@@ -169,7 +169,8 @@ class TestRecommendedAppResponseModels:
                         "categories": ["cat", "other"],
                         "position": 1,
                         "is_listed": True,
-                        "can_trial": False,
+                        "can_trial": True,
+                        "trial_limit": 3,
                     }
                 ],
                 "categories": ["cat"],
@@ -178,6 +179,7 @@ class TestRecommendedAppResponseModels:
 
         assert response["recommended_apps"][0]["app_id"] == "app-1"
         assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
+        assert response["recommended_apps"][0]["trial_limit"] == 3
         assert response["categories"] == ["cat"]
 
     def test_learn_dify_app_list_response_serialization(self):

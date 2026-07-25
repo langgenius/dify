@@ -111,7 +111,7 @@ const TryApp: FC<Props> = ({
             <div className="mt-2 flex h-0 grow justify-between space-x-2">
               {systemFeatures.deployment_edition === 'CLOUD' && (
                 <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
-                  <App appId={appId} appDetail={appDetail} />
+                  <App appId={appId} appDetail={appDetail} trialLimit={app?.trial_limit} />
                 </TabsPanel>
               )}
               <TabsPanel value={TypeEnum.DETAIL} className="min-w-0 flex-1">

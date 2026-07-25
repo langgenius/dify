@@ -47,5 +47,5 @@
   "tryApp.requirements": "Yêu cầu",
   "tryApp.tabHeader.detail": "Chi tiết điều phối",
   "tryApp.tabHeader.try": "Dùng thử",
-  "tryApp.tryInfo": "Đây là ứng dụng mẫu. Bạn có thể thử tối đa 5 tin nhắn. Để tiếp tục sử dụng, hãy nhấp vào \"Tạo từ ứng dụng mẫu này\" và thiết lập nó!"
+  "tryApp.tryInfo": "Đây là ứng dụng mẫu. Bạn có thể thử tối đa {{trialLimit}} tin nhắn. Để tiếp tục sử dụng, hãy nhấp vào \"Tạo từ ứng dụng mẫu này\" và thiết lập nó!"
 }

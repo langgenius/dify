@@ -30,9 +30,10 @@ type Props = Readonly<{
   className?: string
   isWorkflow?: boolean
   appData: AppData | null
+  trialLimit?: number | null
 }>
 
-const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
+const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData, trialLimit }) => {
   const { t } = useTranslation()
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
@@ -158,10 +159,10 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const renderResWrap = (
     <div className={cn('relative flex h-full flex-col', 'rounded-r-2xl bg-chatbot-bg')}>
       <div className={cn('flex h-0 grow flex-col overflow-y-auto p-6')}>
-        {isCompleted && !isHideTryNotice && (
+        {isCompleted && !isHideTryNotice && trialLimit != null && (
           <Alert
             className="mb-3 shrink-0"
-            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore' })}
+            message={t(($) => $['tryApp.tryInfo'], { ns: 'explore', trialLimit })}
             onHide={hideTryNotice}
           />
         )}

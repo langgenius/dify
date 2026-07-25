@@ -47,5 +47,5 @@
   "tryApp.requirements": "요구 사항",
   "tryApp.tabHeader.detail": "오케스트레이션 세부 정보",
   "tryApp.tabHeader.try": "사용해 보기",
-  "tryApp.tryInfo": "이것은 샘플 앱입니다. 최대 5개의 메시지를 시도할 수 있습니다. 계속 사용하려면 \"이 샘플 앱에서 만들기\"를 클릭하고 설정하세요!"
+  "tryApp.tryInfo": "이것은 샘플 앱입니다. 최대 {{trialLimit}}개의 메시지를 시도할 수 있습니다. 계속 사용하려면 \"이 샘플 앱에서 만들기\"를 클릭하고 설정하세요!"
 }

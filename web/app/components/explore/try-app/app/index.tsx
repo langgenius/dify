@@ -10,9 +10,10 @@ import TextGeneration from './text-generation'
 type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
+  trialLimit?: number | null
 }>
 
-function TryApp({ appId, appDetail }: Props) {
+function TryApp({ appId, appDetail, trialLimit }: Props) {
   const mode = appDetail?.mode
   const isChat = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
   const isCompletion = !isChat
@@ -26,12 +27,20 @@ function TryApp({ appId, appDetail }: Props) {
       }}
     >
       <div className="flex size-full">
-        {isChat && <Chat appId={appId} appDetail={appDetail} className="h-full grow" />}
+        {isChat && (
+          <Chat
+            appId={appId}
+            appDetail={appDetail}
+            trialLimit={trialLimit}
+            className="h-full grow"
+          />
+        )}
         {isCompletion && (
           <TextGeneration
             appId={appId}
             className="h-full grow"
             isWorkflow={mode === 'workflow'}
+            trialLimit={trialLimit}
             appData={
               {
                 app_id: appId,

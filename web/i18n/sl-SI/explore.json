@@ -47,5 +47,5 @@
   "tryApp.requirements": "Zahteve",
   "tryApp.tabHeader.detail": "Podrobnosti orkestracije",
   "tryApp.tabHeader.try": "Preizkusi",
-  "tryApp.tryInfo": "To je vzorčna aplikacija. Lahko preizkusite do 5 sporočil. Za nadaljnjo uporabo kliknite \"Ustvari iz te vzorčne aplikacije\" in jo nastavite!"
+  "tryApp.tryInfo": "To je vzorčna aplikacija. Lahko preizkusite do {{trialLimit}} sporočil. Za nadaljnjo uporabo kliknite \"Ustvari iz te vzorčne aplikacije\" in jo nastavite!"
 }

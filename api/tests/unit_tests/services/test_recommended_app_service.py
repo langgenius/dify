@@ -34,6 +34,7 @@ class RecommendedAppPayload(TypedDict, total=False):
     workflows: list[str]
     tools: list[str]
     can_trial: bool
+    trial_limit: int | None
 
 
 class AppsResponse(TypedDict):
@@ -58,8 +59,20 @@ def _apps_response(
 ) -> AppsResponse:
     if recommended_apps is None:
         recommended_apps = [
-            {"id": "app-1", "name": "Test App 1", "description": "d1", "category": "productivity"},
-            {"id": "app-2", "name": "Test App 2", "description": "d2", "category": "communication"},
+            {
+                "id": "app-1",
+                "app_id": "app-1",
+                "name": "Test App 1",
+                "description": "d1",
+                "category": "productivity",
+            },
+            {
+                "id": "app-2",
+                "app_id": "app-2",
+                "name": "Test App 2",
+                "description": "d2",
+                "category": "communication",
+            },
         ]
     if categories is None:
         categories = ["productivity", "communication", "utilities"]
@@ -175,7 +188,7 @@ class TestRecommendedAppServiceGetApps:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
         empty_response = AppsResponse(recommended_apps=[], categories=[])
         builtin_response = _apps_response(
-            recommended_apps=[{"id": "builtin-1", "name": "Builtin App", "category": "default"}]
+            recommended_apps=[{"id": "builtin-1", "app_id": "builtin-1", "name": "Builtin App", "category": "default"}]
         )
 
         mock_remote_instance = MagicMock()
@@ -223,7 +236,14 @@ class TestRecommendedAppServiceGetApps:
 
         for language in ["en-US", "zh-CN", "ja-JP", "fr-FR"]:
             lang_response = _apps_response(
-                recommended_apps=[{"id": f"app-{language}", "name": f"App {language}", "category": "test"}]
+                recommended_apps=[
+                    {
+                        "id": f"app-{language}",
+                        "app_id": f"app-{language}",
+                        "name": f"App {language}",
+                        "category": "test",
+                    }
+                ]
             )
             mock_instance = MagicMock()
             mock_instance.get_recommended_apps_and_categories.return_value = lang_response
@@ -419,13 +439,15 @@ class TestRecommendedAppServiceGetLearnDifyApps:
                 )
             ),
         )
-        can_trial_mock = MagicMock(return_value=True)
-        monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
+        trial_app = TrialApp(app_id="app-1", tenant_id=str(uuid.uuid4()), trial_limit=4)
+        get_trial_app_mock = MagicMock(return_value=trial_app)
+        monkeypatch.setattr(RecommendedAppService, "_get_trial_app", get_trial_app_mock)
 
         result = RecommendedAppService.get_learn_dify_apps("en-US", session=sqlite_session)
 
         assert result["recommended_apps"][0]["can_trial"] is True
-        can_trial_mock.assert_called_once_with(sqlite_session, "app-1")
+        assert result["recommended_apps"][0]["trial_limit"] == 4
+        get_trial_app_mock.assert_called_once_with(sqlite_session, "app-1")
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -462,7 +484,7 @@ class TestRecommendedAppServiceTrialFeatures:
         tenant_id = str(uuid.uuid4())
 
         # app_id_1 has a TrialApp record; app_id_2 does not
-        sqlite_session.add(TrialApp(app_id=app_id_1, tenant_id=tenant_id))
+        sqlite_session.add(TrialApp(app_id=app_id_1, tenant_id=tenant_id, trial_limit=3))
         sqlite_session.commit()
 
         remote_result = AppsResponse(recommended_apps=[], categories=[])
@@ -488,7 +510,9 @@ class TestRecommendedAppServiceTrialFeatures:
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
         assert result["recommended_apps"][0]["can_trial"] is True
+        assert result["recommended_apps"][0]["trial_limit"] == 3
         assert result["recommended_apps"][1]["can_trial"] is False
+        assert result["recommended_apps"][1]["trial_limit"] is None
 
     @pytest.mark.parametrize("has_trial_app", [True, False])
     def test_get_detail_should_set_can_trial_when_enabled(

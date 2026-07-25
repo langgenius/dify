@@ -142,6 +142,7 @@ const normalizeRecommendedApp = (app: RecommendedAppResponse): App => {
     editable: false,
     is_agent: false,
     can_trial: app.can_trial ?? false,
+    trial_limit: app.trial_limit ?? null,
   }
 }
 
