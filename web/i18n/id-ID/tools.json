@@ -207,5 +207,16 @@
   "workflowToolEmpty.step1": "Buat workflow di Studio",
   "workflowToolEmpty.step2": "Klik “Workflow as Tool” di menu publikasi agar tersedia sebagai alat",
   "workflowToolEmpty.step3": "Kembali ke sini untuk mengelola dan menggunakannya kembali",
-  "workflowToolEmpty.title": "Belum ada workflow yang dipublikasikan sebagai alat"
+  "workflowToolEmpty.title": "Belum ada workflow yang dipublikasikan sebagai alat",
+  "addToolModal": {
+    "agent": {
+      "tip": "Alat kustom yang hanya tersedia untuk Agen"
+    },
+    "all": {
+      "tip": "Semua alat yang tersedia"
+    },
+    "built-in": {
+      "tip": "Alat bawaan"
+    }
+  }
 }
