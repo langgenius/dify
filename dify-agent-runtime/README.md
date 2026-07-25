@@ -41,7 +41,7 @@ docker build -f dify-agent-runtime/docker/Dockerfile \
   dify-agent-runtime/
 ```
 
-### Runing docker container
+### Running docker container
 
 ```
 docker run -d --name dify-agent-runtime \
