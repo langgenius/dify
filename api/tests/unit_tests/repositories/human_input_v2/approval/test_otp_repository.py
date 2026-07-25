@@ -291,6 +291,44 @@ def test_cooldown_rejection_preserves_counters_and_does_not_hash_write_or_audit(
         assert _audit_count(session) == 1
 
 
+@pytest.mark.parametrize(
+    "elapsed",
+    [timedelta(minutes=10), timedelta(minutes=10, microseconds=1)],
+    ids=["exact-boundary", "past-boundary"],
+)
+def test_expired_replacement_persists_expired_without_hash_write_or_audit(
+    repository_context,
+    elapsed: timedelta,
+) -> None:
+    repository, session_maker, clock, hasher = repository_context
+    initial = _issue_initial(repository)
+    clock.advance(elapsed)
+    previous_hash_calls = len(hasher.hash_calls)
+
+    decision = repository.replace_current(
+        _GRANT_REF,
+        challenge_id=OTPChallengeId("challenge-2"),
+        audit_event_id="audit-2",
+        challenge_token_hash="b" * 64,
+        plaintext_code=_RAW_CODE,
+    )
+
+    assert decision.rejection is OTPChallengeRejectionReason.EXPIRED
+    assert decision.previous.status is HumanInputOTPChallengeStatus.EXPIRED
+    assert decision.previous.send_count == initial.send_count
+    assert decision.previous.attempt_count == initial.attempt_count
+    assert decision.replacement is None
+    assert len(hasher.hash_calls) == previous_hash_calls
+    with session_maker() as session:
+        records = session.scalars(sa.select(HumanInputV2FormOTPChallenge)).all()
+        assert len(records) == 1
+        assert records[0].status is HumanInputOTPChallengeStatus.EXPIRED
+        assert records[0].send_count == initial.send_count
+        assert records[0].attempt_count == initial.attempt_count
+        assert records[0].code_hash == initial.code_hash.encoded_value
+        assert _audit_count(session) == 1
+
+
 def test_verification_persists_attempts_and_returns_limited_proof_without_form_transition(repository_context) -> None:
     repository, session_maker, clock, hasher = repository_context
     challenge = _issue_initial(repository)

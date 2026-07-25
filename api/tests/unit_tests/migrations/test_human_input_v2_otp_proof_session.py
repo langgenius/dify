@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from datetime import UTC, datetime, timedelta
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,12 @@ _MIGRATION_PATH = (
     / "migrations/versions/2026_07_25_1300-9c2e5f7a1b3d_add_human_input_v2_otp_proof_session.py"
 )
 _NOW = datetime(2026, 7, 25, 8, tzinfo=UTC)
+_OTP_CHECK_NAMES = {
+    "hiv2_form_otp_challenges_attempt_count_ck",
+    "hiv2_form_otp_challenges_send_count_ck",
+    "hiv2_form_otp_challenges_subject_identity_ck",
+    "hiv2_form_otp_challenges_terminal_timestamps_ck",
+}
 
 
 def _load_migration_module():
@@ -41,6 +48,22 @@ def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> No
             getattr(module, step_name)()
         finally:
             module.op = original_op
+
+
+def _render_upgrade(module: object, dialect_name: str) -> str:
+    output = StringIO()
+    context = MigrationContext.configure(
+        dialect_name=dialect_name,
+        opts={"as_sql": True, "output_buffer": output},
+    )
+    operations = Operations(context)
+    original_op = module.op
+    module.op = operations
+    try:
+        module.upgrade()
+    finally:
+        module.op = original_op
+    return output.getvalue()
 
 
 def test_revision_metadata_follows_form_core_slice() -> None:
@@ -65,13 +88,37 @@ def test_upgrade_matches_otp_model_columns_constraints_and_indexes() -> None:
     }
     assert {
         constraint["name"] for constraint in inspector.get_check_constraints("human_input_v2_form_otp_challenges")
-    } == {"attempt_count_range", "send_count_range", "subject_identity", "terminal_timestamps"}
+    } == _OTP_CHECK_NAMES
     assert {index["name"] for index in inspector.get_indexes("human_input_v2_form_otp_challenges")} == {
         "hiv2_form_otp_scope_created_idx"
     }
     assert {
         constraint["name"] for constraint in inspector.get_unique_constraints("human_input_v2_form_otp_challenges")
     } == {"hiv2_form_otp_challenges_token_uq"}
+
+
+def test_upgrade_uses_schema_unique_portable_check_constraint_names() -> None:
+    module = _load_migration_module()
+    otp_table = HumanInputV2FormOTPChallenge.__table__
+    otp_check_names = {
+        constraint.name for constraint in otp_table.constraints if isinstance(constraint, sa.CheckConstraint)
+    }
+    existing_schema_check_names = {
+        constraint.name
+        for table in otp_table.metadata.tables.values()
+        if table is not otp_table
+        for constraint in table.constraints
+        if isinstance(constraint, sa.CheckConstraint)
+    }
+
+    assert otp_check_names == _OTP_CHECK_NAMES
+    assert "human_input_v2_form_approver_grants_subject_identity_check" in existing_schema_check_names
+    assert otp_check_names.isdisjoint(existing_schema_check_names)
+    assert all(len(name) <= 64 for name in otp_check_names)
+    for dialect_name in ("mysql", "postgresql"):
+        rendered_upgrade = _render_upgrade(module, dialect_name)
+        for constraint_name in _OTP_CHECK_NAMES:
+            assert f"CONSTRAINT {constraint_name} CHECK" in rendered_upgrade
 
 
 def test_upgrade_persists_hash_metadata_and_contact_incarnation_without_plaintext_column() -> None:

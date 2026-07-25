@@ -5,7 +5,8 @@ Replacement hashing completes before tracked rows are mutated; invalidation,
 replacement insertion, and an injected audit append then share one short
 transaction. The Submission Runtime persistence layer owns the concrete shared
 form-audit writer and table; this module owns only the transaction-scoped port.
-The adapter never loads or writes Form lifecycle fields.
+An elapsed pending challenge is committed as expired without hashing, audit, or
+replacement side effects. The adapter never loads or writes Form lifecycle fields.
 """
 
 from __future__ import annotations
@@ -140,7 +141,7 @@ class SQLAlchemyOTPChallengeRepository:
         challenge_token_hash: str,
         plaintext_code: str,
     ) -> OTPReplacementDecision:
-        """Atomically invalidate and replace the latest challenge after policy checks."""
+        """Atomically expire or replace the latest challenge after policy checks."""
 
         try:
             with self._session_maker() as session, session.begin():
@@ -167,6 +168,9 @@ class SQLAlchemyOTPChallengeRepository:
                     code_hasher=self._code_hasher,
                 )
                 if decision.replacement is None:
+                    if decision.previous != current:
+                        self._apply_state(current_record, decision.previous)
+                        session.flush()
                     return decision
                 self._apply_state(current_record, decision.previous)
                 session.add(challenge_to_record(decision.replacement))

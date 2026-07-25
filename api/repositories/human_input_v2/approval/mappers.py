@@ -12,6 +12,7 @@ from hashlib import sha256
 from core.human_input_v2.approval import (
     ContactOTPSubject,
     EmailAddressOTPSubject,
+    EmailOTPSubject,
     FormRef,
     OTPChallenge,
     OTPCodeHash,
@@ -86,6 +87,7 @@ def challenge_from_record(record: HumanInputV2FormOTPChallenge) -> OTPChallenge:
     except ValueError as error:
         raise ValueError("OTP challenge record has invalid code hash metadata") from error
 
+    subject: EmailOTPSubject
     if record.subject_type is HumanInputApproverGrantSubjectType.CONTACT:
         if record.contact_id is None:
             raise ValueError("contact OTP challenge record is missing contact_id")
@@ -150,6 +152,7 @@ def proof_from_record_value(
     """Rebuild one proof value after validating its captured subject shape."""
 
     normalized_email = NormalizedEmail(record_value.verified_email)
+    subject: EmailOTPSubject
     if record_value.subject_type is HumanInputApproverGrantSubjectType.CONTACT:
         if record_value.contact_id is None:
             raise ValueError("contact OTP proof is missing contact_id")

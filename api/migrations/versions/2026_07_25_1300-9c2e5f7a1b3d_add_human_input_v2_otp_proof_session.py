@@ -76,15 +76,21 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "(subject_type = 'contact' AND contact_id IS NOT NULL) OR "
             "(subject_type = 'email_address' AND contact_id IS NULL)",
-            name="subject_identity",
+            name="hiv2_form_otp_challenges_subject_identity_ck",
         ),
-        sa.CheckConstraint("send_count >= 1 AND send_count <= 5", name="send_count_range"),
-        sa.CheckConstraint("attempt_count >= 0 AND attempt_count <= 5", name="attempt_count_range"),
+        sa.CheckConstraint(
+            "send_count >= 1 AND send_count <= 5",
+            name="hiv2_form_otp_challenges_send_count_ck",
+        ),
+        sa.CheckConstraint(
+            "attempt_count >= 0 AND attempt_count <= 5",
+            name="hiv2_form_otp_challenges_attempt_count_ck",
+        ),
         sa.CheckConstraint(
             "(status = 'verified' AND verified_at IS NOT NULL AND invalidated_at IS NULL) OR "
             "(status = 'invalidated' AND verified_at IS NULL AND invalidated_at IS NOT NULL) OR "
             "(status IN ('pending', 'expired') AND verified_at IS NULL AND invalidated_at IS NULL)",
-            name="terminal_timestamps",
+            name="hiv2_form_otp_challenges_terminal_timestamps_ck",
         ),
         comment="Hashed OTP proof sessions for Email-based Human Input v2 approval.",
     )

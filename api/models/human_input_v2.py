@@ -1456,7 +1456,8 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
     Submission Runtime persistence layer owns the concrete shared audit record.
     ``contact_id`` captures the Contact incarnation so deleting and recreating
     the same Email cannot make historical proof current. Plaintext code and
-    challenge tokens never enter this record.
+    challenge tokens never enter this record. Domain reconstruction requires
+    ``resend_after`` and ``expires_at`` to retain their issuance-time durations.
     """
 
     __tablename__ = "human_input_v2_form_otp_challenges"
@@ -1465,15 +1466,21 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         sa.CheckConstraint(
             "(subject_type = 'contact' AND contact_id IS NOT NULL) OR "
             "(subject_type = 'email_address' AND contact_id IS NULL)",
-            name="subject_identity",
+            name=sa.schema.conv("hiv2_form_otp_challenges_subject_identity_ck"),
         ),
-        sa.CheckConstraint("send_count >= 1 AND send_count <= 5", name="send_count_range"),
-        sa.CheckConstraint("attempt_count >= 0 AND attempt_count <= 5", name="attempt_count_range"),
+        sa.CheckConstraint(
+            "send_count >= 1 AND send_count <= 5",
+            name=sa.schema.conv("hiv2_form_otp_challenges_send_count_ck"),
+        ),
+        sa.CheckConstraint(
+            "attempt_count >= 0 AND attempt_count <= 5",
+            name=sa.schema.conv("hiv2_form_otp_challenges_attempt_count_ck"),
+        ),
         sa.CheckConstraint(
             "(status = 'verified' AND verified_at IS NOT NULL AND invalidated_at IS NULL) OR "
             "(status = 'invalidated' AND verified_at IS NULL AND invalidated_at IS NOT NULL) OR "
             "(status IN ('pending', 'expired') AND verified_at IS NULL AND invalidated_at IS NULL)",
-            name="terminal_timestamps",
+            name=sa.schema.conv("hiv2_form_otp_challenges_terminal_timestamps_ck"),
         ),
         sa.Index(
             "hiv2_form_otp_scope_created_idx",

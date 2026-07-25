@@ -179,7 +179,11 @@ class OTPVerificationDecision:
 
 @dataclass(frozen=True, slots=True)
 class OTPChallenge:
-    """Grant-scoped proof session whose counters never touch Form lifecycle state."""
+    """Grant-scoped proof session whose counters never touch Form lifecycle state.
+
+    Persisted sessions reconstruct only when cooldown and expiry are the exact
+    durations derived from ``created_at``; stored timestamps are not policy input.
+    """
 
     ref: OTPChallengeRef
     subject: EmailOTPSubject
@@ -204,8 +208,10 @@ class OTPChallenge:
             raise ValueError("OTP send count is outside the supported range")
         if not 0 <= self.attempt_count <= OTP_MAX_ATTEMPT_COUNT:
             raise ValueError("OTP attempt count is outside the supported range")
-        if self.expires_at.value <= self.created_at.value or self.resend_after.value <= self.created_at.value:
-            raise ValueError("OTP expiry and resend timestamps must follow creation")
+        if self.resend_after.value != self.created_at.value + OTP_RESEND_COOLDOWN:
+            raise ValueError("OTP resend_after must equal created_at plus the resend cooldown")
+        if self.expires_at.value != self.created_at.value + OTP_EXPIRY:
+            raise ValueError("OTP expires_at must equal created_at plus the expiry duration")
         if self.updated_at.value < self.created_at.value:
             raise ValueError("OTP updated_at must not precede created_at")
         if self.status is HumanInputOTPChallengeStatus.VERIFIED:
@@ -277,6 +283,16 @@ class OTPChallenge:
 
         now = clock.now()
         state = self.state_at(now)
+        if (
+            state.rejection is OTPChallengeRejectionReason.EXPIRED
+            and self.status is HumanInputOTPChallengeStatus.PENDING
+        ):
+            expired = replace(
+                self,
+                status=HumanInputOTPChallengeStatus.EXPIRED,
+                updated_at=now,
+            )
+            return OTPReplacementDecision(expired, None, OTPChallengeRejectionReason.EXPIRED)
         if state.rejection is not None:
             return OTPReplacementDecision(self, None, state.rejection)
         if self.send_count >= OTP_MAX_SEND_COUNT:

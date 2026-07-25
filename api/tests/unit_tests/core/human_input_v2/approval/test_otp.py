@@ -30,6 +30,8 @@ from core.human_input_v2.shared import (
 )
 
 _ISSUED_AT = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_EXPIRES_AT = UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10))
+_RESEND_AFTER = UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60))
 _RAW_CODE = "123456"
 _ENCODED_HASH = "test-sha256$8d969eef6ecad3c29a3a629280e686cff8ca4a8d"
 _TOKEN_HASH = "a" * 64
@@ -87,6 +89,29 @@ def _issue(
         send_count=send_count,
         clock=active_clock,
         code_hasher=active_hasher,
+    )
+
+
+def _construct_challenge(
+    *,
+    expires_at: UtcTimestamp = _EXPIRES_AT,
+    resend_after: UtcTimestamp = _RESEND_AFTER,
+) -> OTPChallenge:
+    return OTPChallenge(
+        ref=_GRANT_REF.challenge(OTPChallengeId("challenge-direct")),
+        subject=_SUBJECT,
+        normalized_email=_EMAIL,
+        challenge_token_hash=_TOKEN_HASH,
+        code_hash=OTPCodeHash(encoded_value=_ENCODED_HASH, algorithm="test-sha256"),
+        status=HumanInputOTPChallengeStatus.PENDING,
+        expires_at=expires_at,
+        resend_after=resend_after,
+        send_count=1,
+        attempt_count=0,
+        verified_at=None,
+        invalidated_at=None,
+        created_at=_ISSUED_AT,
+        updated_at=_ISSUED_AT,
     )
 
 
@@ -153,6 +178,33 @@ def test_replacement_is_allowed_at_exact_cooldown_and_invalidates_previous() -> 
     assert decision.replacement.status is HumanInputOTPChallengeStatus.PENDING
     assert decision.replacement.send_count == 2
     assert decision.replacement.attempt_count == 0
+
+
+@pytest.mark.parametrize(
+    "elapsed",
+    [timedelta(minutes=10), timedelta(minutes=10, microseconds=1)],
+    ids=["exact-boundary", "past-boundary"],
+)
+def test_expired_replacement_returns_expired_previous_without_hashing(elapsed: timedelta) -> None:
+    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + elapsed))
+    hasher = _DeterministicHasher()
+    challenge = _issue()
+
+    decision = challenge.replace(
+        challenge_ref=_GRANT_REF.challenge(OTPChallengeId("challenge-2")),
+        challenge_token_hash="b" * 64,
+        plaintext_code=_RAW_CODE,
+        clock=clock,
+        code_hasher=hasher,
+    )
+
+    assert decision.rejection is OTPChallengeRejectionReason.EXPIRED
+    assert decision.previous.status is HumanInputOTPChallengeStatus.EXPIRED
+    assert decision.previous.updated_at == clock.now()
+    assert decision.previous.send_count == challenge.send_count
+    assert decision.previous.attempt_count == challenge.attempt_count
+    assert decision.replacement is None
+    assert hasher.hash_calls == []
 
 
 def test_fifth_send_is_allowed_and_further_send_is_rejected_without_hashing() -> None:
@@ -414,7 +466,7 @@ def test_challenge_rejects_malformed_persistence_state() -> None:
 
     with pytest.raises(ValueError, match="challenge token hash"):
         replace(challenge, challenge_token_hash="A" * 64)
-    with pytest.raises(ValueError, match="expiry and resend"):
+    with pytest.raises(ValueError, match="expires_at"):
         replace(challenge, expires_at=_ISSUED_AT)
     with pytest.raises(ValueError, match="updated_at"):
         replace(challenge, updated_at=UtcTimestamp(_ISSUED_AT.value - timedelta(seconds=1)))
@@ -424,6 +476,32 @@ def test_challenge_rejects_malformed_persistence_state() -> None:
         replace(challenge, status=HumanInputOTPChallengeStatus.INVALIDATED)
     with pytest.raises(ValueError, match="cannot have terminal timestamps"):
         replace(challenge, verified_at=_ISSUED_AT)
+
+
+@pytest.mark.parametrize(
+    "resend_after",
+    [
+        UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=59, microseconds=999999)),
+        UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60, microseconds=1)),
+    ],
+    ids=["short", "long"],
+)
+def test_direct_construction_requires_exact_resend_cooldown(resend_after: UtcTimestamp) -> None:
+    with pytest.raises(ValueError, match="resend_after"):
+        _construct_challenge(resend_after=resend_after)
+
+
+@pytest.mark.parametrize(
+    "expires_at",
+    [
+        UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10, microseconds=-1)),
+        UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10, microseconds=1)),
+    ],
+    ids=["short", "long"],
+)
+def test_direct_construction_requires_exact_expiry(expires_at: UtcTimestamp) -> None:
+    with pytest.raises(ValueError, match="expires_at"):
+        _construct_challenge(expires_at=expires_at)
 
 
 def test_invalidating_a_terminal_challenge_is_idempotent() -> None:
