@@ -241,7 +241,6 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const shouldCompleteHomeTourOnCreateRef = useRef(false)
   const isSubmittingHomeTourCreateRef = useRef(false)
   const wasHomeTryAppCreateGuideActiveRef = useRef(false)
-  const isShowTryAppPanel = !!currentTryApp
   const shouldForceShowLearnDifyForTour =
     activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
     !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
@@ -550,12 +549,12 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         />
       )}
 
-      {isShowTryAppPanel && (
+      {currentTryApp && (
         <TryApp
-          appId={currentTryApp?.appId || ''}
-          app={currentTryApp?.app}
+          appId={currentTryApp.appId}
+          app={currentTryApp.app}
           canCreate={canCreateApp}
-          categories={currentTryApp?.app?.categories}
+          categories={currentTryApp.app.categories}
           createButtonStepByStepTourTarget={
             canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
               ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate
