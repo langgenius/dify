@@ -19,6 +19,7 @@ from controllers.console.workspace.model_providers import (
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
+from core.entities.provider_entities import CredentialConfiguration
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -163,7 +164,16 @@ class TestModelProviderSummaryListApi:
             is_configured=True,
             custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
                 status=CustomConfigurationStatus.ACTIVE,
-                has_credentials=True,
+                available_credentials=[
+                    CredentialConfiguration(
+                        credential_id=VALID_UUID,
+                        credential_name="production",
+                    ),
+                    CredentialConfiguration(
+                        credential_id="223e4567-e89b-12d3-a456-426614174000",
+                        credential_name="backup",
+                    ),
+                ],
                 current_credential_id=VALID_UUID,
                 current_credential_name="production",
                 current_credential_usable=True,
@@ -193,7 +203,16 @@ class TestModelProviderSummaryListApi:
         assert "tenant_id" not in result["data"][0]
         assert result["data"][0]["custom_configuration"] == {
             "status": "active",
-            "has_credentials": True,
+            "available_credentials": [
+                {
+                    "credential_id": VALID_UUID,
+                    "credential_name": "production",
+                },
+                {
+                    "credential_id": "223e4567-e89b-12d3-a456-426614174000",
+                    "credential_name": "backup",
+                },
+            ],
             "current_credential_id": VALID_UUID,
             "current_credential_name": "production",
             "current_credential_usable": True,

@@ -1837,10 +1837,10 @@ export const zAvailableModelListResponse = z.object({
  * ModelProviderCustomConfigurationSummaryResponse
  */
 export const zModelProviderCustomConfigurationSummaryResponse = z.object({
+  available_credentials: z.array(zCredentialConfiguration),
   current_credential_id: z.string().nullish(),
   current_credential_name: z.string().nullish(),
   current_credential_usable: z.boolean(),
-  has_credentials: z.boolean(),
   status: zCustomConfigurationStatus,
 })
 

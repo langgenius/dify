@@ -1,9 +1,9 @@
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 
 if TYPE_CHECKING:
     from models.account import Account
@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
+from core.entities.provider_entities import CredentialConfiguration
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
@@ -50,7 +51,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class _ProviderSummaryState:
     has_custom_provider: bool = False
-    has_credentials: bool = False
+    available_credentials: list[CredentialConfiguration] = field(default_factory=list)
     has_custom_models: bool = False
     current_credential_id: str | None = None
     current_credential_name: str | None = None
@@ -190,13 +191,17 @@ class ModelProviderService:
                     Provider.is_valid.is_(True),
                 )
             ).all()
-            credential_count_rows = session.execute(
+            credential_rows = session.execute(
                 select(
+                    ProviderCredential.id,
                     ProviderCredential.provider_name,
-                    func.count(ProviderCredential.id).label("credential_count"),
+                    ProviderCredential.credential_name,
                 )
                 .where(ProviderCredential.tenant_id == tenant_id)
-                .group_by(ProviderCredential.provider_name)
+                .order_by(
+                    ProviderCredential.created_at.desc(),
+                    ProviderCredential.id.desc(),
+                )
             ).all()
             custom_model_rows = session.execute(
                 select(ProviderModel.provider_name.label("provider_name"))
@@ -218,10 +223,14 @@ class ModelProviderService:
             ).all()
 
         states: defaultdict[str, _ProviderSummaryState] = defaultdict(_ProviderSummaryState)
-        credential_counts_by_provider: defaultdict[str, int] = defaultdict(int)
-        for credential_count in credential_count_rows:
-            provider_name = str(ModelProviderID(credential_count.provider_name))
-            credential_counts_by_provider[provider_name] += credential_count.credential_count
+        for credential in credential_rows:
+            provider_name = str(ModelProviderID(credential.provider_name))
+            states[provider_name].available_credentials.append(
+                CredentialConfiguration(
+                    credential_id=credential.id,
+                    credential_name=credential.credential_name,
+                )
+            )
 
         selected_provider_priorities: dict[str, bool] = {}
         for provider in custom_provider_rows:
@@ -243,9 +252,6 @@ class ModelProviderService:
             else:
                 state.current_credential_name = None
                 state.current_credential_usable = False
-
-        for provider_name, state in states.items():
-            state.has_credentials = state.has_custom_provider and credential_counts_by_provider[provider_name] > 0
 
         for model in custom_model_rows:
             states[str(ModelProviderID(model.provider_name))].has_custom_models = True
@@ -342,7 +348,9 @@ class ModelProviderService:
             emitted_provider_names.add(provider_name)
 
             state = states.get(provider_name, _ProviderSummaryState())
-            custom_configured = (state.has_custom_provider and state.has_credentials) or state.has_custom_models
+            custom_configured = (
+                state.has_custom_provider and bool(state.available_credentials)
+            ) or state.has_custom_models
             custom_present = state.has_custom_provider or state.has_custom_models
             system_enabled = self._is_system_provider_enabled(provider_name)
             preferred_provider_type = self._get_preferred_provider_type(
@@ -368,7 +376,7 @@ class ModelProviderService:
                         status=CustomConfigurationStatus.ACTIVE
                         if custom_configured
                         else CustomConfigurationStatus.NO_CONFIGURE,
-                        has_credentials=state.has_credentials,
+                        available_credentials=state.available_credentials,
                         current_credential_id=state.current_credential_id,
                         current_credential_name=state.current_credential_name,
                         current_credential_usable=state.current_credential_usable,

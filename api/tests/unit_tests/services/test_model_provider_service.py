@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_entities import CredentialConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
@@ -122,7 +123,16 @@ class TestModelProviderServiceConfiguration:
         )
         state = _ProviderSummaryState(
             has_custom_provider=True,
-            has_credentials=True,
+            available_credentials=[
+                CredentialConfiguration(
+                    credential_id="credential-1",
+                    credential_name="Production",
+                ),
+                CredentialConfiguration(
+                    credential_id="credential-2",
+                    credential_name="Backup",
+                ),
+            ],
             has_custom_models=False,
             current_credential_id="credential-1",
             current_credential_name="Production",
@@ -155,7 +165,16 @@ class TestModelProviderServiceConfiguration:
         assert providers[0].provider == provider.provider
         assert providers[0].plugin_id == "langgenius/openai"
         assert providers[0].is_configured is True
-        assert providers[0].custom_configuration.has_credentials is True
+        assert providers[0].custom_configuration.available_credentials == [
+            CredentialConfiguration(
+                credential_id="credential-1",
+                credential_name="Production",
+            ),
+            CredentialConfiguration(
+                credential_id="credential-2",
+                credential_name="Backup",
+            ),
+        ]
         assert providers[0].custom_configuration.current_credential_name == "Production"
         assert providers[0].custom_configuration.current_credential_usable is True
         assert providers[0].system_configuration.enabled is False
@@ -221,13 +240,16 @@ class TestModelProviderServiceConfiguration:
         providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1", model_type=ModelType.LLM)
 
         assert [provider.provider for provider in providers] == ["langgenius/openai/openai"]
+        assert providers[0].is_configured is False
+        assert providers[0].custom_configuration.status.value == "no-configure"
+        assert providers[0].custom_configuration.available_credentials == []
         assert set(plugins) == {"langgenius/openai", "langgenius/embedding"}
 
     def test_preferred_provider_fallback_uses_custom_presence_not_configuration_status(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(service_module.dify_config, "EDITION", "SELF_HOSTED")
-        state = _ProviderSummaryState(has_custom_provider=True, has_credentials=False)
+        state = _ProviderSummaryState(has_custom_provider=True)
 
         preferred_provider_type = ModelProviderService._get_preferred_provider_type(
             state,
@@ -259,8 +281,16 @@ class TestModelProviderServiceConfiguration:
             ),
             SimpleNamespace(
                 all=lambda: [
-                    SimpleNamespace(provider_name="openai", credential_count=1),
-                    SimpleNamespace(provider_name=canonical_provider, credential_count=1),
+                    SimpleNamespace(
+                        id="credential-legacy",
+                        provider_name="openai",
+                        credential_name="Legacy",
+                    ),
+                    SimpleNamespace(
+                        id="credential-current",
+                        provider_name=canonical_provider,
+                        credential_name="Production",
+                    ),
                 ]
             ),
             SimpleNamespace(all=lambda: [SimpleNamespace(provider_name="openai")]),
@@ -282,7 +312,16 @@ class TestModelProviderServiceConfiguration:
 
         state = states[canonical_provider]
         assert state.has_custom_provider is True
-        assert state.has_credentials is True
+        assert state.available_credentials == [
+            CredentialConfiguration(
+                credential_id="credential-legacy",
+                credential_name="Legacy",
+            ),
+            CredentialConfiguration(
+                credential_id="credential-current",
+                credential_name="Production",
+            ),
+        ]
         assert state.has_custom_models is True
         assert state.current_credential_id == "credential-current"
         assert state.current_credential_name == "Production"
@@ -292,6 +331,10 @@ class TestModelProviderServiceConfiguration:
         statements = [str(execute_call.args[0]) for execute_call in session.execute.call_args_list]
         assert len(statements) == 4
         assert all("encrypted_config" not in statement for statement in statements)
+        assert "count(" not in statements[1].lower()
+        assert "provider_credentials.id" in statements[1]
+        assert "provider_credentials.credential_name" in statements[1]
+        assert "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC" in statements[1]
         assert "provider_model_credentials" in statements[2]
 
     def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(self) -> None:

@@ -741,6 +741,32 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path)
     assert "provider_credential_schema" not in provider_properties
     assert "model_credential_schema" not in provider_properties
 
+    custom_configuration_schema = payload["components"]["schemas"]["ModelProviderCustomConfigurationSummaryResponse"]
+    custom_configuration_properties = custom_configuration_schema["properties"]
+    assert set(custom_configuration_schema["required"]) == {
+        "available_credentials",
+        "current_credential_usable",
+        "status",
+    }
+    assert set(custom_configuration_properties) == {
+        "available_credentials",
+        "current_credential_id",
+        "current_credential_name",
+        "current_credential_usable",
+        "status",
+    }
+    assert custom_configuration_properties["available_credentials"]["items"]["$ref"] == (
+        "#/components/schemas/CredentialConfiguration"
+    )
+    assert "has_credentials" not in custom_configuration_properties
+
+    credential_properties = payload["components"]["schemas"]["CredentialConfiguration"]["properties"]
+    assert set(credential_properties) == {
+        "credential_id",
+        "credential_name",
+    }
+    assert "encrypted_config" not in credential_properties
+
     plugin_properties = payload["components"]["schemas"]["ModelProviderPluginSummaryResponse"]["properties"]
     assert set(plugin_properties) == {
         "installation_id",

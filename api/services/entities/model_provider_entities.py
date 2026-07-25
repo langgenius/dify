@@ -72,7 +72,7 @@ class SystemConfigurationResponse(BaseModel):
 
 class ModelProviderCustomConfigurationSummaryResponse(BaseModel):
     status: CustomConfigurationStatus
-    has_credentials: bool
+    available_credentials: list[CredentialConfiguration]
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     current_credential_usable: bool
