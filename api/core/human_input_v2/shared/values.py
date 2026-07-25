@@ -70,6 +70,14 @@ class DeliveryAttemptId(_Identifier):
     """Identifier of one append-only delivery attempt."""
 
 
+class SubmissionId(_Identifier):
+    """Identifier of one immutable winning form submission."""
+
+
+class AuditEventId(_Identifier):
+    """Identifier of one append-only Human Input audit event."""
+
+
 class EmailProviderId(_Identifier):
     """Identifier of one workspace email provider configuration."""
 

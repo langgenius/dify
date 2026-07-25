@@ -1,0 +1,322 @@
+"""Post-commit ordering, failure, logging, and resume-idempotency contracts."""
+
+from __future__ import annotations
+
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from core.human_input_v2.approval import (
+    ApproverGrant,
+    AuthorizationContext,
+    AuthorizedSubmissionCommit,
+    CanonicalSubjectKey,
+    ContactApprovalSubject,
+    CurrentContactAuthorizationFacts,
+    FormAuthorizationAuditEvent,
+    FormRef,
+    FrozenFormAction,
+    FrozenFormDefinition,
+    FrozenJSONObject,
+    HumanInputForm,
+    SubjectSnapshot,
+    SubmissionAttemptScope,
+    SubmissionCommitResult,
+    SubmissionCommitStatus,
+    VerifiedAccountSessionProof,
+)
+from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
+from core.human_input_v2.shared import (
+    AccountId,
+    AppId,
+    ApproverGrantId,
+    AuditEventId,
+    ContactId,
+    FormId,
+    SubmissionId,
+    UtcTimestamp,
+    WorkspaceId,
+)
+from services.human_input_v2.submission import (
+    SubmitFormCommand,
+    SubmitFormResultStatus,
+    SubmitHumanInputFormHandler,
+    WorkflowResumeEnqueueError,
+    WorkflowResumeIdentity,
+)
+
+_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_GRANT_ID = ApproverGrantId("grant-1")
+_ACCOUNT_ID = AccountId("account-1")
+_CONTACT_ID = ContactId("contact-1")
+_SCOPE = SubmissionAttemptScope(_FORM_REF, _GRANT_ID, None)
+
+
+def _context(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) -> AuthorizationContext:
+    subject = ContactApprovalSubject(_CONTACT_ID)
+    grant = ApproverGrant(
+        ref=_FORM_REF.grant(_GRANT_ID),
+        subject=subject,
+        subject_key=CanonicalSubjectKey.for_contact(_CONTACT_ID),
+        matched_sources=(),
+        subject_snapshot=SubjectSnapshot("Reviewer", "reviewer@example.com"),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    form = HumanInputForm(
+        ref=_FORM_REF,
+        app_id=AppId("app-1"),
+        definition=FrozenFormDefinition(
+            form_content="Approve",
+            inputs=(),
+            actions=(FrozenFormAction("approve", "Approve", "primary"),),
+            default_values=FrozenJSONObject.from_mapping({}),
+            node_title="Review",
+            display_in_ui=True,
+        ),
+        rendered_content="Approve",
+        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
+        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        kind=HumanInputV2FormKind.RUNTIME,
+        status=status,
+        workflow_pause_id="pause-1",
+        node_execution_id="node-execution-1",
+        grants=(grant,),
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    return AuthorizationContext(
+        form=form,
+        grant=grant,
+        endpoint=None,
+        current_contact=CurrentContactAuthorizationFacts(
+            contact_id=_CONTACT_ID,
+            account_id=_ACCOUNT_ID,
+            normalized_email=None,
+            account_active=True,
+            workspace_available=True,
+        ),
+        current_end_user=None,
+        current_im_binding=None,
+    )
+
+
+def _command(*, proof: object | None = None) -> SubmitFormCommand:
+    return SubmitFormCommand(
+        scope=_SCOPE,
+        proof=proof if proof is not None else VerifiedAccountSessionProof(_ACCOUNT_ID),
+        selected_action_id="approve",
+        input_snapshot=FrozenJSONObject.from_mapping({"comment": "approved"}),
+        canonical_values=FrozenJSONObject.from_mapping({"comment": "approved"}),
+        submission_id=SubmissionId("submission-1"),
+        authorization_audit_event_id=AuditEventId("audit-authorized"),
+        rejection_audit_event_id=AuditEventId("audit-rejected"),
+        now=_NOW,
+    )
+
+
+class _RecordingTransaction:
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        fail_persistence: bool = False,
+        commit_status: SubmissionCommitStatus = SubmissionCommitStatus.COMMITTED,
+        context_status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING,
+    ) -> None:
+        self.events = events
+        self.context = _context(status=context_status)
+        self.fail_persistence = fail_persistence
+        self.commit_status = commit_status
+
+    def load_authorization_context(self, *, proof: object) -> AuthorizationContext:
+        self.events.append("context_loaded")
+        return self.context
+
+    def append_rejection_audit(self, event: FormAuthorizationAuditEvent) -> None:
+        self.events.append(f"rejection_audit:{event.reason_code}")
+
+    def commit_authorized_submission_once(self, commit: AuthorizedSubmissionCommit) -> SubmissionCommitResult:
+        self.events.append("persistence_write")
+        if self.fail_persistence:
+            raise RuntimeError("persistence failed")
+        if self.commit_status is SubmissionCommitStatus.ALREADY_COMPLETED:
+            return SubmissionCommitResult(SubmissionCommitStatus.ALREADY_COMPLETED, None)
+        submission = commit.to_submission(
+            form_ref=_FORM_REF,
+            approver_grant_id=_GRANT_ID,
+            endpoint_id=None,
+            submitted_at=_NOW,
+        )
+        return SubmissionCommitResult(SubmissionCommitStatus.COMMITTED, submission)
+
+
+class _RecordingRepository:
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        fail_persistence: bool = False,
+        commit_status: SubmissionCommitStatus = SubmissionCommitStatus.COMMITTED,
+        context_status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING,
+    ) -> None:
+        self.events = events
+        self.fail_persistence = fail_persistence
+        self.commit_status = commit_status
+        self.context_status = context_status
+
+    @contextmanager
+    def transaction(self, scope: SubmissionAttemptScope):
+        assert scope == _SCOPE
+        self.events.append("transaction_begin")
+        transaction = _RecordingTransaction(
+            self.events,
+            fail_persistence=self.fail_persistence,
+            commit_status=self.commit_status,
+            context_status=self.context_status,
+        )
+        yield transaction
+        self.events.append("transaction_commit")
+
+
+class _IdempotentRecordingResumePort:
+    def __init__(self, events: list[str], *, fail: bool = False) -> None:
+        self.events = events
+        self.fail = fail
+        self.dispatched: set[WorkflowResumeIdentity] = set()
+
+    def enqueue_once(self, identity: WorkflowResumeIdentity) -> None:
+        if identity in self.dispatched:
+            return
+        self.events.append("resume_enqueue")
+        self.dispatched.add(identity)
+        if self.fail:
+            raise WorkflowResumeEnqueueError("queue unavailable")
+
+
+def test_handler_commits_before_enqueuing_workflow_resume() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(_RecordingRepository(events), _IdempotentRecordingResumePort(events))
+
+    result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.SUBMITTED
+    assert result.resume_enqueued is True
+    assert events == [
+        "transaction_begin",
+        "context_loaded",
+        "persistence_write",
+        "transaction_commit",
+        "resume_enqueue",
+    ]
+
+
+def test_persistence_failure_prevents_resume_enqueue() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events, fail_persistence=True),
+        _IdempotentRecordingResumePort(events),
+    )
+
+    with pytest.raises(RuntimeError, match="persistence failed"):
+        handler.handle(_command())
+
+    assert "resume_enqueue" not in events
+    assert "transaction_commit" not in events
+
+
+def test_enqueue_failure_preserves_submitted_result_and_logs_actionable_identifiers(caplog) -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events),
+        _IdempotentRecordingResumePort(events, fail=True),
+    )
+
+    with caplog.at_level("ERROR"):
+        result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.SUBMITTED
+    assert result.resume_enqueued is False
+    assert "transaction_commit" in events
+    assert "workspace-1" in caplog.text
+    assert "form-1" in caplog.text
+    assert "pause-1" in caplog.text
+    assert "node-execution-1" in caplog.text
+
+
+def test_resume_identity_is_duplicate_safe_through_the_port_contract() -> None:
+    events: list[str] = []
+    resume_port = _IdempotentRecordingResumePort(events)
+    handler = SubmitHumanInputFormHandler(_RecordingRepository(events), resume_port)
+
+    first = handler.handle(_command())
+    second = handler.handle(_command())
+
+    assert first.status is SubmitFormResultStatus.SUBMITTED
+    assert second.status is SubmitFormResultStatus.SUBMITTED
+    assert events.count("resume_enqueue") == 1
+    assert resume_port.dispatched == {
+        WorkflowResumeIdentity(
+            workspace_id=WorkspaceId("workspace-1"),
+            form_id=FormId("form-1"),
+            workflow_pause_id="pause-1",
+            node_execution_id="node-execution-1",
+        )
+    }
+
+
+def test_raw_proof_rejection_appends_audit_without_persistence_or_resume() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(_RecordingRepository(events), _IdempotentRecordingResumePort(events))
+
+    result = handler.handle(_command(proof="raw-session-token"))
+
+    assert result.status is SubmitFormResultStatus.REJECTED
+    assert result.rejection is not None
+    assert events == [
+        "transaction_begin",
+        "context_loaded",
+        "rejection_audit:raw_credential_not_verified",
+        "transaction_commit",
+    ]
+
+
+def test_already_completed_result_does_not_enqueue_resume() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events, commit_status=SubmissionCommitStatus.ALREADY_COMPLETED),
+        _IdempotentRecordingResumePort(events),
+    )
+
+    result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.ALREADY_COMPLETED
+    assert result.resume_enqueued is False
+    assert events == [
+        "transaction_begin",
+        "context_loaded",
+        "persistence_write",
+        "transaction_commit",
+    ]
+
+
+def test_form_already_submitted_rejection_maps_to_stable_already_completed_result() -> None:
+    events: list[str] = []
+    handler = SubmitHumanInputFormHandler(
+        _RecordingRepository(events, context_status=HumanInputV2FormStatus.SUBMITTED),
+        _IdempotentRecordingResumePort(events),
+    )
+
+    result = handler.handle(_command())
+
+    assert result.status is SubmitFormResultStatus.ALREADY_COMPLETED
+    assert result.rejection is None
+    assert result.resume_enqueued is False
+    assert events == [
+        "transaction_begin",
+        "context_loaded",
+        "rejection_audit:form_already_submitted",
+        "transaction_commit",
+    ]

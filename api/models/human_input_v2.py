@@ -242,6 +242,7 @@ class AccountSessionAuthorizationProof(_ImmutableJSONModel):
         default=_HumanInputAuthorizationProofType.ACCOUNT_SESSION,
         description="Discriminator for account-session authorization evidence.",
     )
+    account_id: str = Field(description="Current Dify Account authenticated by the verified session.")
 
 
 class EmailOTPAuthorizationProof(_ImmutableJSONModel):
@@ -275,7 +276,10 @@ class IMIdentityAuthorizationProof(_ImmutableJSONModel):
     )
     integration_id: str = Field(description="Historical Human Input IM integration identifier.")
     im_identity_id: str = Field(description="Historical Human Input IM identity identifier.")
-    im_binding_id: str = Field(description="Historical Human Input IM binding identifier.")
+    im_binding_id: str | None = Field(
+        default=None,
+        description="Current effective binding identifier, or null for Email fallback.",
+    )
     provider: _IMProvider = Field(strict=False, description="IM provider that authenticated the external identity.")
     provider_tenant_id: str = Field(description="Provider organization or workspace identifier.")
     provider_user_id: str = Field(description="Provider user identifier verified by the IM interaction.")
@@ -291,6 +295,7 @@ class TrustedEndUserAuthorizationProof(_ImmutableJSONModel):
         description="Discriminator for trusted end-user authorization evidence.",
     )
     app_id: str = Field(description="Application whose trusted context authenticated the end user.")
+    end_user_id: str = Field(description="Current EndUser authenticated by the trusted app context.")
 
 
 type FormAuthorizationProof = Annotated[
@@ -1601,7 +1606,7 @@ class HumanInputV2FormSubmission(DefaultFieldsDCMixin, TypeBase):
             "AND actor_normalized_email IS NULL) OR "
             "(actor_type = 'email_address' AND actor_account_id IS NULL AND actor_end_user_id IS NULL "
             "AND actor_normalized_email IS NOT NULL)",
-            name="actor_identity",
+            name=sa.schema.conv("hiv2_form_submissions_actor_identity_ck"),
         ),
         sa.Index("hiv2_form_submissions_tenant_submitted_idx", "tenant_id", "submitted_at", "id"),
         {"comment": "Immutable first successful Human Input v2 submission and its business actor."},
@@ -1719,7 +1724,11 @@ class HumanInputV2FormAuditEvent(DefaultFieldsDCMixin, TypeBase):
         sa.CheckConstraint(
             "event_type <> 'submission_authorized' OR "
             "(approver_grant_id IS NOT NULL AND authorization_proof IS NOT NULL)",
-            name="authorized_proof",
+            name=sa.schema.conv("hiv2_form_audit_authorized_proof_ck"),
+        ),
+        sa.CheckConstraint(
+            "event_type <> 'submission_rejected' OR reason_code IS NOT NULL",
+            name=sa.schema.conv("hiv2_form_audit_rejection_reason_ck"),
         ),
         {"comment": "Append-only Human Input v2 audit facts for security and operational queries."},
     )

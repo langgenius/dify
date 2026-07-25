@@ -1,0 +1,191 @@
+"""Application orchestration for authorized Human Input v2 submissions.
+
+The handler keeps authorization and persistence behind their deep domain and
+repository interfaces. Its only application-layer policy is the post-commit
+boundary: a winning runtime submission is committed before workflow resume is
+requested, and a known enqueue failure never changes the persisted outcome.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Protocol
+
+from core.human_input_v2.approval import (
+    AuthorizedSubmissionCommit,
+    FormAuthorizationAuditEvent,
+    FormAuthorizationAuditEventType,
+    FormSubmission,
+    FrozenJSONObject,
+    SubmissionAttemptScope,
+    SubmissionAuthorizationRejection,
+    SubmissionAuthorizer,
+    SubmissionCommitStatus,
+    SubmissionRepository,
+)
+from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, UtcTimestamp, WorkspaceId
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowResumeIdentity:
+    """Stable workflow owner identity used by an idempotent resume adapter."""
+
+    workspace_id: WorkspaceId
+    form_id: FormId
+    workflow_pause_id: str
+    node_execution_id: str
+
+
+class WorkflowResumeEnqueueError(RuntimeError):
+    """A resume adapter could not accept an idempotent enqueue request."""
+
+
+class WorkflowResumePort(Protocol):
+    """Enqueue workflow resume once for a stable form/workflow identity."""
+
+    def enqueue_once(self, identity: WorkflowResumeIdentity) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SubmitFormCommand:
+    """Verified proof and caller-owned record identities for one submission attempt."""
+
+    scope: SubmissionAttemptScope
+    proof: object
+    selected_action_id: str
+    input_snapshot: FrozenJSONObject
+    canonical_values: FrozenJSONObject
+    submission_id: SubmissionId
+    authorization_audit_event_id: AuditEventId
+    rejection_audit_event_id: AuditEventId
+    now: UtcTimestamp
+
+
+class SubmitFormResultStatus(StrEnum):
+    """Stable application outcomes independent of transport status codes."""
+
+    SUBMITTED = "submitted"
+    ALREADY_COMPLETED = "already_completed"
+    REJECTED = "rejected"
+
+
+@dataclass(frozen=True, slots=True)
+class SubmitFormResult:
+    """Submission outcome plus post-commit resume delivery state."""
+
+    status: SubmitFormResultStatus
+    submission: FormSubmission | None
+    rejection: SubmissionAuthorizationRejection | None
+    resume_enqueued: bool
+
+
+class SubmitHumanInputFormHandler:
+    """Authorize and persist once, then request idempotent workflow resume."""
+
+    def __init__(self, repository: SubmissionRepository, resume_port: WorkflowResumePort) -> None:
+        self._repository = repository
+        self._resume_port = resume_port
+
+    def handle(self, command: SubmitFormCommand) -> SubmitFormResult:
+        """Return a stable outcome while preserving commit-before-enqueue ordering."""
+
+        context = None
+        commit_result = None
+        rejection = None
+        with self._repository.transaction(command.scope) as transaction:
+            context = transaction.load_authorization_context(proof=command.proof)
+            decision = SubmissionAuthorizer.authorize(
+                context=context,
+                proof=command.proof,
+                selected_action_id=command.selected_action_id,
+                now=command.now,
+            )
+            if decision.rejection is not None:
+                rejection = decision.rejection
+                transaction.append_rejection_audit(
+                    FormAuthorizationAuditEvent(
+                        id=command.rejection_audit_event_id,
+                        event_type=FormAuthorizationAuditEventType.SUBMISSION_REJECTED,
+                        form_ref=command.scope.form_ref,
+                        approver_grant_id=command.scope.approver_grant_id,
+                        endpoint_id=command.scope.endpoint_id,
+                        channel=context.endpoint.channel if context.endpoint is not None else None,
+                        reason_code=rejection,
+                        reason_message=None,
+                        authorization_proof=None,
+                        payload=FrozenJSONObject.from_mapping({"selected_action_id": command.selected_action_id}),
+                        occurred_at=command.now,
+                        created_at=command.now,
+                        updated_at=command.now,
+                    )
+                )
+            else:
+                authorized = decision.authorized
+                assert authorized is not None
+                commit_result = transaction.commit_authorized_submission_once(
+                    AuthorizedSubmissionCommit(
+                        submission_id=command.submission_id,
+                        authorization_audit_event_id=command.authorization_audit_event_id,
+                        authorized=authorized,
+                        input_snapshot=command.input_snapshot,
+                        canonical_values=command.canonical_values,
+                    )
+                )
+
+        if rejection is not None:
+            if rejection is SubmissionAuthorizationRejection.FORM_ALREADY_SUBMITTED:
+                return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
+            return SubmitFormResult(SubmitFormResultStatus.REJECTED, None, rejection, False)
+        assert context is not None
+        assert commit_result is not None
+        if commit_result.status is SubmissionCommitStatus.ALREADY_COMPLETED:
+            return SubmitFormResult(SubmitFormResultStatus.ALREADY_COMPLETED, None, None, False)
+
+        workflow_pause_id = context.form.workflow_pause_id
+        node_execution_id = context.form.node_execution_id
+        if workflow_pause_id is None or node_execution_id is None:
+            raise RuntimeError("committed runtime submission is missing workflow resume identity")
+        identity = WorkflowResumeIdentity(
+            workspace_id=context.form.ref.workspace_id,
+            form_id=context.form.ref.form_id,
+            workflow_pause_id=workflow_pause_id,
+            node_execution_id=node_execution_id,
+        )
+        try:
+            self._resume_port.enqueue_once(identity)
+        except WorkflowResumeEnqueueError:
+            logger.exception(
+                "Failed to enqueue Human Input v2 workflow resume after submission commit: "
+                "workspace_id=%s form_id=%s workflow_pause_id=%s node_execution_id=%s",
+                identity.workspace_id,
+                identity.form_id,
+                identity.workflow_pause_id,
+                identity.node_execution_id,
+            )
+            return SubmitFormResult(
+                SubmitFormResultStatus.SUBMITTED,
+                commit_result.submission,
+                None,
+                False,
+            )
+        return SubmitFormResult(
+            SubmitFormResultStatus.SUBMITTED,
+            commit_result.submission,
+            None,
+            True,
+        )
+
+
+__all__ = [
+    "SubmitFormCommand",
+    "SubmitFormResult",
+    "SubmitFormResultStatus",
+    "SubmitHumanInputFormHandler",
+    "WorkflowResumeEnqueueError",
+    "WorkflowResumeIdentity",
+    "WorkflowResumePort",
+]
