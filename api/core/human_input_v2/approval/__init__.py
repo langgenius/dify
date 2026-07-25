@@ -1,8 +1,8 @@
-"""Human Input v2 recipient planning and frozen Form aggregate boundaries.
+"""Human Input v2 recipient planning, Form, and OTP aggregate boundaries.
 
-The package resolves immutable approval plans, owns Form lifecycle, grant,
-delivery, and upload facts, and exposes persistence ports without importing
-transport, provider, database-session, or ORM concerns.
+The package owns separate Form and OTP aggregate boundaries plus grant,
+delivery, and upload facts. It exposes domain and persistence ports without
+importing transport, provider, database-session, or ORM concerns.
 """
 
 from .delivery import (
@@ -34,7 +34,27 @@ from .form import (
     WaitingFormState,
 )
 from .frozen_values import FrozenJSONArray, FrozenJSONObject, JSONPrimitive
-from .grants import ApproverGrant, ApproverGrantRef, DeliveryEndpointRef, FormRef
+from .grants import ApproverGrant, ApproverGrantRef, DeliveryEndpointRef, FormRef, OTPChallengeRef
+from .otp import (
+    Clock,
+    ContactOTPSubject,
+    CurrentEmailOTPIdentity,
+    EmailAddressOTPSubject,
+    EmailOTPProofAuthorizationDecision,
+    EmailOTPSubject,
+    OTPChallenge,
+    OTPChallengePublicPrimitive,
+    OTPChallengeRejectionReason,
+    OTPChallengeRepository,
+    OTPChallengeState,
+    OTPCodeHash,
+    OTPCodeHasher,
+    OTPReplacementDecision,
+    OTPVerificationDecision,
+    VerifiedEmailOTPProof,
+    VerifiedEmailOTPProofPrimitive,
+    authorize_email_otp_proof,
+)
 from .ports import FormDefinitionProjection, FormDeliveryProjection, FormRepository
 from .recipient_resolution import (
     ApprovalSubject,
@@ -78,11 +98,14 @@ __all__ = [
     "ApproverGrant",
     "ApproverGrantRef",
     "CanonicalSubjectKey",
+    "Clock",
     "ConsoleEndpointConfiguration",
     "ConsoleEndpointPlan",
     "ContactApprovalSubject",
     "ContactInitiatorSnapshot",
+    "ContactOTPSubject",
     "ContactRecipientSpecification",
+    "CurrentEmailOTPIdentity",
     "CurrentInitiatorRecipientSpecification",
     "DebugRecipientReplacement",
     "DeliveryAttempt",
@@ -94,8 +117,11 @@ __all__ = [
     "DynamicEmailRecipientSpecification",
     "DynamicRecipientValue",
     "EmailAddressApprovalSubject",
+    "EmailAddressOTPSubject",
     "EmailEndpointConfiguration",
     "EmailEndpointPlan",
+    "EmailOTPProofAuthorizationDecision",
+    "EmailOTPSubject",
     "EmailProviderConfiguration",
     "EndUserApprovalSubject",
     "EndUserInitiatorSnapshot",
@@ -120,6 +146,16 @@ __all__ = [
     "InvalidSelectedActionError",
     "JSONPrimitive",
     "MatchedRecipientSource",
+    "OTPChallenge",
+    "OTPChallengePublicPrimitive",
+    "OTPChallengeRef",
+    "OTPChallengeRejectionReason",
+    "OTPChallengeRepository",
+    "OTPChallengeState",
+    "OTPCodeHash",
+    "OTPCodeHasher",
+    "OTPReplacementDecision",
+    "OTPVerificationDecision",
     "OneTimeEmailRecipientSpecification",
     "RecipientRejectionReason",
     "RecipientResolutionFailureReason",
@@ -136,8 +172,11 @@ __all__ = [
     "UploadCapability",
     "UploadCapabilityRef",
     "UploadFileAssociation",
+    "VerifiedEmailOTPProof",
+    "VerifiedEmailOTPProofPrimitive",
     "WaitingFormState",
     "WebEndpointConfiguration",
     "WebEndpointPlan",
     "WorkflowRecipientSpecificationAdapter",
+    "authorize_email_otp_proof",
 ]

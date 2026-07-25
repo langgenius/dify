@@ -245,14 +245,25 @@ class AccountSessionAuthorizationProof(_ImmutableJSONModel):
 
 
 class EmailOTPAuthorizationProof(_ImmutableJSONModel):
-    """Successful email OTP verification retained without the plaintext code."""
+    """Successful Email verification retained without plaintext or hash material."""
 
     type: Literal[_HumanInputAuthorizationProofType.EMAIL_OTP] = Field(
         default=_HumanInputAuthorizationProofType.EMAIL_OTP,
         description="Discriminator for email OTP authorization evidence.",
     )
     otp_challenge_id: str = Field(description="Historical Human Input OTP challenge identifier.")
-    verified_email_hash: str = Field(description="SHA-256 hash of the normalized verified email address.")
+    form_id: str = Field(description="Human Input v2 form identifier scoped by the verified challenge.")
+    approver_grant_id: str = Field(description="Approver grant identifier scoped by the verified challenge.")
+    subject_type: _HumanInputApproverGrantSubjectType = Field(
+        strict=False,
+        description="Contact or standalone Email subject verified by the challenge.",
+    )
+    contact_id: str | None = Field(
+        default=None,
+        description="Contact incarnation captured for a contact-backed proof.",
+    )
+    verified_email: str = Field(description="Normalized Email address verified by the challenge.")
+    verified_at: datetime = Field(description="Timestamp at which the challenge verified the Email address.")
 
 
 class IMIdentityAuthorizationProof(_ImmutableJSONModel):
@@ -1438,21 +1449,39 @@ class HumanInputV2FormDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
 
 
 class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
-    """Hashed email proof challenge scoped to one form and approver grant.
+    """Hashed Email proof session scoped to one form and approver grant.
 
-    Resend replaces the current challenge. The service must lock the grant
-    before issuing a replacement so only one pending challenge remains usable.
+    Resend locks the stable grant row, invalidates the previous current session,
+    inserts its replacement, and calls a transaction-scoped audit port. The
+    Submission Runtime persistence layer owns the concrete shared audit record.
+    ``contact_id`` captures the Contact incarnation so deleting and recreating
+    the same Email cannot make historical proof current. Plaintext code and
+    challenge tokens never enter this record.
     """
 
     __tablename__ = "human_input_v2_form_otp_challenges"
     __table_args__ = (
         sa.UniqueConstraint("challenge_token_hash", name="hiv2_form_otp_challenges_token_uq"),
+        sa.CheckConstraint(
+            "(subject_type = 'contact' AND contact_id IS NOT NULL) OR "
+            "(subject_type = 'email_address' AND contact_id IS NULL)",
+            name="subject_identity",
+        ),
+        sa.CheckConstraint("send_count >= 1 AND send_count <= 5", name="send_count_range"),
+        sa.CheckConstraint("attempt_count >= 0 AND attempt_count <= 5", name="attempt_count_range"),
+        sa.CheckConstraint(
+            "(status = 'verified' AND verified_at IS NOT NULL AND invalidated_at IS NULL) OR "
+            "(status = 'invalidated' AND verified_at IS NULL AND invalidated_at IS NOT NULL) OR "
+            "(status IN ('pending', 'expired') AND verified_at IS NULL AND invalidated_at IS NULL)",
+            name="terminal_timestamps",
+        ),
         sa.Index(
-            "hiv2_form_otp_form_grant_status_created_idx",
+            "hiv2_form_otp_scope_created_idx",
+            "tenant_id",
             "form_id",
             "approver_grant_id",
-            "status",
             "created_at",
+            "id",
         ),
         {"comment": "Hashed OTP proof sessions for email-based Human Input v2 approval."},
     )
@@ -1466,11 +1495,19 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         nullable=False,
         comment="Logical foreign key to human_input_v2_form_approver_grants.id.",
     )
+    subject_type: Mapped[_HumanInputApproverGrantSubjectType] = mapped_column(
+        EnumText(_HumanInputApproverGrantSubjectType),
+        nullable=False,
+        comment="Contact or standalone Email identity verified by this proof session.",
+    )
     challenge_token_hash: Mapped[str] = mapped_column(
         sa.String(64), nullable=False, comment="SHA-256 hash of the ephemeral challenge token."
     )
     code_hash: Mapped[str] = mapped_column(
         sa.String(255), nullable=False, comment="Slow password hash of the one-time verification code."
+    )
+    code_hash_algorithm: Mapped[str] = mapped_column(
+        sa.String(50), nullable=False, comment="Verifier algorithm discriminator for code_hash."
     )
     email_hash: Mapped[str] = mapped_column(
         sa.String(64), nullable=False, comment="SHA-256 of the normalized destination email."
@@ -1484,6 +1521,12 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
     expires_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, comment="Challenge expiration timestamp.")
     resend_after: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, comment="Earliest timestamp at which a replacement may be issued."
+    )
+    contact_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Logical foreign key to human_input_contacts.id for the captured Contact incarnation.",
     )
     send_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, default=1, comment="Number of OTP emails issued for this form approver grant."
@@ -1510,6 +1553,13 @@ class HumanInputV2FormOTPChallenge(DefaultFieldsDCMixin, TypeBase):
         primaryjoin=lambda: (
             orm.foreign(HumanInputV2FormOTPChallenge.approver_grant_id) == HumanInputV2FormApproverGrant.id
         ),
+        viewonly=True,
+        lazy="raise",
+        init=False,
+    )
+    contact: Mapped[HumanInputContact | None] = relationship(
+        lambda: HumanInputContact,
+        primaryjoin=lambda: orm.foreign(HumanInputV2FormOTPChallenge.contact_id) == HumanInputContact.id,
         viewonly=True,
         lazy="raise",
         init=False,

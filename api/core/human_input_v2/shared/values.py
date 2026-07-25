@@ -58,6 +58,10 @@ class ApproverGrantId(_Identifier):
     """Identifier of one form-scoped approver grant."""
 
 
+class OTPChallengeId(_Identifier):
+    """Identifier of one grant-scoped OTP proof session."""
+
+
 class DeliveryEndpointId(_Identifier):
     """Identifier of one frozen form delivery endpoint."""
 

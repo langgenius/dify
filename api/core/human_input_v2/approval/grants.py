@@ -14,6 +14,7 @@ from core.human_input_v2.shared import (
     ApproverGrantId,
     DeliveryEndpointId,
     FormId,
+    OTPChallengeId,
     UtcTimestamp,
     WorkspaceId,
 )
@@ -62,6 +63,21 @@ class ApproverGrantRef:
 
     def endpoint(self, endpoint_id: DeliveryEndpointId) -> DeliveryEndpointRef:
         return DeliveryEndpointRef(self, endpoint_id)
+
+    def challenge(self, challenge_id: OTPChallengeId) -> OTPChallengeRef:
+        return OTPChallengeRef(self, challenge_id)
+
+
+@dataclass(frozen=True, slots=True)
+class OTPChallengeRef:
+    """OTP proof-session reference carrying its complete grant owner chain."""
+
+    grant_ref: ApproverGrantRef
+    challenge_id: OTPChallengeId
+
+    @property
+    def form_ref(self) -> FormRef:
+        return self.grant_ref.form_ref
 
 
 @dataclass(frozen=True, slots=True)
