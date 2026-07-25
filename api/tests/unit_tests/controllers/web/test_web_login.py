@@ -13,8 +13,8 @@ from werkzeug.exceptions import Unauthorized
 import services.errors.account
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
-from models.model import DifySetup
 from enums.deployment_edition import DeploymentEdition
+from models.model import DifySetup
 from services.entities.auth_entities import LoginFailureReason
 
 pytestmark = pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
