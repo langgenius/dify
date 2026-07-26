@@ -55,6 +55,7 @@ describe('explore service normalizers', () => {
       icon_background: '',
       mode: 'rag-pipeline',
       export_data: 'kind: app',
+      can_trial: false,
     })
 
     await expect(fetchAppList()).resolves.toMatchObject({

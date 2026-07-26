@@ -275,7 +275,12 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData, tria
       {/* Result */}
       <div className={cn('h-full w-0 grow')}>
         {!isPC && (
-          <div
+          <button
+            type="button"
+            aria-expanded={isShowResultPanel}
+            aria-label={t(($) => $[isShowResultPanel ? 'chat.collapse' : 'chat.expand'], {
+              ns: 'share',
+            })}
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
@@ -286,8 +291,8 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData, tria
               else showResultPanel()
             }}
           >
-            <div className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
-          </div>
+            <span className="h-1 w-8 cursor-grab rounded-sm bg-divider-solid" />
+          </button>
         )}
         {renderResWrap}
       </div>
