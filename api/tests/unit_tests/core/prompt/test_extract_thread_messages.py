@@ -11,6 +11,7 @@ from core.prompt.utils.get_thread_messages_length import get_thread_messages_len
 from models.enums import ConversationFromSource
 from models.model import Message
 
+
 def _persisted_message(
     *,
     message_id: str,
