@@ -37,6 +37,6 @@ Read this document when a component consumes generated contracts, nullable API v
 
 - Static configuration owns path-invariant routing. Request-dependent authentication, setup, role, and tenant decisions belong to SSR or runtime decision boundaries.
 - Distinguish soft SSR cache warming from authoritative decisions. Prefetched or placeholder data must not grant access or represent successful availability.
-- Treat workspace switching as a tenant-context boundary, not ordinary CRUD invalidation. Tenant-scoped state and caches must cross that boundary together.
-- Model SSR bootstrap data as pending, authoritative, or unavailable. Preserve explicit recovery or fail-closed behavior, and never treat placeholders as authoritative values.
-- Solve route-local loading and Suspense behavior at the owning boundary; do not create global domain contracts merely to satisfy rendering mechanics.
+- Never reuse tenant-scoped state after switching workspaces. Discard it at the switch boundary or isolate it by workspace identity.
+- Do not make product or authorization decisions from bootstrap defaults. Wait for authoritative data, or render an explicit loading or error state.
+- Keep loading and Suspense behavior inside the feature that owns the request. Do not add fake global data merely to bypass that boundary.
