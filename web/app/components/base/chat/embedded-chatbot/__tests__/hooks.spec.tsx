@@ -1031,4 +1031,22 @@ describe('useEmbeddedChatbot', () => {
       })
     })
   })
+
+  // Scenario: a stale conversation_id that 404s is cleared from localStorage
+  // so the chatbot falls back to a new conversation instead of looping (issue #39484).
+  describe('Stale conversation recovery', () => {
+    it('clears conversationIdInfo from localStorage when chat list returns 404', async () => {
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { DEFAULT: 'stale-conversation-id' } }),
+      )
+      mockFetchChatList.mockRejectedValue(new Response(null, { status: 404 }))
+
+      await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(localStorage.getItem(CONVERSATION_ID_INFO)).not.toContain('app-1')
+      })
+    })
+  })
 })
