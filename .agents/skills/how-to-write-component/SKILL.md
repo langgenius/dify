@@ -21,15 +21,21 @@ Use this skill to route component architecture decisions to its bundled referenc
 
 ## Topic Routing
 
-- Component moves, module boundaries, props, types, or owner placement: read [`references/ownership.md`](references/ownership.md).
-- Jotai, form drafts, route identity, URL state, or persistence: read [`references/state.md`](references/state.md).
-- Generated contracts, nullable API data, Query, mutations, SSR, auth, or workspace state: read [`references/data.md`](references/data.md).
-- Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`](references/interactions.md) and the overlay guide it references when applicable.
-- Effects, navigation, memoization, preloading, or render cost: read [`references/runtime.md`](references/runtime.md).
+- Component moves, module boundaries, props, types, or owner placement: read [`references/ownership.md`][ownership].
+- Jotai, form drafts, route identity, URL state, or persistence: read [`references/state.md`][state].
+- Generated contracts, nullable API data, Query, mutations, SSR, auth, or workspace state: read [`references/data.md`][data].
+- Hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces: read [`references/interactions.md`][interactions] and the overlay guide it references when applicable.
+- Effects, navigation, memoization, preloading, or render cost: read [`references/runtime.md`][runtime].
 
 ## Workflow
 
 1. Identify the behavior owner and the public contract being changed.
 2. Read the nearby implementation, tests, and only the routed skill references.
 3. Implement one coherent vertical slice. Do not expand into equivalent patterns elsewhere unless the current contract cannot be completed without them.
-4. Verify observable behavior at the narrowest sufficient boundary, then run the relevant package checks from `web/docs/test.md` or `web/docs/lint.md` when applicable.
+4. Verify observable behavior at the narrowest sufficient boundary, then run the checks documented by the owning package: `web/docs/test.md` or `web/docs/lint.md` for Web, and the `packages/dify-ui/README.md` Development section for Dify UI.
+
+[data]: references/data.md
+[interactions]: references/interactions.md
+[ownership]: references/ownership.md
+[runtime]: references/runtime.md
+[state]: references/state.md

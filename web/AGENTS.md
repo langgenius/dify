@@ -2,7 +2,7 @@
 
 - Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
 - Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
-- Use `frontend-code-review` only for explicit frontend review or audit requests, and `frontend-testing` for Vitest or React Testing Library work.
+- Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
 ## Package Contracts
 

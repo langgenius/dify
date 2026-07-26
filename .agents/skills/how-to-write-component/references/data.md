@@ -5,7 +5,7 @@ Read this document when a component consumes generated contracts, nullable API v
 ## Generated Contracts
 
 - Treat generated contracts as authoritative at API, query, mutation, cache, and service boundaries. Enterprise APIs use `packages/contracts/generated/enterprise/*`.
-- Keep `web/contract/*` as the API-shape source of truth and follow the generated `{ params, query?, body? }` input shape.
+- Backend Pydantic and OpenAPI schemas own API shape. Follow the generated `{ params, query?, body? }` input shape; when it is wrong, fix the backend schema and regenerate `packages/contracts/generated/*`.
 - Do not hand-write DTO mirrors, widen generated fields or enums, edit generated output, or add a parallel frontend status layer unless it models product state absent from the API.
 - Check deprecated markers, schema shape, and the actual consumer before assuming that a generated operation is ready to use.
 - Normalize only at real boundaries such as user input, search, URL params, filenames, DOM IDs, or a required legacy adapter.

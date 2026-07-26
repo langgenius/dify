@@ -2,8 +2,6 @@
 
 Onboarding ref for `dify/cli/` contributors. Cover canonical patterns, layer contracts, scaffolding recipe, dev workflow, anti-patterns. Read before adding command or touching shared infra.
 
-Spec authority: [`docs/specs/`]. Specs own HTTP wire shape + server behavior; this file owns CLI code structure.
-
 ---
 
 ## Project layout
@@ -17,7 +15,7 @@ src/
   config/            config.yml read/write
   errors/            BaseError, ErrorCode, exit codes
   http/              ky client factory + middleware
-  io/                IOStreams, spinner, printer chain
+  sys/io/            IOStreams, prompts, spinner, output rendering
   limit/             --limit flag parsing
   types/             shared TypeScript types
   util/              small pure helpers
@@ -359,5 +357,3 @@ Run `pnpm -w check:fix` for Oxlint, ESLint, TypeScript, and Oxfmt fixes and diag
 | `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                                     |
 | `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`                           |
 | New dependency without approval                                      | Check first                                                                |
-
-[`docs/specs/`]: docs/specs/

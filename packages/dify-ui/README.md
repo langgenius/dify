@@ -137,7 +137,7 @@ Choose the primitive by its value contract:
 - `Combobox` selects and remembers one or more values from a searchable collection.
 - `Select` chooses from a closed, scannable list without text entry.
 
-Keep Base UI anatomy visible in public APIs instead of wrapping a picker into one business component. Multiple-selection comboboxes follow the official chips composition: chips and input share the input group, chips wrap, and the group grows vertically. Picker content owns its portal, uses the package overlay layer, and sizes from `--anchor-width` with viewport-aware maximum width; do not force a minimum width that defeats viewport clamping.
+Keep Base UI anatomy visible in public APIs instead of wrapping a picker into one business component. Multiple-selection comboboxes follow the official chips composition: chips and input share the input group, chips wrap, and the group grows vertically. Autocomplete and Combobox popups own their portals, use the package overlay layer, and size from `--anchor-width` with viewport-aware maximum width; do not force a minimum width that defeats viewport clamping.
 
 ## Tailwind CSS v4 integration
 
@@ -216,7 +216,7 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 
 ## Development
 
-- `vp run @langgenius/dify-ui#lint` (from the repository root) — strict Oxlint checks for component source, stories, tests, and package configuration.
+- `vp check packages/dify-ui` (from the repository root) — formatting, lint, and TypeScript diagnostics for the package.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
