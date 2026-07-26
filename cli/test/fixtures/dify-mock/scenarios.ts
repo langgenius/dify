@@ -1,24 +1,24 @@
-export type Scenario
-  = | 'happy'
-    | 'sso'
-    | 'no-email'
-    | 'denied'
-    | 'expired'
-    | 'auth-expired'
-    | 'rate-limited'
-    | 'server-5xx'
-    | 'slow-down'
-    | 'stream-error'
-    | 'hitl-pause'
-    | 'hitl-resume'
-    | 'server-version-empty'
-    | 'server-version-unsupported'
-    | 'run-422-stale'
-    | 'workflow-think'
-    | 'chat-reasoning'
-    | 'workflow-reasoning'
-    | 'import-pending'
-    | 'import-failed'
+export type Scenario =
+  | 'happy'
+  | 'sso'
+  | 'no-email'
+  | 'denied'
+  | 'expired'
+  | 'auth-expired'
+  | 'rate-limited'
+  | 'server-5xx'
+  | 'slow-down'
+  | 'stream-error'
+  | 'hitl-pause'
+  | 'hitl-resume'
+  | 'server-version-empty'
+  | 'server-version-unsupported'
+  | 'run-422-stale'
+  | 'workflow-think'
+  | 'chat-reasoning'
+  | 'workflow-reasoning'
+  | 'import-pending'
+  | 'import-failed'
 
 export type AccountFixture = {
   id: string
@@ -73,8 +73,20 @@ export const ACCOUNT: AccountFixture = {
 }
 
 export const WORKSPACES: WorkspaceFixture[] = [
-  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner', status: 'normal', is_current: true },
-  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Other', role: 'normal', status: 'normal', is_current: false },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    name: 'Default',
+    role: 'owner',
+    status: 'normal',
+    is_current: true,
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    name: 'Other',
+    role: 'normal',
+    status: 'normal',
+    is_current: false,
+  },
 ]
 
 export const APPS: AppFixture[] = [

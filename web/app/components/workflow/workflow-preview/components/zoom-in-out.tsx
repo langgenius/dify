@@ -7,15 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  Fragment,
-  memo,
-} from 'react'
+import { Fragment, memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useReactFlow,
-  useViewport,
-} from 'reactflow'
+import { useReactFlow, useViewport } from 'reactflow'
 import TipPopup from '@/app/components/workflow/operator/tip-popup'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
@@ -28,16 +22,11 @@ const ZoomType = {
   zoomTo200: 'zoomTo200',
 } as const
 
-type ZoomType = typeof ZoomType[keyof typeof ZoomType]
+type ZoomType = (typeof ZoomType)[keyof typeof ZoomType]
 
 const ZoomInOut: FC = () => {
   const { t } = useTranslation()
-  const {
-    zoomIn,
-    zoomOut,
-    zoomTo,
-    fitView,
-  } = useReactFlow()
+  const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const { zoom } = useViewport()
 
   const zoomOptions = [
@@ -66,29 +55,23 @@ const ZoomInOut: FC = () => {
     [
       {
         key: ZoomType.zoomToFit,
-        text: t($ => $['operator.zoomToFit'], { ns: 'workflow' }),
+        text: t(($) => $['operator.zoomToFit'], { ns: 'workflow' }),
       },
     ],
   ]
 
   const handleZoom = (type: ZoomType) => {
-    if (type === ZoomType.zoomToFit)
-      fitView()
+    if (type === ZoomType.zoomToFit) fitView()
 
-    if (type === ZoomType.zoomTo25)
-      zoomTo(0.25)
+    if (type === ZoomType.zoomTo25) zoomTo(0.25)
 
-    if (type === ZoomType.zoomTo50)
-      zoomTo(0.5)
+    if (type === ZoomType.zoomTo50) zoomTo(0.5)
 
-    if (type === ZoomType.zoomTo75)
-      zoomTo(0.75)
+    if (type === ZoomType.zoomTo75) zoomTo(0.75)
 
-    if (type === ZoomType.zoomTo100)
-      zoomTo(1)
+    if (type === ZoomType.zoomTo100) zoomTo(1)
 
-    if (type === ZoomType.zoomTo200)
-      zoomTo(2)
+    if (type === ZoomType.zoomTo200) zoomTo(2)
   }
 
   return (
@@ -101,29 +84,30 @@ const ZoomInOut: FC = () => {
     >
       <div className="flex h-8 w-[98px] items-center justify-between rounded-lg">
         <TipPopup
-          title={t($ => $['operator.zoomOut'], { ns: 'workflow' })}
+          title={t(($) => $['operator.zoomOut'], { ns: 'workflow' })}
           shortcut="workflow.zoom-out"
         >
           <button
             type="button"
-            aria-label={t($ => $['operator.zoomOut'], { ns: 'workflow' })}
+            aria-label={t(($) => $['operator.zoomOut'], { ns: 'workflow' })}
             disabled={zoom <= 0.25}
             className={`flex size-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {
-              if (zoom <= 0.25)
-                return
+              if (zoom <= 0.25) return
 
               e.stopPropagation()
               zoomOut()
             }}
           >
-            <span aria-hidden className="i-ri-zoom-out-line size-4 text-text-tertiary hover:text-text-secondary" />
+            <span
+              aria-hidden
+              className="i-ri-zoom-out-line size-4 text-text-tertiary hover:text-text-secondary"
+            />
           </button>
         </TipPopup>
         <DropdownMenu>
           <DropdownMenuTrigger className="flex h-8 w-[34px] items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
-            {Number.parseFloat(`${zoom * 100}`).toFixed(0)}
-            %
+            {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="top-start"
@@ -134,11 +118,9 @@ const ZoomInOut: FC = () => {
             <div className="w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
               {zoomOptions.map((options, groupIndex) => (
                 <Fragment key={options[0]!.key}>
-                  {groupIndex !== 0 && (
-                    <DropdownMenuSeparator className="my-0" />
-                  )}
+                  {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
                   <div className="p-1">
-                    {options.map(option => (
+                    {options.map((option) => (
                       <DropdownMenuItem
                         key={option.key}
                         className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
@@ -165,23 +147,25 @@ const ZoomInOut: FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
         <TipPopup
-          title={t($ => $['operator.zoomIn'], { ns: 'workflow' })}
+          title={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"
         >
           <button
             type="button"
-            aria-label={t($ => $['operator.zoomIn'], { ns: 'workflow' })}
+            aria-label={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
             disabled={zoom >= 2}
             className={`flex size-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
             onClick={(e) => {
-              if (zoom >= 2)
-                return
+              if (zoom >= 2) return
 
               e.stopPropagation()
               zoomIn()
             }}
           >
-            <span aria-hidden className="i-ri-zoom-in-line size-4 text-text-tertiary hover:text-text-secondary" />
+            <span
+              aria-hidden
+              className="i-ri-zoom-in-line size-4 text-text-tertiary hover:text-text-secondary"
+            />
           </button>
         </TipPopup>
       </div>

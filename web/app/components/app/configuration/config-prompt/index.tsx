@@ -3,9 +3,7 @@ import type { FC } from 'react'
 import type { PromptItem, PromptVariable } from '@/models/debug'
 import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiAddLine,
-} from '@remixicon/react'
+import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,23 +62,27 @@ const Prompt: FC<IPromptProps> = ({
         draft[index as number]!.text = value
       })
       setCurrentAdvancedPrompt(newPrompt, true)
-    }
-    else {
+    } else {
       const prompt = currentAdvancedPrompt as PromptItem
-      setCurrentAdvancedPrompt({
-        ...prompt,
-        text: value,
-      }, true)
+      setCurrentAdvancedPrompt(
+        {
+          ...prompt,
+          text: value,
+        },
+        true,
+      )
     }
   }
 
   const handleAddMessage = () => {
     const currentAdvancedPromptList = currentAdvancedPrompt as PromptItem[]
     if (currentAdvancedPromptList.length === 0) {
-      setCurrentAdvancedPrompt([{
-        role: PromptRole.system,
-        text: '',
-      }])
+      setCurrentAdvancedPrompt([
+        {
+          role: PromptRole.system,
+          text: '',
+        },
+      ])
       return
     }
     const lastMessageType = currentAdvancedPromptList[currentAdvancedPromptList.length - 1]?.role
@@ -121,50 +123,46 @@ const Prompt: FC<IPromptProps> = ({
   return (
     <div>
       <div className="space-y-3">
-        {modelModeType === ModelModeType.chat
-          ? (
-              (currentAdvancedPrompt as PromptItem[]).map((item, index) => (
-                <AdvancedMessageInput
-                  key={index}
-                  isChatMode
-                  type={item.role as PromptRole}
-                  value={item.text}
-                  onTypeChange={type => handleMessageTypeChange(index, type)}
-                  canDelete={(currentAdvancedPrompt as PromptItem[]).length > 1}
-                  onDelete={() => handlePromptDelete(index)}
-                  onChange={value => handleValueChange(value, index)}
-                  promptVariables={promptVariables}
-                  isContextMissing={isContextMissing && !isHideContextMissTip}
-                  onHideContextMissingTip={() => setIsHideContextMissTip(true)}
-                  noResize={noResize}
-                />
-              ))
-            )
-          : (
-              <AdvancedMessageInput
-                type={(currentAdvancedPrompt as PromptItem).role as PromptRole}
-                isChatMode={false}
-                value={(currentAdvancedPrompt as PromptItem).text}
-                onTypeChange={type => handleMessageTypeChange(0, type)}
-                canDelete={false}
-                onDelete={() => handlePromptDelete(0)}
-                onChange={value => handleValueChange(value)}
-                promptVariables={promptVariables}
-                isContextMissing={isContextMissing && !isHideContextMissTip}
-                onHideContextMissingTip={() => setIsHideContextMissTip(true)}
-                noResize={noResize}
-              />
-            )}
+        {modelModeType === ModelModeType.chat ? (
+          (currentAdvancedPrompt as PromptItem[]).map((item, index) => (
+            <AdvancedMessageInput
+              key={index}
+              isChatMode
+              type={item.role as PromptRole}
+              value={item.text}
+              onTypeChange={(type) => handleMessageTypeChange(index, type)}
+              canDelete={(currentAdvancedPrompt as PromptItem[]).length > 1}
+              onDelete={() => handlePromptDelete(index)}
+              onChange={(value) => handleValueChange(value, index)}
+              promptVariables={promptVariables}
+              isContextMissing={isContextMissing && !isHideContextMissTip}
+              onHideContextMissingTip={() => setIsHideContextMissTip(true)}
+              noResize={noResize}
+            />
+          ))
+        ) : (
+          <AdvancedMessageInput
+            type={(currentAdvancedPrompt as PromptItem).role as PromptRole}
+            isChatMode={false}
+            value={(currentAdvancedPrompt as PromptItem).text}
+            onTypeChange={(type) => handleMessageTypeChange(0, type)}
+            canDelete={false}
+            onDelete={() => handlePromptDelete(0)}
+            onChange={(value) => handleValueChange(value)}
+            promptVariables={promptVariables}
+            isContextMissing={isContextMissing && !isHideContextMissTip}
+            onHideContextMissingTip={() => setIsHideContextMissTip(true)}
+            noResize={noResize}
+          />
+        )}
       </div>
-      {(modelModeType === ModelModeType.chat && (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH) && (
-        <Button
-          onClick={handleAddMessage}
-          className="mt-3 w-full"
-        >
-          <RiAddLine className="mr-2 size-4" />
-          <div>{t($ => $['promptMode.operation.addMessage'], { ns: 'appDebug' })}</div>
-        </Button>
-      )}
+      {modelModeType === ModelModeType.chat &&
+        (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH && (
+          <Button onClick={handleAddMessage} className="mt-3 w-full">
+            <RiAddLine className="mr-2 size-4" />
+            <div>{t(($) => $['promptMode.operation.addMessage'], { ns: 'appDebug' })}</div>
+          </Button>
+        )}
     </div>
   )
 }

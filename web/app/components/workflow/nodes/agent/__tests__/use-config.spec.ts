@@ -42,7 +42,8 @@ vi.mock('@/service/use-strategy', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: (...args: unknown[]) => mockUseFetchPluginsInMarketPlaceByIds(...args),
+  useFetchPluginsInMarketPlaceByIds: (...args: unknown[]) =>
+    mockUseFetchPluginsInMarketPlaceByIds(...args),
   useCheckInstalled: (...args: unknown[]) => mockUseCheckInstalled(...args),
 }))
 
@@ -150,37 +151,45 @@ describe('agent/use-config', () => {
       handleAddVariable,
     } as never)
     mockUseAvailableVarList.mockReturnValue({
-      availableVars: [{
-        nodeId: 'node-1',
-        title: 'Start',
-        vars: [{
-          variable: 'topic',
-          type: WorkflowVarType.string,
-        }],
-      }],
-      availableNodesWithParent: [{
-        nodeId: 'node-1',
-        title: 'Start',
-      }],
+      availableVars: [
+        {
+          nodeId: 'node-1',
+          title: 'Start',
+          vars: [
+            {
+              variable: 'topic',
+              type: WorkflowVarType.string,
+            },
+          ],
+        },
+      ],
+      availableNodesWithParent: [
+        {
+          nodeId: 'node-1',
+          title: 'Start',
+        },
+      ],
     } as never)
     mockUseStrategyProviderDetail.mockReturnValue({
       isLoading: false,
       isError: false,
       data: {
         declaration: {
-          strategies: [{
-            identity: {
-              name: 'react',
+          strategies: [
+            {
+              identity: {
+                name: 'react',
+              },
+              parameters: [
+                createStrategyParam(),
+                createStrategyParam({
+                  name: 'modelParam',
+                  type: FormTypeEnum.modelSelector,
+                  required: false,
+                }),
+              ],
             },
-            parameters: [
-              createStrategyParam(),
-              createStrategyParam({
-                name: 'modelParam',
-                type: FormTypeEnum.modelSelector,
-                required: false,
-              }),
-            ],
-          }],
+          ],
         },
       },
       refetch: providerRefetch,
@@ -196,18 +205,23 @@ describe('agent/use-config', () => {
     } as never)
     mockUseCheckInstalled.mockReturnValue({
       data: {
-        plugins: [{
-          declaration: {
-            label: { en_US: 'Installed Agent Plugin' },
+        plugins: [
+          {
+            declaration: {
+              label: { en_US: 'Installed Agent Plugin' },
+            },
           },
-        }],
+        ],
       },
     } as never)
-    mockToolParametersToFormSchemas.mockImplementation(value => value as never)
-    mockGenerateAgentToolValue.mockImplementation((_value, schemas, isLLM) => ({
-      kind: isLLM ? 'llm' : 'setting',
-      fields: (schemas as Array<{ variable: string }>).map(item => item.variable),
-    }) as never)
+    mockToolParametersToFormSchemas.mockImplementation((value) => value as never)
+    mockGenerateAgentToolValue.mockImplementation(
+      (_value, schemas, isLLM) =>
+        ({
+          kind: isLLM ? 'llm' : 'setting',
+          fields: (schemas as Array<{ variable: string }>).map((item) => item.variable),
+        }) as never,
+    )
   })
 
   it('returns an undefined strategy status while strategy data is still loading and can refetch dependencies', () => {
@@ -283,10 +297,12 @@ describe('agent/use-config', () => {
       isExistInPlugin: true,
     })
     expect(result.current.availableVars).toHaveLength(1)
-    expect(result.current.availableNodesWithParent).toEqual([{
-      nodeId: 'node-1',
-      title: 'Start',
-    }])
+    expect(result.current.availableNodesWithParent).toEqual([
+      {
+        nodeId: 'node-1',
+        title: 'Start',
+      },
+    ])
     expect(result.current.outputSchema).toEqual([
       { name: 'summary', type: 'String', description: 'summary output' },
       { name: 'items', type: 'Array[Number]', description: 'items output' },
@@ -311,30 +327,36 @@ describe('agent/use-config', () => {
       } as AgentNodeType['memory'])
     })
 
-    expect(setInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      agent_parameters: {
-        instruction: {
-          type: VarType.variable,
-          value: '#start.updated#',
-        },
-        modelParam: {
-          type: VarType.constant,
-          value: {
-            provider: 'anthropic',
-            model: 'claude-sonnet',
+    expect(setInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        agent_parameters: {
+          instruction: {
+            type: VarType.variable,
+            value: '#start.updated#',
+          },
+          modelParam: {
+            type: VarType.constant,
+            value: {
+              provider: 'anthropic',
+              model: 'claude-sonnet',
+            },
           },
         },
-      },
-    }))
-    expect(setInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      memory: {
-        window: {
-          enabled: true,
-          size: 6,
+      }),
+    )
+    expect(setInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        memory: {
+          window: {
+            enabled: true,
+            size: 6,
+          },
+          query_prompt_template: 'history',
         },
-        query_prompt_template: 'history',
-      },
-    }))
+      }),
+    )
     expect(result.current.handleVarListChange).toBe(handleVarListChange)
     expect(result.current.handleAddVariable).toBe(handleAddVariable)
     expect(result.current.pluginDetail).toEqual({
@@ -363,23 +385,25 @@ describe('agent/use-config', () => {
       isError: false,
       data: {
         declaration: {
-          strategies: [{
-            identity: {
-              name: 'react',
+          strategies: [
+            {
+              identity: {
+                name: 'react',
+              },
+              parameters: [
+                createStrategyParam({
+                  name: 'toolParam',
+                  type: FormTypeEnum.toolSelector,
+                  required: false,
+                }),
+                createStrategyParam({
+                  name: 'multiToolParam',
+                  type: FormTypeEnum.multiToolSelector,
+                  required: false,
+                }),
+              ],
             },
-            parameters: [
-              createStrategyParam({
-                name: 'toolParam',
-                type: FormTypeEnum.toolSelector,
-                required: false,
-              }),
-              createStrategyParam({
-                name: 'multiToolParam',
-                type: FormTypeEnum.multiToolSelector,
-                required: false,
-              }),
-            ],
-          }],
+          ],
         },
       },
       refetch: providerRefetch,
@@ -388,35 +412,39 @@ describe('agent/use-config', () => {
     renderHook(() => useConfig('agent-node', currentInputs))
 
     await waitFor(() => {
-      expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-        tool_node_version: '2',
-        agent_parameters: expect.objectContaining({
-          toolParam: expect.objectContaining({
-            value: expect.objectContaining({
-              settings: {
-                kind: 'setting',
-                fields: ['api_key'],
-              },
-              parameters: {
-                kind: 'llm',
-                fields: ['query'],
-              },
+      expect(setInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_node_version: '2',
+          agent_parameters: expect.objectContaining({
+            toolParam: expect.objectContaining({
+              value: expect.objectContaining({
+                settings: {
+                  kind: 'setting',
+                  fields: ['api_key'],
+                },
+                parameters: {
+                  kind: 'llm',
+                  fields: ['query'],
+                },
+              }),
+            }),
+            multiToolParam: expect.objectContaining({
+              value: [
+                expect.objectContaining({
+                  settings: {
+                    kind: 'setting',
+                    fields: ['api_key'],
+                  },
+                  parameters: {
+                    kind: 'llm',
+                    fields: ['query'],
+                  },
+                }),
+              ],
             }),
           }),
-          multiToolParam: expect.objectContaining({
-            value: [expect.objectContaining({
-              settings: {
-                kind: 'setting',
-                fields: ['api_key'],
-              },
-              parameters: {
-                kind: 'llm',
-                fields: ['query'],
-              },
-            })],
-          }),
         }),
-      }))
+      )
     })
   })
 })

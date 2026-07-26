@@ -11,21 +11,14 @@ type AgentDetailPageProps = {
   section: AgentDetailSectionKey
 }
 
-export function AgentDetailPage({
-  agentId,
-  section,
-}: AgentDetailPageProps) {
-  if (section === 'monitoring')
-    return <AgentMonitoringPage agentId={agentId} />
+export function AgentDetailPage({ agentId, section }: AgentDetailPageProps) {
+  if (section === 'monitoring') return <AgentMonitoringPage agentId={agentId} />
 
-  if (section === 'logs')
-    return <AgentLogsPage agentId={agentId} />
+  if (section === 'logs') return <AgentLogsPage agentId={agentId} />
 
-  if (section === 'access')
-    return <AgentAccessPage agentId={agentId} />
+  if (section === 'access') return <AgentAccessPage agentId={agentId} />
 
-  if (section === 'configure')
-    return <AgentConfigurePage agentId={agentId} />
+  if (section === 'configure') return <AgentConfigurePage agentId={agentId} />
 
   return null
 }

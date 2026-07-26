@@ -72,7 +72,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 )
 
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks()
+                    child_chunks = segment.get_child_chunks(session=session)
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -89,7 +89,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                         document.children = child_documents
 
                 if dataset.is_multimodal:
-                    for attachment in segment.attachments:
+                    for attachment in segment.get_attachments(session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -104,7 +104,9 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                         )
                 documents.append(document)
             # save vector index
-            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
+            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
+
+            session.commit()
 
             # Enable summary indexes for these segments
             from services.summary_index_service import SummaryIndexService
@@ -123,6 +125,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         except Exception as e:
             logger.exception("enable segments to index failed")
             # update segment error msg
+            session.rollback()
             session.execute(
                 update(DocumentSegment)
                 .where(

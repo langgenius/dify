@@ -81,6 +81,9 @@ def _dummy_preserve(*args, **kwargs):
 class DummySession:
     def __init__(self):
         self.scalar = MagicMock()
+        self.add = MagicMock()
+        self.flush = MagicMock()
+        self.commit = MagicMock()
 
     def __enter__(self):
         return self
@@ -98,6 +101,7 @@ def test_generate_dataset_missing(generator, mocker: MockerFixture):
 
     with pytest.raises(ValueError):
         generator.generate(
+            session=session,
             pipeline=pipeline,
             workflow=_build_workflow(),
             user=_build_user(),
@@ -140,6 +144,7 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture):
     mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
     result = generator.generate(
+        session=session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -201,9 +206,6 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
 
     mocker.patch.object(module, "DocumentPipelineExecutionLog", return_value=MagicMock())
 
-    db_session = MagicMock()
-    mocker.patch.object(module.db, "session", db_session)
-
     mocker.patch.object(
         module.DifyCoreRepositoryFactory,
         "create_workflow_execution_repository",
@@ -219,6 +221,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     mocker.patch.object(module, "RagPipelineTaskProxy", return_value=task_proxy)
 
     result = generator.generate(
+        session=session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -230,6 +233,8 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     assert result["batch"]
     assert len(result["documents"]) == 2
     check_limits.assert_called_once_with(len(datasource_info_list), features)
+    session.flush.assert_called_once_with()
+    session.commit.assert_called_once_with()
     task_proxy.delay.assert_called_once()
 
 
@@ -259,11 +264,9 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
         side_effect=ValueError("document limit exceeded"),
     )
 
-    db_session = MagicMock()
-    mocker.patch.object(module.db, "session", db_session)
-
     with pytest.raises(ValueError, match="document limit exceeded"):
         generator.generate(
+            session=session,
             pipeline=pipeline,
             workflow=workflow,
             user=_build_user(),
@@ -273,7 +276,7 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
         )
 
     check_limits.assert_called_once_with(len(datasource_info_list), features)
-    db_session.add.assert_not_called()
+    session.add.assert_not_called()
 
 
 def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
@@ -309,6 +312,7 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
     mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
     result = generator.generate(
+        session=session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
@@ -399,6 +403,7 @@ def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixtur
 
     with pytest.raises(ValueError):
         generator._generate(
+            session=session,
             flask_app=flask_app,
             context=contextlib.nullcontext(),
             pipeline=_build_pipeline(),
@@ -437,6 +442,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     mocker.patch.object(module.WorkflowAppGenerateResponseConverter, "convert", return_value="converted")
 
     result = generator._generate(
+        session=session,
         flask_app=flask_app,
         context=contextlib.nullcontext(),
         pipeline=_build_pipeline(),
@@ -459,11 +465,18 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
 
 def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):
     with pytest.raises(ValueError):
-        generator.single_iteration_generate(_build_pipeline(), _build_workflow(), "", _build_user(), {})
+        generator.single_iteration_generate(
+            _build_pipeline(), _build_workflow(), "", _build_user(), {}, session=DummySession()
+        )
 
     with pytest.raises(ValueError):
         generator.single_iteration_generate(
-            _build_pipeline(), _build_workflow(), "node", _build_user(), {"inputs": None}
+            _build_pipeline(),
+            _build_workflow(),
+            "node",
+            _build_user(),
+            {"inputs": None},
+            session=DummySession(),
         )
 
 
@@ -481,6 +494,7 @@ def test_single_iteration_generate_dataset_required(generator, mocker: MockerFix
             "node",
             _build_user(),
             {"inputs": {"a": 1}},
+            session=session,
         )
 
 
@@ -519,6 +533,7 @@ def test_single_iteration_generate_success(generator, mocker: MockerFixture):
         _build_user(),
         {"inputs": {"a": 1}},
         streaming=False,
+        session=session,
     )
 
     assert result == {"ok": True}
@@ -559,6 +574,7 @@ def test_single_loop_generate_success(generator, mocker: MockerFixture):
         _build_user(),
         {"inputs": {"a": 1}},
         streaming=False,
+        session=session,
     )
 
     assert result == {"ok": True}

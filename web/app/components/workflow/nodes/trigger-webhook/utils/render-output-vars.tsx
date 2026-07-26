@@ -29,10 +29,7 @@ const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
   return (
     <div className="py-1">
       <div className="flex items-center leading-[18px]">
-        <span className="code-sm-regular text-text-tertiary">
-          {prefix}
-          .
-        </span>
+        <span className="code-sm-regular text-text-tertiary">{prefix}.</span>
         <span className="code-sm-semibold text-text-secondary">{name}</span>
         <span className="ml-2 system-xs-regular text-text-tertiary">{type}</span>
       </div>
@@ -42,11 +39,7 @@ const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
 
 export const OutputVariablesContent: FC<OutputVariablesContentProps> = ({ variables = [] }) => {
   if (!variables || variables.length === 0) {
-    return (
-      <div className="py-2 system-sm-regular text-text-tertiary">
-        No output variables
-      </div>
-    )
+    return <div className="py-2 system-sm-regular text-text-tertiary">No output variables</div>
   }
 
   // Sort variables by label to match the table display order: param → header → body
@@ -54,8 +47,10 @@ export const OutputVariablesContent: FC<OutputVariablesContentProps> = ({ variab
   const sortedVariables = [...variables].sort((a, b) => {
     const labelA = typeof a.label === 'string' ? a.label : ''
     const labelB = typeof b.label === 'string' ? b.label : ''
-    return (LABEL_ORDER[labelA as keyof typeof LABEL_ORDER] || 999)
-      - (LABEL_ORDER[labelB as keyof typeof LABEL_ORDER] || 999)
+    return (
+      (LABEL_ORDER[labelA as keyof typeof LABEL_ORDER] || 999) -
+      (LABEL_ORDER[labelB as keyof typeof LABEL_ORDER] || 999)
+    )
   })
 
   return (

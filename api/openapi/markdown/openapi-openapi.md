@@ -712,6 +712,17 @@ mode is a closed enum of listable app types.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### DslImportWarning
+
+Portable DSL reference that could not be restored in the target workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| path | string |  | Yes |
+
 #### ErrorBody
 
 Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
@@ -730,7 +741,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| loc | [  ], <br>**Default:**  |  | No |
+| loc | [ string<br>integer ] |  | No |
 | msg | string |  | Yes |
 | type | string |  | Yes |
 
@@ -809,12 +820,13 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.6.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
 | permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
+| warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
 
 #### ImportStatus
 

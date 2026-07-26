@@ -41,8 +41,7 @@ export const amplitudeIdentitySyncAtom = atomEffect((get, set) => {
   const userProfile = get(userProfileAtom)
   const currentWorkspace = get(currentWorkspaceAtom)
 
-  if (!userProfile.id)
-    return
+  if (!userProfile.id) return
 
   const properties = buildAmplitudeProperties({
     currentWorkspace,
@@ -53,8 +52,7 @@ export const amplitudeIdentitySyncAtom = atomEffect((get, set) => {
     properties,
   })
 
-  if (identity === get.peek(amplitudeIdentityAtom))
-    return
+  if (identity === get.peek(amplitudeIdentityAtom)) return
 
   setUserId(userProfile.email)
   setUserProperties(properties)

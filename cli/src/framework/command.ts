@@ -1,5 +1,12 @@
 import type { CommandOutput } from './output'
-import type { ArgDefinition, FlagDefinition, ICommand, InferArgs, InferFlags, OptionalArgValueType } from './types'
+import type {
+  ArgDefinition,
+  FlagDefinition,
+  ICommand,
+  InferArgs,
+  InferFlags,
+  OptionalArgValueType,
+} from './types'
 import { setVerbose } from './context'
 import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 
@@ -9,7 +16,7 @@ import { hasBooleanFlag, parseArgv, VERBOSE_CHAR, VERBOSE_FLAG } from './flags'
 export type CommandEffect = 'read' | 'write' | 'destructive'
 
 export type CommandConstructor = {
-  new(): Command
+  new (): Command
   description?: string
   flags?: Record<string, FlagDefinition<OptionalArgValueType>>
   args?: Record<string, ArgDefinition<string | undefined>>
@@ -19,13 +26,15 @@ export type CommandConstructor = {
   effect?: CommandEffect
 }
 
-type InferCommandArgs<C extends CommandConstructor> = C['args'] extends Record<string, ArgDefinition<string | undefined>>
-  ? InferArgs<C['args']>
-  : Record<string, string | undefined>
+type InferCommandArgs<C extends CommandConstructor> =
+  C['args'] extends Record<string, ArgDefinition<string | undefined>>
+    ? InferArgs<C['args']>
+    : Record<string, string | undefined>
 
-type InferCommandFlags<C extends CommandConstructor> = C['flags'] extends Record<string, FlagDefinition<OptionalArgValueType>>
-  ? InferFlags<C['flags']>
-  : Record<string, OptionalArgValueType>
+type InferCommandFlags<C extends CommandConstructor> =
+  C['flags'] extends Record<string, FlagDefinition<OptionalArgValueType>>
+    ? InferFlags<C['flags']>
+    : Record<string, OptionalArgValueType>
 
 type ParseResult<C extends CommandConstructor> = {
   args: InferCommandArgs<C>

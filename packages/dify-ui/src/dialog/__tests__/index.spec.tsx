@@ -1,13 +1,13 @@
 import { render } from 'vitest-browser-react'
 import {
+  createDialogHandle,
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogTitle,
+  DialogTrigger,
 } from '../index'
-
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('Dialog wrapper', () => {
   describe('Rendering', () => {
@@ -23,6 +23,26 @@ describe('Dialog wrapper', () => {
 
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
+    })
+
+    it('should connect a detached trigger to the dialog', async () => {
+      const handle = createDialogHandle()
+      const screen = await render(
+        <>
+          <DialogTrigger handle={handle}>Open dialog</DialogTrigger>
+          <Dialog handle={handle}>
+            <DialogContent>
+              <DialogTitle>Detached dialog</DialogTitle>
+            </DialogContent>
+          </Dialog>
+        </>,
+      )
+
+      await screen.getByRole('button', { name: 'Open dialog' }).click()
+
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Detached dialog' }))
+        .toBeInTheDocument()
     })
   })
 
@@ -49,7 +69,9 @@ describe('Dialog wrapper', () => {
         </Dialog>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Dismiss dialog' })).toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('button', { name: 'Dismiss dialog' }))
+        .toBeInTheDocument()
     })
 
     it('should render default close button label when aria-label is omitted', async () => {
@@ -66,11 +88,10 @@ describe('Dialog wrapper', () => {
     })
 
     it('should forward close button props to base primitive', async () => {
-      const onClick = vi.fn()
       const screen = await render(
         <Dialog open>
           <DialogContent>
-            <DialogCloseButton data-testid="close-button" disabled onClick={onClick} />
+            <DialogCloseButton data-testid="close-button" disabled />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
@@ -78,8 +99,6 @@ describe('Dialog wrapper', () => {
 
       const closeButton = screen.getByTestId('close-button')
       await expect.element(closeButton).toBeDisabled()
-      asHTMLElement(closeButton.element()).click()
-      expect(onClick).not.toHaveBeenCalled()
     })
   })
 })

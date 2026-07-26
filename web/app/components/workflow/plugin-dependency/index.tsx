@@ -3,22 +3,16 @@ import InstallBundle from '@/app/components/plugins/install-plugin/install-bundl
 import { useStore } from './store'
 
 const PluginDependency = () => {
-  const dependencies = useStore(s => s.dependencies)
+  const dependencies = useStore((s) => s.dependencies)
 
   const handleCancelInstallBundle = useCallback(() => {
     const { setDependencies } = useStore.getState()
     setDependencies([])
   }, [])
 
-  if (!dependencies.length)
-    return null
+  if (!dependencies.length) return null
 
-  return (
-    <InstallBundle
-      fromDSLPayload={dependencies}
-      onClose={handleCancelInstallBundle}
-    />
-  )
+  return <InstallBundle fromDSLPayload={dependencies} onClose={handleCancelInstallBundle} />
 }
 
 export default PluginDependency

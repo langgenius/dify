@@ -94,6 +94,7 @@ class DifyShellLayerConfig(LayerConfig):
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
     sandbox: DifyShellSandboxConfig | None = None
+    redact_patterns: list[str] = Field(default_factory=list)
 
 
 __all__ = [

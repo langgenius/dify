@@ -13,7 +13,9 @@ from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, event, select
+from sqlalchemy.exc import DataError
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
@@ -359,27 +361,37 @@ def test_batch_failure_does_not_delete_old_storage_before_commit():
 
 
 def test_validate_source_db_error_maps_to_404():
-    """A malformed id (non-UUID hitting a UUID column -> DataError) must not 500."""
-    from unittest.mock import MagicMock
+    """A database UUID failure maps to 404 and rolls back the real transaction."""
 
-    from sqlalchemy.exc import DataError
+    rollback_events: list[Session] = []
 
-    from models.agent import AgentDriveFileKind
+    def raise_data_error(_orm_execute_state: object) -> None:
+        raise DataError("bad uuid", {}, Exception("invalid input syntax for uuid"))
 
-    session = MagicMock()
-    session.scalar.side_effect = DataError("bad uuid", {}, Exception("invalid input syntax for uuid"))
+    def record_rollback(session: Session) -> None:
+        rollback_events.append(session)
 
-    with pytest.raises(AgentDriveError) as exc_info:
-        AgentDriveService()._validate_source(
-            session,
-            tenant_id=TENANT,
-            user_id="not-a-uuid",
-            file_kind=AgentDriveFileKind.TOOL_FILE,
-            file_id="also-bad",
-        )
-    assert exc_info.value.status_code == 404
-    assert exc_info.value.code == "source_not_found"
-    session.rollback.assert_called_once()
+    with session_factory.create_session() as session:
+        session.begin()
+        event.listen(session, "do_orm_execute", raise_data_error)
+        event.listen(session, "after_rollback", record_rollback)
+        try:
+            with pytest.raises(AgentDriveError) as exc_info:
+                AgentDriveService()._validate_source(
+                    session,
+                    tenant_id=TENANT,
+                    user_id="not-a-uuid",
+                    file_kind=AgentDriveFileKind.TOOL_FILE,
+                    file_id="also-bad",
+                )
+        finally:
+            event.remove(session, "do_orm_execute", raise_data_error)
+            event.remove(session, "after_rollback", record_rollback)
+
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.code == "source_not_found"
+        assert rollback_events == [session]
+        assert not session.in_transaction()
 
 
 def test_recommit_same_value_is_idempotent_and_keeps_value():

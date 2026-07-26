@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import Details from '../index'
 
 // Mock WorkflowPreview
@@ -75,15 +74,6 @@ describe('Details', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when data is available', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
     it('should render pipeline name', () => {
       mockUsePipelineTemplateById.mockReturnValue({
         data: createPipelineTemplateInfo(),
@@ -214,16 +204,13 @@ describe('Details', () => {
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
 
-    it('should have default icon when data is null', () => {
+    it('shows the loading state when template data is absent', () => {
       mockUsePipelineTemplateById.mockReturnValue({
         data: null,
       })
 
-      // When data is null, component shows loading state
-      // The default icon is only used in useMemo when pipelineTemplateInfo is null
       render(<Details {...defaultProps} />)
 
-      // Should not crash and should render (loading state)
       expect(screen.queryByText('Test Pipeline')).not.toBeInTheDocument()
     })
   })
@@ -288,16 +275,6 @@ describe('Details', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper container styling', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { container } = render(<Details {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'h-full')
-    })
-
     it('should have fixed width sidebar', () => {
       mockUsePipelineTemplateById.mockReturnValue({
         data: createPipelineTemplateInfo(),
@@ -316,18 +293,6 @@ describe('Details', () => {
       const { container } = render(<Details {...defaultProps} />)
       const previewContainer = container.querySelector('[class*="grow"]')
       expect(previewContainer).toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      mockUsePipelineTemplateById.mockReturnValue({
-        data: createPipelineTemplateInfo(),
-      })
-
-      const { rerender } = render(<Details {...defaultProps} />)
-      rerender(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
   })
 })

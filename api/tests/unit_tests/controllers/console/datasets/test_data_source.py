@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Flask
@@ -106,6 +107,22 @@ def test_get_data_source_integrates_preserves_empty_list_when_no_binding(flask_a
     assert response == {"data": []}
 
 
+def test_patch_data_source_binding_uses_injected_session(flask_app: Flask) -> None:
+    binding = MagicMock(disabled=True)
+    session = MagicMock()
+    session.scalar.return_value = binding
+
+    with flask_app.test_request_context("/"):
+        response, status = unwrap(DataSourceApi().patch)(DataSourceApi(), session, "tenant-1", uuid4(), "enable")
+
+    assert status == 200
+    assert response == {"result": "success"}
+    assert binding.disabled is False
+    session.scalar.assert_called_once()
+    session.add.assert_not_called()
+    session.commit.assert_not_called()
+
+
 def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask, current_user: Account) -> None:
     page = MagicMock(
         page_id="page-1",
@@ -128,6 +145,7 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
         get_online_document_pages=MagicMock(return_value=iter([online_document_message])),
         datasource_provider_type=MagicMock(return_value="online_document"),
     )
+    session = MagicMock()
 
     with (
         flask_app.test_request_context("/?credential_id=credential-1"),
@@ -137,10 +155,11 @@ def test_notion_pre_import_pages_serializes_frontend_list_shape(flask_app: Flask
             return_value={"token": "token"},
         ),
         patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()),
-        patch.object(module, "sessionmaker"),
         patch("core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime", return_value=runtime),
     ):
-        response, status = unwrap(DataSourceNotionListApi().get)(DataSourceNotionListApi(), "tenant-1", current_user)
+        response, status = unwrap(DataSourceNotionListApi().get)(
+            DataSourceNotionListApi(), session, "tenant-1", current_user
+        )
 
     assert status == 200
     assert response == {

@@ -1,17 +1,10 @@
 import type { EntityMatch } from '@lexical/text'
-import type {
-  Klass,
-  LexicalCommand,
-  LexicalEditor,
-  TextNode,
-} from 'lexical'
+import type { Klass, LexicalCommand, LexicalEditor, TextNode } from 'lexical'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { CustomTextNode } from './plugins/custom-text/node'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
-import {
-  mergeRegister,
-} from '@lexical/utils'
+import { mergeRegister } from '@lexical/utils'
 import {
   $getNodeByKey,
   $getSelection,
@@ -21,12 +14,7 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
 } from 'lexical'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DELETE_CONTEXT_BLOCK_COMMAND } from './plugins/context-block'
 import { $isContextBlockNode } from './plugins/context-block/node'
 import { DELETE_HISTORY_BLOCK_COMMAND } from './plugins/history-block'
@@ -35,8 +23,14 @@ import { DELETE_QUERY_BLOCK_COMMAND } from './plugins/query-block'
 import { $isQueryBlockNode } from './plugins/query-block/node'
 import { registerLexicalTextEntity } from './utils'
 
-type UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => [RefObject<HTMLDivElement | null>, boolean]
-export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => {
+type UseSelectOrDeleteHandler = (
+  nodeKey: string,
+  command?: LexicalCommand<undefined>,
+) => [RefObject<HTMLDivElement | null>, boolean]
+export const useSelectOrDelete: UseSelectOrDeleteHandler = (
+  nodeKey: string,
+  command?: LexicalCommand<undefined>,
+) => {
   const ref = useRef<HTMLDivElement>(null)
   const [editor] = useLexicalComposerContext()
   const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey)
@@ -46,13 +40,11 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
       const selection = $getSelection()
       const nodes = selection?.getNodes()
       if (
-        !isSelected
-        && nodes?.length === 1
-        && (
-          ($isContextBlockNode(nodes[0]) && command === DELETE_CONTEXT_BLOCK_COMMAND)
-          || ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND)
-          || ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND)
-        )
+        !isSelected &&
+        nodes?.length === 1 &&
+        (($isContextBlockNode(nodes[0]) && command === DELETE_CONTEXT_BLOCK_COMMAND) ||
+          ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND) ||
+          ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND))
       ) {
         editor.dispatchCommand(command, undefined)
       }
@@ -61,8 +53,7 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
         event.preventDefault()
         const node = $getNodeByKey(nodeKey)
         if ($isDecoratorNode(node)) {
-          if (command)
-            editor.dispatchCommand(command, undefined)
+          if (command) editor.dispatchCommand(command, undefined)
 
           node.remove()
           return true
@@ -74,59 +65,54 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
     [isSelected, nodeKey, command, editor],
   )
 
-  const handleSelect = useCallback((e: MouseEvent) => {
-    if (!e.metaKey && !e.ctrlKey) {
-      e.stopPropagation()
-      clearSelection()
-      setSelected(true)
-    }
-  }, [setSelected, clearSelection])
+  const handleSelect = useCallback(
+    (e: MouseEvent) => {
+      if (!e.metaKey && !e.ctrlKey) {
+        e.stopPropagation()
+        clearSelection()
+        setSelected(true)
+      }
+    },
+    [setSelected, clearSelection],
+  )
 
   useEffect(() => {
     const ele = ref.current
-    if (ele)
-      ele.addEventListener('click', handleSelect)
+    if (ele) ele.addEventListener('click', handleSelect)
 
     return () => {
-      if (ele)
-        ele.removeEventListener('click', handleSelect)
+      if (ele) ele.removeEventListener('click', handleSelect)
     }
   }, [handleSelect])
   useEffect(() => {
     return mergeRegister(
-      editor.registerCommand(
-        KEY_DELETE_COMMAND,
-        handleDelete,
-        COMMAND_PRIORITY_LOW,
-      ),
-      editor.registerCommand(
-        KEY_BACKSPACE_COMMAND,
-        handleDelete,
-        COMMAND_PRIORITY_LOW,
-      ),
+      editor.registerCommand(KEY_DELETE_COMMAND, handleDelete, COMMAND_PRIORITY_LOW),
+      editor.registerCommand(KEY_BACKSPACE_COMMAND, handleDelete, COMMAND_PRIORITY_LOW),
     )
   }, [editor, clearSelection, handleDelete])
 
   return [ref, isSelected]
 }
 
-type UseTriggerHandler = <T extends HTMLElement = HTMLDivElement>() => [RefObject<T | null>, boolean, Dispatch<SetStateAction<boolean>>]
+type UseTriggerHandler = <T extends HTMLElement = HTMLDivElement>() => [
+  RefObject<T | null>,
+  boolean,
+  Dispatch<SetStateAction<boolean>>,
+]
 export const useTrigger: UseTriggerHandler = <T extends HTMLElement = HTMLDivElement>() => {
   const triggerRef = useRef<T>(null)
   const [open, setOpen] = useState(false)
   const handleOpen = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    setOpen(v => !v)
+    setOpen((v) => !v)
   }, [])
 
   useEffect(() => {
     const trigger = triggerRef.current
-    if (trigger)
-      trigger.addEventListener('click', handleOpen)
+    if (trigger) trigger.addEventListener('click', handleOpen)
 
     return () => {
-      if (trigger)
-        trigger.removeEventListener('click', handleOpen)
+      if (trigger) trigger.removeEventListener('click', handleOpen)
     }
   }, [handleOpen])
 
@@ -150,24 +136,18 @@ type MenuTextMatch = {
   matchingString: string
   replaceableString: string
 }
-type TriggerFn = (
-  text: string,
-  editor: LexicalEditor,
-) => MenuTextMatch | null
+type TriggerFn = (text: string, editor: LexicalEditor) => MenuTextMatch | null
 const escapeForCharacterClass = (value: string) => value.replace(/[[\]\\^-]/g, '\\$&')
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number, maxLength?: number },
+  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
       const escapedTrigger = escapeForCharacterClass(trigger)
       const validChars = `[^${escapedTrigger}\\n\\r]`
       const TypeaheadTriggerRegex = new RegExp(
-        '(.*)('
-        + `[${escapedTrigger}]`
-        + `((?:${validChars}){0,${maxLength}})`
-        + ')$',
+        '(.*)(' + `[${escapedTrigger}]` + `((?:${validChars}){0,${maxLength}})` + ')$',
       )
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {

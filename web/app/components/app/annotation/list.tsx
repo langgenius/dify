@@ -39,36 +39,29 @@ function AnnotationTableRow({
       className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
       onClick={() => onView(item)}
     >
-      <td className="w-12 px-2 align-middle" onClick={e => e.stopPropagation()}>
+      <td className="w-12 px-2 align-middle" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center">
-          <Checkbox
-            className="shrink-0"
-            value={item.id}
-            aria-labelledby={questionId}
-          />
+          <Checkbox className="shrink-0" value={item.id} aria-labelledby={questionId} />
         </div>
       </td>
-      <td
-        className="max-w-62.5 truncate p-3 pr-2"
-        title={item.question}
-      >
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question}>
         <span id={questionId}>{item.question}</span>
       </td>
-      <td
-        className="max-w-62.5 truncate p-3 pr-2"
-        title={item.answer}
-      >
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer}>
         {item.answer}
       </td>
       <td className="p-3 pr-2">{formattedCreatedAt}</td>
       <td className="p-3 pr-2">{item.hit_count}</td>
-      <td className="w-24 p-3 pr-2" onClick={e => e.stopPropagation()}>
+      <td className="w-24 p-3 pr-2" onClick={(e) => e.stopPropagation()}>
         <div className="flex space-x-1 text-text-tertiary">
-          <ActionButton aria-label={t($ => $['feature.annotation.edit'], { ns: 'appDebug' })} onClick={() => onView(item)}>
+          <ActionButton
+            aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
+            onClick={() => onView(item)}
+          >
             <span aria-hidden className="i-ri-edit-line size-4" />
           </ActionButton>
           <ActionButton
-            aria-label={t($ => $['feature.annotation.remove'], { ns: 'appDebug' })}
+            aria-label={t(($) => $['feature.annotation.remove'], { ns: 'appDebug' })}
             onClick={() => onRemoveClick(item.id)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
@@ -91,7 +84,7 @@ export function List({
   const { formatTime } = useTimestamp()
   const [currId, setCurrId] = React.useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
-  const annotationIds = list.map(item => item.id)
+  const annotationIds = list.map((item) => item.id)
 
   return (
     <>
@@ -109,23 +102,36 @@ export function List({
                     <Checkbox
                       className="shrink-0"
                       parent
-                      aria-label={t($ => $['operation.selectAll'], { ns: 'common' })}
+                      aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
                     />
                   </div>
                 </td>
-                <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t($ => $['table.header.question'], { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.answer'], { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.createdAt'], { ns: 'appAnnotation' })}</td>
-                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.hits'], { ns: 'appAnnotation' })}</td>
-                <td className="w-24 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t($ => $['table.header.actions'], { ns: 'appAnnotation' })}</td>
+                <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">
+                  {t(($) => $['table.header.question'], { ns: 'appAnnotation' })}
+                </td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.answer'], { ns: 'appAnnotation' })}
+                </td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.createdAt'], { ns: 'appAnnotation' })}
+                </td>
+                <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.hits'], { ns: 'appAnnotation' })}
+                </td>
+                <td className="w-24 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+                  {t(($) => $['table.header.actions'], { ns: 'appAnnotation' })}
+                </td>
               </tr>
             </thead>
             <tbody className="system-sm-regular text-text-secondary">
-              {list.map(item => (
+              {list.map((item) => (
                 <AnnotationTableRow
                   key={item.id}
                   item={item}
-                  formattedCreatedAt={formatTime(item.created_at, t($ => $.dateTimeFormat, { ns: 'appLog' }) as string)}
+                  formattedCreatedAt={formatTime(
+                    item.created_at,
+                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                  )}
                   onView={onView}
                   onRemoveClick={(id) => {
                     setCurrId(id)

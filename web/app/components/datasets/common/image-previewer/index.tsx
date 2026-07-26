@@ -28,42 +28,38 @@ type ImagePreviewerProps = {
   onClose: () => void
 }
 
-const ImagePreviewer = ({
-  images,
-  initialIndex = 0,
-  onClose,
-}: ImagePreviewerProps) => {
+const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
-    return images.reduce((acc, image) => {
-      acc[image.url] = {
-        status: 'loading',
-        width: 0,
-        height: 0,
-      }
-      return acc
-    }, {} as Record<string, CachedImage>)
+    return images.reduce(
+      (acc, image) => {
+        acc[image.url] = {
+          status: 'loading',
+          width: 0,
+          height: 0,
+        }
+        return acc
+      },
+      {} as Record<string, CachedImage>,
+    )
   })
   const isMounted = useRef(false)
 
   const fetchImage = useCallback(async (image: ImageInfo) => {
     const { url } = image
     // Skip if already cached
-    if (imageCache.has(url))
-      return
+    if (imageCache.has(url)) return
 
     try {
       const res = await fetch(url)
-      if (!res.ok)
-        throw new Error(`Failed to load: ${url}`)
+      if (!res.ok) throw new Error(`Failed to load: ${url}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
 
       const img = new Image()
       img.src = blobUrl
       img.onload = () => {
-        if (!isMounted.current)
-          return
+        if (!isMounted.current) return
         imageCache.set(url, {
           blobUrl,
           status: 'loaded',
@@ -82,8 +78,7 @@ const ImagePreviewer = ({
           }
         })
       }
-    }
-    catch {
+    } catch {
       if (isMounted.current) {
         setCachedImages((prev) => {
           return {
@@ -110,8 +105,7 @@ const ImagePreviewer = ({
       isMounted.current = false
       // Cleanup released blob URLs not in current list
       imageCache.forEach(({ blobUrl }, key) => {
-        if (blobUrl)
-          URL.revokeObjectURL(blobUrl)
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
         imageCache.delete(key)
       })
     }
@@ -122,29 +116,30 @@ const ImagePreviewer = ({
   }, [images, currentIndex])
 
   const prevImage = useCallback(() => {
-    if (currentIndex === 0)
-      return
-    setCurrentIndex(prevIndex => prevIndex - 1)
+    if (currentIndex === 0) return
+    setCurrentIndex((prevIndex) => prevIndex - 1)
   }, [currentIndex])
 
   const nextImage = useCallback(() => {
-    if (currentIndex === images.length - 1)
-      return
-    setCurrentIndex(prevIndex => prevIndex + 1)
+    if (currentIndex === images.length - 1) return
+    setCurrentIndex((prevIndex) => prevIndex + 1)
   }, [currentIndex, images.length])
 
-  const retryImage = useCallback((image: ImageInfo) => {
-    setCachedImages((prev) => {
-      return {
-        ...prev,
-        [image.url]: {
-          ...prev[image.url]!,
-          status: 'loading',
-        },
-      }
-    })
-    fetchImage(image)
-  }, [fetchImage])
+  const retryImage = useCallback(
+    (image: ImageInfo) => {
+      setCachedImages((prev) => {
+        return {
+          ...prev,
+          [image.url]: {
+            ...prev[image.url]!,
+            status: 'loading',
+          },
+        }
+      })
+      fetchImage(image)
+    },
+    [fetchImage],
+  )
 
   useHotkey('ArrowLeft', prevImage)
   useHotkey('ArrowRight', nextImage)
@@ -153,8 +148,7 @@ const ImagePreviewer = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
       disablePointerDismissal
     >
@@ -173,9 +167,7 @@ const ImagePreviewer = ({
           </Button>
           <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
-        {cachedImages[currentImage!.url]!.status === 'loading' && (
-          <Loading type="app" />
-        )}
+        {cachedImages[currentImage!.url]!.status === 'loading' && <Loading type="app" />}
         {cachedImages[currentImage!.url]!.status === 'error' && (
           <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
             <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>

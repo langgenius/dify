@@ -31,20 +31,20 @@ export const RESERVED_WORKFLOW_OUTPUTS: WorkflowToolProviderOutputParameter[] = 
 ]
 
 export const isWorkflowToolNameValid = (name: string) => {
-  if (name === '')
-    return true
+  if (name === '') return true
 
   return /^\w+$/.test(name)
 }
 
 export const getReservedWorkflowOutputParameters = (t: TFunction) => {
-  return RESERVED_WORKFLOW_OUTPUTS.map(output => ({
+  return RESERVED_WORKFLOW_OUTPUTS.map((output) => ({
     ...output,
-    description: output.name === 'text'
-      ? t($ => $['nodes.tool.outputVars.text'], { ns: 'workflow' })
-      : output.name === 'files'
-        ? t($ => $['nodes.tool.outputVars.files.title'], { ns: 'workflow' })
-        : t($ => $['nodes.tool.outputVars.json'], { ns: 'workflow' }),
+    description:
+      output.name === 'text'
+        ? t(($) => $['nodes.tool.outputVars.text'], { ns: 'workflow' })
+        : output.name === 'files'
+          ? t(($) => $['nodes.tool.outputVars.files.title'], { ns: 'workflow' })
+          : t(($) => $['nodes.tool.outputVars.json'], { ns: 'workflow' }),
   }))
 }
 
@@ -52,7 +52,7 @@ export const hasReservedWorkflowOutputConflict = (
   reservedOutputParameters: WorkflowToolProviderOutputParameter[],
   name: string,
 ) => {
-  return reservedOutputParameters.some(parameter => parameter.name === name)
+  return reservedOutputParameters.some((parameter) => parameter.name === name)
 }
 
 export const getWorkflowOutputParameters = (
@@ -84,7 +84,7 @@ export const buildWorkflowToolRequestPayload = ({
     description,
     icon: emoji,
     label,
-    parameters: parameters.map(item => ({
+    parameters: parameters.map((item) => ({
       name: item.name,
       description: item.description,
       form: item.form,

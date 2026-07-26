@@ -36,6 +36,7 @@ from models import Account
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.llm import InvokeRateLimitError
 
 from .. import console_ns
@@ -89,7 +90,7 @@ class CompletionApi(InstalledAppResource):
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
@@ -145,8 +146,9 @@ class CompletionApi(InstalledAppResource):
 class CompletionStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
@@ -172,7 +174,7 @@ class ChatApi(InstalledAppResource):
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -188,6 +190,15 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if payload.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=current_user,
+                    session=session,
+                )
+
             response = AppGenerateService.generate(
                 session=session,
                 app_model=app_model,
@@ -230,8 +241,9 @@ class ChatApi(InstalledAppResource):
 class ChatStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user_id
-    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
-        app_model = installed_app.app
+    @with_session(write=False)
+    def post(self, session: Session, current_user_id: str, installed_app: InstalledApp, task_id: str):
+        app_model = installed_app.app_with_session(session=session)
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)

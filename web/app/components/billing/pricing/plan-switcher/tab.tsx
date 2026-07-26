@@ -10,13 +10,7 @@ type TabProps<T> = {
   onClick: (value: T) => void
 }
 
-const Tab = <T,>({
-  Icon,
-  value,
-  label,
-  isActive,
-  onClick,
-}: TabProps<T>) => {
+const Tab = <T,>({ Icon, value, label, isActive, onClick }: TabProps<T>) => {
   const handleClick = useCallback(() => {
     onClick(value)
   }, [onClick, value])

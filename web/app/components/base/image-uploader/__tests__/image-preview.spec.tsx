@@ -28,12 +28,18 @@ vi.mock('@/utils/download', () => ({
 }))
 
 const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement
-const getCloseButton = () => screen.getByRole('button', { name: 'common.operation.cancel' }) as HTMLButtonElement
-const getCopyButton = () => screen.getByRole('button', { name: 'common.operation.copyImage' }) as HTMLButtonElement
-const getZoomOutButton = () => screen.getByRole('button', { name: 'common.operation.zoomOut' }) as HTMLButtonElement
-const getZoomInButton = () => screen.getByRole('button', { name: 'common.operation.zoomIn' }) as HTMLButtonElement
-const getDownloadButton = () => screen.getByRole('button', { name: 'common.operation.download' }) as HTMLButtonElement
-const getOpenInTabButton = () => screen.getByRole('button', { name: 'common.operation.openInNewTab' }) as HTMLButtonElement
+const getCloseButton = () =>
+  screen.getByRole('button', { name: 'common.operation.cancel' }) as HTMLButtonElement
+const getCopyButton = () =>
+  screen.getByRole('button', { name: 'common.operation.copyImage' }) as HTMLButtonElement
+const getZoomOutButton = () =>
+  screen.getByRole('button', { name: 'common.operation.zoomOut' }) as HTMLButtonElement
+const getZoomInButton = () =>
+  screen.getByRole('button', { name: 'common.operation.zoomIn' }) as HTMLButtonElement
+const getDownloadButton = () =>
+  screen.getByRole('button', { name: 'common.operation.download' }) as HTMLButtonElement
+const getOpenInTabButton = () =>
+  screen.getByRole('button', { name: 'common.operation.openInNewTab' }) as HTMLButtonElement
 
 const base64Image = 'aGVsbG8='
 const dataImage = `data:image/png;base64,${base64Image}`
@@ -53,19 +59,23 @@ describe('ImagePreview', () => {
         configurable: true,
       })
     }
-    const clipboardTarget = navigator.clipboard as { write: (items: ClipboardItem[]) => Promise<void> }
+    const clipboardTarget = navigator.clipboard as {
+      write: (items: ClipboardItem[]) => Promise<void>
+    }
     // In some test environments `write` lives on the prototype rather than
     // the clipboard instance itself; locate the actual owner so vi.spyOn
     // patches the right object.
     const writeOwner = Object.prototype.hasOwnProperty.call(clipboardTarget, 'write')
       ? clipboardTarget
-      : (Object.getPrototypeOf(clipboardTarget) as { write: (items: ClipboardItem[]) => Promise<void> })
+      : (Object.getPrototypeOf(clipboardTarget) as {
+          write: (items: ClipboardItem[]) => Promise<void>
+        })
     vi.spyOn(writeOwner, 'write').mockImplementation((items: ClipboardItem[]) => {
       return mocks.clipboardWrite(items)
     })
 
     globalThis.ClipboardItem = class {
-      constructor(public readonly data: Record<string, Blob>) { }
+      constructor(public readonly data: Record<string, Blob>) {}
     } as unknown as typeof ClipboardItem
     vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
       return mocks.windowOpen(...args)
@@ -90,17 +100,14 @@ describe('ImagePreview', () => {
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
       expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
-      expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', 'https://example.com/image.png')
+      expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
+        'src',
+        'https://example.com/image.png',
+      )
     })
 
     it('should convert plain base64 string into data image src', () => {
-      render(
-        <ImagePreview
-          url={base64Image}
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url={base64Image} title="Preview Image" onCancel={vi.fn()} />)
 
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', dataImage)
     })
@@ -209,8 +216,7 @@ describe('ImagePreview', () => {
       const overlay = getOverlay()
       const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
       const imageParent = image.parentElement
-      if (!imageParent)
-        throw new Error('Image parent element not found')
+      if (!imageParent) throw new Error('Image parent element not found')
 
       vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
         width: 200,
@@ -239,14 +245,18 @@ describe('ImagePreview', () => {
       await user.click(zoomInButton)
 
       act(() => {
-        overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }))
+        overlay.dispatchEvent(
+          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
+        )
       })
       await waitFor(() => {
         expect(image.style.transition).toBe('none')
       })
 
       act(() => {
-        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: -100 }))
+        overlay.dispatchEvent(
+          new MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: -100 }),
+        )
       })
 
       await waitFor(() => {
@@ -288,13 +298,7 @@ describe('ImagePreview', () => {
         },
       } as unknown as Window)
 
-      render(
-        <ImagePreview
-          url={dataImage}
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
 
       const openInTabButton = getOpenInTabButton()
       await user.click(openInTabButton)
@@ -305,13 +309,7 @@ describe('ImagePreview', () => {
 
     it('should show error toast when opening unsupported url', async () => {
       const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="file:///tmp/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url="file:///tmp/image.png" title="Preview Image" onCancel={vi.fn()} />)
 
       const openInTabButton = getOpenInTabButton()
       await user.click(openInTabButton)
@@ -324,26 +322,25 @@ describe('ImagePreview', () => {
 
     it('should fall back to download and show info toast when clipboard copy fails', async () => {
       const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       mocks.clipboardWrite.mockRejectedValue(new Error('copy failed'))
 
-      render(
-        <ImagePreview
-          url={dataImage}
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
 
       const copyButton = getCopyButton()
       await user.click(copyButton)
 
       await waitFor(() => {
-        expect(mocks.downloadUrl).toHaveBeenCalledWith({ url: dataImage, fileName: 'Preview Image.png' })
+        expect(mocks.downloadUrl).toHaveBeenCalledWith({
+          url: dataImage,
+          fileName: 'Preview Image.png',
+        })
       })
-      expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'info',
-      }))
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'info',
+        }),
+      )
       expect(consoleErrorSpy).toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
     })
@@ -351,13 +348,7 @@ describe('ImagePreview', () => {
     it('should copy image and show success toast', async () => {
       const user = userEvent.setup()
       mocks.clipboardWrite.mockResolvedValue()
-      render(
-        <ImagePreview
-          url={dataImage}
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
 
       const copyButton = getCopyButton()
       await user.click(copyButton)
@@ -365,9 +356,11 @@ describe('ImagePreview', () => {
       await waitFor(() => {
         expect(mocks.clipboardWrite).toHaveBeenCalledTimes(1)
       })
-      expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'success',
-      }))
+      expect(mocks.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+        }),
+      )
     })
 
     it('should call download action for valid url', async () => {
@@ -391,13 +384,7 @@ describe('ImagePreview', () => {
 
     it('should show error toast for invalid download url', async () => {
       const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="invalid://image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
+      render(<ImagePreview url="invalid://image.png" title="Preview Image" onCancel={vi.fn()} />)
       const downloadButton = getDownloadButton()
       await user.click(downloadButton)
 
@@ -461,16 +448,21 @@ describe('ImagePreview', () => {
       const overlay = getOverlay()
       const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
       const imageParent = image.parentElement
-      if (!imageParent)
-        throw new Error('Image parent element not found')
+      if (!imageParent) throw new Error('Image parent element not found')
 
       vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
-      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
+      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(
+        undefined as unknown as DOMRect,
+      )
 
       await user.click(getZoomInButton())
       act(() => {
-        overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }))
-        overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }))
+        overlay.dispatchEvent(
+          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
+        )
+        overlay.dispatchEvent(
+          new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }),
+        )
       })
 
       expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })

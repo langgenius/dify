@@ -2,11 +2,7 @@ import type { EndNodeType } from '../types'
 import { screen } from '@testing-library/react'
 import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useIsChatMode,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
@@ -28,10 +24,12 @@ const createNodeData = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
   title: 'End',
   desc: '',
   type: BlockEnum.End,
-  outputs: [{
-    variable: 'answer',
-    value_selector: ['source-node', 'answer'],
-  }],
+  outputs: [
+    {
+      variable: 'answer',
+      value_selector: ['source-node', 'answer'],
+    },
+  ],
   ...overrides,
 })
 
@@ -68,24 +66,34 @@ describe('EndNode', () => {
     })
 
     it('should fall back to the start node when the selector node cannot be found', () => {
-      renderNodeComponent(Node, createNodeData({
-        outputs: [{
-          variable: 'answer',
-          value_selector: ['missing-node', 'answer'],
-        }],
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          outputs: [
+            {
+              variable: 'answer',
+              value_selector: ['missing-node', 'answer'],
+            },
+          ],
+        }),
+      )
 
       expect(screen.getByText('Start')).toBeInTheDocument()
       expect(screen.getByText('answer')).toBeInTheDocument()
     })
 
     it('should render nothing when every output selector is empty', () => {
-      const { container } = renderNodeComponent(Node, createNodeData({
-        outputs: [{
-          variable: 'answer',
-          value_selector: [],
-        }],
-      }))
+      const { container } = renderNodeComponent(
+        Node,
+        createNodeData({
+          outputs: [
+            {
+              variable: 'answer',
+              value_selector: [],
+            },
+          ],
+        }),
+      )
 
       expect(container).toBeEmptyDOMElement()
     })

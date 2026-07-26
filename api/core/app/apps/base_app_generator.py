@@ -32,6 +32,7 @@ class _DebuggerDraftVariableSaver:
         self,
         *,
         account: Account,
+        tenant_id: str,
         app_id: str,
         node_id: str,
         node_type: NodeType,
@@ -39,6 +40,7 @@ class _DebuggerDraftVariableSaver:
         enclosing_node_id: str | None = None,
     ) -> None:
         self._account = account
+        self._tenant_id = tenant_id
         self._app_id = app_id
         self._node_id = node_id
         self._node_type = node_type
@@ -49,6 +51,7 @@ class _DebuggerDraftVariableSaver:
         with Session(db.engine) as session, session.begin():
             DraftVariableSaverImpl(
                 session=session,
+                tenant_id=self._tenant_id,
                 app_id=self._app_id,
                 node_id=self._node_id,
                 node_type=self._node_type,
@@ -287,7 +290,12 @@ class BaseAppGenerator:
 
     @final
     @staticmethod
-    def _get_draft_var_saver_factory(invoke_from: InvokeFrom, account: Account | EndUser) -> DraftVariableSaverFactory:
+    def _get_draft_var_saver_factory(
+        invoke_from: InvokeFrom,
+        account: Account | EndUser,
+        *,
+        tenant_id: str,
+    ) -> DraftVariableSaverFactory:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
 
@@ -300,6 +308,7 @@ class BaseAppGenerator:
             ) -> DraftVariableSaver:
                 return _DebuggerDraftVariableSaver(
                     account=account,
+                    tenant_id=tenant_id,
                     app_id=app_id,
                     node_id=node_id,
                     node_type=node_type,

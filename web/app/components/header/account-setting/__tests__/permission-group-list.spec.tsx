@@ -37,9 +37,11 @@ const permissionGroups = [
   }),
 ]
 
-const getPermissionRow = (permissionName: string) => screen.getByText(permissionName).closest('div')!
+const getPermissionRow = (permissionName: string) =>
+  screen.getByText(permissionName).closest('div')!
 
-const getPermissionCheckbox = (permissionName: string) => within(getPermissionRow(permissionName)).getByRole('checkbox')
+const getPermissionCheckbox = (permissionName: string) =>
+  within(getPermissionRow(permissionName)).getByRole('checkbox')
 
 describe('PermissionGroupList', () => {
   beforeEach(() => {
@@ -50,11 +52,7 @@ describe('PermissionGroupList', () => {
   describe('Rendering', () => {
     it('should render the list as a flexible scroll region', () => {
       const { container } = render(
-        <PermissionGroupList
-          groups={permissionGroups}
-          value={[]}
-          onChange={vi.fn()}
-        />,
+        <PermissionGroupList groups={permissionGroups} value={[]} onChange={vi.fn()} />,
       )
 
       expect(container.firstElementChild).toHaveClass('min-h-0', 'flex-1')
@@ -64,7 +62,12 @@ describe('PermissionGroupList', () => {
     it('should render an empty state when there are no permission groups', () => {
       render(<PermissionGroupList groups={[]} value={[]} onChange={vi.fn()} />)
 
-      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toHaveClass('flex', 'h-full', 'items-center', 'justify-center')
+      expect(screen.getByText('permission.permissionList.noPermissionsFound')).toHaveClass(
+        'flex',
+        'h-full',
+        'items-center',
+        'justify-center',
+      )
     })
 
     it('should expand the first selected group by default', () => {
@@ -76,7 +79,10 @@ describe('PermissionGroupList', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /API access/ })).toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByRole('button', { name: /API access/ })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
       expect(getPermissionCheckbox('View API')).toHaveAttribute('aria-checked', 'true')
       expect(screen.queryByText('Import DSL')).not.toBeInTheDocument()
     })
@@ -106,7 +112,9 @@ describe('PermissionGroupList', () => {
       const apiGroupButton = screen.getByRole('button', { name: /API access/ })
       expect(apiGroupButton).toHaveAttribute('aria-expanded', 'false')
 
-      await user.click(screen.getByRole('button', { name: 'permission.permissionList.expandGroup' }))
+      await user.click(
+        screen.getByRole('button', { name: 'permission.permissionList.expandGroup' }),
+      )
 
       expect(apiGroupButton).toHaveAttribute('aria-expanded', 'true')
     })
@@ -171,7 +179,11 @@ describe('PermissionGroupList', () => {
 
       const appManagementButton = screen.getByRole('button', { name: /App management/ })
       const appManagementRow = appManagementButton.parentElement!
-      await user.click(within(appManagementRow).getByRole('button', { name: 'permission.permissionList.selectAll' }))
+      await user.click(
+        within(appManagementRow).getByRole('button', {
+          name: 'permission.permissionList.selectAll',
+        }),
+      )
 
       expect(handleChange).toHaveBeenCalledTimes(1)
       expect(handleChange).toHaveBeenCalledWith(['app.dsl.import', 'app.dsl.export'])
@@ -191,7 +203,11 @@ describe('PermissionGroupList', () => {
       )
 
       const appManagementRow = screen.getByRole('button', { name: /App management/ }).parentElement!
-      await user.click(within(appManagementRow).getByRole('button', { name: 'permission.permissionList.clearAll' }))
+      await user.click(
+        within(appManagementRow).getByRole('button', {
+          name: 'permission.permissionList.clearAll',
+        }),
+      )
 
       expect(handleChange).toHaveBeenCalledTimes(1)
       expect(handleChange).toHaveBeenCalledWith(['app.api.view'])
@@ -210,8 +226,12 @@ describe('PermissionGroupList', () => {
         />,
       )
 
-      expect(screen.queryByRole('button', { name: 'permission.permissionList.selectAll' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'permission.permissionList.clearAll' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'permission.permissionList.selectAll' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'permission.permissionList.clearAll' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should not change permissions when clicking a row or checkbox in read-only mode', async () => {
@@ -237,12 +257,7 @@ describe('PermissionGroupList', () => {
       const user = userEvent.setup()
 
       render(
-        <PermissionGroupList
-          groups={permissionGroups}
-          value={[]}
-          onChange={vi.fn()}
-          readonly
-        />,
+        <PermissionGroupList groups={permissionGroups} value={[]} onChange={vi.fn()} readonly />,
       )
 
       const apiGroupButton = screen.getByRole('button', { name: /API access/ })

@@ -4,7 +4,9 @@ import { marketplaceQuery } from './client'
 
 export const useMarketplaceTemplateDetail = (templateId: string | null) => {
   return useQuery({
-    ...marketplaceQuery.templateDetail.queryOptions({ input: { params: { templateId: templateId ?? '' } } }),
+    ...marketplaceQuery.templateDetail.queryOptions({
+      input: { params: { templateId: templateId ?? '' } },
+    }),
     enabled: !!templateId,
   })
 }
@@ -12,7 +14,6 @@ export const useMarketplaceTemplateDetail = (templateId: string | null) => {
 export const fetchMarketplaceTemplateDSL = async (templateId: string): Promise<string> => {
   const url = `${MARKETPLACE_API_PREFIX}/templates/${templateId}/dsl`
   const response = await fetch(url)
-  if (!response.ok)
-    throw new Error(`Failed to fetch DSL: ${response.statusText}`)
+  if (!response.ok) throw new Error(`Failed to fetch DSL: ${response.statusText}`)
   return response.text()
 }

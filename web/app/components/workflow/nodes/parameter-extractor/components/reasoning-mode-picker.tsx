@@ -14,37 +14,36 @@ type Props = Readonly<{
   onChange: (type: ReasoningModeType) => void
 }>
 
-const ReasoningModePicker: FC<Props> = ({
-  type,
-  onChange,
-}) => {
+const ReasoningModePicker: FC<Props> = ({ type, onChange }) => {
   const { t } = useTranslation()
 
-  const handleChange = useCallback((type: ReasoningModeType) => {
-    return () => {
-      onChange(type)
-    }
-  }, [onChange])
+  const handleChange = useCallback(
+    (type: ReasoningModeType) => {
+      return () => {
+        onChange(type)
+      }
+    },
+    [onChange],
+  )
 
   return (
     <Field
-      title={t($ => $[`${i18nPrefix}.reasoningMode`], { ns: 'workflow' })}
-      tooltip={t($ => $[`${i18nPrefix}.reasoningModeTip`], { ns: 'workflow' })!}
+      title={t(($) => $[`${i18nPrefix}.reasoningMode`], { ns: 'workflow' })}
+      tooltip={t(($) => $[`${i18nPrefix}.reasoningModeTip`], { ns: 'workflow' })!}
     >
       <div className="grid grid-cols-2 gap-x-1">
         <OptionCard
-          title={t($ => $[`${i18nPrefix}.reasoningModeFunctionToolCalling`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.reasoningModeFunctionToolCalling`], { ns: 'workflow' })}
           onSelect={handleChange(ReasoningModeType.functionCall)}
           selected={type === ReasoningModeType.functionCall}
         />
         <OptionCard
-          title={t($ => $[`${i18nPrefix}.reasoningModePrompt`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.reasoningModePrompt`], { ns: 'workflow' })}
           selected={type === ReasoningModeType.prompt}
           onSelect={handleChange(ReasoningModeType.prompt)}
         />
       </div>
     </Field>
-
   )
 }
 export default React.memo(ReasoningModePicker)

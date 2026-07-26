@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
 const mockPush = vi.fn()
@@ -35,10 +36,6 @@ vi.mock('@/service/device-flow', () => ({
   },
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
 }))
@@ -64,7 +61,9 @@ beforeEach(async () => {
     mockSearchParams = {}
   })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
-  const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
+  const mod = (await import('@/service/device-flow')) as {
+    DeviceFlowError: MockDeviceFlowErrorCtor
+  }
   MockDeviceFlowError = mod.DeviceFlowError
 })
 
@@ -85,7 +84,9 @@ describe('error_expired terminal state', () => {
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
-    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }))
+    fireEvent.click(
+      screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }),
+    )
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
   })

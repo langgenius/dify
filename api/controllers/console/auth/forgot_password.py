@@ -16,7 +16,6 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
-from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password
@@ -199,9 +198,6 @@ class ForgotPasswordResetApi(Resource):
         # Create workspace if needed
         if (
             not TenantService.get_join_tenants(account, session=db.session())
-            and FeatureService.get_system_features().is_allow_create_workspace
+            and FeatureService.is_workspace_creation_allowed()
         ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
-            TenantService.create_tenant_member(tenant, account, db.session(), role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+            TenantService.create_owner_tenant(account, session=db.session())

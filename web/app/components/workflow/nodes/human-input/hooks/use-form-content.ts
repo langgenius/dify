@@ -12,53 +12,72 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
   useEffect(() => {
     inputsRef.current = inputs
   }, [inputs])
-  const handleFormContentChange = useCallback((value: string) => {
-    setInputs({
-      ...inputs,
-      form_content: value,
-    })
-  }, [inputs, setInputs])
+  const handleFormContentChange = useCallback(
+    (value: string) => {
+      setInputs({
+        ...inputs,
+        form_content: value,
+      })
+    },
+    [inputs, setInputs],
+  )
 
-  const handleFormInputsChange = useCallback((formInputs: FormInputItem[]) => {
-    setInputs({
-      ...inputs,
-      inputs: formInputs,
-    })
-    setEditorKey(editorKey => editorKey + 1)
-  }, [inputs, setInputs])
+  const handleFormInputsChange = useCallback(
+    (formInputs: FormInputItem[]) => {
+      setInputs({
+        ...inputs,
+        inputs: formInputs,
+      })
+      setEditorKey((editorKey) => editorKey + 1)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleFormInputItemRename = useCallback((payload: FormInputItem, oldName: string) => {
-    const inputs = inputsRef.current
-    if (
-      oldName !== payload.output_variable_name
-      && inputs.inputs.some(item => item.output_variable_name === payload.output_variable_name)
-    ) {
-      return
-    }
+  const handleFormInputItemRename = useCallback(
+    (payload: FormInputItem, oldName: string) => {
+      const inputs = inputsRef.current
+      if (
+        oldName !== payload.output_variable_name &&
+        inputs.inputs.some((item) => item.output_variable_name === payload.output_variable_name)
+      ) {
+        return
+      }
 
-    const newInputs = produce(inputs, (draft) => {
-      draft.form_content = draft.form_content.replaceAll(`{{#$output.${oldName}#}}`, `{{#$output.${payload.output_variable_name}#}}`)
-      draft.inputs = draft.inputs.map(item => item.output_variable_name === oldName ? payload : item)
-      if (!draft.inputs.find(item => item.output_variable_name === payload.output_variable_name))
-        draft.inputs = [...draft.inputs, payload]
-    })
-    setInputs(newInputs)
-    setEditorKey(editorKey => editorKey + 1)
+      const newInputs = produce(inputs, (draft) => {
+        draft.form_content = draft.form_content.replaceAll(
+          `{{#$output.${oldName}#}}`,
+          `{{#$output.${payload.output_variable_name}#}}`,
+        )
+        draft.inputs = draft.inputs.map((item) =>
+          item.output_variable_name === oldName ? payload : item,
+        )
+        if (
+          !draft.inputs.find((item) => item.output_variable_name === payload.output_variable_name)
+        )
+          draft.inputs = [...draft.inputs, payload]
+      })
+      setInputs(newInputs)
+      setEditorKey((editorKey) => editorKey + 1)
 
-    // Update downstream nodes that reference this variable
-    if (oldName !== payload.output_variable_name)
-      handleOutVarRenameChange(id, [id, oldName], [id, payload.output_variable_name])
-  }, [setInputs, handleOutVarRenameChange, id])
+      // Update downstream nodes that reference this variable
+      if (oldName !== payload.output_variable_name)
+        handleOutVarRenameChange(id, [id, oldName], [id, payload.output_variable_name])
+    },
+    [setInputs, handleOutVarRenameChange, id],
+  )
 
-  const handleFormInputItemRemove = useCallback((varName: string) => {
-    const inputs = inputsRef.current
-    const newInputs = produce(inputs, (draft) => {
-      draft.form_content = draft.form_content.replaceAll(`{{#$output.${varName}#}}`, '')
-      draft.inputs = draft.inputs.filter(item => item.output_variable_name !== varName)
-    })
-    setInputs(newInputs)
-    setEditorKey(editorKey => editorKey + 1)
-  }, [setInputs])
+  const handleFormInputItemRemove = useCallback(
+    (varName: string) => {
+      const inputs = inputsRef.current
+      const newInputs = produce(inputs, (draft) => {
+        draft.form_content = draft.form_content.replaceAll(`{{#$output.${varName}#}}`, '')
+        draft.inputs = draft.inputs.filter((item) => item.output_variable_name !== varName)
+      })
+      setInputs(newInputs)
+      setEditorKey((editorKey) => editorKey + 1)
+    },
+    [setInputs],
+  )
 
   return {
     editorKey,

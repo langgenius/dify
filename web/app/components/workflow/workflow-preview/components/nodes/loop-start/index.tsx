@@ -12,12 +12,12 @@ const LoopStartNode = ({ id, data }: NodeProps) => {
     <div className="nodrag group mt-1 flex size-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
       <Tooltip>
         <TooltipTrigger
-          aria-label={t($ => $['blocks.loop-start'], { ns: 'workflow' })}
+          aria-label={t(($) => $['blocks.loop-start'], { ns: 'workflow' })}
           className="flex h-6 w-6 items-center justify-center rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500 p-0"
         >
           <RiHome5Fill className="size-3 text-text-primary-on-surface" />
         </TooltipTrigger>
-        <TooltipContent>{t($ => $['blocks.loop-start'], { ns: 'workflow' })}</TooltipContent>
+        <TooltipContent>{t(($) => $['blocks.loop-start'], { ns: 'workflow' })}</TooltipContent>
       </Tooltip>
       <NodeSourceHandle
         id={id}

@@ -34,16 +34,13 @@ function normalizeLineBreaks(text: string): string {
   return text.replace(LINE_BREAK_REGEX, '\n')
 }
 
-function normalizeLinkData(data: unknown): { href: string, rel?: string, target?: string } | null {
-  if (typeof data === 'string')
-    return { href: data, target: '_blank' }
+function normalizeLinkData(data: unknown): { href: string; rel?: string; target?: string } | null {
+  if (typeof data === 'string') return { href: data, target: '_blank' }
 
-  if (!data || typeof data !== 'object')
-    return null
+  if (!data || typeof data !== 'object') return null
 
-  const candidate = data as { href?: unknown, rel?: unknown, target?: unknown }
-  if (typeof candidate.href !== 'string' || !candidate.href)
-    return null
+  const candidate = data as { href?: unknown; rel?: unknown; target?: unknown }
+  if (typeof candidate.href !== 'string' || !candidate.href) return null
 
   return {
     href: candidate.href,
@@ -55,10 +52,8 @@ function normalizeLinkData(data: unknown): { href: string, rel?: string, target?
 const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
 
 function resolveButtonVariant(type: InSiteMessageButtonType) {
-  if (type === 'primary')
-    return 'primary'
-  if (type === 'outline')
-    return 'secondary'
+  if (type === 'primary') return 'primary'
+  if (type === 'outline') return 'secondary'
   return 'ghost'
 }
 
@@ -101,8 +96,7 @@ function InSiteMessage({
     }
 
     const linkData = normalizeLinkData(item.data)
-    if (!linkData)
-      return
+    if (!linkData) return
 
     const target = linkData.target ?? '_blank'
     if (target === '_self') {
@@ -113,8 +107,7 @@ function InSiteMessage({
     window.open(linkData.href, target, linkData.rel || 'noopener,noreferrer')
   }
 
-  if (!visible)
-    return null
+  if (!visible) return null
 
   return (
     <div
@@ -123,13 +116,12 @@ function InSiteMessage({
         className,
       )}
     >
-      <div className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pt-6 pb-3 text-text-primary-on-surface" style={headerStyle}>
-        <div className="title-3xl-bold whitespace-pre-line">
-          {normalizedTitle}
-        </div>
-        <div className="body-md-regular whitespace-pre-line">
-          {normalizedSubtitle}
-        </div>
+      <div
+        className="flex min-h-[128px] flex-col justify-end gap-0.5 bg-cover px-4 pt-6 pb-3 text-text-primary-on-surface"
+        style={headerStyle}
+      >
+        <div className="title-3xl-bold whitespace-pre-line">{normalizedTitle}</div>
+        <div className="body-md-regular whitespace-pre-line">{normalizedSubtitle}</div>
       </div>
 
       <div className="px-4 pt-4 pb-2 body-md-regular text-text-secondary">
@@ -137,7 +129,7 @@ function InSiteMessage({
       </div>
 
       <div className="flex items-center justify-end gap-2 p-4">
-        {actions.map(item => (
+        {actions.map((item) => (
           <Button
             key={`${item.type}-${item.action}-${item.text}`}
             variant={resolveButtonVariant(item.type)}

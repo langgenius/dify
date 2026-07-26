@@ -99,9 +99,7 @@ describe('HeadersInput', () => {
   })
 
   describe('Item Interactions', () => {
-    const headersItems = [
-      { id: '1', key: 'Header1', value: 'Value1' },
-    ]
+    const headersItems = [{ id: '1', key: 'Header1', value: 'Value1' }]
 
     it('should call onChange when key is changed', () => {
       const onChange = vi.fn()
@@ -110,9 +108,7 @@ describe('HeadersInput', () => {
       const keyInput = screen.getByDisplayValue('Header1')
       fireEvent.change(keyInput, { target: { value: 'NewHeader' } })
 
-      expect(onChange).toHaveBeenCalledWith([
-        { id: '1', key: 'NewHeader', value: 'Value1' },
-      ])
+      expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'NewHeader', value: 'Value1' }])
     })
 
     it('should call onChange when value is changed', () => {
@@ -122,16 +118,16 @@ describe('HeadersInput', () => {
       const valueInput = screen.getByDisplayValue('Value1')
       fireEvent.change(valueInput, { target: { value: 'NewValue' } })
 
-      expect(onChange).toHaveBeenCalledWith([
-        { id: '1', key: 'Header1', value: 'NewValue' },
-      ])
+      expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'Header1', value: 'NewValue' }])
     })
 
     it('should remove item when delete button is clicked', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const deleteButton = document.querySelector('[class*="text-text-destructive"]')?.closest('button')
+      const deleteButton = document
+        .querySelector('[class*="text-text-destructive"]')
+        ?.closest('button')
       if (deleteButton) {
         fireEvent.click(deleteButton)
         expect(onChange).toHaveBeenCalledWith([])

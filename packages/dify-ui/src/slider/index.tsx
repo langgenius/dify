@@ -6,16 +6,8 @@ import { formLabelClassName } from '../form-control-shared'
 
 export const SliderRoot = BaseSlider.Root
 
-export function SliderLabel({
-  className,
-  ...props
-}: BaseSlider.Label.Props) {
-  return (
-    <BaseSlider.Label
-      className={cn(formLabelClassName, className)}
-      {...props}
-    />
-  )
+export function SliderLabel({ className, ...props }: BaseSlider.Label.Props) {
+  return <BaseSlider.Label className={cn(formLabelClassName, className)} {...props} />
 }
 
 type SliderRootProps = BaseSlider.Root.Props<number>
@@ -28,12 +20,7 @@ const sliderControlClassName = cn(
 type SliderControlProps = BaseSlider.Control.Props
 
 export function SliderControl({ className, ...props }: SliderControlProps) {
-  return (
-    <BaseSlider.Control
-      className={cn(sliderControlClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseSlider.Control className={cn(sliderControlClassName, className)} {...props} />
 }
 
 const sliderTrackClassName = cn(
@@ -44,28 +31,15 @@ const sliderTrackClassName = cn(
 type SliderTrackProps = BaseSlider.Track.Props
 
 export function SliderTrack({ className, ...props }: SliderTrackProps) {
-  return (
-    <BaseSlider.Track
-      className={cn(sliderTrackClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseSlider.Track className={cn(sliderTrackClassName, className)} {...props} />
 }
 
-const sliderIndicatorClassName = cn(
-  'h-full rounded-full',
-  'bg-components-slider-range',
-)
+const sliderIndicatorClassName = cn('h-full rounded-full', 'bg-components-slider-range')
 
 type SliderIndicatorProps = BaseSlider.Indicator.Props
 
 export function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
-  return (
-    <BaseSlider.Indicator
-      className={cn(sliderIndicatorClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseSlider.Indicator className={cn(sliderIndicatorClassName, className)} {...props} />
 }
 
 const sliderThumbClassName = cn(
@@ -81,12 +55,7 @@ const sliderThumbClassName = cn(
 type SliderThumbProps = BaseSlider.Thumb.Props
 
 export function SliderThumb({ className, ...props }: SliderThumbProps) {
-  return (
-    <BaseSlider.Thumb
-      className={cn(sliderThumbClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseSlider.Thumb className={cn(sliderThumbClassName, className)} {...props} />
 }
 
 type SliderSlotClassNames = {
@@ -99,10 +68,11 @@ type SliderSlotClassNames = {
 type SliderBaseProps = Pick<
   SliderRootProps,
   'onValueChange' | 'min' | 'max' | 'step' | 'disabled' | 'name'
-> & Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
-  className?: string
-  slotClassNames?: SliderSlotClassNames
-}
+> &
+  Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
+    className?: string
+    slotClassNames?: SliderSlotClassNames
+  }
 
 type ControlledSliderProps = SliderBaseProps & {
   value: number
@@ -119,8 +89,7 @@ type SliderProps = ControlledSliderProps | UncontrolledSliderProps
 const sliderRootClassName = 'group/slider relative inline-flex w-full data-disabled:opacity-30'
 
 const getSafeValue = (value: number | undefined, min: number) => {
-  if (value === undefined)
-    return undefined
+  if (value === undefined) return undefined
 
   return Number.isFinite(value) ? value : min
 }

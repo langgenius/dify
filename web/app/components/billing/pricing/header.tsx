@@ -10,9 +10,7 @@ type HeaderProps = {
   onClose: () => void
 }
 
-const Header = ({
-  onClose,
-}: HeaderProps) => {
+const Header = ({ onClose }: HeaderProps) => {
   const { t } = useTranslation()
 
   return (
@@ -28,16 +26,16 @@ const Header = ({
               styles.instrumentSerif,
             )}
           >
-            {t($ => $['plansCommon.title.plans'], { ns: 'billing' })}
+            {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
           </DialogTitle>
         </div>
         <DialogDescription className="system-sm-regular text-text-tertiary">
-          {t($ => $['plansCommon.title.description'], { ns: 'billing' })}
+          {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
         </DialogDescription>
         <Button
           variant="secondary"
           className="absolute right-[-18px] bottom-[40.5px] z-10 size-9 rounded-full p-2"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <span aria-hidden="true" className="i-ri-close-line size-5" />
