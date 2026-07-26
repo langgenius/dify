@@ -26,38 +26,26 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-edges-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-edges-interactions')
-      >()
+vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-edges-interactions')>()
 
-    return {
-      ...actual,
-      useEdgesInteractions: () => ({
-        handleEdgeDeleteByDeleteBranch: (...args: unknown[]) =>
-          mockHandleEdgeDeleteByDeleteBranch(...args),
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useEdgesInteractions: () => ({
+      handleEdgeDeleteByDeleteBranch: (...args: unknown[]) =>
+        mockHandleEdgeDeleteByDeleteBranch(...args),
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => ({ nodesReadOnly: false }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<IfElseNodeType>(mockSetInputs),

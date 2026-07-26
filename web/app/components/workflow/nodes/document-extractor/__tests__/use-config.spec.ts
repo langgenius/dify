@@ -1,12 +1,10 @@
 import type { DocExtractorNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflowVariables } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import useConfig from '../use-config'
 
 const mockUseStoreApi = vi.mocked(useStoreApi)
@@ -24,37 +22,25 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useIsChatMode: vi.fn(),
-      useNodesReadOnly: vi.fn(),
-      useWorkflow: vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useIsChatMode: vi.fn(),
+    useNodesReadOnly: vi.fn(),
+    useWorkflow: vi.fn(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
-      >()
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
 
-    return {
-      ...actual,
-      useWorkflowVariables: vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowVariables: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

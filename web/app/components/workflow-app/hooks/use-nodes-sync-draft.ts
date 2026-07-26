@@ -25,7 +25,7 @@ import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
-import { useWorkflowRefreshDraft } from '.'
+import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()

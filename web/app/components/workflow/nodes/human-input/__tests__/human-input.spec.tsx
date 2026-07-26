@@ -48,59 +48,41 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 // Mock workflow hooks barrel (used by NodeSourceHandle via ../../../hooks)
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
-      >()
+vi.mock('../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-available-blocks')>()
 
-    return {
-      ...actual,
-      useAvailableBlocks: () => ({
-        availableNextBlocks: [],
-        availablePrevBlocks: [],
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({
+      availableNextBlocks: [],
+      availablePrevBlocks: [],
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
-      >()
+vi.mock('../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-nodes-interactions')>()
 
-    return {
-      ...actual,
-      useNodesInteractions: () => ({
-        handleNodeAdd: vi.fn(),
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeAdd: vi.fn(),
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => ({
-        getNodesReadOnly: () => false,
-        nodesReadOnly: false,
-      }),
-      useIsChatMode: () => false,
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: () => false,
+      nodesReadOnly: false,
+    }),
+    useIsChatMode: () => false,
+  }
+})
 
 // ── Factory: Build a realistic human-input node as it would appear after DSL import ──
 const createHumanInputNode = (overrides?: Partial<HumanInputNodeType>): Node => ({

@@ -17,27 +17,21 @@ const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
 const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => mockUseNodesReadOnly(),
-      useIsChatMode: () => mockUseIsChatMode(),
-      useWorkflow: () => mockUseWorkflow(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+    useIsChatMode: () => mockUseIsChatMode(),
+    useWorkflow: () => mockUseWorkflow(),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { dataSourceList: unknown[] }) => unknown) =>

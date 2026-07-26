@@ -30,20 +30,14 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: vi.fn(),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useIsChatMode: () => true,
-    }
-  },
-)
+  return {
+    ...actual,
+    useIsChatMode: () => true,
+  }
+})
 
 const mockFlowType = vi.hoisted(() => ({
   value: undefined as FlowType | undefined,

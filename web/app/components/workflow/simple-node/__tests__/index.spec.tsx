@@ -4,22 +4,16 @@ import SimpleNode from '../index'
 
 let mockNodesReadOnly = false
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => ({
-        nodesReadOnly: mockNodesReadOnly,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      nodesReadOnly: mockNodesReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,

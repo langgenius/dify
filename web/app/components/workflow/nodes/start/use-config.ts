@@ -5,13 +5,11 @@ import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { t } = useTranslation()

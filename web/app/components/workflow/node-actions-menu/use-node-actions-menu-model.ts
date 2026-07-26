@@ -3,14 +3,14 @@ import { useCallback, useMemo } from 'react'
 import { useEdges } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { useNodeMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useNodeMetaData } from '../hooks/use-nodes-meta-data'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 type UseNodeActionsMenuModelParams = {
   id: string

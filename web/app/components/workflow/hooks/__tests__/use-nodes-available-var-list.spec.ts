@@ -15,9 +15,8 @@ const mockFlowType = vi.hoisted(() => ({
   value: undefined as FlowType | undefined,
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()
+vi.mock('../use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../use-workflow')>()
 
   return {
     ...actual,
@@ -29,9 +28,8 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) =
   }
 })
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-variables', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow-variables')>()
+vi.mock('../use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../use-workflow-variables')>()
 
   return {
     ...actual,

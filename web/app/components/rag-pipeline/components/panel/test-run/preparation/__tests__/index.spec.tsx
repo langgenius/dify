@@ -102,10 +102,13 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const mockHandleRun = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRun: mockHandleRun,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
   useToolIcon: () => ({ type: 'icon', icon: 'test-icon' }),
 }))
 

@@ -10,22 +10,16 @@ const { mockHandleNodeSelect, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
-      >()
+vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
 
-    return {
-      ...actual,
-      useNodesInteractions: () => ({
-        handleNodeSelect: mockHandleNodeSelect,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeSelect: mockHandleNodeSelect,
+    }),
+  }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {

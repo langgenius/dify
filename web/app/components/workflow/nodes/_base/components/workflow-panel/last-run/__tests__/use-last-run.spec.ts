@@ -8,30 +8,25 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockShowSingleRun = vi.fn()
 const mockHandleRun = vi.fn()
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
-      >()
+vi.mock('../../../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../../hooks/use-nodes-sync-draft')>()
 
-    return {
-      ...actual,
-      useNodesSyncDraft: () => ({
-        handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
 
-vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
+vi.mock('../../../../../../hooks/use-checklist', () => ({
   useWorkflowRunValidation: () => ({
     warningNodes: [],
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     conversationVars: [],
     systemVars: [],

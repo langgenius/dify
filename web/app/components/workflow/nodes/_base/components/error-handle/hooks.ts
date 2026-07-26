@@ -1,8 +1,8 @@
 import type { DefaultValueForm } from './types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useCallback, useMemo, useState } from 'react'
-import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
+import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
 import { ErrorHandleTypeEnum } from './types'
 import { getDefaultValue } from './utils'
 

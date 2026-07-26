@@ -26,47 +26,35 @@ vi.mock('@/context/account-state', async () => {
   return createAccountStateModuleMock(() => mockConsoleState)
 })
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-tool-icon',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-tool-icon')
-      >()
+vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-tool-icon')>()
 
-    return {
-      ...actual,
-      useToolIcon: () => undefined,
-    }
-  },
-)
+  return {
+    ...actual,
+    useToolIcon: () => undefined,
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => ({ nodesReadOnly: false }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
   useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     hasNodeInspectVars: mockHasNodeInspectVars,
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: (...args: unknown[]) => mockUseNodePluginInstallation(...args),
 }))
 

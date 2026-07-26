@@ -4,10 +4,10 @@ import { RiAddLine } from '@remixicon/react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../../../hooks/use-workflow'
 
 type AddProps = {
   nodeId: string

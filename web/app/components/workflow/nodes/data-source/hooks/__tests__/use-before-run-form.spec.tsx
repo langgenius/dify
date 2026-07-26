@@ -13,7 +13,8 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
-import { useNodeDataUpdate, useNodesSyncDraft } from '../../../../hooks'
+import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
+import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
 import useBeforeRunForm from '../use-before-run-form'
 
 type DataSourceStoreState = {
@@ -59,35 +60,23 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
-      >()
+vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
 
-    return {
-      ...actual,
-      useNodeDataUpdate: vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodeDataUpdate: vi.fn(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
-      >()
+vi.mock('../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-sync-draft')>()
 
-    return {
-      ...actual,
-      useNodesSyncDraft: vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesSyncDraft: vi.fn(),
+  }
+})
 
 vi.mock('@/service/use-pipeline', () => ({
   useDatasourceSingleRun: vi.fn(),

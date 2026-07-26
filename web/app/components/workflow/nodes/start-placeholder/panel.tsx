@@ -12,10 +12,10 @@ import { useStoreApi } from 'reactflow'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useAutoGenerateWebhookUrl } from '../../hooks/use-auto-generate-webhook-url'
+import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 
 const getTriggerPluginNodeData = (
   triggerConfig: TriggerDefaultValue,

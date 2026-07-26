@@ -17,29 +17,23 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => mockUseNodesReadOnly(),
-      useWorkflow: () => mockUseWorkflow(),
-      useIsChatMode: () => mockUseIsChatMode(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+    useWorkflow: () => mockUseWorkflow(),
+    useIsChatMode: () => mockUseIsChatMode(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
 }))

@@ -12,10 +12,10 @@ import type {
 } from './types'
 import { useCallback, useMemo, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
-import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useEdgesInteractions } from '../../hooks/use-edges-interactions'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import {
   addCase,
   addCondition,

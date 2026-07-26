@@ -4,13 +4,13 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { FlowType } from '@/types/common'
+import { useAvailableBlocks } from '../hooks/use-available-blocks'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useIsChatMode } from '../hooks/use-workflow'
 
 type ChangeBlockMenuTriggerProps = {
   nodeId: string

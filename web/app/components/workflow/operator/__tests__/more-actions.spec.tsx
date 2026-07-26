@@ -135,22 +135,16 @@ vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: typeof mockWorkflowState) => unknown) => selector(mockWorkflowState),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useNodesReadOnly: () => ({
-        getNodesReadOnly: mockGetNodesReadOnly,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: mockGetNodesReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: (...args: unknown[]) => mockDownloadUrl(...args),

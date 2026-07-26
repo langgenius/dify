@@ -309,38 +309,26 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   }),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
-      >()
+vi.mock('../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-node-data-update')>()
 
-    return {
-      ...actual,
-      useNodeDataUpdate: () => ({
-        handleNodeDataUpdate: mockHandleNodeDataUpdate,
-        handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: mockHandleNodeDataUpdate,
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
-      >()
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
 
-    return {
-      ...actual,
-      useWorkflowVariableType: () => vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowVariableType: () => vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: { configsMap: typeof mockConfigsMap }) => unknown) =>

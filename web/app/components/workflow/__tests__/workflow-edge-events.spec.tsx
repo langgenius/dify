@@ -374,13 +374,16 @@ vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
   useWorkflowHotkeys: workflowHookMocks.useShortcuts,
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-edges-interactions', () => ({
   useEdgesInteractions: () => ({
     handleEdgeEnter: workflowHookMocks.handleEdgeEnter,
     handleEdgeLeave: workflowHookMocks.handleEdgeLeave,
     handleEdgesChange: workflowHookMocks.handleEdgesChange,
     handleEdgeContextMenu: workflowHookMocks.handleEdgeContextMenu,
   }),
+}))
+
+vi.mock('../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodesCopy: vi.fn(),
     handleNodesDelete: vi.fn(),
@@ -399,43 +402,69 @@ vi.mock('../hooks', () => ({
     handleHistoryBack: workflowHookMocks.handleHistoryBack,
     handleHistoryForward: workflowHookMocks.handleHistoryForward,
   }),
+}))
+
+vi.mock('../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: false,
     getNodesReadOnly: () => false,
   }),
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: workflowHookMocks.handleSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose: vi.fn(),
-  }),
-  usePanelInteractions: () => ({
-    handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
-  }),
-  useDSL: () => ({
-    exportCheck: vi.fn(),
-  }),
   useIsChatMode: () => false,
-  useSelectionInteractions: () => ({
-    handleSelectionStart: workflowHookMocks.handleSelectionStart,
-    handleSelectionChange: workflowHookMocks.handleSelectionChange,
-    handleSelectionDrag: workflowHookMocks.handleSelectionDrag,
-    handleSelectionContextMenu: workflowHookMocks.handleSelectionContextMenu,
-  }),
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: workflowHookMocks.fetchInspectVars,
-  }),
-  useShortcuts: workflowHookMocks.useShortcuts,
   useWorkflow: () => ({
     isValidConnection: workflowHookMocks.isValidConnection,
   }),
   useWorkflowReadOnly: () => ({
     workflowReadOnly: false,
   }),
+}))
+
+vi.mock('../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({
+    handleSyncWorkflowDraft: workflowHookMocks.handleSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/use-panel-interactions', () => ({
+  usePanelInteractions: () => ({
+    handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
+  }),
+}))
+
+vi.mock('../hooks/use-DSL', () => ({
+  useDSL: () => ({
+    exportCheck: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/use-selection-interactions', () => ({
+  useSelectionInteractions: () => ({
+    handleSelectionStart: workflowHookMocks.handleSelectionStart,
+    handleSelectionChange: workflowHookMocks.handleSelectionChange,
+    handleSelectionDrag: workflowHookMocks.handleSelectionDrag,
+    handleSelectionContextMenu: workflowHookMocks.handleSelectionContextMenu,
+  }),
+}))
+
+vi.mock('../hooks/use-set-workflow-vars-with-value', () => ({
+  useSetWorkflowVarsWithValue: () => ({
+    fetchInspectVars: workflowHookMocks.fetchInspectVars,
+  }),
+}))
+
+vi.mock('../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     isCommentModeAvailable: false,
   }),
+}))
+
+vi.mock('../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
+}))
+
+vi.mock('../hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInChatflow: vi.fn(),

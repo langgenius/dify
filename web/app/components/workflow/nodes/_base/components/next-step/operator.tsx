@@ -9,9 +9,9 @@ import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
 
 type ChangeItemProps = {
   data: CommonNodeType

@@ -12,9 +12,9 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { ChangeType, VarType } from '../../types'
 

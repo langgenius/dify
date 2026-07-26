@@ -24,126 +24,78 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-DSL',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-DSL')
-      >()
+vi.mock('../hooks/use-DSL', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-DSL')>()
 
-    return {
-      ...actual,
-      useDSL: () => mockUseDSL(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useDSL: () => mockUseDSL(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
-      >()
+vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-available-blocks')>()
 
-    return {
-      ...actual,
-      useAvailableBlocks: () => mockUseAvailableBlocks(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useAvailableBlocks: () => mockUseAvailableBlocks(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
-      >()
+vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
 
-    return {
-      ...actual,
-      useNodesInteractions: () => mockUseNodesInteractions(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesInteractions: () => mockUseNodesInteractions(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data')
-      >()
+vi.mock('../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-meta-data')>()
 
-    return {
-      ...actual,
-      useNodesMetaData: () => mockUseNodesMetaData(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useNodesMetaData: () => mockUseNodesMetaData(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-panel-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-panel-interactions')
-      >()
+vi.mock('../hooks/use-panel-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-panel-interactions')>()
 
-    return {
-      ...actual,
-      usePanelInteractions: () => mockUsePanelInteractions(),
-    }
-  },
-)
+  return {
+    ...actual,
+    usePanelInteractions: () => mockUsePanelInteractions(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useIsChatMode: () => mockUseIsChatMode(),
-      useNodesReadOnly: () => mockUseNodesReadOnly(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useIsChatMode: () => mockUseIsChatMode(),
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-panel-interactions',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-panel-interactions')
-      >()
+vi.mock('../hooks/use-workflow-panel-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow-panel-interactions')>()
 
-    return {
-      ...actual,
-      useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowMoveMode: () => mockUseWorkflowMoveMode(),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-start-run',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-start-run')
-      >()
+vi.mock('../hooks/use-workflow-start-run', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-workflow-start-run')>()
 
-    return {
-      ...actual,
-      useWorkflowStartRun: () => mockUseWorkflowStartRun(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowStartRun: () => mockUseWorkflowStartRun(),
+  }
+})
 
 vi.mock('@/app/components/workflow/operator/hooks', () => ({
   useOperator: () => mockUseOperator(),

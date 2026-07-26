@@ -2,12 +2,11 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { useTranslation } from 'react-i18next'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflowVariables } from '@/app/components/workflow/hooks/use-workflow-variables'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
+import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import { inputVarTypeToVarType } from '../../data-source/utils'
 import {
   appendSnippetInputFieldVars,

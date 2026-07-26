@@ -17,42 +17,30 @@ vi.mock('@/app/components/snippets/draft-store', () => ({
     selector({ inputFields: [] }),
 }))
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useIsChatMode: () => true,
-      useWorkflow: () => ({
-        getTreeLeafNodes: mockGetTreeLeafNodes,
-        getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
-        getNodeById: mockGetNodeById,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useIsChatMode: () => true,
+    useWorkflow: () => ({
+      getTreeLeafNodes: mockGetTreeLeafNodes,
+      getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
+      getNodeById: mockGetNodeById,
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
-      >()
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
 
-    return {
-      ...actual,
-      useWorkflowVariables: () => ({
-        getNodeAvailableVars: mockGetNodeAvailableVars,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: mockGetNodeAvailableVars,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { ragPipelineVariables: unknown[] }) => unknown) =>

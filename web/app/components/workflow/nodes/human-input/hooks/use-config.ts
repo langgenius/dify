@@ -2,9 +2,9 @@ import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
 import { produce } from 'immer'
 import { useState } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
-import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import useFormContent from './use-form-content'
 
 const useConfig = (id: string, payload: HumanInputNodeType) => {

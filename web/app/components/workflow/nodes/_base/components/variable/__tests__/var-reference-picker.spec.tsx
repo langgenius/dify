@@ -10,43 +10,32 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../var-reference-picker'
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useIsChatMode: () => false,
-      useWorkflow: () => ({
-        getTreeLeafNodes: () => [],
-        getNodeById: () => undefined,
-        getBeforeNodesInSameBranchIncludeParent: () => [],
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getTreeLeafNodes: () => [],
+      getNodeById: () => undefined,
+      getBeforeNodesInSameBranchIncludeParent: () => [],
+    }),
+  }
+})
 
-vi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
-      >()
+vi.mock('../../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-workflow-variables')>()
 
-    return {
-      ...actual,
-      useWorkflowVariables: () => ({
-        getNodeAvailableVars: () => [],
-        getCurrentVariableType: () => undefined,
-      }),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: () => [],
+      getCurrentVariableType: () => undefined,
+    }),
+  }
+})
 
 describe('VarReferencePicker', () => {
   const startNode = createStartNode({

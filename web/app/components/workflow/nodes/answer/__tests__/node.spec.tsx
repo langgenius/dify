@@ -2,24 +2,18 @@ import type { AnswerNodeType } from '../types'
 import { screen } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import Node from '../node'
 
-vi.mockvi.mock(
-  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
-      >()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-    return {
-      ...actual,
-      useWorkflow: vi.fn(),
-    }
-  },
-)
+  return {
+    ...actual,
+    useWorkflow: vi.fn(),
+  }
+})
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
 

@@ -17,10 +17,6 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import {
   getNodeInfoById,
   isConversationVar,
@@ -67,6 +63,9 @@ import {
   getLoopSingleNodeRunUrl,
   singleNodeRun,
 } from '@/service/workflow'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
+import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
 const { checkValid: checkLLMValid } = LLMDefault
