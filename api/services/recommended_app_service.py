@@ -4,12 +4,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from enums.deployment_edition import DeploymentEdition
 from models.model import AccountTrialAppRecord, App, TrialApp
-from services.feature_service import FeatureService
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 
 
 class RecommendedAppService:
+    """Own recommended app retrieval and Cloud-only trial eligibility."""
+
+    @staticmethod
+    def is_trial_app_enabled() -> bool:
+        """Return whether trial execution is enabled for this deployment."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
+
     @classmethod
     def get_app(cls, app_id: str, *, session: Session) -> App | None:
         """Return a normal app only when it belongs to the recommended catalog."""
@@ -38,11 +45,12 @@ class RecommendedAppService:
                 )
             )
 
-        if FeatureService.get_system_features().enable_trial_app:
-            apps = result["recommended_apps"]
-            for app in apps:
-                app_id = app["app_id"]
-                app["can_trial"] = cls._can_trial_app(session, app_id)
+        apps = result["recommended_apps"]
+        trial_app_ids = (
+            cls._get_trial_app_ids(session, [app["app_id"] for app in apps]) if cls.is_trial_app_enabled() else set()
+        )
+        for app in apps:
+            app["can_trial"] = app["app_id"] in trial_app_ids
         return result
 
     @classmethod
@@ -56,11 +64,14 @@ class RecommendedAppService:
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
         result = retrieval_instance.get_learn_dify_apps(language, session=session)
 
-        if FeatureService.get_system_features().enable_trial_app:
-            for app in result["recommended_apps"]:
-                app["can_trial"] = cls._can_trial_app(session, app["app_id"])
+        apps = result["recommended_apps"]
+        trial_app_ids = (
+            cls._get_trial_app_ids(session, [app["app_id"] for app in apps]) if cls.is_trial_app_enabled() else set()
+        )
+        for app in apps:
+            app["can_trial"] = app["app_id"] in trial_app_ids
 
-        return {"recommended_apps": result["recommended_apps"]}
+        return {"recommended_apps": apps}
 
     @classmethod
     def get_recommend_app_detail(cls, app_id: str, *, session: Session) -> dict[str, Any] | None:
@@ -74,9 +85,7 @@ class RecommendedAppService:
         result: dict[str, Any] | None = retrieval_instance.get_recommend_app_detail(app_id, session=session)
         if result is None:
             return None
-        if FeatureService.get_system_features().enable_trial_app:
-            app_id = result["id"]
-            result["can_trial"] = cls._can_trial_app(session, app_id)
+        result["can_trial"] = cls.is_trial_app_enabled() and cls._can_trial_app(session, result["id"])
         return result
 
     @classmethod
@@ -102,3 +111,9 @@ class RecommendedAppService:
     def _can_trial_app(session: Session, app_id: str) -> bool:
         trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
         return trial_app_model is not None
+
+    @staticmethod
+    def _get_trial_app_ids(session: Session, app_ids: list[str]) -> set[str]:
+        if not app_ids:
+            return set()
+        return set(session.scalars(select(TrialApp.app_id).where(TrialApp.app_id.in_(app_ids))).all())

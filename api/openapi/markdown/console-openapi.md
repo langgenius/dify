@@ -21028,7 +21028,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | export_data | string |  | Yes |
 | icon | string |  | No |
 | icon_background | string |  | No |
@@ -21061,7 +21061,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | app | [RecommendedAppInfoResponse](#recommendedappinforesponse) |  | No |
 | app_id | string |  | Yes |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | categories | [ string ] |  | No |
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
@@ -22058,7 +22058,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
