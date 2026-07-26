@@ -220,15 +220,9 @@ export const fetchChatList = async (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
-  return getAction('get', appSourceType)(
-    getUrl('messages', appSourceType, installedAppId),
-    {
-      params: { conversation_id: conversationId, limit: 20, last_id: '' },
-    },
-    // A stale conversation_id returns 404; keep it silent and let the hook
-    // layer clear the stale id instead of spamming error toasts (issue #39484).
-    { silent: true },
-  ) as any
+  return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), {
+    params: { conversation_id: conversationId, limit: 20, last_id: '' },
+  }) as any
 }
 
 // Abandoned API interface
