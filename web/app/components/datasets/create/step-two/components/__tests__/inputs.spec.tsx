@@ -137,31 +137,37 @@ describe('OverlapInput', () => {
   })
 })
 
-// Regression: langgenius/dify#39592 — below ~1351px viewport (a ~440px card)
-// the number inputs collapsed to a 32px, unusable sliver. The input's own
-// min-width is the belt to the row's flex-wrap braces (the wrap lives on the
-// row in general-chunking-options). jsdom has no layout engine, so we cannot
-// assert pixel widths here; we assert the structural classes that prevent the
-// collapse. These fail before the fix and pass after.
+// Regression: dify issue 39592 — in a narrow card the number inputs collapsed
+// to a 32px, unusable sliver. The fix reflows on the container (a
+// @container/chunkfields ancestor, see general-chunking-options): below 552px
+// each field stacks and is capped at max-w-[288px] so the input reads as a form
+// field; at/above 552px it restores flex-1 (three across, pixel-identical to
+// stock). The input keeps a min-width floor as the belt against re-collapse.
+// jsdom has no layout engine, so we cannot assert pixel widths — we assert the
+// structural classes. These fail before this change and pass after.
 describe('#39592 narrow-container regression (structural)', () => {
-  it('gives the MaxLength input a min-width so it can never collapse to a sliver', () => {
+  it('gives the MaxLength input a min-width floor so it can never collapse to a sliver', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
     expect(input.className).toContain('min-w-[64px]')
   })
 
-  it('gives the OverlapInput input a min-width too', () => {
+  it('gives the OverlapInput input a min-width floor too', () => {
     render(<OverlapInput onChange={vi.fn()} />)
     const input = screen.getByRole('textbox')
     expect(input.className).toContain('min-w-[64px]')
   })
 
-  it('gives each field a flex-basis (not flex-1) so the row can wrap on container width', () => {
+  it('caps each field width when stacked and restores flex-1 across the 552px container query', () => {
     render(<MaxLengthInput onChange={vi.fn()} />)
     const field = screen.getByRole('textbox').closest('.space-y-2')
     expect(field).not.toBeNull()
-    expect(field!.className).toContain('basis-[176px]')
-    // must not carry the old flex-1 that forced a single non-wrapping row
-    expect(field!.className).not.toContain('flex-1')
+    // stacked (default / below threshold): constrained width, no stretch
+    expect(field!.className).toContain('max-w-[288px]')
+    // three-across (at/above threshold): restore flex-1 and drop the cap
+    expect(field!.className).toContain('@min-[552px]/chunkfields:flex-1')
+    expect(field!.className).toContain('@min-[552px]/chunkfields:max-w-none')
+    // the previous flex-wrap approach is gone
+    expect(field!.className).not.toContain('basis-[176px]')
   })
 })

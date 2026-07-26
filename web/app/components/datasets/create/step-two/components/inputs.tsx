@@ -31,11 +31,12 @@ const TextLabel: FC<PropsWithChildren> = (props) => {
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   return (
-    // grow + a 176px basis (not flex-1) so the row can wrap on real container
-    // width, not a viewport breakpoint: three columns fit down to ~552px, then
-    // reflow to two, then one. When three fit, equal basis + equal grow resolve
-    // to the same widths as the previous flex-1, so the wide layout is unchanged.
-    <div className="grow basis-[176px] space-y-2">
+    // Reflow on the container (a @container/chunkfields ancestor), not the
+    // viewport. Below 552px the fields stack one per row, each capped at
+    // max-w-[288px] so the input reads as a form field, not a full-bleed bar.
+    // At/above 552px this restores flex-1 with no cap, so three columns resolve
+    // to (container - gaps)/3 — pixel-identical to the stock flex-1 layout.
+    <div className="max-w-[288px] space-y-2 @min-[552px]/chunkfields:max-w-none @min-[552px]/chunkfields:flex-1">
       <TextLabel>{props.label}</TextLabel>
       {props.children}
     </div>
