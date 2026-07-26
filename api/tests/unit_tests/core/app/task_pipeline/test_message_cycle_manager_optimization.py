@@ -454,6 +454,31 @@ class TestMessageCycleManagerOptimization:
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[1].position == 2
 
+    def test_handle_retriever_resources_dedupes_within_single_event(self, message_cycle_manager):
+        """Deduplicate within a single event payload, not just against pre-existing items.
+
+        Regression test for https://github.com/langgenius/dify/issues/34664: when the
+        retriever event itself contained the same (dataset_id, document_id) pair more
+        than once, every occurrence after the first was still appended because
+        ``existing_ids`` was not updated as new resources were merged in.
+        """
+        message_cycle_manager._application_generate_entity.app_config = SimpleNamespace(
+            additional_features=SimpleNamespace(show_retrieve_source=True)
+        )
+        message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata(retriever_resources=[]))
+
+        first = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1")
+        duplicate_in_event = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1")
+        another = RetrievalSourceMetadata(dataset_id="d2", document_id="doc2")
+
+        event = QueueRetrieverResourcesEvent(retriever_resources=[first, duplicate_in_event, another])
+        message_cycle_manager.handle_retriever_resources(event)
+
+        resources = message_cycle_manager._task_state.metadata.retriever_resources
+        assert len(resources) == 2
+        assert {(r.dataset_id, r.document_id) for r in resources} == {("d1", "doc1"), ("d2", "doc2")}
+        assert [r.position for r in resources] == [1, 2]
+
     def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager):
         """Build a stream response with a signed tool file URL.
 
