@@ -616,9 +616,7 @@ def test_manifest_appends_published_workspace_skills() -> None:
         kind=AgentConfigVersionKind.DRAFT,
         writable=False,
         soul=_soul(
-            config_skills=[
-                AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")
-            ]
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")]
         ),
     )
 
