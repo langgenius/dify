@@ -1,9 +1,8 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.app.apps.common import workflow_response_converter
@@ -26,7 +25,6 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from models.base import TypeBase
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 
 
@@ -47,19 +45,18 @@ class _FakeRuntimeState:
 
 
 @pytest.fixture
-def sqlite_pause_engine(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Engine:
-    tables = [TypeBase.metadata.tables[model.__tablename__] for model in (HumanInputForm, HumanInputFormRecipient)]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
-    return sqlite_engine
+def sqlite_pause_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Bind pause-response queries to the shared SQLite session's database."""
+    monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    return sqlite_session
 
 
 def _persist_human_input_form(
-    sqlite_engine: Engine,
+    session: Session,
     *,
     recipients: list[tuple[RecipientType, str]] | None = None,
 ) -> datetime:
-    expiration_time = datetime(2024, 1, 1)
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     form = HumanInputForm(
         id="form-1",
         tenant_id="tenant-id",
@@ -81,9 +78,9 @@ def _persist_human_input_form(
         )
         for index, (recipient_type, access_token) in enumerate(recipients or ())
     ]
-    with Session(sqlite_engine) as session, session.begin():
-        session.add(form)
-        session.add_all(recipient_models)
+    session.add(form)
+    session.add_all(recipient_models)
+    session.commit()
     return expiration_time
 
 
@@ -178,7 +175,12 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
     )
 
 
-def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_engine: Engine):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_session: Session):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -188,7 +190,7 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_engine: En
     )
 
     expiration_time = _persist_human_input_form(
-        sqlite_pause_engine,
+        sqlite_pause_session,
         recipients=[
             (RecipientType.CONSOLE, "console-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
@@ -237,7 +239,7 @@ def test_queue_workflow_paused_event_to_stream_responses(sqlite_pause_engine: En
 
 
 def _build_paused_human_input_response(
-    sqlite_engine: Engine,
+    session: Session,
     recipients: list[tuple[RecipientType, str]],
 ):
     """Drive the live OPENAPI pause path with persisted forms and recipients."""
@@ -249,7 +251,7 @@ def _build_paused_human_input_response(
         reason=WorkflowStartReason.INITIAL,
     )
 
-    _persist_human_input_form(sqlite_engine, recipients=recipients)
+    _persist_human_input_form(session, recipients=recipients)
 
     reason = HumanInputRequired(
         form_id="form-1",
@@ -275,9 +277,14 @@ def _build_paused_human_input_response(
     return responses
 
 
-def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_engine: Engine):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_pause_session: Session):
     responses = _build_paused_human_input_response(
-        sqlite_pause_engine,
+        sqlite_pause_session,
         recipients=[
             (RecipientType.EMAIL_MEMBER, "email-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
@@ -292,9 +299,14 @@ def test_openapi_pause_without_web_app_recipient_emits_approval_channels(sqlite_
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console", "email"]
 
 
-def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_engine: Engine):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pause_session: Session):
     responses = _build_paused_human_input_response(
-        sqlite_pause_engine,
+        sqlite_pause_session,
         recipients=[
             (RecipientType.STANDALONE_WEB_APP, "web-app-token"),
             (RecipientType.BACKSTAGE, "backstage-token"),
@@ -309,7 +321,12 @@ def test_openapi_pause_with_web_app_recipient_sets_token_and_channels(sqlite_pau
     assert pause_resp.data.reasons[0]["approval_channels"] == ["console"]
 
 
-def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pause_engine: Engine):
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(HumanInputForm, HumanInputFormRecipient)],
+    indirect=True,
+)
+def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pause_session: Session):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task",
@@ -318,7 +335,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(sqlite_pau
         reason=WorkflowStartReason.INITIAL,
     )
 
-    _persist_human_input_form(sqlite_pause_engine)
+    _persist_human_input_form(sqlite_pause_session)
 
     reason = HumanInputRequired(
         form_id="form-1",
