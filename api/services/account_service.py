@@ -353,6 +353,8 @@ class AccountService:
         # PendingRollbackError under gevent concurrency. expunge detaches the
         # account with its current in-memory state intact — safe because
         # _current_tenant is loaded via its own expire_on_commit=False session.
+        if account.current_tenant is not None:
+            _ = account.current_tenant.id  # force lazy-load while still attached
         session.expunge(account)
         session.close()
 
