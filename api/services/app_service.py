@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
@@ -63,6 +64,19 @@ class AppListParams(AppListBaseParams):
 
 class StarredAppListParams(AppListBaseParams):
     pass
+
+
+@dataclass(frozen=True)
+class RecentAppListItem:
+    id: str
+    name: str
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    mode: str
+    author_name: str | None
+    updated_at: datetime
+    maintainer: str | None
 
 
 class CreateAppParams(BaseModel):
@@ -322,6 +336,62 @@ class AppService:
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    def get_recent_apps(
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> list[RecentAppListItem]:
+        """Return recently modified apps as one lightweight, non-paginated projection."""
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
+        if not filters:
+            return []
+
+        stmt = (
+            sa.select(
+                App.id,
+                App.name,
+                App.icon_type,
+                App.icon,
+                App.icon_background,
+                App.mode,
+                Account.name.label("author_name"),
+                App.updated_at,
+                App.maintainer,
+            )
+            .outerjoin(Account, Account.id == App.created_by)
+            .where(*filters)
+            .order_by(App.updated_at.desc())
+            .limit(params.limit)
+        )
+        rows = session.execute(stmt).all()
+
+        return [
+            RecentAppListItem(
+                id=str(app_id),
+                name=name,
+                icon_type=icon_type.value if icon_type else None,
+                icon=icon,
+                icon_background=icon_background,
+                mode=mode.value,
+                author_name=author_name,
+                updated_at=updated_at,
+                maintainer=maintainer,
+            )
+            for (
+                app_id,
+                name,
+                icon_type,
+                icon,
+                icon_background,
+                mode,
+                author_name,
+                updated_at,
+                maintainer,
+            ) in rows
+        ]
 
     def get_paginate_starred_apps(
         self,

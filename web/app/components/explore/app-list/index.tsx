@@ -1,10 +1,10 @@
 'use client'
 
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
-import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -41,7 +41,6 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
-import { normalizeAppPagination } from '@/service/use-apps'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -58,9 +57,7 @@ type ExploreAppListData = {
 
 const homeContinueWorkAppsInput = {
   query: {
-    page: 1,
     limit: 8,
-    name: '',
   },
 }
 
@@ -88,9 +85,9 @@ function getExploreAppListQueryOptions(locale?: string) {
 }
 
 function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.get.queryOptions({
+  return consoleQuery.apps.recent.get.queryOptions({
     input: homeContinueWorkAppsInput,
-    select: (response): WorkspaceApp[] => normalizeAppPagination(response).data,
+    select: (response): RecentAppResponse[] => response.data,
   })
 }
 
