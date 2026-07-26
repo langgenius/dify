@@ -6,6 +6,11 @@ import httpx
 
 from extensions.ext_storage import storage
 
+# Explicit bounded timeout for outbound Firecrawl requests, matching the
+# pattern already used for the WaterCrawl RAG extractor client, so a slow or
+# hanging Firecrawl endpoint cannot block the worker indefinitely.
+FIRECRAWL_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
+
 
 class FirecrawlDocumentData(TypedDict):
     title: str | None
@@ -176,7 +181,7 @@ class FirecrawlApp:
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.post(url, headers=headers, json=data)
+            response = httpx.post(url, headers=headers, json=data, timeout=FIRECRAWL_REQUEST_TIMEOUT)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
@@ -187,7 +192,7 @@ class FirecrawlApp:
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.get(url, headers=headers)
+            response = httpx.get(url, headers=headers, timeout=FIRECRAWL_REQUEST_TIMEOUT)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
