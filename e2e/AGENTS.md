@@ -13,7 +13,7 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - External runtime preparation and run: `pnpm -C e2e e2e:external:prepare`, then `pnpm -C e2e e2e:external`
 - Reset persisted E2E state: `pnpm -C e2e e2e:reset`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
-- Static checks: `vp lint --fix --quiet` and `pnpm -C e2e type-check`
+- Scoped static checks: `vp check e2e`
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
 
@@ -26,6 +26,7 @@ The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1`
 - `features/support/world.ts` owns `DifyWorld`, the per-scenario behavior `BrowserContext`, and its authenticated setup and cleanup client. Browser and API identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership.
 - Cross-actor scenarios keep each actor in a separate `BrowserContext` and typed `DifyWorld` state so diagnostics and cleanup cover every actor.
 - `features/step-definitions/` contains capability-oriented glue; `common/` is reserved for genuinely cross-capability steps.
+- Step definitions that access World state use `async function (this: DifyWorld, ...)`; arrow functions cannot receive Cucumber's bound World instance.
 
 An uninitialized instance is installed and authenticated lazily; an initialized instance signs in and reuses authenticated state. Full runs prove reset and bootstrap during setup rather than through a Gherkin scenario. Cucumber's exit status is the behavior gate, and the runner also requires at least one `testCaseStarted` message so an empty tag selection cannot pass. Do not replace this gate with scenario-count baselines or skipped-scenario allowlists.
 

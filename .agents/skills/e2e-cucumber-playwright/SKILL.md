@@ -11,8 +11,8 @@ description: Use when writing, changing, or reviewing Cucumber and Playwright te
 
 Read only the bundled reference required by the change:
 
-- Locator, assertion, isolation, or waiting decisions: [`references/playwright-best-practices.md`](references/playwright-best-practices.md)
-- Scenario wording, step granularity, expressions, or tag design: [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md)
+- Locator, assertion, isolation, or waiting decisions: [`references/playwright-best-practices.md`][playwright]
+- Scenario wording, step granularity, expressions, or tag design: [`references/cucumber-best-practices.md`][cucumber]
 
 Check current official Playwright or Cucumber documentation before introducing a framework pattern that local code and references do not already establish.
 
@@ -26,3 +26,6 @@ Check current official Playwright or Cucumber documentation before introducing a
 6. Run the narrowest tagged scenario and package checks documented in `e2e/AGENTS.md`; broaden only for shared hooks, tags, or support changes.
 
 For review requests, lead with reproducible correctness failures, flake sources, or demonstrated architecture drift. Report the behavior verified and any external-runtime, browser, or environment gap.
+
+[cucumber]: references/cucumber-best-practices.md
+[playwright]: references/playwright-best-practices.md

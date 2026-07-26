@@ -16,7 +16,7 @@ Read this document when a component consumes generated contracts, nullable API v
 
 - Use generated options directly with `useQuery(consoleQuery.xxx.queryOptions(...))`, `marketplaceQuery`, or the equivalent generated client.
 - If query input comes from atom state, keep it in `atomWithQuery`; do not unwrap the atom in a component solely to call `useQuery`.
-- For missing required input, branch the whole generated input with `skipToken` and an explicit `enabled` condition. Do not put `skipToken` inside a placeholder payload or coerce IDs to empty strings.
+- For missing required input, branch the whole generated input with `skipToken`. Add `enabled` only for an independent execution condition; do not put `skipToken` inside a placeholder payload or coerce IDs to empty strings.
 - Return generated `queryOptions()`, `infiniteOptions()`, or `mutationOptions()` directly from TanStack Query atoms. Pass supported options into the generated call instead of spreading into a parallel object.
 - Share the exact options between prefetch and render when they represent the same request. Do not extract option helpers merely to reuse input construction.
 - Avoid pass-through service hooks that only rename generated options. Keep feature hooks for actual orchestration or shared domain behavior.

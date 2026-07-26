@@ -31,9 +31,7 @@ Read this document when adding, moving, splitting, or refactoring React componen
 
 ## Components And Types
 
-- Type component signatures directly; do not use `FC` or `React.FC`.
-- Prefer `function` for top-level components and module helpers. Use arrow functions for callbacks and lambda-style APIs.
-- Prefer named exports. Use default exports only where the framework requires them, such as route files.
+- Choose component declaration and export forms from the actual component contract, framework requirements, and enforced package rules. Existing style is context, not authority; do not rewrite unaffected code solely to normalize `FC`, `function`, arrow-function, named-export, or default-export forms.
 - Type simple one-off props inline. Name a `Props` type when it is reused, exported, complex, or materially clearer.
 - Use API-generated or API-returned types at component boundaries. Keep one-off UI refinements and conversions beside their owner.
 - Preserve domain value types for selections. Do not widen enums, unions, booleans, numbers, objects, or nullable values to `string` before a real boundary requires it.

@@ -1,6 +1,6 @@
 ---
 name: how-to-write-component
-description: Use when implementing or refactoring React/TypeScript components and the task requires decisions about component ownership, feature boundaries, state, data flow, effects, or interaction ownership. Do not use for reviews, test-only work, copy-only edits, or styling-only changes.
+description: Use when implementing or refactoring React/TypeScript components and the task requires decisions about component ownership, feature boundaries, state, data flow, effects, or interaction ownership. Do not use for review-only requests, test-only work, copy-only edits, or styling-only changes.
 ---
 
 # How To Write A Component

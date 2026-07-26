@@ -8,7 +8,8 @@ Run backend checks from the repository root:
 
 - Format and lint: `make lint`
 - Type check: `make type-check`
-- Unit or targeted tests: `make test [TARGET_TESTS=./api/tests/<path>]`
+- Unit tests: `make test`
+- Targeted tests: `make test TARGET_TESTS=./api/tests/<path>`
 
 Run direct Python commands through `uv run --project api`. Docker-backed integration suites are normally CI-owned. Do not start long-running services as part of routine agent work.
 
