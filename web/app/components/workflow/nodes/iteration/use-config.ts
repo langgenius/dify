@@ -10,8 +10,8 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { VarType } from '../../types'
 import { toNodeOutputVars } from '../_base/components/variable/utils'

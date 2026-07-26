@@ -3,7 +3,7 @@ import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useEffect, useRef } from 'react'
 import { Plan } from '@/app/components/billing/type'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -112,9 +112,15 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-DSL', () => ({
   useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
+}))
+
+vi.mock('../../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
+}))
+
+vi.mock('../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,

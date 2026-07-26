@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Operations from '../operations'
 
 const mockPush = vi.fn()

@@ -228,6 +228,10 @@ vi.mock('react-i18next', async () => {
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
+  const currentPermissionsQueryKey = [
+    ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+    { type: 'query' },
+  ] as const
   const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
@@ -242,6 +246,16 @@ vi.mock('@/service/client', async (importOriginal) => {
                 queryFn: () => new Promise(() => {}),
                 ...options,
               }),
+            },
+            rbac: {
+              myPermissions: {
+                get: {
+                  queryOptions: () => ({
+                    queryKey: currentPermissionsQueryKey,
+                    queryFn: () => new Promise(() => {}),
+                  }),
+                },
+              },
             },
           },
           get: {
@@ -322,7 +336,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
     SUPPORT_EMAIL_ADDRESS: '',
     ZENDESK_WIDGET_KEY: '',
   }
@@ -388,7 +401,7 @@ const consoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
-    plan: Plan.sandbox,
+    plan: Plan.team,
     status: 'normal',
     created_at: 0,
     role: 'owner',
@@ -422,6 +435,7 @@ type MainNavSystemFeatures = Exclude<
 >
 
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
+  deployment_edition: 'CLOUD',
   branding: { enabled: false },
   enable_marketplace: true,
   enable_step_by_step_tour: true,
@@ -467,7 +481,11 @@ const renderMainNav = (
       <MainNav />
       {options.extra}
     </JotaiProvider>,
-    { systemFeatures: resolvedSystemFeatures, queryClient },
+    {
+      systemFeatures: resolvedSystemFeatures,
+      workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
+      queryClient,
+    },
   )
 }
 
@@ -635,6 +653,21 @@ describe('MainNav', () => {
     expect(helpButton.parentElement?.parentElement).toHaveClass('w-60')
     expect(helpButton.parentElement?.parentElement).not.toHaveClass('w-full')
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
+  })
+
+  it('orders the Step-by-step Tour before the account and help actions', async () => {
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+
+    renderMainNav()
+
+    const tourTrigger = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+    const accountButton = screen.getByRole('button', { name: 'common.account.account' })
+    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+
+    expect(tourTrigger.compareDocumentPosition(accountButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(accountButton.compareDocumentPosition(helpButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
@@ -1107,16 +1140,13 @@ describe('MainNav', () => {
   })
 
   it('shows the upgrade shortcut for sandbox workspaces', () => {
-    mockWorkspaces = [
-      {
-        id: 'workspace-1',
-        name: 'Solar Studio',
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: {
+        ...consoleState.currentWorkspace,
         plan: Plan.sandbox,
-        status: 'normal',
-        created_at: 0,
-        current: true,
       },
-    ]
+    }
 
     renderMainNav()
 
@@ -1125,13 +1155,13 @@ describe('MainNav', () => {
   })
 
   it('shows the view plan shortcut for paid workspaces', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: true,
-      plan: { type: Plan.team },
-    } as ProviderContextState)
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: {
+        ...consoleState.currentWorkspace,
+        plan: Plan.professional,
+      },
+    }
 
     renderMainNav()
 

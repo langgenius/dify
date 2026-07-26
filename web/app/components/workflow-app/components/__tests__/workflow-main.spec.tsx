@@ -141,7 +141,7 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
   }),
@@ -274,18 +274,30 @@ vi.mock('@/app/components/workflow', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({
     nodes: [{ id: 'start' }],
     nodesMap: { start: { id: 'start' } },
   }),
+}))
+
+vi.mock('../../hooks/use-configs-map', () => ({
   useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
+}))
+
+vi.mock('../../hooks/use-DSL', () => ({
   useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
   useDSLByCanEdit: () => ({
     exportCheck: hookFns.exportCheck,
     handleExportDSL: hookFns.handleExportDSL,
   }),
+}))
+
+vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
+}))
+
+vi.mock('../../hooks/use-inspect-vars-crud', () => ({
   useInspectVarsCrud: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
     hasSetInspectVar: hookFns.hasSetInspectVar,
@@ -302,6 +314,9 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     resetConversationVar: hookFns.resetConversationVar,
     invalidateConversationVarValues: hookFns.invalidateConversationVarValues,
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
@@ -310,12 +325,15 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
   }),
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: hookFns.fetchInspectVars,
-  }),
+}))
+
+vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleBackupDraft: hookFns.handleBackupDraft,
     handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
@@ -330,6 +348,9 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     handleRun: hookFns.handleRun,
     handleStopRun: hookFns.handleStopRun,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
@@ -350,7 +371,13 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
+  useSetWorkflowVarsWithValue: () => ({
+    fetchInspectVars: hookFns.fetchInspectVars,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({
     getWorkflowDraftGraphForCanvas: (graph?: {
       nodes?: unknown[]
@@ -366,7 +393,7 @@ vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+vi.mock('../../hooks/use-workflow-draft-graph-for-canvas', () => ({
   useWorkflowDraftGraphForCanvas: () => ({
     getWorkflowDraftGraphForCanvas: (graph?: {
       nodes?: unknown[]

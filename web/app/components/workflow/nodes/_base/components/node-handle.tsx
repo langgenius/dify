@@ -6,12 +6,9 @@ import { memo, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position } from 'reactflow'
 import BlockSelector from '../../../block-selector'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '../../../hooks'
+import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
+import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
 import { useStore, useWorkflowStore } from '../../../store'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { getNodeCatalogType } from '../../../utils'

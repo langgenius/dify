@@ -173,6 +173,48 @@ def test_check_and_handle_human_input_timeouts_marks_and_routes(
 
 
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
+def test_check_and_handle_human_input_timeouts_orders_by_id_before_limit(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_task_database: None,
+    sqlite_session: Session,
+):
+    now = datetime(2025, 1, 1, 12, 0, 0)
+    monkeypatch.setattr(task_module, "naive_utc_now", lambda: now)
+    monkeypatch.setattr(task_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+
+    forms = [
+        _build_form(
+            form_id=form_id,
+            form_kind=HumanInputFormKind.DELIVERY_TEST,
+            created_at=now - timedelta(minutes=1),
+            expiration_time=now - timedelta(seconds=1),
+            workflow_run_id=None,
+            node_id=f"node-{form_id}",
+        )
+        for form_id in ("form-b", "form-a")
+    ]
+    sqlite_session.add_all(forms)
+    sqlite_session.commit()
+
+    repo = HumanInputFormSubmissionRepository()
+    mark_timeout_spy = MagicMock(wraps=repo.mark_timeout)
+    monkeypatch.setattr(repo, "mark_timeout", mark_timeout_spy)
+    monkeypatch.setattr(task_module, "HumanInputFormSubmissionRepository", lambda: repo)
+    monkeypatch.setattr(task_module, "HumanInputService", MagicMock(return_value=_FakeService()))
+
+    task_module.check_and_handle_human_input_timeouts(limit=1)
+
+    mark_timeout_spy.assert_called_once_with(
+        form_id="form-a",
+        timeout_status=HumanInputFormStatus.TIMEOUT,
+        reason="delivery_test_timeout",
+    )
+    sqlite_session.expire_all()
+    assert sqlite_session.get(HumanInputForm, "form-a").status == HumanInputFormStatus.TIMEOUT
+    assert sqlite_session.get(HumanInputForm, "form-b").status == HumanInputFormStatus.WAITING
+
+
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_check_and_handle_human_input_timeouts_omits_global_filter_when_disabled(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_task_database: None,

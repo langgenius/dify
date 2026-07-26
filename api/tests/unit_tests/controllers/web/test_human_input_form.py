@@ -163,6 +163,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, dat
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": app_model.id,
+        "mode": "chat",
         "end_user_id": None,
         "enable_site": True,
         "site": {
@@ -383,6 +384,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": app_model.id,
+        "mode": "chat",
         "end_user_id": None,
         "enable_site": True,
         "site": {
