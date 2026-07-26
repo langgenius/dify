@@ -27,7 +27,6 @@ Read this document when a component consumes generated contracts, nullable API v
 - Put shared invalidation, retries, and cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. Local callbacks may own toast, close, and navigation effects but must not replace shared cache policy.
 - Prefer `mutate(...)`. Use `mutateAsync(...)` only when Promise composition is required, and catch awaited failures.
 - Preserve intentional empty values and current list/detail ownership when updating data. Do not add optimistic updates without a verified owner contract.
-- Do not use deprecated `useInvalid` or `useReset` APIs.
 
 ## Prefetch And Hidden Surfaces
 
