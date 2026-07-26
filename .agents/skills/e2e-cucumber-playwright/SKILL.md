@@ -18,10 +18,11 @@ Check current official Playwright or Cucumber documentation before introducing a
 
 ## Workflow
 
-1. Identify the user-visible behavior and its feature owner.
-2. Read the target scenario, matching step definitions, and lifecycle files only when session or shared state matters.
-3. Reuse an existing step when wording and behavior match; add one coherent scenario or step when they do not.
-4. Keep browser actions and assertions at the public user boundary; keep setup, seed, polling, and cleanup at their package-defined owners.
-5. Run the narrowest tagged scenario and package checks documented in `e2e/AGENTS.md`; broaden only for shared hooks, tags, or support changes.
+1. Add E2E coverage only for a critical user journey with a cross-boundary outcome that cheaper owner-level tests do not already prove.
+2. Identify the user-visible behavior and its feature owner. Start from real product defaults and actor roles; setup may establish preconditions but must not manufacture the opposite state to make the scenario meaningful.
+3. Read the target scenario, matching step definitions, and lifecycle files only when session or shared state matters.
+4. Reuse an existing step when wording and behavior match; add one coherent scenario or step when they do not.
+5. Keep browser actions and assertions at the public user boundary; keep setup, seed, polling, and cleanup at their package-defined owners.
+6. Run the narrowest tagged scenario and package checks documented in `e2e/AGENTS.md`; broaden only for shared hooks, tags, or support changes.
 
 For review requests, lead with reproducible correctness failures, flake sources, or demonstrated architecture drift. Report the behavior verified and any external-runtime, browser, or environment gap.

@@ -24,9 +24,10 @@ The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1`
 - `support/web-server.ts` owns frontend reuse, readiness, and shutdown.
 - `features/support/hooks.ts` owns shared auth bootstrap, scenario lifecycle, and diagnostics.
 - `features/support/world.ts` owns `DifyWorld`, the per-scenario behavior `BrowserContext`, and its authenticated setup and cleanup client. Browser and API identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership.
+- Cross-actor scenarios keep each actor in a separate `BrowserContext` and typed `DifyWorld` state so diagnostics and cleanup cover every actor.
 - `features/step-definitions/` contains capability-oriented glue; `common/` is reserved for genuinely cross-capability steps.
 
-An uninitialized instance is installed and authenticated lazily; an initialized instance signs in and reuses authenticated state. Full runs prove reset and bootstrap during setup rather than through a Gherkin scenario. Cucumber's exit status is the behavior gate, and the runner also requires at least one `testCaseStarted` message so an empty tag selection cannot pass.
+An uninitialized instance is installed and authenticated lazily; an initialized instance signs in and reuses authenticated state. Full runs prove reset and bootstrap during setup rather than through a Gherkin scenario. Cucumber's exit status is the behavior gate, and the runner also requires at least one `testCaseStarted` message so an empty tag selection cannot pass. Do not replace this gate with scenario-count baselines or skipped-scenario allowlists.
 
 ## Tags And External Runtime
 
@@ -54,6 +55,7 @@ Validation failures are contract failures. Trace them to the backend schema owne
 - Generate disposable resource names through `support/naming.ts` with an `E2E` prefix.
 - Keep deterministic upload material in `fixtures/test-materials/` and resolve it through `support/test-materials.ts`.
 - Seed scripts own shared long-lived fixtures; scenarios own disposable resources they create and must register cleanup.
+- Use typed `DifyWorld` cleanup fields for known resource types and `registerCleanup(...)` for additional lifecycle owners. Registered callbacks run LIFO after typed cleanup queues.
 - Remove child and referencing resources before owners. Attach cleanup failures to the report instead of swallowing them.
 
 Failures produce screenshots and HTML captures under `cucumber-report/artifacts/`; the HTML and Cucumber Messages reports live under `cucumber-report/`. Backend and frontend startup logs live under `.logs/`. Additional CI lanes preserve their own report and log directories.

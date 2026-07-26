@@ -162,6 +162,9 @@ That documents a GET request body and is not the expected contract.
 
 ## Responses
 
+`204 No Content` responses must not serialize a response body. Return the status using the established controller pattern;
+do not return a dictionary, response model, or other payload.
+
 Response models should inherit from `ResponseModel`:
 
 ```python
