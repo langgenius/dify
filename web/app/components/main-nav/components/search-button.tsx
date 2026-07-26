@@ -16,8 +16,8 @@ function getPlatformSnapshot() {
   return detectPlatform()
 }
 
-function getServerPlatformSnapshot() {
-  return 'linux' as const
+function getServerPlatformSnapshot(): ReturnType<typeof detectPlatform> {
+  return 'linux'
 }
 
 function useDisplayPlatform() {
