@@ -6,6 +6,10 @@ import httpx
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
+# Explicit bounded timeout for credential-validation requests so a slow or
+# hanging WaterCrawl endpoint cannot block the worker indefinitely.
+_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
+
 
 class WatercrawlAuth(ApiKeyAuthBase):
     def __init__(self, credentials: AuthCredentials):
@@ -33,7 +37,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "X-API-KEY": self.api_key}
 
     def _get_request(self, url, headers):
-        return httpx.get(url, headers=headers)
+        return httpx.get(url, headers=headers, timeout=_CREDENTIAL_TIMEOUT)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:
