@@ -5,6 +5,7 @@ import type {
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   NumberField,
   NumberFieldControls,
@@ -30,7 +31,11 @@ const TextLabel: FC<PropsWithChildren> = (props) => {
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   return (
-    <div className="flex-1 space-y-2">
+    // grow + a 176px basis (not flex-1) so the row can wrap on real container
+    // width, not a viewport breakpoint: three columns fit down to ~552px, then
+    // reflow to two, then one. When three fit, equal basis + equal grow resolve
+    // to the same widths as the previous flex-1, so the wide layout is unchanged.
+    <div className="grow basis-[176px] space-y-2">
       <TextLabel>{props.label}</TextLabel>
       {props.children}
     </div>
@@ -142,7 +147,10 @@ function CompoundNumberInput({
           {...inputProps}
           aria-label={label}
           size={size}
-          className={className}
+          // min-w-[64px] overrides the component's default min-w-0 so the input
+          // can never collapse to an unusable sliver, even in an unforeseen
+          // container; belt to the row's flex-wrap braces.
+          className={cn('min-w-[64px]', className)}
           onBlur={onBlur}
         />
         {Boolean(unit) && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}

@@ -197,4 +197,17 @@ describe('GeneralChunkingOptions', () => {
       expect(onSummaryIndexSettingChange).toHaveBeenCalledWith({ enable: true })
     })
   })
+
+  // Regression: langgenius/dify#39592 — the delimiter/max-length/overlap row
+  // must be allowed to wrap so the number fields reflow instead of collapsing
+  // in a narrow card. Fails before the fix (row was a non-wrapping `flex`).
+  describe('#39592 narrow-container regression', () => {
+    it('lets the three-field row wrap on container width', () => {
+      render(<GeneralChunkingOptions {...defaultProps} />)
+      const delimiterLabel = screen.getByText(`${ns}.stepTwo.separator`)
+      const row = delimiterLabel.closest('.gap-3')
+      expect(row).not.toBeNull()
+      expect(row!.className).toContain('flex-wrap')
+    })
+  })
 })

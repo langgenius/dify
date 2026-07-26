@@ -136,3 +136,32 @@ describe('OverlapInput', () => {
     expect(onChange).toHaveBeenLastCalledWith(100)
   })
 })
+
+// Regression: langgenius/dify#39592 — below ~1351px viewport (a ~440px card)
+// the number inputs collapsed to a 32px, unusable sliver. The input's own
+// min-width is the belt to the row's flex-wrap braces (the wrap lives on the
+// row in general-chunking-options). jsdom has no layout engine, so we cannot
+// assert pixel widths here; we assert the structural classes that prevent the
+// collapse. These fail before the fix and pass after.
+describe('#39592 narrow-container regression (structural)', () => {
+  it('gives the MaxLength input a min-width so it can never collapse to a sliver', () => {
+    render(<MaxLengthInput onChange={vi.fn()} />)
+    const input = screen.getByRole('textbox')
+    expect(input.className).toContain('min-w-[64px]')
+  })
+
+  it('gives the OverlapInput input a min-width too', () => {
+    render(<OverlapInput onChange={vi.fn()} />)
+    const input = screen.getByRole('textbox')
+    expect(input.className).toContain('min-w-[64px]')
+  })
+
+  it('gives each field a flex-basis (not flex-1) so the row can wrap on container width', () => {
+    render(<MaxLengthInput onChange={vi.fn()} />)
+    const field = screen.getByRole('textbox').closest('.space-y-2')
+    expect(field).not.toBeNull()
+    expect(field!.className).toContain('basis-[176px]')
+    // must not carry the old flex-1 that forced a single non-wrapping row
+    expect(field!.className).not.toContain('flex-1')
+  })
+})

@@ -128,7 +128,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       noHighlight={isInUpload && isNotUploadInEmptyDataset}
     >
       <div className="flex flex-col gap-y-4">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <DelimiterInput
             value={segmentIdentifier}
             onChange={(e) => onSegmentIdentifierChange(e.target.value)}
