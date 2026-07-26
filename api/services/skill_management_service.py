@@ -84,6 +84,7 @@ _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
 _MAX_TAGS = 5
 _MAX_TAG_LENGTH = 32
+_MAX_SKILL_DESCRIPTION_LENGTH = 1024
 _UNTITLED_DISPLAY_NAME = "Untitled skill"
 _UNTITLED_SKILL_NAME_PREFIX = "untitled-skill"
 _UNTITLED_SKILL_DESCRIPTION = "Describe what this Skill does and when an Agent should use it."
@@ -325,6 +326,16 @@ def validate_skill_name(name: str) -> str:
         raise ValueError("skill name must not start/end with '-' or contain consecutive '-'")
     if "_" in normalized:
         raise ValueError("skill name must use '-' instead of '_'")
+    return normalized
+
+
+def validate_skill_description(description: str) -> str:
+    """Validate SKILL.md frontmatter description."""
+    normalized = description.strip()
+    if not normalized:
+        raise ValueError("skill description must not be blank")
+    if len(normalized) > _MAX_SKILL_DESCRIPTION_LENGTH:
+        raise ValueError(f"skill description must be at most {_MAX_SKILL_DESCRIPTION_LENGTH} characters")
     return normalized
 
 
@@ -2433,7 +2444,14 @@ class SkillManagementService:
                 "SKILL.md frontmatter description is required",
                 details={"path": _SKILL_MD, "field": "description", "line": line},
             )
-        return description.strip()[:1024]
+        try:
+            return validate_skill_description(description)
+        except ValueError as exc:
+            raise SkillManagementServiceError(
+                "invalid_skill_description",
+                str(exc),
+                details={"path": _SKILL_MD, "field": "description", "line": line},
+            ) from exc
 
     @staticmethod
     def _display_name_from_frontmatter(*, metadata: dict[str, Any], name: str) -> str:
@@ -3060,5 +3078,6 @@ __all__ = [
     "SkillRestorePayload",
     "SkillVersionUpdatePayload",
     "normalize_skill_file_path",
+    "validate_skill_description",
     "validate_skill_name",
 ]
