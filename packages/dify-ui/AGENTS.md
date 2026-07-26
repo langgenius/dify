@@ -28,5 +28,4 @@ Use the README sections as the detailed owners:
 [Search and picker selection]: README.md#search-and-picker-selection
 [Tailwind and Figma radius mapping]: README.md#tailwind-css-v4-integration
 [Typed value contracts]: README.md#typed-value-contracts
-
 [`README.md`]: README.md
