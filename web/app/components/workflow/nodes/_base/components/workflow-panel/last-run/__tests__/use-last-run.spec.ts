@@ -8,11 +8,22 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockShowSingleRun = vi.fn()
 const mockHandleRun = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
+      >()
+
+    return {
+      ...actual,
+      useNodesSyncDraft: () => ({
+        handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useWorkflowRunValidation: () => ({

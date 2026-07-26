@@ -3,7 +3,8 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
+import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Operator from '../operator'
 
@@ -96,14 +97,35 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
-  return {
-    ...actual,
-    useAvailableBlocks: vi.fn(),
-    useNodesInteractions: vi.fn(),
-  }
-})
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
+      >()
+
+    return {
+      ...actual,
+      useAvailableBlocks: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: vi.fn(),
+    }
+  },
+)
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)

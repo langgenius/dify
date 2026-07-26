@@ -7,9 +7,20 @@ const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseVarList = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => mockUseNodesReadOnly(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

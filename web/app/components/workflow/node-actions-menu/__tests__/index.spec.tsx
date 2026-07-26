@@ -3,24 +3,57 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useNodeMetaData,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
+import { useNodeMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { NodeActionsDropdown } from '../index'
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
-  return {
-    ...actual,
-    useNodeMetaData: vi.fn(),
-    useNodesInteractions: vi.fn(),
-    useNodesReadOnly: vi.fn(),
-  }
-})
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data')
+      >()
+
+    return {
+      ...actual,
+      useNodeMetaData: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: vi.fn(),
+    }
+  },
+)
 
 vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: vi.fn(),

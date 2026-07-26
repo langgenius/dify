@@ -47,16 +47,69 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockUseWorkflowStore(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesInteractions: () => mockUseHooks().useNodesInteractions(),
-  useNodesSyncDraft: () => mockUseHooks().useNodesSyncDraft(),
-  useWorkflowHistory: () => mockUseHooks().useWorkflowHistory(),
-  useAutoGenerateWebhookUrl: () => mockUseHooks().useAutoGenerateWebhookUrl(),
-  WorkflowHistoryEvent: {
-    NodeAdd: 'NodeAdd',
-    NoteAdd: 'NoteAdd',
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-auto-generate-webhook-url',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-auto-generate-webhook-url')
+      >()
+
+    return {
+      ...actual,
+      useAutoGenerateWebhookUrl: () => mockUseHooks().useAutoGenerateWebhookUrl(),
+    }
   },
-}))
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: () => mockUseHooks().useNodesInteractions(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
+      >()
+
+    return {
+      ...actual,
+      useNodesSyncDraft: () => mockUseHooks().useNodesSyncDraft(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-history',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-history')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowHistory: () => mockUseHooks().useWorkflowHistory(),
+      WorkflowHistoryEvent: {
+        NodeAdd: 'NodeAdd',
+        NoteAdd: 'NoteAdd',
+      },
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes', () => ({
   __esModule: true,

@@ -17,8 +17,10 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import { useIsChatMode, useNodeDataUpdate, useWorkflow } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import {
   getNodeInfoById,
   isConversationVar,

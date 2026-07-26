@@ -8,7 +8,8 @@ import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useStrategyProviderDetail } from '@/service/use-strategy'
 import { VarType as VarKindType } from '../../types'

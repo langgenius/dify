@@ -17,10 +17,21 @@ const mockUseCheckInstalled = vi.hoisted(() => vi.fn())
 const mockGenerateAgentToolValue = vi.hoisted(() => vi.fn())
 const mockToolParametersToFormSchemas = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: (...args: unknown[]) => mockUseNodesReadOnly(...args),
-  useIsChatMode: (...args: unknown[]) => mockUseIsChatMode(...args),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: (...args: unknown[]) => mockUseNodesReadOnly(...args),
+      useIsChatMode: (...args: unknown[]) => mockUseIsChatMode(...args),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

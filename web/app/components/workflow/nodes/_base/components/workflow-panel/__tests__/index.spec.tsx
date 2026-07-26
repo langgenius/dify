@@ -104,36 +104,145 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => ({ availableNextBlocks: [] }),
-  useEdgesInteractions: () => ({
-    handleEdgeDeleteByDeleteBranch: vi.fn(),
-  }),
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-  useNodesMetaData: () => ({
-    nodesMap: {
-      [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-      [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-    },
-  }),
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-  useToolIcon: () => undefined,
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-  WorkflowHistoryEvent: {
-    NodeTitleChange: 'NodeTitleChange',
-    NodeDescriptionChange: 'NodeDescriptionChange',
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
+      >()
+
+    return {
+      ...actual,
+      useAvailableBlocks: () => ({ availableNextBlocks: [] }),
+    }
   },
-}))
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-edges-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-edges-interactions')
+      >()
+
+    return {
+      ...actual,
+      useEdgesInteractions: () => ({
+        handleEdgeDeleteByDeleteBranch: vi.fn(),
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
+      >()
+
+    return {
+      ...actual,
+      useNodeDataUpdate: () => ({
+        handleNodeDataUpdate: mockHandleNodeDataUpdate,
+        handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: () => ({
+        handleNodeSelect: mockHandleNodeSelect,
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data')
+      >()
+
+    return {
+      ...actual,
+      useNodesMetaData: () => ({
+        nodesMap: {
+          [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+          [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+        },
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-tool-icon',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-tool-icon')
+      >()
+
+    return {
+      ...actual,
+      useToolIcon: () => undefined,
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => ({
+        nodesReadOnly: mockNodesReadOnly,
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-history',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-history')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowHistory: () => ({
+        saveStateToHistory: mockSaveStateToHistory,
+      }),
+      WorkflowHistoryEvent: {
+        NodeTitleChange: 'NodeTitleChange',
+        NodeDescriptionChange: 'NodeDescriptionChange',
+      },
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (

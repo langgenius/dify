@@ -7,18 +7,43 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../../types'
 import VarList from '../index'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getTreeLeafNodes: () => [],
-    getNodeById: () => undefined,
-    getBeforeNodesInSameBranchIncludeParent: () => [],
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: () => [],
-    getCurrentVariableType: () => undefined,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useIsChatMode: () => false,
+      useWorkflow: () => ({
+        getTreeLeafNodes: () => [],
+        getNodeById: () => undefined,
+        getBeforeNodesInSameBranchIncludeParent: () => [],
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowVariables: () => ({
+        getNodeAvailableVars: () => [],
+        getCurrentVariableType: () => undefined,
+      }),
+    }
+  },
+)
 
 const sourceNode = createNode({
   id: 'node-a',

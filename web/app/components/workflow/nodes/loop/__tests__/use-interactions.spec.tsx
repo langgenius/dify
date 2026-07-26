@@ -22,17 +22,28 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesMetaData: () => ({
-    nodesMap: {
-      [BlockEnum.Code]: {
-        defaultValue: {
-          title: 'Code',
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-meta-data')
+      >()
+
+    return {
+      ...actual,
+      useNodesMetaData: () => ({
+        nodesMap: {
+          [BlockEnum.Code]: {
+            defaultValue: {
+              title: 'Code',
+            },
+          },
         },
-      },
-    },
-  }),
-}))
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/utils', () => ({
   generateNewNode: (...args: unknown[]) => mockGenerateNewNode(...args),

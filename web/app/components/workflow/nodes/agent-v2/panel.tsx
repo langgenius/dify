@@ -17,8 +17,8 @@ import {
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'

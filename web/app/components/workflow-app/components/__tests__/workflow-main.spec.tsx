@@ -141,7 +141,7 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
   }),

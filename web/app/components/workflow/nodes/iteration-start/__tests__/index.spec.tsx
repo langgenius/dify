@@ -3,25 +3,58 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import IterationStartNode, { IterationStartNodeDumb } from '../index'
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
-  return {
-    ...actual,
-    useAvailableBlocks: vi.fn(),
-    useNodesInteractions: vi.fn(),
-    useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
-  }
-})
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
+      >()
+
+    return {
+      ...actual,
+      useAvailableBlocks: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: vi.fn(),
+      useIsChatMode: vi.fn(),
+    }
+  },
+)
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)

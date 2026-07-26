@@ -3,7 +3,7 @@ import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useEffect, useState } from 'react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '../../store'
 import { VarType } from '../../types'

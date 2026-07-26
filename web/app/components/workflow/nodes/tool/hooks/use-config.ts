@@ -12,7 +12,7 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { updateBuiltInToolCredential } from '@/service/tools'

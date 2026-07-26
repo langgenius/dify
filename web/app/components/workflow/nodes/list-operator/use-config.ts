@@ -2,12 +2,10 @@ import type { ValueSelector, Var } from '../../types'
 import type { Condition, Limit, ListFilterNodeType, OrderBy } from './types'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowVariables } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   canFilterVariable,

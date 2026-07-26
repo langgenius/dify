@@ -11,11 +11,22 @@ const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number) =>
 
 let latestGetResultCallback: ((res: WorkflowRunDetailResponse) => void) | undefined
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowUpdate: () => ({
-    handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-update',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-update')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowUpdate: () => ({
+        handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({

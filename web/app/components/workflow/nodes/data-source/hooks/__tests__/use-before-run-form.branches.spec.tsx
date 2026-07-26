@@ -58,10 +58,35 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: vi.fn(),
-  useNodesSyncDraft: vi.fn(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
+      >()
+
+    return {
+      ...actual,
+      useNodeDataUpdate: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
+      >()
+
+    return {
+      ...actual,
+      useNodesSyncDraft: vi.fn(),
+    }
+  },
+)
 
 vi.mock('@/service/use-pipeline', () => ({
   useDatasourceSingleRun: vi.fn(),

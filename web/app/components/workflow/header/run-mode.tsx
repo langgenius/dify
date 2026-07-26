@@ -7,12 +7,10 @@ import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  useWorkflowRun,
-  useWorkflowRunValidation,
-  useWorkflowStartRun,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
+import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
+import { useWorkflowStartRun } from '@/app/components/workflow/hooks/use-workflow-start-run'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'

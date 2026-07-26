@@ -17,11 +17,22 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useWorkflow: () => mockUseWorkflow(),
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => mockUseNodesReadOnly(),
+      useWorkflow: () => mockUseWorkflow(),
+      useIsChatMode: () => mockUseIsChatMode(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

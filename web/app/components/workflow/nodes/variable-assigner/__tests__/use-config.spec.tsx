@@ -40,14 +40,25 @@ vi.mock('ahooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useWorkflow: () => ({
-    handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
-    isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-    removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => ({ nodesReadOnly: false }),
+      useWorkflow: () => ({
+        handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
+        isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
+        removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<VariableAssignerNodeType>(mockSetInputs),

@@ -22,11 +22,22 @@ vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
   default: (...args: unknown[]) => mockUseInspectVarsCrud(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useIsChatMode: () => mockUseIsChatMode(),
-  useWorkflow: () => mockUseWorkflow(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => mockUseNodesReadOnly(),
+      useIsChatMode: () => mockUseIsChatMode(),
+      useWorkflow: () => mockUseWorkflow(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: { dataSourceList: unknown[] }) => unknown) =>

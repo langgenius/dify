@@ -30,11 +30,22 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-panel-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-panel-interactions')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowInteractions: () => ({
+        handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
   default: ({ status, onOpenTracingTab }: { status?: string; onOpenTracingTab?: () => void }) => (

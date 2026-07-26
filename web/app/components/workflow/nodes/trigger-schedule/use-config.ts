@@ -1,7 +1,7 @@
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDefaultVisualConfig } from './constants'

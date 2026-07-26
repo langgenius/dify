@@ -29,18 +29,16 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import {
-  useAvailableBlocks,
-  useNodeDataUpdate,
-  useNodesInteractions,
-  useNodesMetaData,
-  useNodesReadOnly,
-  useToolIcon,
-  useWorkflowHistory,
-  WorkflowHistoryEvent,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
+import { useNodesMetaData } from '@/app/components/workflow/hooks/use-nodes-meta-data'
+import { useToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowHistory } from '@/app/components/workflow/hooks/use-workflow-history'
+import { WorkflowHistoryEvent } from '@/app/components/workflow/hooks/use-workflow-history'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'

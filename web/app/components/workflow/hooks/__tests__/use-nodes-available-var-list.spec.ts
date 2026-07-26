@@ -15,16 +15,31 @@ const mockFlowType = vi.hoisted(() => ({
   value: undefined as FlowType | undefined,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => true,
-  useWorkflow: () => ({
-    getTreeLeafNodes: mockGetTreeLeafNodes,
-    getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: mockGetNodeAvailableVars,
-  }),
-}))
+vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => true,
+    useWorkflow: () => ({
+      getTreeLeafNodes: mockGetTreeLeafNodes,
+      getBeforeNodesInSameBranchIncludeParent: mockGetBeforeNodesInSameBranchIncludeParent,
+    }),
+  }
+})
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-variables', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: mockGetNodeAvailableVars,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
   useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>

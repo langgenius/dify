@@ -6,13 +6,11 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
 import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
-import {
-  useAutoGenerateWebhookUrl,
-  useDSL,
-  usePanelInteractions,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
+import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'

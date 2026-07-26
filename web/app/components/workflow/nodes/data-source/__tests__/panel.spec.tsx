@@ -3,7 +3,7 @@ import type { DataSourceNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useMatchSchemaType, {
@@ -36,9 +36,20 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: vi.fn(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: vi.fn(),

@@ -9,7 +9,7 @@ import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import {
   BoxGroup,
   BoxGroupField,

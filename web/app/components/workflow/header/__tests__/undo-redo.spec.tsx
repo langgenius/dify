@@ -15,11 +15,22 @@ vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
   default: () => <div data-testid="view-workflow-history" />,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => ({
+        nodesReadOnly: mockNodesReadOnly,
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   useWorkflowHistoryStore: () => ({

@@ -2,8 +2,10 @@ import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/w
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
-import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowVariables } from '@/app/components/workflow/hooks/use-workflow-variables'
 import {
   appendSnippetInputFieldVars,
   filterSnippetSystemVars,

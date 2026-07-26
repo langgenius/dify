@@ -17,7 +17,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
-import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
+import { useWorkflowVariableType } from '@/app/components/workflow/hooks/use-workflow-variables'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'

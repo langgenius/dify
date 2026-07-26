@@ -11,9 +11,20 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-sync-draft')
+      >()
+
+    return {
+      ...actual,
+      useNodesSyncDraft: () => mockUseNodesSyncDraft(),
+    }
+  },
+)
 
 vi.mock('../method-selector', () => ({
   __esModule: true,

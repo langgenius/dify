@@ -1,12 +1,10 @@
 import type { DocExtractorNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-  useWorkflowVariables,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowVariables } from '@/app/components/workflow/hooks/use-workflow-variables'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
@@ -26,12 +24,37 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: vi.fn(),
-  useNodesReadOnly: vi.fn(),
-  useWorkflow: vi.fn(),
-  useWorkflowVariables: vi.fn(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useIsChatMode: vi.fn(),
+      useNodesReadOnly: vi.fn(),
+      useWorkflow: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowVariables: vi.fn(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

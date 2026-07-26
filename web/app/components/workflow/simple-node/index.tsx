@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { memo, useMemo } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
 import { NodeTargetHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
 import { NodeRunningStatus } from '@/app/components/workflow/types'

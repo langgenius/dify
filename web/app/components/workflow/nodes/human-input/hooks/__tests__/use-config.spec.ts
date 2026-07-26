@@ -13,9 +13,20 @@ vi.mock('reactflow', () => ({
   useUpdateNodeInternals: () => mockUseUpdateNodeInternals(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: () => mockUseNodesReadOnly(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
   useEdgesInteractions: () => mockUseEdgesInteractions(),

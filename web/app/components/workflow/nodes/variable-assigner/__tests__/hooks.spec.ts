@@ -19,12 +19,51 @@ vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => mockUseNodeDataUpdate(),
-  useWorkflow: () => mockUseWorkflow(),
-  useWorkflowVariables: () => mockUseWorkflowVariables(),
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
+      >()
+
+    return {
+      ...actual,
+      useNodeDataUpdate: () => mockUseNodeDataUpdate(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useWorkflow: () => mockUseWorkflow(),
+      useIsChatMode: () => mockUseIsChatMode(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-variables')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowVariables: () => mockUseWorkflowVariables(),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockUseWorkflowStore(),

@@ -3,12 +3,10 @@ import type { Edge, Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-  useNodesReadOnly,
-  useToolIcon,
-} from '@/app/components/workflow/hooks'
+import { useAvailableBlocks } from '@/app/components/workflow/hooks/use-available-blocks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
+import { useToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import NextStep from '../index'
@@ -23,16 +21,65 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
-  return {
-    ...actual,
-    useAvailableBlocks: vi.fn(),
-    useNodesInteractions: vi.fn(),
-    useNodesReadOnly: vi.fn(),
-    useToolIcon: vi.fn(),
-  }
-})
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-available-blocks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-available-blocks')
+      >()
+
+    return {
+      ...actual,
+      useAvailableBlocks: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-nodes-interactions')
+      >()
+
+    return {
+      ...actual,
+      useNodesInteractions: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-tool-icon',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-tool-icon')
+      >()
+
+    return {
+      ...actual,
+      useToolIcon: vi.fn(),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow')
+      >()
+
+    return {
+      ...actual,
+      useNodesReadOnly: vi.fn(),
+    }
+  },
+)
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)

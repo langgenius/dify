@@ -7,11 +7,22 @@ const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => ({
   current: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft.current,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-node-data-update',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-node-data-update')
+      >()
+
+    return {
+      ...actual,
+      useNodeDataUpdate: () => ({
+        handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft.current,
+      }),
+    }
+  },
+)
 
 type TestNodeData = CommonNodeType<{
   value: string

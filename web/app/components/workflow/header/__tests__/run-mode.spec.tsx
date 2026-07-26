@@ -33,21 +33,60 @@ let mockIsListening = false
 let mockCanRun = true
 let mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
-    handleWorkflowTriggerScheduleRunInWorkflow: mockHandleWorkflowTriggerScheduleRunInWorkflow,
-    handleWorkflowTriggerWebhookRunInWorkflow: mockHandleWorkflowTriggerWebhookRunInWorkflow,
-    handleWorkflowTriggerPluginRunInWorkflow: mockHandleWorkflowTriggerPluginRunInWorkflow,
-    handleWorkflowRunAllTriggersInWorkflow: mockHandleWorkflowRunAllTriggersInWorkflow,
-  }),
-  useWorkflowRun: () => ({
-    handleStopRun: mockHandleStopRun,
-  }),
-  useWorkflowRunValidation: () => ({
-    warningNodes: mockWarningNodes,
-  }),
-}))
+vi.mockvi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-checklist',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-checklist')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowRunValidation: () => ({
+        warningNodes: mockWarningNodes,
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-run',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-run')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowRun: () => ({
+        handleStopRun: mockHandleStopRun,
+      }),
+    }
+  },
+)
+
+vi.mock(
+  '@/app/components/workflow/app/components/workflow/hooks/use-workflow-start-run',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/workflow/app/components/workflow/hooks/use-workflow-start-run')
+      >()
+
+    return {
+      ...actual,
+      useWorkflowStartRun: () => ({
+        handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
+        handleWorkflowTriggerScheduleRunInWorkflow: mockHandleWorkflowTriggerScheduleRunInWorkflow,
+        handleWorkflowTriggerWebhookRunInWorkflow: mockHandleWorkflowTriggerWebhookRunInWorkflow,
+        handleWorkflowTriggerPluginRunInWorkflow: mockHandleWorkflowTriggerPluginRunInWorkflow,
+        handleWorkflowRunAllTriggersInWorkflow: mockHandleWorkflowRunAllTriggersInWorkflow,
+      }),
+    }
+  },
+)
 
 vi.mock('@/app/components/workflow/store/workflow', () => ({
   useStore: (
