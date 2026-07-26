@@ -377,11 +377,13 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
       if (!workflowStore.getState().isWorkflowDataLoaded) return
-      // Only defer to the collaborative flush rules while actually connected: without a connection
-      // there is no leader election, so the guard could never pass and unmounting would silently
-      // discard the edits made since the last autosave.
-      const isCollaborating = isCollaborationEnabled && collaborationManager.isConnected()
-      if (isCollaborating && !collaborationManager.canFlushGraphOnPageClose()) return
+
+      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
+        syncWorkflowDraftWhenPageClose()
+        return
+      }
+
+      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {

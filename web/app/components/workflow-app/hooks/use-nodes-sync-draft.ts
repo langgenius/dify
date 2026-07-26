@@ -129,16 +129,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
-    // Only defer to the collaborative flush rules while actually connected. Without a connection
-    // there is no leader election, so the guard could never pass and the edits made right before
-    // leaving would be dropped without any feedback.
-    const isCollaborating = isCollaborationEnabled && collaborationManager.isConnected()
-
-    if (isCollaborating && !collaborationManager.canFlushGraphOnPageClose()) return
-
-    const isFollower = isCollaborating && !collaborationManager.getIsLeader()
-
-    if (isFollower) return
+    const canPersistOnPageClose =
+      !isCollaborationEnabled ||
+      collaborationManager.canFlushGraphOnPageClose() ||
+      collaborationManager.canUseLocalDraftFallback()
+    if (!canPersistOnPageClose) return
 
     const postParams = getPostParams()
 

@@ -14,6 +14,7 @@ const mockCollaborationGetIsLeader = vi.fn()
 const mockCollaborationRequestWorkflowSync = vi.fn()
 const mockCollaborationCanPersistLocalGraph = vi.fn()
 const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
+const mockCollaborationCanUseLocalDraftFallback = vi.fn()
 let isCollaborationEnabled = false
 
 let reactFlowState: {
@@ -72,6 +73,8 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     canPersistLocalGraph: (...args: unknown[]) => mockCollaborationCanPersistLocalGraph(...args),
     canFlushGraphOnPageClose: (...args: unknown[]) =>
       mockCollaborationCanFlushGraphOnPageClose(...args),
+    canUseLocalDraftFallback: (...args: unknown[]) =>
+      mockCollaborationCanUseLocalDraftFallback(...args),
   },
 }))
 
@@ -139,6 +142,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationGetIsLeader.mockReturnValue(true)
     mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
     mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
     mockCollaborationRequestWorkflowSync.mockResolvedValue({
       hash: 'remote-hash',
       updatedAt: 2,
@@ -610,6 +614,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
 
     const { result } = renderUseNodesSyncDraft()
 
@@ -642,6 +647,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationIsConnected.mockReturnValue(false)
     mockCollaborationGetIsLeader.mockReturnValue(false)
     mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(true)
 
     const { result } = renderUseNodesSyncDraft()
 
@@ -650,5 +656,20 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
 
     expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not flush an untrusted graph after an established collaboration disconnects', () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 })
