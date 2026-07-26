@@ -42,6 +42,7 @@ from services.skill_management_service import (
     SkillRestorePayload,
     SkillVersionUpdatePayload,
     normalize_skill_file_path,
+    validate_skill_description,
     validate_skill_name,
 )
 
@@ -155,9 +156,16 @@ def _skill_md(name: str = "finance-sop", description: str = "Finance SOP", body:
 
 def test_validate_skill_name_rejects_underscores_and_double_hyphens() -> None:
     assert validate_skill_name("finance-sop") == "finance-sop"
-    for bad in ["finance_sop", "finance--sop", "-finance", "finance-"]:
+    for bad in ["finance_sop", "finance--sop", "-finance", "finance-", "Finance", "x" * 65]:
         with pytest.raises(ValueError):
             validate_skill_name(bad)
+
+
+def test_validate_skill_description_rejects_blank_and_long_values() -> None:
+    assert validate_skill_description(" Finance SOP ") == "Finance SOP"
+    for bad in ["", "   ", "x" * 1025]:
+        with pytest.raises(ValueError):
+            validate_skill_description(bad)
 
 
 def test_normalize_skill_file_path_rejects_escape_paths() -> None:
@@ -1167,6 +1175,25 @@ def test_replace_draft_tree_allows_blank_frontmatter_description_until_publish()
     with pytest.raises(SkillManagementServiceError) as exc_info:
         service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
     assert exc_info.value.code == "missing_skill_description"
+    assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 3}
+
+
+def test_publish_rejects_too_long_frontmatter_description() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[{"path": "SKILL.md", "content": _skill_md(description="x" * 1025, body="# Too long")}]
+        ),
+    )
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    assert exc_info.value.code == "invalid_skill_description"
     assert exc_info.value.details == {"path": "SKILL.md", "field": "description", "line": 3}
 
 
