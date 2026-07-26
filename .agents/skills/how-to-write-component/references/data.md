@@ -35,7 +35,8 @@ Read this document when a component consumes generated contracts, nullable API v
 
 ## SSR, Authentication, And Workspace
 
-- Keep request-time authentication, setup, workspace-role, and tenant decisions out of static route configuration.
-- Do not base authorization on soft prefetches or introduce global placeholder contracts to solve route-local Suspense behavior.
-- Treat workspace switching as a tenant cache boundary. Trace the current backend contract before mixing `workspace_id` and `tenant_id`, and include the relevant identity in query keys when no full-reload boundary resets the cache.
-- Do not remove a client recovery path until server unavailable behavior is defined. Branding-sensitive UI must distinguish pending or placeholder data from authoritative values.
+- Static configuration owns path-invariant routing. Request-dependent authentication, setup, role, and tenant decisions belong to SSR or runtime decision boundaries.
+- Distinguish soft SSR cache warming from authoritative decisions. Prefetched or placeholder data must not grant access or represent successful availability.
+- Treat workspace switching as a tenant-context boundary, not ordinary CRUD invalidation. Tenant-scoped state and caches must cross that boundary together.
+- Model SSR bootstrap data as pending, authoritative, or unavailable. Preserve explicit recovery or fail-closed behavior, and never treat placeholders as authoritative values.
+- Solve route-local loading and Suspense behavior at the owning boundary; do not create global domain contracts merely to satisfy rendering mechanics.
