@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "주제 이름",
   "nodes.questionClassifiers.topicPlaceholder": "주제 이름을 작성하세요",
   "nodes.start.builtInVar": "내장 변수",
+  "nodes.start.default": "기본값",
   "nodes.start.inputField": "입력 필드",
   "nodes.start.noVarTip": "워크플로우에서 사용할 입력을 설정하세요",
   "nodes.start.outputVars.files": "파일 목록",

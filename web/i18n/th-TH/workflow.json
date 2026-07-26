@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "ชื่อหัวข้อ",
   "nodes.questionClassifiers.topicPlaceholder": "เขียนชื่อหัวข้อของคุณ",
   "nodes.start.builtInVar": "ตัวแปรในตัว",
+  "nodes.start.default": "ค่าเริ่มต้น",
   "nodes.start.inputField": "ฟิลด์อินพุต",
   "nodes.start.noVarTip": "ตั้งค่าอินพุตที่สามารถใช้ในเวิร์กโฟลว์",
   "nodes.start.outputVars.files": "รายการไฟล์",

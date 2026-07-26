@@ -52,40 +52,56 @@ const VarItem: FC<Props> = ({
     },
     [onChange, hideEditVarModal],
   )
+
+  const defaultValue = payload.default
+  const hasDefault = defaultValue !== undefined && defaultValue !== null && defaultValue !== ''
+  const defaultValueText = hasDefault ? String(defaultValue) : ''
+
   return (
     <div
       ref={ref}
       className={cn(
-        'flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md',
+        'flex cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md',
+        hasDefault ? 'min-h-8 py-1.5' : 'h-8',
         className,
       )}
     >
-      <div className="flex w-0 grow items-center space-x-1">
-        <Variable02
-          className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')}
-        />
-        <div
-          title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
-        >
-          {payload.variable}
-        </div>
-        {payload.label && (
-          <>
-            <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
-            <div
-              title={payload.label as string}
-              className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
-            >
-              {payload.label as string}
-            </div>
-          </>
-        )}
-        {showLegacyBadge && (
-          <Badge
-            text="LEGACY"
-            className="shrink-0 border-text-accent-secondary text-text-accent-secondary"
+      <div className="flex w-0 grow flex-col">
+        <div className="flex items-center space-x-1">
+          <Variable02
+            className={cn('size-3.5 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')}
           />
+          <div
+            title={payload.variable}
+            className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary"
+          >
+            {payload.variable}
+          </div>
+          {payload.label && (
+            <>
+              <div className="shrink-0 text-xs font-medium text-text-quaternary">·</div>
+              <div
+                title={payload.label as string}
+                className="max-w-[130px] truncate text-[13px] font-medium text-text-tertiary"
+              >
+                {payload.label as string}
+              </div>
+            </>
+          )}
+          {showLegacyBadge && (
+            <Badge
+              text="LEGACY"
+              className="shrink-0 border-text-accent-secondary text-text-accent-secondary"
+            />
+          )}
+        </div>
+        {hasDefault && (
+          <div
+            title={defaultValueText}
+            className="truncate pl-[18px] text-xs font-normal text-text-tertiary"
+          >
+            {t(($) => $['nodes.start.default'], { ns: 'workflow' })}: {defaultValueText}
+          </div>
         )}
       </div>
       <div className="ml-2 flex shrink-0 items-center">

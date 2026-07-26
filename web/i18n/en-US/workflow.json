@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Topic Name",
   "nodes.questionClassifiers.topicPlaceholder": "Write your topic name",
   "nodes.start.builtInVar": "Built-in Variables",
+  "nodes.start.default": "default",
   "nodes.start.inputField": "Input Field",
   "nodes.start.noVarTip": "Set inputs that can be used in the Workflow",
   "nodes.start.outputVars.files": "File list",

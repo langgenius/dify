@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Themenname",
   "nodes.questionClassifiers.topicPlaceholder": "Geben Sie Ihren Themennamen ein",
   "nodes.start.builtInVar": "Eingebaute Variablen",
+  "nodes.start.default": "Standard",
   "nodes.start.inputField": "Eingabefeld",
   "nodes.start.noVarTip": "Legen Sie Eingaben fest, die im Workflow verwendet werden können",
   "nodes.start.outputVars.files": "Dateiliste",

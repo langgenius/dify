@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Nama Topik",
   "nodes.questionClassifiers.topicPlaceholder": "Tulis nama topik Anda",
   "nodes.start.builtInVar": "Variabel bawaan",
+  "nodes.start.default": "default",
   "nodes.start.inputField": "Bidang Masukan",
   "nodes.start.noVarTip": "Atur input yang dapat digunakan dalam Alur Kerja",
   "nodes.start.outputVars.files": "Daftar file",

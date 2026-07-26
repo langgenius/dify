@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "Ime teme",
   "nodes.questionClassifiers.topicPlaceholder": "Napišite ime svoje teme",
   "nodes.start.builtInVar": "Vgrajene spremenljivke",
+  "nodes.start.default": "privzeto",
   "nodes.start.inputField": "Vnosno polje",
   "nodes.start.noVarTip": "Nastavite vhodne podatke, ki jih lahko uporabite v delovnem toku.",
   "nodes.start.outputVars.files": "Seznam datotek",

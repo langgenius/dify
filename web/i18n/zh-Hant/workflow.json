@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "主題內容",
   "nodes.questionClassifiers.topicPlaceholder": "在這裡輸入你的主題內容",
   "nodes.start.builtInVar": "內置變數",
+  "nodes.start.default": "預設",
   "nodes.start.inputField": "輸入字段",
   "nodes.start.noVarTip": "設置的輸入可在工作流程中使用",
   "nodes.start.outputVars.files": "文件列表",

@@ -976,6 +976,7 @@
   "nodes.questionClassifiers.topicName": "نام موضوع",
   "nodes.questionClassifiers.topicPlaceholder": "نام موضوع را بنویسید",
   "nodes.start.builtInVar": "متغیرهای داخلی",
+  "nodes.start.default": "پیش‌فرض",
   "nodes.start.inputField": "فیلد ورودی",
   "nodes.start.noVarTip": "ورودی‌هایی که در گردش کار استفاده می‌شوند را تعریف کنید",
   "nodes.start.outputVars.files": "لیست فایل‌ها",
