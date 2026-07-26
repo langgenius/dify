@@ -19,12 +19,11 @@ from __future__ import annotations
 import hashlib
 import io
 import posixpath
-import re
 import zipfile
 import zlib
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from configs import dify_config
 
@@ -34,7 +33,8 @@ _MAX_SKILL_MD_BYTES = 1 * 1024 * 1024
 _MAX_ENTRIES = 5000
 _ALLOWED_EXTENSIONS = (".zip", ".skill")
 _SKILL_MD_NAME = "SKILL.md"
-_HEADING_RE = re.compile(r"^\s*#\s+(.+?)\s*$", re.MULTILINE)
+_SKILL_NAME_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+_MAX_SKILL_DESCRIPTION_LENGTH = 1024
 
 
 class SkillPackageError(Exception):
@@ -54,12 +54,17 @@ class SkillPackageError(Exception):
 class SkillManifest(BaseModel):
     """Validated metadata extracted from a Skill package."""
 
-    name: str
-    description: str
+    name: str = Field(min_length=1, max_length=64, pattern=_SKILL_NAME_PATTERN)
+    description: str = Field(min_length=1, max_length=_MAX_SKILL_DESCRIPTION_LENGTH)
     entry_path: str  # path of SKILL.md inside the archive
     files: list[str]  # all (safe) file paths inside the archive
     size: int  # total uncompressed bytes
     hash: str  # sha256 of the archive bytes
+
+    @field_validator("name", "description", mode="before")
+    @classmethod
+    def _strip_required_string(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
 
 class NormalizedSkillPackage(BaseModel):
@@ -109,20 +114,48 @@ class SkillPackageService:
             normalized_size = sum(max(info.file_size, 0) for info in normalized_members.values())
 
         name, description = self._parse_skill_md(skill_md)
-        manifest = SkillManifest(
-            name=name,
-            description=description,
-            entry_path=_SKILL_MD_NAME,
-            files=sorted(normalized_members),
-            size=normalized_size,
-            hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
-        )
+        try:
+            manifest = SkillManifest(
+                name=name,
+                description=description,
+                entry_path=_SKILL_MD_NAME,
+                files=sorted(normalized_members),
+                size=normalized_size,
+                hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
+            )
+        except ValidationError as exc:
+            raise self._manifest_validation_error(exc) from exc
         return NormalizedSkillPackage(
             manifest=manifest,
             archive_bytes=normalized_archive_bytes,
             skill_md_bytes=skill_md_bytes,
             strip_prefix=strip_prefix,
         )
+
+    @staticmethod
+    def _manifest_validation_error(exc: ValidationError) -> SkillPackageError:
+        first_error = exc.errors()[0]
+        loc = first_error["loc"]
+        field = loc[0] if loc else "manifest"
+        error_type = first_error["type"]
+        if field == "name":
+            code = "missing_skill_name" if error_type == "string_too_short" else "invalid_skill_name"
+            message = (
+                "SKILL.md frontmatter name is required"
+                if code == "missing_skill_name"
+                else "SKILL.md frontmatter name must be lowercase letters, numbers, and hyphens only, "
+                "must not start or end with a hyphen, and must be at most 64 characters"
+            )
+            return SkillPackageError(code, message, status_code=400)
+        if field == "description":
+            code = "missing_skill_description" if error_type == "string_too_short" else "invalid_skill_description"
+            message = (
+                "SKILL.md frontmatter description is required"
+                if code == "missing_skill_description"
+                else f"SKILL.md frontmatter description must be at most {_MAX_SKILL_DESCRIPTION_LENGTH} characters"
+            )
+            return SkillPackageError(code, message, status_code=400)
+        return SkillPackageError("invalid_skill_manifest", "SKILL.md frontmatter is invalid", status_code=400)
 
     def _open_archive(self, *, content: bytes, filename: str) -> zipfile.ZipFile:
         self._check_extension(filename)
@@ -282,13 +315,6 @@ class SkillPackageService:
         frontmatter = cls._parse_frontmatter(content)
         name = str(frontmatter.get("name") or "").strip()
         description = str(frontmatter.get("description") or "").strip()
-        if not name:
-            heading = _HEADING_RE.search(content)
-            name = heading.group(1).strip() if heading else ""
-        if not name:
-            raise SkillPackageError(
-                "missing_skill_name", "SKILL.md must declare a name (frontmatter or top heading)", status_code=400
-            )
         return name, description
 
     @staticmethod
