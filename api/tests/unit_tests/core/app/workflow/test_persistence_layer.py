@@ -9,7 +9,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution
+from graphon.entities import GraphFailureSource, WorkflowNodeExecution
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -50,6 +50,31 @@ class _RepoRecorder:
 
 def _naive_utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _make_node_execution(
+    execution_id: str,
+    *,
+    node_id: str,
+    title: str,
+    status: WorkflowNodeExecutionStatus,
+    error: str | None = None,
+    metadata: dict[WorkflowNodeExecutionMetadataKey, object] | None = None,
+) -> WorkflowNodeExecution:
+    return WorkflowNodeExecution(
+        id=execution_id,
+        node_execution_id=execution_id,
+        workflow_id="workflow-id",
+        workflow_execution_id="run-id",
+        index=1,
+        node_id=node_id,
+        node_type=BuiltinNodeTypes.CODE,
+        title=title,
+        status=status,
+        error=error,
+        metadata=metadata,
+        created_at=_naive_utc_now(),
+    )
 
 
 def _make_layer(
@@ -668,3 +693,128 @@ class TestWorkflowPersistenceLayer:
         layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
         assert exec_repo.saved
         assert not trace_tasks
+
+
+def test_graph_failure_marks_running_and_retry_nodes_with_source() -> None:
+    layer, _, node_repo, _ = _make_layer()
+    layer._handle_graph_run_started()
+    source = _make_node_execution(
+        "execution-a",
+        node_id="node-a",
+        title="HTTP Request",
+        status=WorkflowNodeExecutionStatus.FAILED,
+        error="source error",
+    )
+    running = _make_node_execution(
+        "execution-b",
+        node_id="node-b",
+        title="Code",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 12},
+    )
+    retrying = _make_node_execution(
+        "execution-c",
+        node_id="node-c",
+        title="LLM",
+        status=WorkflowNodeExecutionStatus.RETRY,
+        error="retry error",
+    )
+    succeeded = _make_node_execution(
+        "execution-d",
+        node_id="node-d",
+        title="Answer",
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+    )
+    layer._node_execution_cache = {item.id: item for item in (source, running, retrying, succeeded)}
+
+    layer._handle_graph_run_failed(
+        GraphRunFailedEvent(
+            error="graph failed",
+            exceptions_count=1,
+            failure_source=GraphFailureSource(
+                node_execution_id="execution-a",
+                node_id="node-a",
+            ),
+        )
+    )
+
+    expected_source = {
+        "node_execution_id": "execution-a",
+        "node_id": "node-a",
+        "node_title": "HTTP Request",
+    }
+    assert source.error == "source error"
+    assert source.metadata is None
+    assert running.status == WorkflowNodeExecutionStatus.FAILED
+    assert running.error == "graph failed"
+    assert running.metadata == {
+        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 12,
+        WorkflowNodeExecutionMetadataKey.FAILURE_SOURCE: expected_source,
+    }
+    assert retrying.status == WorkflowNodeExecutionStatus.FAILED
+    assert retrying.error == "graph failed"
+    assert retrying.metadata == {
+        WorkflowNodeExecutionMetadataKey.FAILURE_SOURCE: expected_source,
+    }
+    assert succeeded.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [item.id for item in node_repo.saved] == ["execution-b", "execution-c"]
+
+
+def test_graph_failure_uses_node_id_when_source_execution_is_missing() -> None:
+    layer, _, _, _ = _make_layer()
+    layer._handle_graph_run_started()
+    running = _make_node_execution(
+        "execution-b",
+        node_id="node-b",
+        title="Code",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+    )
+    layer._node_execution_cache[running.id] = running
+
+    layer._handle_graph_run_failed(
+        GraphRunFailedEvent(
+            error="graph failed",
+            failure_source=GraphFailureSource(
+                node_execution_id="missing-execution",
+                node_id="node-a",
+            ),
+        )
+    )
+
+    assert running.metadata == {
+        WorkflowNodeExecutionMetadataKey.FAILURE_SOURCE: {
+            "node_execution_id": "missing-execution",
+            "node_id": "node-a",
+            "node_title": "node-a",
+        }
+    }
+
+
+def test_unattributed_graph_failure_preserves_legacy_retry_state() -> None:
+    layer, _, _, _ = _make_layer()
+    layer._handle_graph_run_started()
+    running = _make_node_execution(
+        "execution-b",
+        node_id="node-b",
+        title="Code",
+        status=WorkflowNodeExecutionStatus.RUNNING,
+    )
+    retrying = _make_node_execution(
+        "execution-c",
+        node_id="node-c",
+        title="LLM",
+        status=WorkflowNodeExecutionStatus.RETRY,
+        error="retry error",
+    )
+    layer._node_execution_cache = {
+        running.id: running,
+        retrying.id: retrying,
+    }
+
+    layer._handle_graph_run_failed(GraphRunFailedEvent(error="graph failed"))
+
+    assert running.status == WorkflowNodeExecutionStatus.FAILED
+    assert running.metadata is None
+    assert retrying.status == WorkflowNodeExecutionStatus.RETRY
+    assert retrying.error == "retry error"
+    assert retrying.metadata is None

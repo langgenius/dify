@@ -12,7 +12,7 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from typing import Any, TypedDict, Union, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -23,7 +23,7 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.entities import GraphFailureSource, WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
@@ -54,6 +54,12 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+
+
+class _FailureSourceMetadata(TypedDict):
+    node_execution_id: str
+    node_id: str
+    node_title: str
 
 
 @dataclass(slots=True)
@@ -190,7 +196,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.exceptions_count = event.exceptions_count
         self._populate_completion_statistics(execution)
 
-        self._fail_running_node_executions(error_message=event.error)
+        self._fail_running_node_executions(
+            error_message=event.error,
+            failure_source=event.failure_source,
+        )
         self._workflow_execution_repository.save(execution)
         self._enqueue_trace_task(execution)
         _inspector_publish_workflow_completed(workflow_run_id=execution.id_, status=str(execution.status.value))
@@ -444,15 +453,40 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_node_execution_repository.save(domain_execution)
         self._workflow_node_execution_repository.save_execution_data(domain_execution)
 
-    def _fail_running_node_executions(self, *, error_message: str) -> None:
+    def _fail_running_node_executions(
+        self,
+        *,
+        error_message: str,
+        failure_source: GraphFailureSource | None = None,
+    ) -> None:
+        """Finalize active nodes, annotating those stopped by a fatal node failure."""
         now = naive_utc_now()
+        affected_statuses = {WorkflowNodeExecutionStatus.RUNNING}
+        source_metadata: _FailureSourceMetadata | None = None
+        if failure_source is not None:
+            affected_statuses.add(WorkflowNodeExecutionStatus.RETRY)
+            source_execution = self._node_execution_cache.get(failure_source.node_execution_id)
+            source_metadata = {
+                "node_execution_id": failure_source.node_execution_id,
+                "node_id": failure_source.node_id,
+                "node_title": source_execution.title if source_execution is not None else failure_source.node_id,
+            }
+
         for execution in self._node_execution_cache.values():
-            if execution.status == WorkflowNodeExecutionStatus.RUNNING:
-                execution.status = WorkflowNodeExecutionStatus.FAILED
-                execution.error = error_message
-                execution.finished_at = now
-                execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
-                self._workflow_node_execution_repository.save(execution)
+            if execution.status not in affected_statuses:
+                continue
+            if failure_source is not None and execution.id == failure_source.node_execution_id:
+                continue
+
+            execution.status = WorkflowNodeExecutionStatus.FAILED
+            execution.error = error_message
+            if source_metadata is not None:
+                metadata = dict(execution.metadata or {})
+                metadata[WorkflowNodeExecutionMetadataKey.FAILURE_SOURCE] = source_metadata
+                execution.metadata = metadata
+            execution.finished_at = now
+            execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
+            self._workflow_node_execution_repository.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
         if not self._trace_manager:
