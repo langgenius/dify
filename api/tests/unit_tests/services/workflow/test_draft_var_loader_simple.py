@@ -306,6 +306,8 @@ class TestDraftVarLoaderSimple:
         loaded_offloaded = load_offloaded.call_args.args[0]
         assert isinstance(loaded_offloaded, WorkflowDraftVariable)
         assert loaded_offloaded.id == offloaded_draft_var.id
+        assert loaded_offloaded.variable_file is not None
+        assert loaded_offloaded.variable_file.upload_file is not None
         assert loaded_offloaded.variable_file.upload_file.key == "storage/key/offloaded_var.txt"
 
     @pytest.mark.parametrize(
