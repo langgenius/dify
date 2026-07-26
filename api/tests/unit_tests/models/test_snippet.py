@@ -1,10 +1,8 @@
-"""Snippet model properties backed by persisted SQLite collaborators."""
+"""Snippet model properties backed by the shared SQLite test session."""
 
 import json
-from collections.abc import Iterator
 
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from models import snippet as snippet_module
@@ -20,16 +18,14 @@ APP_ID = "33333333-3333-3333-3333-333333333333"
 SNIPPET_ID = "44444444-4444-4444-4444-444444444444"
 ACCOUNT_1_ID = "55555555-5555-5555-5555-555555555555"
 ACCOUNT_2_ID = "55555555-5555-5555-5555-555555555556"
+SQLITE_MODELS = (Workflow, Tag, TagBinding, Account)
 
 
 @pytest.fixture
-def snippet_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    models = (Workflow, Tag, TagBinding, Account)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    Workflow.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        monkeypatch.setattr(snippet_module.db, "session", session)
-        yield session
+def snippet_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Expose the shared SQLite session to model properties that use the global Flask session."""
+    monkeypatch.setattr(snippet_module.db, "session", sqlite_session)
+    return sqlite_session
 
 
 def test_graph_dict_returns_empty_without_workflow_id() -> None:
@@ -38,6 +34,7 @@ def test_graph_dict_returns_empty_without_workflow_id() -> None:
     assert snippet.graph_dict == {}
 
 
+@pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 def test_graph_dict_loads_published_workflow_graph(snippet_session: Session) -> None:
     workflow = Workflow(
         tenant_id=TENANT_ID,
@@ -56,6 +53,7 @@ def test_graph_dict_loads_published_workflow_graph(snippet_session: Session) -> 
     assert snippet.graph_dict == {"nodes": [{"id": "llm-1"}], "edges": []}
 
 
+@pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 def test_graph_dict_returns_empty_when_workflow_missing(snippet_session: Session) -> None:
     snippet = CustomizedSnippet(workflow_id=WORKFLOW_ID)
 
@@ -69,6 +67,7 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
     ]
 
 
+@pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 def test_tags_returns_query_results_or_empty(snippet_session: Session) -> None:
     tag = Tag(tenant_id=TENANT_ID, type=TagType.SNIPPET, name="Reusable", created_by=ACCOUNT_1_ID)
     binding = TagBinding(tenant_id=TENANT_ID, tag_id=tag.id, target_id=SNIPPET_ID, created_by=ACCOUNT_1_ID)
@@ -83,6 +82,7 @@ def test_tags_returns_query_results_or_empty(snippet_session: Session) -> None:
     assert snippet.tags == []
 
 
+@pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
 def test_account_properties_and_author_name(snippet_session: Session) -> None:
     account = Account(name="Ada", email="ada@example.com")
     account.id = ACCOUNT_1_ID
