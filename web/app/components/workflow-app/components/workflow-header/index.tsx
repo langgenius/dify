@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { useIsChatMode } from '../../hooks'
+import { useIsChatMode } from '../../hooks/use-is-chat-mode'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 

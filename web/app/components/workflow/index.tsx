@@ -67,21 +67,17 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import {
-  useEdgesInteractions,
-  useNodesInteractions,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  usePanelInteractions,
-  useSelectionInteractions,
-  useSetWorkflowVarsWithValue,
-  useWorkflow,
-  useWorkflowReadOnly,
-  useWorkflowRefreshDraft,
-} from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { usePanelInteractions } from './hooks/use-panel-interactions'
+import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
+import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'

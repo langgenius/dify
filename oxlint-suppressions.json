@@ -3634,11 +3634,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 9
-    }
-  },
   "web/app/components/rag-pipeline/hooks/use-DSL.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3891,11 +3886,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow-app/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 13
-    }
-  },
   "web/app/components/workflow-app/hooks/use-DSL.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -4035,11 +4025,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 25
-    }
-  },
   "web/app/components/workflow/hooks/use-checklist.ts": {
     "typescript/no-empty-object-type": {
       "count": 1
@@ -4066,11 +4051,6 @@
   "web/app/components/workflow/hooks/use-serial-async-callback.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/hooks/use-workflow-run-event/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 19
     }
   },
   "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {

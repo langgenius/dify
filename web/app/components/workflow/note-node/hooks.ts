@@ -1,7 +1,8 @@
 import type { EditorState } from 'lexical'
 import type { NoteTheme } from './types'
 import { useCallback } from 'react'
-import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '../hooks'
+import { useNodeDataUpdate } from '../hooks/use-node-data-update'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../hooks/use-workflow-history'
 import { useSetWorkflowNoteShowAuthor } from '../persistence/local-storage-options'
 
 export const useNote = (id: string) => {

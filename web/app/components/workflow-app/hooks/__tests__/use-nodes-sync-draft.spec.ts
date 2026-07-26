@@ -93,7 +93,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
 }))
 

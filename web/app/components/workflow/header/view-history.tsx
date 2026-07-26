@@ -4,16 +4,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
-import {
-  useIsChatMode,
-  useNodesInteractions,
-  useWorkflowInteractions,
-  useWorkflowRun,
-} from '../hooks'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useIsChatMode } from '../hooks/use-workflow'
+import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
 

@@ -1,17 +1,22 @@
 import type { HttpNodeType } from '../types'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import useVarList from '../../_base/hooks/use-var-list'
 import useKeyValueList from '../hooks/use-key-value-list'
 import { APIType, AuthorizationType, BodyPayloadValueType, BodyType, Method } from '../types'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,
