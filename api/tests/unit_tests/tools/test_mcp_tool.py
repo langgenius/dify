@@ -135,6 +135,22 @@ class TestMCPToolInvoke:
         values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
         assert values == {"a": 1, "b": "x"}
 
+    def test_invoke_yields_variables_when_structured_content_without_schema(self, orm_session: Session) -> None:
+        """Regression test for #39418: outputSchema is optional per the MCP
+        spec, so structuredContent must still be surfaced even when the
+        server didn't declare an outputSchema for the tool.
+        """
+        tool = _make_mcp_tool(output_schema=None)  # no outputSchema declared
+        result = CallToolResult(content=[], structuredContent={"a": 1, "b": "x"})
+
+        with patch.object(tool, "invoke_remote_mcp_tool", return_value=result):
+            messages = list(tool._invoke(session=orm_session, user_id="test_user", tool_parameters={}))
+
+        assert len(messages) == 2
+        var_msgs = [m for m in messages if isinstance(m.message, ToolInvokeMessage.VariableMessage)]
+        values = {m.message.variable_name: m.message.variable_value for m in var_msgs}
+        assert values == {"a": 1, "b": "x"}
+
 
 class TestMCPToolUsageExtraction:
     """Test usage metadata extraction from MCP tool results."""

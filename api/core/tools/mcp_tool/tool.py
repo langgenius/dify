@@ -103,8 +103,11 @@ class MCPTool(Tool):
                 case _:
                     logger.warning("Unsupported content type=%s", type(content))
 
-        # handle MCP structured output
-        if self.entity.output_schema and result.structuredContent:
+        # handle MCP structured output. outputSchema is optional per the MCP spec
+        # (https://modelcontextprotocol.io/specification/draft/server/tools#output-schema),
+        # so a server can return structuredContent without declaring one; don't require
+        # self.entity.output_schema here, or valid structuredContent gets silently dropped.
+        if result.structuredContent:
             for k, v in result.structuredContent.items():
                 yield self.create_variable_message(k, v)
 
