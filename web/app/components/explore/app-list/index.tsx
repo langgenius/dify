@@ -371,11 +371,13 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       source: 'explore_template_preview',
       templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
     }
-    shouldCompleteHomeTourOnCreateRef.current =
+    const isHomeTryAppCreateGuideActive =
       isCurrentTryAppFromLearnDifyRef.current &&
       activeStepByStepTourTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID &&
       !completedStepByStepTourTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID) &&
       activeStepByStepTourGuideIndex === 1
+    shouldCompleteHomeTourOnCreateRef.current = isHomeTryAppCreateGuideActive
+    if (isHomeTryAppCreateGuideActive) resetStepByStepTourSession()
     setIsShowCreateModal(true)
   }, [
     activeStepByStepTourGuideIndex,
@@ -383,6 +385,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     completedStepByStepTourTaskIds,
     currentTryApp?.app,
     currentTryApp?.appId,
+    resetStepByStepTourSession,
   ])
   const handleCreateFromLearnDify = useCallback((app: App) => {
     setCurrApp(app)

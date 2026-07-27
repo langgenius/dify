@@ -55,7 +55,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   return (
     <article
       className={cn(
-        'relative flex min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs',
+        'relative flex min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         isClickable && 'cursor-pointer',
       )}
       role={isClickable ? 'button' : undefined}

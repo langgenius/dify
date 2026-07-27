@@ -12,6 +12,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getStepByStepTourGuideKind, getStepByStepTourTargetSelector } from './target-registry'
 import { useStepByStepTourCoachmarkPosition } from './use-coachmark-position'
+import { useStepByStepTourFocusScope } from './use-focus-scope'
 import { useStepByStepTourTargetRect } from './use-target-rect'
 
 const HIGHLIGHT_PADDING = 4
@@ -89,6 +90,7 @@ type StepByStepTourCoachmarkProps = {
   stepLabel: string
   skipLabel: string
   interactionPolicy: StepByStepTourGuideInteractionPolicy
+  returnFocusElement: HTMLElement | null
   onSkip: () => void
   onComplete: () => void
 }
@@ -100,6 +102,7 @@ export function StepByStepTourCoachmark({
   stepLabel,
   skipLabel,
   interactionPolicy,
+  returnFocusElement,
   onSkip,
   onComplete,
 }: StepByStepTourCoachmarkProps) {
@@ -111,6 +114,7 @@ export function StepByStepTourCoachmark({
     targetElement: measuredTargetElement,
   } = useStepByStepTourTargetRect(targetElement, guide.highlightPartSelectors)
   const coachmarkRef = useRef<HTMLDivElement>(null)
+  const focusScopeRef = useRef<HTMLElement>(null)
   const coachmarkSizeFrameRef = useRef<number | undefined>(undefined)
   const shouldUseLatePortalRoot = guide.portalOrder === 'afterOverlays'
   const portalRoot = useStepByStepTourPortalRoot(shouldUseLatePortalRoot)
@@ -159,6 +163,7 @@ export function StepByStepTourCoachmark({
   const isActionGuide = stableOverlay
     ? getStepByStepTourGuideKind(stableOverlay.guide) === 'action'
     : false
+  const isBlocked = stableOverlay?.interactionPolicy === 'blocked'
   const coachmarkMeasurementKey = stableOverlay
     ? [
         stableOverlay.guide.target,
@@ -181,6 +186,15 @@ export function StepByStepTourCoachmark({
         width: stableOverlay.highlightRect.width + HIGHLIGHT_PADDING * 2,
       }
     : undefined
+
+  useStepByStepTourFocusScope({
+    enabled: Boolean(stableOverlay && highlightStyle),
+    guideId: stableOverlay?.guide.id,
+    interactionPolicy: stableOverlay?.interactionPolicy ?? interactionPolicy,
+    returnFocusElement,
+    scopeRef: focusScopeRef,
+    targetElement,
+  })
 
   const syncCoachmarkSize = useCallback((element: HTMLElement) => {
     const rect = element.getBoundingClientRect()
@@ -217,32 +231,44 @@ export function StepByStepTourCoachmark({
   if (typeof document === 'undefined') return null
   if (shouldUseLatePortalRoot && !portalRoot) return null
 
-  const targetBlockerStyles: CSSProperties[] =
+  const targetBlockerStyles: { key: string; style: CSSProperties }[] =
     stableOverlay && highlightStyle
       ? [
           {
-            height: highlightStyle.top,
-            left: 0,
-            right: 0,
-            top: 0,
+            key: 'top',
+            style: {
+              height: highlightStyle.top,
+              left: 0,
+              right: 0,
+              top: 0,
+            },
           },
           {
-            bottom: 0,
-            left: 0,
-            top: Number(highlightStyle.top) + Number(highlightStyle.height),
-            right: 0,
+            key: 'bottom',
+            style: {
+              bottom: 0,
+              left: 0,
+              top: Number(highlightStyle.top) + Number(highlightStyle.height),
+              right: 0,
+            },
           },
           {
-            height: highlightStyle.height,
-            left: 0,
-            top: highlightStyle.top,
-            width: highlightStyle.left,
+            key: 'left',
+            style: {
+              height: highlightStyle.height,
+              left: 0,
+              top: highlightStyle.top,
+              width: highlightStyle.left,
+            },
           },
           {
-            height: highlightStyle.height,
-            left: Number(highlightStyle.left) + Number(highlightStyle.width),
-            right: 0,
-            top: highlightStyle.top,
+            key: 'right',
+            style: {
+              height: highlightStyle.height,
+              left: Number(highlightStyle.left) + Number(highlightStyle.width),
+              right: 0,
+              top: highlightStyle.top,
+            },
           },
         ]
       : []
@@ -250,10 +276,9 @@ export function StepByStepTourCoachmark({
   return createPortal(
     <>
       {stableOverlay?.interactionPolicy === 'target-only' ? (
-        targetBlockerStyles.map((style, index) => (
+        targetBlockerStyles.map(({ key, style }) => (
           <div
-            // eslint-disable-next-line react/no-array-index-key -- The four blocker slices are static and positional.
-            key={index}
+            key={key}
             aria-hidden="true"
             data-step-by-step-tour-backdrop=""
             data-step-by-step-tour-blocker=""
@@ -308,11 +333,15 @@ export function StepByStepTourCoachmark({
               </div>
             )}
             <section
+              ref={focusScopeRef}
+              role={isBlocked ? 'dialog' : undefined}
               aria-label={
                 isActionGuide ? stableOverlay.guide.description : stableOverlay.guide.title
               }
+              aria-modal={isBlocked || undefined}
+              tabIndex={-1}
               className={cn(
-                'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
+                'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] outline-hidden backdrop-blur-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 isActionGuide ? 'min-h-[118px]' : 'min-h-[158px]',
               )}
             >

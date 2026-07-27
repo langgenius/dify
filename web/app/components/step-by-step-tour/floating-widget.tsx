@@ -71,6 +71,8 @@ export function FloatingChecklist({
   return (
     <section
       aria-label={title}
+      data-step-by-step-tour-checklist=""
+      tabIndex={-1}
       className={cn(
         'flex max-h-[calc(100vh-16px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur bg-clip-padding shadow-[0_8px_8px_-4px_var(--color-shadow-shadow-1),0_20px_24px_-4px_var(--color-shadow-shadow-5)] backdrop-blur-[10px]',
         className,

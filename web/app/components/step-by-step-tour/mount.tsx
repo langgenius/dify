@@ -103,6 +103,13 @@ const scrollTourTargetIntoView = (element: HTMLElement) => {
   })
 }
 
+const getActiveFocusableElement = () => {
+  const activeElement = document.activeElement
+  return activeElement instanceof HTMLElement && activeElement !== document.body
+    ? activeElement
+    : null
+}
+
 const createGuideIndexes = (guides: StepByStepTourGuide[]) => guides.map((_, index) => index)
 
 const getActiveGuideIndexes = (
@@ -156,6 +163,9 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const shownAnalyticsKeyRef = useRef<string | undefined>(undefined)
   const skipTimeoutRef = useRef<number | undefined>(undefined)
   const stepShownAnalyticsKeyRef = useRef<string | undefined>(undefined)
+  const returnFocusElementRef = useRef<HTMLElement | null>(
+    typeof document === 'undefined' ? null : getActiveFocusableElement(),
+  )
   const [checklistExiting, setChecklistExiting] = useState(false)
   const currentWorkspaceId = currentWorkspace.id
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
@@ -634,6 +644,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
 
         if (!task) return
 
+        returnFocusElementRef.current = getActiveFocusableElement()
+
         const guideGroup =
           taskId === 'home'
             ? homeGuideGroup
@@ -713,12 +725,13 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
             activeGuide,
             activeTask.canClickThrough,
           )}
+          returnFocusElement={returnFocusElementRef.current}
           onSkip={skipActiveGuide}
           onComplete={completeActiveGuide}
         />
       )}
       {visible && (!allTasksCompleted || completionPromptVisible) && (
-        <Popover open={overlayVisible && expanded}>
+        <Popover modal={false} open={overlayVisible && expanded}>
           <div
             ref={anchorRef}
             aria-hidden="true"
