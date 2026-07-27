@@ -655,6 +655,21 @@ describe('MainNav', () => {
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
   })
 
+  it('orders the Step-by-step Tour before the account and help actions', async () => {
+    localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
+
+    renderMainNav()
+
+    const tourTrigger = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+    const accountButton = screen.getByRole('button', { name: 'common.account.account' })
+    const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+
+    expect(tourTrigger.compareDocumentPosition(accountButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(accountButton.compareDocumentPosition(helpButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it('keeps the global navigation account section expanded on home routes', () => {
     localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
     mockPathname = '/'
