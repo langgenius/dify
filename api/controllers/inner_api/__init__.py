@@ -23,7 +23,6 @@ from .knowledge import retrieval as _knowledge_retrieval
 from .plugin import agent_config as _agent_config
 from .plugin import agent_drive as _agent_drive
 from .plugin import plugin as _plugin
-from .workspace import plugin_model_providers as _plugin_model_providers
 from .workspace import workspace as _workspace
 
 api.add_namespace(inner_api_ns)
@@ -36,7 +35,6 @@ __all__ = [
     "_knowledge_retrieval",
     "_mail",
     "_plugin",
-    "_plugin_model_providers",
     "_runtime_credentials",
     "_workspace",
     "api",
