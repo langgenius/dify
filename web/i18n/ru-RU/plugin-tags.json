@@ -1,5 +1,6 @@
 {
   "allTags": "Все теги",
+  "clearSelectedTags": "Очистить выбранные теги: {{tags}}",
   "searchTags": "Поиск тегов",
   "tags.agent": "Агент",
   "tags.business": "Дело",

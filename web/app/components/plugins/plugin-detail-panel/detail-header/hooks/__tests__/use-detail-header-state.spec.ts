@@ -1,14 +1,14 @@
 import type { PluginDetail } from '../../../../types'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { PluginSource } from '../../../../types'
 import { useDetailHeaderState } from '../use-detail-header-state'
 
 let mockEnableMarketplace = true
 
 const renderHook = <Result>(callback: () => Result) =>
-  renderHookWithSystemFeatures(callback, {
+  renderHookWithConsoleQuery(callback, {
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
 

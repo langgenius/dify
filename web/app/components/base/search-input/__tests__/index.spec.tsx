@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { SearchInput } from '..'
 
 describe('SearchInput', () => {
@@ -26,7 +26,15 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('exposes the input element through its ref', () => {
+      const ref = createRef<HTMLInputElement>()
+      render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)
+
+      expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+    })
+
     it('focuses the searchbox when autoFocus is enabled', () => {
+      // oxlint-disable-next-line jsx-a11y/no-autofocus
       render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
       expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
     })
@@ -37,6 +45,27 @@ describe('SearchInput', () => {
 
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
+    })
+
+    it('keeps a disabled searchbox inert and exposes its description', () => {
+      render(
+        <>
+          <SearchInput
+            disabled
+            aria-describedby="search-unavailable"
+            value="has value"
+            onValueChange={() => {}}
+          />
+          <span id="search-unavailable">Search unavailable</span>
+        </>,
+      )
+
+      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      expect(searchbox).toBeDisabled()
+      expect(searchbox).toHaveAccessibleDescription('Search unavailable')
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.clear' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -142,16 +171,6 @@ describe('SearchInput', () => {
       const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input).toHaveClass('ps-7')
       expect(input).not.toHaveClass('h-[18px]')
-    })
-  })
-
-  describe('Style', () => {
-    it('applies custom className', () => {
-      const { container } = render(
-        <SearchInput value="" onValueChange={() => {}} className="custom-test" />,
-      )
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-test')
     })
   })
 })

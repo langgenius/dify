@@ -1430,7 +1430,7 @@ export const useFetchDynamicOptions = (
   provider: string,
   action: string,
   parameter: string,
-  provider_type?: string,
+  provider_type?: 'tool' | 'trigger',
   extra?: Record<string, unknown>,
 ) => {
   return useMutation({

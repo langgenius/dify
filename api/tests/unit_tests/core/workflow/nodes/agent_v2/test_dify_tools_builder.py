@@ -235,6 +235,7 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
             "dify_tools": [
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -258,9 +259,6 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     assert "region" not in prepared.parameters_json_schema["properties"]
     assert runtime_provider.last_agent_tool is not None
     assert runtime_provider.last_agent_tool.credential_id == "credential-1"
-    # Default ``provider_type`` is now ``"plugin"`` — the agent tool entity
-    # must surface that so ToolManager hits the plugin provider table, not the
-    # built-in legacy table.
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
 
 
@@ -599,6 +597,7 @@ def test_rejects_duplicate_exposed_tool_names():
             "dify_tools": [
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -606,6 +605,7 @@ def test_rejects_duplicate_exposed_tool_names():
                 },
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -629,6 +629,7 @@ def test_rejects_missing_required_runtime_parameter():
             "dify_tools": [
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -663,6 +664,7 @@ def test_invoke_from_is_forwarded_to_tool_runtime_provider():
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/search/search",
+                        "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "api-key",
                         "credential_id": "credential-1",
@@ -690,6 +692,7 @@ def test_disabled_tools_are_skipped():
             "dify_tools": [
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -717,6 +720,7 @@ def test_plugin_id_plus_provider_fallback_when_provider_id_missing():
                 {
                     "plugin_id": "langgenius/search",
                     "provider": "search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -752,6 +756,7 @@ def test_unauthorized_tool_without_credentials():
             "dify_tools": [
                 {
                     "provider_id": "langgenius/time/time",
+                    "provider_type": "plugin",
                     "tool_name": "current_time",
                     "credential_type": "unauthorized",
                     "runtime_parameters": {"region": "us"},
@@ -777,6 +782,7 @@ def _standard_tools_payload() -> AgentSoulToolsConfig:
             "dify_tools": [
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -859,6 +865,7 @@ def test_legacy_provider_name_and_tool_parameters_normalized():
             "dify_tools": [
                 {
                     "provider_name": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "api-key",
                     "credential_id": "credential-1",
@@ -875,6 +882,21 @@ def test_legacy_provider_name_and_tool_parameters_normalized():
     assert tool.credential_ref.id == "credential-1"
 
 
+def test_rejects_unknown_provider_type_at_config_boundary():
+    with pytest.raises(ValueError, match="provider_type"):
+        AgentSoulToolsConfig.model_validate(
+            {
+                "dify_tools": [
+                    {
+                        "provider_id": "future-provider",
+                        "provider_type": "future-provider",
+                        "credential_type": "unauthorized",
+                    }
+                ]
+            }
+        )
+
+
 # ── provider-level entries (tool_name omitted = all tools of the provider) ───
 
 
@@ -888,7 +910,15 @@ def test_provider_level_entry_expands_to_all_tools():
 
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider, provider_tools_lister=lister)
     tools = AgentSoulToolsConfig.model_validate(
-        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
     )
 
     result = _build(builder, tools)
@@ -906,9 +936,14 @@ def test_explicit_tool_entry_wins_over_provider_expansion():
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
-                {"provider_id": "langgenius/search/search", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
                     "tool_name": "search",
                     "credential_type": "unauthorized",
                     "runtime_parameters": {"region": "eu"},
@@ -930,7 +965,15 @@ def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
         provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: [],
     )
     tools = AgentSoulToolsConfig.model_validate(
-        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
     )
 
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
@@ -948,7 +991,15 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
         tool_runtime_provider=FakeRuntimeProvider(_tool()), provider_tools_lister=lister
     )
     tools = AgentSoulToolsConfig.model_validate(
-        {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
     )
 
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:

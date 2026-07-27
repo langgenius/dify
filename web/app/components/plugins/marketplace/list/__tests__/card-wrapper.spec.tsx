@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -86,11 +87,17 @@ describe('CardWrapper', () => {
       </ThemeProvider>,
     )
 
-  it('renders a non-navigating card when install button is hidden', () => {
+  it('renders a non-navigating card by default when install button is hidden', () => {
     renderCardWrapper()
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
+  })
+
+  it('links the card to its marketplace detail when explicitly enabled', () => {
+    renderCardWrapper({ linkToMarketplaceDetail: true })
+
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
   })
 
   it('renders install and marketplace detail actions when install button is shown', () => {
@@ -102,6 +109,17 @@ describe('CardWrapper', () => {
     expect(
       screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }),
     ).toBeInTheDocument()
+  })
+
+  it('shows a disabled installed action and prevents another installation', async () => {
+    const user = userEvent.setup()
+    renderCardWrapper({ showInstallButton: true, isInstalled: true })
+
+    const installedButton = screen.getByRole('button', { name: 'plugin.task.installed' })
+    expect(installedButton).toBeDisabled()
+
+    await user.click(installedButton)
+    expect(screen.queryByTestId('install-modal')).not.toBeInTheDocument()
   })
 
   it('opens marketplace detail from the detail action', () => {

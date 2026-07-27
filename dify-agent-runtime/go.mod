@@ -5,7 +5,7 @@ go 1.26
 require (
 	github.com/landlock-lsm/go-landlock v0.9.0
 	github.com/spf13/cobra v1.10.2
-	google.golang.org/grpc v1.82.0
+	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
 	modernc.org/sqlite v1.37.1
 )

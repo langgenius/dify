@@ -4,13 +4,14 @@ import { PlusIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { IS_CLOUD_EDITION } from '@/config'
 import AppListContext from '@/context/app-list-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
@@ -21,8 +22,12 @@ type AppCardProps = {
 
 const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { app: appBasicInfo } = app
-  const canViewApp = IS_CLOUD_EDITION
+  const canViewApp = deploymentEdition === 'CLOUD'
   const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {

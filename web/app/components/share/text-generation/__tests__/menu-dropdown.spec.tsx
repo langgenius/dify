@@ -260,12 +260,4 @@ describe('MenuDropdown', () => {
       })
     })
   })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(
-        Symbol.for('react.memo'),
-      )
-    })
-  })
 })

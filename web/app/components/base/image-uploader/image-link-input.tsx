@@ -41,7 +41,6 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({ onUpload, disabled }) => {
         value={imageLink}
         onChange={(e) => setImageLink(e.target.value)}
         placeholder={safeText}
-        data-testid="image-link-input"
       />
       <Button
         variant="primary"

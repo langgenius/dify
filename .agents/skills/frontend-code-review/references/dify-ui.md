@@ -122,7 +122,7 @@ Flag:
 - Manual class strings that duplicate primitive variants.
 - `min-w-(--anchor-width)` on picker popups when it defeats viewport clamping.
 
-Use the Figma radius mapping from `packages/dify-ui/AGENTS.md`; for example `--radius/sm` maps to `rounded-md`, and `--radius/md` maps to `rounded-lg`.
+Use the Figma radius mapping from `packages/dify-ui/README.md`; for example `--radius/sm` maps to `rounded-md`, and `--radius/md` maps to `rounded-lg`.
 
 Use `!` only for a tightly scoped compatibility override after confirming the primitive API, data attributes, and selector structure cannot express the state.
 

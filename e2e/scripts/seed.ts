@@ -4,6 +4,7 @@ import path from 'node:path'
 import { chromium } from '@playwright/test'
 import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed'
 import { ensureAuthenticatedState } from '../fixtures/auth'
+import { createStandaloneConsoleSession } from '../support/api/console-session'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { runSeedTasks, writeSeedReport } from '../support/seed'
 import { startWebServer, stopWebServer } from '../support/web-server'
@@ -23,7 +24,7 @@ const parseArgs = (argv: string[]): SeedOptions => {
     allowBlocked: false,
     dryRun: false,
     pack: 'agent-v2',
-    profile: 'full',
+    profile: 'post-merge',
   }
 
   for (const [index, arg] of argv.entries()) {
@@ -110,6 +111,7 @@ const main = async () => {
   const logDir = path.join(e2eDir, '.logs')
   let apiProcess: ManagedProcess | undefined
   let celeryProcess: ManagedProcess | undefined
+  let consoleSession: Awaited<ReturnType<typeof createStandaloneConsoleSession>> | undefined
 
   await mkdir(logDir, { recursive: true })
 
@@ -128,13 +130,14 @@ const main = async () => {
 
     console.warn(`[seed] bootstrapping auth state against ${baseURL}`)
     await ensureAuth()
+    consoleSession = await createStandaloneConsoleSession()
 
     const results = await runSeedTasks(getTasks(options.pack, options.profile), {
+      consoleClient: consoleSession.client,
       dryRun: options.dryRun,
       resources: new Map(),
     })
-    const reportName =
-      options.profile === 'full' ? options.pack : `${options.pack}-${options.profile}`
+    const reportName = `${options.pack}-${options.profile}`
     const reportPath = await writeSeedReport(reportName, results)
     const blockedCount = results.filter((result) => result.status === 'blocked').length
 
@@ -145,6 +148,7 @@ const main = async () => {
       )
     }
   } finally {
+    await consoleSession?.dispose()
     await stopWebServer()
     await stopManagedProcess(celeryProcess)
     await stopManagedProcess(apiProcess)

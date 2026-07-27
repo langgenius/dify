@@ -5,12 +5,11 @@ import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiBracesLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
+import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
 type Props = Readonly<{
@@ -22,7 +21,7 @@ type Props = Readonly<{
   inPanel?: boolean
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
-  extraParams?: Record<string, any>
+  extraParams?: Record<string, unknown>
   disableVariableInsertion?: boolean
 }>
 
@@ -71,7 +70,7 @@ const TriggerFormItem: FC<Props> = ({
                 onClick={showSchema}
                 className="px-1 system-xs-regular text-text-tertiary"
               >
-                <RiBracesLine className="mr-1 size-3.5" />
+                <span aria-hidden className="mr-1 i-ri-braces-line size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>

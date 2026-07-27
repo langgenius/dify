@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -51,8 +50,8 @@ def test_check_credential_policy_compliance_returns_when_feature_disabled(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch(
-        "services.feature_service.FeatureService.get_system_features",
-        return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=False)),
+        "services.feature_service.FeatureService.is_plugin_manager_enabled",
+        return_value=False,
     )
     check_call = mocker.patch(
         "services.enterprise.plugin_manager_service.PluginManagerService.check_credential_policy_compliance"
@@ -67,8 +66,8 @@ def test_check_credential_policy_compliance_raises_when_credential_missing(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch(
-        "services.feature_service.FeatureService.get_system_features",
-        return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=True)),
+        "services.feature_service.FeatureService.is_plugin_manager_enabled",
+        return_value=True,
     )
     mocker.patch("core.helper.credential_utils.is_credential_exists", return_value=False)
 
@@ -80,8 +79,8 @@ def test_check_credential_policy_compliance_calls_plugin_manager_with_request(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch(
-        "services.feature_service.FeatureService.get_system_features",
-        return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=True)),
+        "services.feature_service.FeatureService.is_plugin_manager_enabled",
+        return_value=True,
     )
     mocker.patch("core.helper.credential_utils.is_credential_exists", return_value=True)
     check_call = mocker.patch(
@@ -101,8 +100,8 @@ def test_check_credential_policy_compliance_skips_existence_check_when_disabled(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch(
-        "services.feature_service.FeatureService.get_system_features",
-        return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=True)),
+        "services.feature_service.FeatureService.is_plugin_manager_enabled",
+        return_value=True,
     )
     exists_call = mocker.patch("core.helper.credential_utils.is_credential_exists")
     check_call = mocker.patch(
@@ -124,8 +123,8 @@ def test_check_credential_policy_compliance_returns_when_credential_id_empty(
     mocker: MockerFixture,
 ) -> None:
     mocker.patch(
-        "services.feature_service.FeatureService.get_system_features",
-        return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=True)),
+        "services.feature_service.FeatureService.is_plugin_manager_enabled",
+        return_value=True,
     )
     exists_call = mocker.patch("core.helper.credential_utils.is_credential_exists")
     check_call = mocker.patch(

@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agents'ı yönet",
   "api_extension.manage": "API uzantısı yapılandırmasını yönet",
   "app.access_config": "Uygulama erişim izinlerini yapılandır",
   "app.acl.access_config": "Uygulama erişim izinlerini yapılandır",

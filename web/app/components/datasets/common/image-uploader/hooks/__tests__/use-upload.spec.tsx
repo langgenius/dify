@@ -127,48 +127,6 @@ describe('useUpload hook', () => {
     })
   })
 
-  describe('File Operations', () => {
-    it('should expose selectHandle function', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.selectHandle).toBe('function')
-    })
-
-    it('should expose fileChangeHandle function', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.fileChangeHandle).toBe('function')
-    })
-
-    it('should expose handleRemoveFile function', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.handleRemoveFile).toBe('function')
-    })
-
-    it('should expose handleReUploadFile function', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.handleReUploadFile).toBe('function')
-    })
-
-    it('should expose handleLocalFileUpload function', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      expect(typeof result.current.handleLocalFileUpload).toBe('function')
-    })
-  })
-
   describe('File Validation', () => {
     it('should show error toast for invalid file type', async () => {
       const { result } = renderHook(() => useUpload(), {
@@ -268,25 +226,6 @@ describe('useUpload hook', () => {
 
       // Should not throw and not show error
       expect(toast.error).not.toHaveBeenCalled()
-    })
-
-    it('should handle null files', () => {
-      const { result } = renderHook(() => useUpload(), {
-        wrapper: createWrapper(),
-      })
-
-      const mockEvent = {
-        target: {
-          files: null,
-        },
-      } as unknown as React.ChangeEvent<HTMLInputElement>
-
-      act(() => {
-        result.current.fileChangeHandle(mockEvent)
-      })
-
-      // Should not throw
-      expect(true).toBe(true)
     })
 
     it('should respect batch limit from config', () => {
