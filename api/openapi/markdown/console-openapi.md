@@ -21048,11 +21048,11 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | author_name | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | maintainer | string |  | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "chat", "completion", "workflow" | *Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | *Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
