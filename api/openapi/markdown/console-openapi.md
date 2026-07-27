@@ -21069,6 +21069,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | is_listed | boolean |  | No |
 | position | integer |  | No |
 | privacy_policy | string |  | No |
+| trial_limit | integer |  | No |
 
 #### RecommendedAppsQuery
 
