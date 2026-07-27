@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig } from '@hey-api/openapi-ts'
+import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
 
@@ -62,6 +63,8 @@ const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
+const fastOpenApiConsolePathPrefix = '/console/api'
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
@@ -83,7 +86,7 @@ const toWords = (value: string) => {
 }
 
 const toPascalCase = (words: string[]) => {
-  return words.map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
+  return words.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
 }
 
 const toCamelCase = (words: string[]) => {
@@ -102,21 +105,22 @@ const segmentWords = (segment: string) => {
   return toWords(segment)
 }
 
+// Split on `:` too so custom methods nest as their own node (apps.byAppId.run), not apps.appIdRun.
+const routeNamingSegments = (routePath: string) => routePath.split(/[/:]/).filter(Boolean)
+
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routeNamingSegments(routePath).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
-  return toCamelCase([method, ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root'])])
+  return toCamelCase([
+    method,
+    ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root']),
+  ])
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
-  const segments = operation.path
-    .split('/')
-    .filter(Boolean)
+  const segments = routeNamingSegments(operation.path)
     .map(segment => toCamelCase(segmentWords(segment)))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
@@ -275,6 +279,33 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+
+  return document
+}
+
+const mergeFastOpenApiConsoleSwagger = (document: SwaggerDocument) => {
+  const fastOpenApiDocument = readApiSwagger(fastOpenApiConsoleSpecFilename)
+  const targetPaths = document.paths ??= {}
+
+  for (const [routePath, pathItem] of Object.entries(fastOpenApiDocument.paths ?? {})) {
+    const contractPath = routePath.startsWith(fastOpenApiConsolePathPrefix)
+      ? routePath.slice(fastOpenApiConsolePathPrefix.length) || '/'
+      : routePath
+
+    if (targetPaths[contractPath])
+      throw new Error(`Duplicate console API path after FastOpenAPI merge: ${contractPath}`)
+
+    targetPaths[contractPath] = pathItem
+  }
+
+  const targetSchemas = getDocumentSchemas(document)
+  const sourceSchemas = getDocumentSchemas(fastOpenApiDocument)
+  for (const [schemaName, schema] of Object.entries(sourceSchemas)) {
+    if (targetSchemas[schemaName])
+      throw new Error(`Duplicate console API schema after FastOpenAPI merge: ${schemaName}`)
+
+    targetSchemas[schemaName] = schema
+  }
 
   return document
 }
@@ -438,7 +469,11 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
-  const document = normalizeApiSwagger(readApiSwagger(spec.filename))
+  const document = normalizeApiSwagger(
+    spec.name === 'console'
+      ? mergeFastOpenApiConsoleSwagger(readApiSwagger(spec.filename))
+      : readApiSwagger(spec.filename),
+  )
 
   if (spec.name === 'console')
     return splitConsoleDocument(document)
@@ -473,11 +508,22 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       name: '@hey-api/typescript',
     },
     {
-      'name': 'zod',
+      name: 'zod',
       '~resolvers': {
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
-            return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+            return $(ctx.symbols.z)
+              .attr('custom')
+              .call(
+                $.func((predicate) => {
+                  const value = $.id('value')
+                  const isBlob = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('Blob'))
+                  const isFile = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('File'))
+                  predicate.param('value')
+                  predicate.do($.return($.binary(isBlob, '||', isFile)))
+                }),
+              )
+              .generic($.type.or($.type('Blob'), $.type('File')))
 
           if (ctx.schema.pattern === pydanticDecimalStringPattern) {
             // the pydantic generated regex will emit error like
