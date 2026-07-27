@@ -14,6 +14,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Loading from '@/app/components/base/loading'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -328,6 +329,7 @@ function AgentConfigurePageComposerContent({
     useAgentConfigureModelOptions()
   const { draftSavedAt, isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
+    agentName: agentQuery.data?.name,
     baseConfig: agentSoulConfig,
     currentModel,
     enabled: composerQuery.isSuccess && !selectedVersionId && !buildDraft.isActive,
@@ -564,11 +566,13 @@ function AgentConfigurePageComposerContent({
                           throw new Error('Agent model is required.')
                         }
 
-                        return runBuildPreparation({
+                        const preparedBuildDraft = await runBuildPreparation({
                           generation: buildCallbackGeneration,
                           markBuildChatStarted: true,
                           prepare: buildDraftActions.prepareBuildDraftBeforeRun,
                         })
+                        trackEvent('agent_build_mode_run')
+                        return preparedBuildDraft
                       }
                     : saveDraft
                 }

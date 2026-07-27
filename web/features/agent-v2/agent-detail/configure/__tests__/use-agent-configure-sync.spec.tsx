@@ -18,6 +18,8 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
 }))
 
+const trackEventMock = vi.hoisted(() => vi.fn())
+
 const composerPutMutationFn = vi.hoisted(() =>
   vi.fn(
     async (variables: {
@@ -119,6 +121,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMock,
 }))
 
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: trackEventMock,
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
@@ -159,9 +165,11 @@ vi.mock('@/service/client', () => ({
 }))
 
 function renderUseAgentConfigureSync({
+  agentName = 'Agent',
   baseConfig,
   currentModel,
 }: {
+  agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: Parameters<typeof useAgentConfigureSync>[0]['currentModel']
 } = {}) {
@@ -183,6 +191,7 @@ function renderUseAgentConfigureSync({
       () =>
         useAgentConfigureSync({
           agentId: 'agent-1',
+          agentName,
           baseConfig,
           currentModel,
           enabled: true,
@@ -762,6 +771,12 @@ describe('useAgentConfigureSync', () => {
       active_config_is_published: true,
       name: 'Agent',
     })
+    expect(trackEventMock).toHaveBeenCalledWith('app_published_time', {
+      action_mode: 'app',
+      app_id: 'agent-1',
+      app_name: 'Agent',
+      app_mode: 'agent-v2',
+    })
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
@@ -781,6 +796,7 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
   })
 
