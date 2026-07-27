@@ -549,10 +549,7 @@ services:
       - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}
       - HTTP_PROXY=http://agent_ssrf_proxy:3128
       - HTTPS_PROXY=http://agent_ssrf_proxy:3128
-      - http_proxy=http://agent_ssrf_proxy:3128
-      - https_proxy=http://agent_ssrf_proxy:3128
       - NO_PROXY=localhost,127.0.0.1
-      - no_proxy=localhost,127.0.0.1
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s
