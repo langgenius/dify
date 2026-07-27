@@ -773,6 +773,19 @@ def test_recent_app_list_api_returns_only_home_card_fields(app, app_module):
     assert "workflow" not in resp["data"][0]
 
 
+@pytest.mark.parametrize("mode", ["channel", "rag-pipeline", "agent"])
+def test_recent_app_response_rejects_non_home_app_modes(app_module, mode: str) -> None:
+    with pytest.raises(ValidationError):
+        app_module.RecentAppResponse.model_validate(
+            {
+                "id": "app-1",
+                "name": "Recent App",
+                "mode": mode,
+                "updated_at": _ts(),
+            }
+        )
+
+
 def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module):
     method = app_module.RecentAppListApi.get
     while hasattr(method, "__wrapped__"):

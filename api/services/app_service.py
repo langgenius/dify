@@ -42,6 +42,20 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 logger = logging.getLogger(__name__)
 
 AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
+RecentAppMode = Literal[
+    AppMode.COMPLETION,
+    AppMode.WORKFLOW,
+    AppMode.CHAT,
+    AppMode.ADVANCED_CHAT,
+    AppMode.AGENT_CHAT,
+]
+RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
+    AppMode.COMPLETION,
+    AppMode.WORKFLOW,
+    AppMode.CHAT,
+    AppMode.ADVANCED_CHAT,
+    AppMode.AGENT_CHAT,
+)
 
 
 class AppListBaseParams(BaseModel):
@@ -70,10 +84,10 @@ class StarredAppListParams(AppListBaseParams):
 class RecentAppListItem:
     id: str
     name: str
-    icon_type: str | None
+    icon_type: IconType | None
     icon: str | None
     icon_background: str | None
-    mode: str
+    mode: RecentAppMode
     author_name: str | None
     updated_at: datetime
     maintainer: str | None
@@ -362,7 +376,7 @@ class AppService:
                 App.maintainer,
             )
             .outerjoin(Account, Account.id == App.created_by)
-            .where(*filters)
+            .where(*filters, App.mode.in_(RECENT_APP_MODES))
             .order_by(App.updated_at.desc())
             .limit(params.limit)
         )
@@ -372,10 +386,10 @@ class AppService:
             RecentAppListItem(
                 id=str(app_id),
                 name=name,
-                icon_type=icon_type.value if icon_type else None,
+                icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
-                mode=mode.value,
+                mode=cast(RecentAppMode, mode),
                 author_name=author_name,
                 updated_at=updated_at,
                 maintainer=maintainer,

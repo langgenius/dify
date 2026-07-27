@@ -271,10 +271,32 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     legacy_agent = AppModelConfig(app_id=newest.id)
     legacy_agent.agent_mode = '{"enabled": true, "strategy": "react"}'
     newest.app_model_config_id = legacy_agent.id
-    second = create_app(name="Second", tenant_id=tenant_id, updated_at=datetime(2026, 7, 2))
+    second = create_app(
+        name="Second",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 2),
+        mode=AppMode.WORKFLOW,
+    )
+    second.icon_type = None
+    second.icon = None
+    second.icon_background = None
+    second.created_by = None
+    second.maintainer = None
+    channel = create_app(
+        name="Channel",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 5),
+        mode=AppMode.CHANNEL,
+    )
+    rag_pipeline = create_app(
+        name="RAG Pipeline",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 4),
+        mode=AppMode.RAG_PIPELINE,
+    )
     oldest = create_app(name="Oldest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 1))
     foreign = create_app(name="Foreign", tenant_id=other_tenant_id, updated_at=datetime(2026, 7, 4))
-    sqlite_session.add_all([newest, legacy_agent, second, oldest, foreign])
+    sqlite_session.add_all([newest, legacy_agent, second, channel, rag_pipeline, oldest, foreign])
     sqlite_session.commit()
 
     statements: list[str] = []
@@ -294,9 +316,9 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     finally:
         event.remove(bind, "before_cursor_execute", record_sql)
 
-    assert [(app.name, app.mode, app.author_name) for app in recent_apps] == [
-        ("Newest", AppMode.CHAT.value, "Recent Apps Author"),
-        ("Second", AppMode.CHAT.value, "Recent Apps Author"),
+    assert [(app.name, app.mode, app.icon_type, app.author_name, app.maintainer) for app in recent_apps] == [
+        ("Newest", AppMode.CHAT, IconType.EMOJI, "Recent Apps Author", account.id),
+        ("Second", AppMode.WORKFLOW, None, None, None),
     ]
     select_statements = [statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]
     assert len(select_statements) == 1

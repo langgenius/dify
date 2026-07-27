@@ -2,7 +2,6 @@ import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.g
 import type { AnchorHTMLAttributes, ReactNode } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import ContinueWorkItem from '../item'
 
@@ -59,7 +58,7 @@ const createApp = (overrides: Partial<RecentAppResponse> = {}): RecentAppRespons
   icon: '🤖',
   icon_background: '#FFEAD5',
   icon_url: null,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat',
   maintainer: 'maintainer-1',
   updated_at: 200,
   permission_keys: [AppACLPermission.Edit],

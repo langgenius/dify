@@ -1416,11 +1416,11 @@ export type RecentAppResponse = {
   author_name?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: 'emoji' | 'image' | 'link' | null
+  icon_type?: IconType | null
   readonly icon_url: string | null
   id: string
   maintainer?: string | null
-  mode: 'advanced-chat' | 'agent' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
   name: string
   permission_keys?: Array<string>
   updated_at: number
@@ -3222,10 +3222,10 @@ export type RecentAppResponseWritable = {
   author_name?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: 'emoji' | 'image' | 'link' | null
+  icon_type?: IconType | null
   id: string
   maintainer?: string | null
-  mode: 'advanced-chat' | 'agent' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
   name: string
   permission_keys?: Array<string>
   updated_at: number

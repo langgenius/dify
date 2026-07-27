@@ -58,6 +58,7 @@ from services.app_service import (
     AppResponseView,
     AppService,
     CreateAppParams,
+    RecentAppMode,
     StarredAppListParams,
 )
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -418,10 +419,10 @@ class AppPartial(AppResponseModel):
 class RecentAppResponse(ResponseModel):
     id: str
     name: str
-    icon_type: Literal["emoji", "image", "link"] | None = None
+    icon_type: IconType | None = None
     icon: str | None = None
     icon_background: str | None = None
-    mode: Literal["completion", "workflow", "chat", "advanced-chat", "agent-chat", "agent"]
+    mode: RecentAppMode
     author_name: str | None = None
     updated_at: int
     permission_keys: list[str] = Field(default_factory=list)

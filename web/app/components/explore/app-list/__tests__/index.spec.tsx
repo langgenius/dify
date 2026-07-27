@@ -495,7 +495,7 @@ const createWorkspaceApp = (overrides: Partial<RecentAppResponse> = {}): RecentA
   icon: overrides.icon ?? '😀',
   icon_background: overrides.icon_background ?? '#fff',
   icon_url: overrides.icon_url ?? null,
-  mode: overrides.mode ?? AppModeEnum.CHAT,
+  mode: overrides.mode ?? 'chat',
   updated_at: overrides.updated_at ?? 1704153600,
   maintainer: overrides.maintainer ?? 'user-1',
   permission_keys: overrides.permission_keys,
