@@ -173,7 +173,7 @@ vi.mock('@/config', async (importOriginal) => ({
   MARKETPLACE_API_PREFIX: '/marketplace/api',
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),

@@ -81,7 +81,7 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
+vi.mock('../../../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({
     comments: commentFixtures,
     loading: false,
