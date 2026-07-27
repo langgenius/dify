@@ -46,7 +46,7 @@ import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
-import { resolveShareCode } from './share-code'
+import { isAppDeployRoute, resolveShareCode } from './share-code'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -249,8 +249,8 @@ function requiredWebSSOLogin(message?: string, code?: number) {
 function formatURL(url: string, isPublicAPI: boolean) {
   let urlPrefix = API_PREFIX
   if (isPublicAPI) {
-    const shareCode = resolveShareCode()
-    urlPrefix = isAppDeployShareCode(shareCode) ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
+    const useAppDeploy = isAppDeployShareCode(resolveShareCode()) && isAppDeployRoute(url)
+    urlPrefix = useAppDeploy ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
   }
   if (url.startsWith('http://') || url.startsWith('https://')) return url
   const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
