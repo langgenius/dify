@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock
 
 import pytest
@@ -374,6 +375,7 @@ class TestBaseAppGeneratorExtras:
     def test_wrap_stream_joins_worker_after_stream_exhaustion(self):
         base_app_generator = BaseAppGenerator()
         worker_thread = Mock()
+        worker_thread.is_alive.return_value = False
 
         def response_stream():
             yield {"event": "workflow_finished"}
@@ -389,11 +391,12 @@ class TestBaseAppGeneratorExtras:
         with pytest.raises(StopIteration):
             next(managed_stream)
 
-        worker_thread.join.assert_called_once_with()
+        worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_wrap_stream_joins_worker_when_stream_closes(self):
         base_app_generator = BaseAppGenerator()
         worker_thread = Mock()
+        worker_thread.is_alive.return_value = False
 
         def response_stream():
             yield {"event": "workflow_started"}
@@ -407,7 +410,19 @@ class TestBaseAppGeneratorExtras:
         assert next(managed_stream) == {"event": "workflow_started"}
         managed_stream.close()
 
-        worker_thread.join.assert_called_once_with()
+        worker_thread.join.assert_called_once_with(timeout=300)
+
+    def test_join_worker_thread_warns_when_thread_remains_alive(self, caplog: pytest.LogCaptureFixture):
+        worker_thread = Mock()
+        worker_thread.name = "leaked-app-worker"
+        worker_thread.is_alive.return_value = True
+
+        with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_generator"):
+            BaseAppGenerator._join_worker_thread(worker_thread)
+
+        worker_thread.join.assert_called_once_with(timeout=300)
+        assert "Possible app worker thread leak" in caplog.text
+        assert "leaked-app-worker" in caplog.text
 
     def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch: pytest.MonkeyPatch):
         base_app_generator = BaseAppGenerator()

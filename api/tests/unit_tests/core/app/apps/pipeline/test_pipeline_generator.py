@@ -435,6 +435,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     mocker.patch.object(module, "PipelineQueueManager", return_value=queue_manager)
 
     worker_thread = MagicMock()
+    worker_thread.is_alive.return_value = False
     mocker.patch.object(module.threading, "Thread", return_value=worker_thread)
 
     mocker.patch.object(generator, "_get_draft_var_saver_factory", return_value=MagicMock())
@@ -461,7 +462,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     )
 
     assert result == "converted"
-    worker_thread.join.assert_called_once_with()
+    worker_thread.join.assert_called_once_with(timeout=300)
 
 
 def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):

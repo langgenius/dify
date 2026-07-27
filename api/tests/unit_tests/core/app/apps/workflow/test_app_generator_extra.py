@@ -18,6 +18,7 @@ class TestWorkflowAppGeneratorValidation:
     def test_generate_stream_joins_worker_after_response_exhaustion(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator()
         worker_thread = Mock()
+        worker_thread.is_alive.return_value = False
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
             app_id="app",
@@ -76,7 +77,7 @@ class TestWorkflowAppGeneratorValidation:
         worker_thread.start.assert_called_once_with()
         worker_thread.join.assert_not_called()
         assert list(managed_stream) == [{"event": "workflow_finished"}]
-        worker_thread.join.assert_called_once_with()
+        worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_ensure_snippet_start_node_returns_original_for_non_snippet_workflow(self):
         workflow = SimpleNamespace(kind_or_standard="workflow")

@@ -636,13 +636,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     invoke_from=invoke_from,
                 )
             except BaseException:
-                worker_thread.join()
+                self._join_worker_thread(worker_thread)
                 raise
 
             if isinstance(converted_response, Generator):
                 return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
 
-            worker_thread.join()
+            self._join_worker_thread(worker_thread)
             return converted_response
 
     def _generate_worker(
