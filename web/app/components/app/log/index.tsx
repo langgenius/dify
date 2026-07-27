@@ -18,6 +18,7 @@ import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
+import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
 type ILogsProps = {
   appDetail: App
@@ -146,6 +147,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           queryParams={queryParams}
           setQueryParams={handleQueryParamsChange}
         />
+        <RetentionUpgradeNotice />
         {total === undefined ? (
           <Loading type="app" />
         ) : total > 0 ? (

@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { QueryParam } from './index'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiCalendarLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
@@ -11,15 +10,15 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
-import { Plan } from '@/app/components/billing/type'
-import { useProviderContext } from '@/context/provider-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import {
+  CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
+  CLOUD_SANDBOX_TIME_PERIOD_KEYS,
+  useIsCloudSandboxPlan,
+} from '../log/cloud-sandbox-retention'
 
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
-const CLOUD_SANDBOX_TIME_PERIOD_KEYS = new Set(['1', '2', '3'])
-const CLOUD_SANDBOX_CLEARED_TIME_PERIOD = '1'
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -42,12 +41,7 @@ type IFilterProps = {
 
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
-  })
-  const { plan } = useProviderContext()
-  const isCloudSandbox = deploymentEdition === 'CLOUD' && plan.type === Plan.sandbox
+  const isCloudSandbox = useIsCloudSandboxPlan()
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING).filter(
     ([key]) => !isCloudSandbox || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
   )

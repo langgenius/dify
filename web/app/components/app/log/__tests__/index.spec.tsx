@@ -69,6 +69,10 @@ vi.mock('../empty-element', () => ({
   default: () => <div>empty-logs</div>,
 }))
 
+vi.mock('../retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
+}))
+
 vi.mock('@/app/components/base/loading', () => ({
   default: () => <div>loading-logs</div>,
 }))
@@ -117,6 +121,7 @@ describe('Logs', () => {
     expect(
       screen.getByRole('link', { name: /(?:^|\.)operation\.learnMore(?=$|:)/ }),
     ).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
+    expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     expect(screen.getByText('loading-logs')).toBeInTheDocument()
   })
 

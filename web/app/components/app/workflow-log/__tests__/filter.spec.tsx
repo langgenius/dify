@@ -19,6 +19,8 @@ import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 const mockRuntime = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD',
+  enableBilling: true,
+  isFetchedPlan: true,
   planType: 'professional',
 }))
 
@@ -34,7 +36,11 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
   return {
     ...actual,
-    useProviderContext: () => ({ plan: { type: mockRuntime.planType } }),
+    useProviderContext: () => ({
+      enableBilling: mockRuntime.enableBilling,
+      isFetchedPlan: mockRuntime.isFetchedPlan,
+      plan: { type: mockRuntime.planType },
+    }),
   }
 })
 
@@ -63,6 +69,8 @@ describe('Filter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRuntime.deploymentEdition = 'CLOUD'
+    mockRuntime.enableBilling = true
+    mockRuntime.isFetchedPlan = true
     mockRuntime.planType = 'professional'
   })
 

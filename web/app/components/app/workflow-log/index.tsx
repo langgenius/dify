@@ -19,6 +19,7 @@ import { useWorkflowLogs } from '@/service/use-log'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
+import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -84,6 +85,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
+        <RetentionUpgradeNotice />
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}
         {total === undefined ? (

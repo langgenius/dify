@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Year to date",
   "filter.sortBy": "Sort by:",
   "monitoring.description": "Monitoring records the running status of the application, including performance, user activity, and costs.",
+  "retention.upgradeTip.description": "Upgrade to retain all logs generated after upgrading with no time limit; previously expired logs can’t be recovered.",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "File Details",
   "runDetail.testWithParams": "Test With Params",

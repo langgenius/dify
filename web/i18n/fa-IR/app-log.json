@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "از ابتدای سال تاکنون",
   "filter.sortBy": "مرتب‌سازی بر اساس:",
   "monitoring.description": "مانیتورینگ وضعیت اجرای برنامه را ثبت می‌کند، از جمله عملکرد، فعالیت کاربران و هزینه‌ها.",
+  "retention.upgradeTip.description": "طرح خود را ارتقا دهید تا همه لاگ‌های ایجادشده پس از ارتقا بدون محدودیت زمانی نگهداری شوند؛ لاگ‌هایی که پیش از ارتقا منقضی شده‌اند قابل بازیابی نیستند.",
   "runDetail.fileListDetail": "جزئیات",
   "runDetail.fileListLabel": "جزئیات فایل",
   "runDetail.testWithParams": "تست با پارامترها",

@@ -58,6 +58,10 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
+vi.mock('../../log/retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
+}))
+
 // Mock the Run component to avoid complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
@@ -272,6 +276,7 @@ describe('Logs Container', () => {
 
       // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     })
   })
 
