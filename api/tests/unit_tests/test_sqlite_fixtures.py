@@ -5,7 +5,7 @@ from threading import Barrier
 import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import URL, Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from models.account import Account
@@ -44,17 +44,20 @@ def test_sqlite_engine_is_a_pristine_file_copy(
         template_engine.dispose()
 
 
-def test_sqlite_engine_shares_one_database_across_worker_connections(sqlite_engine: Engine) -> None:
-    with sqlite_engine.begin() as connection:
-        connection.execute(text("CREATE TABLE thread_probe (value INTEGER NOT NULL)"))
-        connection.execute(text("INSERT INTO thread_probe (value) VALUES (42)"))
+def test_sqlite_session_factory_shares_one_database_across_worker_sessions(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.execute(text("CREATE TABLE thread_probe (value INTEGER NOT NULL)"))
+        session.execute(text("INSERT INTO thread_probe (value) VALUES (42)"))
 
     worker_barrier = Barrier(2)
 
     def read_value() -> tuple[int, int]:
-        with sqlite_engine.connect() as connection:
+        with sqlite_session_factory() as session:
+            connection = session.connection()
             worker_barrier.wait(timeout=1)
-            value = connection.scalar(text("SELECT value FROM thread_probe"))
+            value = session.scalar(text("SELECT value FROM thread_probe"))
             connection_id = id(connection.connection.dbapi_connection)
             return connection_id, value
 

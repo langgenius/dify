@@ -121,7 +121,7 @@ def _unit_test_engine():
 
 
 @pytest.fixture
-def sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
+def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
     """Create an engine over a pristine per-test copy of the SQLite schema."""
 
     database_path = tmp_path / "unit-tests.sqlite3"
@@ -149,15 +149,35 @@ def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture
-def sqlite_session(sqlite_engine: Engine) -> Iterator[Session]:
+def _sqlite_session_factory(_sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Create sessions bound to the pristine full-schema SQLite database."""
+
+    return sessionmaker(bind=_sqlite_engine, expire_on_commit=False)
+
+
+@pytest.fixture
+def sqlite_engine(_sqlite_engine: Engine) -> Engine:
+    """Expose the pristine full-schema SQLite engine to tests."""
+
+    return _sqlite_engine
+
+
+@pytest.fixture
+def sqlite_session_factory(_sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    """Expose the shared SQLite session factory to tests."""
+
+    return _sqlite_session_factory
+
+
+@pytest.fixture
+def sqlite_session(_sqlite_session_factory: sessionmaker[Session]) -> Iterator[Session]:
     """Yield a session over the pristine full-schema SQLite database.
 
     Legacy indirect model parameters remain accepted by pytest but are ignored.
     Remove those decorators as their test files receive individual review.
     """
 
-    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with session_factory() as session:
+    with _sqlite_session_factory() as session:
         yield session
 
 
