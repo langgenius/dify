@@ -37,7 +37,7 @@ os.environ.setdefault("OPENDAL_SCHEME", "fs")
 os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
-from core.db.session_factory import configure_session_factory, session_factory
+import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
@@ -113,13 +113,6 @@ def reset_secret_key():
         dify_config.SECRET_KEY = original
 
 
-@pytest.fixture(scope="session")
-def _unit_test_engine():
-    engine = create_engine("sqlite:///:memory:")
-    yield engine
-    engine.dispose()
-
-
 @pytest.fixture
 def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
     """Create an engine over a pristine per-test copy of the SQLite schema."""
@@ -148,11 +141,16 @@ def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return database_path
 
 
-@pytest.fixture
-def _sqlite_session_factory(_sqlite_engine: Engine) -> sessionmaker[Session]:
-    """Create sessions bound to the pristine full-schema SQLite database."""
+@pytest.fixture(autouse=True)
+def _sqlite_session_factory(
+    _sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> sessionmaker[Session]:
+    """Bind all unit-test Sessions to the pristine full-schema SQLite database."""
 
-    return sessionmaker(bind=_sqlite_engine, expire_on_commit=False)
+    factory = sessionmaker(bind=_sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    return factory
 
 
 @pytest.fixture
@@ -179,14 +177,6 @@ def sqlite_session(_sqlite_session_factory: sessionmaker[Session]) -> Iterator[S
 
     with _sqlite_session_factory() as session:
         yield session
-
-
-@pytest.fixture(autouse=True)
-def _configure_session_factory(_unit_test_engine):
-    try:
-        session_factory.get_session_maker()
-    except RuntimeError:
-        configure_session_factory(_unit_test_engine, expire_on_commit=False)
 
 
 def persist_service_api_tenant_owner(session: Session, tenant: Tenant, owner: Account) -> TenantAccountJoin:

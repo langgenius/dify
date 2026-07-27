@@ -8,6 +8,7 @@ from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+import core.db.session_factory as session_factory_module
 from models.account import Account
 from models.base import TypeBase
 from models.model import ExporleBanner
@@ -42,6 +43,19 @@ def test_sqlite_engine_is_a_pristine_file_copy(
         assert not inspect(template_engine).has_table("per_test_mutation")
     finally:
         template_engine.dispose()
+
+
+def test_core_session_factory_uses_the_shared_sqlite_session_factory(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    assert session_factory_module.session_factory.get_session_maker() is sqlite_session_factory
+
+    with sqlite_session_factory.begin() as session:
+        session.execute(text("CREATE TABLE global_factory_probe (value INTEGER NOT NULL)"))
+        session.execute(text("INSERT INTO global_factory_probe (value) VALUES (42)"))
+
+    with session_factory_module.session_factory.create_session() as session:
+        assert session.scalar(text("SELECT value FROM global_factory_probe")) == 42
 
 
 def test_sqlite_session_factory_shares_one_database_across_worker_sessions(
