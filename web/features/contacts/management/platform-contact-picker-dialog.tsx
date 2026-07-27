@@ -14,6 +14,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAddPlatformContacts, useAvailablePlatformContacts } from './hooks'
+import { PlatformContactUpgradeDialog } from './platform-contact-upgrade-dialog'
 
 export function PlatformContactPickerDialog({
   onOpenChange,
@@ -26,6 +27,7 @@ export function PlatformContactPickerDialog({
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mutationError, setMutationError] = useState(false)
+  const [upgradeConflictCount, setUpgradeConflictCount] = useState<number | null>(null)
   const availableContactsQuery = useAvailablePlatformContacts({ limit: 20, search }, open)
   const addPlatformContacts = useAddPlatformContacts()
   const resetMutation = addPlatformContacts.reset
@@ -34,6 +36,7 @@ export function PlatformContactPickerDialog({
     setSearch('')
     setSelectedIds([])
     setMutationError(false)
+    setUpgradeConflictCount(null)
     resetMutation()
   }
 
@@ -50,15 +53,29 @@ export function PlatformContactPickerDialog({
     )
   }
 
-  async function handleAdd() {
+  async function handleAdd(upgradeExternalContacts: boolean) {
     if (!selectedIds.length || addPlatformContacts.isPending) return
-    const result = await addPlatformContacts.mutateAsync(selectedIds)
+    setMutationError(false)
+    const result = await addPlatformContacts.mutateAsync({
+      contactIds: selectedIds,
+      upgradeExternalContacts,
+    })
+    if (result.kind === 'requires_external_contact_upgrade') {
+      setUpgradeConflictCount(result.conflicts.length)
+      return
+    }
     if (result.kind === 'added') {
       onOpenChange(false)
       resetDialog()
       return
     }
+    setUpgradeConflictCount(null)
     setMutationError(true)
+  }
+
+  function handleUpgradeDialogOpenChange(nextOpen: boolean) {
+    if (nextOpen || addPlatformContacts.isPending) return
+    setUpgradeConflictCount(null)
   }
 
   return (
@@ -177,7 +194,7 @@ export function PlatformContactPickerDialog({
                 variant="primary"
                 disabled={!selectedIds.length}
                 loading={addPlatformContacts.isPending}
-                onClick={handleAdd}
+                onClick={() => handleAdd(false)}
               >
                 {addPlatformContacts.isPending
                   ? t(($) => $['platformPicker.adding'])
@@ -187,6 +204,13 @@ export function PlatformContactPickerDialog({
           </div>
         </div>
       </DialogContent>
+      <PlatformContactUpgradeDialog
+        conflictCount={upgradeConflictCount ?? 0}
+        open={upgradeConflictCount !== null}
+        pending={addPlatformContacts.isPending}
+        onOpenChange={handleUpgradeDialogOpenChange}
+        onConfirm={() => handleAdd(true)}
+      />
     </Dialog>
   )
 }

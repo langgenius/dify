@@ -12,7 +12,7 @@ the adapter. Add from Platform is modeled only with available Platform-contact
 types and names. The sibling `contacts/im-platform` feature intentionally keeps an
 independent repository and shares only workspace/deployment shell context.
 
-When an invitation email exactly matches an External Contact, the invite form
-uses this repository to pause before the existing member request. Confirming the
-dialog sends the normal invitation and then updates only the mock Contact type;
-the Contact ID and the rest of its identity remain stable.
+When a member invitation or selected Platform contact exactly matches an
+External Contact email, the owning workflow pauses before mutation. Confirming
+the dialog upgrades only the mock Contact type while preserving its Contact ID,
+workflow references, history, and remaining identity fields.

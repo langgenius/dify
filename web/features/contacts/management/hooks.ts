@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  AddPlatformContactsCommand,
   AvailablePlatformContactsQuery,
   ContactsListQuery,
   ContactView,
@@ -117,7 +118,7 @@ export function useAddPlatformContacts() {
 
   return useMutation(
     mutationOptions({
-      mutationFn: (contactIds: string[]) => repository.addPlatformContacts({ contactIds }),
+      mutationFn: (command: AddPlatformContactsCommand) => repository.addPlatformContacts(command),
       onSuccess: (result) => {
         if (result.kind !== 'added') return
         void queryClient.invalidateQueries({

@@ -231,6 +231,11 @@
   "platformPicker.selectContact": "选择 {{name}}",
   "platformPicker.selected": "已选择 {{count}} 人",
   "platformPicker.title": "从企业平台添加",
+  "platformPicker.upgrade.confirm": "添加并升级",
+  "platformPicker.upgrade.description_one": "此 Email 已被一个外部联系人使用。添加该 Platform contact 会升级现有联系人，并保留现有工作流引用和历史记录。",
+  "platformPicker.upgrade.description_other": "已有 {{count}} 个 Email 被外部联系人使用。添加这些 Platform contact 会升级现有联系人，并保留现有工作流引用和历史记录。",
+  "platformPicker.upgrade.title_one": "联系人已存在",
+  "platformPicker.upgrade.title_other": "多个联系人已存在",
   "type.external": "外部",
   "type.platform": "企业平台",
   "type.workspace": "工作区"
