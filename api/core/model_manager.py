@@ -47,6 +47,7 @@ class ModelInstance:
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
         self.stop: Sequence[str] = ()
+        self.first_token_timeout: float | None = None
         self.model_type_instance = self.provider_model_bundle.model_type_instance
         self.load_balancing_manager = self._get_load_balancing_manager(
             configuration=provider_model_bundle.configuration,

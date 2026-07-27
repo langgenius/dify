@@ -9,7 +9,11 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
-import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
+import {
+  FIRST_TOKEN_TIMEOUT_PARAMETER_RULE,
+  PROVIDER_WITH_PRESET_TONE,
+  STOP_PARAMETER_RULE,
+} from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import ModelSelector from '../model-selector'
@@ -36,6 +40,9 @@ export type ModelParameterModalProps = {
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
+  // Pass only from panels whose model config the backend consumes
+  // (LLM / question classifier / parameter extractor); elsewhere it is dead config.
+  supportFirstTokenTimeout?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -55,6 +62,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
+  supportFirstTokenTimeout,
   nodesOutputVars,
   availableNodes,
 }) => {
@@ -216,22 +224,26 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   <Loading />
                 </div>
               ) : (
-                [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
-                  (parameter) => (
-                    <ParameterItem
-                      key={`${modelId}-${parameter.name}`}
-                      parameterRule={parameter}
-                      value={completionParams?.[parameter.name]}
-                      onChange={(v) => handleParamChange(parameter.name, v)}
-                      onSwitch={(checked, assignValue) =>
-                        handleSwitch(parameter.name, checked, assignValue)
-                      }
-                      isInWorkflow={isInWorkflow}
-                      nodesOutputVars={nodesOutputVars}
-                      availableNodes={availableNodes}
-                    />
-                  ),
-                )
+                [
+                  ...parameterRules,
+                  ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
+                  ...(isAdvancedMode && supportFirstTokenTimeout
+                    ? [FIRST_TOKEN_TIMEOUT_PARAMETER_RULE]
+                    : []),
+                ].map((parameter) => (
+                  <ParameterItem
+                    key={`${modelId}-${parameter.name}`}
+                    parameterRule={parameter}
+                    value={completionParams?.[parameter.name]}
+                    onChange={(v) => handleParamChange(parameter.name, v)}
+                    onSwitch={(checked, assignValue) =>
+                      handleSwitch(parameter.name, checked, assignValue)
+                    }
+                    isInWorkflow={isInWorkflow}
+                    nodesOutputVars={nodesOutputVars}
+                    availableNodes={availableNodes}
+                  />
+                ))
               )}
             </div>
           )}

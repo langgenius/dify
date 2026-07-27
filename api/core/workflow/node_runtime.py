@@ -22,6 +22,7 @@ from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
+from core.plugin.impl.first_token_timeout import first_token_timeout_ctx
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
@@ -147,6 +148,42 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         )
 
 
+def _guarded_stream(
+    seconds: float,
+    inner: Generator[Any, None, None],
+) -> Generator[Any, None, None]:
+    """Iterate ``inner`` with the first-token-timeout ContextVar set.
+
+    Keeps the value active for exactly the span of iteration, which is when the
+    plugin-daemon transport reads it. Same-thread only: a background-thread SSE
+    prefetch would not see it and the gate fails open.
+    """
+    token = first_token_timeout_ctx.set(seconds)
+    try:
+        yield from inner
+    finally:
+        first_token_timeout_ctx.reset(token)
+
+
+def _with_first_token_timeout[T](first_token_timeout: float | None, invoke: Callable[[], T]) -> T:
+    """Run ``invoke`` with the first-token-timeout ContextVar applied.
+
+    ``first_token_timeout`` is seconds, from ``ModelInstance.first_token_timeout``.
+    A streaming result is lazy, so its generator is wrapped to keep the ContextVar
+    set during iteration; a non-positive timeout disables the gate.
+    """
+    if first_token_timeout is None or first_token_timeout <= 0:
+        return invoke()
+    token = first_token_timeout_ctx.set(first_token_timeout)
+    try:
+        result = invoke()
+    finally:
+        first_token_timeout_ctx.reset(token)
+    if isinstance(result, Generator):
+        return cast("T", _guarded_stream(first_token_timeout, result))
+    return result
+
+
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
@@ -225,13 +262,16 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
-        return self._model_instance.invoke_llm(
-            prompt_messages=list(prompt_messages),
-            model_parameters=dict(model_parameters),
-            tools=list(tools or []),
-            stop=list(stop or []),
-            stream=stream,
-            request_metadata=self._request_metadata,
+        return _with_first_token_timeout(
+            self._model_instance.first_token_timeout,
+            lambda: self._model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages),
+                model_parameters=dict(model_parameters),
+                tools=list(tools or []),
+                stop=list(stop or []),
+                stream=stream,
+                request_metadata=self._request_metadata,
+            ),
         )
 
     @overload
@@ -266,15 +306,18 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
-        return invoke_llm_with_structured_output(
-            provider=self.provider,
-            model_schema=self.get_model_schema(),
-            model_instance=self._model_instance,
-            prompt_messages=prompt_messages,
-            json_schema=json_schema,
-            model_parameters=model_parameters,
-            stop=list(stop or []),
-            stream=stream,
+        return _with_first_token_timeout(
+            self._model_instance.first_token_timeout,
+            lambda: invoke_llm_with_structured_output(
+                provider=self.provider,
+                model_schema=self.get_model_schema(),
+                model_instance=self._model_instance,
+                prompt_messages=prompt_messages,
+                json_schema=json_schema,
+                model_parameters=model_parameters,
+                stop=list(stop or []),
+                stream=stream,
+            ),
         )
 
     @override

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 from typing import Any
 
@@ -13,6 +14,8 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
+
+logger = logging.getLogger(__name__)
 
 
 class DifyCredentialsProvider:
@@ -128,21 +131,35 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
     )
 
 
-def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def _normalize_completion_params(
+    completion_params: dict[str, Any],
+) -> tuple[dict[str, Any], list[str], float | None]:
     """
-    Split node-level completion params into provider parameters and stop sequences.
+    Split node-level completion params into provider parameters, stop sequences,
+    and the first-token timeout.
 
     Workflow LLM-compatible nodes still consume runtime invocation settings from
-    ``ModelInstance.parameters`` and ``ModelInstance.stop``. Keep the
-    ``ModelInstance`` view and the returned config entity aligned here so callers
-    do not need to duplicate normalization logic.
+    ``ModelInstance.parameters``, ``ModelInstance.stop`` and
+    ``ModelInstance.first_token_timeout``. Keep the ``ModelInstance`` view and the
+    returned config entity aligned here so callers do not need to duplicate
+    normalization logic.
+
+    ``first_token_timeout_ms`` never reaches providers; this is the only ms->s
+    conversion on the path. Invalid values disable the gate.
     """
     normalized_parameters = dict(completion_params)
     stop = normalized_parameters.pop("stop", [])
     if not isinstance(stop, list) or not all(isinstance(item, str) for item in stop):
         stop = []
 
-    return normalized_parameters, stop
+    raw_timeout_ms = normalized_parameters.pop("first_token_timeout_ms", None)
+    first_token_timeout: float | None = None
+    if isinstance(raw_timeout_ms, (int, float)) and not isinstance(raw_timeout_ms, bool) and raw_timeout_ms > 0:
+        first_token_timeout = float(raw_timeout_ms) / 1000
+    elif raw_timeout_ms is not None:
+        logger.debug("Ignoring invalid first_token_timeout_ms in completion_params: %r", raw_timeout_ms)
+
+    return normalized_parameters, stop, first_token_timeout
 
 
 def fetch_model_config(
@@ -178,12 +195,13 @@ def fetch_model_config(
     if model_schema is None:
         raise ModelNotExistError(f"Model {node_data_model.name} schema does not exist.")
 
-    parameters, stop = _normalize_completion_params(node_data_model.completion_params)
+    parameters, stop, first_token_timeout = _normalize_completion_params(node_data_model.completion_params)
     model_instance.provider = node_data_model.provider
     model_instance.model_name = node_data_model.name
     model_instance.credentials = credentials
     model_instance.parameters = parameters
     model_instance.stop = tuple(stop)
+    model_instance.first_token_timeout = first_token_timeout
 
     return model_instance, ModelConfigWithCredentialsEntity(
         provider=node_data_model.provider,

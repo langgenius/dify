@@ -100,6 +100,14 @@ class TestModelConfigConverter:
         assert result.parameters == {"temperature": 0.7}
         assert result.stop == ["\n"]
 
+    def test_convert_drops_first_token_timeout_ms(self, mock_app_config, patch_provider_manager):
+        """The workflow-only setting must never reach providers through app configs."""
+        mock_app_config.model.parameters = {"temperature": 0.7, "first_token_timeout_ms": 2000}
+
+        result = ModelConfigConverter.convert(mock_app_config)
+
+        assert result.parameters == {"temperature": 0.7}
+
     def test_convert_mode_from_schema_valid(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_app_config.model.mode = None
 
