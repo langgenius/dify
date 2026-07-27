@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
@@ -207,6 +208,8 @@ const ChatWrapper = () => {
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
+      if (appSourceType === AppSourceType.webApp && appData?.mode)
+        trackEvent('webapp_run', { app_mode: appData.mode })
     },
     [
       currentConversationId,
@@ -217,6 +220,7 @@ const ChatWrapper = () => {
       appSourceType,
       appId,
       handleNewConversationCompleted,
+      appData?.mode,
     ],
   )
 

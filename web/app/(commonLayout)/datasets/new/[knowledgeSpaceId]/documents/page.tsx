@@ -1,5 +1,7 @@
-import { KnowledgeRoutePlaceholder } from '@/features/new-rag/knowledge-route-placeholder'
+import { DocumentsPage } from '@/features/new-rag/documents-page'
 
-export default function Page() {
-  return <KnowledgeRoutePlaceholder type="documents" />
+export default async function Page({ params }: { params: Promise<{ knowledgeSpaceId: string }> }) {
+  const { knowledgeSpaceId } = await params
+
+  return <DocumentsPage knowledgeSpaceId={knowledgeSpaceId} />
 }

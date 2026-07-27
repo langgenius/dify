@@ -58,6 +58,7 @@ from services.app_service import (
     AppResponseView,
     AppService,
     CreateAppParams,
+    RecentAppMode,
     StarredAppListParams,
 )
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -137,6 +138,10 @@ class AppListBaseQuery(BaseModel):
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
             raise ValueError("Invalid UUID format in creator_ids.") from exc
+
+
+class RecentAppListQuery(BaseModel):
+    limit: int = Field(default=8, ge=1, le=8, description="Number of recently modified apps to return (1-8)")
 
 
 class AppListQuery(AppListBaseQuery):
@@ -411,6 +416,33 @@ class AppPartial(AppResponseModel):
         return to_timestamp(value)
 
 
+class RecentAppResponse(ResponseModel):
+    id: str
+    name: str
+    icon_type: IconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    mode: RecentAppMode
+    author_name: str | None = None
+    updated_at: int
+    permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
+
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
+
+    @field_validator("updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int) -> int:
+        return to_timestamp(value)
+
+
+class RecentAppListResponse(ResponseModel):
+    data: list[RecentAppResponse]
+
+
 class AppDetail(AppResponseModel):
     id: str
     name: str
@@ -575,6 +607,8 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     AppPartial,
+    RecentAppResponse,
+    RecentAppListResponse,
     AppDetailWithSite,
     AppPagination,
 )
@@ -697,6 +731,49 @@ class AppListApi(Resource):
             context={"session": session},
         ).model_copy(update={"permission_keys": permission_keys_map.get(str(app.id), [])})
         return app_detail.model_dump(mode="json"), 201
+
+
+@console_ns.route("/apps/recent")
+class RecentAppListApi(Resource):
+    @console_ns.doc("list_recent_apps")
+    @console_ns.doc(description="Get recently modified apps for the home Continue Work section")
+    @console_ns.doc(params=query_params_from_model(RecentAppListQuery))
+    @console_ns.response(200, "Success", console_ns.models[RecentAppListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    @with_session(write=False)
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user_id: str, session: Session):
+        """Return the lightweight app cards needed by the Explore home page."""
+        args = query_params_from_request(RecentAppListQuery)
+        params = AppListParams(limit=args.limit)
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            current_tenant_id,
+            current_user_id,
+            session=session,
+        )
+        if dify_config.RBAC_ENABLED:
+            access_filter = resolve_app_access_filter(
+                current_tenant_id,
+                current_user_id,
+                session=session,
+                permissions=permissions,
+            )
+            access_filter.apply_to_params(params)
+
+        recent_apps = AppService().get_recent_apps(current_user_id, current_tenant_id, params, session)
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids([app.id for app in recent_apps])
+        response_items = [
+            RecentAppResponse.model_validate(app, from_attributes=True).model_copy(
+                update={"permission_keys": permission_keys_map.get(app.id, [])}
+            )
+            for app in recent_apps
+        ]
+        return dump_response(RecentAppListResponse, {"data": response_items}), 200
 
 
 @console_ns.route("/apps/starred")

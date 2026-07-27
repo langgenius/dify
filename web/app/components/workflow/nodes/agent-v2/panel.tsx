@@ -17,11 +17,11 @@ import {
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
+import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
   WorkflowInlineAgentConfigureWorkspace,

@@ -16,6 +16,26 @@ export const workspacePermissionKeysAtom = atom((get) => {
   )
 })
 
+export const datasetDefaultPermissionKeysAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).data?.dataset?.default_permission_keys ?? []
+})
+
 export const workspacePermissionKeysLoadingAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).isPending
+})
+
+export const workspacePermissionKeysFetchingAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).isFetching
+})
+
+export const workspacePermissionKeysErrorAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).error
+})
+
+export const retryWorkspacePermissionKeysAtom = atom(null, (get) => {
+  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: false })
+})
+
+export const refreshWorkspacePermissionKeysAfterMutationDenialAtom = atom(null, (get) => {
+  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: true })
 })

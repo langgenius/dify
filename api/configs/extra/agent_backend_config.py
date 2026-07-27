@@ -12,6 +12,11 @@ class AgentBackendConfig(BaseSettings):
         default=None,
     )
 
+    AGENT_BACKEND_API_TOKEN: str | None = Field(
+        description="Bearer token for authenticating with the Agent backend /runs API.",
+        default=None,
+    )
+
     AGENT_BACKEND_USE_FAKE: bool = Field(
         description="Use the deterministic in-process fake Agent backend client.",
         default=False,

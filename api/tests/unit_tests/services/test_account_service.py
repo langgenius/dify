@@ -1,7 +1,7 @@
 import json
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from models.account import (
     Account,
-    AccountIntegrate,
     AccountStatus,
     Tenant,
     TenantAccountJoin,
@@ -112,22 +111,6 @@ class TestAccountService:
     - User loading and tenant management
     - Error conditions and edge cases
     """
-
-    @pytest.fixture
-    def sqlite_session(self, sqlite_engine) -> Iterator[Session]:
-        """SQLite session with the account/workspace tables these service tests touch."""
-        tables = [
-            model.metadata.tables[model.__tablename__]
-            for model in (
-                Account,
-                Tenant,
-                TenantAccountJoin,
-                TenantPluginAutoUpgradeStrategy,
-            )
-        ]
-        Account.metadata.create_all(sqlite_engine, tables=tables)
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
 
     @pytest.fixture
     def mock_password_dependencies(self):
@@ -803,9 +786,7 @@ class TestTenantService:
         """Creating an owner workspace persists both the tenant and owner membership."""
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1023,9 +1004,7 @@ class TestTenantService:
         self, sqlite_session: Session, mock_external_service_dependencies
     ):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1268,24 +1247,6 @@ class TestRegisterService:
     """
 
     @pytest.fixture
-    def sqlite_session(self, sqlite_engine) -> Iterator[Session]:
-        """SQLite session with the account/workspace tables registration flows touch."""
-        tables = [
-            model.metadata.tables[model.__tablename__]
-            for model in (
-                Account,
-                AccountIntegrate,
-                Tenant,
-                TenantAccountJoin,
-                TenantPluginAutoUpgradeStrategy,
-                DifySetup,
-            )
-        ]
-        Account.metadata.create_all(sqlite_engine, tables=tables)
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
-
-    @pytest.fixture
     def mock_redis_dependencies(self):
         """Mock setup for Redis-related functions."""
         with patch("services.account_service.redis_client") as mock_redis:
@@ -1329,7 +1290,10 @@ class TestRegisterService:
         with patch("services.account_service.AccountService.create_account") as mock_create_account:
             mock_create_account.return_value = mock_account
 
-            with patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant:
+            with (
+                patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant,
+                patch("services.account_service.CommunityTelemetryService.report_install") as mock_report_install,
+            ):
                 RegisterService.setup(
                     "admin@example.com",
                     "Admin User",
@@ -1348,7 +1312,39 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
                 mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
-                assert sqlite_session.scalar(select(DifySetup)) is not None
+                dify_setup = sqlite_session.scalar(select(DifySetup))
+                assert dify_setup is not None
+                assert dify_setup.instance_id is not None
+                assert str(UUID(dify_setup.instance_id)) == dify_setup.instance_id
+                assert dify_setup.install_reported_at is None
+                assert dify_setup.last_heartbeat_at is None
+                mock_report_install.assert_called_once_with(session=sqlite_session)
+
+    def test_setup_succeeds_when_telemetry_install_report_fails(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ):
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+
+        with (
+            patch("services.account_service.AccountService.create_account", return_value=mock_account),
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist"),
+            patch(
+                "services.account_service.CommunityTelemetryService.report_install",
+                side_effect=RuntimeError("telemetry unavailable"),
+            ),
+        ):
+            RegisterService.setup(
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+                "en-US",
+                session=sqlite_session,
+            )
+
+        assert sqlite_session.scalar(select(DifySetup)) is not None
 
     def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test setup failure with proper rollback."""
@@ -1476,9 +1472,7 @@ class TestRegisterService:
         """Test successful account registration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1585,9 +1579,7 @@ class TestRegisterService:
 
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1624,9 +1616,7 @@ class TestRegisterService:
 
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1659,9 +1649,7 @@ class TestRegisterService:
         """Test account registration with OAuth integration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1703,9 +1691,7 @@ class TestRegisterService:
         """Test account registration with pending status."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1745,9 +1731,7 @@ class TestRegisterService:
         """Test registration when workspace creation is not allowed."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True

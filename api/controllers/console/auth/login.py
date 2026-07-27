@@ -163,7 +163,7 @@ class LoginApi(Resource):
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
             if (
-                FeatureService.get_system_features().is_allow_create_workspace
+                FeatureService.is_workspace_creation_allowed()
                 and not FeatureService.get_license().workspaces.is_available()
             ):
                 raise WorkspacesLimitExceeded()
@@ -314,7 +314,7 @@ class EmailCodeLoginApi(Resource):
                 workspaces = FeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
-                if not FeatureService.get_system_features().is_allow_create_workspace:
+                if not FeatureService.is_workspace_creation_allowed():
                     raise NotAllowedCreateWorkspace()
                 else:
                     TenantService.create_owner_tenant(account, session=db.session())

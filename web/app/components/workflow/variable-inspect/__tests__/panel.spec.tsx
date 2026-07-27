@@ -57,14 +57,14 @@ vi.mock('../../hooks/use-nodes-interactions', () => ({
   }),
 }))
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),
-  useToolIcon: () => '',
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
+vi.mock('../../hooks/use-tool-icon', () => ({
+  useToolIcon: () => '',
   useGetToolIcon: () => () => '',
 }))
 

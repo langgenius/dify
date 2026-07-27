@@ -457,7 +457,7 @@ def _publish_streaming_response(
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
-) -> Generator[Mapping[str, Any] | str, None, None] | Mapping[str, Any] | None:
+) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)

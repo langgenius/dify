@@ -14,7 +14,7 @@ import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
-import { useNodesReadOnly } from '../hooks'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
 
 function MoreActions() {

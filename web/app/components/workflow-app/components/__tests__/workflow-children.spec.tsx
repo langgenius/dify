@@ -86,14 +86,24 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
+  usePanelInteractions: () => ({
+    handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+    handlePaneContextMenu: vi.fn(),
   }),
 }))
 
@@ -101,6 +111,10 @@ vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-auto-generate-webhook-url', () => ({
+  useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
@@ -120,7 +134,7 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({
     nodesMap: {
       [BlockEnum.Start]: {
@@ -145,7 +159,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-auto-onboarding', () => ({
+vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
     handleOnboardingClose: mockHandleOnboardingClose,
   }),

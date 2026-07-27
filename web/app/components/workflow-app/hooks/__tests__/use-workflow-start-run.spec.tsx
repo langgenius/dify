@@ -37,7 +37,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
@@ -49,11 +49,17 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../use-workflow-run', () => ({
   useWorkflowRunByCanEdit: () => ({
     handleRun: mockHandleRun,
   }),
