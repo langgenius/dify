@@ -1,10 +1,13 @@
 import logging
 import time
+from collections.abc import Callable
+from typing import NamedTuple
 
 import socketio
 from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
+from werkzeug.exceptions import Forbidden, HTTPException, ServiceUnavailable
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
@@ -42,6 +45,65 @@ _CONSOLE_EXEMPT_PREFIXES = (
     "/console/api/activate/check",
 )
 
+_WEBAPP_EXEMPT_PREFIXES = ("/api/system-features",)
+
+_INVALID_LICENSE_STATUSES = (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST)
+
+# How long a webhook sender is told to wait before retrying. Long enough that a blocked
+# provider backs off rather than burning its retry budget while an admin renews the license.
+_LICENSE_RETRY_AFTER_SECONDS = 300
+
+
+def _session_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    """Console and webapp authenticate with cookies, so drop the browser session."""
+    if license_status is None:
+        return UnauthorizedAndForceLogout("Unable to verify enterprise license. Please contact your administrator.")
+    return UnauthorizedAndForceLogout(f"Enterprise license is {license_status}. Please contact your administrator.")
+
+
+def _bearer_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    """Service API authenticates with bearer tokens: forcing a logout is meaningless and
+    license state must not leak to external callers. Mirrors services.openapi.license_gate.
+    """
+    return Forbidden(description="license_required")
+
+
+def _retryable_surface_error(license_status: LicenseStatus | None) -> HTTPException:
+    """Inbound webhooks have no Dify-side replay, and their sender is a machine rather than
+    a person who could renew the license. Senders retry on 5xx but treat 4xx as permanent —
+    often disabling the subscription — so refuse in a way that survives a later renewal.
+    """
+    return ServiceUnavailable(description="license_required", retry_after=_LICENSE_RETRY_AFTER_SECONDS)
+
+
+class _LicenseGatedSurface(NamedTuple):
+    prefix: str
+    exempt_prefixes: tuple[str, ...]
+    build_error: Callable[[LicenseStatus | None], HTTPException]
+
+
+# Surfaces blocked while the enterprise license is invalid. Console and webapp exempt the
+# bootstrap endpoints their sign-in pages need; the app-invocation surfaces have no sign-in
+# page to bootstrap, so they are gated whole. Health probes live on /health, and the
+# dify-enterprise control plane on /inner/api, both outside every prefix here.
+_LICENSE_GATED_SURFACES = (
+    _LicenseGatedSurface("/console/api/", _CONSOLE_EXEMPT_PREFIXES, _session_surface_error),
+    _LicenseGatedSurface("/api/", _WEBAPP_EXEMPT_PREFIXES, _session_surface_error),
+    _LicenseGatedSurface("/v1", (), _bearer_surface_error),
+    _LicenseGatedSurface("/mcp", (), _bearer_surface_error),
+    _LicenseGatedSurface("/triggers", (), _retryable_surface_error),
+)
+
+
+def _match_license_gated_surface(path: str) -> _LicenseGatedSurface | None:
+    for surface in _LICENSE_GATED_SURFACES:
+        if not path.startswith(surface.prefix):
+            continue
+        if any(path.startswith(exempt) for exempt in surface.exempt_prefixes):
+            return None
+        return surface
+    return None
+
 
 # ----------------------------
 # Application Factory Function
@@ -62,38 +124,20 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        # Enterprise license validation for API endpoints (both console and webapp)
-        # When license expires, block all API access except bootstrap endpoints needed
-        # for the frontend to load the license expiration page without infinite reloads.
+        # Enterprise license validation. An invalid license blocks the console, the webapp
+        # and the Service API; each surface reports it in its own auth dialect.
         if dify_config.ENTERPRISE_ENABLED:
-            is_console_api = request.path.startswith("/console/api/")
-            is_webapp_api = request.path.startswith("/api/")
+            surface = _match_license_gated_surface(request.path)
+            if surface is not None:
+                try:
+                    # Cached lookup — see EnterpriseService for TTL details
+                    license_status = EnterpriseService.get_cached_license_status()
+                except Exception:
+                    logger.exception("Failed to check enterprise license status")
+                    license_status = None
 
-            if is_console_api or is_webapp_api:
-                if is_console_api:
-                    is_exempt = any(request.path.startswith(p) for p in _CONSOLE_EXEMPT_PREFIXES)
-                else:  # webapp API
-                    is_exempt = request.path.startswith("/api/system-features")
-
-                if not is_exempt:
-                    try:
-                        # Check license status (cached — see EnterpriseService for TTL details)
-                        license_status = EnterpriseService.get_cached_license_status()
-                        if license_status in (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST):
-                            raise UnauthorizedAndForceLogout(
-                                f"Enterprise license is {license_status}. Please contact your administrator."
-                            )
-                        if license_status is None:
-                            raise UnauthorizedAndForceLogout(
-                                "Unable to verify enterprise license. Please contact your administrator."
-                            )
-                    except UnauthorizedAndForceLogout:
-                        raise
-                    except Exception:
-                        logger.exception("Failed to check enterprise license status")
-                        raise UnauthorizedAndForceLogout(
-                            "Unable to verify enterprise license. Please contact your administrator."
-                        )
+                if license_status is None or license_status in _INVALID_LICENSE_STATUSES:
+                    raise surface.build_error(license_status)
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
