@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
-from dify_agent.runtime.run_scheduler import SchedulerStoppingError
+from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID
+from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
 
@@ -10,6 +10,10 @@ class FakeScheduler:
     async def create_run(self, request: object) -> object:
         del request
         return RunRecord(run_id="run-1", status="running")
+
+    async def cancel_run(self, run_id: str, request: object) -> CancelRunResponse:
+        del request
+        return CancelRunResponse(run_id=run_id, status="cancelled")
 
 
 class FakeStore:
@@ -67,7 +71,7 @@ def test_create_run_returns_running_from_scheduler() -> None:
     assert response.json() == {"run_id": "run-1", "status": "running"}
 
 
-def test_cancel_run_endpoint_is_reserved_but_not_implemented() -> None:
+def test_cancel_run_endpoint_returns_scheduler_result() -> None:
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -78,8 +82,28 @@ def test_cancel_run_endpoint_is_reserved_but_not_implemented() -> None:
 
     response = client.post("/runs/run-1/cancel", json={"reason": "user_cancelled"})
 
-    assert response.status_code == 501
-    assert response.json()["detail"] == "run cancellation is not implemented"
+    assert response.status_code == 200
+    assert response.json() == {"run_id": "run-1", "status": "cancelled"}
+
+
+def test_cancel_run_endpoint_maps_conflict() -> None:
+    from fastapi import FastAPI
+
+    class ConflictingScheduler(FakeScheduler):
+        async def cancel_run(self, run_id: str, request: object) -> CancelRunResponse:
+            del run_id, request
+            raise RunCancellationConflictError("run already finished with status 'succeeded'")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ConflictingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post("/runs/run-1/cancel", json={})
+
+    assert response.status_code == 409
+    assert "already finished" in response.json()["detail"]
 
 
 def test_create_run_accepts_valid_full_plugin_graph() -> None:

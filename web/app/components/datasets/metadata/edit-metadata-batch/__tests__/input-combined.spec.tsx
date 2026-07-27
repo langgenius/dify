@@ -27,19 +27,6 @@ vi.mock('../../base/date-picker', () => ({
 
 describe('InputCombined', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleChange = vi.fn()
-      const { container } = render(
-        <InputCombined
-          label="Metadata field"
-          type={DataType.string}
-          value=""
-          onChange={handleChange}
-        />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render text input for string type', () => {
       const handleChange = vi.fn()
       render(

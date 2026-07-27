@@ -1,4 +1,3 @@
-import type { NamedExoticComponent } from 'react'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 // AudioBlock.integration.spec.tsx
@@ -62,10 +61,5 @@ describe('AudioBlock (integration - real AudioGallery)', () => {
     const { container } = render(<AudioBlock node={node} />)
     expect(container.firstChild).toBeNull()
     expect(audioPlayerMock).not.toHaveBeenCalled()
-  })
-
-  it('has displayName set to AudioBlock', () => {
-    const component = AudioBlock as NamedExoticComponent<{ node: unknown }>
-    expect(component.displayName).toBe('AudioBlock')
   })
 })

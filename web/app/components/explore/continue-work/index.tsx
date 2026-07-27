@@ -1,6 +1,6 @@
 'use client'
 
-import type { App as WorkspaceApp } from '@/types/app'
+import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,7 @@ import Link from '@/next/link'
 import ContinueWorkItem from './item'
 
 type ContinueWorkProps = {
-  apps: WorkspaceApp[]
+  apps: RecentAppResponse[]
   className?: string
 }
 

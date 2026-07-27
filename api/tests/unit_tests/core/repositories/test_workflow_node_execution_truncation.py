@@ -128,6 +128,7 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         """Create a repository instance for testing."""
         return SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=MagicMock(spec=Engine),
+            tenant_id="test-tenant-id",
             user=mock_user(),
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

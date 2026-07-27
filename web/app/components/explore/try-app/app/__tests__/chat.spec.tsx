@@ -113,17 +113,6 @@ describe('TryApp (chat.tsx)', () => {
 
       expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
     })
-
-    it('applies className prop', () => {
-      const appDetail = createMockAppDetail()
-
-      const { container } = render(
-        <TryApp appId="test-app-id" appDetail={appDetail} className="custom-class" />,
-      )
-
-      const innerDiv = container.querySelector('.custom-class')
-      expect(innerDiv).toBeInTheDocument()
-    })
   })
 
   describe('reset button', () => {

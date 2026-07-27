@@ -37,6 +37,7 @@ const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetail
     onEdit,
     onCopy,
     onExport,
+    isExporting,
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
@@ -51,6 +52,7 @@ const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetail
         show={open}
         onClose={closePanel}
         openModal={openModal}
+        isExporting={isExporting}
         exportCheck={exportCheck}
       />
       <AppInfoModals
@@ -62,6 +64,7 @@ const AppInfoDetailLayer = ({ actions, open = actions.panelOpen }: AppInfoDetail
         onEdit={onEdit}
         onCopy={onCopy}
         onExport={onExport}
+        isExporting={isExporting}
         exportCheck={exportCheck}
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}

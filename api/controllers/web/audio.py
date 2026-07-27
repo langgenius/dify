@@ -76,7 +76,7 @@ class AudioApi(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
             response = AudioService.transcript_asr(

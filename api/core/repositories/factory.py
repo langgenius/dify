@@ -62,6 +62,7 @@ class DifyCoreRepositoryFactory:
     def create_workflow_execution_repository(
         cls,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom,
@@ -71,7 +72,8 @@ class DifyCoreRepositoryFactory:
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine
-            user: Account or EndUser object
+            tenant_id: Tenant that owns the workflow execution
+            user: Account or EndUser used for creator attribution
             app_id: Application ID
             triggered_from: Source of the execution trigger
 
@@ -87,6 +89,7 @@ class DifyCoreRepositoryFactory:
             repository_class = import_string(class_path)
             return repository_class(
                 session_factory=session_factory,
+                tenant_id=tenant_id,
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -98,6 +101,7 @@ class DifyCoreRepositoryFactory:
     def create_workflow_node_execution_repository(
         cls,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
@@ -107,7 +111,8 @@ class DifyCoreRepositoryFactory:
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine
-            user: Account or EndUser object
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: Application ID
             triggered_from: Source of the execution trigger
 
@@ -123,6 +128,7 @@ class DifyCoreRepositoryFactory:
             repository_class = import_string(class_path)
             return repository_class(
                 session_factory=session_factory,
+                tenant_id=tenant_id,
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,

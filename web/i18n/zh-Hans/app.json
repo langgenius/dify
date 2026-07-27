@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "搜索组或成员",
   "accessControlDialog.title": "Web 应用访问权限",
   "accessControlDialog.updateSuccess": "更新成功",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "公开访问已被管理员禁用。",
   "accessControlDialog.webAppSSONotEnabledTip": "请联系企业管理员配置 Web 应用外部认证方式。",
   "accessItemsDescription.anyone": "任何人都可以访问该 web 应用（无需登录）",
   "accessItemsDescription.external": "仅经认证的外部用户可访问该 Web 应用",

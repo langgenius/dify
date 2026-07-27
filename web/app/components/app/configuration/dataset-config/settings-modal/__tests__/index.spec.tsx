@@ -2,13 +2,12 @@ import type { MockedFunction } from 'vitest'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -17,6 +16,8 @@ import {
 } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
@@ -209,7 +210,7 @@ const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, defaultSystemFeatures)
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
 
   return render(
     <QueryClientProvider client={queryClient}>

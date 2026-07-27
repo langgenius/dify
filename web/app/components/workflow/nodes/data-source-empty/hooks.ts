@@ -1,9 +1,9 @@
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { generateNewNode } from '@/app/components/workflow/utils'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodesMetaData } from '../../hooks/use-nodes-meta-data'
 
 export const useReplaceDataSourceNode = (id: string) => {
   const collaborativeWorkflow = useCollaborativeWorkflow()

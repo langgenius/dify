@@ -35,6 +35,7 @@ class TestWorkflowNodeExecutionConflictHandling:
         # Create repository instance
         self.repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=self.mock_session_factory,
+            tenant_id="test-tenant-id",
             user=self.mock_user,
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
