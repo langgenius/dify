@@ -1,7 +1,7 @@
 import type { FormInputItem, HumanInputNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {

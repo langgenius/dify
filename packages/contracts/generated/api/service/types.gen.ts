@@ -1080,13 +1080,14 @@ export type KnowledgeFsBulkDocumentDeletePayload = {
 }
 
 export type KnowledgeFsBulkJobResponse = {
+  canceled_items: number
   completed_items: number
   created_at: string
   failed_item_ids: Array<string>
   failed_items: number
   id: string
   knowledge_space_id: string
-  status: 'completed' | 'failed' | 'running'
+  status: 'canceled' | 'completed' | 'failed' | 'running'
   total_items: number
   type: 'document_delete' | 'document_reindex' | 'document_upload'
   updated_at: string

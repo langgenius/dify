@@ -8,8 +8,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
-import { useNodesReadOnly, useWorkflowHistory } from '../hooks'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useWorkflowHistory } from '../hooks/use-workflow-history'
 import TipPopup from '../operator/tip-popup'
 
 type ChangeHistoryEntry = {

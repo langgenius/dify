@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import useConfig from './use-config'
 
 const formatConfigValue = (rawValue: any): string => {

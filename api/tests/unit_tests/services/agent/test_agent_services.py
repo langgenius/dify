@@ -516,6 +516,7 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
     agent = SimpleNamespace(
         id="agent-1",
         active_config_snapshot_id="version-1",
+        active_config_is_published=True,
         updated_by="account-1",
         created_by="account-1",
         app_id="app-1",
@@ -535,6 +536,7 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
     result = AgentComposerService.load_agent_app_composer(session=session, tenant_id="tenant-1", app_id="app-1")
 
     assert result["save_options"] == [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value]
+    assert result["active_config_is_published"] is True
 
 
 def test_save_agent_app_composer_rejects_version_save_strategy():
@@ -577,7 +579,11 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
         lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
     )
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
-    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **kwargs: {"loaded": True})
+    monkeypatch.setattr(
+        AgentComposerService,
+        "load_agent_composer",
+        lambda **kwargs: {"loaded": True, "active_config_is_published": agent.active_config_is_published},
+    )
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -595,7 +601,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     )
 
     assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
-    assert result == {"loaded": True}
+    assert result == {"loaded": True, "active_config_is_published": False}
     assert saved["draft_type"] == AgentConfigDraftType.DRAFT
     assert saved["agent_soul"].model_dump(mode="json") == _agent_soul_with_model().model_dump(mode="json")
     assert agent.active_config_is_published is False
@@ -623,7 +629,11 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
         lambda **_kwargs: SimpleNamespace(id="draft-1"),
     )
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
-    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **_kwargs: {"loaded": True})
+    monkeypatch.setattr(
+        AgentComposerService,
+        "load_agent_composer",
+        lambda **_kwargs: {"loaded": True, "active_config_is_published": agent.active_config_is_published},
+    )
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -632,7 +642,7 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
         }
     )
 
-    AgentComposerService.save_agent_app_composer(
+    result = AgentComposerService.save_agent_app_composer(
         session=session,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -641,6 +651,7 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     )
 
     assert agent.active_config_is_published is True
+    assert result["active_config_is_published"] is True
     assert fake_session.flushes >= 1
 
 

@@ -20,6 +20,28 @@ def s3_storage() -> tuple[AwsS3Storage, MagicMock]:
     return storage, client
 
 
+def test_generate_presigned_url(s3_storage: tuple[AwsS3Storage, MagicMock]) -> None:
+    storage, client = s3_storage
+    client.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
+
+    result = storage.generate_presigned_url(
+        "upload_files/tenant/icon.png",
+        expires_in=300,
+        content_type="image/png",
+    )
+
+    assert result == "https://s3.example.com/icon.png?signature=test"
+    client.generate_presigned_url.assert_called_once_with(
+        "get_object",
+        Params={
+            "Bucket": "dify-files",
+            "Key": "upload_files/tenant/icon.png",
+            "ResponseContentType": "image/png",
+        },
+        ExpiresIn=300,
+    )
+
+
 def test_scan_lists_recursive_files_and_derived_directories(
     s3_storage: tuple[AwsS3Storage, MagicMock],
 ) -> None:

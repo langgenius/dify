@@ -7472,6 +7472,1329 @@ Get instruction generation template
 | 200 | Template retrieved successfully | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 | 400 | Invalid request parameters |  |
 
+### [GET] /knowledge-fs/.well-known/jwks.json
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS Capability v2 public keys | **application/json**: [KnowledgeFSJWKSResponse](#knowledgefsjwksresponse)<br> |
+
+### [GET] /knowledge-fs/spaces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS spaces | **application/json**: [KnowledgeFSSpaceListResponse](#knowledgefsspacelistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSpaceCreatePayload](#knowledgefsspacecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS provisioning accepted | **application/json**: [KnowledgeFSSpaceCreateResponse](#knowledgefsspacecreateresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | KnowledgeFS deletion accepted |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space | **application/json**: [KnowledgeFSSpaceDetailResponse](#knowledgefsspacedetailresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSpaceUpdatePayload](#knowledgefsspaceupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space updated | **application/json**: [KnowledgeFSSpaceDetailResponse](#knowledgefsspacedetailresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/app-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS app bindings | **application/json**: [KnowledgeFSAppBindingListResponse](#knowledgefsappbindinglistresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/app-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAppBindingPayload](#knowledgefsappbindingpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS app binding enabled | **application/json**: [KnowledgeFSAppBindingResponse](#knowledgefsappbindingresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/app-bindings/{caller_kind}/{app_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| caller_kind | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | KnowledgeFS app binding revoked |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS background tasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+| task_kind | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS background task canceled | **application/json**: [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+| task_kind | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS background task retried | **application/json**: [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS credentials | **application/json**: [KnowledgeFSCredentialListResponse](#knowledgefscredentiallistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/credentials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCredentialCreatePayload](#knowledgefscredentialcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS credential created | **application/json**: [KnowledgeFSCredentialCreateResponse](#knowledgefscredentialcreateresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| credential_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | KnowledgeFS credential revoked |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/documents~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentCreatePayload](#knowledgefsdocumentcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS document created | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBulkDocumentDeletePayload](#knowledgefsbulkdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/documents/reindex
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentReindexPayload](#knowledgefsdocumentreindexpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentDeletePayload](#knowledgefsdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentMetadataPayload](#knowledgefsdocumentmetadatapayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document outline | **application/json**: [KnowledgeFSDocumentOutlineResponse](#knowledgefsdocumentoutlineresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document revisions | **application/json**: [KnowledgeFSDocumentRevisionListResponse](#knowledgefsdocumentrevisionlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| query | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document chunks | **application/json**: [KnowledgeFSDocumentChunkListResponse](#knowledgefsdocumentchunklistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| chunk_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS document chunk | **application/json**: [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/external-access
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS external access | **application/json**: [KnowledgeFSExternalAccessResponse](#knowledgefsexternalaccessresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/external-access
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSExternalAccessPayload](#knowledgefsexternalaccesspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS external access updated | **application/json**: [KnowledgeFSExternalAccessResponse](#knowledgefsexternalaccessresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS compilation job canceled | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS compilation job | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical documents | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical document | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/members
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSMembersReplacePayload](#knowledgefsmembersreplacepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space members replaced | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/health
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS health | **application/json**: [KnowledgeFSOverviewHealthResponse](#knowledgefsoverviewhealthresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/inventory
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS inventory | **application/json**: [KnowledgeFSOverviewInventoryResponse](#knowledgefsoverviewinventoryresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/query-outcomes
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| window | query |  | No | string, <br>**Available values:** "24h", "30d", "7d", <br>**Default:** 24h |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS query outcomes | **application/json**: [KnowledgeFSOverviewQueryOutcomesResponse](#knowledgefsoverviewqueryoutcomesresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/overview/stats
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| window | query |  | No | string, <br>**Available values:** "24h", "30d", "7d", <br>**Default:** 24h |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS Overview statistics | **application/json**: [KnowledgeFSOverviewStatsResponse](#knowledgefsoverviewstatsresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/permissions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS space permissions | **application/json**: [KnowledgeFSPermissionListResponse](#knowledgefspermissionlistresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/queries~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSQueryCreatePayload](#knowledgefsquerycreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS query accepted | **application/json**: [KnowledgeFSQueryResponse](#knowledgefsqueryresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSQueryCreatePayload](#knowledgefsquerycreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS direct query admitted | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/query-stream-capability~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS query stream capability | **application/json**: [KnowledgeFSQueryStreamCapabilityResponse](#knowledgefsquerystreamcapabilityresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research tasks | **application/json**: [KnowledgeFSResearchTaskListResponse](#knowledgefsresearchtasklistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskCreatePayload](#knowledgefsresearchtaskcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS research task accepted | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/plan
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskPlanPayload](#knowledgefsresearchtaskplanpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research task plan | **application/json**: [KnowledgeFSResearchTaskPlanResponse](#knowledgefsresearchtaskplanresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research task canceled | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research task | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 25 |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS settings | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSettingsPayload](#knowledgefssettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS settings updated | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source connections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceConnectionCreatePayload](#knowledgefssourceconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS source connection created | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceConnectionRefreshPayload](#knowledgefssourceconnectionrefreshpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source connection refreshed | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source workflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowCancelPayload](#knowledgefssourceworkflowcancelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source workflow canceled | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS crawl preview pages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source workflow retried | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlPreviewSelectionPayload](#knowledgefscrawlpreviewselectionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS crawl preview selection accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS sources | **application/json**: [KnowledgeFSSourceListResponse](#knowledgefssourcelistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceCreatePayload](#knowledgefssourcecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | KnowledgeFS source created | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| documents | query |  | No | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceDeletePayload](#knowledgefssourcedeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS source deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceUpdatePayload](#knowledgefssourceupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS source crawl preview accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bucket | query |  | No | string |
+| continuationToken | query |  | No | string |
+| maxKeys | query |  | No | integer |
+| prefix | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportPagesPayload](#knowledgefssourceimportpagespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source pages imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportFilesPayload](#knowledgefssourceimportfilespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source files imported | **application/json**: [KnowledgeFSSourceImportResponse](#knowledgefssourceimportresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS source sync accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source sync policy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceSyncPolicyPayload](#knowledgefssourcesyncpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source sync policy updated | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS traces | **application/json**: [KnowledgeFSTraceListResponse](#knowledgefstracelistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS answer trace | **application/json**: [KnowledgeFSAnswerTraceResponse](#knowledgefsanswertraceresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS trace conflicts | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS trace evidence view | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSUploadCapabilityPayload](#knowledgefsuploadcapabilitypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS upload capability | **application/json**: [KnowledgeFSCapabilityResponse](#knowledgefscapabilityresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/upload-sessions/{upload_session_id}/small-file
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| upload_session_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS small-file fallback completed | **application/json**: [KnowledgeFSSmallFileUploadResponse](#knowledgefssmallfileuploadresponse)<br> |
+
+### [POST] /knowledge-fs/tasks/{task_id}/stream-capability
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| task_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSStreamCapabilityPayload](#knowledgefsstreamcapabilitypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS task stream capability | **application/json**: [KnowledgeFSStreamCapabilityResponse](#knowledgefsstreamcapabilityresponse)<br> |
+
 ### [POST] /login
 **Authenticate user and login**
 
@@ -9470,21 +10793,30 @@ Used for frontend component type mapping
 | 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
 
 ### [GET] /system-features
-**Get system-wide feature configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system-wide feature configuration
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for dashboard initialization.
-
-Authentication would create circular dependency (can't login without dashboard loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
+Authentication configuration must be available before the authentication flow can be selected.
+Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+
+### [GET] /system-features/license
+**Get full license detail (status, expiry, workspace/seat usage)**
+
+Get license status and usage detail
+Authenticated counterpart to the license *status* exposed on the public
+system-features endpoint.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [LicenseModel](#licensemodel)<br> |
 
 ### [POST] /tag-bindings
 #### Request Body
@@ -13229,6 +14561,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | Yes |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
@@ -13268,7 +14601,6 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
@@ -17313,6 +18645,14 @@ Default model entity.
 | tool_name | string |  | Yes |
 | type | string |  | Yes |
 
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
 #### DismissNotificationPayload
 
 | Name | Type | Description | Required |
@@ -18744,6 +20084,1522 @@ Input field definition for snippet parameters.
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
 | summary_index_setting | object | Summary index configuration. | No |
 
+#### KnowledgeFSAdmittedQueryRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| knowledgeSpaceId | string |  | Yes |
+| mode | string |  | No |
+| query | string |  | Yes |
+| sessionId | string |  | No |
+
+#### KnowledgeFSAnswerTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| evidence_bundle_id | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| query | string |  | Yes |
+| steps | [ [KnowledgeFSAnswerTraceStepResponse](#knowledgefsanswertracestepresponse) ] |  | Yes |
+
+#### KnowledgeFSAnswerTraceStepResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ended_at | string |  | No |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| started_at | dateTime |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFSAppBindingListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSAppBindingResponse](#knowledgefsappbindingresponse) ] |  | Yes |
+
+#### KnowledgeFSAppBindingPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| caller_kind | [KnowledgeFSAppSpaceJoinType](#knowledgefsappspacejointype) |  | Yes |
+
+#### KnowledgeFSAppBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| caller_kind | [KnowledgeFSAppSpaceJoinType](#knowledgefsappspacejointype) |  | Yes |
+| id | string |  | Yes |
+| revision | integer |  | Yes |
+| status | [KnowledgeFSAppSpaceJoinStatus](#knowledgefsappspacejoinstatus) |  | Yes |
+
+#### KnowledgeFSAppSpaceJoinStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSAppSpaceJoinStatus | string |  |  |
+
+#### KnowledgeFSAppSpaceJoinType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSAppSpaceJoinType | string |  |  |
+
+#### KnowledgeFSBackgroundTaskListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSBackgroundTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSBackgroundTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_cancel | boolean |  | Yes |
+| can_retry | boolean |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | No |
+| document_revision | integer |  | No |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| operation | string, <br>**Available values:** "document_delete", "document_processing", "document_reindex", "document_upload", "source_bulk", "source_crawl_import", "source_crawl_preview", "source_online_document_import", "source_online_drive_import", "source_sync" | *Enum:* `"document_delete"`, `"document_processing"`, `"document_reindex"`, `"document_upload"`, `"source_bulk"`, `"source_crawl_import"`, `"source_crawl_preview"`, `"source_online_document_import"`, `"source_online_drive_import"`, `"source_sync"` | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_percent | integer |  | Yes |
+| progress_total | integer |  | Yes |
+| source_id | string |  | No |
+| state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
+| task_kind | string, <br>**Available values:** "document", "document_bulk", "source" | *Enum:* `"document"`, `"document_bulk"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSBulkDeletionAcceptedItemResponse](#knowledgefsbulkdeletionaccepteditemresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentDeleteItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSBulkDocumentDeleteItemPayload](#knowledgefsbulkdocumentdeleteitempayload) ] |  | Yes |
+
+#### KnowledgeFSBulkJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_items | integer |  | Yes |
+| completed_items | integer |  | Yes |
+| created_at | dateTime |  | Yes |
+| failed_item_ids | [ string ] |  | Yes |
+| failed_items | integer |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| status | string, <br>**Available values:** "canceled", "completed", "failed", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"running"` | Yes |
+| total_items | integer |  | Yes |
+| type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSCapabilityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| direct_origin | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| operation_id | string, <br>**Available values:** "abortUploadSession", "completeUploadSession", "createUploadSession", "presignUploadSessionPart" | *Enum:* `"abortUploadSession"`, `"completeUploadSession"`, `"createUploadSession"`, `"presignUploadSessionPart"` | Yes |
+| token | string |  | Yes |
+
+#### KnowledgeFSControlSpacePermissionRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSControlSpacePermissionRole | string |  |  |
+
+#### KnowledgeFSControlSpaceState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSControlSpaceState | string |  |  |
+
+#### KnowledgeFSControlSpaceVisibility
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSControlSpaceVisibility | string |  |  |
+
+#### KnowledgeFSCrawlPreviewPageListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSCrawlPreviewPageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSCrawlPreviewPageResponse](#knowledgefscrawlpreviewpageresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSCrawlPreviewPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| etag | string |  | No |
+| page_id | string |  | Yes |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlPreviewSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pageIds | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawledPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCredentialCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_actions | [ string ] |  | Yes |
+| expires_at | string |  | No |
+
+#### KnowledgeFSCredentialCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_actions | [ string ] |  | Yes |
+| credential | string |  | Yes |
+| credential_last4 | string |  | Yes |
+| credential_prefix | string |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| principal | string |  | Yes |
+
+#### KnowledgeFSCredentialItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_actions | [ string ] |  | Yes |
+| credential_last4 | string |  | Yes |
+| credential_prefix | string |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| principal | string |  | Yes |
+| revision | integer |  | Yes |
+| status | string |  | Yes |
+
+#### KnowledgeFSCredentialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSCredentialItemResponse](#knowledgefscredentialitemresponse) ] |  | Yes |
+
+#### KnowledgeFSCursorQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+
+#### KnowledgeFSDocumentChunkListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| query | string |  | No |
+
+#### KnowledgeFSDocumentChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| ordinal | integer |  | Yes |
+| parent_chunk_id | string |  | No |
+| text | string |  | Yes |
+| token_count | integer |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSDocumentCompilationJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_head_revision | integer |  | No |
+| candidate_fingerprint | string |  | No |
+| candidate_publication_id | string |  | No |
+| completed_at | number |  | No |
+| created_at | number |  | Yes |
+| document_asset_id | string |  | Yes |
+| error | string |  | No |
+| execution_attempts | integer |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| max_execution_attempts | integer |  | No |
+| run_state | string |  | No |
+| stage | string, <br>**Available values:** "canceled", "failed", "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"canceled"`, `"failed"`, `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| updated_at | number |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | Yes |
+| name | string |  | Yes |
+| text | string |  | Yes |
+
+#### KnowledgeFSDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentMetadataPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRowVersion | integer |  | Yes |
+| patch | object |  | Yes |
+
+#### KnowledgeFSDocumentOutlineNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_node_ids | [ string ] |  | No |
+| children | [ object ] |  | No |
+| end_offset | integer |  | No |
+| end_page | integer |  | No |
+| id | string |  | Yes |
+| level | integer |  | Yes |
+| metadata | object |  | Yes |
+| section_path | [ string ] |  | No |
+| source_element_ids | [ string ] |  | No |
+| source_node_ids | [ string ] |  | No |
+| start_offset | integer |  | No |
+| start_page | integer |  | No |
+| summary | string |  | No |
+| title | string |  | Yes |
+| title_location | object |  | No |
+| toc_source | string |  | Yes |
+
+#### KnowledgeFSDocumentOutlineResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| nodes | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | Yes |
+| outline_version | string |  | Yes |
+| parse_artifact_id | string |  | Yes |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentReindexItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
+| compilation_job | object |  | No |
+| document_id | string |  | No |
+| status | string, <br>**Available values:** "not_found", "queued" | *Enum:* `"not_found"`, `"queued"` | Yes |
+| status_url | string |  | No |
+
+#### KnowledgeFSDocumentReindexPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all | boolean |  | No |
+| documentIds | [ string ] |  | No |
+
+#### KnowledgeFSDocumentReindexResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bulk_job_id | string |  | Yes |
+| items | [ [KnowledgeFSDocumentReindexItemResponse](#knowledgefsdocumentreindexitemresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| mime_type | string |  | Yes |
+| object_key | string |  | Yes |
+| parser_status | string, <br>**Available values:** "failed", "parsed", "pending" | *Enum:* `"failed"`, `"parsed"`, `"pending"` | Yes |
+| sha256 | string |  | Yes |
+| size_bytes | integer |  | Yes |
+| source_id | string |  | No |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentRevisionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentRevisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activated_at | string |  | No |
+| content_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+| document_id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mime_type | string |  | Yes |
+| revision | integer |  | Yes |
+| size_bytes | integer |  | Yes |
+| state | string, <br>**Available values:** "active", "candidate", "failed", "superseded" | *Enum:* `"active"`, `"candidate"`, `"failed"`, `"superseded"` | Yes |
+
+#### KnowledgeFSDurableDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSDurableDeletionErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| retryable | boolean |  | Yes |
+
+#### KnowledgeFSDurableDeletionJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkpoint | string, <br>**Available values:** "completed", "deleting_derived_data", "deleting_objects", "deleting_primary_data", "quiescing", "requested" | *Enum:* `"completed"`, `"deleting_derived_data"`, `"deleting_objects"`, `"deleting_primary_data"`, `"quiescing"`, `"requested"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string |  | No |
+| progress | [KnowledgeFSDurableDeletionProgressResponse](#knowledgefsdurabledeletionprogressresponse) |  | No |
+| retry_at | string |  | No |
+| run_state | string, <br>**Available values:** "canceled", "completed", "dispatch_pending", "failed", "queued", "retry_wait", "running" | *Enum:* `"canceled"`, `"completed"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"` | Yes |
+| target_id | string |  | Yes |
+| target_type | string, <br>**Available values:** "document", "knowledge_space", "logical_document", "source" | *Enum:* `"document"`, `"knowledge_space"`, `"logical_document"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDurableDeletionProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_items | integer |  | Yes |
+| current_item_kind | string |  | No |
+| total_items | integer |  | No |
+
+#### KnowledgeFSEmbeddingSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dimension | integer |  | No |
+| model | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | No |
+| vector_space_id | string |  | No |
+
+#### KnowledgeFSExternalAccessPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_enabled | boolean |  | Yes |
+| mcp_enabled | boolean |  | No |
+| service_api_enabled | boolean |  | Yes |
+| workflow_enabled | boolean |  | Yes |
+
+#### KnowledgeFSExternalAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_enabled | boolean |  | Yes |
+| mcp_enabled | boolean |  | Yes |
+| revision | integer |  | Yes |
+| service_api_enabled | boolean |  | Yes |
+| workflow_enabled | boolean |  | Yes |
+
+#### KnowledgeFSJWKResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| alg | string |  | Yes |
+| e | string |  | Yes |
+| kid | string |  | Yes |
+| kty | string |  | Yes |
+| n | string |  | Yes |
+| use | string |  | Yes |
+
+#### KnowledgeFSJWKSResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keys | [ [KnowledgeFSJWKResponse](#knowledgefsjwkresponse) ] |  | Yes |
+
+#### KnowledgeFSLogicalDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSLogicalDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active | [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) |  | Yes |
+| active_revision | integer |  | No |
+| created_at | dateTime |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| provider_item_id | string |  | No |
+| row_version | integer |  | Yes |
+| source_id | string |  | No |
+| status | string, <br>**Available values:** "deleting", "failed", "pending", "ready" | *Enum:* `"deleting"`, `"failed"`, `"pending"`, `"ready"` | Yes |
+| title | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSMemberBindingPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| role | [KnowledgeFSControlSpacePermissionRole](#knowledgefscontrolspacepermissionrole) |  | Yes |
+
+#### KnowledgeFSMembersReplacePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| members | [ [KnowledgeFSMemberBindingPayload](#knowledgefsmemberbindingpayload) ] |  | Yes |
+
+#### KnowledgeFSModelIntent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSOverviewCountComparisonResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| change_rate | number |  | Yes |
+| previous_value | integer |  | Yes |
+| value | integer |  | Yes |
+
+#### KnowledgeFSOverviewHealthComponentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| codes | [ string ] |  | Yes |
+| state | string, <br>**Available values:** "degraded", "healthy", "unavailable", "unknown" | *Enum:* `"degraded"`, `"healthy"`, `"unavailable"`, `"unknown"` | Yes |
+
+#### KnowledgeFSOverviewHealthComponentsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| index | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+| ingestion | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+| profile_publication | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+| query_availability | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+| source_freshness | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+| worker_readiness | [KnowledgeFSOverviewHealthComponentResponse](#knowledgefsoverviewhealthcomponentresponse) |  | Yes |
+
+#### KnowledgeFSOverviewHealthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| components | [KnowledgeFSOverviewHealthComponentsResponse](#knowledgefsoverviewhealthcomponentsresponse) |  | Yes |
+| generated_at | dateTime |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| state | string, <br>**Available values:** "degraded", "healthy", "unavailable", "unknown" | *Enum:* `"degraded"`, `"healthy"`, `"unavailable"`, `"unknown"` | Yes |
+
+#### KnowledgeFSOverviewIndexCoverageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| indexed | integer |  | Yes |
+| percentage | number |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSOverviewInventoryDeltaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| added_last_7d | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSOverviewInventoryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| generated_at | dateTime |  | Yes |
+| graph_entities | [KnowledgeFSOverviewInventoryDeltaResponse](#knowledgefsoverviewinventorydeltaresponse) |  | Yes |
+| graph_relations | [KnowledgeFSOverviewInventoryDeltaResponse](#knowledgefsoverviewinventorydeltaresponse) |  | Yes |
+| index_coverage | [KnowledgeFSOverviewIndexCoverageResponse](#knowledgefsoverviewindexcoverageresponse) |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| source_categories | [KnowledgeFSOverviewSourceCategoriesResponse](#knowledgefsoverviewsourcecategoriesresponse) |  | Yes |
+
+#### KnowledgeFSOverviewQueryOutcomeBucketResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answered | integer |  | Yes |
+| end_at | dateTime |  | Yes |
+| low_confidence | integer |  | Yes |
+| no_evidence | integer |  | Yes |
+| query_count | integer |  | Yes |
+| start_at | dateTime |  | Yes |
+
+#### KnowledgeFSOverviewQueryOutcomeCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer_rate | number |  | Yes |
+| answered | integer |  | Yes |
+| low_confidence | integer |  | Yes |
+| no_evidence | integer |  | Yes |
+| query_count | integer |  | Yes |
+
+#### KnowledgeFSOverviewQueryOutcomesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| buckets | [ [KnowledgeFSOverviewQueryOutcomeBucketResponse](#knowledgefsoverviewqueryoutcomebucketresponse) ] |  | Yes |
+| current | [KnowledgeFSOverviewQueryOutcomeCountsResponse](#knowledgefsoverviewqueryoutcomecountsresponse) |  | Yes |
+| generated_at | dateTime |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| previous | [KnowledgeFSOverviewQueryOutcomeCountsResponse](#knowledgefsoverviewqueryoutcomecountsresponse) |  | Yes |
+| previous_since | dateTime |  | Yes |
+| since | dateTime |  | Yes |
+| window | string, <br>**Available values:** "24h", "30d", "7d" | *Enum:* `"24h"`, `"30d"`, `"7d"` | Yes |
+
+#### KnowledgeFSOverviewRateComparisonResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| change_percentage_points | number |  | Yes |
+| previous_value | number |  | Yes |
+| value | number |  | Yes |
+
+#### KnowledgeFSOverviewSourceCategoriesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| crawl | integer |  | Yes |
+| online_documents | integer |  | Yes |
+| online_drives | integer |  | Yes |
+| uploads | integer |  | Yes |
+
+#### KnowledgeFSOverviewStatsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer_rate | [KnowledgeFSOverviewRateComparisonResponse](#knowledgefsoverviewratecomparisonresponse) |  | Yes |
+| documents | integer |  | Yes |
+| fresh_source_count | integer |  | Yes |
+| freshness_seconds | integer |  | No |
+| generated_at | dateTime |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| latest_source_sync_at | string |  | No |
+| linked_apps | integer |  | Yes |
+| queries | [KnowledgeFSOverviewCountComparisonResponse](#knowledgefsoverviewcountcomparisonresponse) |  | Yes |
+| source_count | integer |  | Yes |
+| stale_source_count | integer |  | Yes |
+| window | string, <br>**Available values:** "24h", "30d", "7d" | *Enum:* `"24h"`, `"30d"`, `"7d"` | Yes |
+
+#### KnowledgeFSOverviewWindowQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| window | string, <br>**Available values:** "24h", "30d", "7d", <br>**Default:** 24h | *Enum:* `"24h"`, `"30d"`, `"7d"` | No |
+
+#### KnowledgeFSPermissionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSPermissionResponse](#knowledgefspermissionresponse) ] |  | Yes |
+
+#### KnowledgeFSPermissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| revision | integer |  | Yes |
+| role | [KnowledgeFSControlSpacePermissionRole](#knowledgefscontrolspacepermissionrole) |  | Yes |
+| status | string |  | Yes |
+
+#### KnowledgeFSProductPermission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSProductPermission | string |  |  |
+
+#### KnowledgeFSProductRerankProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+
+#### KnowledgeFSProductRetrievalProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| defaultMode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoningModel | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| scoreThreshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| topK | integer |  | Yes |
+
+#### KnowledgeFSProductScoreThreshold
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
+| value | number |  | No |
+
+#### KnowledgeFSProfileModelSelection
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| pluginId | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSQueryAdmissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| operation_id | string |  | Yes |
+| request | [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest) |  | Yes |
+| token | string |  | Yes |
+| url | string |  | Yes |
+
+#### KnowledgeFSQueryCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| mode | string |  | No |
+| query | string |  | Yes |
+| sessionId | string |  | No |
+
+#### KnowledgeFSQueryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| id | string |  | Yes |
+| status | string |  | Yes |
+| trace_id | string |  | No |
+
+#### KnowledgeFSQueryStreamCapabilityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| operation_id | string |  | Yes |
+| token | string |  | Yes |
+| url | string |  | Yes |
+
+#### KnowledgeFSRerankIntent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [KnowledgeFSModelIntent](#knowledgefsmodelintent) |  | No |
+
+#### KnowledgeFSResearchTaskCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | No |
+| mode | string |  | No |
+| query | string |  | Yes |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskLimits
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| maxRetrievalSteps | integer |  | No |
+| maxScannedResources | integer |  | No |
+| maxToolCalls | integer |  | No |
+| timeoutMs | integer |  | No |
+
+#### KnowledgeFSResearchTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskPartialResponse](#knowledgefsresearchtaskpartialresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evidence_bundle | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| research_task_job_id | string |  | Yes |
+| sequence | integer |  | Yes |
+
+#### KnowledgeFSResearchTaskPartialsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 25 |  | No |
+
+#### KnowledgeFSResearchTaskPlanBudgetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| exceeds_budget | boolean |  | Yes |
+| remaining_budget_usd | number |  | No |
+
+#### KnowledgeFSResearchTaskPlanPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| mode | string |  | No |
+| query | string |  | Yes |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget | [KnowledgeFSResearchTaskPlanBudgetResponse](#knowledgefsresearchtaskplanbudgetresponse) |  | Yes |
+| estimates | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| query | string |  | Yes |
+| retrieval_plan | [KnowledgeFSResearchTaskRetrievalPlanResponse](#knowledgefsresearchtaskretrievalplanresponse) |  | Yes |
+| steps | [ object ] |  | Yes |
+| strategy_version | string |  | Yes |
+
+#### KnowledgeFSResearchTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| completed_at | number |  | No |
+| cost | object |  | Yes |
+| created_at | number |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | Yes |
+| mode | string |  | No |
+| query | string |  | Yes |
+| stage | string, <br>**Available values:** "analyzing", "canceled", "completed", "failed", "generating", "paused", "planning", "queued", "retrieving" | *Enum:* `"analyzing"`, `"canceled"`, `"completed"`, `"failed"`, `"generating"`, `"paused"`, `"planning"`, `"queued"`, `"retrieving"` | Yes |
+| top_k | integer |  | No |
+| updated_at | number |  | Yes |
+
+#### KnowledgeFSResearchTaskRetrievalPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dense_top_k | integer |  | Yes |
+| fts_top_k | integer |  | Yes |
+| fusion_limit | integer |  | Yes |
+| query_language | string, <br>**Available values:** "cjk", "latin", "mixed-cjk-latin", "other" | *Enum:* `"cjk"`, `"latin"`, `"mixed-cjk-latin"`, `"other"` | Yes |
+| requested_mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| rerank_candidate_limit | integer |  | Yes |
+| resolved_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| strategy_version | string |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSRetrievalProfileIntent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoning_model | [KnowledgeFSModelIntent](#knowledgefsmodelintent) |  | Yes |
+| rerank | [KnowledgeFSRerankIntent](#knowledgefsrerankintent) |  | Yes |
+| score_threshold | [KnowledgeFSScoreThresholdIntent](#knowledgefsscorethresholdintent) |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSRetrievalSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoning_model | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| revision | integer |  | No |
+| score_threshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSScoreThresholdIntent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
+| value | number |  | No |
+
+#### KnowledgeFSSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+| expectedRevision | integer |  | Yes |
+| retrieval | [KnowledgeFSProductRetrievalProfile](#knowledgefsproductretrievalprofile) |  | No |
+
+#### KnowledgeFSSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configuration_state | string, <br>**Available values:** "active", "pending-validation", "setup-required", "validation-failed" | *Enum:* `"active"`, `"pending-validation"`, `"setup-required"`, `"validation-failed"` | Yes |
+| embedding | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
+| revision | integer |  | Yes |
+
+#### KnowledgeFSSmallFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| session | [KnowledgeFSUploadSessionResponse](#knowledgefsuploadsessionresponse) |  | Yes |
+
+#### KnowledgeFSSourceConnectionCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authKind | string, <br>**Available values:** "api-key", "endpoint" | *Enum:* `"api-key"`, `"endpoint"` | Yes |
+| configuration | object |  | No |
+| credentials | object |  | Yes |
+| name | string |  | Yes |
+| providerId | string |  | Yes |
+
+#### KnowledgeFSSourceConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourceConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceConnectionRefreshPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+
+#### KnowledgeFSSourceConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kind | string, <br>**Available values:** "api-key", "endpoint", "oauth2" | *Enum:* `"api-key"`, `"endpoint"`, `"oauth2"` | Yes |
+| configuration | object |  | Yes |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| expires_at | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| name | string |  | Yes |
+| provider_id | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "error", "expired", "provisioning", "revoked" | *Enum:* `"active"`, `"error"`, `"expired"`, `"provisioning"`, `"revoked"` | Yes |
+| updated_at | dateTime |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceCrawlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | No |
+| failed | integer |  | No |
+| imported | integer |  | No |
+| pages | [ [KnowledgeFSCrawledPageResponse](#knowledgefscrawledpageresponse) ] |  | Yes |
+| replaced | integer |  | No |
+| skipped | integer |  | No |
+| status | string |  | No |
+| total | integer |  | No |
+
+#### KnowledgeFSSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| credentials | object |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSSourceCredentialTestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | No |
+| error | string |  | No |
+| valid | boolean |  | Yes |
+
+#### KnowledgeFSSourceDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSSourceDeleteQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade | *Enum:* `"cascade"`, `"keep"` | No |
+
+#### KnowledgeFSSourceFileBucketResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuation_token | string |  | No |
+| files | [ [KnowledgeFSSourceFileResponse](#knowledgefssourcefileresponse) ] |  | Yes |
+| is_truncated | boolean |  | No |
+
+#### KnowledgeFSSourceFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| size | number |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourceFilesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuationToken | string |  | No |
+| maxKeys | integer |  | No |
+| prefix | string |  | No |
+
+#### KnowledgeFSSourceFilesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| buckets | [ [KnowledgeFSSourceFileBucketResponse](#knowledgefssourcefilebucketresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceImportFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| error | string |  | Yes |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [KnowledgeFSSourceImportFilePayload](#knowledgefssourceimportfilepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSSourceImportPagesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourceImportPagePayload](#knowledgefssourceimportpagepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSSourceImportedDocumentResponse](#knowledgefssourceimporteddocumentresponse) ] |  | Yes |
+| failed | [ [KnowledgeFSSourceImportFailureResponse](#knowledgefssourceimportfailureresponse) ] |  | Yes |
+| skipped | [ string ] |  | Yes |
+
+#### KnowledgeFSSourceImportedDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceResponse](#knowledgefssourceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourcePageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_edited_time | string |  | No |
+| page_id | string |  | Yes |
+| page_name | string |  | Yes |
+| parent_id | string |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourcePagesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourcePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| next_cursor | string |  | No |
+| workspaces | [ [KnowledgeFSSourceWorkspacePagesResponse](#knowledgefssourceworkspacepagesresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| format | string |  | No |
+| name | string |  | Yes |
+| required | boolean |  | Yes |
+| secret | boolean |  | Yes |
+| type | string, <br>**Available values:** "boolean", "integer", "string" | *Enum:* `"boolean"`, `"integer"`, `"string"` | Yes |
+
+#### KnowledgeFSSourceProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceProviderResponse](#knowledgefssourceproviderresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kinds | [ string, <br>**Available values:** "api-key", "endpoint", "oauth2" ] |  | Yes |
+| available | boolean |  | Yes |
+| capabilities | [ string, <br>**Available values:** "online-document", "online-drive", "website-crawl" ] |  | Yes |
+| configuration | [ [KnowledgeFSSourceProviderFieldResponse](#knowledgefssourceproviderfieldresponse) ] |  | Yes |
+| display_name | string |  | Yes |
+| id | string |  | Yes |
+| unavailable_reason | string |  | No |
+
+#### KnowledgeFSSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_id | string |  | No |
+| created_at | dateTime |  | Yes |
+| credential_configured | boolean |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| permission_scope | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" | *Enum:* `"active"`, `"disabled"`, `"error"`, `"syncing"` | Yes |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| updated_at | dateTime |  | Yes |
+| uri | string |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+| expectedSourceVersion | integer |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+
+#### KnowledgeFSSourceSyncPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| custom_interval_seconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expected_source_version | integer |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| next_run_at | string |  | No |
+| revision | integer |  | Yes |
+| source_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| status | string |  | No |
+
+#### KnowledgeFSSourceWorkflowCancelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string |  | No |
+
+#### KnowledgeFSSourceWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_at | string |  | No |
+| checkpoint | string |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| cursor | string |  | No |
+| execution_attempts | integer |  | Yes |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_error_code | string |  | No |
+| max_execution_attempts | integer |  | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_skipped | integer |  | Yes |
+| progress_total | integer |  | No |
+| source_id | string |  | No |
+| state | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceWorkspacePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourcePageResponse](#knowledgefssourcepageresponse) ] |  | Yes |
+| total | integer |  | No |
+| workspace_id | string |  | No |
+| workspace_name | string |  | No |
+
+#### KnowledgeFSSpaceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| embedding | [KnowledgeFSModelIntent](#knowledgefsmodelintent) |  | Yes |
+| icon | string |  | No |
+| idempotency_key | string |  | No |
+| name | string |  | Yes |
+| retrieval | [KnowledgeFSRetrievalProfileIntent](#knowledgefsretrievalprofileintent) |  | Yes |
+| slug | string |  | Yes |
+| visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | No |
+
+#### KnowledgeFSSpaceCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| control_space_id | string |  | Yes |
+| operation_id | string |  | Yes |
+| state | [KnowledgeFSControlSpaceState](#knowledgefscontrolspacestate) |  | Yes |
+
+#### KnowledgeFSSpaceDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| control_space_id | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| owner_account_id | string |  | Yes |
+| permission_keys | [ [KnowledgeFSProductPermission](#knowledgefsproductpermission) ] |  | Yes |
+| resource_version | integer |  | Yes |
+| state | [KnowledgeFSControlSpaceState](#knowledgefscontrolspacestate) |  | Yes |
+| technical_status | string, <br>**Available values:** "available", "not_ready", "unavailable" | *Enum:* `"available"`, `"not_ready"`, `"unavailable"` | Yes |
+| technical_summary | [KnowledgeFSTechnicalSummary](#knowledgefstechnicalsummary) |  | No |
+| updated_at | dateTime |  | Yes |
+| visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | Yes |
+
+#### KnowledgeFSSpaceListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| control_space_id | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| owner_account_id | string |  | Yes |
+| permission_keys | [ [KnowledgeFSProductPermission](#knowledgefsproductpermission) ] |  | Yes |
+| resource_version | integer |  | Yes |
+| state | [KnowledgeFSControlSpaceState](#knowledgefscontrolspacestate) |  | Yes |
+| technical_status | string, <br>**Available values:** "available", "not_ready", "unavailable" | *Enum:* `"available"`, `"not_ready"`, `"unavailable"` | Yes |
+| technical_summary | [KnowledgeFSTechnicalSummary](#knowledgefstechnicalsummary) |  | No |
+| updated_at | dateTime |  | Yes |
+| visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | Yes |
+
+#### KnowledgeFSSpaceListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### KnowledgeFSSpaceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSpaceListItemResponse](#knowledgefsspacelistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### KnowledgeFSSpaceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| icon | string |  | No |
+| name | string |  | No |
+| visibility | [KnowledgeFSControlSpaceVisibility](#knowledgefscontrolspacevisibility) |  | No |
+
+#### KnowledgeFSStreamCapabilityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| control_space_id | string |  | Yes |
+
+#### KnowledgeFSStreamCapabilityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| operation_id | string |  | Yes |
+| token | string |  | Yes |
+| url | string |  | Yes |
+
+#### KnowledgeFSTechnicalSummary
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| document_count | integer |  | No |
+| icon | string |  | No |
+| index_state | string |  | No |
+| knowledge_space_id | string |  | Yes |
+| last_job_state | string |  | No |
+| model_profile | object |  | No |
+| name | string |  | Yes |
+| revision | integer |  | Yes |
+| slug | string |  | Yes |
+
+#### KnowledgeFSTraceEntriesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 100 |  | No |
+
+#### KnowledgeFSTraceEntryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string |  | No |
+| data | [ [KnowledgeFSTraceEntryResponse](#knowledgefstraceentryresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| truncated | boolean |  | Yes |
+
+#### KnowledgeFSTraceEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string |  | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSTraceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSTraceResponse](#knowledgefstraceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSTraceProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | string |  | No |
+| embedding_vector_space_id | string |  | No |
+| projection_publication_id | string |  | No |
+| projection_version | integer |  | No |
+| reasoning_model | string |  | No |
+| rerank_model | string |  | No |
+| retrieval_profile_revision | integer |  | No |
+
+#### KnowledgeFSTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | boolean |  | Yes |
+| created_at | dateTime |  | Yes |
+| evidence_bundle_id | string |  | No |
+| evidence_state | string |  | No |
+| final_score | number |  | No |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| profile | [KnowledgeFSTraceProfileResponse](#knowledgefstraceprofileresponse) |  | Yes |
+| query | string |  | Yes |
+| scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
+| stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
+
+#### KnowledgeFSTraceScoresResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| final | number |  | No |
+| rerank | number |  | No |
+| retrieval | number |  | No |
+
+#### KnowledgeFSTraceStageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_count | integer |  | No |
+| name | string |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFSUploadCapabilityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| operation_id | string, <br>**Available values:** "abortUploadSession", "completeUploadSession", "createUploadSession", "presignUploadSessionPart" | *Enum:* `"abortUploadSession"`, `"completeUploadSession"`, `"createUploadSession"`, `"presignUploadSessionPart"` | Yes |
+| upload_session_id | string |  | No |
+
+#### KnowledgeFSUploadSessionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| compilation_job_id | string |  | No |
+| completed_at | integer |  | No |
+| document_asset_id | string |  | No |
+| expected_size_bytes | integer |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "multipart", "single", "small_fallback" | *Enum:* `"multipart"`, `"single"`, `"small_fallback"` | Yes |
+| multipart_part_count | integer |  | No |
+| multipart_part_size_bytes | integer |  | No |
+| status | string, <br>**Available values:** "aborted", "aborting", "completed", "completing", "creating", "expired", "failed", "ready" | *Enum:* `"aborted"`, `"aborting"`, `"completed"`, `"completing"`, `"creating"`, `"expired"`, `"failed"`, `"ready"` | Yes |
+
 #### KnowledgePipeline
 
 | Name | Type | Description | Required |
@@ -18809,6 +21665,12 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
+
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
 
 #### LimitationModel
 
@@ -20487,12 +23349,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | plugins | [ [PluginEntity](#pluginentity) ] |  | Yes |
 | total | integer |  | Yes |
 
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-
 #### PluginManifestResponse
 
 | Name | Type | Description | Required |
@@ -21005,7 +23861,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | export_data | string |  | Yes |
 | icon | string |  | No |
 | icon_background | string |  | No |
@@ -21038,7 +23894,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | app | [RecommendedAppInfoResponse](#recommendedappinforesponse) |  | No |
 | app_id | string |  | Yes |
-| can_trial | boolean |  | No |
+| can_trial | boolean |  | Yes |
 | categories | [ string ] |  | No |
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
@@ -22018,9 +24874,12 @@ Model class for provider system configuration response.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
@@ -22032,14 +24891,12 @@ Model class for provider system configuration response.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
+| knowledge_fs_enabled | boolean |  | Yes |
+| knowledge_fs_upload_enabled | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
@@ -22968,11 +25825,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 

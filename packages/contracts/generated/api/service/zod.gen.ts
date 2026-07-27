@@ -1250,13 +1250,14 @@ export const zKnowledgeFsBulkDocumentDeletePayload = z.object({
  * KnowledgeFSBulkJobResponse
  */
 export const zKnowledgeFsBulkJobResponse = z.object({
+  canceled_items: z.int().gte(0),
   completed_items: z.int().gte(0),
   created_at: z.iso.datetime(),
   failed_item_ids: z.array(z.string()),
   failed_items: z.int().gte(0),
   id: z.string(),
   knowledge_space_id: z.string(),
-  status: z.enum(['completed', 'failed', 'running']),
+  status: z.enum(['canceled', 'completed', 'failed', 'running']),
   total_items: z.int().gte(0),
   type: z.enum(['document_delete', 'document_reindex', 'document_upload']),
   updated_at: z.iso.datetime(),
@@ -2842,7 +2843,7 @@ export const zUserActionConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 

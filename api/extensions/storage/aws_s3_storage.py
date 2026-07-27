@@ -94,6 +94,24 @@ class AwsS3Storage(BaseStorage):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
 
     @override
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        params = {"Bucket": self.bucket_name, "Key": filename}
+        if content_type:
+            params["ResponseContentType"] = content_type
+
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params=params,
+            ExpiresIn=expires_in,
+        )
+
+    @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         """Recursively list keys below a portable storage directory."""
         if not files and not directories:

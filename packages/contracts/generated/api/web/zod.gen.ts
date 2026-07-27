@@ -40,6 +40,20 @@ export const zAppMetaResponse = z.object({
 })
 
 /**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
  * AppPermissionQuery
  */
 export const zAppPermissionQuery = z.object({
@@ -455,13 +469,6 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
- * PluginManagerModel
- */
-export const zPluginManagerModel = z.object({
-  enabled: z.boolean().default(false),
-})
-
-/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
@@ -648,7 +655,7 @@ export const zUserActionConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -756,6 +763,8 @@ export const zWebAppAuthModel = z.object({
 
 /**
  * SystemFeatureModel
+ *
+ * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
   branding: zBrandingModel.default({
@@ -777,19 +786,15 @@ export const zSystemFeatureModel = z.object({
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_step_by_step_tour: z.boolean().default(false),
-  enable_trial_app: z.boolean().default(false),
-  is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   knowledge_fs_enabled: z.boolean().default(false),
   knowledge_fs_upload_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
-  max_plugin_package_size: z.int().default(15728640),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
     restrict_to_marketplace_only: false,
   }),
-  plugin_manager: zPluginManagerModel.default({ enabled: false }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
@@ -876,7 +881,7 @@ export const zWebSiteResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  icon_url: z.string().nullish(),
+  icon_url: z.string().nullable(),
   input_placeholder: z.string().nullish(),
   privacy_policy: z.string().nullish(),
   prompt_public: z.boolean().nullish(),
@@ -894,6 +899,7 @@ export const zWebAppSiteResponse = z.object({
   custom_config: zWebAppCustomConfigResponse.nullish(),
   enable_site: z.boolean(),
   end_user_id: z.string().nullish(),
+  mode: zAppMode,
   model_config: zWebModelConfigResponse.nullish(),
   plan: z.string(),
   site: zWebSiteResponse,
@@ -974,6 +980,54 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   data: z.array(zWebMessageListItemWritable),
   has_more: z.boolean(),
   limit: z.int(),
+})
+
+/**
+ * WebSiteResponse
+ */
+export const zWebSiteResponseWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * WebAppSiteResponse
+ */
+export const zWebAppSiteResponseWritable = z.object({
+  app_id: z.string(),
+  can_replace_logo: z.boolean(),
+  custom_config: zWebAppCustomConfigResponse.nullish(),
+  enable_site: z.boolean(),
+  end_user_id: z.string().nullish(),
+  mode: zAppMode,
+  model_config: zWebModelConfigResponse.nullish(),
+  plan: z.string(),
+  site: zWebSiteResponseWritable,
+})
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponseWritable = z.object({
+  expiration_time: z.int(),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig),
+  resolved_default_values: z.record(z.string(), z.string()),
+  site: zWebAppSiteResponseWritable.nullish(),
+  user_actions: z.array(zUserActionConfig),
 })
 
 /**

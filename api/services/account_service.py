@@ -75,6 +75,7 @@ from services.errors.account import (
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -442,9 +443,9 @@ class AccountService:
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
-        # is_authenticated=True: server-side enforcement needs the full license payload,
-        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
-        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+        # get_license() carries the full license payload that server-side enforcement needs;
+        # the public system-features endpoint exposes only license status.
+        if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
@@ -1258,11 +1259,7 @@ class TenantService:
         session: Session,
     ) -> Tenant:
         """Create tenant"""
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -1325,14 +1322,10 @@ class TenantService:
         owner. It persists the legacy membership before creating the matching
         RBAC role binding, then makes the workspace current for the account.
         """
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_system_features().license.workspaces
+        workspaces = FeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -2009,7 +2002,7 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
 
-            dify_setup = DifySetup(version=dify_config.project.version)
+            dify_setup = DifySetup(version=dify_config.project.version, instance_id=str(uuid.uuid4()))
             session.add(dify_setup)
             session.commit()
         except Exception as e:
@@ -2021,6 +2014,11 @@ class RegisterService:
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
+
+        try:
+            CommunityTelemetryService.report_install(session=session)
+        except Exception:
+            logger.debug("Failed to report install telemetry", exc_info=True)
 
     @classmethod
     def register(
@@ -2058,9 +2056,9 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
-                FeatureService.get_system_features().is_allow_create_workspace
+                FeatureService.is_workspace_creation_allowed()
                 and create_workspace_required
-                and FeatureService.get_system_features().license.workspaces.is_available()
+                and FeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

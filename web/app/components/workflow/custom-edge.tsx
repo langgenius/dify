@@ -7,7 +7,8 @@ import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/compo
 import BlockSelector from './block-selector'
 import { NESTED_ELEMENT_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
-import { useAvailableBlocks, useNodesInteractions } from './hooks'
+import { useAvailableBlocks } from './hooks/use-available-blocks'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
 

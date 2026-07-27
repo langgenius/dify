@@ -383,6 +383,7 @@ class AgentAppComposerResponse(ResponseModel):
     variant: Literal[ComposerVariant.AGENT_APP]
     agent: AgentComposerAgentResponse
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool
     draft: AgentConfigDraftSummaryResponse | None = None
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
