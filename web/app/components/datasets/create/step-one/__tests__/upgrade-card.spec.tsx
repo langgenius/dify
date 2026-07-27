@@ -1,13 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import UpgradeCard from '../upgrade-card'
 
 const mockSetShowPricingModal = vi.fn()
 
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  IS_CLOUD_EDITION: true,
-}))
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({ setShowPricingModal: mockSetShowPricingModal }),

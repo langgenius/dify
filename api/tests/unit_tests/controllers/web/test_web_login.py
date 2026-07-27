@@ -10,6 +10,7 @@ from werkzeug.exceptions import Unauthorized
 
 import services.errors.account
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
+from enums.deployment_edition import DeploymentEdition
 from services.entities.auth_entities import LoginFailureReason
 
 
@@ -34,7 +35,7 @@ def app():
 @pytest.fixture(autouse=True)
 def _patch_wraps():
     wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
+    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
     with (
         patch("controllers.console.wraps.db") as mock_db,

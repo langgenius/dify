@@ -9,18 +9,31 @@ const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockGetAvailableVars = vi.hoisted(() => vi.fn())
 const mockGetCurrentVariableType = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getBeforeNodesInSameBranchIncludeParent: () => [
-      { id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } },
-    ],
-  }),
-  useWorkflowVariables: () => ({
-    getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getBeforeNodesInSameBranchIncludeParent: () => [
+        { id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } },
+      ],
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<AssignerNodeType>(mockSetInputs),

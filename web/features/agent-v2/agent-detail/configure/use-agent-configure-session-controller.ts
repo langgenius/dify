@@ -214,21 +214,23 @@ export function useAgentConfigureSessionController({
           if (pendingBuildModeTransitionRef.current) return
 
           setIsEnteringBuildMode(true)
+          modeRef.current = 'build'
+          rotateBuildCallbackGeneration(true)
+          const buildSessionStart = startFreshBuildSession()
+          const modeChange = (async () => onModeChange(nextMode))()
           const transition = (async () => {
-            try {
-              const started = await startFreshBuildSession()
-              if (!started || modeRef.current !== 'preview') return
+            const [buildSessionResult, modeChangeResult] = await Promise.allSettled([
+              buildSessionStart,
+              modeChange,
+            ])
+            const buildSessionStarted =
+              buildSessionResult.status === 'fulfilled' && buildSessionResult.value
+            const modeChanged = modeChangeResult.status === 'fulfilled'
+            if ((buildSessionStarted && modeChanged) || modeRef.current !== 'build') return
 
-              modeRef.current = 'build'
-              rotateBuildCallbackGeneration(true)
-              try {
-                await onModeChange(nextMode)
-              } catch (error) {
-                modeRef.current = 'preview'
-                rotateBuildCallbackGeneration(false)
-                throw error
-              }
-            } catch {}
+            modeRef.current = 'preview'
+            rotateBuildCallbackGeneration(false)
+            await Promise.resolve(onModeChange('preview')).catch(() => undefined)
           })()
           pendingBuildModeTransitionRef.current = transition
           void transition.finally(() => {

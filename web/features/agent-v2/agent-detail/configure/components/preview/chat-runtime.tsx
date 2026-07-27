@@ -30,6 +30,7 @@ export type AgentChatRuntimeProps = {
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
   speechToTextDraftType?: 'draft' | 'debug_build'
   inputPlaceholder: string
@@ -57,6 +58,7 @@ export function AgentChatRuntime({
   clearChatList,
   controllerRef,
   conversationId,
+  disabled,
   draftType,
   speechToTextDraftType,
   inputPlaceholder,
@@ -136,6 +138,7 @@ export function AgentChatRuntime({
       clearChatList={clearChatList}
       controllerRef={controllerRef}
       conversationId={conversationId}
+      disabled={disabled}
       draftType={draftType}
       speechToTextDraftType={speechToTextDraftType}
       initialChatTree={initialChatTree}

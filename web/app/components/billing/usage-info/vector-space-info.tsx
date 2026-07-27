@@ -2,10 +2,11 @@
 import type { FC } from 'react'
 import type { BasicPlan } from '../type'
 import { RiHardDrive3Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import { useCurrentPlanVectorSpace } from '@/service/use-billing'
+import { consoleQuery } from '@/service/client'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import { getPlanVectorSpaceLimitMB } from '../utils'
@@ -20,7 +21,7 @@ const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
 const VectorSpaceInfo: FC<Props> = ({ className }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const { data: vectorSpace } = useCurrentPlanVectorSpace()
+  const { data: vectorSpace } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions())
   const displayPlan = vectorSpace
     ? {
         ...plan,

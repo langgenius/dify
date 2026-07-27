@@ -133,6 +133,13 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
+ */
+export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
+
+/**
  * EmailCodeLoginSendPayload
  */
 export const zEmailCodeLoginSendPayload = z.object({
@@ -351,39 +358,15 @@ export const zHumanInputFormSubmitPayload = z.object({
 })
 
 /**
- * LicenseLimitationModel
- *
- * - enabled: whether this limit is enforced
- * - size: current usage count
- * - limit: maximum allowed count; 0 means unlimited
- */
-export const zLicenseLimitationModel = z.object({
-  enabled: z.boolean().default(false),
-  limit: z.int().default(0),
-  size: z.int().default(0),
-})
-
-/**
  * LicenseStatus
  */
 export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
 
 /**
- * LicenseModel
+ * LicenseStatusModel
  */
-export const zLicenseModel = z.object({
-  expired_at: z.string().default(''),
-  seats: zLicenseLimitationModel.default({
-    enabled: false,
-    limit: 0,
-    size: 0,
-  }),
+export const zLicenseStatusModel = z.object({
   status: zLicenseStatus.default('none'),
-  workspaces: zLicenseLimitationModel.default({
-    enabled: false,
-    limit: 0,
-    size: 0,
-  }),
 })
 
 /**
@@ -479,13 +462,6 @@ export const zPluginInstallationScope = z.enum([
 export const zPluginInstallationPermissionModel = z.object({
   plugin_installation_scope: zPluginInstallationScope.default('all'),
   restrict_to_marketplace_only: z.boolean().default(false),
-})
-
-/**
- * PluginManagerModel
- */
-export const zPluginManagerModel = z.object({
-  enabled: z.boolean().default(false),
 })
 
 /**
@@ -675,7 +651,7 @@ export const zUserActionConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -783,6 +759,8 @@ export const zWebAppAuthModel = z.object({
 
 /**
  * SystemFeatureModel
+ *
+ * Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
  */
 export const zSystemFeatureModel = z.object({
   branding: zBrandingModel.default({
@@ -792,6 +770,7 @@ export const zSystemFeatureModel = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
+  deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),
@@ -803,31 +782,14 @@ export const zSystemFeatureModel = z.object({
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_step_by_step_tour: z.boolean().default(false),
-  enable_trial_app: z.boolean().default(false),
-  is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   knowledge_fs_enabled: z.boolean().default(false),
-  license: zLicenseModel.default({
-    expired_at: '',
-    seats: {
-      enabled: false,
-      limit: 0,
-      size: 0,
-    },
-    status: 'none',
-    workspaces: {
-      enabled: false,
-      limit: 0,
-      size: 0,
-    },
-  }),
-  max_plugin_package_size: z.int().default(15728640),
+  license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',
     restrict_to_marketplace_only: false,
   }),
-  plugin_manager: zPluginManagerModel.default({ enabled: false }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),

@@ -774,24 +774,13 @@ Retrieve app site information and configuration.
 | 500 | Internal Server Error |  |
 
 ### [GET] /system-features
-**Get system feature flags and configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system feature flags and configuration
-Returns the current system feature flags and configuration
-that control various functionalities across the platform.
-
-Returns:
-    dict: System feature configuration object
-
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for webapp initialization.
-
-Authentication would create circular dependency (can't authenticate without webapp loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
+Authentication configuration must be available before the authentication flow can be selected.
 
 #### Responses
 
@@ -1058,6 +1047,14 @@ Button styles for user actions.
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
+
 #### EmailCodeLoginSendPayload
 
 | Name | Type | Description | Required |
@@ -1284,32 +1281,17 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
-#### LicenseLimitationModel
-
-- enabled: whether this limit is enforced
-- size: current usage count
-- limit: maximum allowed count; 0 means unlimited
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | Yes |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
-| size | integer | Number of resources already consumed | Yes |
-
-#### LicenseModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| expired_at | string |  | Yes |
-| seats | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-| status | [LicenseStatus](#licensestatus) |  | Yes |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-
 #### LicenseStatus
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
+
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
 
 #### LoginPayload
 
@@ -1418,12 +1400,6 @@ Form input definition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
-
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
 
 #### RemoteFileInfo
 
@@ -1564,9 +1540,12 @@ Default configuration for form inputs.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
@@ -1578,15 +1557,11 @@ Default configuration for form inputs.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
@@ -1624,11 +1599,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 

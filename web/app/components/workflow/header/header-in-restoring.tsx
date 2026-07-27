@@ -16,8 +16,9 @@ import {
   useRestoreWorkflow,
 } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
-import { useWorkflowRefreshDraft, useWorkflowRun } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
+import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
 import { WorkflowVersion } from '../types'
 import RestoringTitle from './restoring-title'

@@ -13,11 +13,11 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()

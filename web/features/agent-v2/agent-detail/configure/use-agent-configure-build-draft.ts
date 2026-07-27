@@ -365,10 +365,10 @@ export function useAgentConfigureBuildDraftActions({
 
   const startFreshBuildSession = useCallback(async () => {
     cancelBuildDraftRefresh()
+    setSoulSourceOverride('draft')
     try {
       await resetBuildChatSession()
       forceCheckoutBeforeNextBuildRunRef.current = true
-      setSoulSourceOverride('draft')
       return true
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))

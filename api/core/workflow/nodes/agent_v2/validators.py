@@ -6,9 +6,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentHumanContactConfig,
@@ -117,21 +125,28 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         topology: _WorkflowGraphTopology | None = None,
     ) -> None:
+        """Validate binding ownership, publication state, Agent Soul, and node-job references."""
+
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
 
-        agent = session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == binding.tenant_id,
-                Agent.id == binding.agent_id,
-            )
-            .limit(1)
+        agent_stmt = select(Agent).where(
+            Agent.tenant_id == binding.tenant_id,
+            Agent.id == binding.agent_id,
         )
-        if agent is None or agent.status == AgentStatus.ARCHIVED:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} references an unavailable agent."
+        if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
+            agent_stmt = agent_stmt.where(
+                Agent.scope == AgentScope.ROSTER,
+                workflow_callable_active_snapshot_filter(),
             )
+        agent = session.scalar(agent_stmt.limit(1))
+        if agent is None or agent.status == AgentStatus.ARCHIVED:
+            availability = (
+                "an unavailable or unpublished roster agent"
+                if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                else "an unavailable agent"
+            )
+            raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} references {availability}.")
 
         snapshot_id = (
             agent.active_config_snapshot_id

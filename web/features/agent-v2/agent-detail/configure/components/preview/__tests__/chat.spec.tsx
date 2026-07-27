@@ -28,17 +28,13 @@ const sendResultRef = vi.hoisted(() => ({
 const chatMessagesGetMock = vi.hoisted(() => vi.fn())
 const suggestedQuestionsGetMock = vi.hoisted(() => vi.fn())
 const stopPostMock = vi.hoisted(() => vi.fn())
-const editionState = vi.hoisted(() => ({ isCommunity: true }))
+const mockConsoleState = vi.hoisted(() => ({
+  deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+}))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-
-  return {
-    ...actual,
-    get IS_CE_EDITION() {
-      return editionState.isCommunity
-    },
-  }
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/next/dynamic', async () => {
@@ -373,7 +369,7 @@ function renderPreviewChatWithClearCommandHarness() {
 
 describe('AgentPreviewChat', () => {
   beforeEach(() => {
-    editionState.isCommunity = true
+    mockConsoleState.deploymentEdition = 'COMMUNITY'
     useChatMock.mockClear()
     handleSendMock.mockClear()
     chatMessagesGetMock.mockResolvedValue({ data: [] })
@@ -1207,7 +1203,7 @@ describe('AgentPreviewChat', () => {
   })
 
   it('should hide only the sandbox notice infotip outside community edition', () => {
-    editionState.isCommunity = false
+    mockConsoleState.deploymentEdition = 'CLOUD'
 
     renderPreviewChat({
       renderEmptyState: () => null,
