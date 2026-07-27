@@ -65,6 +65,21 @@ class DraftVarFileDeletion:
     draft_var_file_id: str
 
 
+def list_draft_variables_by_node(
+    *,
+    engine: Engine,
+    app_id: str,
+    node_id: str,
+    user_id: str,
+) -> WorkflowDraftVariableList:
+    with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
+        return WorkflowDraftVariableService(session).list_node_variables(
+            app_id=app_id,
+            node_id=node_id,
+            user_id=user_id,
+        )
+
+
 class WorkflowDraftVariableError(Exception):
     pass
 

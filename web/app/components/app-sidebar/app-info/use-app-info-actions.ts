@@ -1,4 +1,4 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowDraftEnvironmentVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -35,10 +35,10 @@ type AppInfoUiState = {
   resetKey?: string
   panelOpen: boolean
   activeModal: AppInfoModalType
-  secretEnvList: EnvironmentVariableItemResponse[]
+  secretEnvList: WorkflowDraftEnvironmentVariableResponse[]
 }
 
-const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
+const emptySecretEnvList: WorkflowDraftEnvironmentVariableResponse[] = []
 
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
@@ -101,7 +101,9 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     [resetKey],
   )
 
-  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariableItemResponse[]>>>(
+  const setSecretEnvList = useCallback<
+    Dispatch<SetStateAction<WorkflowDraftEnvironmentVariableResponse[]>>
+  >(
     (value) => {
       setUiState((state) => {
         const current = getCurrentUiState(state, resetKey)

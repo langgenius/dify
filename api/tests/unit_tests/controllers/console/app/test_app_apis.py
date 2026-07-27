@@ -66,6 +66,7 @@ from models.engine import db
 from models.enums import CustomizeTokenStrategy
 from models.trigger import WorkflowWebhookTrigger
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -454,7 +455,7 @@ class TestWorkflowDraftVariableEndpoints:
 
             def list_variables_without_values(self, **_kwargs):
                 assert self.session.get_bind() is db.engine
-                return {"items": [], "total": 0}
+                return WorkflowDraftVariableList(variables=[], total=0)
 
         class DummyWorkflowService:
             def is_workflow_exist(self, *args, **kwargs):

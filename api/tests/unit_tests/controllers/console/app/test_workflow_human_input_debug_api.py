@@ -77,9 +77,11 @@ def test_human_input_preview_delegates_to_service(
 
     preview_payload = {
         "form_id": "node-42",
+        "node_id": "node-42",
+        "node_title": "Human Input",
         "form_content": "<div>example</div>",
         "inputs": [{"name": "topic"}],
-        "actions": [{"id": "continue"}],
+        "actions": [{"id": "continue", "title": "Continue"}],
     }
     service_instance = MagicMock()
     service_instance.get_human_input_form_preview.return_value = preview_payload
@@ -88,7 +90,15 @@ def test_human_input_preview_delegates_to_service(
     with app.test_request_context(case.path, method="POST", json={"inputs": {"topic": "tech"}}):
         response = case.resource_cls().post(app_id=app_model.id, node_id="node-42")
 
-    assert response == preview_payload
+    assert response == {
+        **preview_payload,
+        "TYPE": "human_input_required",
+        "actions": [{"id": "continue", "title": "Continue", "button_style": "default"}],
+        "resolved_default_values": {},
+        "display_in_ui": False,
+        "form_token": None,
+        "expiration_time": None,
+    }
     service_instance.get_human_input_form_preview.assert_called_once_with(
         app_model=app_model,
         account=account,
