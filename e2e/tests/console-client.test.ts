@@ -31,6 +31,17 @@ const createApiResponse = ({
     status: () => status,
     statusText: () => statusText,
     text: async () => body,
+    timing: () => ({
+      connectEnd: -1,
+      connectStart: -1,
+      domainLookupEnd: -1,
+      domainLookupStart: -1,
+      requestStart: -1,
+      responseEnd: -1,
+      responseStart: -1,
+      secureConnectionStart: -1,
+      startTime: -1,
+    }),
     url: () => url,
     [Symbol.asyncDispose]: async () => {},
   }
