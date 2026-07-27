@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import Divider from '@/app/components/base/divider'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
 import { useEmbeddedChatbotContext } from '../context'
@@ -88,10 +88,7 @@ const Header: FC<IHeaderProps> = ({
           {/* powered by */}
           <div className="shrink-0">
             {!appData?.custom_config?.remove_webapp_brand && (
-              <div
-                className={cn('flex shrink-0 items-center gap-1.5 px-2')}
-                data-testid="webapp-brand"
-              >
+              <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['chat.poweredBy'], { ns: 'share' })}
                 </div>
@@ -108,7 +105,7 @@ const Header: FC<IHeaderProps> = ({
                     className="block h-5 w-auto"
                   />
                 ) : (
-                  <DifyLogo size="small" />
+                  <DifyLogo alt="Dify" size="small" />
                 )}
               </div>
             )}

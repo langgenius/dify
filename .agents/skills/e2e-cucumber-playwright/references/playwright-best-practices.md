@@ -1,6 +1,6 @@
-# Playwright Best Practices For Dify E2E
+# Playwright Best Practices
 
-Use this reference when writing or reviewing locator, assertion, isolation, or synchronization logic for Dify's Cucumber-based E2E suite.
+Use this reference when writing or reviewing locator, assertion, isolation, or synchronization logic.
 
 Official sources:
 
@@ -13,20 +13,19 @@ Official sources:
 
 ### 1. Keep scenarios isolated
 
-Playwright's model is built around clean browser contexts so one test does not leak into another. In Dify's suite, that principle maps to per-scenario session setup in `features/support/hooks.ts` and `DifyWorld`.
+Playwright's model is built around clean browser contexts so one test does not leak into another.
 
 Apply it like this:
 
 - do not depend on another scenario having run first
-- do not persist ad hoc scenario state outside `DifyWorld`
-- do not couple ordinary scenarios to `@fresh` behavior
-- when a flow needs special auth/session semantics, express that through the existing tag model or explicit hook changes
+- keep scenario state in the runner's scenario-owned context rather than module globals
+- model special authentication or session setup through explicit per-scenario fixtures rather than shared mutable state
 
 ### 2. Prefer user-facing locators
 
 Playwright recommends built-in locators that reflect what users perceive on the page.
 
-Preferred order in this repository:
+Preferred order:
 
 1. `getByRole`
 2. `getByLabel`
@@ -79,16 +78,9 @@ Bad pattern:
 - stack arbitrary waits before every action
 - wait on unstable implementation details instead of the visible state the user cares about
 
-### 5. Match debugging to the current suite
+### 5. Match debugging to the active harness
 
-Playwright's wider ecosystem supports traces and rich debugging tools. Dify's current suite already captures:
-
-- full-page screenshots
-- page HTML
-- console errors
-- page errors
-
-Use the existing artifact flow by default. If a task is specifically about improving diagnostics, confirm the change fits the current Cucumber architecture before importing broader Playwright tooling.
+Playwright supports traces, screenshots, page snapshots, and browser logs. Configure artifact capture at the runner boundary instead of adding parallel diagnostics to individual scenarios.
 
 ## Review Questions
 
@@ -96,4 +88,4 @@ Use the existing artifact flow by default. If a task is specifically about impro
 - Is this assertion using Playwright's retrying semantics?
 - Is any explicit wait masking a real readiness problem?
 - Does this code preserve per-scenario isolation?
-- Is a new abstraction really needed, or does it bypass the existing `DifyWorld` + step-definition model?
+- Is a new abstraction really needed, or does it bypass the runner's scenario-owned context and lifecycle?

@@ -45,7 +45,7 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: ['/console/api'],
+      paths: ['/console/api', '/socket.io'],
       target: DEV_PROXY_TARGET,
       cookieRewrite: difyCookieRewrite,
     },

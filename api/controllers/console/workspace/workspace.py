@@ -37,6 +37,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
@@ -233,7 +234,7 @@ class TenantListApi(Resource):
         tenants = [tenant for tenant, _ in tenant_rows]
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
-        is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
+        is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.BILLING_ENABLED
         tenant_plans: dict[str, SubscriptionPlan] = {}
 
         if is_saas:

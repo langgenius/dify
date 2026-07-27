@@ -97,6 +97,7 @@
   "categorySingle.model": "Modell",
   "categorySingle.tool": "Werkzeug",
   "categorySingle.trigger": "Auslöser",
+  "clearSearch": "{{label}} leeren",
   "debugInfo.title": "Debuggen",
   "debugInfo.viewDocs": "Dokumente anzeigen",
   "deprecated": "Abgelehnt",

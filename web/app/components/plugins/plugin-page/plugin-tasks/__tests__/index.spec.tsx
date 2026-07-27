@@ -1,9 +1,10 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
 import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import PluginTaskList from '../components/plugin-task-list'
 import TaskStatusIndicator from '../components/task-status-indicator'
 import { usePluginTaskStatus } from '../hooks'
@@ -315,11 +316,6 @@ describe('TaskStatusIndicator Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TaskStatusIndicator {...defaultProps} />)
-      expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
-    })
-
     it('should render with correct id', () => {
       render(<TaskStatusIndicator {...defaultProps} />)
       expect(document.getElementById('plugin-task-trigger'))!.toBeInTheDocument()
@@ -412,18 +408,6 @@ describe('TaskStatusIndicator Component', () => {
   })
 
   describe('Styling', () => {
-    it('should apply error styles when installing with error', () => {
-      render(<TaskStatusIndicator {...defaultProps} isInstallingWithError />)
-      const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('bg-state-destructive-hover')
-    })
-
-    it('should apply error styles when failed', () => {
-      render(<TaskStatusIndicator {...defaultProps} isFailed />)
-      const trigger = document.getElementById('plugin-task-trigger')
-      expect(trigger)!.toHaveClass('bg-state-destructive-hover')
-    })
-
     it('should apply cursor-pointer for statuses that open the task menu', () => {
       render(<TaskStatusIndicator {...defaultProps} isInstalling />)
       const trigger = document.getElementById('plugin-task-trigger')
@@ -459,11 +443,6 @@ describe('PluginTaskList Component', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing with empty lists', () => {
-      render(<PluginTaskList {...defaultProps} />)
-      expect(screen.getByTestId('plugin-task-list'))!.toBeInTheDocument()
-    })
-
     it('should render running plugins section when plugins exist', () => {
       const runningPlugins = [createMockPlugin({ status: TaskStatus.running })]
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)

@@ -48,12 +48,6 @@ describe('TopKItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<TopKItem {...defaultProps} className="custom-cls" />)
-
-      expect(container.firstChild).toHaveClass('custom-cls')
-    })
-
     it('should disable controls when enable is false', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 

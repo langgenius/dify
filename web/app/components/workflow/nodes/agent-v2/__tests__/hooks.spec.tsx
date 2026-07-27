@@ -4,8 +4,7 @@ import { getDefaultStore } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
+  agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
@@ -86,6 +85,7 @@ const mockAppComposerQueryOptions = vi.hoisted(() =>
           }
         }
       }) => number | false
+      retry?: number
     }) => {
       const { input } = options
 
@@ -96,18 +96,37 @@ const mockAppComposerQueryOptions = vi.hoisted(() =>
             : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
         queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
         refetchInterval: options.refetchInterval,
+        retry: options.retry,
       }
     },
   ),
 )
 const mockSnippetComposerQueryOptions = vi.hoisted(() =>
-  vi.fn(({ input }: { input: symbol | { params: { snippet_id: string; node_id: string } } }) => ({
-    queryKey:
-      typeof input === 'symbol'
-        ? ['snippet-agent-composer-disabled']
-        : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
-    queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
-  })),
+  vi.fn(
+    (options: {
+      input: symbol | { params: { snippet_id: string; node_id: string } }
+      refetchInterval?: (query: {
+        state: {
+          data?: {
+            agent?: unknown
+          }
+        }
+      }) => number | false
+      retry?: number
+    }) => {
+      const { input } = options
+
+      return {
+        queryKey:
+          typeof input === 'symbol'
+            ? ['snippet-agent-composer-disabled']
+            : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
+        queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
+        refetchInterval: options.refetchInterval,
+        retry: options.retry,
+      }
+    },
+  ),
 )
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -187,6 +206,10 @@ vi.mock('@/service/client', () => ({
 describe('useWorkflowInlineAgentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppComposerQueryFn.mockReset()
+    mockAppComposerQueryFn.mockResolvedValue({ agent: { id: 'app-agent' } })
+    mockSnippetComposerQueryFn.mockReset()
+    mockSnippetComposerQueryFn.mockResolvedValue({ agent: { id: 'snippet-agent' } })
   })
 
   it('loads inline agent detail through the snippet composer API', async () => {
@@ -254,6 +277,41 @@ describe('useWorkflowInlineAgentDetail', () => {
       timeout: 1500,
     })
     expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
+  })
+
+  it('retries five times and stops polling when loading the copied inline agent composer fails', async () => {
+    mockAppComposerQueryFn.mockRejectedValue(new Error('Agent composer was not created'))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          retryDelay: 0,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
+          pollUntilReady: true,
+        }),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'app-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    })
+
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
   })
 })
 
@@ -532,13 +590,11 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     const store = getDefaultStore()
-    store.set(agentComposerOriginalConfigAtom, undefined)
-    store.set(agentComposerOriginalDraftAtom, defaultAgentSoulConfigFormState)
+    store.set(agentComposerSavedDraftAtom, defaultAgentSoulConfigFormState)
     store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
-    vi.setSystemTime(1710000300000)
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -608,7 +664,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
       expect.any(Object),
     )
-    await waitFor(() => expect(result.current.draftSavedAt).toBe(1710000300000))
     expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
@@ -792,7 +847,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
 
     expect(mockComposerMutationFn).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toBeUndefined()
-    expect(result.current.draftSavedAt).toBeUndefined()
   })
 
   it('saves the effective inline model when the form draft is unchanged', async () => {
