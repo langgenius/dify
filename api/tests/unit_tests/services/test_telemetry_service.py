@@ -60,9 +60,7 @@ def test_reporting_without_setup_is_skipped(sqlite_session: Session, telemetry_e
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_marks_reported_at(
-    sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch
-):
+def test_report_install_marks_reported_at(sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
@@ -119,9 +117,9 @@ def test_report_heartbeat_generates_missing_instance_id(
         lambda url, json, timeout: httpx.Response(204, request=httpx.Request("POST", url)),
     )
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is True
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is True
+    )
 
     assert setup.instance_id is not None
     assert str(uuid.UUID(setup.instance_id)) == setup.instance_id
@@ -237,9 +235,9 @@ def test_report_heartbeat_skips_when_already_sent_today(
     post_mock = Mock()
     monkeypatch.setattr(telemetry_service.httpx, "post", post_mock)
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is False
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is False
+    )
     post_mock.assert_not_called()
 
 
@@ -260,9 +258,9 @@ def test_report_heartbeat_failure_does_not_mark_the_day_reported(
 
     monkeypatch.setattr(telemetry_service.httpx, "post", fake_post)
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is False
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is False
+    )
     assert setup.last_heartbeat_at is None
 
 

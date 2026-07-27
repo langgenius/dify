@@ -9,7 +9,6 @@ import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -22,6 +21,7 @@ import {
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
+import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 

@@ -35,10 +35,13 @@ vi.mock('@/app/components/base/chat/chat/check-input-forms-hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: workflowHookMocks.handleCancelDebugAndPreviewPanel,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleRun: workflowHookMocks.handleRun,
   }),

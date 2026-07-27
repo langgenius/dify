@@ -804,9 +804,7 @@ class TestTenantService:
         """Creating an owner workspace persists both the tenant and owner membership."""
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1024,9 +1022,7 @@ class TestTenantService:
         self, sqlite_session: Session, mock_external_service_dependencies
     ):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1512,9 +1508,7 @@ class TestRegisterService:
         """Test successful account registration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1621,9 +1615,7 @@ class TestRegisterService:
 
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1660,9 +1652,7 @@ class TestRegisterService:
 
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1695,9 +1685,7 @@ class TestRegisterService:
         """Test account registration with OAuth integration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1739,9 +1727,7 @@ class TestRegisterService:
         """Test account registration with pending status."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
@@ -1781,9 +1767,7 @@ class TestRegisterService:
         """Test registration when workspace creation is not allowed."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies[
-            "feature_service"
-        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True

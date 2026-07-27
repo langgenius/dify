@@ -100,10 +100,13 @@ vi.mock('@/next/link', () => ({
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),

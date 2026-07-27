@@ -130,7 +130,7 @@ catalog:
   '@typescript-eslint/parser': 8.64.0
   '@typescript/native': npm:typescript@7.0.2
   '@vitejs/plugin-react': 6.0.3
-  '@vitejs/plugin-rsc': 0.5.28
+  '@vitejs/plugin-rsc': 0.5.30
   '@vitest/browser': 4.1.10
   '@vitest/browser-playwright': 4.1.10
   '@vitest/coverage-v8': 4.1.10
@@ -218,13 +218,13 @@ catalog:
   postcss: 8.5.19
   qrcode.react: 4.2.0
   qs: 6.15.3
-  react: 19.2.7
-  react-dom: 19.2.7
+  react: 19.2.8
+  react-dom: 19.2.8
   react-easy-crop: 6.2.2
   react-i18next: 17.0.10
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
-  react-server-dom-webpack: 19.2.7
+  react-server-dom-webpack: 19.2.8
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
