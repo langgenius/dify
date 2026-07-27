@@ -1,5 +1,6 @@
 from typing import override
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -20,6 +21,11 @@ class PipelineQueueManager(AppQueueManager):
         super().__init__(task_id, user_id, invoke_from)
 
         self._app_mode = app_mode
+
+    @property
+    @override
+    def _listen_timeout(self) -> int:
+        return dify_config.WORKFLOW_MAX_EXECUTION_TIME
 
     @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
