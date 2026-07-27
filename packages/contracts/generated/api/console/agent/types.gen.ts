@@ -23,7 +23,6 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -169,6 +168,7 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type AgentAppComposerResponse = {
+  active_config_is_published: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   agent: AgentComposerAgentResponse
   agent_soul: AgentSoulConfig
@@ -1892,7 +1892,6 @@ export type AgentAppPaginationWritable = {
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
