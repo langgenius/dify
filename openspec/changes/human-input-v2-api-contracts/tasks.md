@@ -1,39 +1,61 @@
-## 1. Define Shared DTOs And Contract Boundaries
+## 1. Complete Shared DTO And Application Boundaries
 
-- [ ] 1.1 Add shared Pydantic request and response models for the owner/admin contact directory, the editor-safe contact option list/batch projection, `workspace contact` / `Platform contact` / `External contact` entities, IM integration, latest-only IM sync detail, IM identity candidates, public runtime OTP submit, authenticated Contact session submit, and trusted Service API submit without OTP fields.
+- [ ] 1.1 Complete the shared Pydantic request and response models for owner/admin Contact management, editor-safe Contact options, IM management projections, public OTP submit, authenticated Contact submit, trusted Service API submit, draft message testing, and Email provider configuration.
 - [ ] 1.2 Reuse existing enums where semantics already match, including `DebugChannel`, `FormInputConfig`, `UserActionConfig`, and `HumanInputFormStatus`, instead of adding duplicate transport enums.
-- [x] 1.3 Add Pydantic batch request / response models and a stable node-scoped blocker taxonomy for the side-effect-free Human Input v1 → v2 node-data migration helper; default a missing legacy `version` to the string `"1"` and reject every other explicit version.
-- [ ] 1.4 Document the ownership split so the backend helper stays an all-or-error batch converter / validator and does not take over user confirmation, node-set selection, atomic graph replacement, or draft persistence; explicitly record `whole_workspace: true` as the only sanctioned lossy snapshot conversion.
+- [x] 1.3 Add Pydantic batch request and response models plus a stable node-scoped blocker taxonomy for the side-effect-free Human Input v1 to v2 node-data migration helper; default a missing legacy `version` to the string `"1"` and reject every other explicit version.
+- [ ] 1.4 Document the migration ownership split so the backend remains an all-or-error converter and validator; explicitly retain `whole_workspace: true` as the only sanctioned lossy snapshot conversion.
+- [ ] 1.5 Write red-first service-boundary tests for transport-to-command mapping, owner-scoped references, transaction ownership, typed error translation, and the prohibition on Flask/controller imports from Human Input v2 application services.
+- [ ] 1.6 Add explicit Human Input v2 application service factories and composition roots that inject sessions, repositories, provider clients, clocks, hashers, and edition adapters without letting controllers coordinate repositories directly.
 
-## 2. Implement Workspace Console APIs
+## 2. Wire Workspace Contact And Provider Configuration APIs
 
-- [ ] 2.1 Keep full Contact list/detail owner/admin-only, add edit-permission `contact-options` list/batch APIs with the minimal `id / type / name / avatar_url` projection, preserve paging and keyword search, and resolve `ABSENT` as omitted/404 according to the API surface.
-- [ ] 2.2 Add EE-only `Platform contact` candidate and add APIs, and allow CE / SaaS implementations to reject candidate / add calls at runtime with an edition-not-supported error.
-- [ ] 2.3 Add External contact create / update APIs plus one merged batch remove API for `Platform contact` and `External contact`, while keeping `workspace contact` removal in membership management.
-- [ ] 2.4 Add Organization-level IM integration get, upsert, delete, and test APIs under `/console/api/workspaces/current/human-input/im-integration`; expose `integration_id + config_version` and require them for CAS update/delete of an existing integration.
-- [ ] 2.5 Add manual IM sync create, latest summary, latest paginated results, provider-user-ID identity search, and contact IM override APIs; keep the UI latest-only, use `finished_at` as its sync time, omit `started_by`, require one real result bucket without an `All` mode, use `page / limit / total` rather than cursor pagination, omit summary from results pages, capture `integration_config_version`, and reject stale reconciliation writes.
-- [ ] 2.6 Keep the v1 draft `delivery-test` contract unchanged, add an independent v2 `message-template/test` using `DebugChannel`, and make preview/run dispatch by node version without cross-submitting payloads.
-- [ ] 2.7 Add `POST /console/api/workspaces/current/human-input/node-data-migration` as a tenant-scoped, deterministic, side-effect-free batch conversion endpoint that returns success only when every submitted node generates complete v2 node data and never persists workflow state or mutates graph/draft state.
-- [ ] 2.8 Add focused tests for successful ordered batch conversion, one-node failure causing a whole-request error with no partial v2 node data, multiple node-scoped blockers, the sanctioned `whole_workspace: true` snapshot conversion, request-scoped tenant isolation, repeated-request idempotency, and the absence of workflow, graph, draft, or migration-state writes.
+- [ ] 2.1 Write red-first application service tests for admin Contact list/detail, editor-safe option list/batch, admin batch reads, pagination, keyword search, `WORKSPACE / PLATFORM / EXTERNAL` projection, and `ABSENT` omit/404 behavior.
+- [ ] 2.2 Implement a `ContactManagementService` that resolves deployment/Organization scope, loads coherent Contact Directory snapshots, and returns transport-neutral management and editor projections without leaking ORM records.
+- [ ] 2.3 Replace the Contact list/detail/options/batch 501 handlers in `api/controllers/console/workspace/human_input.py` with thin service-backed handlers and stable domain-error-to-HTTP mapping.
+- [ ] 2.4 Write red-first service tests for EE Platform candidate/add, External Contact create/update, merged Platform/External removal, normalized-email conflicts, workspace-contact removal rejection, and CE/SaaS edition-not-supported behavior.
+- [ ] 2.5 Implement Contact mutation application services and wire the Platform, External, and merged removal handlers while preserving owner/admin authorization and complete owner predicates.
+- [ ] 2.6 Write red-first tests for Email provider read/update, secret preserve-or-replace behavior, sender validation, connection diagnostics, response redaction, and tenant/Organization scope.
+- [ ] 2.7 Implement `EmailProviderManagementService` over the existing provider configuration persistence boundary and replace the Email provider 501 handlers without logging or returning secret material.
+- [ ] 2.8 Add controller tests for permissions, request validation, response DTOs, 204 empty-body behavior, not-found/conflict/error mapping, and proof that all Contact and Email provider routes in scope no longer return the generic stub response.
 
-## 3. Implement Runtime Form APIs
+## 3. Integrate IM Management Wiring Without Duplicating Its Owner Change
 
-- [ ] 3.1 Keep existing underscored v1 public and Service API routes unchanged, add independent hyphenated v2 routes, and reject cross-version form tokens in both directions.
-- [ ] 3.2 Keep the public Email page and authenticated Contact page on separate frontend/backend surfaces; submit Email approvals through `/api/form/human-input/<form_token>` with OTP proof and Contact approvals through `/console/api/form/human-input/<form_token>` with Dify session proof; use independent controllers, request DTOs, and auth guards, and reject cross-surface tokens, grants, and proof fields in both directions.
-- [ ] 3.3 Update the Service API form GET contract to require explicit query `user`, keep POST bound to explicit JSON `user`, and reject public-web OTP fields on the trusted Service API DTO.
-- [ ] 3.4 Extend controller and service tests to cover version-isolated routes and DTOs, token-based form read, OTP challenge metadata, OTP-guarded web submit, session-guarded console submit, stale-OTP rejection after identity changes, cross-surface proof rejection, and cross-version token rejection.
+- [ ] 3.1 Complete `implement-im-contact-sync-api` as the implementation owner for CE/SaaS provider adapters, `IMSyncManagementService`, `ContactIMBindingService`, the manual-sync worker, and the IM-related workspace handlers.
+- [ ] 3.2 Align the landed IM handlers with this change's canonical DTO contract: `integration_id + config_version` CAS, latest-only reads, `page / limit / total`, one real result bucket, `finished_at`, provider-user-ID search, and stable error mapping.
+- [ ] 3.3 Add cross-change contract tests proving the IM controllers contain no provider-specific branches, unmatched results never create Contacts, invalid Contact types cannot receive bindings, and effective resolution remains `workspace override > organization binding > Email fallback`.
+- [ ] 3.4 Audit the shared workspace controller after the IM change lands and remove only the IM 501 stubs owned by that change; do not recreate reconciliation, provider SDK, worker, or repository orchestration in this umbrella change.
 
-## 4. Implement EE Admin Control-Plane
+## 4. Wire Draft Debug And Node-Data Migration APIs
 
-- [ ] 4.1 Add enterprise protobuf messages and RPCs for Organization-level IM integration get, upsert, delete, and test, using `integration_id + config_version` for CAS update/delete.
-- [ ] 4.2 Add enterprise protobuf messages and RPCs for IM sync create, latest summary, and latest paginated results; expose `finished_at` without `started_by`, require one real bucket without an `All` mode, use `page / limit / total` without cursor or repeated summary, and include the captured integration ID and config revision used to reject stale writes.
-- [ ] 4.3 Add enterprise protobuf messages and RPCs for Organization Contact list, synced IM identity search, binding create/delete, and binding-level reachability test.
-- [ ] 4.4 Wire the EE deployment path so workspace console APIs call the enterprise control-plane where the source of truth lives outside CE runtime state.
-- [ ] 4.5 Keep the EE proto surface narrow by excluding member/workspace CRUD, Platform/External Contact lifecycle, workspace override, migration, and Email provider APIs.
+- [ ] 4.1 Write red-first migration service tests for ordered batch conversion, duplicate node IDs, explicit non-v1 versions, request-scoped tenant snapshots, `whole_workspace` expansion, deterministic retries, multiple node-scoped blockers, and all-or-error results without persistence.
+- [ ] 4.2 Implement a side-effect-free `HumanInputNodeDataMigrationService` over the existing recipient-resolution and node conversion boundaries, then replace the workspace node-data-migration 501 handler.
+- [ ] 4.3 Write red-first tests for v2 message-template rendering, `DebugChannel` selection, current-editor recipient resolution, provider failure mapping, send logging/rate-limit hooks, and v1 `delivery-test` compatibility.
+- [ ] 4.4 Implement `MessageTemplateTestService` over the existing delivery-provider boundary and replace the draft v2 message-template/test 501 handlers without aliasing the v1 request contract.
+- [ ] 4.5 Add version-dispatch tests and implementation for draft form preview/run so v1 and v2 node payloads use independent logic and cannot be cross-submitted.
 
-## 5. Verify And Document The Contracts
+## 5. Wire Runtime Form APIs
 
-- [ ] 5.1 Update generated API docs or manual docs so v2 examples use `human-input` paths and `form` nouns while v1 examples retain the existing `human_input` paths.
-- [ ] 5.2 Verify the root summary document and OpenSpec text both keep the migration ownership split explicit and aligned with the frontend migration change.
-- [ ] 5.3 Verify the root summary document stays aligned with the landed Flask View and protobuf contracts.
-- [ ] 5.4 Run `/opsx:apply` only after the Flask View, runtime auth, and enterprise proto contracts are all implemented and reviewed together.
+- [ ] 5.1 Write red-first application service tests for v2 endpoint-token lookup, v1/v2 token isolation, frozen form-definition projection, task lifecycle states, and owner-scoped upload capabilities.
+- [ ] 5.2 Implement the public Email form read service and wire `GET /api/form/human-input/<form_token>` without treating token-based read as submit authorization.
+- [ ] 5.3 Implement public Email access-request, upload-token, and OTP-guarded submit services over the existing OTP, form, and submission repositories; preserve submit-time identity revalidation and atomic first-success-wins behavior.
+- [ ] 5.4 Implement the authenticated Contact form read/submit service and console handlers using Dify session proof, current Contact-backed grant resolution, and rejection of public OTP fields or Email-proof tokens.
+- [ ] 5.5 Implement the trusted Service API v2 form GET/POST handlers with explicit `user` on both surfaces, request-scoped `end_user` materialization, and rejection of public OTP proof fields.
+- [ ] 5.6 Add controller and service tests for public Email, authenticated Contact, and Service API success/error paths, stale OTP after identity changes, expired/submitted forms, cross-surface proof rejection, cross-version tokens, and rollback on audit/submission failure.
+- [ ] 5.7 Preserve all existing underscored v1 routes, request models, token lookup, delivery-test behavior, and regression coverage while landing the independent hyphenated v2 controllers.
+
+## 6. Wire The EE Workspace Adapter
+
+- [ ] 6.1 Complete `implement-ee-human-input-admin-api` as the implementation owner for the Enterprise Human Input admin Protobuf/HTTP service, Organization Contact projection, IM control-plane, and Organization binding persistence.
+- [ ] 6.2 Add a narrow Dify-side enterprise Human Input admin client interface and adapter for Organization Contact, IM integration, manual sync, identity search, and Organization binding operations; keep provider and Go business types behind the client boundary.
+- [ ] 6.3 Implement edition-aware application service routing so CE/SaaS uses local Python services while EE Organization-level operations call the enterprise control-plane; keep Platform/External Contact lifecycle, workspace override, migration, and Email provider local to Dify.
+- [ ] 6.4 Wire EE workspace console handlers through the edition router, including stable unavailable/timeout/error translation and no fallback to direct writes against deployment-wide rows.
+- [ ] 6.5 Add cross-repository contract tests for Protobuf field/enum/HTTP-path compatibility, CAS tokens, latest-only result pagination, Contact/binding ownership, workspace-local override behavior, and failure when the EE control-plane is unavailable.
+
+## 7. Verify, Document, And Remove Stubs
+
+- [ ] 7.1 Update generated or manual API documentation so v2 examples use `human-input` paths and `form` nouns while v1 examples retain existing `human_input` paths; keep the root API summary aligned with landed Flask and enterprise contracts.
+- [ ] 7.2 Run targeted service and controller unit suites for Contact, Email provider, migration, draft debug, runtime form, IM integration, and edition routing; record the reproducible commands and measured coverage for new modules.
+- [ ] 7.3 Add CI-only integration coverage for transaction/concurrency boundaries, provider/worker integration, and Dify-to-enterprise contract behavior that cannot run in the local environment.
+- [ ] 7.4 Run backend formatting, linting, and type checking for affected Python files and resolve all introduced issues without weakening types or adding `Any`-based transport glue.
+- [ ] 7.5 Audit all Human Input v2 routes in scope and prove none returns the generic HTTP 501 stub response; document any deliberately deferred route with its owning change instead of silently leaving a stub.
+- [ ] 7.6 Validate `human-input-v2-api-contracts`, `implement-im-contact-sync-api`, and `implement-ee-human-input-admin-api`; re-read their proposal/design/spec/task ownership boundaries before implementation review.

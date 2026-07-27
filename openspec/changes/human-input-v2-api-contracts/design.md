@@ -28,24 +28,46 @@
 
 本 change 的额外输出物是根目录的 `/Users/qg/.codex/worktrees/5ab7/dify/human-input-v2-api-summary.md`，它会作为实现阶段直接参考的 contract 汇总。
 
+当前代码状态已经越过纯 contract 阶段：`api/controllers/common/human_input_v2_contracts.py` 与各 namespace 下的 v2 route scaffold 已存在，Contact Directory、IM control plane、recipient resolution、form、OTP 和 submission repository 也已落地；但 v2 handler 仍以 HTTP 501 结束，且缺少把 transport request 映射到 transaction-oriented domain ports 的 application service。该 change 因此继续承担 Dify Flask surface 的实现与总体验收，而不再停留在文档定义。
+
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 定义最小但完整的 CE / SaaS API surface，覆盖 PRD 已确认的 contact、IM、draft debug、runtime approval 逻辑。
-- 定义 EE 管理后台的 protobuf / `google.api.http` contract，并且只覆盖 PRD 需要的新 control-plane。
+- 落地最小但完整的 CE / SaaS API surface，覆盖 PRD 已确认的 contact、IM、draft debug、runtime approval 逻辑，并移除纳入范围内的 501 stub。
+- 以显式 application service 与 composition boundary 连接 controller、domain port、repository 和 provider adapter，保持 controller 不承载业务编排。
+- 落地 Dify workspace console 对 EE Human Input control-plane 的 edition-aware adapter，同时保持 EE protobuf contract 只覆盖 PRD 需要的新 control-plane。
 - 复用现有 DSL / runtime enum，而不是为 transport 层重新发明同义枚举。
 - 定义一个无副作用的 v1 → v2 batch node-data migration helper，使用户确认、整批转换校验与 draft 持久化的职责边界可追溯。
 
 **Non-Goals:**
 
-- 不在本 change 中实现数据库表、ORM、service 或 controller 代码。
+- 不重写已经落地的 Human Input v2 数据库表、ORM、domain aggregate 或 transaction-oriented repository；本 change 只增加 application service、transport adapter 与必要的 projection query。
+- 不在本 change 中实现 provider-specific IM SDK、manual sync worker 或 EE Organization control-plane；这些分别由 `implement-im-contact-sync-api` 与 `implement-ee-human-input-admin-api` 所有。
 - 不为通知中心、CLI 待办、审计 UI、新的 task list 设计额外接口。
 - 不重新设计成员 / workspace 的 EE 基础 CRUD；这部分继续复用已有 enterprise proto。
 - 不把 PB contract 扩成“完整 Contact Directory 后台”，只做本期确实新增的 Human Input control-plane。
 - 不由 migration helper 自动触发迁移、更新 workflow draft、修改已发布版本或绕过前端的显式用户确认。
 
 ## Decisions
+
+### 0. 以本 change 作为 Flask wiring umbrella，并让相邻 change 拥有 provider / EE control-plane
+
+本 change 直接拥有以下 Dify API wiring：Workspace Contact 与 Email provider、node-data migration、draft message template test、public Email form、authenticated Contact form、trusted Service API form，以及 EE deployment 下的 workspace-console client adapter。
+
+两组高耦合基础设施继续由专门 change 实现：
+
+- `implement-im-contact-sync-api`：CE / SaaS IM integration、provider adapter、manual sync worker、identity / binding / override application service，以及对应 workspace IM handler。
+- `implement-ee-human-input-admin-api`：EE Organization Contact、IM integration / sync 与 Organization binding control-plane。
+
+本 change 的 IM / EE tasks 只负责消费这些相邻 change 交付的稳定 service / transport boundary、完成 edition routing 和运行跨 change contract tests，不再复制 provider orchestration、Go business logic 或持久化实现。这样既保留本 change 三份 capability spec 作为 transport source of truth，也避免三个 change 同时修改同一业务层。
+
+放弃方案：
+
+- 新建第三个覆盖全部 controller 的 `api-wiring` change。
+  原因：当前 capability delta 尚未归档，新 change 会复制相同 requirement，并与已经 apply-ready 的 IM / EE implementation change 争夺代码所有权。
+- 让 Flask controller 直接调用 repository 来减少 service 文件。
+  原因：会把权限解析、事务边界、edition routing 与错误映射散落到 transport 层，违反 controller → service → domain 的依赖方向。
 
 ### 1. Surface 按职责与鉴权模型拆分，而不是做一个“大 Human Input API”
 
@@ -301,11 +323,13 @@ EE `HumanInputContact` 生命周期绑定 Organization Account，不绑定任意
 - [EE 和 workspace console 边界模糊] -> PB 只负责 org-level IM integration / sync 与 Organization Contact binding control-plane；`Platform contact` candidate / add、External Contact、workspace override、migration 与 Email provider 仍归 workspace console 或独立配置 surface
 - [`delivery-test` 到 `message-template/test` 的切换会影响前端联调] -> v1 继续保留原 contract，v2 只维护新 request/response contract，避免跨版本复用提交逻辑
 - [Backend conversion contract 与 frontend orchestration 漂移] -> 后端独占语义转换和稳定 blocker taxonomy；前端只校验 batch response 的完整性与 `node_id` 关联，并原样应用返回的节点定义
+- [多个 apply-ready change 重复实现同一路由] -> 本 change 只消费 IM / EE 相邻 change 的稳定边界；provider orchestration 与 EE control-plane 不在本 change 重复实现，并用跨 change contract tests 约束 DTO / proto 对齐
 
 ## Migration Plan
 
-1. 落地无副作用的 node-data migration helper、tenant-scoped resolution 与稳定 blocker contract。
-2. 为 web / service / console form API 加入独立 `human-input` v2 路由；现有 `human_input` v1 路由与完整 v1 node model 保持不变，并增加跨版本 token 拒绝测试。
-3. 分别落地 public web 的 `access-request` / token-based `upload-token` / OTP-guarded `submit`，以及 authenticated Contact 的 session-guarded console `submit`。
-4. 保留 v1 draft `delivery-test`，为 v2 独立接入 `message-template/test`，并确保 preview / run 按 node version 分派。
-5. 在 EE 侧增加 IM integration / sync proto，再让 EE 部署下的 workspace console 调用新的 enterprise backend control-plane。
+1. 先完成共享 DTO、application service port、transport-neutral error taxonomy 和 composition boundary，使后续 handler 不直接依赖 repository 实现。
+2. 落地 Workspace Contact、Email provider、无副作用 node-data migration 和 v2 `message-template/test`，保留 v1 draft route 与 contract。
+3. 为 web / service / console form API 接入独立 `human-input` v2 lookup 与 submission service；现有 `human_input` v1 路由与完整 v1 node model 保持不变，并增加跨版本 token 拒绝测试。
+4. 完成 `implement-im-contact-sync-api` 后，让 CE / SaaS workspace IM handler 复用其 application service，并执行本 change 定义的 DTO contract tests。
+5. 完成 `implement-ee-human-input-admin-api` 后，为 EE workspace console 注入 enterprise client adapter，验证 Organization control-plane、workspace-local Contact lifecycle 与 override 的所有权边界。
+6. 审计纳入范围的 controller 不再返回 501，运行分层测试、跨 change contract tests、typing 与 lint；回滚时通过 feature gate 恢复 v1 surface，而不删除已写入的 v2 core data。
