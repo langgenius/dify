@@ -7,10 +7,12 @@ let mockAppMode = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
+let mockEnableAppDeploy = false
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [] as string[],
+    isCurrentWorkspaceEditor: true,
   },
 }))
 
@@ -18,6 +20,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
+      enable_app_deploy: mockEnableAppDeploy,
     },
   })
 
@@ -43,6 +46,10 @@ vi.mock('@/context/account-state', async () => {
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/next/navigation', () => ({
@@ -72,6 +79,8 @@ describe('AppDetailSection', () => {
     mockPathname = '/app/app-1/logs'
     mockAppPermissionKeys = [AppACLPermission.Monitor]
     mockIsRbacEnabled = true
+    mockEnableAppDeploy = false
+    mockConsoleState.current.isCurrentWorkspaceEditor = true
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -182,6 +191,72 @@ describe('AppDetailSection', () => {
         screen.queryByRole('link', { name: 'common.appMenus.promptEng' }),
       ).not.toBeInTheDocument()
     })
+
+    it('should render access point navigation using its app route', () => {
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.accessPoint' })).toHaveAttribute(
+        'href',
+        '/app/app-1/access-point',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.apiAccess' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should render deploy navigation for workflow apps when app deploy is available', () => {
+      // Arrange
+      mockAppMode = 'workflow'
+      mockEnableAppDeploy = true
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
+        'href',
+        '/app/app-1/deploy',
+      )
+    })
+
+    it.each([
+      {
+        label: 'the app is not a workflow app',
+        mode: 'chat',
+        enableAppDeploy: true,
+        isCurrentWorkspaceEditor: true,
+      },
+      {
+        label: 'app deploy is disabled',
+        mode: 'workflow',
+        enableAppDeploy: false,
+        isCurrentWorkspaceEditor: true,
+      },
+      {
+        label: 'the current workspace role cannot use app deploy',
+        mode: 'workflow',
+        enableAppDeploy: true,
+        isCurrentWorkspaceEditor: false,
+      },
+    ])(
+      'should hide deploy navigation when $label',
+      ({ mode, enableAppDeploy, isCurrentWorkspaceEditor }) => {
+        // Arrange
+        mockAppMode = mode
+        mockEnableAppDeploy = enableAppDeploy
+        mockConsoleState.current.isCurrentWorkspaceEditor = isCurrentWorkspaceEditor
+
+        // Act
+        render(<AppDetailSection />)
+
+        // Assert
+        expect(
+          screen.queryByRole('link', { name: 'common.appMenus.deploy' }),
+        ).not.toBeInTheDocument()
+      },
+    )
 
     it('should render resource access navigation when app access config permission is granted', () => {
       // Arrange
