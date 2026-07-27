@@ -222,8 +222,9 @@ const ChatWrapper = () => {
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
-      if (isNewAgent && appSourceType === AppSourceType.webApp)
-        trackEvent('app_start_action_time', { app_mode: 'agent-v2' })
+      const appMode = isNewAgent ? 'agent-v2' : appData?.mode
+      if (appSourceType === AppSourceType.webApp && appMode)
+        trackEvent('webapp_run', { app_mode: appMode })
     },
     [
       inputsForms,
@@ -237,6 +238,7 @@ const ChatWrapper = () => {
       isHistoryConversation,
       handleNewConversationCompleted,
       isNewAgent,
+      appData?.mode,
     ],
   )
 

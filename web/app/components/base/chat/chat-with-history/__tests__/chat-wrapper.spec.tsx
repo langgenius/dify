@@ -81,6 +81,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 type ChatHookReturn = ReturnType<typeof useChat>
 
 const mockAppData = {
+  mode: 'advanced-chat',
   site: {
     title: 'Test Chat',
     chat_color_theme: 'blue',
@@ -773,12 +774,12 @@ describe('ChatWrapper', () => {
     fireEvent.click(await screen.findByText('Q1'))
 
     expect(handleSend).toHaveBeenCalled()
-    expect(mockTrackEvent).toHaveBeenCalledWith('app_start_action_time', {
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
       app_mode: 'agent-v2',
     })
   })
 
-  it('should not fetch current conversation messages for non-new-agent chat', async () => {
+  it('should track the site response mode without fetching messages for a regular web app', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
@@ -801,7 +802,9 @@ describe('ChatWrapper', () => {
 
     const options = handleSend.mock.calls[0]![2]
     expect(options.onGetConversationMessages).toBeUndefined()
-    expect(mockTrackEvent).not.toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'advanced-chat',
+    })
   })
 
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {
