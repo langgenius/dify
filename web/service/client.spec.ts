@@ -108,7 +108,6 @@ const getRetryFn = (queryOptions: object): RetryFn => {
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
-  active_config_is_published: overrides.active_config_is_published ?? false,
   debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
   debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
@@ -125,6 +124,7 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
 const createComposerState = (
   overrides: Partial<AgentComposerMutationResponse> = {},
 ): AgentComposerMutationResponse => ({
+  active_config_is_published: false,
   active_config_snapshot: {
     id: 'snapshot-1',
     version: 1,
