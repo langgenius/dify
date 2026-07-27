@@ -9,14 +9,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { Plan } from '@/app/components/billing/type'
-import { API_PREFIX, IS_CLOUD_EDITION } from '@/config'
+import { API_PREFIX } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -64,10 +65,15 @@ const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { plan, enableBilling } = useProviderContext()
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const canViewArchiveContent = IS_CLOUD_EDITION && enableBilling && plan.type !== Plan.sandbox
+  const canViewArchiveContent =
+    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== Plan.sandbox
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
       enabled: canViewArchiveContent,
@@ -126,14 +132,14 @@ export default function WorkflowLogArchivesPage() {
 
   if (!canViewArchiveContent) {
     return (
-      <div data-testid="workflow-log-archives-page" className="pb-6">
+      <div className="pb-6">
         <ArchivedLogsUpgradeBanner />
       </div>
     )
   }
 
   return (
-    <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
+    <div className="flex flex-col gap-4 pb-6">
       <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
         <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
           {summaryItems.map((item) => (

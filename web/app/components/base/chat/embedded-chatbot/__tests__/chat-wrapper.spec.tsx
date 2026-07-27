@@ -11,6 +11,12 @@ import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
 import { useEmbeddedChatbotContext } from '../context'
 
+const mockTrackEvent = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
+
 vi.mock('../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
 }))
@@ -132,6 +138,7 @@ const createContextValue = (
   appMeta: { tool_icons: {} },
   appData: {
     app_id: 'app-1',
+    mode: 'chat',
     can_replace_logo: true,
     custom_config: {
       remove_webapp_brand: false,
@@ -533,6 +540,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(fetchSuggestedQuestions).toHaveBeenCalledWith('resp-2', AppSourceType.tryApp, 'app-1')
       expect(handleStop).toHaveBeenCalled()
       expect(screen.queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
+      expect(mockTrackEvent).not.toHaveBeenCalled()
 
       cleanup()
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
@@ -739,6 +747,9 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
 
       expect(handleSend).toHaveBeenCalled()
+      expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+        app_mode: 'chat',
+      })
       const options = handleSend.mock.calls[0]?.[2] as {
         onConversationComplete?: (id: string) => void
       }

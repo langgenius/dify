@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
@@ -271,6 +272,8 @@ class AgentComposerService:
         source_snapshot_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        """Copy a callable roster Agent snapshot into a workflow-owned inline Agent."""
+
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._require_binding(
             cls._get_workflow_binding(session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
@@ -296,6 +299,8 @@ class AgentComposerService:
         source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=source_agent_id)
         if source_agent.scope != AgentScope.ROSTER or source_agent.status != AgentStatus.ACTIVE:
             raise InvalidComposerConfigError("Source agent must be an active roster agent.")
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=source_agent):
+            raise InvalidComposerConfigError("Source agent must have a published config snapshot.")
         source_version = cls._require_version(
             session=session,
             tenant_id=tenant_id,
@@ -400,6 +405,7 @@ class AgentComposerService:
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
+            "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
@@ -529,38 +535,10 @@ class AgentComposerService:
         )
         if not active_version:
             return False
-        if agent.source in APP_BACKED_AGENT_SOURCES and not cls._has_publish_visible_revision(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
-        ):
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             return False
 
         return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
-
-    @classmethod
-    def _has_publish_visible_revision(
-        cls, *, session: Session, tenant_id: str, agent_id: str, snapshot_id: str
-    ) -> bool:
-        revisions = session.scalars(
-            select(AgentConfigRevision.operation).where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.current_snapshot_id == snapshot_id,
-            )
-        ).all()
-
-        return any(
-            operation
-            in {
-                AgentConfigRevisionOperation.PUBLISH_DRAFT,
-                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-                AgentConfigRevisionOperation.RESTORE_VERSION,
-            }
-            for operation in revisions
-        )
 
     @classmethod
     def publish_agent_app_draft(
@@ -1164,6 +1142,20 @@ class AgentComposerService:
                 agent.active_config_is_published = True
                 agent.updated_by = account_id
                 binding.current_snapshot_id = version.id
+                normal_draft = cls._get_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                )
+                if normal_draft is not None and cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=normal_draft,
+                    snapshot=version,
+                    updated_by=account_id,
+                ):
+                    session.flush()
             binding.updated_by = account_id
             return binding
 
@@ -1749,6 +1741,47 @@ class AgentComposerService:
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @classmethod
+    def get_or_create_normal_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        """Resolve the shared Preview draft, rebasing inline agents when needed."""
+        return cls._get_or_create_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=created_by,
+        )
+
+    @staticmethod
+    def _rebase_workflow_only_normal_draft(
+        *,
+        agent: Agent,
+        draft: AgentConfigDraft,
+        snapshot: AgentConfigSnapshot,
+        updated_by: str | None,
+    ) -> bool:
+        if (
+            agent.scope != AgentScope.WORKFLOW_ONLY
+            or draft.draft_type != AgentConfigDraftType.DRAFT
+            or draft.account_id is not None
+            or not agent.active_config_snapshot_id
+            or draft.base_snapshot_id == agent.active_config_snapshot_id
+            or snapshot.id != agent.active_config_snapshot_id
+        ):
+            return False
+        draft.base_snapshot_id = snapshot.id
+        draft.config_snapshot = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        draft.updated_by = updated_by
+        return True
+
+    @classmethod
     def _get_or_create_agent_draft(
         cls,
         *,
@@ -1767,6 +1800,26 @@ class AgentComposerService:
             account_id=account_id,
         )
         if draft is not None:
+            if (
+                agent.scope == AgentScope.WORKFLOW_ONLY
+                and draft_type == AgentConfigDraftType.DRAFT
+                and draft.account_id is None
+                and agent.active_config_snapshot_id
+                and draft.base_snapshot_id != agent.active_config_snapshot_id
+            ):
+                active_snapshot = cls._get_version_if_present(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    version_id=agent.active_config_snapshot_id,
+                )
+                if active_snapshot is not None and cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=draft,
+                    snapshot=active_snapshot,
+                    updated_by=agent.updated_by or agent.created_by,
+                ):
+                    session.flush()
             return draft
         base_snapshot = cls._get_version_if_present(
             session=session,

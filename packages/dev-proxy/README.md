@@ -212,6 +212,7 @@ const cookieRewrite: CookieRewriteOptions = {
 ## Behavior
 
 - The proxy preserves the matched path prefix when forwarding requests.
+- WebSocket Upgrade requests use the same routes, targets, origin policy, and cookie rewriting.
 - Request bodies are forwarded as streams.
 - Hop-by-hop headers are removed before forwarding.
 - Local credentialed CORS and preflight requests are handled by the proxy.

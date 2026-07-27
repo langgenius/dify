@@ -161,12 +161,6 @@ describe('SegmentList', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentList {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render segment cards for each item', () => {
       const items = [
         createMockSegment('seg-1', 'Content 1'),

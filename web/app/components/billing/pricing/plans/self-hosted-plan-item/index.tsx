@@ -1,14 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -51,14 +47,8 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleGetPayUrl = useCallback(() => {
-    if (!canManageBilling) {
-      toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
-      return
-    }
     if (isFreePlan) {
       window.location.href = getStartedWithCommunityUrl
       return
@@ -69,7 +59,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
     }
 
     if (isEnterprisePlan) window.location.href = contactSalesUrl
-  }, [canManageBilling, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
+  }, [isFreePlan, isPremiumPlan, isEnterprisePlan])
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">

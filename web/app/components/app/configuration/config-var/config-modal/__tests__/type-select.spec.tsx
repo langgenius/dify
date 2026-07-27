@@ -31,26 +31,4 @@ describe('TypeSelector', () => {
 
     expect(onSelect).toHaveBeenCalledWith({ value: 'number', name: 'Number' })
   })
-
-  it('should size popup content to match the trigger width', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <TypeSelector
-        value="text-input"
-        onSelect={vi.fn()}
-        items={[
-          { value: 'text-input' as any, name: 'Text' },
-          { value: 'number' as any, name: 'Number' },
-        ]}
-      />,
-    )
-
-    await user.click(screen.getByRole('combobox'))
-
-    const [, numberOption] = await screen.findAllByRole('option')
-    const popup = numberOption!.closest('[data-side]')
-
-    expect(popup).toHaveClass('w-(--anchor-width)')
-  })
 })

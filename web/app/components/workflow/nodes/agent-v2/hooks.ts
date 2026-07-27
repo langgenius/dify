@@ -21,6 +21,7 @@ type CreateInlineAgentBindingOptions = {
 }
 
 const INLINE_AGENT_CREATION_REFETCH_INTERVAL = 1000
+const INLINE_AGENT_CREATION_RETRY_COUNT = 5
 
 export function useAgentRosterDetail(agentId?: string) {
   return useQuery(
@@ -46,13 +47,18 @@ export function useWorkflowInlineAgentDetail(
   const configsMap = useHooksStore((state) => state.configsMap)
   const refetchUntilReady = options?.pollUntilReady
     ? {
+        retry: INLINE_AGENT_CREATION_RETRY_COUNT,
         refetchInterval: (query: {
           state: {
             data?: {
               agent?: unknown
             }
+            status: 'error' | 'pending' | 'success'
           }
-        }) => (query.state.data?.agent ? false : INLINE_AGENT_CREATION_REFETCH_INTERVAL),
+        }) =>
+          query.state.status === 'error' || query.state.data?.agent
+            ? false
+            : INLINE_AGENT_CREATION_REFETCH_INTERVAL,
       }
     : {}
 

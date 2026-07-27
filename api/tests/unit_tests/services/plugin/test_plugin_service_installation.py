@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
+from enums.deployment_edition import DeploymentEdition
 from models import ProviderType
 from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
@@ -35,10 +36,11 @@ def _make_features(
     scope: PluginInstallationScope = PluginInstallationScope.ALL,
 ) -> SystemFeatureModel:
     return SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
         plugin_installation_permission=PluginInstallationPermissionModel(
             restrict_to_marketplace_only=restrict_to_marketplace,
             plugin_installation_scope=scope,
-        )
+        ),
     )
 
 

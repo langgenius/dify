@@ -167,11 +167,6 @@ describe('InstalledApp', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      render(<InstalledApp id="installed-app-123" />)
-      expect(await screen.findByText(/Chat With History/i)).toBeInTheDocument()
-    })
-
     it('should render loading state when fetching app params', () => {
       ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isPending: true,
@@ -285,9 +280,9 @@ describe('InstalledApp', () => {
   })
 
   describe('App Mode Rendering', () => {
-    it('should render ChatWithHistory for CHAT mode', () => {
+    it('should render ChatWithHistory for CHAT mode', async () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chat With History/i)).toBeInTheDocument()
       expect(screen.queryByText(/Text Generation App/i)).not.toBeInTheDocument()
     })
 

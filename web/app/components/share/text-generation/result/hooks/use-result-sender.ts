@@ -4,7 +4,9 @@ import type { ResultRunStateController } from './use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useRef } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/service/share'
 import { sleep } from '@/utils'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
@@ -58,6 +60,7 @@ export const useResultSender = ({
   visionConfig,
 }: UseResultSenderOptions) => {
   const { clearMoreLikeThis } = runState
+  const appMode = useWebAppStore((state) => state.appInfo?.mode)
 
   const handleSend = useCallback(async () => {
     if (runState.isResponding) {
@@ -95,6 +98,9 @@ export const useResultSender = ({
     }
 
     runState.setRespondingTrue()
+
+    if (appSourceType === AppSourceType.webApp && appMode)
+      trackEvent('webapp_run', { app_mode: appMode })
 
     let isEnd = false
     let isTimeout = false
@@ -196,6 +202,7 @@ export const useResultSender = ({
     return true
   }, [
     appId,
+    appMode,
     appSourceType,
     completionFiles,
     inputs,

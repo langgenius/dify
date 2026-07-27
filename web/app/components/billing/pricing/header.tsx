@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import DifyLogo from '../../base/logo/dify-logo'
+import { DifyLogo } from '../../base/logo/dify-logo'
 import styles from './header.module.css'
 
 type HeaderProps = {
@@ -18,7 +18,7 @@ const Header = ({ onClose }: HeaderProps) => {
       <div className="relative flex max-w-[1680px] grow flex-col justify-end gap-y-1 border-x border-divider-accent p-6 pt-8">
         <div className="flex items-end">
           <div aria-hidden="true" className="py-[5px]">
-            <DifyLogo className="h-[27px] w-[60px]" />
+            <DifyLogo alt="" className="h-[27px] w-[60px]" />
           </div>
           <DialogTitle
             className={cn(

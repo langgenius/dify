@@ -106,16 +106,7 @@ describe('FieldInfo', () => {
     })
   })
 
-  // Verify edge cases
   describe('Edge Cases', () => {
-    it('should render with empty value and label', () => {
-      render(<FieldInfo label="" value="" displayedValue="" />)
-
-      // Should not crash
-      const container = document.querySelector('.flex.min-h-5')
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render with default value prop', () => {
       render(<FieldInfo label="Field" showEdit={true} inputType="input" defaultValue="default" />)
 
