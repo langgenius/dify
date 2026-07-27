@@ -129,6 +129,12 @@ const createComposerState = (
     id: 'snapshot-1',
     version: 1,
   },
+  draft: {
+    agent_id: 'agent-1',
+    draft_type: 'draft',
+    id: 'draft-1',
+    updated_at: 1710000100,
+  },
   agent: {
     active_config_snapshot_id: 'snapshot-1',
     description: 'Agent description',
@@ -156,6 +162,12 @@ const createAgentPublishResponse = (
     version: 1,
   },
   active_config_snapshot_id: 'snapshot-1',
+  draft: {
+    agent_id: 'agent-1',
+    draft_type: 'draft',
+    id: 'draft-1',
+    updated_at: 1710000200,
+  },
   result: 'success',
   ...overrides,
 })
@@ -966,10 +978,43 @@ describe('consoleQuery agent mutation defaults', () => {
       page: 1,
       total: 1,
     })
+    const composerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+    })
+    queryClient.setQueryData(
+      composerQueryKey,
+      createComposerState({
+        active_config_snapshot: {
+          id: 'snapshot-previous',
+          version: 1,
+        },
+        agent_soul: {
+          config_note: 'Keep the cached composer state',
+          schema_version: 1,
+        },
+      }),
+    )
+    const publishResponse = createAgentPublishResponse({
+      active_config_snapshot: {
+        id: 'snapshot-2',
+        version: 2,
+      },
+      active_config_snapshot_id: 'snapshot-2',
+      draft: {
+        agent_id: 'agent-1',
+        draft_type: 'draft',
+        id: 'draft-1',
+        updated_at: 1710000300,
+      },
+    })
 
     const mutationOptions = consoleQuery.agent.byAgentId.publish.post.mutationOptions()
     await mutationOptions.onSuccess?.(
-      createAgentPublishResponse(),
+      publishResponse,
       {
         params: {
           agent_id: 'agent-1',
@@ -990,16 +1035,40 @@ describe('consoleQuery agent mutation defaults', () => {
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
     expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
+    expect(queryClient.getQueryData(composerQueryKey)).toEqual(
+      expect.objectContaining({
+        active_config_is_published: true,
+        active_config_snapshot: publishResponse.active_config_snapshot,
+        agent_soul: {
+          config_note: 'Keep the cached composer state',
+          schema_version: 1,
+        },
+        draft: publishResponse.draft,
+      }),
+    )
   })
 
   it('should invalidate roster list but keep invite options stable after saving an agent draft', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+    })
+    const savedComposerState = createComposerState({
+      agent_soul: {
+        config_note: 'Saved composer state',
+        schema_version: 1,
+      },
+    })
 
     const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
     await mutationOptions.onSuccess?.(
-      createComposerState(),
+      savedComposerState,
       {
         params: {
           agent_id: 'agent-1',
@@ -1022,6 +1091,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
+    expect(queryClient.getQueryData(composerQueryKey)).toEqual(savedComposerState)
   })
 
   it('should invalidate invite option lists after deleting an agent', async () => {

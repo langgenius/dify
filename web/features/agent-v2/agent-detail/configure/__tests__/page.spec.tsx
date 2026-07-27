@@ -356,12 +356,14 @@ vi.mock('../components/orchestrate/build-draft-bar', () => ({
     changeSummary?: unknown
     changesCount: number
     disabled?: boolean
+    isApplying?: boolean
     onApply: () => void
     onDiscard: () => void
   }) => (
     <div role="region" aria-label="build-draft-bar">
       <span>{`changes:${props.changesCount}`}</span>
-      <button type="button" disabled={props.disabled} onClick={props.onApply}>
+      <span>{`applying:${props.isApplying ? 'yes' : 'no'}`}</span>
+      <button type="button" disabled={props.disabled || props.isApplying} onClick={props.onApply}>
         apply build draft
       </button>
       <button type="button" disabled={props.disabled} onClick={props.onDiscard}>
@@ -709,6 +711,55 @@ describe('AgentConfigurePage', () => {
         screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' }),
       ).toBeVisible()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
+    })
+
+    it('should initialize the composer from recovered query data after the initial request fails', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: undefined as unknown,
+        isFetching: false,
+        isError: true,
+        isPending: false,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'recovered draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:recovered draft prompt',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
     })
   })
 
@@ -2908,6 +2959,93 @@ describe('AgentConfigurePage', () => {
           'prompt:applied prompt',
         )
       })
+    })
+
+    it('should keep the build draft UI while the applied normal draft is still refreshing', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      const refetchComposerDeferred = createDeferredPromise<unknown>()
+      const refetchComposer = vi.fn(async () => {
+        const result = await refetchComposerDeferred.promise
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: {
+                system_prompt: 'applied prompt',
+              },
+            },
+          },
+        }
+
+        return result
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'old draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchComposer,
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'apply build draft' }))
+      await waitFor(() => expect(refetchComposer).toHaveBeenCalled())
+
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+        'applying:yes',
+      )
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:yes',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:build prompt',
+      )
+      expect(toastMock.success).not.toHaveBeenCalled()
+
+      await act(async () => {
+        refetchComposerDeferred.resolve({})
+        await refetchComposerDeferred.promise
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:applied prompt',
+        )
+      })
+      expect(toastMock.success).toHaveBeenCalled()
     })
 
     it('should keep exiting build draft when debug conversation refresh fails after applying build draft', async () => {
