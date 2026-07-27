@@ -83,6 +83,23 @@ describe('VersionHistoryItem', () => {
 
   // Published items should expose metadata and the hover context menu.
   describe('Published Items', () => {
+    it('should show the mocked deployed environments', () => {
+      render(
+        <VersionHistoryItem
+          item={createVersionHistory()}
+          currentVersion={null}
+          latestVersionId="version-1"
+          onClick={vi.fn()}
+          handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL
+          isLast={false}
+        />,
+      )
+
+      expect(screen.getByText('Pre-release')).toBeInTheDocument()
+      expect(screen.getByText('QA')).toBeInTheDocument()
+    })
+
     it('should open the context menu for a latest named version and forward restore', async () => {
       const user = userEvent.setup()
       const handleClickActionMenuItem = vi.fn()
@@ -116,6 +133,7 @@ describe('VersionHistoryItem', () => {
       expect(screen.getByText('workflow.versionHistory.editVersionInfo')).toBeInTheDocument()
       expect(screen.getByText('app.export')).toBeInTheDocument()
       expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+      expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
       const restoreItem = screen.getByText('workflow.common.restore').closest('.cursor-pointer')

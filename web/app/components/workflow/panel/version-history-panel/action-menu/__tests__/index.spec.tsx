@@ -43,6 +43,7 @@ describe('ActionMenu', () => {
 
     renderActionMenu(
       <ActionMenu
+        workflowId="version-1"
         isNamedVersion
         isShowDelete
         canImportExportDSL
@@ -52,7 +53,10 @@ describe('ActionMenu', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+    expect(trigger).not.toHaveAttribute('role')
+
+    await user.click(trigger)
     await user.click(screen.getByText('workflow.common.restore'))
     await user.click(screen.getByText('common.operation.delete'))
 
@@ -74,6 +78,7 @@ describe('ActionMenu', () => {
 
     renderActionMenu(
       <ActionMenu
+        workflowId="version-1"
         isNamedVersion
         isShowDelete
         canImportExportDSL
