@@ -34,6 +34,17 @@ export function numberColumn(row: DatabaseRow, column: string): number {
   return value;
 }
 
+export function nonnegativeSafeIntegerColumn(row: DatabaseRow, column: string): number {
+  const raw = row[column];
+  const value = typeof raw === "string" && /^\d+$/u.test(raw) ? Number(raw) : raw;
+
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`Database row column ${column} must be a nonnegative safe integer`);
+  }
+
+  return value;
+}
+
 export function optionalNumberColumn(row: DatabaseRow, column: string): number | undefined {
   const value = row[column];
 

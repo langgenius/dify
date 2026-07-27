@@ -7,8 +7,7 @@ import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
-  getPolicy: vi.fn(),
-  patchPolicy: vi.fn(),
+  getDefaultModel: vi.fn(),
   upload: vi.fn(),
   uploadBulk: vi.fn(),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
@@ -28,6 +27,11 @@ const permissionStateMock = vi.hoisted(() => ({
   keys: ['dataset.create_and_management', 'dataset.acl.access_config'],
 }))
 
+const systemFeaturesStateMock = vi.hoisted(() => ({
+  atom: Symbol('knowledgeFsUploadEnabledAtom'),
+  uploadEnabled: true,
+}))
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
   useSearchParams: () => ({
@@ -39,6 +43,10 @@ vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionStateMock.atom,
 }))
 
+vi.mock('@/context/system-features-state', () => ({
+  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.atom,
+}))
+
 vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
@@ -46,39 +54,61 @@ vi.mock('jotai', async (importOriginal) => {
     useAtomValue: (atom: unknown) =>
       atom === permissionStateMock.atom
         ? permissionStateMock.keys
-        : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+        : atom === systemFeaturesStateMock.atom
+          ? systemFeaturesStateMock.uploadEnabled
+          : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
   }
 })
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      createKnowledgeSpace: serviceMock.create,
-      getKnowledgeSpacesByIdAccessPolicy: serviceMock.getPolicy,
-      patchKnowledgeSpacesByIdAccessPolicy: serviceMock.patchPolicy,
-      postKnowledgeSpacesByIdDocuments: serviceMock.upload,
-      postKnowledgeSpacesByIdDocumentsBulk: serviceMock.uploadBulk,
+      spaces: {
+        post: serviceMock.create,
+      },
+    },
+    workspaces: {
+      current: {
+        defaultModel: {
+          get: serviceMock.getDefaultModel,
+        },
+      },
     },
   },
   consoleQuery: {
     knowledgeFs: {
-      listKnowledgeSpaces: {
-        key: serviceMock.listKey,
+      spaces: {
+        get: {
+          key: serviceMock.listKey,
+        },
       },
     },
   },
 }))
 
 const createdKnowledge = {
-  configurationStatus: 'ready',
-  createdAt: '2026-07-20T00:00:00Z',
-  id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
-  name: 'Product handbook',
-  revision: 1,
-  slug: 'product-handbook',
-  tenantId: 'tenant-1',
-  updatedAt: '2026-07-20T00:00:00Z',
+  control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
+  operation_id: 'operation-1',
+  state: 'provisioning' as const,
 }
+
+vi.mock('../knowledge-fs-upload', () => ({
+  uploadKnowledgeFsDocuments: async (
+    knowledgeSpaceId: string,
+    uploads: Array<{ file: File; id: string }>,
+  ) => {
+    const files = uploads.map(({ file }) => file)
+    if (files.length === 1)
+      return serviceMock.upload({
+        body: { file: files[0] },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+    return serviceMock.uploadBulk({
+      body: { files },
+      params: { control_space_id: knowledgeSpaceId },
+    })
+  },
+}))
 
 function renderPage(
   queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } }),
@@ -110,20 +140,20 @@ describe('CreateKnowledgePage', () => {
     vi.clearAllMocks()
     globalThis.sessionStorage.clear()
     serviceMock.create.mockResolvedValue(createdKnowledge)
-    serviceMock.getPolicy.mockResolvedValue({
-      id: 'policy-1',
-      ownerSubjectId: 'user-1',
-      partialMemberSubjectIds: [],
-      revision: 4,
-      visibility: 'only_me',
-    })
-    serviceMock.patchPolicy.mockResolvedValue({
-      id: 'policy-1',
-      ownerSubjectId: 'user-1',
-      partialMemberSubjectIds: [],
-      revision: 5,
-      visibility: 'all_members',
-    })
+    serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
+      Promise.resolve({
+        data: {
+          model: query.model_type === 'llm' ? 'echo' : 'embed',
+          model_type: query.model_type,
+          provider: {
+            provider:
+              query.model_type === 'llm'
+                ? 'kurokobo/fake_models/fake_models'
+                : 'langgenius/cohere/cohere',
+          },
+        },
+      }),
+    )
     serviceMock.upload.mockResolvedValue({
       id: 'document-1',
     })
@@ -133,6 +163,7 @@ describe('CreateKnowledgePage', () => {
       items: [],
     })
     permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
+    systemFeaturesStateMock.uploadEnabled = true
     navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
@@ -174,12 +205,29 @@ describe('CreateKnowledgePage', () => {
       expect(serviceMock.create).toHaveBeenCalledWith({
         body: {
           description: 'Internal answers',
-          idempotencyKey: 'a9c36c57-2d84-44d6-a36d-841f0d92a179',
+          embedding: {
+            model: 'embed',
+            plugin_id: 'langgenius/cohere',
+            provider: 'cohere',
+          },
+          idempotency_key: 'a9c36c57-2d84-44d6-a36d-841f0d92a179',
           name: 'Product handbook',
+          retrieval: {
+            default_mode: 'fast',
+            reasoning_model: {
+              model: 'echo',
+              plugin_id: 'kurokobo/fake_models',
+              provider: 'fake_models',
+            },
+            rerank: { enabled: false },
+            score_threshold: { enabled: false, stage: 'mode-final' },
+            top_k: 10,
+          },
+          slug: 'product-handbook-a9c36c572d84',
+          visibility: 'only_me',
         },
       })
     })
-    expect(serviceMock.getPolicy).not.toHaveBeenCalled()
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
     })
@@ -188,7 +236,7 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('defaults authorized users to the Figma all-members policy and updates its revision', async () => {
+  it('creates the default all-members visibility atomically', async () => {
     const user = userEvent.setup()
     renderPage()
     await fillRequiredFields(user)
@@ -199,13 +247,8 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => {
-      expect(serviceMock.patchPolicy).toHaveBeenCalledWith({
-        body: {
-          expectedRevision: 4,
-          partialMemberSubjectIds: [],
-          visibility: 'all_members',
-        },
-        params: { id: createdKnowledge.id },
+      expect(serviceMock.create).toHaveBeenCalledWith({
+        body: expect.objectContaining({ visibility: 'all_team_members' }),
       })
     })
   })
@@ -226,7 +269,9 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
-    expect(serviceMock.getPolicy).not.toHaveBeenCalled()
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({ visibility: 'only_me' }),
+    })
   })
 
   it('prevents duplicate pending submissions', async () => {
@@ -263,9 +308,62 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
-    expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
-      serviceMock.create.mock.calls[1]?.[0].body.idempotencyKey,
+    expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
+      serviceMock.create.mock.calls[1]?.[0].body.idempotency_key,
     )
+  })
+
+  it('unlocks editable fields and rotates the idempotency key after model preflight fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(globalThis.crypto.randomUUID)
+      .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
+      .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
+    serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
+      Promise.resolve(
+        query.model_type === 'llm'
+          ? {
+              data: {
+                model: 'echo',
+                provider: { provider: 'kurokobo/fake_models/fake_models' },
+              },
+            }
+          : { data: null },
+      ),
+    )
+    renderPage()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    expect(nameInput).toBeEnabled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
+      Promise.resolve({
+        data: {
+          model: query.model_type === 'llm' ? 'echo' : 'embed',
+          provider: {
+            provider:
+              query.model_type === 'llm'
+                ? 'kurokobo/fake_models/fake_models'
+                : 'langgenius/cohere/cohere',
+          },
+        },
+      }),
+    )
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Updated handbook')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        idempotency_key: '22222222-2222-4222-8222-222222222222',
+        name: 'Updated handbook',
+      }),
+    })
   })
 
   it.each([400, 401, 403, 422])(
@@ -290,11 +388,11 @@ describe('CreateKnowledgePage', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
-      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
+      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
         '11111111-1111-4111-8111-111111111111',
       )
       expect(serviceMock.create.mock.calls[1]?.[0].body).toMatchObject({
-        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        idempotency_key: '22222222-2222-4222-8222-222222222222',
         name: 'Updated handbook',
       })
     },
@@ -319,23 +417,30 @@ describe('CreateKnowledgePage', () => {
       await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
-      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotencyKey).toBe(
-        serviceMock.create.mock.calls[1]?.[0].body.idempotencyKey,
+      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
+        serviceMock.create.mock.calls[1]?.[0].body.idempotency_key,
       )
     },
   )
 
-  it('safely resumes the permission step after a partial failure', async () => {
+  it('safely resumes a downstream upload after the control space is created', async () => {
     const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    serviceMock.patchPolicy.mockRejectedValueOnce(new Error('policy update unavailable'))
+    serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
     renderPage(queryClient)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.permissionUpdateFailed',
+      'dataset.newKnowledge.documentUploadFailed',
     )
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
@@ -346,44 +451,28 @@ describe('CreateKnowledgePage', () => {
     await user.type(nameInput, ' changed')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    await waitFor(() => expect(serviceMock.patchPolicy).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledTimes(2))
     expect(serviceMock.create).toHaveBeenCalledOnce()
     expect(routerMock.replace).toHaveBeenCalledWith(
-      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
+      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
     )
   })
 
-  it('converges after a permission update succeeds but its response is lost', async () => {
+  it('converges after an atomic creation response is lost', async () => {
     const user = userEvent.setup()
-    serviceMock.getPolicy
-      .mockResolvedValueOnce({
-        id: 'policy-1',
-        ownerSubjectId: 'user-1',
-        partialMemberSubjectIds: [],
-        revision: 4,
-        visibility: 'only_me',
-      })
-      .mockResolvedValueOnce({
-        id: 'policy-1',
-        ownerSubjectId: 'user-1',
-        partialMemberSubjectIds: [],
-        revision: 5,
-        visibility: 'all_members',
-      })
-    serviceMock.patchPolicy.mockRejectedValueOnce(new Error('response lost'))
+    serviceMock.create.mockRejectedValueOnce(new Error('response lost'))
     renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.permissionUpdateFailed',
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledOnce())
-    expect(serviceMock.create).toHaveBeenCalledOnce()
-    expect(serviceMock.getPolicy).toHaveBeenCalledTimes(2)
-    expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
+    expect(serviceMock.create).toHaveBeenCalledTimes(2)
+    expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
+      serviceMock.create.mock.calls[1]?.[0].body.idempotency_key,
+    )
   })
 
   it('keeps every start mode interactive without simulating backend success', async () => {
@@ -460,6 +549,21 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
   })
 
+  it('disables upload before creating a space when direct upload is unavailable', () => {
+    navigationMock.startMode = 'upload'
+    systemFeaturesStateMock.uploadEnabled = false
+
+    renderPage()
+
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })).toBeChecked()
+    const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
+    expect(uploadFiles).toBeDisabled()
+    expect(uploadFiles).toHaveAccessibleDescription(
+      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+    )
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
   it('continues from the upload mode after real creation succeeds', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
@@ -483,7 +587,7 @@ describe('CreateKnowledgePage', () => {
     )
     expect(serviceMock.upload).toHaveBeenCalledWith({
       body: { file: expect.objectContaining({ name: 'handbook.md' }) },
-      params: { id: createdKnowledge.id },
+      params: { control_space_id: createdKnowledge.control_space_id },
     })
   })
 
@@ -533,6 +637,12 @@ describe('CreateKnowledgePage', () => {
     const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    expect(
+      screen.getByText(
+        'dataset.newKnowledge.includeSubpages: dataset.newKnowledge.booleanFalse · dataset.newKnowledge.maxPages: 25',
+      ),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() =>
@@ -895,14 +1005,19 @@ describe('CreateKnowledgePage', () => {
 
   it('warns before leaving a partially created knowledge space', async () => {
     const user = userEvent.setup()
-    serviceMock.patchPolicy.mockRejectedValueOnce(new Error('policy update unavailable'))
+    navigationMock.startMode = 'upload'
+    serviceMock.upload.mockRejectedValueOnce(new Error('upload unavailable'))
     renderPage()
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(
-      await screen.findByText('dataset.newKnowledge.permissionUpdateFailed'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('dataset.newKnowledge.documentUploadFailed')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 

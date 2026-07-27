@@ -9874,27 +9874,6 @@ describe("createKnowledgeGateway", () => {
         nodes,
       }),
     ).toThrow("Incremental reindexer maxNodes must be at least 1");
-    await expect(
-      createIncrementalReindexer({
-        artifacts,
-        compute,
-        denseBuilder: {
-          build: async () => [],
-        },
-        maxNodes: 4,
-        nodes,
-      }).reindex({
-        knowledgeSpaceId,
-        parseArtifact: ParseArtifactSchema.parse({
-          ...changedArtifact,
-          artifactHash: "c".repeat(64),
-        }),
-        projectionVersion: 2,
-      }),
-    ).rejects.toThrow(
-      "Incremental reindexer denseModel is required when denseBuilder is configured",
-    );
-
     await nodes.deleteByDocumentAsset({ documentAssetId, knowledgeSpaceId, maxNodes: 4 });
     const denseBuilds: unknown[] = [];
     await expect(

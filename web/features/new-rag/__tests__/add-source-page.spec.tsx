@@ -1,7 +1,5 @@
-import type {
-  GetKnowledgeSpacesByIdSourceConnectionsResponse,
-  GetSourceProvidersResponse,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { SourceConnection, SourceProvider } from '../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
@@ -9,14 +7,53 @@ import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
 import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
+type GetKnowledgeSpacesByIdSourceConnectionsResponse = {
+  items: SourceConnection[]
+  nextCursor?: string
+}
+type GetSourceProvidersResponse = { items: SourceProvider[] }
+
 const routerMock = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
 }))
 
+const connectFirecrawlButtonName = 'dataset.newKnowledge.connectProvider:{"provider":"Firecrawl"}'
+
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const providerApiResponse = vi.hoisted(() => (provider: SourceProvider) => ({
+  auth_kinds: provider.authKinds,
+  available: provider.available,
+  capabilities: provider.capabilities,
+  configuration: provider.configuration.map((field) => ({
+    description: field.description ?? null,
+    format: field.format ?? null,
+    name: field.name,
+    required: field.required,
+    secret: field.secret,
+    type: field.type,
+  })),
+  display_name: provider.displayName,
+  id: provider.id,
+  unavailable_reason: provider.unavailableReason ?? null,
+}))
+const connectionApiResponse = vi.hoisted(() => (connection: SourceConnection) => ({
+  auth_kind: connection.authKind,
+  configuration: connection.configuration,
+  created_at: connection.createdAt,
+  error_code: connection.errorCode ?? null,
+  expires_at: connection.expiresAt ?? null,
+  id: connection.id,
+  knowledge_space_id: connection.knowledgeSpaceId,
+  name: connection.name,
+  provider_id: connection.providerId,
+  scopes: connection.scopes,
+  status: connection.status,
+  updated_at: connection.updatedAt,
+  version: connection.version,
+}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { info: toastInfoMock },
@@ -25,12 +62,19 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 type ConnectionsInfiniteData = {
   pages: GetKnowledgeSpacesByIdSourceConnectionsResponse[]
 }
+const connectionInfiniteDataApiResponse = vi.hoisted(() => (data: ConnectionsInfiniteData) => ({
+  pages: data.pages.map((page) => ({
+    data: page.items.map(connectionApiResponse),
+    next_cursor: page.nextCursor ?? null,
+  })),
+}))
 
 type ConnectionsInfiniteOptions = {
   enabled?: boolean
-  getNextPageParam: (
-    lastPage: GetKnowledgeSpacesByIdSourceConnectionsResponse,
-  ) => string | undefined
+  getNextPageParam: (lastPage: {
+    data: ReturnType<typeof connectionApiResponse>[]
+    next_cursor?: string | null
+  }) => string | null | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
 }
@@ -52,6 +96,12 @@ const queryState = vi.hoisted(() => ({
     isPending: false,
     refetch: vi.fn(),
   },
+  datasourceAuth: {
+    data: { result: [] } as DatasourceProviderAuthListResponse | undefined,
+    error: null as unknown,
+    isPending: false,
+    refetch: vi.fn(),
+  },
 }))
 
 const clientMock = vi.hoisted(() => ({
@@ -64,9 +114,10 @@ const queryClientMock = vi.hoisted(() => ({
 }))
 
 const providerQueryOptionsMock = vi.hoisted(() =>
-  vi.fn((options: { enabled?: boolean }) => ({
+  vi.fn((options: { enabled?: boolean; select?: (data: unknown) => unknown }) => ({
     enabled: options.enabled,
     queryKey: ['source-providers'],
+    select: options.select,
   })),
 )
 const connectionInfiniteOptionsMock = vi.hoisted(() =>
@@ -76,6 +127,12 @@ const connectionInfiniteOptionsMock = vi.hoisted(() =>
   })),
 )
 const providerHookOptionsMock = vi.hoisted(() => vi.fn())
+const datasourceAuthQueryOptionsMock = vi.hoisted(() =>
+  vi.fn((options: { enabled?: boolean }) => ({
+    enabled: options.enabled,
+    queryKey: ['datasource-auth'],
+  })),
+)
 const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -84,11 +141,33 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...original,
     useInfiniteQuery: (options: unknown) => {
       connectionHookOptionsMock(options)
-      return queryState.connections
+      return {
+        ...queryState.connections,
+        data: queryState.connections.data
+          ? connectionInfiniteDataApiResponse(queryState.connections.data)
+          : undefined,
+        refetch: async () => {
+          const result = (await queryState.connections.refetch()) as
+            | { data?: ConnectionsInfiniteData; error?: unknown }
+            | undefined
+          if (!result?.data) return result
+          return {
+            ...result,
+            data: connectionInfiniteDataApiResponse(result.data),
+          }
+        },
+      }
     },
-    useQuery: (options: unknown) => {
+    useQuery: (options: { queryKey?: string[]; select?: (data: unknown) => unknown }) => {
       providerHookOptionsMock(options)
-      return queryState.providers
+      if (options.queryKey?.[0] === 'datasource-auth') return queryState.datasourceAuth
+      const raw = queryState.providers.data
+        ? { data: queryState.providers.data.items.map(providerApiResponse) }
+        : undefined
+      return {
+        ...queryState.providers,
+        data: raw && options.select ? options.select(raw) : raw,
+      }
     },
     useQueryClient: () => queryClientMock,
   }
@@ -97,18 +176,49 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      postKnowledgeSpacesByIdSourceConnections: clientMock.createConnection,
-      postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh: clientMock.refreshConnection,
+      spaces: {
+        byControlSpaceId: {
+          sourceConnections: {
+            byConnectionId: {
+              refresh: {
+                post: async (input: unknown) =>
+                  connectionApiResponse(await clientMock.refreshConnection(input)),
+              },
+            },
+            post: async (input: unknown) =>
+              connectionApiResponse(await clientMock.createConnection(input)),
+          },
+        },
+      },
     },
   },
   consoleQuery: {
-    knowledgeFs: {
-      getSourceProviders: {
-        queryOptions: providerQueryOptionsMock,
+    auth: {
+      plugin: {
+        datasource: {
+          defaultList: {
+            get: {
+              queryOptions: datasourceAuthQueryOptionsMock,
+            },
+          },
+        },
       },
-      getKnowledgeSpacesByIdSourceConnections: {
-        infiniteOptions: connectionInfiniteOptionsMock,
-        key: vi.fn(() => ['source-connections']),
+    },
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          sourceConnections: {
+            get: {
+              infiniteOptions: connectionInfiniteOptionsMock,
+              key: vi.fn(() => ['source-connections']),
+            },
+          },
+          sourceProviders: {
+            get: {
+              queryOptions: providerQueryOptionsMock,
+            },
+          },
+        },
       },
     },
   },
@@ -161,6 +271,69 @@ const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
   id: 'plugin-daemon-website',
 }
 
+const difyManagedFirecrawlProvider: GetSourceProvidersResponse['items'][number] = {
+  authKinds: ['endpoint'],
+  available: true,
+  capabilities: ['website-crawl'],
+  configuration: [
+    {
+      name: 'credentialId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'pluginId',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'provider',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'datasource',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+    {
+      name: 'providerKind',
+      required: true,
+      secret: false,
+      type: 'string',
+    },
+  ],
+  displayName: 'Dify website crawl',
+  id: 'plugin-daemon-website',
+}
+
+const firecrawlDatasourceAuth: DatasourceProviderAuthListResponse['result'][number] = {
+  author: 'langgenius',
+  credential_schema: [],
+  credentials_list: [
+    {
+      avatar_url: null,
+      credential: {},
+      id: 'firecrawl-credential-1',
+      is_default: true,
+      name: 'Default Firecrawl',
+      type: 'api-key',
+    },
+  ],
+  description: { en_US: 'Firecrawl' },
+  icon: 'icon.svg',
+  label: { en_US: 'Firecrawl' },
+  name: 'firecrawl',
+  oauth_schema: null,
+  plugin_id: 'langgenius/firecrawl_datasource',
+  plugin_unique_identifier: 'langgenius/firecrawl_datasource:1.0.0@local',
+  provider: 'firecrawl',
+}
+
 const connection = (
   status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked',
   version = 2,
@@ -190,9 +363,13 @@ describe('AddSourcePage', () => {
     clientMock.refreshConnection.mockReset()
     queryState.connections.refetch.mockReset()
     queryState.providers.refetch.mockReset()
+    queryState.datasourceAuth.refetch.mockReset()
     queryState.providers.data = { items: [firecrawlProvider] }
     queryState.providers.error = null
     queryState.providers.isPending = false
+    queryState.datasourceAuth.data = { result: [] }
+    queryState.datasourceAuth.error = null
+    queryState.datasourceAuth.isPending = false
     queryState.connections.data = { pages: [{ items: [] }] }
     queryState.connections.error = null
     queryState.connections.hasNextPage = false
@@ -213,18 +390,22 @@ describe('AddSourcePage', () => {
     expect(providerQueryOptionsMock).toHaveBeenCalledWith({
       context: { silent: true },
       enabled: true,
-      input: {},
+      input: { params: { control_space_id: 'space-1' } },
       retry: false,
+      select: expect.any(Function),
     })
     const options = connectionInfiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected connection infinite query options')
-    expect(options.input(null)).toEqual({ params: { id: 'space-1' }, query: { limit: 200 } })
+    expect(options.input(null)).toEqual({
+      params: { control_space_id: 'space-1' },
+      query: { limit: 200 },
+    })
     expect(options.input('next')).toEqual({
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
       query: { cursor: 'next', limit: 200 },
     })
-    expect(options.getNextPageParam({ items: [], nextCursor: 'next' })).toBe('next')
+    expect(options.getNextPageParam({ data: [], next_cursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
@@ -534,7 +715,7 @@ describe('AddSourcePage', () => {
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -550,7 +731,7 @@ describe('AddSourcePage', () => {
           name: 'Firecrawl',
           providerId: 'plugin-daemon-website',
         },
-        params: { id: 'space-1' },
+        params: { control_space_id: 'space-1' },
       }),
     )
     await screen.findByRole('status', { name: 'appApi.loading' })
@@ -560,6 +741,64 @@ describe('AddSourcePage', () => {
     })
     expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
+  })
+
+  it('binds the default Dify Firecrawl credential for the real KnowledgeFS provider', async () => {
+    const user = userEvent.setup()
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    clientMock.createConnection.mockResolvedValue({
+      ...connection('active'),
+      authKind: 'endpoint',
+      configuration: {
+        credentialId: 'firecrawl-credential-1',
+        datasource: 'crawl',
+        pluginId: 'langgenius/firecrawl_datasource',
+        provider: 'firecrawl',
+        providerKind: 'website',
+      },
+    })
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
+
+    await waitFor(() =>
+      expect(clientMock.createConnection).toHaveBeenCalledWith({
+        body: {
+          authKind: 'endpoint',
+          configuration: {
+            credentialId: 'firecrawl-credential-1',
+            datasource: 'crawl',
+            pluginId: 'langgenius/firecrawl_datasource',
+            provider: 'firecrawl',
+            providerKind: 'website',
+          },
+          credentials: {},
+          name: 'Firecrawl',
+          providerId: 'plugin-daemon-website',
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
+  })
+
+  it('opens Data Source settings when Dify has no Firecrawl credential', async () => {
+    const user = userEvent.setup()
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: connectFirecrawlButtonName }),
+    ).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.openDataSourceSettings' }),
+    )
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/integrations/data-source')
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
   })
 
   it('releases the parent history guard before the crawl preview owns navigation', async () => {
@@ -572,7 +811,7 @@ describe('AddSourcePage', () => {
       screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
     expect(screen.queryByText(/dataset\.newKnowledge\.providerConnected/)).not.toBeInTheDocument()
@@ -677,7 +916,7 @@ describe('AddSourcePage', () => {
     )
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     expect(await screen.findByText('dataset.newKnowledge.connectionFailed')).toBeInTheDocument()
     expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
@@ -696,10 +935,9 @@ describe('AddSourcePage', () => {
       screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
-    await screen.findByRole('status', { name: 'appApi.loading' })
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()
@@ -734,7 +972,7 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+    await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -750,7 +988,7 @@ describe('AddSourcePage', () => {
           name: 'Firecrawl',
           providerId: 'plugin-daemon-website',
         },
-        params: { id: 'space-1' },
+        params: { control_space_id: 'space-1' },
       }),
     )
   })
@@ -792,7 +1030,7 @@ describe('AddSourcePage', () => {
     await waitFor(() =>
       expect(clientMock.refreshConnection).toHaveBeenCalledWith({
         body: { expectedVersion: 2 },
-        params: { connectionId: 'connection-1', id: 'space-1' },
+        params: { connection_id: 'connection-1', control_space_id: 'space-1' },
       }),
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
@@ -830,7 +1068,7 @@ describe('AddSourcePage', () => {
     await waitFor(() =>
       expect(clientMock.refreshConnection).toHaveBeenLastCalledWith({
         body: { expectedVersion: 3 },
-        params: { connectionId: 'connection-1', id: 'space-1' },
+        params: { connection_id: 'connection-1', control_space_id: 'space-1' },
       }),
     )
   })
@@ -853,7 +1091,7 @@ describe('AddSourcePage', () => {
     await waitFor(() =>
       expect(clientMock.refreshConnection).toHaveBeenLastCalledWith({
         body: { expectedVersion: 3 },
-        params: { connectionId: 'connection-1', id: 'space-1' },
+        params: { connection_id: 'connection-1', control_space_id: 'space-1' },
       }),
     )
   })

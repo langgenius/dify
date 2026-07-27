@@ -1,7 +1,4 @@
-import type {
-  DocumentProcessingTask,
-  LogicalDocument,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { DocumentProcessingTask, LogicalDocument } from './document-models'
 
 export type DocumentDisplayStatus = 'ready' | 'queued' | 'processing' | 'failed' | 'disabled'
 

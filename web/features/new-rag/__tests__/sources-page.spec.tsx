@@ -1,4 +1,4 @@
-import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
+import type { Source } from '../source-models'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
@@ -9,6 +9,21 @@ const toastInfoMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
 const permissionState = vi.hoisted(() => ({
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
+}))
+const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
+  connection_id: source.connectionId ?? null,
+  created_at: source.createdAt,
+  credential_configured: source.credentialConfigured ?? null,
+  id: source.id,
+  knowledge_space_id: source.knowledgeSpaceId,
+  metadata: source.metadata,
+  name: source.name,
+  permission_scope: source.permissionScope ?? [],
+  status: source.status,
+  type: source.type,
+  updated_at: source.updatedAt,
+  uri: source.uri,
+  version: source.version ?? null,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -22,12 +37,12 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 type SourcesInfiniteOptions = {
-  getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
+  getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
   refetchInterval: (query: {
     state: {
-      data?: { pages: Array<{ items: Source[] }> }
+      data?: { pages: Array<{ data: ReturnType<typeof sourceApiResponse>[] }> }
     }
   }) => false | number
 }
@@ -55,7 +70,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => sourcesQuery,
+    useInfiniteQuery: () => ({
+      ...sourcesQuery,
+      data: sourcesQuery.data
+        ? {
+            pages: sourcesQuery.data.pages.map((page) => ({
+              data: page.items.map(sourceApiResponse),
+              next_cursor: page.nextCursor ?? null,
+            })),
+          }
+        : undefined,
+    }),
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
@@ -63,16 +88,35 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      deleteKnowledgeSpacesByIdSourcesBySourceId: clientMock.deleteSource,
-      patchKnowledgeSpacesByIdSourcesBySourceId: clientMock.patchSource,
-      postKnowledgeSpacesByIdSourcesBySourceIdSync: clientMock.syncSource,
+      spaces: {
+        byControlSpaceId: {
+          sources: {
+            bySourceId: {
+              delete: clientMock.deleteSource,
+              patch: async (input: unknown) =>
+                sourceApiResponse(await clientMock.patchSource(input)),
+              sync: { post: clientMock.syncSource },
+            },
+            get: {
+              infiniteOptions: infiniteOptionsMock,
+              key: vi.fn(() => ['sources']),
+            },
+          },
+        },
+      },
     },
   },
   consoleQuery: {
     knowledgeFs: {
-      getKnowledgeSpacesByIdSources: {
-        infiniteOptions: infiniteOptionsMock,
-        key: vi.fn(() => ['sources']),
+      spaces: {
+        byControlSpaceId: {
+          sources: {
+            get: {
+              infiniteOptions: infiniteOptionsMock,
+              key: vi.fn(() => ['sources']),
+            },
+          },
+        },
       },
     },
   },
@@ -116,23 +160,27 @@ describe('SourcesPage', () => {
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected source infinite query options')
     expect(options.input(null)).toEqual({
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
       query: { limit: 50 },
     })
     expect(options.input('next')).toEqual({
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
       query: { cursor: 'next', limit: 50 },
     })
-    expect(options.getNextPageParam({ nextCursor: 'next' })).toBe('next')
+    expect(options.getNextPageParam({ next_cursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
     expect(
       options.refetchInterval({
-        state: { data: { pages: [{ items: [source({ status: 'syncing' })] }] } },
+        state: {
+          data: { pages: [{ data: [sourceApiResponse(source({ status: 'syncing' }))] }] },
+        },
       }),
     ).toBe(3000)
     expect(
       options.refetchInterval({
-        state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
+        state: {
+          data: { pages: [{ data: [sourceApiResponse(source({ status: 'active' }))] }] },
+        },
       }),
     ).toBe(false)
     expect(screen.getByRole('status')).toBeInTheDocument()
@@ -425,6 +473,13 @@ describe('SourcesPage', () => {
   it('syncs a source through the real KnowledgeFS action', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    let finishRefresh: (() => void) | undefined
+    invalidateQueriesMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefresh = resolve
+        }),
+    )
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(
@@ -438,7 +493,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(clientMock.syncSource).toHaveBeenCalledWith({
         headers: { 'Idempotency-Key': expect.any(String) },
-        params: { id: 'space-1', sourceId: 'source-1' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
     )
     expect(
@@ -446,14 +501,24 @@ describe('SourcesPage', () => {
         'dataset.newKnowledge.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
+    finishRefresh?.()
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+          'dataset.newKnowledge.sourceStatus.active',
+        ),
+      ).toBeInTheDocument(),
+    )
     const options = infiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected source infinite query options')
     expect(
       options.refetchInterval({
-        state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
+        state: {
+          data: { pages: [{ data: [sourceApiResponse(source({ status: 'active' }))] }] },
+        },
       }),
-    ).toBe(3000)
+    ).toBe(false)
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
 
@@ -482,7 +547,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenCalledWith({
         body: { expectedVersion: 3, status: 'disabled' },
-        params: { id: 'space-1', sourceId: 'active-source' },
+        params: { control_space_id: 'space-1', source_id: 'active-source' },
       }),
     )
 
@@ -491,7 +556,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenLastCalledWith({
         body: { expectedVersion: 3, status: 'active' },
-        params: { id: 'space-1', sourceId: 'disabled' },
+        params: { control_space_id: 'space-1', source_id: 'disabled' },
       }),
     )
   })
@@ -538,7 +603,7 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(clientMock.patchSource).toHaveBeenLastCalledWith({
         body: { expectedVersion: 4, status: 'active' },
-        params: { id: 'space-1', sourceId: 'source-1' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
     )
   })
@@ -560,8 +625,8 @@ describe('SourcesPage', () => {
     await waitFor(() =>
       expect(clientMock.deleteSource).toHaveBeenCalledWith({
         body: { expectedRevision: 3 },
-        headers: { 'idempotency-key': expect.any(String) },
-        params: { id: 'space-1', sourceId: 'source-1' },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
         query: { documents: 'keep' },
       }),
     )
@@ -594,6 +659,13 @@ describe('SourcesPage', () => {
   it('retries an errored source and shows its queued state', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
+    let finishRefresh: (() => void) | undefined
+    invalidateQueriesMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefresh = resolve
+        }),
+    )
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
@@ -604,6 +676,7 @@ describe('SourcesPage', () => {
         'dataset.newKnowledge.sourceStatus.syncing',
       ),
     ).toBeInTheDocument()
+    finishRefresh?.()
   })
 
   it('supports row selection and a true indeterminate select-all state', async () => {

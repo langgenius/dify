@@ -13,6 +13,10 @@ class KnowledgeFSProductRemoteError(RuntimeError):
     """KnowledgeFS could not provide an authoritative product response."""
 
 
+class KnowledgeFSProductResourceNotFoundError(KnowledgeFSProductRemoteError):
+    """KnowledgeFS authoritatively reported that an authorized child resource is absent."""
+
+
 class KnowledgeFSOperationUnavailableError(RuntimeError):
     """The Dify/KFS/Capability operation manifests are not yet aligned."""
 
@@ -96,6 +100,7 @@ __all__ = [
     "KnowledgeFSProductRemoteError",
     "KnowledgeFSProductRemotePort",
     "KnowledgeFSProductRequestRejectedError",
+    "KnowledgeFSProductResourceNotFoundError",
     "KnowledgeFSRemoteBinaryRequest",
     "KnowledgeFSRemoteJSONRequest",
     "UnavailableKnowledgeFSProductRemote",

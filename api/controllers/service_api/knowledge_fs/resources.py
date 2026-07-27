@@ -95,6 +95,7 @@ from services.knowledge_fs.product_operations import product_operation_action
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
+    KnowledgeFSProductResourceNotFoundError,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
 
@@ -171,6 +172,8 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSInvalidCredentialHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSServiceOperationUnavailableHTTPError() from exc
+        except KnowledgeFSProductResourceNotFoundError as exc:
+            raise NotFound() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSServiceUpstreamUnavailableHTTPError() from exc
         except KnowledgeFSOperationRateLimitExceededError as exc:

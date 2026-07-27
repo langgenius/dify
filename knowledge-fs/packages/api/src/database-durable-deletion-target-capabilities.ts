@@ -369,6 +369,7 @@ export function createDatabaseDurableDeletionTargetCapabilities({
         });
         throwIfAborted(signal);
         const preservesDocuments = job.targetType === "source" && job.deleteMode === "keep";
+        let operationFailed = false;
         try {
           // Command logs, KnowledgeFS session metadata, Golden Question metadata, and Research inputs
           // are opaque JSON. They cannot be attributed safely to one document/source, so every target
@@ -544,10 +545,13 @@ export function createDatabaseDurableDeletionTargetCapabilities({
             }
           }
           return { complete: true, deleted: 0 };
+        } catch (error) {
+          operationFailed = true;
+          throw error;
         } finally {
           // A cache/object adapter call can outlive the original lease. Recheck immediately before
           // commit so every DB page rolls back when the worker fence expired mid-operation.
-          await assertJobFence(database, transaction, job);
+          if (!operationFailed) await assertJobFence(database, transaction, job);
         }
       });
     },
@@ -1980,7 +1984,7 @@ async function cleanupLogicalDocumentsForPrimaryDeletion(
       maxRows: 0,
       operation: "update",
       params: [job.tenantId, job.knowledgeSpaceId, job.targetId, job.updatedAt],
-      sql: `UPDATE ${q("logical_documents")} SET ${q("source_id")} = NULL, ${q("provider_item_id")} = NULL, ${q("system_metadata")} = ${scrubSourceIdentityMetadataSql(database, q("system_metadata"), false)}, ${q("row_version")} = ${q("row_version")} + 1, ${q("updated_at")} = ${p(4)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${p(3)};`,
+      sql: `UPDATE ${q("logical_documents")} SET ${q("source_id")} = NULL, ${q("provider_item_id")} = NULL, ${q("provider_item_digest")} = NULL, ${q("system_metadata")} = ${scrubSourceIdentityMetadataSql(database, q("system_metadata"), false)}, ${q("row_version")} = ${q("row_version")} + 1, ${q("updated_at")} = ${p(4)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("source_id")} = ${p(3)};`,
       tableName: "logical_documents",
     });
     return;
@@ -2763,7 +2767,8 @@ async function nextTargetDocumentId(
   if (job.targetType === "document_asset") return cursor ? undefined : job.targetId;
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  const params: DatabaseQueryValue[] = [job.knowledgeSpaceId, cursor ?? ""];
+  const params: DatabaseQueryValue[] = [job.knowledgeSpaceId, cursor ?? null];
+  const after = nullableUuidCursorExpression(database, p(2));
   let target = "";
   if (job.targetType === "source") {
     params.push(job.targetId);
@@ -2776,7 +2781,7 @@ async function nextTargetDocumentId(
     maxRows: 1,
     operation: "select",
     params,
-    sql: `SELECT ${q("id")} FROM ${q("document_assets")} WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} > ${p(2)}${target} ORDER BY ${q("id")} ASC LIMIT 1;`,
+    sql: `SELECT ${q("id")} FROM ${q("document_assets")} WHERE ${q("knowledge_space_id")} = ${p(1)} AND ${q("id")} > ${after}${target} ORDER BY ${q("id")} ASC LIMIT 1;`,
     tableName: "document_assets",
   });
   return result.rows[0] ? stringColumn(result.rows[0], "id") : undefined;
@@ -2801,12 +2806,12 @@ async function documentManifestObjectKeyPage(
   const p = (position: number) => databasePlaceholder(database, position);
   const activeId = state.manifestActiveId;
   const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, documentId];
-  let cursorPredicate: string;
+  let cursorPredicate = "";
   if (activeId) {
     params.push(activeId);
     cursorPredicate = ` AND manifest.${q("id")} = ${p(4)}`;
-  } else {
-    params.push(state.manifestAfter ?? "");
+  } else if (state.manifestAfter) {
+    params.push(state.manifestAfter);
     cursorPredicate = ` AND manifest.${q("id")} > ${p(4)}`;
   }
   const result = await database.execute({
@@ -2912,6 +2917,11 @@ interface SecretInventoryRef {
   readonly rowId: string;
 }
 
+function nullableUuidCursorExpression(database: DatabaseAdapter, placeholder: string): string {
+  const value = `COALESCE(${placeholder}, '00000000-0000-0000-0000-000000000000')`;
+  return database.dialect === "postgres" ? `CAST(${value} AS UUID)` : value;
+}
+
 async function lifecycleSecretRefs(
   database: DatabaseAdapter,
   job: DurableDeletionTargetOperationInput["job"],
@@ -2921,7 +2931,8 @@ async function lifecycleSecretRefs(
   if (job.targetType === "document_asset" || job.targetType === "logical_document") return [];
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, cursor ?? "", limit];
+  const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, cursor ?? null, limit];
+  const after = nullableUuidCursorExpression(database, p(3));
   let target = "";
   if (job.targetType === "source") {
     params.push(job.targetId);
@@ -2931,7 +2942,7 @@ async function lifecycleSecretRefs(
     maxRows: limit,
     operation: "select",
     params,
-    sql: `SELECT ${q("id")}, ${q("source_id")}, ${q("credential_ref")} FROM ${q("source_secret_lifecycle_refs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("id")} > ${p(3)} AND ${q("state")} <> 'deleted'${target} ORDER BY ${q("id")} ASC LIMIT ${p(4)};`,
+    sql: `SELECT ${q("id")}, ${q("source_id")}, ${q("credential_ref")} FROM ${q("source_secret_lifecycle_refs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("id")} > ${after} AND ${q("state")} <> 'deleted'${target} ORDER BY ${q("id")} ASC LIMIT ${p(4)};`,
     tableName: "source_secret_lifecycle_refs",
   });
   return result.rows.map((row) => ({
@@ -2965,7 +2976,8 @@ async function sourceSecretRefs(
   if (job.targetType === "document_asset" || job.targetType === "logical_document") return [];
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
-  const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, cursor ?? "", limit];
+  const params: DatabaseQueryValue[] = [job.tenantId, job.knowledgeSpaceId, cursor ?? null, limit];
+  const after = nullableUuidCursorExpression(database, p(3));
   let target = "";
   if (job.targetType === "source") {
     params.push(job.targetId);
@@ -2975,7 +2987,7 @@ async function sourceSecretRefs(
     maxRows: limit,
     operation: "select",
     params,
-    sql: `SELECT s.${q("id")}, s.${q("credential_ref")} FROM ${q("sources")} s WHERE s.${q("knowledge_space_id")} = ${p(2)} AND s.${q("id")} > ${p(3)} AND s.${q("credential_ref")} IS NOT NULL${target} AND EXISTS (SELECT 1 FROM ${q("knowledge_spaces")} ks WHERE ks.${q("tenant_id")} = ${p(1)} AND ks.${q("id")} = ${p(2)}) AND NOT EXISTS (SELECT 1 FROM ${q("source_secret_lifecycle_refs")} lifecycle WHERE lifecycle.${q("tenant_id")} = ${p(1)} AND lifecycle.${q("knowledge_space_id")} = ${p(2)} AND lifecycle.${q("source_id")} = s.${q("id")} AND lifecycle.${q("credential_ref")} = s.${q("credential_ref")}) ORDER BY s.${q("id")} ASC LIMIT ${p(4)};`,
+    sql: `SELECT s.${q("id")}, s.${q("credential_ref")} FROM ${q("sources")} s WHERE s.${q("knowledge_space_id")} = ${p(2)} AND s.${q("id")} > ${after} AND s.${q("credential_ref")} IS NOT NULL AND s.${q("credential_ref")} <> ''${target} AND EXISTS (SELECT 1 FROM ${q("knowledge_spaces")} ks WHERE ks.${q("tenant_id")} = ${p(1)} AND ks.${q("id")} = ${p(2)}) AND NOT EXISTS (SELECT 1 FROM ${q("source_secret_lifecycle_refs")} lifecycle WHERE lifecycle.${q("tenant_id")} = ${p(1)} AND lifecycle.${q("knowledge_space_id")} = ${p(2)} AND lifecycle.${q("source_id")} = s.${q("id")} AND lifecycle.${q("credential_ref")} = s.${q("credential_ref")}) ORDER BY s.${q("id")} ASC LIMIT ${p(4)};`,
     tableName: "sources",
   });
   return result.rows.map((row) => ({
@@ -3128,7 +3140,7 @@ async function deleteGoldenQuestionPage(
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   return database.transaction(async (transaction) => {
-    const params = targetDocumentQueryParams(job);
+    const params = targetGoldenQuestionQueryParams(job);
     params.push(limit);
     const alias = "target_golden_question";
     const rows = await transaction.execute({
@@ -3257,6 +3269,15 @@ function goldenMissingEvidencePredicateSql(
   return `EXISTS (SELECT 1 FROM JSON_TABLE(${metadata}, '$.evidenceContext.missingEvidence[*]' COLUMNS (evidence_id VARCHAR(255) PATH '$.expectedEvidenceId')) AS golden_missing WHERE ${target})`;
 }
 
+function targetGoldenQuestionQueryParams(
+  job: DurableDeletionTargetOperationInput["job"],
+): DatabaseQueryValue[] {
+  return job.targetType === "knowledge_space" ||
+    (job.targetType === "source" && job.deleteMode === "keep")
+    ? [job.knowledgeSpaceId]
+    : targetDocumentQueryParams(job);
+}
+
 function targetDocumentQueryParams(
   job: DurableDeletionTargetOperationInput["job"],
 ): DatabaseQueryValue[] {
@@ -3354,7 +3375,12 @@ function targetDocumentMembershipAtSql(
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   if (job.targetType === "document_asset") {
-    return `${documentIdExpression} = ${p(targetParamPosition)}`;
+    const targetParameter = textComparison
+      ? database.dialect === "postgres"
+        ? `CAST(CAST(${p(targetParamPosition)} AS UUID) AS TEXT)`
+        : `CAST(${p(targetParamPosition)} AS CHAR(36))`
+      : p(targetParamPosition);
+    return `${documentIdExpression} = ${targetParameter}`;
   }
   if (job.targetType === "logical_document") {
     const selectedRevisionAsset = textComparison
@@ -3589,7 +3615,7 @@ async function deleteDocumentDerivedResiduePage(
     maxRows: limit,
     operation: "select",
     params,
-    sql: `SELECT artifact.${q("id")} FROM ${q("parse_artifacts")} AS artifact WHERE artifact.${q("document_asset_id")} ${documentPredicate} ORDER BY artifact.${q("id")} ASC LIMIT ${p(2)};`,
+    sql: `SELECT artifact.${q("id")} FROM ${q("parse_artifacts")} AS artifact WHERE artifact.${q("document_asset_id")} ${documentPredicate} AND EXISTS (SELECT 1 FROM ${q("document_assets")} AS target_document WHERE target_document.${q("id")} = artifact.${q("document_asset_id")} AND target_document.${q("knowledge_space_id")} = ${p(1)}) ORDER BY artifact.${q("id")} ASC LIMIT ${p(2)};`,
     tableName: "parse_artifacts",
   });
   const parseArtifactIds = parseArtifacts.rows.map((row) => stringColumn(row, "id"));
@@ -3797,7 +3823,7 @@ async function hasTargetGoldenQuestionResidue(
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
-    params: targetDocumentQueryParams(job),
+    params: targetGoldenQuestionQueryParams(job),
     sql: `SELECT ${alias}.${q("id")} FROM ${q("golden_questions")} AS ${alias} WHERE ${alias}.${q("knowledge_space_id")} = ${p(1)} AND ${targetGoldenQuestionPredicateSql(database, job, alias)} LIMIT 1;`,
     tableName: "golden_questions",
   });
@@ -4145,7 +4171,7 @@ async function hasTargetDocumentForeignKeyResidue(
       table: "artifact_segments",
     },
     {
-      sql: `SELECT artifact.${q("id")} FROM ${q("parse_artifacts")} AS artifact WHERE artifact.${q("document_asset_id")} ${documentPredicate} LIMIT 1;`,
+      sql: `SELECT artifact.${q("id")} FROM ${q("parse_artifacts")} AS artifact WHERE artifact.${q("document_asset_id")} ${documentPredicate} AND EXISTS (SELECT 1 FROM ${q("document_assets")} AS target_document WHERE target_document.${q("id")} = artifact.${q("document_asset_id")} AND target_document.${q("knowledge_space_id")} = ${p(1)}) LIMIT 1;`,
       table: "parse_artifacts",
     },
   ] as const;
@@ -4373,6 +4399,10 @@ function targetKnowledgeFsLeasePredicateSql(
   const q = (value: string) => quoteDatabaseIdentifier(database, value);
   const p = (position: number) => databasePlaceholder(database, position);
   const field = (column: string) => `${leaseAlias}.${q(column)}`;
+  const textParam = (position: number) =>
+    database.dialect === "postgres"
+      ? `CAST(CAST(${p(position)} AS UUID) AS TEXT)`
+      : `CAST(${p(position)} AS CHAR(36))`;
   const scope = `${field("tenant_id")} = ${p(1)} AND ${field("knowledge_space_id")} = ${p(2)}`;
   if (job.targetType === "knowledge_space") return scope;
 
@@ -4406,7 +4436,7 @@ function targetKnowledgeFsLeasePredicateSql(
   const pathTarget = `${field("target_type")} = 'knowledge-path' AND EXISTS (SELECT 1 FROM ${q("knowledge_paths")} AS target_path WHERE target_path.${q("knowledge_space_id")} = ${p(2)} AND (${field("target_id")} = ${castId("target_path")} OR ${field("target_id")} = target_path.${q("target_id")} OR ${field("virtual_path")} = target_path.${q("virtual_path")}) AND ${targetSemanticPathPredicateSql(database, uuidDocumentPredicate, textDocumentPredicate, 2, "target_path")})`;
   const stagedCommitTarget = `${field("target_type")} = 'staged-commit' AND EXISTS (SELECT 1 FROM ${q("knowledge_space_staged_commits")} AS target_commit WHERE target_commit.${q("tenant_id")} = ${p(1)} AND target_commit.${q("knowledge_space_id")} = ${p(2)} AND ${uuidDocumentMembership(`target_commit.${q("document_asset_id")}`)} AND (${field("target_id")} = ${castId("target_commit")} OR ${field("target_id")} = target_commit.${q("raw_object_key")} OR ${field("target_id")} = target_commit.${q("published_object_key")}))`;
 
-  return `${scope} AND ((${field("target_type")} = 'knowledge-space' AND ${field("target_id")} = ${p(2)}) OR (${field("target_type")} = 'document-asset' AND ${textDocumentMembership(field("target_id"))}) OR ${documentVirtualPath} OR ${textDocumentMembership(metadataDocumentId)} OR (${parseArtifactTarget}) OR (${projectionTarget}) OR (${pathTarget}) OR (${stagedCommitTarget}))`;
+  return `${scope} AND ((${field("target_type")} = 'knowledge-space' AND ${field("target_id")} = ${textParam(2)}) OR (${field("target_type")} = 'document-asset' AND ${textDocumentMembership(field("target_id"))}) OR ${documentVirtualPath} OR ${textDocumentMembership(metadataDocumentId)} OR (${parseArtifactTarget}) OR (${projectionTarget}) OR (${pathTarget}) OR (${stagedCommitTarget}))`;
 }
 
 async function hasActiveMutationLease(

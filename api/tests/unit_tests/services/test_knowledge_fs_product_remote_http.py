@@ -9,6 +9,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
 )
@@ -520,17 +521,22 @@ def test_binary_remote_closes_and_maps_all_upstream_response_failures(
 
 
 @pytest.mark.parametrize(
-    ("status_code", "content_type", "body"),
+    ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
-        (500, "application/json", b"{}"),
-        (200, "text/plain", b"ok"),
-        (200, "application/json", b"{"),
+        (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
+        (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
+        (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
+        (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
+        (200, "text/plain", b"ok", KnowledgeFSProductRemoteError, None),
+        (200, "application/json", b"{", KnowledgeFSProductRemoteError, None),
     ],
 )
 def test_json_remote_closes_and_maps_upstream_response_failures(
     status_code: int,
     content_type: str,
     body: bytes,
+    error_type: type[Exception],
+    expected_status: int | None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     response = httpx.Response(status_code, content=body, headers={"Content-Type": content_type})
@@ -538,7 +544,28 @@ def test_json_remote_closes_and_maps_upstream_response_failures(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with pytest.raises(KnowledgeFSProductRemoteError):
+    with pytest.raises(error_type) as raised:
+        client.execute_json(_json_request())
+
+    if expected_status is not None:
+        assert isinstance(raised.value, KnowledgeFSProductRequestRejectedError)
+        assert raised.value.status_code == expected_status
+    assert response.is_closed
+
+
+def test_json_remote_preserves_authoritative_resource_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(
+        404,
+        json={"error": "Source sync policy not found"},
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductResourceNotFoundError):
         client.execute_json(_json_request())
 
     assert response.is_closed

@@ -609,7 +609,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       }),
     complete: ({ fence, now, state = "completed" }) =>
       database.transaction(async (tx) => {
-        const { run: current } = await requireFenced(database, tx, fence, now);
+        const { permission, run: current } = await requireFenced(database, tx, fence, now);
         if (state === "preview_ready" && current.kind !== "crawl-preview") invalidState();
         const terminal = state === "completed" || state === "zero_results";
         const next = await writeFenced(database, tx, current, {
@@ -631,7 +631,15 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         });
         await finishOutbox(database, tx, current.id, "completed", now);
         if (terminal && current.kind === "sync" && current.sourceId) {
-          await appendSourceWorkflowActivity(database, tx, next, "source.synced", "success", now);
+          await appendSourceWorkflowActivity(
+            database,
+            tx,
+            next,
+            "source.synced",
+            "success",
+            now,
+            permission?.actorSubjectId,
+          );
         }
         return next;
       }),
@@ -662,7 +670,16 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       }),
     fail: ({ errorCode, errorMessage, fence, now }) =>
       database.transaction(async (tx) => {
-        const { run: current } = await requireFenced(database, tx, fence, now, [], true);
+        const { permission, run: current } = await requireFenced(
+          database,
+          tx,
+          fence,
+          now,
+          [],
+          true,
+          true,
+          true,
+        );
         const next = await writeTerminal(database, tx, current, {
           errorCode,
           errorMessage,
@@ -671,7 +688,15 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         });
         await finishOutbox(database, tx, current.id, "completed", now);
         if (current.sourceId) {
-          await appendSourceWorkflowActivity(database, tx, next, "source.failed", "failure", now);
+          await appendSourceWorkflowActivity(
+            database,
+            tx,
+            next,
+            "source.failed",
+            "failure",
+            now,
+            permission?.actorSubjectId,
+          );
         }
         return next;
       }),
@@ -686,13 +711,22 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       runId,
     }) =>
       database.transaction(async (tx) => {
-        const admitted = await getRunForMutationAdmission(database, tx, runId, now, {
-          accessChannel,
-          capabilityGrantId,
-          permissionSnapshotId,
-          permissionSnapshotRevision,
-          requestedBySubjectId,
-        });
+        const admitted = await getRunForMutationAdmission(
+          database,
+          tx,
+          runId,
+          now,
+          {
+            accessChannel,
+            capabilityGrantId,
+            permissionSnapshotId,
+            permissionSnapshotRevision,
+            requestedBySubjectId,
+          },
+          [],
+          false,
+          true,
+        );
         if (!admitted) return null;
         const current = admitted.run;
         if (["completed", "zero_results", "canceled"].includes(current.state)) return current;
@@ -1444,6 +1478,7 @@ async function updateRun(
     "progress_completed",
     "progress_skipped",
     "progress_failed",
+    "capability_grant_id",
     "permission_snapshot_id",
     "permission_snapshot_revision",
     "requested_by_subject_id",
@@ -1465,8 +1500,8 @@ async function updateRun(
     "required_permission_scope",
   ] as const;
   const allParams = runParams(next);
-  // Immutable id/tenant/space occupy 0..2 and created_at is immutable at index 29.
-  const sourceParams = [...allParams.slice(3, 29), ...allParams.slice(30)];
+  // Immutable id/tenant/space occupy 0..2 and created_at is immutable at index 30.
+  const sourceParams = [...allParams.slice(3, 30), ...allParams.slice(31)];
   const updateParams = [...sourceParams, next.id, next.rowVersion - 1, ...extraParams];
   const idPosition = mutableColumns.length + 1;
   const versionPosition = idPosition + 1;
@@ -1489,6 +1524,8 @@ async function requireFenced(
   now: string,
   additionalSourceIds: readonly string[] = [],
   allowInvalidPermission = false,
+  allowDeletionFencedTerminalization = false,
+  bypassAuthorizationThroughDeletionFence = false,
 ) {
   const admitted = await getRunForMutationAdmission(
     database,
@@ -1498,6 +1535,8 @@ async function requireFenced(
     undefined,
     additionalSourceIds,
     allowInvalidPermission,
+    allowDeletionFencedTerminalization,
+    bypassAuthorizationThroughDeletionFence,
   );
   const run = admitted?.run;
   if (
@@ -1526,6 +1565,8 @@ async function getRunForMutationAdmission(
   >,
   additionalSourceIds: readonly string[] = [],
   allowInvalidPermission = false,
+  allowDeletionFencedTerminalization = false,
+  bypassAuthorizationThroughDeletionFence = false,
 ): Promise<{
   readonly permission: SourceWorkflowAuthorization | undefined;
   readonly run: SourceWorkflowRun;
@@ -1533,7 +1574,12 @@ async function getRunForMutationAdmission(
 } | null> {
   const candidate = await getRun(database, tx, runId, false);
   if (!candidate) return null;
-  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, tx, candidate))) {
+  const writable = await lockKnowledgeSpaceForDeletionAdmission(database, tx, candidate);
+  const terminalizingThroughDeletionFence = !writable && allowDeletionFencedTerminalization;
+  if (
+    !writable &&
+    (!terminalizingThroughDeletionFence || !(await knowledgeSpaceExists(database, tx, candidate)))
+  ) {
     throw new SourceWorkflowError(
       "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
       "Knowledge space is missing or deletion-fenced",
@@ -1543,43 +1589,53 @@ async function getRunForMutationAdmission(
     ? { ...candidate, ...authorizationOverride }
     : candidate;
   let permission: SourceWorkflowAuthorization | undefined;
-  try {
-    permission = await assertSourceWorkflowPermissionFence(database, tx, authorizationBinding, now);
-  } catch (error) {
-    if (
-      !allowInvalidPermission ||
-      !(error instanceof SourceWorkflowError) ||
-      error.code !== "SOURCE_WORKFLOW_PERMISSION_INVALID"
-    ) {
-      throw error;
-    }
-  }
   let sourceScopes: ReadonlyMap<string, readonly string[]>;
-  try {
-    sourceScopes = await lockSourceWorkflowAdmissions(
-      database,
-      tx,
-      candidate.knowledgeSpaceId,
-      [candidate.sourceId, ...additionalSourceIds],
-      permission,
-    );
-  } catch (error) {
-    if (
-      !allowInvalidPermission ||
-      !(error instanceof SourceWorkflowError) ||
-      error.code !== "SOURCE_WORKFLOW_PERMISSION_INVALID"
-    ) {
-      throw error;
-    }
+  if (terminalizingThroughDeletionFence && bypassAuthorizationThroughDeletionFence) {
     permission = undefined;
-    sourceScopes = await lockSourceWorkflowAdmissions(
-      database,
-      tx,
-      candidate.knowledgeSpaceId,
-      [candidate.sourceId, ...additionalSourceIds],
-      undefined,
-      true,
-    );
+    sourceScopes = new Map();
+  } else {
+    try {
+      permission = await assertSourceWorkflowPermissionFence(
+        database,
+        tx,
+        authorizationBinding,
+        now,
+      );
+    } catch (error) {
+      if (
+        !allowInvalidPermission ||
+        !(error instanceof SourceWorkflowError) ||
+        error.code !== "SOURCE_WORKFLOW_PERMISSION_INVALID"
+      ) {
+        throw error;
+      }
+    }
+    try {
+      sourceScopes = await lockSourceWorkflowAdmissions(
+        database,
+        tx,
+        candidate.knowledgeSpaceId,
+        [candidate.sourceId, ...additionalSourceIds],
+        permission,
+      );
+    } catch (error) {
+      if (
+        !allowInvalidPermission ||
+        !(error instanceof SourceWorkflowError) ||
+        error.code !== "SOURCE_WORKFLOW_PERMISSION_INVALID"
+      ) {
+        throw error;
+      }
+      permission = undefined;
+      sourceScopes = await lockSourceWorkflowAdmissions(
+        database,
+        tx,
+        candidate.knowledgeSpaceId,
+        [candidate.sourceId, ...additionalSourceIds],
+        undefined,
+        true,
+      );
+    }
   }
   const current = await getRun(database, tx, runId, true);
   if (!current) return null;
@@ -1598,6 +1654,21 @@ async function getRunForMutationAdmission(
     fenceConflict();
   }
   return { permission, run: current, sourceScopes };
+}
+
+async function knowledgeSpaceExists(
+  database: DatabaseAdapter,
+  tx: DatabaseExecutor,
+  input: Pick<SourceWorkflowRun, "knowledgeSpaceId" | "tenantId">,
+): Promise<boolean> {
+  const result = await tx.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [input.tenantId, input.knowledgeSpaceId],
+    sql: `SELECT ${q(database, "id")} FROM ${q(database, "knowledge_spaces")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "id")} = ${p(database, 2)} LIMIT 1;`,
+    tableName: "knowledge_spaces",
+  });
+  return result.rows.length === 1;
 }
 
 async function lockSourceWorkflowAdmissions(
@@ -1701,7 +1772,10 @@ async function assertSourceWorkflowPermissionFence(
         knowledgeSpaceId: binding.knowledgeSpaceId,
         tenantId: binding.tenantId,
       });
-      return { permissionScopes: grant.contentScopeIds };
+      return {
+        actorSubjectId: grant.subjectId,
+        permissionScopes: grant.contentScopeIds,
+      };
     } catch {
       throw new SourceWorkflowError(
         "SOURCE_WORKFLOW_PERMISSION_INVALID",
@@ -1745,10 +1819,15 @@ async function assertSourceWorkflowPermissionFence(
     );
   }
   assertSourceWorkflowScopeAllowed(binding.requiredPermissionScope, permission.permissionScopes);
-  return permission;
+  return {
+    actorSubjectId: permission.subjectId,
+    permissionScopes: permission.permissionScopes,
+  };
 }
 
 interface SourceWorkflowAuthorization {
+  /** Subject resolved under the same durable permission or Capability fence as terminalization. */
+  readonly actorSubjectId: string;
   readonly permissionScopes: readonly string[];
 }
 
@@ -1927,6 +2006,7 @@ async function appendSourceWorkflowActivity(
   action: "source.failed" | "source.synced",
   result: "failure" | "success",
   now: string,
+  actorSubjectId?: string,
 ) {
   if (!run.sourceId) return;
   const source = await tx.execute({
@@ -1945,12 +2025,13 @@ async function appendSourceWorkflowActivity(
   const requiredPermissionScope = candidatePermissionScopeSnapshot(
     jsonStringArrayColumn(row, "permission_scope"),
   );
+  const memberActorId = actorSubjectId ?? run.requestedBySubjectId;
   await appendKnowledgeSpaceActivityWithExecutor({
     database,
     executor: tx,
     input: {
       action,
-      actor: { id: run.requestedBySubjectId, type: "member" },
+      actor: memberActorId ? { id: memberActorId, type: "member" } : { type: "system" },
       details: {
         ...(run.lastErrorCode ? { reasonCode: run.lastErrorCode } : {}),
         count: run.progressCompleted,

@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  LogicalDocument,
-  LogicalDocumentRevision,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { LogicalDocument, LogicalDocumentRevision } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
@@ -13,6 +10,7 @@ import { DocumentChunkDetail } from './document-chunk-detail'
 import { DocumentChunkTreePanel } from './document-chunk-tree'
 import { buildDocumentChunkTree } from './document-detail-model'
 import { documentChunksQueryOptions } from './document-detail-queries'
+import { documentChunkListFromApi } from './document-models'
 
 export function DocumentRevisionContent({
   document,
@@ -109,9 +107,9 @@ function LoadedDocumentRevisionContent({
   const chunksQuery = useInfiniteQuery(chunksQueryOptions)
   const chunks = useMemo(
     () =>
-      [...(chunksQuery.data?.pages.flatMap((page) => page.items) ?? [])].sort(
-        (left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id),
-      ),
+      [
+        ...(chunksQuery.data?.pages.flatMap((page) => documentChunkListFromApi(page).items) ?? []),
+      ].sort((left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id)),
     [chunksQuery.data],
   )
   const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])

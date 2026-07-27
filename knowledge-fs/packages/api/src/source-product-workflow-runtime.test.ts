@@ -174,7 +174,28 @@ describe("source-product workflow staged content store", () => {
 
 describe("source-product workflow provider imports", () => {
   it("stages a crawl preview, imports the frozen selection, and drains staged content", async () => {
-    const source = sourceRecord("crawl-preview-source", { type: "web" });
+    let source = sourceRecord("crawl-preview-source", {
+      metadata: { preview: true },
+      status: "disabled",
+      type: "web",
+    });
+    const sources = {
+      get: vi.fn(async () => source),
+      update: vi.fn(
+        async (input: {
+          readonly metadata?: Source["metadata"];
+          readonly status?: Source["status"];
+        }) => {
+          source = {
+            ...source,
+            ...(input.metadata ? { metadata: input.metadata } : {}),
+            ...(input.status ? { status: input.status } : {}),
+            version: source.version + 1,
+          };
+          return source;
+        },
+      ),
+    };
     const pages = [
       {
         content: "First page body",
@@ -219,6 +240,7 @@ describe("source-product workflow provider imports", () => {
       maxCleanupBatchesPerRun: 2,
       run,
       source,
+      sources: sources as never,
       websiteCrawl: { crawl: vi.fn(async () => ({ pages })) },
     });
 
@@ -255,6 +277,7 @@ describe("source-product workflow provider imports", () => {
     });
     expect(fixture.publish).toHaveBeenCalledTimes(2);
     expect(deleteRun).toHaveBeenCalledTimes(2);
+    expect(source).toMatchObject({ metadata: { preview: false }, status: "active", version: 2 });
   });
 
   it("imports online-document records with and without optional identity metadata", async () => {

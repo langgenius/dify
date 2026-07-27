@@ -60,6 +60,10 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[0]?.sql).toContain(
         dialect === "postgres" ? '"knowledge_space_id" = $2' : "`knowledge_space_id` = ?",
       );
+      if (dialect === "postgres") {
+        expect(calls[0]?.sql).toContain("$3::uuid IS NOT NULL");
+        expect(calls[0]?.sql).toContain("$4::uuid IS NOT NULL");
+      }
       expect(calls[0]?.sql).toContain("'knowledge_space'");
       expect(calls[0]?.sql).toContain("'source'");
       expect(calls[0]?.sql).toContain("'document_asset'");

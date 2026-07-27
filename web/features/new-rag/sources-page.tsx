@@ -1,7 +1,7 @@
 'use client'
 
-import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type { Source } from './source-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -34,6 +34,7 @@ import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath } from './routes'
+import { sourceFromApi } from './source-models'
 
 type SourceStatus = Source['status']
 type SourceFilter = SourceStatus | 'all'
@@ -214,6 +215,7 @@ function SourceRow({
   checked,
   knowledgeSpaceId,
   onCheckedChange,
+  onSourceReconciled,
   onRemoved,
   onSourceChange,
   source,
@@ -223,6 +225,7 @@ function SourceRow({
   checked: boolean
   knowledgeSpaceId: string
   onCheckedChange: (checked: boolean) => void
+  onSourceReconciled: () => void
   onRemoved: () => void
   onSourceChange: (source: Source) => void
   source: Source
@@ -240,6 +243,7 @@ function SourceRow({
     action: SourceAction,
     mutation: () => Promise<Result>,
     onAccepted?: (result: Result) => void,
+    onRefreshed?: () => void,
   ) => {
     if (pendingAction) return false
     setPendingAction(action)
@@ -251,7 +255,7 @@ function SourceRow({
         toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
         try {
           await queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+            queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
           })
         } catch {
           return false
@@ -262,8 +266,9 @@ function SourceRow({
 
       try {
         await queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
         })
+        onRefreshed?.()
       } catch {
         // The accepted mutation is already reflected by the list-owner state.
       }
@@ -277,24 +282,27 @@ function SourceRow({
     runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdSync({
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post({
           headers: { 'Idempotency-Key': createIdempotencyKey() },
-          params: { id: knowledgeSpaceId, sourceId: source.id },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
         }),
       () => onSourceChange({ ...source, status: 'syncing' }),
+      onSourceReconciled,
     )
 
   const toggleSource = () =>
     runAction(
       'toggle',
-      () =>
-        consoleClient.knowledgeFs.patchKnowledgeSpacesByIdSourcesBySourceId({
-          body: {
-            ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-            status: source.status === 'disabled' ? 'active' : 'disabled',
-          },
-          params: { id: knowledgeSpaceId, sourceId: source.id },
-        }),
+      async () =>
+        sourceFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: {
+              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+              status: source.status === 'disabled' ? 'active' : 'disabled',
+            },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+        ),
       onSourceChange,
     )
 
@@ -303,10 +311,10 @@ function SourceRow({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
           body: { expectedRevision: source.version },
-          headers: { 'idempotency-key': createIdempotencyKey() },
-          params: { id: knowledgeSpaceId, sourceId: source.id },
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
           query: { documents: 'keep' },
         })
       },
@@ -449,29 +457,30 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Source>>({})
   const [removedSourceIds, setRemovedSourceIds] = useState<Set<string>>(() => new Set())
   const sourcesQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.infiniteOptions({
       input: (pageParam) => ({
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
         query: {
           limit: PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
       refetchInterval: (query) =>
         query.state.data?.pages.some((page) =>
-          page.items.some(
+          page.data.some(
             (source) =>
               !removedSourceIds.has(source.id) &&
-              getCurrentSource(source, sourceOverrides[source.id]).status === 'syncing',
+              getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]).status ===
+                'syncing',
           ),
         )
           ? SOURCE_POLL_INTERVAL
           : false,
     }),
   )
-  const remoteSources = sourcesQuery.data?.pages.flatMap((page) => page.items)
+  const remoteSources = sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi))
   const sources = useMemo(
     () =>
       (remoteSources ?? [])
@@ -504,12 +513,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const latestSourcePage = sourcesQuery.data?.pages.at(-1)
   const needsVisibleSource =
     latestSourcePage !== undefined &&
-    latestSourcePage.items.some((source) =>
-      isPreviewDraft(getCurrentSource(source, sourceOverrides[source.id])),
+    latestSourcePage.data.some((source) =>
+      isPreviewDraft(getCurrentSource(sourceFromApi(source), sourceOverrides[source.id])),
     ) &&
-    !latestSourcePage.items.some((source) => {
+    !latestSourcePage.data.some((source) => {
       if (removedSourceIds.has(source.id)) return false
-      return !isPreviewDraft(getCurrentSource(source, sourceOverrides[source.id]))
+      return !isPreviewDraft(getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]))
     })
   const completingFilteredResults =
     (canAutoCompleteFilteredResults || needsVisibleSource) &&
@@ -703,6 +712,14 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                         ...current,
                         [updatedSource.id]: updatedSource,
                       }))
+                    }
+                    onSourceReconciled={() =>
+                      setSourceOverrides((current) => {
+                        if (!current[source.id]) return current
+                        const next = { ...current }
+                        delete next[source.id]
+                        return next
+                      })
                     }
                     onCheckedChange={(checked) => {
                       setSelectedSourceIds((current) => {

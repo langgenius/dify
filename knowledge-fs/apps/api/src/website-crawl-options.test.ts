@@ -12,6 +12,7 @@ const WEB_SOURCE: WebsiteCrawlInput["source"] = {
   id: "00000000-0000-4000-8000-000000000001",
   knowledgeSpaceId: "10000000-0000-4000-8000-000000000001",
   metadata: {
+    crawlOptions: { includeSubpages: false, limit: 1 },
     datasource: "crawl",
     parameters: { limit: 5 },
     pluginId: "langgenius/firecrawl_datasource",
@@ -62,7 +63,7 @@ describe("createApiWebsiteCrawlConnector", () => {
     const result = await connector.crawl({ source: WEB_SOURCE, tenantId: "tenant-1" });
 
     expect(result).toEqual({
-      completed: 2,
+      completed: 1,
       pages: [
         {
           content: "# A",
@@ -70,10 +71,9 @@ describe("createApiWebsiteCrawlConnector", () => {
           sourceUrl: "https://example.com/a",
           title: "A",
         },
-        { content: "# B", sourceUrl: "https://example.com/b" },
       ],
       status: "completed",
-      total: 2,
+      total: 1,
     });
 
     expect(calls).toHaveLength(1);

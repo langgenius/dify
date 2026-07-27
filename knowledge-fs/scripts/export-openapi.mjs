@@ -16,7 +16,7 @@ function argumentValue(name) {
 process.env.NODE_ENV = "test";
 const [
   { createNodePlatformAdapter },
-  { createKnowledgeGateway },
+  { createKnowledgeGateway, registerSourceProductHandlers },
   { createInMemoryCapabilityGrantProvenanceRepository },
 ] = await Promise.all([
   import("../packages/adapters/src/node.ts"),
@@ -52,6 +52,20 @@ const app = createKnowledgeGateway({
     presignPart: unavailableInContractExport,
     putSmallFile: unavailableInContractExport,
   },
+});
+const unavailableService = new Proxy(
+  {},
+  {
+    get: () => unavailableInContractExport,
+  },
+);
+registerSourceProductHandlers({
+  app,
+  authorization: unavailableService,
+  connections: unavailableService,
+  providers: unavailableService,
+  repository: unavailableService,
+  workflows: unavailableService,
 });
 const response = await app.request("/openapi.json");
 if (!response.ok) {

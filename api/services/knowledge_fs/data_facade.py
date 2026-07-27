@@ -18,6 +18,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSCrawlPreviewPageListResponse,
+    KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
@@ -31,6 +33,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewHealthResponse,
@@ -47,6 +50,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSmallFileUploadResponse,
+    KnowledgeFSSourceConnectionCreatePayload,
+    KnowledgeFSSourceConnectionListResponse,
+    KnowledgeFSSourceConnectionRefreshPayload,
+    KnowledgeFSSourceConnectionResponse,
     KnowledgeFSSourceCrawlResponse,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceCredentialTestResponse,
@@ -57,8 +64,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceImportResponse,
     KnowledgeFSSourceListResponse,
     KnowledgeFSSourcePagesResponse,
+    KnowledgeFSSourceProviderListResponse,
     KnowledgeFSSourceResponse,
+    KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowCancelPayload,
+    KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSTraceListResponse,
@@ -193,6 +205,36 @@ class KnowledgeFSDataFacade:
             query=(("cursor", cursor),) if cursor else (),
         )
         return KnowledgeFSDocumentListResponse.model_validate(raw)
+
+    def list_logical_documents(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None,
+    ) -> KnowledgeFSLogicalDocumentListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listLogicalDocuments",
+            query=(("cursor", cursor),) if cursor else (),
+        )
+        return KnowledgeFSLogicalDocumentListResponse.model_validate(raw)
+
+    def get_logical_document(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
+    ) -> KnowledgeFSLogicalDocumentResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getLogicalDocument",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+        )
+        return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
 
     def create_document(
         self,
@@ -630,6 +672,235 @@ class KnowledgeFSDataFacade:
             path_parameters=(("sourceId", source_id),),
         )
         return KnowledgeFSSourceCredentialTestResponse.model_validate(raw)
+
+    def sync_source(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        idempotency_key: str,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="syncSource",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def list_source_providers(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSSourceProviderListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listSourceProviders",
+        )
+        return KnowledgeFSSourceProviderListResponse.model_validate(raw)
+
+    def create_source_connection(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSSourceConnectionCreatePayload,
+    ) -> KnowledgeFSSourceConnectionResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createSourceConnection",
+            payload=payload,
+        )
+        return KnowledgeFSSourceConnectionResponse.model_validate(raw)
+
+    def list_source_connections(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None,
+        limit: int,
+    ) -> KnowledgeFSSourceConnectionListResponse:
+        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listSourceConnections",
+            query=query,
+        )
+        return KnowledgeFSSourceConnectionListResponse.model_validate(raw)
+
+    def refresh_source_connection(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        connection_id: str,
+        payload: KnowledgeFSSourceConnectionRefreshPayload,
+    ) -> KnowledgeFSSourceConnectionResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="refreshSourceConnection",
+            payload=payload,
+            path_parameters=(("connectionId", connection_id),),
+        )
+        return KnowledgeFSSourceConnectionResponse.model_validate(raw)
+
+    def preview_source_crawl(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        idempotency_key: str,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="previewSourceCrawl",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def get_source_sync_policy(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, source_id: str
+    ) -> KnowledgeFSSourceSyncPolicyResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getSourceSyncPolicy",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+        )
+        return KnowledgeFSSourceSyncPolicyResponse.model_validate(raw)
+
+    def update_source_sync_policy(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        payload: KnowledgeFSSourceSyncPolicyPayload,
+    ) -> KnowledgeFSSourceSyncPolicyResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="updateSourceSyncPolicy",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+            payload=payload,
+        )
+        return KnowledgeFSSourceSyncPolicyResponse.model_validate(raw)
+
+    def get_source_workflow(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, run_id: str
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getSourceWorkflow",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def cancel_source_workflow(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        run_id: str,
+        payload: KnowledgeFSSourceWorkflowCancelPayload,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="cancelSourceWorkflow",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
+            payload=payload,
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def retry_source_workflow(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, run_id: str
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="retrySourceWorkflow",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def list_crawl_preview_pages(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        run_id: str,
+        cursor: str | None,
+        limit: int,
+    ) -> KnowledgeFSCrawlPreviewPageListResponse:
+        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listCrawlPreviewPages",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
+            query=query,
+        )
+        return KnowledgeFSCrawlPreviewPageListResponse.model_validate(raw)
+
+    def select_crawl_preview_pages(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        run_id: str,
+        payload: KnowledgeFSCrawlPreviewSelectionPayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="selectCrawlPreviewPages",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
+            payload=payload,
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
 
     def crawl_source(
         self, *, tenant_id: str, account_id: str, control_space_id: str, source_id: str

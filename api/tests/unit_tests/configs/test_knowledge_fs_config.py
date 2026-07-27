@@ -17,6 +17,7 @@ _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_ENABLED",
     "KNOWLEDGE_FS_BASE_URL",
     "KNOWLEDGE_FS_DIRECT_ORIGIN",
+    "KNOWLEDGE_FS_DIRECT_UPLOAD_READY",
     "KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED",
     "KNOWLEDGE_FS_INTEGRATED_PROVISION_READY",
     "KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY",
@@ -68,6 +69,7 @@ def test_knowledge_fs_lifecycle_worker_is_disabled_by_default() -> None:
     assert config.KNOWLEDGE_FS_INTEGRATED_PROVISION_READY is False
     assert config.KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY is False
     assert config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED is False
+    assert config.KNOWLEDGE_FS_DIRECT_UPLOAD_READY is False
 
 
 def test_capability_v2_requires_private_signing_configuration_when_enabled() -> None:

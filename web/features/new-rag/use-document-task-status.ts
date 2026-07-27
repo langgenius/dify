@@ -1,27 +1,22 @@
 'use client'
 
-import type {
-  DocumentProcessingTask,
-  DocumentProcessingTaskList,
-} from '@dify/contracts/knowledge-fs/types.gen'
-import type { InfiniteData } from '@tanstack/react-query'
-import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
 import { consoleQuery } from '@/service/client'
-import { responseStatus } from './document-detail-model'
 import { newestTaskByDocument } from './document-model'
+import { documentTaskListFromApi } from './document-models'
 
 const TASK_PAGE_SIZE = 100
 const TASK_LOOKUP_PAGE_BATCH = 3
 const ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const SUBMISSION_DISCOVERY_REFRESH_INTERVAL = 2000
 
-function documentTaskIsActive(task: DocumentProcessingTask | undefined) {
+function documentTaskIsActive(state: string | undefined) {
   return (
-    task?.state === 'dispatch_pending' ||
-    task?.state === 'queued' ||
-    task?.state === 'running' ||
-    task?.state === 'retry_wait'
+    state === 'dispatch_pending' ||
+    state === 'queued' ||
+    state === 'running' ||
+    state === 'retry_wait'
   )
 }
 
@@ -30,7 +25,6 @@ export function useDocumentTaskStatus({
   enabled,
   knowledgeSpaceId,
   minimumRevision,
-  submissionDiscoveryGeneration,
   submissionNeedsRecheck,
   submissionPending,
 }: {
@@ -38,148 +32,60 @@ export function useDocumentTaskStatus({
   enabled: boolean
   knowledgeSpaceId: string
   minimumRevision: number
-  submissionDiscoveryGeneration?: number
   submissionNeedsRecheck: boolean
   submissionPending: boolean
 }) {
-  const queryClient = useQueryClient()
-  const completedDiscoveryGenerationRef = useRef<number | undefined>(undefined)
-  const missingTaskIdsRef = useRef(new Set<string>())
   const [lookupPageLimit, setLookupPageLimit] = useState(TASK_LOOKUP_PAGE_BATCH)
   const tasksQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks.infiniteOptions(
-        {
-          enabled,
-          input: (pageParam) => ({
-            params: { documentId, id: knowledgeSpaceId },
-            query: {
-              limit: TASK_PAGE_SIZE,
-              ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-            },
-          }),
-          getNextPageParam: (lastPage) => lastPage.nextCursor,
-          initialPageParam: null as string | null,
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
+        enabled,
+        input: (pageParam) => ({
+          params: { control_space_id: knowledgeSpaceId },
+          query: {
+            limit: TASK_PAGE_SIZE,
+            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          },
+        }),
+        getNextPageParam: (lastPage) => lastPage.next_cursor,
+        initialPageParam: null as string | null,
+        refetchInterval: (query) => {
+          const tasks =
+            query.state.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? []
+          if (
+            tasks.some((task) => task.documentId === documentId && documentTaskIsActive(task.state))
+          )
+            return ACTIVE_TASK_REFRESH_INTERVAL
+          return submissionPending || submissionNeedsRecheck
+            ? SUBMISSION_DISCOVERY_REFRESH_INTERVAL
+            : false
         },
-      ),
-    [documentId, enabled, knowledgeSpaceId],
+      }),
+    [documentId, enabled, knowledgeSpaceId, submissionNeedsRecheck, submissionPending],
   )
   const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const {
     data: tasksData,
-    error: tasksQueryError,
+    error: tasksError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isPending,
-    refetch: refetchTasks,
+    refetch,
   } = tasksQuery
-  const historyTasks = useMemo(
-    () => tasksData?.pages.flatMap((page) => page.items) ?? [],
+  const tasks = useMemo(
+    () => tasksData?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
     [tasksData],
   )
-  const historyHasSubmittedTask = historyTasks.some(
-    (task) =>
-      !missingTaskIdsRef.current.has(task.id) &&
-      task.documentId === documentId &&
-      task.documentRevision >= minimumRevision,
-  )
-  const submissionTasksQueryOptions = useMemo(
-    () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks.queryOptions(
-        {
-          enabled: enabled && submissionPending && !historyHasSubmittedTask,
-          input: {
-            params: { documentId, id: knowledgeSpaceId },
-            query: { limit: TASK_PAGE_SIZE },
-          },
-          refetchInterval: (query) => {
-            if (
-              query.state.error ||
-              !submissionDiscoveryGeneration ||
-              completedDiscoveryGenerationRef.current === submissionDiscoveryGeneration
-            )
-              return false
-            const hasSubmittedTask = query.state.data?.items.some(
-              (task) =>
-                !missingTaskIdsRef.current.has(task.id) &&
-                task.documentId === documentId &&
-                task.documentRevision >= minimumRevision,
-            )
-            if (hasSubmittedTask) {
-              completedDiscoveryGenerationRef.current = submissionDiscoveryGeneration
-              return false
-            }
-            return enabled && submissionPending && !hasSubmittedTask
-              ? SUBMISSION_DISCOVERY_REFRESH_INTERVAL
-              : false
-          },
-          refetchOnWindowFocus: false,
-          retry: (failureCount, error) => {
-            const status = responseStatus(error)
-            return status !== 403 && status !== 404 && failureCount < 2
-          },
-        },
-      ),
-    [
-      documentId,
-      enabled,
-      historyHasSubmittedTask,
-      knowledgeSpaceId,
-      minimumRevision,
-      submissionDiscoveryGeneration,
-      submissionPending,
-    ],
-  )
-  const submissionTasksQuery = useQuery(submissionTasksQueryOptions)
-  const tasks = useMemo(
-    () => [...(submissionTasksQuery.data?.items ?? []), ...historyTasks],
-    [historyTasks, submissionTasksQuery.data],
-  )
-  const discoveredTask = useMemo(() => {
-    const candidate = newestTaskByDocument(
+  const latestTask = useMemo(() => {
+    const task = newestTaskByDocument(
       tasks.filter(
-        (task) =>
-          !missingTaskIdsRef.current.has(task.id) &&
-          task.documentId === documentId &&
-          task.documentRevision >= minimumRevision,
+        (candidate) =>
+          candidate.documentId === documentId && candidate.documentRevision >= minimumRevision,
       ),
     ).get(documentId)
-    return candidate && candidate.documentRevision >= minimumRevision ? candidate : undefined
+    return task && task.documentRevision >= minimumRevision ? task : undefined
   }, [documentId, minimumRevision, tasks])
-  const discoveredTaskIsActive = documentTaskIsActive(discoveredTask)
-  const taskSnapshotQuery = useQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.queryOptions(
-      {
-        enabled: enabled && discoveredTaskIsActive,
-        input:
-          enabled && discoveredTaskIsActive && discoveredTask
-            ? {
-                params: {
-                  documentId,
-                  id: knowledgeSpaceId,
-                  taskId: discoveredTask.id,
-                },
-              }
-            : skipToken,
-        refetchInterval: (query) =>
-          !query.state.error && documentTaskIsActive(query.state.data ?? discoveredTask)
-            ? ACTIVE_TASK_REFRESH_INTERVAL
-            : false,
-        retry: (failureCount, error) => {
-          const status = responseStatus(error)
-          return status !== 403 && status !== 404 && failureCount < 2
-        },
-      },
-    ),
-  )
-  const taskSnapshotErrorStatus = responseStatus(taskSnapshotQuery.error)
-  const latestTask =
-    taskSnapshotErrorStatus === 403 || taskSnapshotErrorStatus === 404
-      ? undefined
-      : taskSnapshotQuery.data?.id === discoveredTask?.id
-        ? taskSnapshotQuery.data
-        : discoveredTask
   const lookupExhausted = Boolean(
     !latestTask && hasNextPage && (tasksData?.pages.length ?? 0) >= lookupPageLimit,
   )
@@ -189,7 +95,7 @@ export function useDocumentTaskStatus({
       isPending ||
       !enabled ||
       isFetchingNextPage ||
-      tasksQueryError ||
+      tasksError ||
       latestTask ||
       !hasNextPage ||
       lookupExhausted
@@ -197,57 +103,14 @@ export function useDocumentTaskStatus({
       return
     void fetchNextPage()
   }, [
-    fetchNextPage,
     enabled,
+    fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isPending,
     latestTask,
     lookupExhausted,
-    tasksQueryError,
-  ])
-
-  useEffect(() => {
-    if (
-      taskSnapshotErrorStatus !== 404 ||
-      !discoveredTask ||
-      missingTaskIdsRef.current.has(discoveredTask.id)
-    )
-      return
-    missingTaskIdsRef.current.add(discoveredTask.id)
-    if (completedDiscoveryGenerationRef.current === submissionDiscoveryGeneration)
-      completedDiscoveryGenerationRef.current = undefined
-    queryClient.setQueryData<DocumentProcessingTaskList>(
-      submissionTasksQueryOptions.queryKey,
-      (current) =>
-        current
-          ? { ...current, items: current.items.filter((task) => task.id !== discoveredTask.id) }
-          : current,
-    )
-    queryClient.setQueryData<InfiniteData<DocumentProcessingTaskList, string | null>>(
-      tasksQueryOptions.queryKey,
-      (current) =>
-        current
-          ? {
-              ...current,
-              pages: current.pages.map((page) => ({
-                ...page,
-                items: page.items.filter((task) => task.id !== discoveredTask.id),
-              })),
-            }
-          : current,
-    )
-    void Promise.all([
-      queryClient.invalidateQueries({ queryKey: tasksQueryOptions.queryKey }),
-      queryClient.invalidateQueries({ queryKey: submissionTasksQueryOptions.queryKey }),
-    ])
-  }, [
-    discoveredTask,
-    queryClient,
-    submissionDiscoveryGeneration,
-    submissionTasksQueryOptions.queryKey,
-    taskSnapshotErrorStatus,
-    tasksQueryOptions.queryKey,
+    tasksError,
   ])
 
   return {
@@ -258,18 +121,8 @@ export function useDocumentTaskStatus({
     latestTask,
     lookupExhausted,
     queryKey: tasksQueryOptions.queryKey,
-    refetch: async () => {
-      const results = await Promise.all([
-        refetchTasks(),
-        ...(enabled && submissionNeedsRecheck ? [submissionTasksQuery.refetch()] : []),
-        ...(enabled && discoveredTaskIsActive ? [taskSnapshotQuery.refetch()] : []),
-      ])
-      return results[0]
-    },
-    taskIsActive: documentTaskIsActive(latestTask),
-    tasksError:
-      tasksQueryError ??
-      (submissionPending && !historyHasSubmittedTask ? submissionTasksQuery.error : undefined) ??
-      (taskSnapshotErrorStatus === 404 ? undefined : taskSnapshotQuery.error),
+    refetch,
+    taskIsActive: documentTaskIsActive(latestTask?.state),
+    tasksError,
   }
 }

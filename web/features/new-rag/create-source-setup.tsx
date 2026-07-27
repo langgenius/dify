@@ -22,6 +22,9 @@ const sourceTypes = [
   { icon: 'i-ri-hard-drive-3-line', value: 'onlineDrive' },
 ] as const
 
+const DEFAULT_INCLUDE_SUBPAGES = true
+const DEFAULT_MAX_PAGES = 100
+
 const providers = {
   onlineDocuments: [
     { icon: 'i-custom-public-common-notion', label: 'Notion' },
@@ -117,6 +120,9 @@ export function CreateSourceSetup({
     ? draft.provider
     : availableProviders[0].label
   const previewReady = draft.sourceType === 'websiteCrawl' && isValidWebsiteSourceDraft(draft)
+  const crawlOptionsAreDefault =
+    draft.sourceType !== 'websiteCrawl' ||
+    (draft.includeSubpages === DEFAULT_INCLUDE_SUBPAGES && draft.maxPages === DEFAULT_MAX_PAGES)
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
@@ -273,7 +279,13 @@ export function CreateSourceSetup({
               {t(($) => $['newKnowledge.crawlOptions'])}
               {!optionsExpanded && (
                 <span className="ml-auto system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.usingDefaults'])}
+                  {crawlOptionsAreDefault
+                    ? t(($) => $['newKnowledge.usingDefaults'])
+                    : `${t(($) => $['newKnowledge.includeSubpages'])}: ${t(($) =>
+                        draft.includeSubpages
+                          ? $['newKnowledge.booleanTrue']
+                          : $['newKnowledge.booleanFalse'],
+                      )} · ${t(($) => $['newKnowledge.maxPages'])}: ${draft.maxPages}`}
                 </span>
               )}
             </button>

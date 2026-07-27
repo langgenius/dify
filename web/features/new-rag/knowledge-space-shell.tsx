@@ -33,8 +33,8 @@ export function KnowledgeSpaceShell({
   const { t: tCommon } = useTranslation('common')
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
-    ...consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({
-      input: { params: { id: knowledgeSpaceId } },
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
     }),
     retry: (failureCount, error) => {
       const status = responseStatus(error)
@@ -43,7 +43,9 @@ export function KnowledgeSpaceShell({
       return failureCount < 3
     },
   })
-  useDocumentTitle(knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge))
+  const knowledgeSpaceName =
+    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
+  useDocumentTitle(knowledgeSpaceName)
 
   if (knowledgeSpaceQuery.isPending)
     return (
@@ -119,7 +121,7 @@ export function KnowledgeSpaceShell({
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate system-md-semibold text-text-secondary">
-                  {knowledgeSpaceQuery.data.name}
+                  {knowledgeSpaceName}
                 </h1>
                 <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['chunkingMode.parentChild'])} ·{' '}
@@ -131,7 +133,7 @@ export function KnowledgeSpaceShell({
           </div>
           <nav
             className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
-            aria-label={knowledgeSpaceQuery.data.name}
+            aria-label={knowledgeSpaceName}
           >
             <button
               type="button"

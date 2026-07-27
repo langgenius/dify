@@ -1,9 +1,10 @@
 'use client'
 
-import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
+import type { KnowledgeFsSpaceCreateResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
 import type { QueuedUpload } from './create-upload-queue'
+import type { KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -38,8 +39,9 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
 import { CreateKnowledgeExitDialog } from './components/create-knowledge-exit-dialog'
@@ -52,6 +54,7 @@ import {
 } from './create-knowledge-workflow'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
+import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
 import { createRequestId } from './request-id'
 import {
   createNewKnowledgeSourceDraft,
@@ -68,23 +71,6 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   return 'empty'
 }
 
-async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
-  if (files.length === 1) {
-    await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocuments({
-      body: { file: files[0]! },
-      params: { id: knowledgeSpaceId },
-    })
-    return
-  }
-
-  const result = await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk({
-    body: { files },
-    params: { id: knowledgeSpaceId },
-  })
-  if (!result.accepted) throw new Error('No files were accepted')
-  return result
-}
-
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -94,15 +80,18 @@ export function CreateKnowledgePage() {
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const canConfigureAccess = hasPermission(
     workspacePermissionKeys,
     DatasetACLPermission.AccessConfig,
   )
-  const defaultVisibility: KnowledgeVisibility = canConfigureAccess ? 'all_members' : 'only_me'
+  const defaultVisibility: KnowledgeVisibility = canConfigureAccess ? 'all_team_members' : 'only_me'
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
-  const initialStartMode = normalizeStartMode(searchParams.get('start'))
+  const requestedStartMode = normalizeStartMode(searchParams.get('start'))
+  const initialStartMode =
+    requestedStartMode === 'upload' && !uploadAvailable ? 'empty' : requestedStartMode
   const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(initialStartMode)
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
     createNewKnowledgeSourceDraft('websiteCrawl'),
@@ -111,19 +100,21 @@ export function CreateKnowledgePage() {
     Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
   >({})
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
-  const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
+  const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading
   const uploadSubmissionBlocked =
-    startMode === 'upload' && (!uploads.length || uploads.some((upload) => upload.issue))
+    startMode === 'upload' &&
+    (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
   const sourceSubmissionBlocked =
     startMode === 'source' &&
     (sourceDraft.sourceType === 'websiteCrawl'
@@ -235,7 +226,7 @@ export function CreateKnowledgePage() {
     setExitReason(null)
     if (confirmedReason === 'partial' && createdKnowledge) {
       browserBackExitRef.current = false
-      replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.id))
+      replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.control_space_id))
       return
     }
     browserBackExitRef.current = false
@@ -268,7 +259,7 @@ export function CreateKnowledgePage() {
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
           void queryClient.invalidateQueries({
-            queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
+            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
           })
         },
         visibility,
@@ -277,21 +268,11 @@ export function CreateKnowledgePage() {
         setUploading(true)
         setUploadError(false)
         try {
-          const result = await uploadCreatedDocuments(
-            created.id,
-            uploads.map((upload) => upload.file),
+          await uploadKnowledgeFsDocuments(
+            created.control_space_id,
+            uploads.map(({ file, id }) => ({ file, id })),
+            uploadProgressRef.current,
           )
-          if (result?.excluded)
-            toast.warning(
-              t(($) => $['newKnowledge.documentUploadPartial'], {
-                accepted: result.accepted,
-                details: result.items
-                  .filter((item) => 'reason' in item)
-                  .map((item) => item.filename)
-                  .join(', '),
-                excluded: result.excluded,
-              }),
-            )
         } catch {
           setUploadError(true)
           return
@@ -308,7 +289,11 @@ export function CreateKnowledgePage() {
             JSON.stringify(sourceDraft),
           )
           replaceAfterHistoryGuard(
-            newKnowledgeAddSourcePath(created.id, sourceDraft.sourceType, sourceDraftKey),
+            newKnowledgeAddSourcePath(
+              created.control_space_id,
+              sourceDraft.sourceType,
+              sourceDraftKey,
+            ),
           )
         } catch {
           toast.error(t(($) => $['newKnowledge.addSourceFailed']))
@@ -318,17 +303,13 @@ export function CreateKnowledgePage() {
 
       replaceAfterHistoryGuard(
         startMode === 'upload'
-          ? newKnowledgeDocumentsPath(created.id)
-          : newKnowledgeDetailPath(created.id),
+          ? newKnowledgeDocumentsPath(created.control_space_id)
+          : newKnowledgeDetailPath(created.control_space_id),
       )
     } catch (error) {
-      if (error instanceof KnowledgeCreationError && error.createdKnowledge)
-        setCreatedKnowledge(error.createdKnowledge)
-
       if (
         error instanceof KnowledgeCreationError &&
-        error.stage === 'create' &&
-        isDefinitiveCreationRejection(error.originalError)
+        (error.stage === 'preflight' || isDefinitiveCreationRejection(error.originalError))
       ) {
         idempotencyKeyRef.current = undefined
         setSubmissionLocked(false)
@@ -440,7 +421,7 @@ export function CreateKnowledgePage() {
                         aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
                       >
                         {t(($) =>
-                          visibility === 'all_members'
+                          visibility === 'all_team_members'
                             ? $['newKnowledge.permissionAllMembers']
                             : $['newKnowledge.permissionOnlyMe'],
                         )}
@@ -452,7 +433,7 @@ export function CreateKnowledgePage() {
                           </SelectItemText>
                           <SelectItemIndicator />
                         </SelectItem>
-                        <SelectItem value="all_members">
+                        <SelectItem value="all_team_members">
                           <SelectItemText>
                             {t(($) => $['newKnowledge.permissionAllMembers'])}
                           </SelectItemText>
@@ -524,6 +505,7 @@ export function CreateKnowledgePage() {
                       value="upload"
                       icon="i-ri-file-text-line"
                       selected={startMode === 'upload'}
+                      disabled={!uploadAvailable}
                       title={t(($) => $['newKnowledge.uploadFiles'])}
                       description={t(($) => $['newKnowledge.uploadFilesDescription'])}
                     >
@@ -545,12 +527,7 @@ export function CreateKnowledgePage() {
                     className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
                     role="alert"
                   >
-                    {t(($) =>
-                      createMutation.error instanceof KnowledgeCreationError &&
-                      createMutation.error.stage === 'policy'
-                        ? $['newKnowledge.permissionUpdateFailed']
-                        : $['newKnowledge.createFailed'],
-                    )}
+                    {t(($) => $['newKnowledge.createFailed'])}
                   </div>
                 )}
                 {uploadError && (

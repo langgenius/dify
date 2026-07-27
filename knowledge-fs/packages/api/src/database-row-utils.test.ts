@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  nonnegativeSafeIntegerColumn,
   numberColumn,
   optionalNumberColumn,
   optionalStringColumn,
@@ -17,6 +18,8 @@ describe("database-row-utils", () => {
 
   it("reads required and optional number columns", () => {
     expect(numberColumn({ count: 3 }, "count")).toBe(3);
+    expect(nonnegativeSafeIntegerColumn({ count: "3" }, "count")).toBe(3);
+    expect(nonnegativeSafeIntegerColumn({ count: 3 }, "count")).toBe(3);
     expect(optionalNumberColumn({ count: null }, "count")).toBeUndefined();
     expect(optionalNumberColumn({ count: undefined }, "count")).toBeUndefined();
     expect(optionalNumberColumn({ count: 3 }, "count")).toBe(3);
@@ -34,6 +37,12 @@ describe("database-row-utils", () => {
     );
     expect(() => optionalNumberColumn({ count: "3" }, "count")).toThrow(
       "Database row column count must be a number",
+    );
+    expect(() => nonnegativeSafeIntegerColumn({ count: "-1" }, "count")).toThrow(
+      "Database row column count must be a nonnegative safe integer",
+    );
+    expect(() => nonnegativeSafeIntegerColumn({ count: "9007199254740992" }, "count")).toThrow(
+      "Database row column count must be a nonnegative safe integer",
     );
   });
 });

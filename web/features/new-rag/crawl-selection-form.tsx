@@ -1,13 +1,13 @@
 'use client'
 
+import type { FormEvent } from 'react'
 import type {
-  GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse,
-  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse,
-  PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData,
+  CrawlPreviewPage as PreviewPage,
   Source,
   SourceWorkflowRun,
-} from '@dify/contracts/knowledge-fs/types.gen'
-import type { FormEvent } from 'react'
+  SourceSyncPolicy as SyncPolicy,
+  SourceSyncPolicyBody as SyncPolicyBody,
+} from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -17,11 +17,9 @@ import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
+import { sourceSyncPolicyFromApi, sourceWorkflowFromApi } from './source-models'
 
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
-type SyncPolicy = GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse
 type SyncMode = SyncPolicy['mode']
-type SyncPolicyBody = PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData['body']
 
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
@@ -78,9 +76,11 @@ async function waitForImportTerminal(
   let current = initialRun
   for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
     if (discardRequested() || isTerminalImport(current)) return current
-    current = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-      params: { id: knowledgeSpaceId, runId: current.id },
-    })
+    current = sourceWorkflowFromApi(
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get({
+        params: { control_space_id: knowledgeSpaceId, run_id: current.id },
+      }),
+    )
     onWorkflowRun(current)
     if (discardRequested() || isTerminalImport(current)) return current
     await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
@@ -226,12 +226,35 @@ function ReadyCrawlSelectionForm({
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
     undefined,
   )
-  const updatePolicy = useMutation(
-    consoleQuery.knowledgeFs.putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.mutationOptions(),
-  )
-  const selectPages = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(),
-  )
+  const updatePolicy = useMutation({
+    mutationFn: async ({ body, sourceId }: { body: SyncPolicyBody; sourceId: string }) =>
+      sourceSyncPolicyFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put({
+          body,
+          params: { control_space_id: knowledgeSpaceId, source_id: sourceId },
+        }),
+      ),
+  })
+  const selectPages = useMutation({
+    mutationFn: async ({
+      idempotencyKey,
+      pageIds,
+      runId,
+    }: {
+      idempotencyKey: string
+      pageIds: string[]
+      runId: string
+    }) =>
+      sourceWorkflowFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.selection.post(
+          {
+            body: { pageIds },
+            headers: { 'Idempotency-Key': idempotencyKey },
+            params: { control_space_id: knowledgeSpaceId, run_id: runId },
+          },
+        ),
+      ),
+  })
   const allSelected =
     bulkSelectablePages.length > 0 &&
     bulkSelectablePages.every((page) => selectedPageIds.has(page.pageId))
@@ -322,15 +345,21 @@ function ReadyCrawlSelectionForm({
         try {
           currentPolicy = await updatePolicy.mutateAsync({
             body,
-            params: { id: knowledgeSpaceId, sourceId: source.id },
+            sourceId: source.id,
           })
         } catch (error) {
           let reconciled: SyncPolicy
           try {
-            reconciled =
-              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy({
-                params: { id: knowledgeSpaceId, sourceId: source.id },
-              })
+            reconciled = sourceSyncPolicyFromApi(
+              await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get(
+                {
+                  params: {
+                    control_space_id: knowledgeSpaceId,
+                    source_id: source.id,
+                  },
+                },
+              ),
+            )
           } catch (reconciliationError) {
             setPolicyUncertain(!isDefinitiveRequestFailure(error))
             throw reconciliationError
@@ -350,9 +379,9 @@ function ReadyCrawlSelectionForm({
 
       try {
         const selectionRequest = selectPages.mutateAsync({
-          body: { pageIds: sortedPageIds },
-          headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
-          params: { id: knowledgeSpaceId, runId: run.id },
+          idempotencyKey: selectionRequestRef.current.requestId,
+          pageIds: sortedPageIds,
+          runId: run.id,
         })
         const selectionRun = await selectionRequest
         transactionRun = selectionRun
@@ -378,7 +407,7 @@ function ReadyCrawlSelectionForm({
       }
       updateSelectionUncertain(false)
       await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
       })
       if (discardRequested()) return
       await onSubmitted()
@@ -603,11 +632,19 @@ export function CrawlSelectionForm({
 }) {
   const { t } = useTranslation('dataset')
   const policyQuery = useQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
-      context: { silent: true },
-      input: { params: { id: knowledgeSpaceId, sourceId: source.id } },
-      retry: false,
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get.queryOptions(
+      {
+        context: { silent: true },
+        input: {
+          params: {
+            control_space_id: knowledgeSpaceId,
+            source_id: source.id,
+          },
+        },
+        retry: false,
+        select: sourceSyncPolicyFromApi,
+      },
+    ),
   )
   const policy =
     policyQuery.data ??

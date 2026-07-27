@@ -422,7 +422,9 @@ def _issue_request(
     trace_id: str,
 ) -> CapabilityIssueRequest:
     capability_operation = KNOWLEDGE_FS_CAPABILITY_OPERATIONS[capability_operation_id]
-    if capability_operation.resource_type == "knowledge_space":
+    if capability_operation.resource_type == "namespace":
+        resource = CapabilityResource(type="namespace", id=tenant_id)
+    elif capability_operation.resource_type == "knowledge_space":
         resource = CapabilityResource(type="knowledge_space", id=knowledge_space_id)
     elif capability_operation.resource_type in {
         "document",

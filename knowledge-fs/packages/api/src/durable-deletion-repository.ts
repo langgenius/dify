@@ -14,6 +14,7 @@ import {
   resolveCapabilityJobPublicationGrant,
 } from "./capability-job-fence";
 import {
+  nonnegativeSafeIntegerColumn,
   numberColumn,
   optionalNumberColumn,
   optionalStringColumn,
@@ -1299,11 +1300,13 @@ async function completeDeletionItem(
     ) {
       return null;
     }
+    const completionTimestamp =
+      database.dialect === "postgres" ? `CAST(${p(database, 3)} AS TIMESTAMPTZ)` : p(database, 3);
     const updated = await transaction.execute({
       maxRows: 0,
       operation: "update",
       params: [item.attempts + 1, item.rowVersion + 1, input.now, item.id, job.id, item.rowVersion],
-      sql: `UPDATE ${q(database, itemTable)} SET ${q(database, "status")} = 'completed', ${q(database, "attempts")} = ${p(database, 1)}, ${q(database, "next_attempt_at")} = NULL, ${q(database, "object_key")} = NULL, ${q(database, "credential_ref")} = NULL, ${q(database, "cache_key")} = NULL, ${q(database, "last_error_code")} = NULL, ${q(database, "last_error_message")} = NULL, ${q(database, "row_version")} = ${p(database, 2)}, ${q(database, "updated_at")} = ${p(database, 3)}, ${q(database, "completed_at")} = ${p(database, 3)}, ${q(database, "redacted_at")} = CASE WHEN ${q(database, "kind")} IN ('object', 'secret_ref', 'cache_key') THEN ${p(database, 3)} ELSE NULL END WHERE ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "deletion_job_id")} = ${p(database, 5)} AND ${q(database, "row_version")} = ${p(database, 6)};`,
+      sql: `UPDATE ${q(database, itemTable)} SET ${q(database, "status")} = 'completed', ${q(database, "attempts")} = ${p(database, 1)}, ${q(database, "next_attempt_at")} = NULL, ${q(database, "object_key")} = NULL, ${q(database, "credential_ref")} = NULL, ${q(database, "cache_key")} = NULL, ${q(database, "last_error_code")} = NULL, ${q(database, "last_error_message")} = NULL, ${q(database, "row_version")} = ${p(database, 2)}, ${q(database, "updated_at")} = ${completionTimestamp}, ${q(database, "completed_at")} = ${completionTimestamp}, ${q(database, "redacted_at")} = CASE WHEN ${q(database, "kind")} IN ('object', 'secret_ref', 'cache_key') THEN ${completionTimestamp} ELSE NULL END WHERE ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "deletion_job_id")} = ${p(database, 5)} AND ${q(database, "row_version")} = ${p(database, 6)};`,
       tableName: itemTable,
     });
     return updated.rowsAffected === 1
@@ -3165,7 +3168,7 @@ function mapItem(row: DatabaseRow): DurableDeletionJobItem {
     ...(optionalStringColumn(row, "object_key")
       ? { objectKey: optionalStringColumn(row, "object_key") }
       : {}),
-    ordinal: numberColumn(row, "ordinal"),
+    ordinal: nonnegativeSafeIntegerColumn(row, "ordinal"),
     payloadDigest: stringColumn(row, "payload_digest"),
     ...(optionalStringColumn(row, "redacted_at")
       ? { redactedAt: optionalStringColumn(row, "redacted_at") }

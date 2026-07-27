@@ -279,9 +279,14 @@ describe("database durable deletion target capabilities", () => {
           signal,
         }),
       ).resolves.toEqual({ complete: true, items: [], scanPhase: "document_objects:6" });
-      expect(
-        calls.filter((call) => call.tableName === "document_multimodal_manifests"),
-      ).toHaveLength(3);
+      const manifestDatabaseCalls = calls.filter(
+        (call) => call.tableName === "document_multimodal_manifests",
+      );
+      expect(manifestDatabaseCalls).toHaveLength(3);
+      expect(manifestDatabaseCalls[0]?.params).toEqual(["tenant-a", spaceId, targetDocumentId]);
+      expect(manifestDatabaseCalls[0]?.sql).not.toContain(
+        dialect === "postgres" ? 'manifest."id" >' : "manifest.`id` >",
+      );
     });
 
     it(`inventories and executes space objects, lifecycle secrets, source secrets, and cache items (${dialect})`, async () => {
@@ -371,6 +376,18 @@ describe("database durable deletion target capabilities", () => {
         ],
         scanPhase: "source_secrets",
       });
+      expect(
+        calls.find((call) => call.operation === "select" && call.tableName === "sources")?.sql,
+      ).toContain(dialect === "postgres" ? `"credential_ref" <> ''` : "`credential_ref` <> ''");
+      expect(
+        calls.find(
+          (call) =>
+            call.operation === "select" && call.tableName === "source_secret_lifecycle_refs",
+        )?.params,
+      ).toEqual(["tenant-a", spaceId, null, 2]);
+      expect(
+        calls.find((call) => call.operation === "select" && call.tableName === "sources")?.params,
+      ).toEqual(["tenant-a", spaceId, null, 2]);
 
       await capabilities.executeExternalItem({
         item: deletionItem("object", { objectKey: firstObjectKey }),
@@ -417,6 +434,26 @@ describe("database durable deletion target capabilities", () => {
           }),
         ).rejects.toThrow("must execute atomically");
       }
+    });
+
+    it(`uses a nullable UUID cursor for the first document inventory page (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const capabilities = capabilitiesFor(dialect, async (input) => {
+        calls.push(input);
+        return result([]);
+      });
+
+      await capabilities.inventory({
+        job: job({ targetType: "source" }),
+        limit: 2,
+        signal: new AbortController().signal,
+      });
+
+      const documentCall = calls.find(
+        (call) => call.operation === "select" && call.tableName === "document_assets",
+      );
+      expect(documentCall?.params).toEqual([spaceId, null, targetDocumentId]);
+      expect(documentCall?.sql).toContain("COALESCE");
     });
 
     it(`publishes a target-free, graph-closed head while preserving unrelated Deep members (${dialect})`, async () => {
@@ -861,9 +898,11 @@ describe("database durable deletion target capabilities", () => {
           (call) => call.operation === "select" && call.tableName === "knowledge_fs_sessions",
         ),
       ).toBe(true);
-      expect(
-        calls.some((call) => call.operation === "select" && call.tableName === "golden_questions"),
-      ).toBe(true);
+      const goldenQuestionSelect = calls.find(
+        (call) => call.operation === "select" && call.tableName === "golden_questions",
+      );
+      expect(goldenQuestionSelect?.params).toEqual([spaceId, 7]);
+      expect(goldenQuestionSelect?.sql).toContain("1 = 1");
       expect(
         calls.some(
           (call) => call.operation === "select" && call.tableName === "research_task_jobs",
@@ -888,6 +927,45 @@ describe("database durable deletion target capabilities", () => {
       );
       expect(retainedMetadata?.sql).toContain("credentialRef");
       expect(calls.some((call) => call.tableName === "answer_traces")).toBe(false);
+    });
+
+    it(`preserves the original derived-cleanup error when the transaction is aborted (${dialect})`, async () => {
+      let fenceChecks = 0;
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          fenceChecks += 1;
+          if (fenceChecks > 1) throw new Error("transaction aborted");
+          return result([{ id: job().id }]);
+        }
+        if (input.operation === "select" && input.tableName === "golden_questions") {
+          throw new Error("golden question cleanup failed");
+        }
+        return result([]);
+      };
+
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+        cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+        database,
+        objectStorage: createMemoryObjectStorageAdapter({
+          kind: "memory",
+          maxObjectBytes: 1_024,
+        }),
+        secretStore: { delete: vi.fn(async () => undefined) },
+      });
+
+      await expect(
+        capabilities.deleteDerivedDataPage({
+          job: job({ deleteMode: "keep", targetType: "source" }),
+          limit: 7,
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow("golden question cleanup failed");
+      expect(fenceChecks).toBe(1);
     });
 
     it(`source keep still drains live whole-space Research writers (${dialect})`, async () => {
@@ -1004,6 +1082,14 @@ describe("database durable deletion target capabilities", () => {
       expect(childUpdates[0]?.sql).toContain("deleting_at");
       expect(childUpdates[1]?.sql).toContain("deletion_job_id");
       expect(childUpdates[1]?.sql).toContain("IS NULL");
+      const logicalDocumentUpdate = calls.find(
+        (call) => call.operation === "update" && call.tableName === "logical_documents",
+      );
+      expect(logicalDocumentUpdate?.sql).toContain(
+        dialect === "postgres"
+          ? `"provider_item_digest" = NULL`
+          : "`provider_item_digest` = NULL",
+      );
       const childResidue = calls.find(
         (call) => call.operation === "select" && call.tableName === "document_assets",
       );
@@ -1116,6 +1202,13 @@ describe("database durable deletion target capabilities", () => {
       expect(select?.sql).toContain("knowledge_space_staged_commits");
       expect(select?.sql).not.toContain('target_lease."document_asset_id"');
       expect(select?.sql).not.toContain("target_lease.`document_asset_id`");
+      if (dialect === "postgres") {
+        expect(select?.sql).toContain('target_lease."target_id" = CAST(CAST($2 AS UUID) AS TEXT)');
+        expect(select?.sql).toContain('target_lease."target_id" = CAST(CAST($3 AS UUID) AS TEXT)');
+        expect(select?.sql).toContain(
+          "semantic_document_ref.document_asset_id = CAST(CAST($3 AS UUID) AS TEXT)",
+        );
+      }
       expect(
         calls.find(
           (call) => call.operation === "delete" && call.tableName === "knowledge_fs_leases",
@@ -1184,6 +1277,7 @@ describe("database durable deletion target capabilities", () => {
         ["document_multimodal_manifests", [{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d25" }]],
         ["knowledge_paths", [{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d26" }]],
         ["knowledge_space_staged_commits", [{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d27" }]],
+        ["parse_artifacts", [{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d28" }]],
       ]);
       const calls: DatabaseExecuteInput[] = [];
       const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
@@ -1198,7 +1292,7 @@ describe("database durable deletion target capabilities", () => {
       };
       const capabilities = capabilitiesFor(dialect, execute);
 
-      for (let page = 0; page < 7; page += 1) {
+      for (let page = 0; page < 8; page += 1) {
         await expect(
           capabilities.deleteDerivedDataPage({
             job: job(),
@@ -1220,6 +1314,7 @@ describe("database durable deletion target capabilities", () => {
         "document_outlines",
         "document_multimodal_manifests",
         "knowledge_space_staged_commits",
+        "parse_artifacts",
       ]);
       const pathSelect = calls.find(
         (call) => call.operation === "select" && call.tableName === "knowledge_paths",
@@ -1229,6 +1324,45 @@ describe("database durable deletion target capabilities", () => {
       expect(pathSelect?.sql).toContain("documentAssetIds");
       expect(pathSelect?.sql).toContain("sourceSummaryNodeIds");
       expect(pathSelect?.sql).toContain("communityId");
+      const parseArtifactSelect = calls.find(
+        (call) => call.operation === "select" && call.tableName === "parse_artifacts",
+      );
+      expect(parseArtifactSelect?.sql).toContain("document_assets");
+      expect(parseArtifactSelect?.sql).toContain("knowledge_space_id");
+    });
+
+    it(`scopes the final parse-artifact residue probe to the target knowledge space (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.operation === "select" && input.tableName === "deletion_jobs") {
+          return result([{ id: job().id }]);
+        }
+        if (input.operation === "select" && input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: `tenant-a/spaces/${spaceId}` }]);
+        }
+        return result([]);
+      };
+      const targetJob = job();
+
+      await expect(
+        capabilitiesFor(dialect, execute).deletePrimaryData({
+          job: targetJob,
+          leaseFence: {
+            deletionJobId: targetJob.id,
+            expectedRowVersion: targetJob.rowVersion,
+            leaseToken: targetJob.leaseToken as string,
+          },
+          signal: new AbortController().signal,
+          transaction: { execute },
+        }),
+      ).resolves.toEqual({ clean: true });
+
+      const parseArtifactProbe = calls.find(
+        (call) => call.operation === "select" && call.tableName === "parse_artifacts",
+      );
+      expect(parseArtifactProbe?.sql).toContain("document_assets");
+      expect(parseArtifactProbe?.sql).toContain("knowledge_space_id");
     });
 
     it(`fails the space primary proof when any cascaded derived row survives (${dialect})`, async () => {

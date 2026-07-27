@@ -92,7 +92,11 @@ import {
   LegacySpacePublicationBootstrapSnapshotConflictError,
   withKnowledgeSpaceDocumentMutationLease,
 } from "./legacy-space-publication-bootstrap";
-import type { DocumentRevision, LogicalDocumentRepository } from "./logical-document-repository";
+import type {
+  DocumentRevision,
+  LogicalDocumentRepository,
+  LogicalDocumentWithActiveRevision,
+} from "./logical-document-repository";
 import {
   LogicalDocumentConflictError,
   LogicalDocumentNotFoundError,
@@ -368,7 +372,10 @@ export function registerDocumentWriteHandlers({
     const bulkJobId = generateBulkUploadId();
     const items = [];
     const bulkItems: BulkOperationItem[] = [];
-    const enqueueAsset = async (asset: DocumentAsset) => {
+    const enqueueAsset = async (
+      asset: DocumentAsset,
+      logicalDocument?: LogicalDocumentWithActiveRevision,
+    ) => {
       const compilationJob = await traceAsync(
         traces,
         traceId,
@@ -387,7 +394,7 @@ export function registerDocumentWriteHandlers({
       );
       bulkItems.push({
         compilationJobId: compilationJob.id,
-        documentId: asset.id,
+        documentId: logicalDocument?.id ?? asset.id,
         requiredPermissionScope: requiredPermissionScopeForAsset(asset),
         status: "queued",
       });
@@ -399,17 +406,34 @@ export function registerDocumentWriteHandlers({
           stage: "queued" as const,
         },
         status: "queued" as const,
-        statusUrl: createDocumentAssetStatusUrl({ documentAssetId: asset.id, knowledgeSpaceId }),
+        statusUrl: logicalDocument
+          ? createLogicalDocumentTaskStatusUrl({
+              documentId: logicalDocument.id,
+              knowledgeSpaceId,
+              taskId: compilationJob.id,
+            })
+          : createDocumentAssetStatusUrl({ documentAssetId: asset.id, knowledgeSpaceId }),
       };
     };
 
     for (const documentId of requestedDocumentIds ?? []) {
-      const asset = await traceAsync(traces, traceId, "ingestion.bulk_reindex_asset_lookup", () =>
-        assets.get({
-          id: documentId,
-          knowledgeSpaceId,
-        }),
-      );
+      const logicalDocument = logicalDocuments
+        ? await logicalDocuments.get({
+            documentId,
+            knowledgeSpaceId,
+            tenantId: subject.tenantId,
+          })
+        : null;
+      const assetId = logicalDocument?.active?.documentAssetId ?? documentId;
+      const asset =
+        logicalDocument && !logicalDocument.active
+          ? null
+          : await traceAsync(traces, traceId, "ingestion.bulk_reindex_asset_lookup", () =>
+              assets.get({
+                id: assetId,
+                knowledgeSpaceId,
+              }),
+            );
 
       if (!asset || !candidatePermissionAllowsAsset(asset, candidateGrants)) {
         items.push({
@@ -423,7 +447,7 @@ export function registerDocumentWriteHandlers({
         continue;
       }
 
-      items.push(await enqueueAsset(asset));
+      items.push(await enqueueAsset(asset, logicalDocument ?? undefined));
     }
 
     for (const asset of selectedAssets?.items ?? []) {
@@ -592,7 +616,6 @@ export function registerDocumentWriteHandlers({
           let asset: DocumentAsset | undefined;
           let logicalRevision: DocumentRevision | undefined;
           let compilationJobId: string | undefined;
-          let pathCreated = false;
 
           try {
             await assertWritable();
@@ -640,17 +663,6 @@ export function registerDocumentWriteHandlers({
             );
             asset = createdAsset;
             createdAssets.push(createdAsset);
-            await assertWritable();
-            await traceAsync(traces, traceId, "ingestion.bulk_document_path_upsert", () =>
-              knowledgePaths.upsertMany([
-                buildDocumentKnowledgePath({
-                  asset: createdAsset,
-                  id: generateKnowledgePathId(),
-                  tenantId: subject.tenantId,
-                }),
-              ]),
-            );
-            pathCreated = true;
 
             logicalRevision = (
               await traceAsync(traces, traceId, "ingestion.bulk_logical_revision_create", () =>
@@ -787,15 +799,6 @@ export function registerDocumentWriteHandlers({
             // Once a revision exists, retain its raw asset as a failed, inspectable revision; only
             // this item is failed and previously accepted jobs keep their objects and queue state.
             if (!logicalRevision) {
-              if (pathCreated) {
-                await knowledgePaths
-                  .deleteByDocumentAsset({
-                    documentAssetId: id,
-                    knowledgeSpaceId,
-                    maxPaths: 1,
-                  })
-                  .catch(() => undefined);
-              }
               await scrubStaleDocumentUploadWithRetry(
                 // The durable stale-write scrubber is intentionally deletion-fence-only. This
                 // branch has already proved deletion did not win, so compensate the unpublished
@@ -1261,16 +1264,18 @@ export function registerDocumentWriteHandlers({
           asset = scopedAsset;
           metadataAsset = asset;
         }
-        await traceAsync(traces, traceId, "ingestion.document_path_upsert", () =>
-          knowledgePaths.upsertMany([
-            buildDocumentKnowledgePath({
-              asset,
-              id: generateKnowledgePathId(),
-              tenantId: subject.tenantId,
-            }),
-          ]),
-        );
-        metadataPathCreated = true;
+        if (!compilationAuthorization) {
+          await traceAsync(traces, traceId, "ingestion.document_path_upsert", () =>
+            knowledgePaths.upsertMany([
+              buildDocumentKnowledgePath({
+                asset,
+                id: generateKnowledgePathId(),
+                tenantId: subject.tenantId,
+              }),
+            ]),
+          );
+          metadataPathCreated = true;
+        }
         await assertWritable();
         await traceAsync(traces, traceId, "ingestion.staged_commit_metadata_prepared", () =>
           stagedCommits.transition({

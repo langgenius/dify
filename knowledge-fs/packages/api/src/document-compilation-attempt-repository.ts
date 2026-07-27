@@ -3043,7 +3043,7 @@ function productIntentRestoreConflict(): DocumentCompilationAttemptTransitionErr
 async function requireDatabaseCandidateBinding(
   database: DatabaseAdapter,
   transaction: DatabaseExecutor,
-  attempt: Pick<DocumentCompilationAttempt, "knowledgeSpaceId" | "tenantId">,
+  attempt: Pick<DocumentCompilationAttempt, "baseHeadRevision" | "knowledgeSpaceId" | "tenantId">,
   candidate: { readonly candidateFingerprint: string; readonly candidatePublicationId: string },
 ): Promise<void> {
   const result = await transaction.execute({
@@ -3054,7 +3054,7 @@ async function requireDatabaseCandidateBinding(
       uuid(attempt.knowledgeSpaceId, "knowledgeSpaceId"),
       uuid(candidate.candidatePublicationId, "candidatePublicationId"),
       ProjectionSetFingerprintSchema.parse(candidate.candidateFingerprint),
-      "candidate",
+      nonnegativeInteger(attempt.baseHeadRevision, "baseHeadRevision"),
     ],
     sql: `SELECT ${quoteDatabaseIdentifier(database, "id")} FROM ${quoteDatabaseIdentifier(
       database,
@@ -3071,10 +3071,34 @@ async function requireDatabaseCandidateBinding(
     )} AND ${quoteDatabaseIdentifier(database, "fingerprint")} = ${databasePlaceholder(
       database,
       4,
-    )} AND ${quoteDatabaseIdentifier(database, "status")} = ${databasePlaceholder(
+    )} AND (${quoteDatabaseIdentifier(database, "status")} = 'candidate' OR (${quoteDatabaseIdentifier(
       database,
-      5,
-    )} LIMIT 1 FOR UPDATE;`,
+      "status",
+    )} = 'published' AND EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(
+      database,
+      "projection_set_publication_heads",
+    )} AS publication_head WHERE publication_head.${quoteDatabaseIdentifier(
+      database,
+      "tenant_id",
+    )} = ${quoteDatabaseIdentifier(database, publicationTableName)}.${quoteDatabaseIdentifier(
+      database,
+      "tenant_id",
+    )} AND publication_head.${quoteDatabaseIdentifier(
+      database,
+      "knowledge_space_id",
+    )} = ${quoteDatabaseIdentifier(database, publicationTableName)}.${quoteDatabaseIdentifier(
+      database,
+      "knowledge_space_id",
+    )} AND publication_head.${quoteDatabaseIdentifier(
+      database,
+      "publication_id",
+    )} = ${quoteDatabaseIdentifier(database, publicationTableName)}.${quoteDatabaseIdentifier(
+      database,
+      "id",
+    )} AND publication_head.${quoteDatabaseIdentifier(
+      database,
+      "head_revision",
+    )} = ${databasePlaceholder(database, 5)}))) LIMIT 1 FOR UPDATE;`,
     tableName: publicationTableName,
   });
   if (!result.rows[0]) {

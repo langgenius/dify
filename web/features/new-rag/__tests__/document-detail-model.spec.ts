@@ -2,7 +2,7 @@ import type {
   DocumentRevisionChunk,
   LogicalDocument,
   LogicalDocumentRevision,
-} from '@dify/contracts/knowledge-fs/types.gen'
+} from '../document-models'
 import {
   buildDocumentChunkTree,
   chunkCharacterCount,

@@ -745,7 +745,7 @@ const DifyModelRuntimeLlmChunkSchema = z.object({
           total_tokens: z.number(),
         })
         .partial()
-        .optional(),
+        .nullish(),
     })
     .partial()
     .optional(),

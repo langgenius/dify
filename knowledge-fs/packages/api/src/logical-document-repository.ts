@@ -7,6 +7,7 @@ import {
 import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import {
+  nonnegativeSafeIntegerColumn,
   numberColumn,
   optionalNumberColumn,
   optionalStringColumn,
@@ -2218,7 +2219,7 @@ function mapRevision(row: DatabaseRow): DocumentRevision {
     knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
     mimeType: stringColumn(row, "mime_type"),
     revision: numberColumn(row, "revision"),
-    sizeBytes: numberColumn(row, "size_bytes"),
+    sizeBytes: nonnegativeSafeIntegerColumn(row, "size_bytes"),
     state,
     systemMetadata: jsonObjectColumn(row, "system_metadata"),
     tenantId: stringColumn(row, "tenant_id"),

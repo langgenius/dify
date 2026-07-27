@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
+from uuid import UUID
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -55,14 +56,15 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 # session_id, id is auto-generated) and a fresh EndUser
                 # was created per call, breaking multi-turn chat
                 # continuation (see #36736).
-                user_model = session.scalar(
-                    select(EndUser)
-                    .where(
-                        EndUser.id == user_id,
-                        EndUser.tenant_id == tenant_id,
+                if _is_uuid(user_id):
+                    user_model = session.scalar(
+                        select(EndUser)
+                        .where(
+                            EndUser.id == user_id,
+                            EndUser.tenant_id == tenant_id,
+                        )
+                        .limit(1)
                     )
-                    .limit(1)
-                )
                 if user_model is None:
                     user_model = session.scalar(
                         select(EndUser)
@@ -88,6 +90,14 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
         raise ValueError("user not found")
 
     return user_model
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:

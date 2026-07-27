@@ -1,8 +1,5 @@
-import type {
-  DocumentProcessingTask,
-  LogicalDocument,
-  Source,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { DocumentProcessingTask, LogicalDocument } from '../document-models'
+import type { Source } from '../source-models'
 import { hashKey } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -12,7 +9,7 @@ import { TaskEventObserver } from '../task-event-observer'
 
 type InfiniteOptions = {
   enabled?: boolean
-  getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
+  getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
   queryKind: 'documents' | 'sources' | 'tasks'
@@ -93,6 +90,12 @@ const queryClient = vi.hoisted(() => ({
 }))
 const streamProcessingTaskEvents = vi.hoisted(() => vi.fn())
 const getTaskSnapshot = vi.hoisted(() => vi.fn())
+const taskSnapshotRequestState = vi.hoisted(() => ({ index: 0 }))
+const rawQueryDataCache = vi.hoisted(() => ({
+  documents: new WeakMap<object, object>(),
+  sources: new WeakMap<object, object>(),
+  tasks: new WeakMap<object, object>(),
+}))
 const permissionStateMock = vi.hoisted(() => ({
   datasetAtom: Symbol('datasetDefaultPermissionKeysAtom'),
   datasetKeys: ['dataset.acl.edit'],
@@ -107,11 +110,83 @@ const permissionStateMock = vi.hoisted(() => ({
   refreshAfterDenial: vi.fn(),
   refreshAfterDenialAtom: Symbol('refreshWorkspacePermissionKeysAfterMutationDenialAtom'),
 }))
+const systemFeaturesStateMock = vi.hoisted(() => ({
+  atom: Symbol('knowledgeFsUploadEnabledAtom'),
+  uploadEnabled: true,
+}))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
   warning: vi.fn(),
+}))
+const revisionApiResponse = vi.hoisted(
+  () => (revision: NonNullable<LogicalDocument['active']>) => ({
+    activated_at: revision.activatedAt ?? null,
+    content_hash: revision.contentHash,
+    created_at: revision.createdAt,
+    document_asset_id: revision.documentAssetId,
+    document_asset_version: revision.documentAssetVersion,
+    document_id: revision.documentId,
+    knowledge_space_id: revision.knowledgeSpaceId,
+    mime_type: revision.mimeType,
+    revision: revision.revision,
+    size_bytes: revision.sizeBytes,
+    state: revision.state,
+  }),
+)
+const documentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
+  active: item.active ? revisionApiResponse(item.active) : null,
+  active_revision: item.activeRevision ?? null,
+  created_at: item.createdAt,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  provider_item_id: item.providerItemId ?? null,
+  row_version: item.rowVersion,
+  source_id: item.sourceId ?? null,
+  status: item.status,
+  title: item.title,
+  updated_at: item.updatedAt,
+  user_metadata: item.userMetadata,
+}))
+const taskApiResponse = vi.hoisted(() => (item: DocumentProcessingTask) => ({
+  can_cancel: item.canCancel ?? true,
+  can_retry: item.canRetry ?? item.state === 'failed',
+  completed_at: item.completedAt ?? null,
+  created_at: item.createdAt,
+  document_id: item.documentId,
+  document_revision: item.documentRevision,
+  error_code: item.errorCode ?? null,
+  error_message: item.errorMessage ?? null,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  operation: item.operation ?? 'document_processing',
+  progress_percent: item.progressPercent,
+  state:
+    item.state === 'succeeded'
+      ? 'completed'
+      : item.state === 'dispatch_pending'
+        ? 'queued'
+        : item.state === 'superseded'
+          ? 'canceled'
+          : item.state,
+  task_kind: item.taskKind ?? 'document',
+  updated_at: item.updatedAt,
+}))
+const sourceApiResponse = vi.hoisted(() => (item: Source) => ({
+  connection_id: item.connectionId ?? null,
+  created_at: item.createdAt,
+  credential_configured: item.credentialConfigured ?? null,
+  id: item.id,
+  knowledge_space_id: item.knowledgeSpaceId,
+  metadata: item.metadata,
+  name: item.name,
+  permission_scope: item.permissionScope ?? [],
+  status: item.status,
+  type: item.type,
+  updated_at: item.updatedAt,
+  uri: item.uri,
+  version: item.version ?? 1,
 }))
 
 vi.mock('@/context/permission-state', () => ({
@@ -123,6 +198,10 @@ vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysLoadingAtom: permissionStateMock.loadingAtom,
 }))
 
+vi.mock('@/context/system-features-state', () => ({
+  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.atom,
+}))
+
 vi.mock('jotai', async (importOriginal) => {
   const original = await importOriginal<typeof import('jotai')>()
   return {
@@ -132,6 +211,7 @@ vi.mock('jotai', async (importOriginal) => {
       if (atom === permissionStateMock.errorAtom) return permissionStateMock.error
       if (atom === permissionStateMock.fetchingAtom) return permissionStateMock.fetching
       if (atom === permissionStateMock.loadingAtom) return permissionStateMock.loading
+      if (atom === systemFeaturesStateMock.atom) return systemFeaturesStateMock.uploadEnabled
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
     useSetAtom: (atom: unknown) =>
@@ -159,21 +239,100 @@ const sourcesInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'sources' })),
 )
 
+function rawDocumentQueryData(data: NonNullable<typeof documentsQuery.data>): {
+  pages: Array<{ data: Array<ReturnType<typeof documentApiResponse>>; next_cursor: string | null }>
+} {
+  const cached = rawQueryDataCache.documents.get(data)
+  if (cached) return cached as ReturnType<typeof rawDocumentQueryData>
+  const mapped = {
+    pages: data.pages.map((page) => ({
+      data: page.items.map(documentApiResponse),
+      next_cursor: page.nextCursor ?? null,
+    })),
+  }
+  rawQueryDataCache.documents.set(data, mapped)
+  return mapped
+}
+
+function rawSourceQueryData(data: NonNullable<typeof sourcesQuery.data>): {
+  pages: Array<{ data: Array<ReturnType<typeof sourceApiResponse>>; next_cursor: string | null }>
+} {
+  const cached = rawQueryDataCache.sources.get(data)
+  if (cached) return cached as ReturnType<typeof rawSourceQueryData>
+  const mapped = {
+    pages: data.pages.map((page) => ({
+      data: page.items.map(sourceApiResponse),
+      next_cursor: page.nextCursor ?? null,
+    })),
+  }
+  rawQueryDataCache.sources.set(data, mapped)
+  return mapped
+}
+
+function rawTaskQueryData(data: NonNullable<typeof tasksQuery.data>): {
+  pages: Array<{ data: Array<ReturnType<typeof taskApiResponse>>; next_cursor: string | null }>
+} {
+  const cached = rawQueryDataCache.tasks.get(data)
+  if (cached) return cached as ReturnType<typeof rawTaskQueryData>
+  const mapped = {
+    pages: data.pages.map((page) => ({
+      data: page.items.map(taskApiResponse),
+      next_cursor: page.nextCursor ?? null,
+    })),
+  }
+  rawQueryDataCache.tasks.set(data, mapped)
+  return mapped
+}
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
     useInfiniteQuery: (options: InfiniteOptions) => {
-      if (options.queryKind === 'documents') return documentsQuery
-      if (options.queryKind === 'sources') return sourcesQuery
-      return tasksQuery
+      if (options.queryKind === 'documents')
+        return {
+          ...documentsQuery,
+          data: documentsQuery.data ? rawDocumentQueryData(documentsQuery.data) : undefined,
+        }
+      if (options.queryKind === 'sources')
+        return {
+          ...sourcesQuery,
+          data: sourcesQuery.data ? rawSourceQueryData(sourcesQuery.data) : undefined,
+        }
+      return {
+        ...tasksQuery,
+        data: tasksQuery.data ? rawTaskQueryData(tasksQuery.data) : undefined,
+      }
     },
     useMutation: (options: {
-      mutationKind: 'bulk-upload' | 'cancel' | 'reindex' | 'retry' | 'upload'
+      mutationFn?: (input: DocumentProcessingTask) => Promise<DocumentProcessingTask>
+      mutationKind?: 'bulk-upload' | 'cancel' | 'reindex' | 'retry' | 'upload'
     }) => {
+      if (options.mutationFn)
+        return {
+          mutateAsync: options.mutationFn,
+        }
       if (options.mutationKind === 'cancel') return cancelMutation
       if (options.mutationKind === 'retry') return retryMutation
-      if (options.mutationKind === 'reindex') return reindexMutation
+      if (options.mutationKind === 'reindex')
+        return {
+          mutateAsync: async (input: unknown) => {
+            const result = await reindexMutation.mutateAsync(input)
+            return {
+              ...result,
+              items: result.items.map(
+                (item: {
+                  documentId?: string
+                  document_id?: string
+                  status: 'not_found' | 'queued'
+                }) => ({
+                  ...item,
+                  document_id: item.document_id ?? item.documentId ?? null,
+                }),
+              ),
+            }
+          },
+        }
       if (options.mutationKind === 'bulk-upload') return bulkUploadMutation
       return uploadMutation
     },
@@ -184,43 +343,100 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: getTaskSnapshot,
+      spaces: {
+        byControlSpaceId: {
+          backgroundTasks: {
+            byTaskKind: {
+              byTaskId: {
+                cancel: {
+                  post: async (input: unknown) =>
+                    taskApiResponse(await cancelMutation.mutateAsync(input)),
+                },
+                retry: {
+                  post: async (input: unknown) =>
+                    taskApiResponse(await retryMutation.mutateAsync(input)),
+                },
+              },
+            },
+            get: async (input: unknown, options?: unknown) => {
+              const allTasks = tasksQuery.data?.pages.flatMap((page) => page.items) ?? []
+              const requestedTask = allTasks[taskSnapshotRequestState.index % allTasks.length]
+              taskSnapshotRequestState.index += 1
+              const snapshot = await getTaskSnapshot(
+                requestedTask
+                  ? {
+                      params: {
+                        documentId: requestedTask.documentId,
+                        id: requestedTask.knowledgeSpaceId,
+                        taskId: requestedTask.id,
+                      },
+                    }
+                  : input,
+                options,
+              )
+              return {
+                data: snapshot ? [taskApiResponse(snapshot)] : [],
+                next_cursor: null,
+              }
+            },
+          },
+        },
+      },
     },
   },
   consoleQuery: {
     knowledgeFs: {
-      deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
-        mutationOptions: () => ({ mutationKind: 'cancel' }),
-      },
-      getKnowledgeSpacesByIdLogicalDocuments: {
-        infiniteOptions: documentsInfiniteOptions,
-        key: () => ['knowledge-fs', 'documents'],
-      },
-      getKnowledgeSpacesByIdProcessingTasks: {
-        infiniteOptions: tasksInfiniteOptions,
-        key: () => ['knowledge-fs', 'tasks'],
-      },
-      getKnowledgeSpacesByIdSources: {
-        infiniteOptions: sourcesInfiniteOptions,
-        key: () => ['knowledge-fs', 'sources'],
-      },
-      postKnowledgeSpacesByIdDocuments: {
-        mutationOptions: () => ({ mutationKind: 'upload' }),
-      },
-      postKnowledgeSpacesByIdDocumentsBulk: {
-        mutationOptions: () => ({ mutationKind: 'bulk-upload' }),
-      },
-      postKnowledgeSpacesByIdDocumentsBulkReindex: {
-        mutationOptions: () => ({ mutationKind: 'reindex' }),
-      },
-      postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry: {
-        mutationOptions: () => ({ mutationKind: 'retry' }),
+      spaces: {
+        byControlSpaceId: {
+          backgroundTasks: {
+            get: {
+              infiniteOptions: tasksInfiniteOptions,
+              key: () => ['knowledge-fs', 'tasks'],
+            },
+          },
+          documents: {
+            reindex: {
+              post: {
+                mutationOptions: () => ({ mutationKind: 'reindex' }),
+              },
+            },
+          },
+          logicalDocuments: {
+            get: {
+              infiniteOptions: documentsInfiniteOptions,
+              key: () => ['knowledge-fs', 'documents'],
+            },
+          },
+          sources: {
+            get: {
+              infiniteOptions: sourcesInfiniteOptions,
+              key: () => ['knowledge-fs', 'sources'],
+            },
+          },
+        },
       },
     },
   },
 }))
 
 vi.mock('../services/processing-task-events', () => ({ streamProcessingTaskEvents }))
+vi.mock('../knowledge-fs-upload', () => ({
+  uploadKnowledgeFsDocuments: async (
+    knowledgeSpaceId: string,
+    uploads: Array<{ file: File; id: string }>,
+  ) => {
+    const files = uploads.map(({ file }) => file)
+    if (files.length === 1)
+      return uploadMutation.mutateAsync({
+        body: { file: files[0] },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+    return bulkUploadMutation.mutateAsync({
+      body: { files },
+      params: { control_space_id: knowledgeSpaceId },
+    })
+  },
+}))
 
 const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => ({
   active: {
@@ -313,7 +529,9 @@ const source = (overrides: Partial<Source> = {}): Source => ({
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    systemFeaturesStateMock.uploadEnabled = true
     queryCacheListeners.clear()
+    taskSnapshotRequestState.index = 0
     queryClient.cancelQueries.mockResolvedValue(undefined)
     queryClient.invalidateQueries.mockResolvedValue(undefined)
     documentsQuery.data = { pages: [{ items: [] }] }
@@ -424,24 +642,24 @@ describe('DocumentsPage', () => {
     const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
     const sourceOptions = sourcesInfiniteOptions.mock.lastCall?.[0]
     expect(documentOptions?.input(null)).toEqual({
-      params: { id: 'space-1' },
-      query: { limit: 50 },
+      params: { control_space_id: 'space-1' },
+      query: {},
     })
     expect(documentOptions?.input('next')).toEqual({
-      params: { id: 'space-1' },
-      query: { cursor: 'next', limit: 50 },
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'next' },
     })
-    expect(documentOptions?.getNextPageParam({ nextCursor: 'next' })).toBe('next')
+    expect(documentOptions?.getNextPageParam({ next_cursor: 'next' })).toBe('next')
     expect(taskOptions?.input(null)).toEqual({
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
       query: { limit: 100 },
     })
-    expect(taskOptions?.getNextPageParam({ nextCursor: 'next' })).toBe('next')
+    expect(taskOptions?.getNextPageParam({ next_cursor: 'next' })).toBe('next')
     expect(sourceOptions?.input(null)).toEqual({
-      params: { id: 'space-1' },
-      query: { limit: 100 },
+      params: { control_space_id: 'space-1' },
+      query: {},
     })
-    expect(sourceOptions?.getNextPageParam({ nextCursor: 'next' })).toBe('next')
+    expect(sourceOptions?.getNextPageParam({ next_cursor: 'next' })).toBe('next')
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
@@ -586,6 +804,19 @@ describe('DocumentsPage', () => {
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
     expect(fireEvent(emptyState!, dragOver)).toBe(false)
     expect(dataTransfer.dropEffect).toBe('copy')
+  })
+
+  it('keeps direct-upload actions unavailable until the deployment is verified', () => {
+    systemFeaturesStateMock.uploadEnabled = false
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+    const addDocument = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.addDocument',
+    })
+    expect(addDocument).toBeDisabled()
+    expect(addDocument).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
   })
 
   it('removes the empty-state drop affordance when uploads are unavailable', () => {
@@ -744,7 +975,7 @@ describe('DocumentsPage', () => {
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { file: expect.any(File) },
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
     })
 
     await user.upload(input, [
@@ -753,7 +984,7 @@ describe('DocumentsPage', () => {
     ])
     expect(bulkUploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { files: [expect.any(File), expect.any(File)] },
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
     })
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     const documentInvalidation = queryClient.invalidateQueries.mock.calls.find(
@@ -763,7 +994,7 @@ describe('DocumentsPage', () => {
       documentInvalidation?.predicate({
         queryKey: [
           ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdLogicalDocuments'],
-          { input: { params: { id: 'space-1' } }, type: 'infinite' },
+          { input: { params: { control_space_id: 'space-1' } }, type: 'infinite' },
         ],
       }),
     ).toBe(true)
@@ -771,7 +1002,7 @@ describe('DocumentsPage', () => {
       documentInvalidation?.predicate({
         queryKey: [
           ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdLogicalDocuments'],
-          { input: { params: { id: 'space-2' } }, type: 'infinite' },
+          { input: { params: { control_space_id: 'space-2' } }, type: 'infinite' },
         ],
       }),
     ).toBe(false)
@@ -791,7 +1022,7 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
         body: { file: validFile },
-        params: { id: 'space-1' },
+        params: { control_space_id: 'space-1' },
       }),
     )
     expect(bulkUploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -816,68 +1047,28 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('reports partial and fully excluded bulk uploads from the contract result', async () => {
+  it('reports local exclusions and direct upload failures', async () => {
     const user = userEvent.setup()
-    bulkUploadMutation.mutateAsync
-      .mockResolvedValueOnce({
-        accepted: 1,
-        bulkJobId: 'upload-partial',
-        excluded: 1,
-        items: [
-          {
-            filename: 'too-large.pdf',
-            index: 1,
-            mimeType: 'application/pdf',
-            reason: 'file_too_large',
-            sizeBytes: 10_000,
-            status: 'excluded',
-          },
-        ],
-        total: 2,
-      })
-      .mockResolvedValueOnce({
-        accepted: 0,
-        bulkJobId: 'upload-rejected',
-        excluded: 2,
-        items: [
-          {
-            filename: 'one.md',
-            index: 0,
-            mimeType: 'text/markdown',
-            reason: 'quota_exceeded',
-            sizeBytes: 3,
-            status: 'excluded',
-          },
-          {
-            filename: 'two.md',
-            index: 1,
-            mimeType: 'text/markdown',
-            reason: 'quota_exceeded',
-            sizeBytes: 3,
-            status: 'excluded',
-          },
-        ],
-        total: 2,
-      })
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
+    const oversizedFile = new File(['large'], 'too-large.pdf', { type: 'application/pdf' })
+    Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
 
     await user.upload(input, [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
-      new File(['large'], 'too-large.pdf', { type: 'application/pdf' }),
+      oversizedFile,
     ])
     expect(toastMock.warning).toHaveBeenCalledWith(
       'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"details":"too-large.pdf (dataset.newKnowledge.documentUploadExclusion.fileSize)","excluded":1}',
     )
 
     queryClient.invalidateQueries.mockClear()
+    bulkUploadMutation.mutateAsync.mockRejectedValueOnce(new Error('quota exceeded'))
     await user.upload(input, [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
-    expect(toastMock.error).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentUploadRejected:{"details":"one.md (dataset.newKnowledge.documentUploadExclusion.quota); two.md (dataset.newKnowledge.documentUploadExclusion.quota)"}',
-    )
+    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
@@ -1080,7 +1271,7 @@ describe('DocumentsPage', () => {
       taskCancellation?.predicate({
         queryKey: [
           ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdProcessingTasks'],
-          { input: { params: { id: 'space-1' } }, type: 'infinite' },
+          { input: { params: { control_space_id: 'space-1' } }, type: 'infinite' },
         ],
       }),
     ).toBe(true)
@@ -1088,7 +1279,7 @@ describe('DocumentsPage', () => {
       taskCancellation?.predicate({
         queryKey: [
           ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdProcessingTasks'],
-          { input: { params: { id: 'space-2' } }, type: 'infinite' },
+          { input: { params: { control_space_id: 'space-2' } }, type: 'infinite' },
         ],
       }),
     ).toBe(false)
@@ -1709,7 +1900,7 @@ describe('DocumentsPage', () => {
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
       body: { documentIds: ['one'] },
-      params: { id: 'space-1' },
+      params: { control_space_id: 'space-1' },
     })
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
@@ -1941,7 +2132,11 @@ describe('DocumentsPage', () => {
 
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(cancelMutation.mutateAsync).toHaveBeenCalledWith({
-      params: { documentId: 'document-1', id: 'space-1', taskId: 'running' },
+      params: {
+        control_space_id: 'space-1',
+        task_id: 'running',
+        task_kind: 'document',
+      },
     })
     await act(async () => resolveCancel?.(task({ id: 'running', state: 'canceled' })))
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
@@ -3906,7 +4101,20 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(12)
       const taskOptions = tasksInfiniteOptions.mock.lastCall?.[0]
-      expect(taskOptions?.refetchInterval).toBeUndefined()
+      expect(
+        taskOptions?.refetchInterval?.({
+          state: {
+            data: {
+              pages: [
+                {
+                  data: [taskApiResponse(task({ id: 'active-0' }))],
+                  next_cursor: null,
+                },
+              ],
+            },
+          },
+        }),
+      ).toBe(5000)
       expect(
         screen.getByRole('button', {
           name: 'dataset.newKnowledge.tasksWithAttention:{"count":20}',

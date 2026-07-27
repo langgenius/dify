@@ -623,7 +623,7 @@ describe("incremental reindexer", () => {
     ).rejects.toThrow("inconsistent text embedding space");
   });
 
-  it("validates bounded configuration, dense model requirements, and max node output", async () => {
+  it("validates bounded configuration, optional dense indexing, and max node output", async () => {
     const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 4,
@@ -641,11 +641,17 @@ describe("incremental reindexer", () => {
       }),
     ).toThrow("Incremental reindexer maxNodes must be at least 1");
 
+    let denseBuilds = 0;
     await expect(
       createIncrementalReindexer({
         artifacts,
         compute,
-        denseBuilder: { build: async () => [] },
+        denseBuilder: {
+          build: async () => {
+            denseBuilds += 1;
+            return [];
+          },
+        },
         maxNodes: 4,
         nodes,
       }).reindex({
@@ -653,9 +659,8 @@ describe("incremental reindexer", () => {
         parseArtifact: parseArtifact({ artifactHash: "c".repeat(64) }),
         projectionVersion: 1,
       }),
-    ).rejects.toThrow(
-      "Incremental reindexer denseModel is required when denseBuilder is configured",
-    );
+    ).resolves.toMatchObject({ status: "rebuilt" });
+    expect(denseBuilds).toBe(0);
 
     await expect(
       createIncrementalReindexer({
