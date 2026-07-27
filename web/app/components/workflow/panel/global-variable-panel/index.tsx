@@ -5,7 +5,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { isInWorkflowPage } from '../../constants'
-import { useIsChatMode } from '../../hooks'
+import { useIsChatMode } from '../../hooks/use-workflow'
 import Item from './item'
 
 const Panel = () => {

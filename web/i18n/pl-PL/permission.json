@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Wyjątkowe uprawnienie dla {{name}}",
   "accessRule.expandSection": "Rozwiń {{title}}",
   "accessRule.individualPermissionSettings": "Indywidualne ustawienia uprawnień",
-  "accessRule.individualPermissionSettingsTip": "Ustaw wyjątki uprawnień dla określonych współpracowników lub grup. Te ustawienia zastępują domyślny poziom dostępu.",
+  "accessRule.individualPermissionSettingsTip": "Ustaw wyjątki uprawnień dla określonych współpracowników lub grup. Te ustawienia zastępują uprawnienia ich ról.",
   "accessRule.maintainer": "Opiekun",
   "accessRule.member": "Członek",
   "accessRule.newPermissionSet": "Nowy zestaw uprawnień",

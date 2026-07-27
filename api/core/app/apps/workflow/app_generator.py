@@ -243,6 +243,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
             workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=workflow_triggered_from,
@@ -250,6 +251,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # Create workflow node execution repository
             workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
+                tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -397,19 +399,34 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             worker_thread.start()
 
-            draft_var_saver_factory = self._get_draft_var_saver_factory(invoke_from, user)
-
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                draft_var_saver_factory=draft_var_saver_factory,
-                stream=streaming,
+            draft_var_saver_factory = self._get_draft_var_saver_factory(
+                invoke_from,
+                user,
+                tenant_id=app_model.tenant_id,
             )
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                    stream=streaming,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
+
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -470,6 +487,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -477,6 +495,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -560,6 +579,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow execution(aka workflow run) repository
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -567,6 +587,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
+            tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,

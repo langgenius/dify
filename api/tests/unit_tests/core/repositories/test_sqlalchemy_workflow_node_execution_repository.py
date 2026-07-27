@@ -33,6 +33,8 @@ from models import Account, EndUser
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 
+RESOURCE_TENANT_ID = "tenant"
+
 
 def _mock_account(*, tenant_id: str = "tenant", user_id: str = "user") -> Account:
     user = Mock(spec=Account)
@@ -107,6 +109,7 @@ def test_init_accepts_engine_and_sessionmaker_and_sets_role(monkeypatch: pytest.
     engine: Engine = create_engine("sqlite:///:memory:")
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=engine,
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -116,6 +119,7 @@ def test_init_accepts_engine_and_sessionmaker_and_sets_role(monkeypatch: pytest.
     sm = Mock(spec=sessionmaker)
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=sm,
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_end_user(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -131,6 +135,7 @@ def test_init_rejects_invalid_session_factory_type(monkeypatch: pytest.MonkeyPat
     with pytest.raises(ValueError, match="Invalid session_factory type"):
         SQLAlchemyWorkflowNodeExecutionRepository(  # type: ignore[arg-type]
             session_factory=object(),
+            tenant_id=RESOURCE_TENANT_ID,
             user=_mock_account(),
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -144,13 +149,34 @@ def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     user = _mock_account()
     user.current_tenant_id = None
-    with pytest.raises(ValueError, match="User must have a tenant_id"):
+    with pytest.raises(ValueError, match="tenant_id is required"):
         SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=Mock(spec=sessionmaker),
+            tenant_id="",
             user=user,
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
+
+
+def test_init_uses_resource_tenant_when_account_has_no_current_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    user = _mock_account()
+    user.current_tenant_id = None
+
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        tenant_id="resource-tenant-id",
+        user=user,
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+    assert repo._tenant_id == "resource-tenant-id"
+    assert repo._creator_user_id == user.id
 
 
 def test_create_truncator_uses_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -177,6 +203,7 @@ def test_create_truncator_uses_config(monkeypatch: pytest.MonkeyPatch) -> None:
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -206,6 +233,7 @@ def test_to_db_model_requires_constructor_context(monkeypatch: pytest.MonkeyPatc
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -214,6 +242,9 @@ def test_to_db_model_requires_constructor_context(monkeypatch: pytest.MonkeyPatc
 
     # Happy path: deterministic json dump should be sorted
     db_model = repo._to_db_model(execution)
+    assert db_model.tenant_id == RESOURCE_TENANT_ID
+    assert db_model.created_by == "user"
+    assert db_model.created_by_role.value == "account"
     assert json.loads(db_model.inputs or "{}") == {"a": 2, "b": 1}
     assert json.loads(db_model.execution_metadata or "{}")["total_tokens"] == 1
 
@@ -229,6 +260,7 @@ def test_to_db_model_requires_creator_user_id_and_role(monkeypatch: pytest.Monke
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -256,6 +288,7 @@ def test_is_duplicate_key_error_and_regenerate_id(
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -285,6 +318,7 @@ def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytes
     session = MagicMock()
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -318,6 +352,7 @@ def test_truncate_and_upload_returns_none_when_no_values_or_not_truncated(monkey
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -337,8 +372,10 @@ def test_truncate_and_upload_uploads_and_builds_offload(monkeypatch: pytest.Monk
     uploaded: dict[str, Any] = {}
 
     class FakeFileService:
-        def upload_file(self, *, filename: str, content: bytes, mimetype: str, user: Any):  # type: ignore[no-untyped-def]
-            uploaded.update({"filename": filename, "content": content, "mimetype": mimetype, "user": user})
+        def upload_file(self, *, filename: str, content: bytes, mimetype: str, user: Any, tenant_id: str):  # type: ignore[no-untyped-def]
+            uploaded.update(
+                {"filename": filename, "content": content, "mimetype": mimetype, "user": user, "tenant_id": tenant_id}
+            )
             return SimpleNamespace(id="file-id", key="file-key")
 
     monkeypatch.setattr(
@@ -348,6 +385,7 @@ def test_truncate_and_upload_uploads_and_builds_offload(monkeypatch: pytest.Monk
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -363,6 +401,7 @@ def test_truncate_and_upload_uploads_and_builds_offload(monkeypatch: pytest.Monk
     assert result is not None
     assert result.truncated_value == {"truncated": True}
     assert uploaded["filename"].startswith("node_execution_exec_inputs.json")
+    assert uploaded["tenant_id"] == RESOURCE_TENANT_ID
     assert result.offload.file_id == "file-id"
     assert result.offload.type_ == ExecutionOffLoadType.INPUTS
 
@@ -374,6 +413,7 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -428,6 +468,7 @@ def test_to_domain_model_returns_early_when_no_offload_data(monkeypatch: pytest.
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -491,6 +532,7 @@ def test_save_execution_data_handles_existing_db_model_and_truncation(monkeypatc
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -538,6 +580,7 @@ def test_save_execution_data_truncates_outputs_and_process_data(monkeypatch: pyt
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -583,6 +626,7 @@ def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.Monkey
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -608,6 +652,7 @@ def test_save_retries_duplicate_and_logs_non_duplicate(
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -647,6 +692,7 @@ def test_save_logs_and_reraises_on_unexpected_error(
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -691,6 +737,7 @@ def test_get_db_models_by_workflow_run_orders_and_caches(monkeypatch: pytest.Mon
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -728,6 +775,7 @@ def test_get_db_models_by_workflow_run_uses_asc_order(monkeypatch: pytest.Monkey
     session.scalars.return_value.all.return_value = []
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -743,6 +791,7 @@ def test_get_by_workflow_run_maps_to_domain(monkeypatch: pytest.MonkeyPatch) -> 
 
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

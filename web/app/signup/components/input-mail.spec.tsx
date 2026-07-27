@@ -1,10 +1,10 @@
 import type { MockedFunction } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Form from './input-mail'
 
 const mockSubmitMail = vi.fn()
@@ -60,7 +60,7 @@ const renderForm = ({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return renderWithSystemFeatures(<Form onSuccess={mockOnSuccess} />, {
+  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 }

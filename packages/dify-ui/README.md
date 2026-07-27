@@ -129,6 +129,16 @@ For complex business forms, keep state ownership outside these primitives. TanSt
 
 Migration rule for `web/`: if a UI has a save/submit action, do not leave it as unrelated `Input` and `Button` pieces. Give it a real submit boundary with `Form` or a native `<form>`, attach visible field names through the appropriate label primitive (`FieldLabel`, `SelectLabel`, `SliderLabel`, or `FieldsetLegend`), expose helper/error text through `FieldDescription` / `FieldError`, and keep non-submit buttons as `type="button"`.
 
+## Search and picker selection
+
+Choose the primitive by its value contract:
+
+- `Autocomplete` accepts free-form text with optional suggestions or completions.
+- `Combobox` selects and remembers one or more values from a searchable collection.
+- `Select` chooses from a closed, scannable list without text entry.
+
+Keep Base UI anatomy visible in public APIs instead of wrapping a picker into one business component. Multiple-selection comboboxes follow the official chips composition: chips and input share the input group, chips wrap, and the group grows vertically. Autocomplete and Combobox popups own their portals, use the package overlay layer, and size from `--anchor-width` with viewport-aware maximum width; do not force a minimum width that defeats viewport clamping.
+
 ## Tailwind CSS v4 integration
 
 This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
@@ -143,6 +153,23 @@ If a consumer uses Dify UI source files through the workspace, add an explicit s
 ```css
 @source '../packages/dify-ui/src';
 ```
+
+Figma radius tokens are offset by one step from Tailwind CSS v4 defaults. Use this mapping rather than adding custom theme values or `radius-*` utilities:
+
+| Figma token     | Tailwind class   |
+| --------------- | ---------------- |
+| `--radius/2xs`  | `rounded-xs`     |
+| `--radius/xs`   | `rounded-sm`     |
+| `--radius/sm`   | `rounded-md`     |
+| `--radius/md`   | `rounded-lg`     |
+| `--radius/lg`   | `rounded-[10px]` |
+| `--radius/xl`   | `rounded-xl`     |
+| `--radius/2xl`  | `rounded-2xl`    |
+| `--radius/3xl`  | `rounded-[20px]` |
+| `--radius/6xl`  | `rounded-[28px]` |
+| `--radius/full` | `rounded-full`   |
+
+Convert Figma output such as `rounded-[var(--radius/sm, 6px)]` to the mapped Tailwind class. Use an arbitrary value only when no standard class matches.
 
 ## Overlay & portal contract
 
@@ -179,16 +206,17 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 - Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
 
-### Tooltip, infotip, and popover semantics
+### Tooltip, preview card, infotip, and popover semantics
 
 - Use `Tooltip` only for short, non-interactive visual labels. The trigger must already have visible text or an `aria-label`; the tooltip is not the accessible name and must not contain links, buttons, forms, or structured prose.
+- Use `PreviewCard` as a visual enhancement for a link that previews its destination. Its popup must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use `Popover` when opening the popup is the trigger's purpose or when users need to access its content on touch or with assistive technology.
 - Use `Popover` for explanatory content, long text, rich layout, or anything users may need to reach on touch or with assistive technology. In `web/`, the `Infotip` wrapper is the preferred pattern for a `?` help glyph backed by `Popover`.
 - Pick a `placement` and let the primitive own spacing. Avoid per-call-site offsets unless the component API explicitly needs a measured layout exception.
 - When passing a Base UI trigger `render` prop, render a real `<button type="button">` for button-like triggers. If a Popover trigger must render a `div`, `span`, or another non-button element, pass `nativeButton={false}`.
 
 ## Development
 
-- `vp run @langgenius/dify-ui#lint` (from the repository root) — strict Oxlint checks for component source, stories, tests, and package configuration.
+- `vp check packages/dify-ui` (from the repository root) — formatting, lint, and TypeScript diagnostics for the package.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
@@ -227,7 +255,6 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 See `[AGENTS.md](./AGENTS.md)` for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).
-- Figma `--radius/`_ token → Tailwind `rounded-_` class mapping.
 
 ## Not part of this package
 

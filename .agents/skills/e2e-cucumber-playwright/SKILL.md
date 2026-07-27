@@ -1,86 +1,31 @@
 ---
 name: e2e-cucumber-playwright
-description: Write, update, or review Dify end-to-end tests under `e2e/` that use Cucumber, Gherkin, and Playwright. Use when the task involves `.feature` files, `features/step-definitions/`, `features/support/`, `DifyWorld`, scenario tags, locator/assertion choices, or E2E testing best practices for this repository.
+description: Use when writing, changing, or reviewing Cucumber and Playwright tests under `e2e/`, including feature files, step definitions, support code, scenario tags, locators, and assertions. Do not use for Vitest, React Testing Library, backend tests, or generic browser automation outside the E2E suite.
 ---
 
-# Dify E2E Cucumber + Playwright
+# E2E Cucumber And Playwright
 
-Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) as the canonical package guide for local architecture and conventions, then read any feature-scoped `AGENTS.md` that owns the target area. Apply Playwright/Cucumber best practices only where they fit the current suite.
+`e2e/AGENTS.md` owns the suite architecture, lifecycle, commands, tags, generated-client boundaries, fixtures, and cleanup contracts. Read the nearest feature-scoped `AGENTS.md` when one exists. This skill adds no parallel package policy.
 
-## Scope
+## Topic Routing
 
-- Use this skill for `.feature` files, Cucumber step definitions, `DifyWorld`, hooks, tags, and E2E review work under `e2e/`.
-- Do not use this skill for Vitest or React Testing Library work under `web/`; use `frontend-testing` instead.
-- Do not use this skill for backend test or API review tasks under `api/`.
+Read only the bundled reference required by the change:
 
-## Read Order
+- Locator, assertion, isolation, or waiting decisions: [`references/playwright-best-practices.md`][playwright]
+- Scenario wording, step granularity, expressions, or tag design: [`references/cucumber-best-practices.md`][cucumber]
 
-1. Read [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) first.
-2. Read only the files directly involved in the task:
-   - target `.feature` files under `e2e/features/`
-   - related step files under `e2e/features/step-definitions/`
-   - `e2e/features/support/hooks.ts` and `e2e/features/support/world.ts` when session lifecycle or shared state matters
-   - `e2e/scripts/run-cucumber.ts` and `e2e/cucumber.config.ts` when tags or execution flow matter
-3. Read [`references/playwright-best-practices.md`](references/playwright-best-practices.md) only when locator, assertion, isolation, or waiting choices are involved.
-4. Read [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md) only when scenario wording, step granularity, tags, or expression design are involved.
-5. Re-check official Playwright or Cucumber docs with the available documentation tools before introducing a new framework pattern.
-
-Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance. Put feature-specific conventions in the owning feature's `AGENTS.md` instead of adding them here.
-
-## Local Rules
-
-- `e2e/` uses Cucumber for scenarios and Playwright as the browser layer.
-- `DifyWorld` is the per-scenario context object. Type `this` as `DifyWorld` and use `async function`, not arrow functions.
-- Keep glue organized by capability under `e2e/features/step-definitions/`; use `common/` only for broadly reusable steps.
-- Browser session behavior comes from `features/support/hooks.ts`:
-  - default: authenticated session with shared storage state
-  - `@unauthenticated`: clean browser context
-  - `@authenticated`: readability/selective-run tag only unless implementation changes
-  - `@fresh`: only for `e2e:full*` flows
-- Do not import Playwright Test runner patterns that bypass the current Cucumber + `DifyWorld` architecture unless the task is explicitly about changing that architecture.
+Check current official Playwright or Cucumber documentation before introducing a framework pattern that local code and references do not already establish.
 
 ## Workflow
 
-1. Rebuild local context.
-   - Inspect the target feature area.
-   - Reuse an existing step when wording and behavior already match.
-   - Add a new step only for a genuinely new user action or assertion.
-   - Before adding several similar steps, scan the target capability for an existing domain noun that can be parameterized without hiding behavior.
-   - Keep edits close to the current capability folder unless the step is broadly reusable.
-2. Write behavior-first scenarios.
-   - Describe user-observable behavior, not DOM mechanics.
-   - Keep each scenario focused on one workflow or outcome.
-   - Keep scenarios independent and re-runnable.
-3. Write step definitions in the local style.
-   - Keep one step to one user-visible action or one assertion.
-   - Prefer Cucumber Expressions such as `{string}` and `{int}`.
-   - Use a bounded regex only when the accepted values are a small explicit domain set and Cucumber Expressions would make the Gherkin less natural.
-   - Do not create one-off steps for each case variant when the same domain action or outcome applies to named surfaces, modes, or resources.
-   - Scope locators to stable containers when the page has repeated elements.
-   - Avoid page-object layers or extra helper abstractions unless repeated complexity clearly justifies them.
-4. Use Playwright in the local style.
-   - Prefer user-facing locators: `getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, then `getByTestId` for explicit contracts.
-   - Use web-first `expect(...)` assertions.
-   - Do not use `waitForTimeout`, manual polling, or raw visibility checks when a locator action or retrying assertion already expresses the behavior.
-   - Use `expect.poll` for API persistence, backend eventual consistency, captured browser events, or other non-DOM state; prefer locator assertions for DOM readiness and visible UI state.
-   - If a product element has real user-facing semantics but no accessible name, prefer fixing that accessible contract over adding a test id.
-5. Validate narrowly.
-   - Run the narrowest tagged scenario or flow that exercises the change.
-   - Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check`.
-   - Broaden verification only when the change affects hooks, tags, setup, or shared step semantics.
+1. Add E2E coverage only for a critical user journey with a cross-boundary outcome that cheaper owner-level tests do not already prove.
+2. Identify the user-visible behavior and its feature owner. Start from real product defaults and actor roles; setup may establish preconditions but must not manufacture the opposite state to make the scenario meaningful.
+3. Read the target scenario, matching step definitions, and lifecycle files only when session or shared state matters.
+4. Reuse an existing step when wording and behavior match; add one coherent scenario or step when they do not.
+5. Keep browser actions and assertions at the public user boundary; keep setup, seed, polling, and cleanup at their package-defined owners.
+6. Run the narrowest tagged scenario and package checks documented in `e2e/AGENTS.md`; broaden only for shared hooks, tags, or support changes.
 
-## Review Checklist
+For review requests, lead with reproducible correctness failures, flake sources, or demonstrated architecture drift. Report the behavior verified and any external-runtime, browser, or environment gap.
 
-- Does the scenario describe behavior rather than implementation?
-- Does it fit the current session model, tags, and `DifyWorld` usage?
-- Should an existing step be reused instead of adding a new one?
-- Are locators user-facing and assertions web-first?
-- Does the change introduce hidden coupling across scenarios, tags, or instance state?
-- Does it document or implement behavior that differs from the real hooks or configuration?
-
-Lead findings with correctness, flake risk, and architecture drift.
-
-## References
-
-- [`references/playwright-best-practices.md`](references/playwright-best-practices.md)
-- [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md)
+[cucumber]: references/cucumber-best-practices.md
+[playwright]: references/playwright-best-practices.md

@@ -5,7 +5,7 @@ import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -115,14 +115,15 @@ function PopupHarness(props: PopupTestProps) {
 
 const renderPopup = (
   ui: ReactElement<PopupTestProps>,
-  options: Parameters<typeof renderWithSystemFeatures>[1] = {},
+  options: Parameters<typeof renderWithConsoleQuery>[1] = {},
 ) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     ...options,
     systemFeatures:
       options.systemFeatures === null
         ? null
         : {
+            deployment_edition: 'CLOUD',
             enable_marketplace: true,
             ...(options.systemFeatures ?? {}),
           },
@@ -152,11 +153,6 @@ vi.mock('../../provider-added-card/model-auth-dropdown/credits-exhausted-alert',
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
-})
 
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-plugins', () => ({
@@ -875,7 +871,6 @@ describe('Popup', () => {
       />,
     )
 
-    expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
     expect(
       screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
     )!.toBeInTheDocument()
@@ -899,7 +894,9 @@ describe('Popup', () => {
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
     expect(scrollRegion).not.toContainElement(settingsButton)
-    expect(scrollRegion).toContainElement(screen.getByTestId('compatible-models-banner'))
+    expect(scrollRegion).toContainElement(
+      screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
+    )
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {

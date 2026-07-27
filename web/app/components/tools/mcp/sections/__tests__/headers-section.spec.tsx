@@ -10,11 +10,6 @@ describe('HeadersSection', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<HeadersSection {...defaultProps} />)
-      expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()
-    })
-
     it('should render headers label', () => {
       render(<HeadersSection {...defaultProps} />)
       expect(screen.getByText('tools.mcp.modal.headers'))!.toBeInTheDocument()

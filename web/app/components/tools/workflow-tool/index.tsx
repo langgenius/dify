@@ -112,7 +112,6 @@ const WorkflowToolDrawerFrame = ({
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup
-            data-testid="drawer"
             className={cn(
               'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-16px)]',
               'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
@@ -121,10 +120,7 @@ const WorkflowToolDrawerFrame = ({
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-subtle py-4">
                 <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                  <DrawerTitle
-                    data-testid="drawer-title"
-                    className="min-w-0 truncate system-xl-semibold text-text-primary"
-                  >
+                  <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
                   <DrawerCloseButton className="size-6 rounded-md" aria-label={closeLabel} />

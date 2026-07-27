@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Executarea fluxului de lucru standard",
   "plansCommon.workflowExecution.tooltip": "Prioritatea și viteza cozii de execuție a fluxului de lucru.",
   "plansCommon.year": "an",
+  "plansCommon.yearlyBilling": "Facturare anuală",
   "plansCommon.yearlyTip": "Obțineți 2 luni gratuite prin abonarea anuală!",
   "teamMembers": "Membrii echipei",
   "triggerLimitModal.description": "Ai atins limita de evenimente declanșatoare de flux de lucru pentru acest plan.",

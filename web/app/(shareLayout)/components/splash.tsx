@@ -57,6 +57,7 @@ function Splash({ children }: PropsWithChildren) {
   }, [getSigninUrl, pathname, redirectUrl, router, shareCode])
 
   const [isLoading, setIsLoading] = useState(true)
+  const [unavailableShareCode, setUnavailableShareCode] = useState<string>()
   useEffect(() => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     const isSigninRoute = isWebAppSigninPath(pathname)
@@ -101,7 +102,12 @@ function Splash({ children }: PropsWithChildren) {
           })
           setWebAppPassport(effectiveShareCode, access_token)
           redirectOrFinish()
-        } catch {
+        } catch (error) {
+          if (error instanceof Response && error.status === 404) {
+            setUnavailableShareCode(effectiveShareCode)
+            await webAppLogout(effectiveShareCode)
+            return
+          }
           await webAppLogout(effectiveShareCode)
           proceedToAuth()
         }
@@ -126,11 +132,23 @@ function Splash({ children }: PropsWithChildren) {
           code={code || t(($) => $['common.appUnavailable'], { ns: 'share' })}
           unknownReason={message}
         />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+        <button
+          type="button"
+          className="cursor-pointer system-sm-regular text-text-tertiary"
+          onClick={backToHome}
+        >
           {code === '403'
             ? t(($) => $['userProfile.logout'], { ns: 'common' })
             : t(($) => $['login.backToHome'], { ns: 'share' })}
-        </span>
+        </button>
+      </div>
+    )
+  }
+
+  if (unavailableShareCode === shareCode) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable />
       </div>
     )
   }

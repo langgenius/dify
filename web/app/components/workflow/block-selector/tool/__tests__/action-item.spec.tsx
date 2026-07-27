@@ -45,7 +45,10 @@ describe('ToolActionItem', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Search Tool' }))
+    const toolButton = screen.getByRole('button', { name: 'Search Tool' })
+    expect(toolButton).toHaveAccessibleDescription('Search Tool description')
+
+    await user.click(toolButton)
 
     expect(onSelect).toHaveBeenCalledWith(
       BlockEnum.Tool,

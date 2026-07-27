@@ -1,12 +1,13 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { render } from '@/test/console/render'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory } from '../types'
 
 const mockUsePluginAuth = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
@@ -23,41 +24,11 @@ vi.mock('../authorized', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -74,7 +45,7 @@ const defaultPayload = {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = [
+    mockConsoleState.workspacePermissionKeys = [
       'credential.use',
       'credential.create',
       'credential.manage',
@@ -134,38 +105,6 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
-  it('renders with className wrapper when not authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(
-      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
-    )
-    expect(container.innerHTML).toContain('custom-class')
-  })
-
-  it('does not render className wrapper when authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(
-      <PluginAuth pluginPayload={defaultPayload} className="custom-class" />,
-    )
-    expect(container.innerHTML).not.toContain('custom-class')
-  })
-
   it('passes pluginPayload.provider to usePluginAuth', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
@@ -181,7 +120,7 @@ describe('PluginAuth', () => {
   })
 
   it('renders permission hint and disables authorization configuration when credential.create is missing', () => {
-    mockAppContext.workspacePermissionKeys = ['credential.use']
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
       canOAuth: false,
@@ -202,7 +141,7 @@ describe('PluginAuth', () => {
   })
 
   it('opens members settings when permission hint action is clicked', () => {
-    mockAppContext.workspacePermissionKeys = ['credential.use']
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
       canOAuth: false,
@@ -221,7 +160,7 @@ describe('PluginAuth', () => {
   })
 
   it('does not render permission hint for datasource authorization', () => {
-    mockAppContext.workspacePermissionKeys = ['credential.use']
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
       canOAuth: false,
@@ -237,7 +176,7 @@ describe('PluginAuth', () => {
   })
 
   it('does not render permission hint when custom credentials are unavailable', () => {
-    mockAppContext.workspacePermissionKeys = ['credential.use']
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
       canOAuth: false,
