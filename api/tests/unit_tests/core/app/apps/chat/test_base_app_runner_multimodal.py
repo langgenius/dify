@@ -42,6 +42,7 @@ class TestBaseAppRunnerMultimodal:
         """Create a mock tool file."""
         tool_file = MagicMock()
         tool_file.id = str(uuid4())
+        tool_file.mimetype = "image/png"
         return tool_file
 
     @pytest.fixture
@@ -387,3 +388,66 @@ class TestBaseAppRunnerMultimodal:
 
                 call_kwargs = mock_msg_file_class.call_args[1]
                 assert call_kwargs["created_by_role"] == CreatorUserRole.END_USER
+
+    def test_handle_multimodal_image_content_url_is_signed(
+        self,
+        monkeypatch,
+        mock_user_id,
+        mock_tenant_id,
+        mock_message_id,
+        mock_queue_manager,
+        mock_tool_file,
+        mock_message_file,
+    ):
+        """Regression test for #39222: the MessageFile.url for a generated
+        image must be a properly signed URL (with timestamp/nonce/sign query
+        parameters), not a bare unsigned path. An unsigned path is rejected
+        with a 400 validation error by the file-download endpoint.
+        """
+        from urllib.parse import parse_qs, urlparse
+
+        monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+        monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x02" * 16)
+        monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+        monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
+
+        image_url = "http://example.com/image.png"
+        content = ImagePromptMessageContent(
+            url=image_url,
+            format="png",
+            mime_type="image/png",
+        )
+
+        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
+            mock_mgr = MagicMock()
+            mock_mgr.create_file_by_url.return_value = mock_tool_file
+            mock_mgr_class.return_value = mock_mgr
+
+            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
+                mock_msg_file_class.return_value = mock_message_file
+
+                file_session = MagicMock()
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
+
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
+
+                call_kwargs = mock_msg_file_class.call_args[1]
+                url = call_kwargs["url"]
+                parsed = urlparse(url)
+                query = parse_qs(parsed.query)
+
+                assert parsed.scheme == "https"
+                assert parsed.netloc == "files.example.com"
+                assert parsed.path == f"/files/tools/{mock_tool_file.id}.png"
+                assert "timestamp" in query
+                assert "nonce" in query
+                assert "sign" in query

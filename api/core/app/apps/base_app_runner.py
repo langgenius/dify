@@ -32,6 +32,7 @@ from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
+from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -439,12 +440,13 @@ class AppRunner:
         # Create MessageFile record.
         # Use an independent session so this side-effect write does not
         # commit or close the caller's request-scoped session.
+        extension = guess_extension(tool_file.mimetype) or ".png"
         message_file = MessageFile(
             message_id=message_id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             belongs_to=MessageFileBelongsTo.ASSISTANT,
-            url=f"/files/tools/{tool_file.id}",
+            url=sign_tool_file(tool_file_id=tool_file.id, extension=extension),
             upload_file_id=tool_file.id,
             created_by_role=(
                 CreatorUserRole.ACCOUNT if queue_manager.invoke_from.runs_as_account() else CreatorUserRole.END_USER
