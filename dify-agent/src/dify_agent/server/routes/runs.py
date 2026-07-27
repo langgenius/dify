@@ -36,11 +36,6 @@ def create_runs_router(
     *,
     auth_dependency: DependsInstance | None = None,
 ) -> APIRouter:
-    """Create routes bound to the application's store dependency provider.
-
-    When ``auth_dependency`` is provided it is added as a router-level
-    dependency so all run endpoints require valid Bearer token authentication.
-    """
     dependencies: list[DependsInstance] = [auth_dependency] if auth_dependency is not None else []
     router = APIRouter(prefix="/runs", tags=["runs"], dependencies=dependencies)
 

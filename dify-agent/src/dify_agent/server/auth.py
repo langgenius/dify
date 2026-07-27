@@ -1,12 +1,3 @@
-"""Bearer token authentication for inbound API requests.
-
-The runs router and sandbox router use ``require_bearer_token`` as a FastAPI
-dependency to validate the ``Authorization: Bearer <token>`` header against the
-configured ``DIFY_AGENT_RUN_API_TOKEN``. When ``run_api_token`` is ``None``
-(unconfigured), the dependency is a no-op to preserve backward compatibility
-with deployments that do not yet set the environment variable.
-"""
-
 import hmac
 
 from fastapi import Depends, Header, HTTPException
