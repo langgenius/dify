@@ -24,7 +24,6 @@ def _enterprise(enabled: bool = True):
 
 @pytest.fixture
 def gated_app() -> Flask:
-    """App with one route per surface the license gate distinguishes."""
     app = create_flask_app_with_configs()
 
     @app.route("/v1/chat-messages", methods=["POST"])
@@ -182,13 +181,6 @@ class TestTriggerLicenseGate:
 
         assert response.status_code == 503
 
-    def test_block_response_advertises_retry_after(self, gated_app: Flask):
-        """Senders treat 4xx as permanent and 5xx as retryable — the header must survive."""
-        with _enterprise(), _license(LicenseStatus.EXPIRED):
-            response = gated_app.test_client().post("/triggers/webhook/hook-id")
-
-        assert response.headers["Retry-After"] == "300"
-
     def test_block_response_carries_machine_readable_marker(self, gated_app: Flask):
         with _enterprise(), _license(LicenseStatus.EXPIRED):
             response = gated_app.test_client().post("/triggers/webhook/hook-id")
@@ -211,9 +203,7 @@ class TestTriggerLicenseGate:
 
 
 class TestGateThroughRealErrorHandlers:
-    """The gate raises from before_request, so its errors must survive each blueprint's own
-    error handling: flask-restx for the Service API, plain Flask for triggers.
-    """
+    """Gate errors must survive each blueprint's error handling: flask-restx vs plain Flask."""
 
     @pytest.fixture
     def wired_app(self) -> Flask:
@@ -254,12 +244,12 @@ class TestGateThroughRealErrorHandlers:
 
         assert response.headers.getlist("Set-Cookie") == []
 
-    def test_trigger_block_keeps_retry_after_on_the_wire(self, wired_app: Flask):
+    def test_trigger_block_survives_plain_blueprint_handling(self, wired_app: Flask):
         with _enterprise(), _license(LicenseStatus.EXPIRED):
             response = wired_app.test_client().post("/triggers/webhook/hook-id")
 
         assert response.status_code == 503
-        assert response.headers["Retry-After"] == "300"
+        assert b"license_required" in response.data
 
     def test_surfaces_are_reachable_when_license_valid(self, wired_app: Flask):
         with _enterprise(), _license(LicenseStatus.ACTIVE):

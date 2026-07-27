@@ -49,31 +49,21 @@ _WEBAPP_EXEMPT_PREFIXES = ("/api/system-features",)
 
 _INVALID_LICENSE_STATUSES = (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST)
 
-# How long a webhook sender is told to wait before retrying. Long enough that a blocked
-# provider backs off rather than burning its retry budget while an admin renews the license.
-_LICENSE_RETRY_AFTER_SECONDS = 300
-
 
 def _session_surface_error(license_status: LicenseStatus | None) -> HTTPException:
-    """Console and webapp authenticate with cookies, so drop the browser session."""
     if license_status is None:
         return UnauthorizedAndForceLogout("Unable to verify enterprise license. Please contact your administrator.")
     return UnauthorizedAndForceLogout(f"Enterprise license is {license_status}. Please contact your administrator.")
 
 
 def _bearer_surface_error(license_status: LicenseStatus | None) -> HTTPException:
-    """Service API authenticates with bearer tokens: forcing a logout is meaningless and
-    license state must not leak to external callers. Mirrors services.openapi.license_gate.
-    """
+    """Token-authed: forcing a logout is meaningless and license state must not leak."""
     return Forbidden(description="license_required")
 
 
 def _retryable_surface_error(license_status: LicenseStatus | None) -> HTTPException:
-    """Inbound webhooks have no Dify-side replay, and their sender is a machine rather than
-    a person who could renew the license. Senders retry on 5xx but treat 4xx as permanent —
-    often disabling the subscription — so refuse in a way that survives a later renewal.
-    """
-    return ServiceUnavailable(description="license_required", retry_after=_LICENSE_RETRY_AFTER_SECONDS)
+    """Webhook senders retry on 5xx but treat 4xx as permanent, disabling the subscription."""
+    return ServiceUnavailable(description="license_required")
 
 
 class _LicenseGatedSurface(NamedTuple):
@@ -82,10 +72,8 @@ class _LicenseGatedSurface(NamedTuple):
     build_error: Callable[[LicenseStatus | None], HTTPException]
 
 
-# Surfaces blocked while the enterprise license is invalid. Console and webapp exempt the
-# bootstrap endpoints their sign-in pages need; the app-invocation surfaces have no sign-in
-# page to bootstrap, so they are gated whole. Health probes live on /health, and the
-# dify-enterprise control plane on /inner/api, both outside every prefix here.
+# /files (plugin-daemon data plane), /inner/api (enterprise control plane) and /health
+# stay ungated: blocking them breaks workflow execution or license recovery itself.
 _LICENSE_GATED_SURFACES = (
     _LicenseGatedSurface("/console/api/", _CONSOLE_EXEMPT_PREFIXES, _session_surface_error),
     _LicenseGatedSurface("/api/", _WEBAPP_EXEMPT_PREFIXES, _session_surface_error),
@@ -124,13 +112,10 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        # Enterprise license validation. An invalid license blocks the console, the webapp
-        # and the Service API; each surface reports it in its own auth dialect.
         if dify_config.ENTERPRISE_ENABLED:
             surface = _match_license_gated_surface(request.path)
             if surface is not None:
                 try:
-                    # Cached lookup — see EnterpriseService for TTL details
                     license_status = EnterpriseService.get_cached_license_status()
                 except Exception:
                     logger.exception("Failed to check enterprise license status")
