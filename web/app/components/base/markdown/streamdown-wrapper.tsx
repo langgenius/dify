@@ -52,7 +52,7 @@ const mathPlugin = createMathPlugin({
  * minimise the attack surface when LLM-generated content is rendered.
  */
 const ALLOWED_TAGS: Record<string, string[]> = {
-  button: ['dataVariant', 'dataSize', 'dataMessage', 'dataLink'],
+  button: ['dataVariant', 'dataSize', 'dataTone', 'dataMessage', 'dataLink'],
   form: ['dataFormat'],
   input: ['type', 'name', 'value', 'placeholder', 'checked', 'dataTip', 'dataOptions'],
   textarea: ['name', 'placeholder', 'value'],
