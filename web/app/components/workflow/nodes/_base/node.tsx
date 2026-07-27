@@ -9,9 +9,6 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
@@ -19,6 +16,10 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
 import { userProfileAtom } from '@/context/account-state'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
+import { useToolIcon } from '../../hooks/use-tool-icon'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
@@ -240,7 +241,13 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
             type="button"
             aria-label={data.title}
             className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => selectWorkflowNode(id)}
+            onClick={() => {
+              // In comment mode, clicking a node should not open the node settings panel:
+              // the right-hand panel covers the canvas region where the comment is anchored.
+              // Mirrors the comment-mode guard in use-nodes-interactions' handleNodeClick.
+              if (controlMode === ControlMode.Comment) return
+              selectWorkflowNode(id)
+            }}
           >
             <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
             <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">

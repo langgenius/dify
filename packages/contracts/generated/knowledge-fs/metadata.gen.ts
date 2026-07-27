@@ -8,5 +8,5 @@ export const knowledgeFsConsoleDeclarationsSha256 =
 export const knowledgeFsGeneratedArtifactSha256 = {
   'orpc.gen.ts': 'e0d9954f817e97a4e95dd38c4522fb403c8659d741ce485fa671b1b4ce90a540',
   'types.gen.ts': 'a558ab80f32a8555bb5b44b7a596ef4a4a7a8cb7904390993aabcc587915f530',
-  'zod.gen.ts': '6aa3d3e768fe0008ca405ecbe423ee325bd8f65f745dd2d1c86f2bdb887a97fd',
+  'zod.gen.ts': 'ca698a6fa64a0717e29da5d4678976b55355a2c0fe5ddfa7037325aa79ab4762',
 } as const

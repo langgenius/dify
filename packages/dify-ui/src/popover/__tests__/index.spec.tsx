@@ -1,4 +1,5 @@
 import type * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Popover, PopoverContent, PopoverTrigger } from '..'
 
@@ -6,6 +7,43 @@ const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 describe('PopoverContent', () => {
+  describe('Animation', () => {
+    it('should restore focus without waiting for an instant close transition', async () => {
+      const animationSettings = globalThis as typeof globalThis & {
+        BASE_UI_ANIMATIONS_DISABLED: boolean
+      }
+      const animationsDisabled = animationSettings.BASE_UI_ANIMATIONS_DISABLED
+      animationSettings.BASE_UI_ANIMATIONS_DISABLED = false
+
+      try {
+        const screen = await renderWithSafeViewport(
+          <Popover>
+            <PopoverTrigger>Open</PopoverTrigger>
+            <PopoverContent
+              popupClassName="duration-[30s]"
+              popupProps={{ role: 'dialog', 'aria-label': 'popover content' }}
+            >
+              <button type="button">Focusable content</button>
+            </PopoverContent>
+          </Popover>,
+        )
+
+        const trigger = screen.getByRole('button', { name: 'Open' })
+        await trigger.click()
+
+        const focusableContent = screen.getByRole('button', { name: 'Focusable content' })
+        focusableContent.element().focus()
+        await expect.element(focusableContent).toHaveFocus()
+
+        await userEvent.keyboard('{Escape}')
+
+        await expect.element(trigger).toHaveFocus()
+      } finally {
+        animationSettings.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+      }
+    })
+  })
+
   describe('Placement', () => {
     it('should use bottom placement and default offsets when placement props are not provided', async () => {
       const screen = await renderWithSafeViewport(

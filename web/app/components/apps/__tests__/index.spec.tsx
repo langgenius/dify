@@ -266,6 +266,7 @@ describe('Apps', () => {
       icon_background: '#fff',
       mode: AppModeEnum.CHAT,
       export_data: 'yaml-content',
+      can_trial: true,
     })
   })
 
@@ -303,6 +304,16 @@ describe('Apps', () => {
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should close the template preview', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByTestId('open-preview'))
+      await user.click(await screen.findByTestId('try-app-close'))
+
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
     })
 
     it('should open the create modal from Learn Dify', async () => {

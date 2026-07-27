@@ -8,9 +8,9 @@ import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useStrategyProviderDetail } from '@/service/use-strategy'
+import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'

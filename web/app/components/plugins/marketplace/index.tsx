@@ -1,6 +1,6 @@
 import type { SearchParams } from 'nuqs'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
-import { TanstackQueryInitializer } from '@/context/query-client'
+import { TanStackQueryProvider } from '@/context/query-client'
 import Description from './description'
 import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
@@ -27,7 +27,7 @@ const Marketplace = async ({
   searchParams,
 }: MarketplaceProps) => {
   return (
-    <TanstackQueryInitializer>
+    <TanStackQueryProvider>
       <HydrateQueryClient searchParams={searchParams}>
         <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
           <Description
@@ -43,7 +43,7 @@ const Marketplace = async ({
           />
         </PluginInstallPermissionProviderGuard>
       </HydrateQueryClient>
-    </TanstackQueryInitializer>
+    </TanStackQueryProvider>
   )
 }
 
