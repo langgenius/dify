@@ -449,7 +449,7 @@ function AgentConfigurePageComposerContent({
       leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
-          activeConfigIsPublished={agentQuery.data?.active_config_is_published}
+          activeConfigIsPublished={composerQuery.data?.active_config_is_published}
           activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}

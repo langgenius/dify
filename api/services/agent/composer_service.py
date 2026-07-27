@@ -405,6 +405,7 @@ class AgentComposerService:
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
+            "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],

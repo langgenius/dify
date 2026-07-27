@@ -257,7 +257,6 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     debug_conversation_has_messages: bool = False
     debug_conversation_message_count: int = 0
     role: str | None = None
-    active_config_is_published: bool = False
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
@@ -410,10 +409,6 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_has_messages"] = message_count > 0
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
-    payload["active_config_is_published"] = roster_service.active_config_is_published(
-        tenant_id=app_model.tenant_id,
-        agent=agent,
-    )
     return payload
 
 
