@@ -667,9 +667,7 @@ describe('MainNav', () => {
     expect(tourTrigger.compareDocumentPosition(accountButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
-    expect(accountButton.compareDocumentPosition(helpButton)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
+    expect(accountButton.compareDocumentPosition(helpButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
