@@ -1091,13 +1091,15 @@ class DraftVariableSaver:
         assert isinstance(bind, Engine)
         file_srv = FileService(bind)
 
+        tenant_id = self._resolve_app_tenant_id()
+
         upload_file = file_srv.upload_file(
             filename=filename,
             content=original_content_serialized.encode(),
             mimetype=content_type,
             user=self._user,
+            tenant_id=tenant_id,
         )
-        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
             upload_file_id=upload_file.id,
@@ -1105,7 +1107,7 @@ class DraftVariableSaver:
             length=original_length,
             value_type=value_seg.value_type,
             app_id=self._app_id,
-            tenant_id=self._user.current_tenant_id,
+            tenant_id=tenant_id,
             user_id=self._user.id,
         )
         variable_file.id = str(uuidv7())
