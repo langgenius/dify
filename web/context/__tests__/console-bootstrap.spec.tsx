@@ -552,7 +552,8 @@ describe('Console bootstrap', () => {
       })
       await waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
-        expect(setUserProperties).toHaveBeenCalledWith(
+        const properties = vi.mocked(setUserProperties).mock.calls.at(-1)?.[0]
+        expect(properties).toEqual(
           expect.objectContaining({
             email: 'user@example.com',
             workspace_id: 'workspace-1',
@@ -560,6 +561,7 @@ describe('Console bootstrap', () => {
             workspace_role: 'editor',
           }),
         )
+        expect(properties).not.toHaveProperty('workspace_status')
         expect(flushRegistrationSuccess).toHaveBeenCalled()
       })
     })
