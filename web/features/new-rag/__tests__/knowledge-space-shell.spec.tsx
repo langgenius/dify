@@ -96,6 +96,25 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 
+  it('lets users collapse and restore the knowledge detail sidebar', async () => {
+    const user = userEvent.setup()
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    await user.click(screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }))
+    expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
+    expect(
+      screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' }),
+    ).toBeInTheDocument()
+  })
+
   it('polls provisioning spaces without mounting data-plane children', () => {
     queryMock.data = {
       control_space_id: 'space-1',

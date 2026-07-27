@@ -7,13 +7,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +22,7 @@ import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { DocumentActionsDropdown } from './document-actions-dropdown'
 import { sourceName } from './document-model'
 
 export type DocumentFilter = DocumentDisplayStatus | 'all'
@@ -42,6 +36,14 @@ const statusIconClass: Record<DocumentDisplayStatus, string> = {
   processing: 'i-ri-loader-2-line animate-spin text-text-accent motion-reduce:animate-none',
   failed: 'i-ri-error-warning-fill text-text-destructive',
   disabled: 'i-ri-indeterminate-circle-line text-text-tertiary',
+}
+
+const statusTextClass: Record<DocumentDisplayStatus, string> = {
+  ready: 'font-normal text-text-secondary',
+  queued: 'font-normal text-text-tertiary',
+  processing: 'font-medium text-text-accent',
+  failed: 'font-medium text-text-destructive',
+  disabled: 'font-medium text-text-tertiary',
 }
 
 function TaskTrigger({
@@ -62,7 +64,12 @@ function TaskTrigger({
   const { t } = useTranslation('dataset')
   return (
     <>
-      <Button aria-label={tasksButtonLabel} data-has-error={hasTaskError} onClick={onOpenTasks}>
+      <Button
+        aria-label={tasksButtonLabel}
+        className="gap-1 pl-3"
+        data-has-error={hasTaskError}
+        onClick={onOpenTasks}
+      >
         <span
           aria-hidden
           className={cn(
@@ -126,13 +133,8 @@ const DocumentRow = memo(
     const updatedTime = Date.parse(document.updatedAt)
 
     return (
-      <tr
-        className={cn(
-          'border-t border-divider-subtle',
-          status === 'disabled' && !statusPending && 'opacity-60',
-        )}
-      >
-        <td className="w-10 py-3 pr-3">
+      <tr className="h-12 border-t border-divider-subtle">
+        <td className="w-10 align-middle">
           <Checkbox
             checked={selected}
             disabled={selectionDisabled || status === 'disabled'}
@@ -141,7 +143,7 @@ const DocumentRow = memo(
             onCheckedChange={() => onSelectedChange(document.id)}
           />
         </td>
-        <td className="min-w-0 py-3 pr-3 sm:min-w-72 sm:pr-6">
+        <td className="min-w-0 pr-3 align-middle sm:min-w-72 sm:pr-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               aria-hidden
@@ -149,19 +151,19 @@ const DocumentRow = memo(
             />
             <Link
               id={titleId}
-              className="truncate rounded system-xs-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="truncate rounded text-[13px] leading-[17px] font-medium text-text-primary hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               href={documentHref}
             >
               {document.title}
             </Link>
             {revision !== undefined && (
-              <span className="shrink-0 rounded border border-divider-regular px-1 system-2xs-medium text-text-tertiary">
+              <span className="flex min-h-4 min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-regular px-1 system-2xs-medium text-text-tertiary">
                 v{revision}
               </span>
             )}
           </div>
         </td>
-        <td className="hidden w-52 py-3 pr-6 system-xs-regular text-text-secondary lg:table-cell">
+        <td className="hidden w-[210px] pr-6 align-middle system-xs-regular text-text-secondary lg:table-cell">
           {sourcePending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -176,7 +178,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="w-24 py-3 pr-2 sm:w-56 sm:pr-6">
+        <td className="w-24 pr-2 align-middle sm:w-[240px] sm:pr-6">
           {statusPending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -188,45 +190,26 @@ const DocumentRow = memo(
           ) : (
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 system-xs-regular',
-                status === 'failed' ? 'text-text-destructive' : 'text-text-secondary',
+                'inline-flex items-center gap-1.5 text-xs leading-4',
+                statusTextClass[status],
               )}
             >
-              <span aria-hidden className={cn('size-3.5', statusIconClass[status])} />
+              <span
+                aria-hidden
+                className={cn(
+                  status === 'processing' ? 'size-4' : 'size-3.5',
+                  statusIconClass[status],
+                )}
+              />
               {t(($) => $[`newKnowledge.documentStatus.${status}`])}
             </span>
           )}
         </td>
-        <td className="hidden w-40 py-3 pr-6 system-xs-regular text-text-tertiary lg:table-cell">
+        <td className="hidden w-[150px] pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
-        <td className="w-10 py-3 text-right">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
-              aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
-              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              <span aria-hidden className="i-ri-more-fill size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
-              >
-                <span aria-hidden className="i-ri-download-line size-4" />
-                {t(($) => $['newKnowledge.downloadDocuments'])}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                className="gap-2 px-3"
-                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
-              >
-                <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                {t(($) => $['newKnowledge.deleteDocuments'])}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <td className="w-10 align-middle">
+          <DocumentActionsDropdown documentTitle={document.title} />
         </td>
       </tr>
     )
@@ -239,7 +222,6 @@ export function DocumentsEmpty({
   canEdit,
   hasTaskError,
   onAddDocument,
-  onDropFiles,
   onOpenTasks,
   readOnlyReasonId,
   tasksButtonLabel,
@@ -251,7 +233,6 @@ export function DocumentsEmpty({
   canEdit: boolean
   hasTaskError: boolean
   onAddDocument: () => void
-  onDropFiles: (files: File[]) => void
   onOpenTasks: () => void
   readOnlyReasonId?: string
   tasksButtonLabel: string
@@ -262,28 +243,18 @@ export function DocumentsEmpty({
   const tasksVisible = activeTaskCount > 0 || Boolean(attentionTaskBadge) || hasTaskError
 
   return (
-    <div
-      className="flex min-h-96 flex-1 flex-col items-center justify-center px-6 text-center"
-      onDragOver={(event) => {
-        event.preventDefault()
-        event.dataTransfer.dropEffect = canEdit ? 'copy' : 'none'
-      }}
-      onDrop={(event) => {
-        event.preventDefault()
-        if (canEdit) onDropFiles([...event.dataTransfer.files])
-      }}
-    >
+    <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
       <span className="flex size-12 items-center justify-center rounded-xl bg-background-section text-text-accent">
         <span aria-hidden className="i-ri-file-text-fill size-6" />
       </span>
-      <h2 className="mt-4 system-md-semibold text-text-primary">
+      <h2 className="text-base leading-normal font-semibold text-text-primary">
         {t(($) => $['newKnowledge.documentsEmptyTitle'])}
       </h2>
-      <p className="mt-2 max-w-lg system-xs-regular text-text-tertiary">
+      <p className="max-w-[460px] text-[13px] leading-normal font-normal text-text-tertiary">
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
       <Button
-        className="mt-4"
+        className="gap-1 pl-3"
         variant="primary"
         aria-busy={uploading}
         disabled={!canEdit}
@@ -295,12 +266,12 @@ export function DocumentsEmpty({
         {t(($) => $['newKnowledge.addDocument'])}
       </Button>
       {canEdit && (
-        <p className="mt-2 system-2xs-regular text-text-quaternary">
+        <p className="system-xs-regular text-text-quaternary">
           {t(($) => $['newKnowledge.documentsDropHint'])}
         </p>
       )}
       {tasksVisible && (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <TaskTrigger
             activeTaskCount={activeTaskCount}
             attentionTaskBadge={attentionTaskBadge}
@@ -417,7 +388,7 @@ export function DocumentsList({
 
   return (
     <>
-      <div className="mt-5 flex flex-col gap-2 xl:flex-row xl:items-center">
+      <div className="mt-4 flex flex-col gap-2 xl:flex-row xl:items-center">
         <Select<DocumentFilter>
           disabled={statusPending}
           value={filter}
@@ -471,11 +442,15 @@ export function DocumentsList({
             tasksLiveStatus={tasksLiveStatus}
           />
         )}
-        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
-          <span aria-hidden className="i-ri-price-tag-3-line size-4" />
+        <Button
+          className="gap-1 pl-3"
+          onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}
+        >
+          <span aria-hidden className="i-ri-file-text-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
         <Button
+          className="gap-1 pl-3"
           variant="primary"
           aria-busy={uploading}
           disabled={!canUpload}
@@ -496,9 +471,9 @@ export function DocumentsList({
         tabIndex={-1}
       >
         <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
-          <thead className="system-2xs-medium text-text-tertiary uppercase">
-            <tr>
-              <th className="pb-2 font-medium">
+          <thead className="text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary">
+            <tr className="h-9">
+              <th className="w-10 py-2.5 font-medium">
                 <Checkbox
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
@@ -514,15 +489,19 @@ export function DocumentsList({
                   onCheckedChange={onSelectAll}
                 />
               </th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.documentColumn'])}</th>
-              <th className="hidden pb-2 font-medium lg:table-cell">
+              <th className="py-2.5 pr-6 font-medium">
+                {t(($) => $['newKnowledge.documentColumn'])}
+              </th>
+              <th className="hidden w-[210px] py-2.5 pr-6 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.sourceColumn'])}
               </th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
-              <th className="hidden pb-2 font-medium lg:table-cell">
+              <th className="w-24 py-2.5 pr-2 font-medium sm:w-[240px] sm:pr-6">
+                {t(($) => $['newKnowledge.statusColumn'])}
+              </th>
+              <th className="hidden w-[150px] py-2.5 pr-6 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.updatedColumn'])}
               </th>
-              <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
+              <th className="w-10 py-2.5" aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
             </tr>
           </thead>
           <tbody>
@@ -589,7 +568,7 @@ export function DocumentsList({
           </div>
         )}
       </div>
-      <p className="mt-3 flex items-center gap-1.5 system-xs-regular text-text-tertiary">
+      <p className="mt-4 flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
         {t(($) => $['newKnowledge.lastReadyRevisionHint'])}
       </p>
@@ -672,14 +651,18 @@ export function DocumentBulkActions({
 }) {
   const { t } = useTranslation('dataset')
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
+    <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-[var(--new-rag-sidebar-width,0px)]">
       <div
         aria-label={t(($) => $['newKnowledge.bulkDocumentActions'])}
-        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg px-3 py-2.5 shadow-xl"
+        className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-x-auto rounded-[14px] border border-divider-subtle bg-components-panel-bg py-2.5 pr-2.5 pl-4 shadow-[0_12px_32px_-6px_rgba(15,23,41,0.16),0_2px_6px_rgba(15,23,41,0.06)]"
         role="group"
         onBlurCapture={onBlurCapture}
         onFocusCapture={onFocusCapture}
       >
+        <span className="shrink-0 system-sm-medium text-text-primary">
+          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
+        </span>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
         <Button
           aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
           aria-busy={reindexing}
@@ -691,18 +674,6 @@ export function DocumentBulkActions({
         >
           {t(($) => $['newKnowledge.reindexDocuments'])}
         </Button>
-        <Button
-          variant="ghost"
-          size="small"
-          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-          className="size-7 shrink-0 px-0"
-          onClick={onClear}
-        >
-          <span aria-hidden className="i-ri-close-line size-4" />
-        </Button>
-        <span className="shrink-0 px-1 system-xs-medium text-text-primary">
-          {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
-        </span>
         {disabled && disabledReason && (
           <span
             id="document-reindex-unavailable"
@@ -714,33 +685,55 @@ export function DocumentBulkActions({
             {disabledReason}
           </span>
         )}
-        <span
-          id="document-actions-unavailable"
-          className="max-w-44 shrink-0 system-2xs-regular text-text-tertiary"
-        >
-          {t(($) => $['newKnowledge.downloadDocuments'])}
-          {' / '}
-          {t(($) => $['newKnowledge.deleteDocuments'])}
-          {' · '}
-          {t(($) => $['cornerLabel.unavailable'])}
-        </span>
         <Button
-          aria-describedby="document-actions-unavailable"
           className="shrink-0"
           size="small"
-          disabled
+          onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
         >
           {t(($) => $['newKnowledge.downloadDocuments'])}
         </Button>
         <Button
-          aria-describedby="document-actions-unavailable"
           className="shrink-0"
           size="small"
-          disabled
+          tone="destructive"
+          onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
         >
           {t(($) => $['newKnowledge.deleteDocuments'])}
+        </Button>
+        <Button
+          variant="ghost"
+          size="small"
+          aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
+          className="size-[26px] shrink-0 px-0"
+          onClick={onClear}
+        >
+          <span aria-hidden className="i-ri-close-line size-3.5" />
         </Button>
       </div>
+    </div>
+  )
+}
+
+export function DocumentDropOverlay() {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-divider-regular bg-[rgba(255,255,255,0.5)] text-center backdrop-blur-[5px]"
+      role="status"
+    >
+      <div className="flex w-[228px] items-center justify-center gap-5 rounded-xl border border-dashed border-divider-regular bg-components-panel-bg px-8 py-7 shadow-xs">
+        <span aria-hidden className="i-ri-file-word-2-fill size-6 text-text-accent" />
+        <span aria-hidden className="i-ri-file-pdf-2-fill size-6 text-text-destructive" />
+        <span aria-hidden className="i-ri-file-excel-fill size-6 text-text-success" />
+        <span aria-hidden className="i-ri-file-text-fill size-6 text-text-tertiary" />
+      </div>
+      <p className="mt-4 system-md-semibold text-text-primary">
+        {t(($) => $['newKnowledge.dropFilesHere'])}
+      </p>
+      <p className="mt-2 system-xs-regular text-text-tertiary">
+        {t(($) => $['newKnowledge.documentUploadFormats'])}
+      </p>
     </div>
   )
 }

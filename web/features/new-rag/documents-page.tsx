@@ -27,7 +27,12 @@ import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
-import { DocumentBulkActions, DocumentsEmpty, DocumentsList } from './document-list'
+import {
+  DocumentBulkActions,
+  DocumentDropOverlay,
+  DocumentsEmpty,
+  DocumentsList,
+} from './document-list'
 import {
   ACTIVE_TASK_STATES,
   documentDisplayStatus,
@@ -203,6 +208,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [uploadFormOpen, setUploadFormOpen] = useState(false)
   const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
+  const [isFileDragActive, setIsFileDragActive] = useState(false)
+  const fileDragDepthRef = useRef(0)
   const [tasksOpen, setTasksOpen] = useState(false)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
   const [writePermissionRecoveryGeneration, setWritePermissionRecoveryGeneration] = useState<
@@ -318,6 +325,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
   const canUpload = canWrite && uploadAvailable
+  const openUploadForm = useCallback((files: File[] = []) => {
+    writePermissionFocusRecoveryRequestedRef.current = true
+    writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
+    fileDragDepthRef.current = 0
+    setIsFileDragActive(false)
+    setUploadFormInitialFiles(files)
+    setUploadFormOpen(true)
+  }, [])
   const documentWriteRestrictionReasonId = permissionPending
     ? 'documents-permission-pending'
     : permissionQueryError
@@ -1865,9 +1880,39 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <section
         ref={documentsSectionRef}
         className={cn(
-          'flex min-h-full flex-col px-4 pt-6 sm:px-8 sm:pt-7',
-          bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6 sm:pb-7',
+          'relative flex min-h-full flex-col px-4 pt-6 sm:px-8',
+          bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
         )}
+        onDragEnter={(event) => {
+          const types = Array.from(event.dataTransfer.types ?? [])
+          if (types.length && !types.includes('Files')) return
+          event.preventDefault()
+          if (!canUpload || uploadFormOpen || uploading) return
+          fileDragDepthRef.current += 1
+          setIsFileDragActive(true)
+        }}
+        onDragLeave={() => {
+          if (!fileDragDepthRef.current) return
+          fileDragDepthRef.current -= 1
+          if (!fileDragDepthRef.current) setIsFileDragActive(false)
+        }}
+        onDragOver={(event) => {
+          const types = Array.from(event.dataTransfer.types ?? [])
+          if (types.length && !types.includes('Files')) return
+          event.preventDefault()
+          if (!uploadFormOpen)
+            event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
+        }}
+        onDrop={(event) => {
+          const types = Array.from(event.dataTransfer.types ?? [])
+          if (types.length && !types.includes('Files')) return
+          event.preventDefault()
+          fileDragDepthRef.current = 0
+          setIsFileDragActive(false)
+          if (!canUpload || uploadFormOpen || uploading) return
+          const files = [...event.dataTransfer.files]
+          if (files.length) openUploadForm(files)
+        }}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             documentSurfaceHadFocusRef.current = false
@@ -1897,7 +1942,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <h2
             ref={documentsTitleRef}
             id="new-knowledge-documents-title"
-            className="title-xl-semi-bold text-text-primary"
+            className="title-xl-semi-bold leading-6 text-text-primary"
             tabIndex={-1}
           >
             {t(($) =>
@@ -2130,18 +2175,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             attentionTaskBadge={attentionTaskBadge}
             canEdit={canUpload}
             hasTaskError={hasTaskError}
-            onAddDocument={() => {
-              writePermissionFocusRecoveryRequestedRef.current = true
-              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              setUploadFormInitialFiles([])
-              setUploadFormOpen(true)
-            }}
-            onDropFiles={(files) => {
-              writePermissionFocusRecoveryRequestedRef.current = true
-              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              setUploadFormInitialFiles(files)
-              setUploadFormOpen(true)
-            }}
+            onAddDocument={() => openUploadForm()}
             onOpenTasks={() => setTasksOpen(true)}
             readOnlyReasonId={documentUploadRestrictionReasonId}
             tasksButtonLabel={tasksButtonLabel}
@@ -2169,12 +2203,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             isFetchNextPageError={documentsQuery.isFetchNextPageError}
             isFetchingNextDocumentPage={isFetchingNextDocumentPage}
             isFetchingNextPage={isFetchingNextResultsPage}
-            onAddDocument={() => {
-              writePermissionFocusRecoveryRequestedRef.current = true
-              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              setUploadFormInitialFiles([])
-              setUploadFormOpen(true)
-            }}
+            onAddDocument={() => openUploadForm()}
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
             onOpenTasks={() => setTasksOpen(true)}
@@ -2204,6 +2233,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             uploading={uploading}
           />
         )}
+        {isFileDragActive && canUpload && !uploadFormOpen && <DocumentDropOverlay />}
       </section>
       {bulkActionsVisible && (
         <DocumentBulkActions

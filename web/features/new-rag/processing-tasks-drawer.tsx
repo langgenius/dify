@@ -413,7 +413,7 @@ export function ProcessingTasksDrawer({
                   <DrawerCloseButton
                     ref={drawerCloseButtonRef}
                     aria-label={tCommon(($) => $['operation.close'])}
-                    className="size-6 rounded-md"
+                    className="size-[26px] rounded-md"
                   />
                 </div>
                 <DrawerDescription className="mt-1 system-xs-regular text-text-tertiary">
@@ -514,7 +514,7 @@ export function ProcessingTasksDrawer({
                     <Loading />
                   </div>
                 ) : orderedTasks.length ? (
-                  <ul className="divide-y divide-divider-subtle">
+                  <ul>
                     {orderedTasks.map((task) => {
                       const title =
                         documentTitles.get(task.documentId) ??
@@ -541,10 +541,10 @@ export function ProcessingTasksDrawer({
                             }
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate system-xs-medium text-text-primary">
+                            <p className="truncate system-sm-medium text-text-primary">
                               {t(($) => $['newKnowledge.processDocument'], { name: title })}
                             </p>
-                            <p className="mt-0.5 truncate system-2xs-regular text-text-tertiary">
+                            <p className="mt-[3px] truncate system-xs-regular text-text-tertiary">
                               {t(($) => $[`newKnowledge.processingTaskState.${task.state}`], {
                                 progress: task.progressPercent,
                               })}

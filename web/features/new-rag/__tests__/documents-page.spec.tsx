@@ -692,8 +692,16 @@ describe('DocumentsPage', () => {
     })
     expect(rowActions).toBeEnabled()
     await user.click(rowActions)
+    const rowMenuItems = await screen.findAllByRole('menuitem')
+    expect(rowMenuItems).toHaveLength(6)
+    expect(rowMenuItems[0]).toHaveAccessibleName('common.operation.rename')
+    expect(rowMenuItems[1]).toHaveAccessibleName('dataset.newKnowledge.reindexDocument')
+    expect(rowMenuItems[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
+    expect(rowMenuItems[3]).toHaveAccessibleName('dataset.batchAction.archive')
+    expect(rowMenuItems[4]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
+    expect(rowMenuItems[5]).toHaveAccessibleName('dataset.newKnowledge.removeSource')
     await user.click(
-      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
     )
     expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.documentActionsUnavailable')
 
@@ -814,6 +822,30 @@ describe('DocumentsPage', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('opens the upload form when files are dropped on a populated document page', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const droppedFile = new File(['# handbook'], 'handbook.md', { type: 'text/markdown' })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const documentSurface = screen
+      .getByRole('heading', { name: 'dataset.newKnowledge.documents' })
+      .closest('section')
+    expect(documentSurface).not.toBeNull()
+    fireEvent.drop(documentSurface!, {
+      dataTransfer: {
+        dropEffect: 'copy',
+        files: [droppedFile],
+        types: ['Files'],
+      },
+    })
+
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('handbook.md')).toBeInTheDocument()
   })
 
   it('keeps direct-upload actions unavailable until the deployment is verified', () => {
@@ -1884,7 +1916,7 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(screen.getByRole('table').parentElement).toHaveFocus())
   })
 
-  it('re-indexes selected documents and disables backend-dependent actions', async () => {
+  it('re-indexes selected documents and keeps the designed bulk action order', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' }), document({ id: 'two' })] }],
@@ -1908,25 +1940,24 @@ describe('DocumentsPage', () => {
     expect(reindex).toBeEnabled()
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
-    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
-    expect(actions.firstElementChild).toBe(orderedActions[0])
-    expect(orderedActions[1]!.nextElementSibling).toHaveTextContent(
+    expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
+    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.deleteDocuments')
+    expect(orderedActions[3]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(actions.firstElementChild).toHaveTextContent(
       'dataset.newKnowledge.documentsSelected:{"count":1}',
     )
-    expect(
-      within(actions).getByText(
-        'dataset.newKnowledge.downloadDocuments / dataset.newKnowledge.deleteDocuments · dataset.cornerLabel.unavailable',
-      ),
-    ).toBeVisible()
     const download = within(actions).getByRole('button', {
       name: 'dataset.newKnowledge.downloadDocuments',
     })
     const remove = within(actions).getByRole('button', {
       name: 'dataset.newKnowledge.deleteDocuments',
     })
-    expect(download).toBeDisabled()
-    expect(remove).toBeDisabled()
-    expect(toastMock.info).not.toHaveBeenCalled()
+    expect(download).toBeEnabled()
+    expect(remove).toBeEnabled()
+    await user.click(download)
+    await user.click(remove)
+    expect(toastMock.info).toHaveBeenCalledTimes(2)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.documentActionsUnavailable')
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({

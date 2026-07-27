@@ -439,7 +439,8 @@ describe('DocumentDetailPage', () => {
     queryClient.invalidateQueries.mockResolvedValue(undefined)
   })
 
-  it('loads the document, revisions, chunks, and task status through generated contracts', () => {
+  it('loads the document, revisions, chunks, and task status through generated contracts', async () => {
+    const user = userEvent.setup()
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(documentOptions).toHaveBeenCalledWith(
@@ -466,6 +467,19 @@ describe('DocumentDetailPage', () => {
       params: { control_space_id: 'space-1' },
       query: { limit: 100 },
     })
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.documentActions/,
+      }),
+    )
+    expect(screen.getAllByRole('menuitem')).toHaveLength(5)
+    expect(screen.getByRole('menuitem', { name: 'common.operation.rename' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    ).toBeInTheDocument()
   })
 
   it('does not construct a chunks request while the document is loading', () => {

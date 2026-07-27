@@ -1,12 +1,17 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import Loading from '@/app/components/base/loading'
+import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -33,6 +38,8 @@ export function KnowledgeSpaceShell({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { t: tHit } = useTranslation('datasetHitTesting')
+  const { t: tApp } = useTranslation('app')
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
@@ -95,44 +102,97 @@ export function KnowledgeSpaceShell({
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
   const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
-    'flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+    'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  const navIcon = (className: string) => (
+    <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
+      <span className={cn('size-[18px]', className)} />
+    </span>
+  )
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body p-1">
+    <div
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body p-1"
+      style={
+        {
+          '--new-rag-sidebar-width': sidebarExpanded ? '248px' : '64px',
+        } as CSSProperties
+      }
+    >
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:flex-row">
-        <aside className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:w-60">
-          <div className="flex h-12 min-w-0 items-center px-1 pr-2">
-            <Link
-              href={newKnowledgeListPath}
-              aria-label={t(($) => $['newKnowledge.backToList'])}
-              className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
-              <span aria-hidden className="i-ri-home-5-line size-4" />
-            </Link>
-            <span aria-hidden className="text-text-quaternary">
-              /
-            </span>
-            <span className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary">
-              {t(($) => $.knowledge)}
-            </span>
+        <aside
+          className={cn(
+            'flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs transition-[width] motion-reduce:transition-none',
+            sidebarExpanded ? 'sm:w-60' : 'sm:w-14',
+          )}
+        >
+          <div
+            className={cn(
+              'flex h-12 min-w-0 items-center',
+              sidebarExpanded ? 'py-2 pr-2 pl-1' : 'justify-center px-3 pt-2 pb-1',
+            )}
+          >
+            {sidebarExpanded && (
+              <>
+                <div className="flex min-w-0 flex-1 items-center gap-px">
+                  <Link
+                    href={newKnowledgeListPath}
+                    aria-label={t(($) => $['newKnowledge.backToList'])}
+                    className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  >
+                    <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+                    <span aria-hidden className="i-ri-home-5-line size-4" />
+                  </Link>
+                  <span aria-hidden className="system-md-regular text-text-quaternary">
+                    /
+                  </span>
+                  <span className="truncate px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary">
+                    {t(($) => $.knowledge)}
+                  </span>
+                </div>
+                <DialogTrigger
+                  handle={gotoAnythingDialogHandle}
+                  render={
+                    <button
+                      type="button"
+                      aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
+                      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+                    </button>
+                  }
+                />
+              </>
+            )}
+            <DetailSidebarToggleButton
+              expand={sidebarExpanded}
+              onToggle={() => setSidebarExpanded((expanded) => !expanded)}
+              icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+              className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
+            />
           </div>
           <div className="flex min-w-0 items-center px-1 py-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2">
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 items-center rounded-xl p-2',
+                sidebarExpanded ? 'gap-2' : 'justify-center',
+              )}
+            >
               <KnowledgeSpaceIcon
                 icon={knowledgeSpaceQuery.data.technical_summary?.icon}
                 size="medium"
               />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate system-md-semibold text-text-secondary">
-                  {knowledgeSpaceName}
-                </h1>
-                <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['chunkingMode.parentChild'])} ·{' '}
-                  {t(($) => $['indexingTechnique.high_quality'])} ·{' '}
-                  {t(($) => $['retrieval.semantic_search.title'])}
-                </p>
-              </div>
+              {sidebarExpanded && (
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate system-md-semibold text-text-secondary">
+                    {knowledgeSpaceName}
+                  </h1>
+                  <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+                    {t(($) => $['chunkingMode.parentChild'])} ·{' '}
+                    {t(($) => $['indexingTechnique.high_quality'])} ·{' '}
+                    {t(($) => $['retrieval.semantic_search.title'])}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <nav
@@ -140,72 +200,103 @@ export function KnowledgeSpaceShell({
             aria-label={knowledgeSpaceName}
           >
             <Button
+              aria-label={t(($) => $['newKnowledge.overview'])}
               variant="ghost"
-              className={cn(navItemClassName, 'justify-start text-text-secondary')}
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                'text-text-secondary',
+              )}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-ri-layout-grid-line size-4" />
-              {t(($) => $['newKnowledge.overview'])}
+              {navIcon('i-ri-layout-grid-line')}
+              {sidebarExpanded && t(($) => $['newKnowledge.overview'])}
             </Button>
             <Link
               href={sourcesPath}
+              aria-label={t(($) => $['newKnowledge.sourceColumn'])}
               aria-current={sourcesActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
-                sourcesActive ? 'bg-state-base-active text-text-accent' : 'text-text-secondary',
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                sourcesActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
             >
-              <span aria-hidden className="i-ri-book-open-line size-4" />
-              {t(($) => $['newKnowledge.sourceColumn'])}
+              {navIcon('i-ri-book-open-line')}
+              {sidebarExpanded && t(($) => $['newKnowledge.sourceColumn'])}
             </Link>
             <Link
               href={documentsPath}
+              aria-label={t(($) => $['newKnowledge.documentColumn'])}
               aria-current={documentsActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
-                documentsActive ? 'bg-state-base-active text-text-accent' : 'text-text-secondary',
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                documentsActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
             >
-              <span aria-hidden className="i-ri-file-text-line size-4" />
-              {t(($) => $['newKnowledge.documentColumn'])}
+              {navIcon('i-ri-file-text-line')}
+              {sidebarExpanded && t(($) => $['newKnowledge.documentColumn'])}
             </Link>
             <Button
-              variant="ghost"
-              className={cn(navItemClassName, 'justify-start text-text-secondary')}
-              onClick={showDeferredPage}
-            >
-              <span aria-hidden className="i-ri-search-eye-line size-4" />
-              {tHit(($) => $.title)}
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(navItemClassName, 'justify-start text-text-secondary')}
-              onClick={showDeferredPage}
-            >
-              <span aria-hidden className="i-ri-shield-check-line size-4" />
-              {t(($) => $['newKnowledge.quality'])}
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(navItemClassName, 'justify-start text-text-secondary')}
-              onClick={showDeferredPage}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              {tCommon(($) => $['datasetMenus.settings'])}
-            </Button>
-            <span className="hidden flex-1 sm:block" />
-            <Button
+              aria-label={tHit(($) => $.title)}
               variant="ghost"
               className={cn(
                 navItemClassName,
-                'justify-start border-[0.5px] border-components-panel-border text-text-secondary',
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                'text-text-secondary',
               )}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-custom-vender-workflow-agent size-4" />
-              {t(($) => $['newKnowledge.apiAgentAccess'])}
+              {navIcon('i-ri-search-eye-line')}
+              {sidebarExpanded && tHit(($) => $.title)}
+            </Button>
+            <Button
+              aria-label={t(($) => $['newKnowledge.quality'])}
+              variant="ghost"
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                'text-text-secondary',
+              )}
+              onClick={showDeferredPage}
+            >
+              {navIcon('i-ri-shield-check-line')}
+              {sidebarExpanded && t(($) => $['newKnowledge.quality'])}
+            </Button>
+            <Button
+              aria-label={tCommon(($) => $['datasetMenus.settings'])}
+              variant="ghost"
+              className={cn(
+                navItemClassName,
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+                'text-text-secondary',
+              )}
+              onClick={showDeferredPage}
+            >
+              {navIcon('i-ri-equalizer-2-line')}
+              {sidebarExpanded && tCommon(($) => $['datasetMenus.settings'])}
             </Button>
           </nav>
+          <div className={cn('shrink-0 py-2', sidebarExpanded ? 'px-3' : 'px-2')}>
+            <Button
+              aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
+              variant="ghost"
+              className={cn(
+                navItemClassName,
+                'w-full border-[0.5px] border-components-panel-border text-text-secondary',
+                sidebarExpanded ? 'justify-start' : 'justify-center px-0',
+              )}
+              onClick={showDeferredPage}
+            >
+              {navIcon('i-custom-vender-workflow-agent')}
+              {sidebarExpanded && t(($) => $['newKnowledge.apiAgentAccess'])}
+            </Button>
+          </div>
         </aside>
         <section className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg shadow-xs">
           {children}

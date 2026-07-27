@@ -13,6 +13,7 @@ import {
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
+import { DocumentActionsDropdown } from './document-actions-dropdown'
 
 export function DocumentDetailHeader({
   backPath,
@@ -126,6 +127,7 @@ export function DocumentDetailHeader({
           <Button
             aria-busy={reindexing || taskIsActive}
             aria-describedby={reindexDisabledReasonId}
+            className="gap-1 pl-3"
             disabled={reindexDisabled}
             loading={reindexing}
             onClick={onReindex}
@@ -133,6 +135,11 @@ export function DocumentDetailHeader({
             <span aria-hidden className="i-ri-refresh-line size-4" />
             {t(($) => $['newKnowledge.reindexDocument'])}
           </Button>
+          <DocumentActionsDropdown
+            className="size-8 justify-center"
+            documentTitle={document.title}
+            showReindex={false}
+          />
         </div>
       </div>
       {isFetchNextRevisionPageError && (
