@@ -774,24 +774,13 @@ Retrieve app site information and configuration.
 | 500 | Internal Server Error |  |
 
 ### [GET] /system-features
-**Get system feature flags and configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system feature flags and configuration
-Returns the current system feature flags and configuration
-that control various functionalities across the platform.
-
-Returns:
-    dict: System feature configuration object
-
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for webapp initialization.
-
-Authentication would create circular dependency (can't authenticate without webapp loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
+Authentication configuration must be available before the authentication flow can be selected.
 
 #### Responses
 
@@ -975,6 +964,12 @@ Returns Server-Sent Events stream.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object | Tool icon metadata keyed by tool name | No |
+
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
 
 #### AppPermissionQuery
 
@@ -1412,12 +1407,6 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-
 #### RemoteFileInfo
 
 | Name | Type | Description | Required |
@@ -1557,6 +1546,8 @@ Default configuration for form inputs.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
@@ -1572,15 +1563,11 @@ Default configuration for form inputs.
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
@@ -1618,11 +1605,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 
@@ -1665,6 +1652,7 @@ in form definiton, or a variable while the workflow is running.
 | custom_config | [WebAppCustomConfigResponse](#webappcustomconfigresponse) |  | No |
 | enable_site | boolean |  | Yes |
 | end_user_id | string |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [WebModelConfigResponse](#webmodelconfigresponse) |  | No |
 | plan | string |  | Yes |
 | site | [WebSiteResponse](#websiteresponse) |  | Yes |

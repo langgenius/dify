@@ -26,16 +26,29 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
-  useIsChatMode: () => mockIsChatMode,
-  useWorkflow: () => ({
-    getBeforeNodesInSameBranch: (...args: unknown[]) => mockGetBeforeNodesInSameBranch(...args),
-  }),
-  useWorkflowVariables: () => ({
-    getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+    useIsChatMode: () => mockIsChatMode,
+    useWorkflow: () => ({
+      getBeforeNodesInSameBranch: (...args: unknown[]) => mockGetBeforeNodesInSameBranch(...args),
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getCurrentVariableType: (...args: unknown[]) => mockGetCurrentVariableType(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<ListFilterNodeType>(mockSetInputs),

@@ -17,20 +17,27 @@ const mockFormatWorkflowRunIdentifier = vi.fn(
 
 let mockIsChatMode = false
 
-vi.mock('../../hooks', () => {
-  return {
-    useIsChatMode: () => mockIsChatMode,
-    useNodesInteractions: () => ({
-      handleNodesCancelSelected: mockHandleNodesCancelSelected,
-    }),
-    useWorkflowInteractions: () => ({
-      handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-    }),
-    useWorkflowRun: () => ({
-      handleBackupDraft: mockHandleBackupDraft,
-    }),
-  }
-})
+vi.mock('../../hooks/use-workflow', () => ({
+  useIsChatMode: () => mockIsChatMode,
+}))
+
+vi.mock('../../hooks/use-nodes-interactions', () => ({
+  useNodesInteractions: () => ({
+    handleNodesCancelSelected: mockHandleNodesCancelSelected,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
+  useWorkflowInteractions: () => ({
+    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-run', () => ({
+  useWorkflowRun: () => ({
+    handleBackupDraft: mockHandleBackupDraft,
+  }),
+}))
 
 vi.mock('@/service/use-workflow', () => ({
   useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
@@ -43,7 +50,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),

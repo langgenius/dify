@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
-import { useIsChatMode } from '../hooks'
+import { useIsChatMode } from '../hooks/use-workflow'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 

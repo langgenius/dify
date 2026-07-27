@@ -46,7 +46,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
+from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
 from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
@@ -432,7 +432,6 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
 class TrialAppFileUploadApi(TrialAppResource):
-    @trial_feature_enable
     @cloud_edition_billing_resource_check("documents")
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
@@ -447,7 +446,6 @@ class TrialAppFileUploadApi(TrialAppResource):
 
 
 class TrialAppRemoteFileUploadApi(TrialAppResource):
-    @trial_feature_enable
     @cloud_edition_billing_resource_check("documents")
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
@@ -462,7 +460,6 @@ class TrialAppRemoteFileUploadApi(TrialAppResource):
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
-    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
     @with_current_user
@@ -513,7 +510,6 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -538,7 +534,6 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, trial_app):
@@ -640,7 +635,6 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 class TrialChatAudioApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
@@ -691,7 +685,6 @@ class TrialChatAudioApi(TrialAppResource):
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
@@ -752,7 +745,6 @@ class TrialChatTextApi(TrialAppResource):
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, trial_app):

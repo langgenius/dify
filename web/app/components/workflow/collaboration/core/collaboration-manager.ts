@@ -179,6 +179,7 @@ export class CollaborationManager {
   private graphViewSequence = 0
   private visibilityListenerAttached = false
   private crdtTrusted = false
+  private hasEstablishedConnection = false
   private rebuildCrdtOnNextConnect = false
   private reconnectedWithFreshDoc = false
   private awaitingSnapshotImport = false
@@ -635,11 +636,13 @@ export class CollaborationManager {
     // Only disconnect if switching to a different app
     if (this.currentAppId && this.currentAppId !== appId) this.forceDisconnect()
 
+    this.hasEstablishedConnection = false
     this.currentAppId = appId
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
     const socket = webSocketClient.connect(appId)
+    this.hasEstablishedConnection = socket.connected
 
     // Setup event listeners BEFORE any other operations
     this.setupSocketEventListeners(socket)
@@ -723,6 +726,11 @@ export class CollaborationManager {
 
   isConnected(): boolean {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  }
+
+  canUseLocalDraftFallback(): boolean {
+    // A graph from a previously connected session must recover through collaboration before saving.
+    return !this.isConnected() && !this.hasEstablishedConnection
   }
 
   getNodes(): Node[] {
@@ -1838,6 +1846,7 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
+      this.hasEstablishedConnection = true
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
         this.rebuildCrdtOnNextConnect = false
