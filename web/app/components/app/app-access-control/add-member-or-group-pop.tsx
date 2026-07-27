@@ -118,7 +118,7 @@ export default function AddMemberOrGroupDialog() {
         aria-label={t(($) => $['operation.add'], { ns: 'common' })}
         icon={false}
         size="small"
-        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
           <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
