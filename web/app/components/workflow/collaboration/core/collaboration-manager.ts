@@ -156,6 +156,9 @@ const toUint8Array = (value: unknown): Uint8Array | null => {
 
 export class CollaborationManager {
   private crdtRuntime: CrdtRuntime | null = null
+  private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
+  private targetAppId: string | null = null
+  private connectGeneration = 0
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
@@ -538,6 +541,20 @@ export class CollaborationManager {
     return crdtRuntime
   }
 
+  private async ensureCrdtRuntime(): Promise<void> {
+    if (this.crdtRuntime) return
+
+    const runtimePromise = this.crdtRuntimePromise ?? this.loadCrdtRuntime()
+    this.crdtRuntimePromise = runtimePromise
+
+    try {
+      this.crdtRuntime = await runtimePromise
+    } catch (error) {
+      if (this.crdtRuntimePromise === runtimePromise) this.crdtRuntimePromise = null
+      throw error
+    }
+  }
+
   private getCrdtRuntime(): CrdtRuntime {
     if (!this.crdtRuntime) throw new Error('CRDT runtime not initialized')
     return this.crdtRuntime
@@ -639,21 +656,31 @@ export class CollaborationManager {
   }
 
   async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
-    this.crdtRuntime ??= await this.loadCrdtRuntime()
-
     const connectionId = Math.random().toString(36).substring(2, 11)
+    if (this.targetAppId !== appId) {
+      this.targetAppId = appId
+      this.connectGeneration += 1
+    }
+    const connectGeneration = this.connectGeneration
 
-    this.activeConnections.add(connectionId)
+    if (!this.crdtRuntime) await this.ensureCrdtRuntime()
+
+    if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
+      return connectionId
 
     if (this.currentAppId === appId && this.doc) {
       // Already connected to the same app, only update store if provided and we don't have one
       if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      this.activeConnections.add(connectionId)
 
       return connectionId
     }
 
     // Only disconnect if switching to a different app
-    if (this.currentAppId && this.currentAppId !== appId) this.forceDisconnect()
+    if (this.currentAppId && this.currentAppId !== appId)
+      this.forceDisconnect({ preserveConnectIntent: true })
+
+    this.activeConnections.add(connectionId)
 
     this.hasEstablishedConnection = false
     this.currentAppId = appId
@@ -685,7 +712,7 @@ export class CollaborationManager {
   }
 
   disconnect = (connectionId?: string): void => {
-    if (connectionId) this.activeConnections.delete(connectionId)
+    if (connectionId && !this.activeConnections.delete(connectionId)) return
 
     // Only disconnect when no more connections
     if (this.activeConnections.size === 0) this.forceDisconnect()
@@ -699,7 +726,9 @@ export class CollaborationManager {
     this.pendingWorkflowSyncRequests.clear()
   }
 
-  private forceDisconnect = (): void => {
+  private forceDisconnect = ({
+    preserveConnectIntent = false,
+  }: { preserveConnectIntent?: boolean } = {}): void => {
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -740,6 +769,10 @@ export class CollaborationManager {
     if (wasLeader) this.eventEmitter.emit('leaderChange', false)
 
     this.activeConnections.clear()
+    if (!preserveConnectIntent) {
+      this.targetAppId = null
+      this.connectGeneration += 1
+    }
     this.eventEmitter.removeAllListeners()
   }
 
