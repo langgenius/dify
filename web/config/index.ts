@@ -94,12 +94,17 @@ export const SOCKET_URL = getStringConfig(env.NEXT_PUBLIC_SOCKET_URL, 'ws://loca
 
 export const BATCH_CONCURRENCY = env.NEXT_PUBLIC_BATCH_CONCURRENCY
 
-export const CSRF_COOKIE_NAME = () => {
-  if (COOKIE_DOMAIN) return 'csrf_token'
+const AUTH_COOKIE_NAME = (cookieName: string) => {
+  if (COOKIE_DOMAIN) return cookieName
   const isSecure = API_PREFIX.startsWith('https://')
-  return isSecure ? '__Host-csrf_token' : 'csrf_token'
+  return isSecure ? `__Host-${cookieName}` : cookieName
+}
+export const CSRF_COOKIE_NAME = () => {
+  return AUTH_COOKIE_NAME('csrf_token')
 }
 export const CSRF_HEADER_NAME = 'X-CSRF-Token'
+export const ACCESS_TOKEN_COOKIE_NAME = () => AUTH_COOKIE_NAME('access_token')
+export const REFRESH_TOKEN_COOKIE_NAME = () => AUTH_COOKIE_NAME('refresh_token')
 export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
 export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'

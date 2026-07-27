@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME } from '@/config'
 import { makeQueryClient } from '@/context/query-client-server'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
@@ -9,11 +10,13 @@ import {
   resolveServerConsoleApiUrl,
   serverConsoleQuery,
 } from '@/service/server'
+import { hasRequestCookie } from '@/utils/request-cookie'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const ACCOUNT_PROFILE_PATH = '/account/profile'
 const AUTH_REFRESH_PATH = '/auth/refresh'
+const SIGNIN_PATH = '/signin'
 
 type ConsoleErrorPayload = {
   code?: string
@@ -43,6 +46,11 @@ const redirectToAuthRefresh = async () => {
   redirect(`${AUTH_REFRESH_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
 }
 
+const redirectToSignin = async () => {
+  const currentPath = await getCurrentPath()
+  redirect(`${SIGNIN_PATH}?redirect_url=${encodeURIComponent(currentPath)}`)
+}
+
 const handleProfileError = async (error: unknown) => {
   if (!(error instanceof Response)) throw error
 
@@ -61,6 +69,14 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
   if (accountProfileUrl) {
     try {
       const context = await getServerConsoleClientContext()
+      const hasAccessToken = hasRequestCookie(context.cookie, ACCESS_TOKEN_COOKIE_NAME())
+
+      if (!hasAccessToken) {
+        if (hasRequestCookie(context.cookie, REFRESH_TOKEN_COOKIE_NAME()))
+          await redirectToAuthRefresh()
+
+        await redirectToSignin()
+      }
 
       await Promise.all([
         queryClient.fetchQuery(serverUserProfileQueryOptions()),

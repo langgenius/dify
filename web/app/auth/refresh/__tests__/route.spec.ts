@@ -4,12 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   basePath: '',
+  refreshTokenCookieName: 'refresh_token',
 }))
 
 vi.mock('@/config', () => ({
   API_PREFIX: 'http://localhost:5001/console/api',
+  ACCESS_TOKEN_COOKIE_NAME: () => 'access_token',
   CSRF_COOKIE_NAME: () => 'csrf_token',
   CSRF_HEADER_NAME: 'X-CSRF-Token',
+  REFRESH_TOKEN_COOKIE_NAME: () => mocks.refreshTokenCookieName,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -48,6 +51,7 @@ describe('auth refresh route', () => {
     vi.resetModules()
     vi.unstubAllGlobals()
     mocks.basePath = ''
+    mocks.refreshTokenCookieName = 'refresh_token'
   })
 
   it('should refresh cookies and redirect back to the requested path', async () => {
@@ -88,6 +92,41 @@ describe('auth refresh route', () => {
       'access_token=new-access; Path=/; HttpOnly',
       'refresh_token=new-refresh; Path=/; HttpOnly',
     ])
+  })
+
+  it.each([
+    ['plain', 'refresh_token'],
+    ['__Host-', '__Host-refresh_token'],
+  ])('should call refresh-token when the %s refresh token cookie exists', async (_, cookieName) => {
+    mocks.refreshTokenCookieName = cookieName
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await import('../route')
+
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
+        `${cookieName}=old-refresh; locale=en-US`,
+      ),
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('/apps')
+  })
+
+  it('should redirect to signin without calling refresh-token when only unrelated cookies exist', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await import('../route')
+
+    const response = await GET(
+      createRequest('http://localhost:3000/auth/refresh?redirect_url=%2Fapps', 'locale=en-US'),
+    )
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
   })
 
   it('should redirect to signin when refresh token is rejected', async () => {

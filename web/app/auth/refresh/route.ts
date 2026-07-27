@@ -1,6 +1,8 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
+import { REFRESH_TOKEN_COOKIE_NAME } from '@/config'
 import { resolveServerConsoleApiUrl } from '@/service/server'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
+import { hasRequestCookie } from '@/utils/request-cookie'
 import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
@@ -92,7 +94,8 @@ export async function GET(request: Request) {
   const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH)
   const cookie = request.headers.get('cookie')
 
-  if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectTarget)
+  if (!refreshUrl || !cookie || !hasRequestCookie(cookie, REFRESH_TOKEN_COOKIE_NAME()))
+    return createSigninRedirectResponse(redirectTarget)
 
   try {
     const response = await fetch(refreshUrl, {

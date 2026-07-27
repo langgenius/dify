@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   headers: vi.fn(),
   resolveServerConsoleApiUrl: vi.fn(),
   basePath: '',
+  accessTokenCookieName: 'access_token',
+  refreshTokenCookieName: 'refresh_token',
 }))
 
 vi.mock('@/context/query-client-server', async (importOriginal) => {
@@ -41,6 +43,11 @@ vi.mock('@/utils/var', () => ({
   get basePath() {
     return mocks.basePath
   },
+}))
+
+vi.mock('@/config', () => ({
+  ACCESS_TOKEN_COOKIE_NAME: () => mocks.accessTokenCookieName,
+  REFRESH_TOKEN_COOKIE_NAME: () => mocks.refreshTokenCookieName,
 }))
 
 vi.mock('@/features/account-profile/server', () => ({
@@ -76,6 +83,8 @@ describe('CommonLayoutHydrationBoundary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.basePath = ''
+    mocks.accessTokenCookieName = 'access_token'
+    mocks.refreshTokenCookieName = 'refresh_token'
     mocks.rootQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     mocks.headers.mockResolvedValue(
       new Headers({
@@ -107,7 +116,7 @@ describe('CommonLayoutHydrationBoundary', () => {
       dataset: { default_permission_keys: [], overrides: [] },
     })
     mocks.getServerConsoleClientContext.mockResolvedValue({
-      cookie: 'session=abc',
+      cookie: 'access_token=abc; csrf_token=csrf-token',
       csrfToken: 'csrf-token',
     })
     mocks.workspaceQueryOptions.mockReturnValue({
@@ -142,7 +151,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.getServerConsoleClientContext).toHaveBeenCalledTimes(1)
     expect(mocks.workspaceQueryOptions).toHaveBeenCalledWith({
       context: {
-        cookie: 'session=abc',
+        cookie: 'access_token=abc; csrf_token=csrf-token',
         csrfToken: 'csrf-token',
       },
       retry: false,
@@ -150,12 +159,72 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
     expect(mocks.permissionQueryOptions).toHaveBeenCalledWith({
       context: {
-        cookie: 'session=abc',
+        cookie: 'access_token=abc; csrf_token=csrf-token',
         csrfToken: 'csrf-token',
       },
       retry: false,
     })
     expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['plain', 'access_token'],
+    ['__Host-', '__Host-access_token'],
+  ])(
+    'should keep the API-driven validation path when the %s access token cookie exists',
+    async (_, cookieName) => {
+      mocks.accessTokenCookieName = cookieName
+      mocks.getServerConsoleClientContext.mockResolvedValue({
+        cookie: `${cookieName}=abc; locale=en-US`,
+      })
+      const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+      await CommonLayoutHydrationBoundary({ children: null })
+
+      expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
+      expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
+      expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
+      expect(mocks.redirect).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['plain', 'refresh_token'],
+    ['__Host-', '__Host-refresh_token'],
+  ])(
+    'should redirect to auth refresh without prefetching when only the %s refresh token cookie exists',
+    async (_, cookieName) => {
+      mocks.refreshTokenCookieName = cookieName
+      mocks.getServerConsoleClientContext.mockResolvedValue({
+        cookie: `${cookieName}=old-refresh; locale=en-US`,
+      })
+      const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+      await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow(
+        'NEXT_REDIRECT',
+      )
+
+      expect(mocks.redirect).toHaveBeenCalledWith(
+        '/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow',
+      )
+      expect(mocks.profileQueryFn).not.toHaveBeenCalled()
+      expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
+      expect(mocks.permissionQueryFn).not.toHaveBeenCalled()
+    },
+  )
+
+  it('should redirect to signin without prefetching when no auth cookie exists', async () => {
+    mocks.getServerConsoleClientContext.mockResolvedValue({
+      cookie: 'locale=en-US',
+    })
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow')
+    expect(mocks.profileQueryFn).not.toHaveBeenCalled()
+    expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
+    expect(mocks.permissionQueryFn).not.toHaveBeenCalled()
   })
 
   it('should dehydrate only Common-owned queries', async () => {
