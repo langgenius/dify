@@ -130,10 +130,8 @@ export function WorkflowRosterAgentOrchestratePanelContent(
     <AgentComposerProvider
       key={composerSessionKey}
       initialDraft={agentSoulConfigToFormState(initialAgentSoulConfig)}
-      initialOriginalConfig={initialAgentSoulConfig}
     >
       <WorkflowRosterAgentOrchestratePanelContentInner
-        activeConfigSnapshot={activeConfigSnapshot}
         agentId={agentId}
         agentSoulConfig={initialAgentSoulConfig}
         composerState={composerState}
@@ -143,12 +141,10 @@ export function WorkflowRosterAgentOrchestratePanelContent(
 }
 
 function WorkflowRosterAgentOrchestratePanelContentInner({
-  activeConfigSnapshot,
   agentId,
   agentSoulConfig,
   composerState,
 }: {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
   composerState?: {
@@ -163,7 +159,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
-      activeConfigSnapshot={activeConfigSnapshot}
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
@@ -268,11 +263,9 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
       <AgentComposerProvider
         key={composerSessionKey}
         initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-        initialOriginalConfig={buildDraft.agentSoulConfig}
       >
         <WorkflowInlineAgentConfigureWorkspaceContent
           {...props}
-          activeConfigSnapshot={activeConfigSnapshot}
           agentId={agentId}
           agentSoulConfig={agentSoulConfig}
           buildDraft={buildDraft}
@@ -283,7 +276,6 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
 }
 
 function WorkflowInlineAgentConfigureWorkspaceContent({
-  activeConfigSnapshot,
   agentId,
   agentSoulConfig,
   buildDraft,
@@ -296,7 +288,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   onSaveInlineToRoster,
   open,
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
@@ -331,7 +322,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const { currentModel, setConfigureModel, textGenerationModelList } =
     useAgentOrchestrateModelOptions()
   const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
-  const { draftSavedAt, saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
+  const { saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
     baseConfig: agentSoulConfig,
     currentModel,
@@ -462,7 +453,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
         draft: agentSoulConfigToFormState(agentSoulConfig),
-        originalConfig: agentSoulConfig,
       })
     },
     [rebaseComposerDraft],
@@ -688,12 +678,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentId={agentId}
           appId={appId}
           nodeId={nodeId}
-          activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
-          draftSavedAt={draftSavedAt}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
