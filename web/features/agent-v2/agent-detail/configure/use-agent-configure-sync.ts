@@ -48,6 +48,8 @@ export function useAgentConfigureSync({
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
+  const latestAppliedSaveSequenceRef = useRef(0)
+  const nextSaveSequenceRef = useRef(0)
   const pageCloseSavingDraftKeyRef = useRef<string | undefined>(undefined)
   const explicitlySavingDraftKeysRef = useRef(new Set<string>())
   const publishInFlightRef = useRef(false)
@@ -89,24 +91,41 @@ export function useAgentConfigureSync({
     }),
   )
 
+  const applySavedDraft = useCallback(
+    ({
+      draftBaseline,
+      draftKey,
+      saveSequence,
+    }: {
+      draftBaseline: AgentSoulConfigFormState
+      draftKey: string
+      saveSequence: number
+    }) => {
+      if (saveSequence < latestAppliedSaveSequenceRef.current) return
+
+      latestAppliedSaveSequenceRef.current = saveSequence
+      setSavedDraft(draftBaseline)
+      lastAutosavedDraftKeyRef.current = draftKey
+    },
+    [setSavedDraft],
+  )
+
   const saveComposer = useSerialAsyncCallback(
     async ({
       configSnapshot,
       draftBaseline,
-      keepalive = false,
       publish = false,
       silent = true,
     }: {
       configSnapshot: AgentSoulConfig
       draftBaseline: AgentSoulConfigFormState
-      keepalive?: boolean
       publish?: boolean
       silent?: boolean
     }) => {
       const savedDraftKey = JSON.stringify(configSnapshot)
+      const saveSequence = ++nextSaveSequenceRef.current
       try {
-        const saveDraftRequest = keepalive ? saveComposerDraftOnPageClose : saveComposerDraft
-        await saveDraftRequest({
+        await saveComposerDraft({
           params: {
             agent_id: agentId,
           },
@@ -125,8 +144,11 @@ export function useAgentConfigureSync({
         return false
       }
 
-      setSavedDraft(draftBaseline)
-      lastAutosavedDraftKeyRef.current = savedDraftKey
+      applySavedDraft({
+        draftBaseline,
+        draftKey: savedDraftKey,
+        saveSequence,
+      })
 
       if (publish) {
         await publishAgent({
@@ -142,6 +164,42 @@ export function useAgentConfigureSync({
 
       return true
     },
+  )
+
+  const saveComposerOnPageClose = useCallback(
+    async ({
+      configSnapshot,
+      draftBaseline,
+      draftKey,
+    }: {
+      configSnapshot: AgentSoulConfig
+      draftBaseline: AgentSoulConfigFormState
+      draftKey: string
+    }) => {
+      const saveSequence = ++nextSaveSequenceRef.current
+      try {
+        await saveComposerDraftOnPageClose({
+          params: {
+            agent_id: agentId,
+          },
+          body: {
+            variant: 'agent_app',
+            save_strategy: 'save_to_current_version',
+            agent_soul: configSnapshot,
+          },
+        })
+      } catch {
+        return false
+      }
+
+      applySavedDraft({
+        draftBaseline,
+        draftKey,
+        saveSequence,
+      })
+      return true
+    },
+    [agentId, applySavedDraft, saveComposerDraftOnPageClose],
   )
 
   const { isPending: isPublishing, mutateAsync: runPublishTransaction } = useMutation(
@@ -207,37 +265,38 @@ export function useAgentConfigureSync({
     }
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store, tCommon])
 
-  const saveDirtyDraftOnPageClose = useCallback(() => {
-    if (!enabledRef.current || publishInFlightRef.current) {
-      return
-    }
+  const saveDirtyDraftOnPageClose = useCallback(
+    (allowInFlightDuplicate = false) => {
+      if (!enabledRef.current) return
 
-    const draft = store.get(agentComposerDraftAtom)
-    if (!store.get(isAgentComposerDirtyAtom)) {
-      return
-    }
+      const draft = store.get(agentComposerDraftAtom)
+      if (!store.get(isAgentComposerDirtyAtom)) {
+        return
+      }
 
-    const configSnapshot = getAgentSoulDraft()
-    const draftKey = JSON.stringify(configSnapshot)
-    if (
-      lastAutosavedDraftKeyRef.current === draftKey ||
-      pageCloseSavingDraftKeyRef.current === draftKey ||
-      explicitlySavingDraftKeysRef.current.has(draftKey)
-    ) {
-      return
-    }
+      const configSnapshot = getAgentSoulDraft()
+      const draftKey = JSON.stringify(configSnapshot)
+      if (
+        lastAutosavedDraftKeyRef.current === draftKey ||
+        pageCloseSavingDraftKeyRef.current === draftKey ||
+        (!allowInFlightDuplicate && explicitlySavingDraftKeysRef.current.has(draftKey))
+      ) {
+        return
+      }
 
-    debouncedSaveDraft.cancel?.()
-    pageCloseSavingDraftKeyRef.current = draftKey
-    void saveComposer({
-      configSnapshot,
-      draftBaseline: draft,
-      keepalive: true,
-    }).finally(() => {
-      if (pageCloseSavingDraftKeyRef.current === draftKey)
-        pageCloseSavingDraftKeyRef.current = undefined
-    })
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+      debouncedSaveDraft.cancel?.()
+      pageCloseSavingDraftKeyRef.current = draftKey
+      void saveComposerOnPageClose({
+        configSnapshot,
+        draftBaseline: draft,
+        draftKey,
+      }).finally(() => {
+        if (pageCloseSavingDraftKeyRef.current === draftKey)
+          pageCloseSavingDraftKeyRef.current = undefined
+      })
+    },
+    [debouncedSaveDraft, getAgentSoulDraft, saveComposerOnPageClose, store],
+  )
 
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
@@ -260,10 +319,10 @@ export function useAgentConfigureSync({
 
   useEffect(() => {
     const saveDraftWhenPageHidden = () => {
-      if (document.visibilityState === 'hidden') saveDirtyDraftOnPageClose()
+      if (document.visibilityState === 'hidden') saveDirtyDraftOnPageClose(true)
     }
     const saveDraftBeforeUnload = () => {
-      saveDirtyDraftOnPageClose()
+      saveDirtyDraftOnPageClose(true)
     }
 
     document.addEventListener('visibilitychange', saveDraftWhenPageHidden)

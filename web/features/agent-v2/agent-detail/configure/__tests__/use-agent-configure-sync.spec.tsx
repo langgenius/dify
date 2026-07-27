@@ -351,6 +351,101 @@ describe('useAgentConfigureSync', () => {
     })
   })
 
+  it('should dispatch the latest keepalive save while an earlier save is pending', async () => {
+    const saveDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saveDeferred.promise)
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Explicit save prompt',
+      })
+    })
+
+    let saveDraftPromise!: Promise<void>
+    act(() => {
+      saveDraftPromise = result.current.saveDraft()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Latest closing prompt',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
+    expect(composerPutRequestContexts).toEqual([
+      { silent: true },
+      { keepalive: true, silent: true },
+    ])
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Latest closing prompt',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    await act(async () => {
+      saveDeferred.resolve({ agent_soul: {} })
+      await saveDraftPromise
+      await Promise.resolve()
+    })
+    expect(store.get(agentComposerSavedDraftAtom)?.prompt).toBe('Latest closing prompt')
+  })
+
+  it('should repeat an in-flight explicit save with keepalive before unload', async () => {
+    const saveDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saveDeferred.promise)
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Pending explicit save',
+      })
+    })
+
+    let saveDraftPromise!: Promise<void>
+    act(() => {
+      saveDraftPromise = result.current.saveDraft()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
+    expect(composerPutRequestContexts).toEqual([
+      { silent: true },
+      { keepalive: true, silent: true },
+    ])
+
+    await act(async () => {
+      saveDeferred.resolve({ agent_soul: {} })
+      await saveDraftPromise
+      await Promise.resolve()
+    })
+  })
+
   it('should save the latest dirty draft when Configure unmounts before autosave runs', async () => {
     const { store, unmount } = renderUseAgentConfigureSync()
 
@@ -1049,6 +1144,68 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
+  })
+
+  it('should dispatch a keepalive save for edits made while publish is pending', async () => {
+    const publishDeferred = createDeferredPromise<PublishAgentResponse>()
+    publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Draft captured for publish',
+      })
+    })
+
+    let publishPromise!: Promise<void>
+    act(() => {
+      publishPromise = result.current.publishDraft()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Latest edit before closing',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
+    expect(composerPutRequestContexts).toEqual([
+      { silent: true },
+      { keepalive: true, silent: true },
+    ])
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Latest edit before closing',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    await act(async () => {
+      publishDeferred.resolve({
+        active_config_snapshot: {},
+        active_config_snapshot_id: 'snapshot-1',
+        result: 'success',
+      })
+      await publishPromise
+      await Promise.resolve()
+    })
   })
 
   it('should resume autosave for edits made while publish fails', async () => {
