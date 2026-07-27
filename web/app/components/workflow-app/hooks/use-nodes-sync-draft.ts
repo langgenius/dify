@@ -129,14 +129,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
-    if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
-
-    const isFollower =
-      isCollaborationEnabled &&
-      collaborationManager.isConnected() &&
-      !collaborationManager.getIsLeader()
-
-    if (isFollower) return
+    const canPersistOnPageClose =
+      !isCollaborationEnabled ||
+      collaborationManager.canFlushGraphOnPageClose() ||
+      collaborationManager.canUseLocalDraftFallback()
+    if (!canPersistOnPageClose) return
 
     const postParams = getPostParams()
 

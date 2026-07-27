@@ -373,6 +373,12 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
       if (!workflowStore.getState().isWorkflowDataLoaded) return
+
+      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
+        syncWorkflowDraftWhenPageClose()
+        return
+      }
+
       if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
       handleSyncWorkflowDraft(true, true, {
