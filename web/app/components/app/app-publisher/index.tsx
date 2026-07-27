@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
@@ -20,10 +21,8 @@ import {
   createWorkflowLaunchInitialValues,
   isWorkflowLaunchInputSupported,
 } from '@/app/components/app/overview/app-card-utils'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
@@ -31,18 +30,16 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { appDefaultIconBackground } from '@/config'
+import { isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
-import { fetchInstalledAppList } from '@/service/explore'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-import { basePath } from '@/utils/var'
 import AccessControl from '../app-access-control'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import {
@@ -116,8 +113,6 @@ export function AppPublisher({
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
-
-  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
   const [workflowLaunchDialogOpen, setWorkflowLaunchDialogOpen] = useState(false)
   const [workflowLaunchTargetUrl, setWorkflowLaunchTargetUrl] = useState('')
   const [workflowLaunchValues, setWorkflowLaunchValues] = useState<
@@ -129,6 +124,7 @@ export function AppPublisher({
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
+  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -166,7 +162,6 @@ export function AppPublisher({
         appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
     )
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
-  const openAsyncWindow = useAsyncWindowOpen()
 
   const isAppAccessSet = isPublisherAccessConfigured(appDetail, appAccessSubjects)
 
@@ -235,23 +230,6 @@ export function AppPublisher({
     setOpen(nextOpen)
 
     if (nextOpen) setPublished(false)
-  }
-
-  async function handleOpenInExplore() {
-    await openAsyncWindow(
-      async () => {
-        if (!appDetail?.id) throw new Error('App not found')
-        const { installed_apps } = await fetchInstalledAppList(appDetail.id)
-        if (installed_apps?.length > 0)
-          return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-        throw new Error(t(($) => $.notPublishedYet, { ns: 'app' }))
-      },
-      {
-        onError: (err) => {
-          toast.error(`${err.message || err}`)
-        },
-      },
-    )
   }
 
   async function handleAccessControlUpdate() {
@@ -395,7 +373,7 @@ export function AppPublisher({
           alignOffset={crossAxisOffset}
           popupClassName="border-none bg-transparent shadow-none"
         >
-          <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+          <div className="w-86 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <PublisherSummarySection
               debugWithMultipleModel={debugWithMultipleModel}
               draftUpdatedAt={draftUpdatedAt}
@@ -428,39 +406,31 @@ export function AppPublisher({
               appURL={appURL}
               disabledFunctionButton={disabledFunctionButton}
               disabledFunctionTooltip={disabledFunctionTooltip}
-              handleEmbed={() => {
-                setEmbeddingModalOpen(true)
-                handleOpenChange(false)
-              }}
-              handleOpenInExplore={() => {
-                handleOpenChange(false)
-                handleOpenInExplore()
-              }}
               handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
-              handlePublish={handlePublish}
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
-              missingStartNode={missingStartNode}
-              published={published}
               publishedAt={publishedAt}
-              showBatchRunConfig={
-                hiddenLaunchVariables.length > 0 &&
-                (appDetail?.mode === AppModeEnum.WORKFLOW ||
-                  appDetail?.mode === AppModeEnum.COMPLETION)
+              showDeployAction={
+                appDetail?.mode === AppModeEnum.WORKFLOW &&
+                isCurrentWorkspaceEditor &&
+                systemFeatures.enable_app_deploy
               }
               showRunConfig={hiddenLaunchVariables.length > 0}
-              toolPublished={toolPublished}
+              toolPublished={workflowToolPublished}
               workflowToolAvailable={workflowToolAvailableForUser}
               workflowToolIsLoading={workflowTool.isLoading}
-              workflowToolOutdated={workflowTool.outdated}
               workflowToolMessage={workflowToolMessage}
+              workflowToolOutdated={workflowTool.outdated}
               onConfigureWorkflowTool={openWorkflowToolDrawer}
             />
             {systemFeatures.enable_creators_platform && (
-              <div className="border-t border-divider-subtle p-4">
+              <div className="border-t border-divider-subtle p-2">
                 <SuggestedAction
-                  icon={<span className="i-ri-store-line size-4" />}
+                  icon={<span className="i-ri-store-2-line size-4" />}
                   disabled={!publishedAt || publishingToMarketplace}
+                  description={t(($) => $['common.publishToMarketplaceDescription'], {
+                    ns: 'workflow',
+                  })}
                   onClick={handlePublishToMarketplace}
                 >
                   {publishingToMarketplace
@@ -471,14 +441,6 @@ export function AppPublisher({
             )}
           </div>
         </PopoverContent>
-        <EmbeddedModal
-          siteInfo={appDetail?.site}
-          isShow={embeddingModalOpen}
-          onClose={() => setEmbeddingModalOpen(false)}
-          appBaseUrl={appBaseURL}
-          accessToken={accessToken}
-          hiddenInputs={hiddenLaunchVariables}
-        />
         {showAppAccessControl && (
           <AccessControl
             app={appDetail!}

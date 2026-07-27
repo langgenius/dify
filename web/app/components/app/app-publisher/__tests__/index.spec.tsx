@@ -18,8 +18,6 @@ const mockSetAppDetail = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
 const mockUseGetUserCanAccessApp = vi.fn()
-const mockOpenAsyncWindow = vi.fn()
-const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockToastError = vi.fn()
 const mockWindowOpen = vi.fn()
@@ -37,6 +35,7 @@ const hotkeyMocks = vi.hoisted(() => ({
 
 let mockAppDetail: Record<string, any> | null = null
 let mockWorkspacePermissionKeys: string[] = ['tool.manage']
+let mockIsCurrentWorkspaceEditor = true
 
 vi.mock('@tanstack/react-hotkeys', () => ({
   useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
@@ -64,10 +63,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => mockOpenAsyncWindow,
-}))
-
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: (params: unknown) => {
     mockUseGetUserCanAccessApp(params)
@@ -81,10 +76,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
     data: { groups: [], members: [] },
     isLoading: false,
   }),
-}))
-
-vi.mock('@/service/explore', () => ({
-  fetchInstalledAppList: (...args: unknown[]) => mockFetchInstalledAppList(...args),
 }))
 
 const mockPublishToCreatorsPlatform = vi.fn()
@@ -110,6 +101,7 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceManager: true,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
@@ -130,16 +122,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
-}))
-
-vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
-    isShow ? (
-      <div data-testid="embedded-modal">
-        embedded modal
-        <button onClick={onClose}>close-embedded-modal</button>
-      </div>
-    ) : null,
 }))
 
 vi.mock('../../app-access-control', () => {
@@ -190,18 +172,11 @@ vi.mock('../sections', () => ({
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
-      <div>
-        <button onClick={props.handleEmbed}>publisher-embed</button>
-        <button onClick={() => void props.handleOpenInExplore()}>publisher-open-in-explore</button>
-        {props.handleOpenRunConfig && (
-          <>
-            <button onClick={() => props.handleOpenRunConfig(props.appURL)}>
-              publisher-run-config
-            </button>
-            <button onClick={() => props.handleOpenRunConfig(`${props.appURL}?mode=batch`)}>
-              publisher-batch-run-config
-            </button>
-          </>
+      <div data-testid="publisher-actions">
+        {props.showRunConfig && props.handleOpenRunConfig && (
+          <button onClick={() => props.handleOpenRunConfig(props.appURL)}>
+            publisher-run-config
+          </button>
         )}
         <button onClick={props.onConfigureWorkflowTool}>publisher-workflow-tool</button>
       </div>
@@ -218,6 +193,7 @@ describe('AppPublisher', () => {
     sectionProps.access = null
     sectionProps.actions = null
     mockWorkspacePermissionKeys = ['tool.manage']
+    mockIsCurrentWorkspaceEditor = true
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
@@ -228,17 +204,12 @@ describe('AppPublisher', () => {
         access_token: 'token-1',
       },
     }
-    mockFetchInstalledAppList.mockResolvedValue({
-      installed_apps: [{ id: 'installed-1' }],
-    })
     mockFetchAppDetail.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
     })
-    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
-      return resolver()
-    })
     Object.defineProperty(window, 'open', {
+      configurable: true,
       writable: true,
       value: mockWindowOpen,
     })
@@ -282,16 +253,23 @@ describe('AppPublisher', () => {
     })
   })
 
-  it('should open the embedded modal from the actions section', () => {
-    render(<AppPublisher publishedAt={Date.now()} />)
+  it('should expose the Deploy quick link for editable workflow apps when enabled', () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} />, {
+      systemFeatures: { webapp_auth: { enabled: true }, enable_app_deploy: true },
+    })
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-embed'))
 
-    expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
+    expect(sectionProps.actions?.showDeployAction).toBe(true)
+    expect(sectionProps.actions?.appURL).toContain('/workflow/token-1')
   })
 
-  it('should collect hidden inputs before opening published run links from config actions', async () => {
+  it('should collect hidden inputs before opening the web app from its config action', async () => {
     render(
       <AppPublisher
         publishedAt={Date.now()}
@@ -309,6 +287,8 @@ describe('AppPublisher', () => {
     )
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(sectionProps.actions?.showRunConfig).toBe(true)
     fireEvent.click(screen.getByText('publisher-run-config'))
 
     expect(
@@ -330,55 +310,21 @@ describe('AppPublisher', () => {
     })
   })
 
-  it('should open batch run config links with the configured hidden inputs', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
-    }
-
-    render(
-      <AppPublisher
-        publishedAt={Date.now()}
-        inputs={[
-          {
-            variable: 'batch_secret',
-            label: 'Batch Secret',
-            type: 'text-input',
-            required: true,
-            hide: true,
-            default: '',
-          } as any,
-        ]}
-      />,
-    )
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-batch-run-config'))
-
-    fireEvent.change(screen.getByLabelText('Batch Secret'), {
-      target: { value: 'batch-value' },
-    })
-    fireEvent.click(
-      screen.getByRole('button', { name: /(?:^|\.)overview\.appInfo\.launch(?=$|:)/ }),
-    )
-
-    await waitFor(() => {
-      expect(mockWindowOpen).toHaveBeenCalledWith(
-        `https://example.com${basePath}/workflow/token-1?mode=batch&batch_secret=${encodeURIComponent('batch-value')}`,
-        '_blank',
-      )
-    })
-  })
-
   it('should keep workflow tool drawer mounted after closing the publish popover', () => {
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
     }
 
-    render(<AppPublisher publishedAt={Date.now()} />)
+    render(<AppPublisher publishedAt={Date.now()} toolPublished />)
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.actions).toEqual(
+      expect.objectContaining({
+        toolPublished: true,
+        workflowToolOutdated: false,
+      }),
+    )
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
@@ -401,13 +347,8 @@ describe('AppPublisher', () => {
     expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
   })
 
-  it('should close embedded and access control panels through child callbacks', async () => {
+  it('should close access control through its child callback', async () => {
     render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-embed'))
-    fireEvent.click(screen.getByText('close-embedded-modal'))
-    expect(screen.queryByTestId('embedded-modal')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-access-control'))
@@ -441,25 +382,6 @@ describe('AppPublisher', () => {
         access_mode: AccessMode.PUBLIC,
       }),
     )
-  })
-
-  it('should open the installed explore page through the async window helper', async () => {
-    let openedUrl = ''
-    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
-      openedUrl = await resolver()
-    })
-
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
-      expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
-      expect(openedUrl).toBe('/installed/installed-1')
-      expect(sectionProps.actions?.appURL).toBe(`https://example.com${basePath}/chat/token-1`)
-    })
   })
 
   it('should ignore the trigger when the publish button is disabled', () => {
@@ -524,57 +446,6 @@ describe('AppPublisher', () => {
       expect(onRestore).toHaveBeenCalledTimes(1)
     })
     expect(screen.getByText('publisher-summary-publish'))!.toBeInTheDocument()
-  })
-
-  it('should report missing explore installations', async () => {
-    mockFetchInstalledAppList.mockResolvedValueOnce({
-      installed_apps: [],
-    })
-    mockOpenAsyncWindow.mockImplementation(
-      async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
-        try {
-          await resolver()
-        } catch (error) {
-          options.onError(error as Error)
-        }
-      },
-    )
-
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(
-        expect.stringMatching(/(?:^|\.)notPublishedYet(?=$|:)/),
-      )
-    })
-  })
-
-  it('should report explore errors when the app cannot be opened', async () => {
-    mockAppDetail = {
-      ...mockAppDetail,
-      id: undefined,
-    }
-    mockOpenAsyncWindow.mockImplementation(
-      async (resolver: () => Promise<string>, options: { onError: (error: Error) => void }) => {
-        try {
-          await resolver()
-        } catch (error) {
-          options.onError(error as Error)
-        }
-      },
-    )
-
-    render(<AppPublisher publishedAt={Date.now()} />)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-open-in-explore'))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('App not found')
-    })
   })
 
   it('should show marketplace button and open redirect URL on success', async () => {
