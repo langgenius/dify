@@ -1,5 +1,4 @@
 import json
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -11,7 +10,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from models.account import (
     Account,
-    AccountIntegrate,
     AccountStatus,
     Tenant,
     TenantAccountJoin,
@@ -113,22 +111,6 @@ class TestAccountService:
     - User loading and tenant management
     - Error conditions and edge cases
     """
-
-    @pytest.fixture
-    def sqlite_session(self, sqlite_engine) -> Iterator[Session]:
-        """SQLite session with the account/workspace tables these service tests touch."""
-        tables = [
-            model.metadata.tables[model.__tablename__]
-            for model in (
-                Account,
-                Tenant,
-                TenantAccountJoin,
-                TenantPluginAutoUpgradeStrategy,
-            )
-        ]
-        Account.metadata.create_all(sqlite_engine, tables=tables)
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
 
     @pytest.fixture
     def mock_password_dependencies(self):
@@ -1263,24 +1245,6 @@ class TestRegisterService:
     - Invitation validation
     - Error conditions and edge cases
     """
-
-    @pytest.fixture
-    def sqlite_session(self, sqlite_engine) -> Iterator[Session]:
-        """SQLite session with the account/workspace tables registration flows touch."""
-        tables = [
-            model.metadata.tables[model.__tablename__]
-            for model in (
-                Account,
-                AccountIntegrate,
-                Tenant,
-                TenantAccountJoin,
-                TenantPluginAutoUpgradeStrategy,
-                DifySetup,
-            )
-        ]
-        Account.metadata.create_all(sqlite_engine, tables=tables)
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
 
     @pytest.fixture
     def mock_redis_dependencies(self):

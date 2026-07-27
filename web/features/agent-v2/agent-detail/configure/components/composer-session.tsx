@@ -99,7 +99,8 @@ export function AgentConfigureComposerScope({
   }
 
   initializedComposerAgentIdRef.current = agentId
-  const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerRebaseRevision}`
+  const composerHydrationState = composerQuery.data === undefined ? 'unavailable' : 'loaded'
+  const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerHydrationState}:${composerRebaseRevision}`
 
   return (
     <AgentConfigurePageComposerSession
@@ -218,7 +219,6 @@ function AgentConfigurePageComposerSession({
       <AgentComposerProvider
         key={composerSessionKey}
         initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-        initialOriginalConfig={buildDraft.agentSoulConfig}
       >
         <AgentConfigurePageComposerContent
           agentId={agentId}
@@ -320,14 +320,13 @@ function AgentConfigurePageComposerContent({
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
         draft: agentSoulConfigToFormState(agentSoulConfig),
-        originalConfig: agentSoulConfig,
       })
     },
     [rebaseComposerDraft],
   )
   const { currentModel, setConfigureModel, textGenerationModelList } =
     useAgentConfigureModelOptions()
-  const { draftSavedAt, isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
+  const { isPublishing, publishDraft, saveDraft } = useAgentConfigureSync({
     agentId,
     agentName: agentQuery.data?.name,
     baseConfig: agentSoulConfig,
@@ -449,20 +448,21 @@ function AgentConfigurePageComposerContent({
       leftPanel={
         <AgentOrchestratePanel
           agentId={agentId}
-          activeConfigIsPublished={composerQuery.data?.active_config_is_published}
-          activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
-          draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          readOnly={isViewingVersion || buildDraft.isActive || buildDraftActionsDisabled}
+          readOnly={
+            !composerQuery.isSuccess ||
+            isViewingVersion ||
+            buildDraft.isActive ||
+            buildDraftActionsDisabled
+          }
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
-          workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={
             showBuildDraftBar ? (
               <AgentBuildDraftBar

@@ -1076,6 +1076,30 @@ export const zAppImportResponse = z.object({
   warnings: z.array(zDslImportWarning).optional(),
 })
 
+/**
+ * RecentAppResponse
+ */
+export const zRecentAppResponse = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponse = z.object({
+  data: z.array(zRecentAppResponse),
+})
+
 export const zJsonValue = z
   .union([
     z.string(),
@@ -4280,6 +4304,29 @@ export const zAppDetailWithSiteWritable = z.object({
 })
 
 /**
+ * RecentAppResponse
+ */
+export const zRecentAppResponseWritable = z.object({
+  author_name: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  id: z.string(),
+  maintainer: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  updated_at: z.int(),
+})
+
+/**
+ * RecentAppListResponse
+ */
+export const zRecentAppListResponseWritable = z.object({
+  data: z.array(zRecentAppResponseWritable),
+})
+
+/**
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponseWritable = z.object({
@@ -4441,6 +4488,15 @@ export const zPostAppsImportsByImportIdConfirmPath = z.object({
  * Import confirmed
  */
 export const zPostAppsImportsByImportIdConfirmResponse = zImport
+
+export const zGetAppsRecentQuery = z.object({
+  limit: z.int().gte(1).lte(8).optional().default(8),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsRecentResponse = zRecentAppListResponse
 
 export const zGetAppsStarredQuery = z.object({
   creator_ids: z.array(z.string()).optional(),

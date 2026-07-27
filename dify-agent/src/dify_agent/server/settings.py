@@ -52,6 +52,7 @@ class ServerSettings(BaseSettings):
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
+    api_token: str | None = None
     shell_redact_patterns: str = ""
     outbound_http_connect_timeout: float = Field(default=10.0, ge=0)
     outbound_http_read_timeout: float = Field(default=600.0, ge=0)
