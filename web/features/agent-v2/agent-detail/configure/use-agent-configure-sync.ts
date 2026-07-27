@@ -10,6 +10,7 @@ import isEqual from 'fast-deep-equal'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import {
@@ -29,11 +30,13 @@ const DRAFT_AUTOSAVE_WAIT = 5000
 
 export function useAgentConfigureSync({
   agentId,
+  agentName,
   baseConfig,
   currentModel,
   enabled,
 }: {
   agentId: string
+  agentName?: string | null
   baseConfig?: AgentSoulConfig
   currentModel?: DefaultModel
   enabled: boolean
@@ -303,6 +306,12 @@ export function useAgentConfigureSync({
       const publishedDraft = draft
       setOriginalDraft(publishedDraft)
       setPublishedDraft(publishedDraft)
+      trackEvent('app_published_time', {
+        action_mode: 'app',
+        app_id: agentId,
+        app_name: agentName,
+        app_mode: 'agent-v2',
+      })
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } finally {
       publishInFlightRef.current = false
@@ -310,6 +319,7 @@ export function useAgentConfigureSync({
     }
   }, [
     agentId,
+    agentName,
     debouncedSaveDraft,
     getKnowledgeValidationMessage,
     publishAgent,

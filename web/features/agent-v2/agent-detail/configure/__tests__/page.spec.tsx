@@ -68,6 +68,8 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
 }))
 
+const trackEventMock = vi.hoisted(() => vi.fn())
+
 const modelHooksState = vi.hoisted(() => ({
   defaultTextGenerationModel: {
     provider: {
@@ -192,6 +194,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMock,
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: trackEventMock,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -1252,6 +1258,7 @@ describe('AgentConfigurePage', () => {
         'prompt:edited draft prompt',
       )
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(trackEventMock).not.toHaveBeenCalled()
     })
 
     it('should stay in Preview when resetting the Build conversation fails', async () => {
@@ -1374,6 +1381,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
         'draftType:draft',
       )
+      expect(trackEventMock).not.toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'readonly:no',
       )
@@ -1904,7 +1912,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
     })
 
-    it('should not checkout again when sending build chat from active build draft mode', async () => {
+    it('should track the run without checking out again in active build draft mode', async () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
         data: {
@@ -1955,6 +1963,7 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(trackEventMock).toHaveBeenCalledWith('agent_build_mode_run')
     })
 
     it('should show the working directory action after the first build reply completes', async () => {
