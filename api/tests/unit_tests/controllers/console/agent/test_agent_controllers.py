@@ -115,6 +115,7 @@ def _agent_app_composer_response() -> dict:
             "active_config_snapshot_id": "version-1",
         },
         "active_config_snapshot": _version_response(),
+        "active_config_is_published": True,
         "agent_soul": {},
         "save_options": ["save_to_current_version"],
     }
@@ -376,7 +377,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert created["app_id"] == "app-created"
     assert created["debug_conversation_id"] == "debug-conversation-created"
     assert created["role"] == "Created role"
-    assert created["active_config_is_published"] is False
+    assert "active_config_is_published" not in created
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
@@ -487,7 +488,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["debug_conversation_has_messages"] is True
     assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
-    assert detail["active_config_is_published"] is False
+    assert "active_config_is_published" not in detail
     assert "bound_agent_id" not in detail
     assert captured["get_app"] == {"app": app_model, "session": session}
     with app.test_request_context(
@@ -502,7 +503,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert updated["debug_conversation_has_messages"] is True
     assert updated["debug_conversation_message_count"] == 2
     assert updated["role"] == "Resolved role"
-    assert updated["active_config_is_published"] is False
+    assert "active_config_is_published" not in updated
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
@@ -844,9 +845,6 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService, "active_config_is_published", lambda _self, **kwargs: False
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -1299,13 +1297,14 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         composer_controller.AgentComposerService, "collect_validation_findings", collect_validation_findings
     )
     monkeypatch.setattr(composer_controller.AgentComposerService, "get_agent_app_candidates", get_agent_app_candidates)
-    assert unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", agent_id)["variant"] == "agent_app"
+    composer = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", agent_id)
+    assert composer["variant"] == "agent_app"
+    assert composer["active_config_is_published"] is True
     assert cast(dict[str, object], captured["load"])["agent_id"] == agent_id
     with app.test_request_context(json=payload):
-        assert (
-            unwrap(AgentComposerApi.put)(AgentComposerApi(), MagicMock(), "tenant-1", account_id, agent_id)["variant"]
-            == "agent_app"
-        )
+        saved_composer = unwrap(AgentComposerApi.put)(AgentComposerApi(), MagicMock(), "tenant-1", account_id, agent_id)
+        assert saved_composer["variant"] == "agent_app"
+        assert saved_composer["active_config_is_published"] is True
         assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
         assert unwrap(AgentComposerValidateApi.post)(AgentComposerValidateApi(), MagicMock(), "tenant-1", agent_id) == {
             "result": "success",

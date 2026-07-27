@@ -1,6 +1,6 @@
 'use client'
 
-import type { Value } from 'loro-crdt'
+import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
@@ -17,12 +17,13 @@ import type {
   WorkflowSyncRequest,
   WorkflowSyncResult,
 } from '../types/collaboration'
+import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
-import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
 import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
+
+type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
 type NodePanelPresenceEventData = {
   nodeId: string
@@ -154,6 +155,7 @@ const toUint8Array = (value: unknown): Uint8Array | null => {
 }
 
 export class CollaborationManager {
+  private crdtRuntime: CrdtRuntime | null = null
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
@@ -179,6 +181,7 @@ export class CollaborationManager {
   private graphViewSequence = 0
   private visibilityListenerAttached = false
   private crdtTrusted = false
+  private hasEstablishedConnection = false
   private rebuildCrdtOnNextConnect = false
   private reconnectedWithFreshDoc = false
   private awaitingSnapshotImport = false
@@ -258,6 +261,8 @@ export class CollaborationManager {
   private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
     if (!this.nodesMap) throw new Error('Nodes map not initialized')
 
+    const { LoroMap } = this.getCrdtRuntime()
+
     let container = this.nodesMap.get(nodeId) as unknown
 
     const isMapContainer = (
@@ -291,6 +296,7 @@ export class CollaborationManager {
   private ensureDataContainer(
     nodeContainer: LoroMap<Record<string, Value>>,
   ): LoroMap<Record<string, Value>> {
+    const { LoroMap } = this.getCrdtRuntime()
     let dataContainer = nodeContainer.get('data') as unknown
 
     if (
@@ -308,6 +314,7 @@ export class CollaborationManager {
     nodeContainer: LoroMap<Record<string, Value>>,
     key: string,
   ): LoroList<unknown> {
+    const { LoroList } = this.getCrdtRuntime()
     const dataContainer = this.ensureDataContainer(nodeContainer)
     let list = dataContainer.get(key) as unknown
 
@@ -526,7 +533,18 @@ export class CollaborationManager {
     this.disconnect()
   }
 
+  private async loadCrdtRuntime(): Promise<CrdtRuntime> {
+    const { crdtRuntime } = await import('./crdt-runtime')
+    return crdtRuntime
+  }
+
+  private getCrdtRuntime(): CrdtRuntime {
+    if (!this.crdtRuntime) throw new Error('CRDT runtime not initialized')
+    return this.crdtRuntime
+  }
+
   private initializeCrdt(socket: Socket): void {
+    const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
     this.undoManager = null
     this.doc = new LoroDoc()
@@ -621,6 +639,8 @@ export class CollaborationManager {
   }
 
   async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
+    this.crdtRuntime ??= await this.loadCrdtRuntime()
+
     const connectionId = Math.random().toString(36).substring(2, 11)
 
     this.activeConnections.add(connectionId)
@@ -635,11 +655,13 @@ export class CollaborationManager {
     // Only disconnect if switching to a different app
     if (this.currentAppId && this.currentAppId !== appId) this.forceDisconnect()
 
+    this.hasEstablishedConnection = false
     this.currentAppId = appId
     // Only set store if provided
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
 
     const socket = webSocketClient.connect(appId)
+    this.hasEstablishedConnection = socket.connected
 
     // Setup event listeners BEFORE any other operations
     this.setupSocketEventListeners(socket)
@@ -723,6 +745,11 @@ export class CollaborationManager {
 
   isConnected(): boolean {
     return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  }
+
+  canUseLocalDraftFallback(): boolean {
+    // A graph from a previously connected session must recover through collaboration before saving.
+    return !this.isConnected() && !this.hasEstablishedConnection
   }
 
   getNodes(): Node[] {
@@ -1838,6 +1865,7 @@ export class CollaborationManager {
     })
 
     socket.on('connect', () => {
+      this.hasEstablishedConnection = true
       if (this.rebuildCrdtOnNextConnect) {
         this.initializeCrdt(socket)
         this.rebuildCrdtOnNextConnect = false

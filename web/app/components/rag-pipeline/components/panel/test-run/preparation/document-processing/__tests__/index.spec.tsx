@@ -48,7 +48,7 @@ vi.mock('@/service/use-pipeline', () => ({
 const mockUseInitialData = vi.fn()
 const mockUseConfigurations = vi.fn()
 
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+vi.mock('../../../../../../hooks/use-input-fields', () => ({
   useInitialData: (variables: RAGPipelineVariables) => mockUseInitialData(variables),
   useConfigurations: (variables: RAGPipelineVariables) => mockUseConfigurations(variables),
 }))

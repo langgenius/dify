@@ -9,7 +9,7 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: pipelineId ? { pipeline_id: pipelineId } : undefined }),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-pipeline-init', () => ({
   usePipelineInit: () => pipelineInit,
 }))
 

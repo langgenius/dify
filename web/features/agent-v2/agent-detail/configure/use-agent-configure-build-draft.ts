@@ -14,7 +14,7 @@ import type {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/client'
@@ -299,6 +299,7 @@ export function useAgentConfigureBuildDraftActions({
   const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const buildDraftRefreshGenerationRef = useRef(0)
   const forceCheckoutBeforeNextBuildRunRef = useRef(false)
+  const [isApplyingBuildDraftWorkflow, setIsApplyingBuildDraftWorkflow] = useState(false)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -320,7 +321,7 @@ export function useAgentConfigureBuildDraftActions({
   )
   const { mutateAsync: finalizeBuildChatRequest, isPending: isFinalizingBuildChat } =
     finalizeBuildChatMutation
-  const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraft } =
+  const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraftRequest } =
     applyBuildDraftMutation
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } =
     discardBuildDraftMutation
@@ -402,17 +403,17 @@ export function useAgentConfigureBuildDraftActions({
     async (shouldRefetchComposer: boolean) => {
       cancelBuildDraftRefresh()
       await resetBuildChatSession().catch(() => undefined)
+      let nextAgentSoulConfig = normalAgentSoulConfig
+      if (shouldRefetchComposer) {
+        const result = await refetchComposer()
+        nextAgentSoulConfig = getAgentSoulConfigFromRefetchResult(result) ?? normalAgentSoulConfig
+      }
       setSoulSourceOverride('draft')
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
-      if (shouldRefetchComposer) {
-        const result = await refetchComposer()
-        rebaseComposerDraft(getAgentSoulConfigFromRefetchResult(result) ?? normalAgentSoulConfig)
-        onComposerRebased?.()
-      } else {
-        rebaseComposerDraft(normalAgentSoulConfig)
-      }
+      rebaseComposerDraft(nextAgentSoulConfig)
+      if (shouldRefetchComposer) onComposerRebased?.()
     },
     [
       buildDraftQueryOptions.queryKey,
@@ -428,6 +429,7 @@ export function useAgentConfigureBuildDraftActions({
   )
 
   const applyBuildDraft = async () => {
+    setIsApplyingBuildDraftWorkflow(true)
     try {
       await finalizeBuildChatRequest({
         params: {
@@ -449,6 +451,8 @@ export function useAgentConfigureBuildDraftActions({
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
+    } finally {
+      setIsApplyingBuildDraftWorkflow(false)
     }
   }
 
@@ -478,7 +482,8 @@ export function useAgentConfigureBuildDraftActions({
     applyBuildDraft,
     cancelBuildDraftRefresh,
     discardBuildDraft,
-    isApplyingBuildDraft: isFinalizingBuildChat || isApplyingBuildDraft,
+    isApplyingBuildDraft:
+      isApplyingBuildDraftWorkflow || isFinalizingBuildChat || isApplyingBuildDraftRequest,
     isDiscardingBuildDraft,
     prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,

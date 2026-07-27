@@ -11,9 +11,9 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useGetToolIcon } from '../hooks/use-tool-icon'
 import { useStore } from '../store'
 
 const resolveListeningDescription = (

@@ -40,8 +40,11 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => [],
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-checklist', () => ({
   useChecklist: () => mockChecklistItems,
+}))
+
+vi.mock('../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodeSelect: mockHandleNodeSelect,
   }),

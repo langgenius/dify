@@ -17,7 +17,7 @@ import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { WorkspaceMenuItemContent } from './workspace-menu-content'
 
 const workspaceSwitchActionButtonClassName =
-  'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
@@ -30,11 +30,13 @@ const getWorkspaceLastOpenedAt = (workspace: TenantListItemResponse) =>
   workspace.last_opened_at ?? 0
 
 function WorkspaceSwitchControls({
+  disabled,
   searchText,
   sort,
   onSearchTextChange,
   onSortChange,
 }: {
+  disabled: boolean
   searchText: string
   sort: WorkspaceSort
   onSearchTextChange: (value: string) => void
@@ -72,6 +74,7 @@ function WorkspaceSwitchControls({
         <DropdownMenu open={sortMenuOpen} onOpenChange={setSortMenuOpen}>
           <DropdownMenuTrigger
             aria-label={sortMenuLabel}
+            disabled={disabled}
             className={cn(
               workspaceSwitchActionButtonClassName,
               sortMenuOpen && 'bg-state-base-hover text-text-secondary',
@@ -113,6 +116,7 @@ function WorkspaceSwitchControls({
         <button
           type="button"
           aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+          disabled={disabled}
           className={cn(
             workspaceSwitchActionButtonClassName,
             searchVisible && 'bg-state-base-hover text-text-secondary',
@@ -142,20 +146,25 @@ function WorkspaceSwitchControls({
 }
 
 type WorkspaceSwitcherProps = {
-  workspaces: TenantListItemResponse[]
+  workspaces?: TenantListItemResponse[]
+  isPending: boolean
   onSwitchWorkspace: (workspaceId: string) => void
 }
 
-export function WorkspaceSwitcher({ workspaces, onSwitchWorkspace }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({
+  workspaces,
+  isPending,
+  onSwitchWorkspace,
+}: WorkspaceSwitcherProps) {
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')
   const displayedWorkspaces = useMemo(() => {
     const normalizedSearchText = workspaceSearchText.trim().toLowerCase()
     const filteredWorkspaces = normalizedSearchText
-      ? workspaces.filter((workspace) =>
+      ? (workspaces?.filter((workspace) =>
           getWorkspaceName(workspace).toLowerCase().includes(normalizedSearchText),
-        )
-      : [...workspaces]
+        ) ?? [])
+      : [...(workspaces ?? [])]
 
     if (workspaceSort === 'createdAt')
       return filteredWorkspaces.sort((a, b) => getWorkspaceCreatedAt(b) - getWorkspaceCreatedAt(a))
@@ -168,45 +177,54 @@ export function WorkspaceSwitcher({ workspaces, onSwitchWorkspace }: WorkspaceSw
     })
   }, [workspaceSearchText, workspaceSort, workspaces])
 
+  if (!isPending && !workspaces) return null
+
   return (
-    <>
+    <div className="p-1 pb-2">
       <WorkspaceSwitchControls
+        disabled={isPending}
         searchText={workspaceSearchText}
         sort={workspaceSort}
         onSearchTextChange={setWorkspaceSearchText}
         onSortChange={setWorkspaceSort}
       />
-      <div className={workspaceSwitchListClassName}>
-        {displayedWorkspaces.map((workspace) => {
-          const workspaceName = getWorkspaceName(workspace)
+      <div aria-busy={isPending} className={workspaceSwitchListClassName}>
+        {isPending ? (
+          <div aria-hidden className="flex h-8 items-center justify-center">
+            <span className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none" />
+          </div>
+        ) : (
+          displayedWorkspaces.map((workspace) => {
+            const workspaceName = getWorkspaceName(workspace)
 
-          return (
-            <button
-              type="button"
-              key={workspace.id}
-              aria-current={workspace.current ? 'true' : undefined}
-              title={workspaceName}
-              className={cn(
-                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-                workspace.current && 'bg-state-base-hover',
-              )}
-              onClick={() => {
-                onSwitchWorkspace(workspace.id)
-              }}
-            >
-              <WorkspaceMenuItemContent
-                icon={<WorkspaceAvatar name={workspaceName} size="xs" />}
-                label={workspaceName}
-                trailing={
-                  workspace.current ? (
-                    <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
-                  ) : undefined
-                }
-              />
-            </button>
-          )
-        })}
+            return (
+              <button
+                type="button"
+                key={workspace.id}
+                aria-current={workspace.current ? 'true' : undefined}
+                title={workspaceName}
+                className={cn(
+                  'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                  workspace.current && 'bg-state-base-hover',
+                )}
+                onClick={() => {
+                  onSwitchWorkspace(workspace.id)
+                }}
+              >
+                <WorkspaceMenuItemContent
+                  icon={<WorkspaceAvatar name={workspaceName} size="xs" />}
+                  label={workspaceName}
+                  trailing={
+                    workspace.current ? (
+                      <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                    ) : undefined
+                  }
+                />
+              </button>
+            )
+          })
+        )}
       </div>
-    </>
+    </div>
   )
 }

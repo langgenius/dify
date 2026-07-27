@@ -13,6 +13,7 @@ import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
   getState: () => {
@@ -147,6 +148,7 @@ const createMockSocket = (id = 'socket-1'): MockSocket => {
 
 const setupManagerWithDoc = () => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
@@ -159,6 +161,23 @@ const setupManagerWithDoc = () => {
 describe('CollaborationManager socket and subscription behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('allows local draft fallback only before the first collaboration connection', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('socket-fallback')
+
+    internals.currentAppId = 'app-fallback'
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    expect(manager.canUseLocalDraftFallback()).toBe(true)
+
+    socket.trigger('connect')
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
+
+    socket.trigger('disconnect', 'transport close')
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
   })
 
   it('emits cursor/sync/workflow events via collaboration_event when connected', async () => {
@@ -1354,6 +1373,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
   it('covers private guard branches for socket helpers and container migration', async () => {
     const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-private')
     const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)
