@@ -12,6 +12,8 @@ import { useResultSender } from '../use-result-sender'
 const {
   buildResultRequestDataMock,
   createWorkflowStreamHandlersMock,
+  mockTrackEvent,
+  mockWebAppState,
   sendCompletionMessageMock,
   sendWorkflowMessageMock,
   sleepMock,
@@ -19,10 +21,25 @@ const {
 } = vi.hoisted(() => ({
   buildResultRequestDataMock: vi.fn(),
   createWorkflowStreamHandlersMock: vi.fn(),
+  mockTrackEvent: vi.fn(),
+  mockWebAppState: {
+    appInfo: {
+      mode: 'completion',
+    },
+  },
   sendCompletionMessageMock: vi.fn(),
   sendWorkflowMessageMock: vi.fn(),
   sleepMock: vi.fn(),
   validateResultRequestMock: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
+
+vi.mock('@/context/web-app-context', () => ({
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 vi.mock('@/service/share', async () => {
@@ -226,6 +243,7 @@ const renderSender = ({
 describe('useResultSender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWebAppState.appInfo.mode = 'completion'
     validateResultRequestMock.mockReturnValue({ canSend: true })
     buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
     createWorkflowStreamHandlersMock.mockReturnValue({ onWorkflowFinished: vi.fn() })
@@ -273,6 +291,7 @@ describe('useResultSender', () => {
     })
     expect(buildResultRequestDataMock).not.toHaveBeenCalled()
     expect(sendCompletionMessageMock).not.toHaveBeenCalled()
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('should send completion requests when controlSend changes and process callbacks', async () => {
@@ -307,6 +326,9 @@ describe('useResultSender', () => {
     expect(harness.runState.clearMoreLikeThis).toHaveBeenCalledTimes(1)
     expect(onShowRes).toHaveBeenCalledTimes(1)
     expect(onRunStart).toHaveBeenCalledTimes(1)
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'completion',
+    })
     expect(sendCompletionMessageMock).toHaveBeenCalledWith(
       { inputs: { name: 'Alice' } },
       expect.objectContaining({
@@ -346,6 +368,7 @@ describe('useResultSender', () => {
 
   it('should trigger workflow sends on retry and report workflow request failures', async () => {
     const harness = createRunStateHarness()
+    mockWebAppState.appInfo.mode = 'workflow'
     sendWorkflowMessageMock.mockRejectedValue(new Error('workflow failed'))
 
     const { rerender, notify } = renderSender({
@@ -385,6 +408,9 @@ describe('useResultSender', () => {
       })
     })
     expect(harness.runState.clearMoreLikeThis).not.toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'workflow',
+    })
   })
 
   it('should configure workflow handlers for installed apps as non-public', async () => {
@@ -411,6 +437,7 @@ describe('useResultSender', () => {
       AppSourceTypeEnum.installedApp,
       'app-1',
     )
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('should stringify non-Error workflow failures', async () => {

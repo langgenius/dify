@@ -589,6 +589,63 @@ def test_stream_events_raises_when_reconnects_are_exhausted() -> None:
     assert calls == 2
 
 
+def test_stream_events_default_reconnect_budget_is_finite() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(DifyAgentStreamError, match="reconnect attempts exhausted"):
+        _ = list(client.stream_events_sync("run-1", reconnect_delay_seconds=0))
+    assert calls == 4
+
+
+def test_stream_events_enforces_total_timeout_before_connecting() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(DifyAgentTimeoutError, match="exceeded its timeout"):
+        _ = list(client.stream_events_sync("run-1", timeout_seconds=0))
+    assert calls == 0
+
+
+def test_stream_events_observes_caller_stop_on_heartbeat() -> None:
+    stop_checks = 0
+
+    def should_stop() -> bool:
+        nonlocal stop_checks
+        stop_checks += 1
+        return stop_checks >= 2
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=": keepalive\n\n")
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(DifyAgentStreamError, match="cancelled by the caller"):
+        _ = list(client.stream_events_sync("run-1", should_stop=should_stop))
+    assert stop_checks == 2
+
+
 def test_malformed_sse_frame_does_not_reconnect() -> None:
     calls = 0
 

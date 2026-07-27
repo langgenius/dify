@@ -11,7 +11,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, with_current_user
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import build_icon_url
+from libs.helper import build_icon_url, dump_response
 from libs.login import login_required
 from models import Account
 from services.recommended_app_service import RecommendedAppService
@@ -58,7 +58,7 @@ class RecommendedAppResponse(ResponseModel):
     categories: list[str] = Field(default_factory=list)
     position: int | None = None
     is_listed: bool | None = None
-    can_trial: bool | None = None
+    can_trial: bool
 
 
 class RecommendedAppListResponse(ResponseModel):
@@ -77,7 +77,7 @@ class RecommendedAppDetailResponse(ResponseModel):
     icon_background: str | None = None
     mode: str
     export_data: str
-    can_trial: bool | None = None
+    can_trial: bool
 
 
 class RecommendedAppDetailNullableResponse(RootModel[RecommendedAppDetailResponse | None]):
@@ -119,10 +119,10 @@ class RecommendedAppListApi(Resource):
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language_prefix = _resolve_language(args.language, current_user)
 
-        return RecommendedAppListResponse.model_validate(
+        return dump_response(
+            RecommendedAppListResponse,
             RecommendedAppService.get_recommended_apps_and_categories(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
+        )
 
 
 @console_ns.route("/explore/apps/learn-dify")
@@ -136,10 +136,10 @@ class LearnDifyAppListApi(Resource):
         args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language_prefix = _resolve_language(args.language, current_user)
 
-        return LearnDifyAppListResponse.model_validate(
+        return dump_response(
+            LearnDifyAppListResponse,
             RecommendedAppService.get_learn_dify_apps(language_prefix, session=db.session()),
-            from_attributes=True,
-        ).model_dump(mode="json")
+        )
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
@@ -148,4 +148,5 @@ class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+        result = RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+        return RecommendedAppDetailNullableResponse.model_validate(result).model_dump(mode="json")

@@ -40,20 +40,25 @@ vi.mock('ahooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useWorkflow: () => ({
-    handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
-    isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-    removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+    useWorkflow: () => ({
+      handleOutVarRenameChange: (...args: unknown[]) => mockHandleOutVarRenameChange(...args),
+      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
+      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<VariableAssignerNodeType>(mockSetInputs),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   __esModule: true,
   default: () => ({
     deleteNodeInspectorVars: (...args: unknown[]) => mockDeleteNodeInspectorVars(...args),

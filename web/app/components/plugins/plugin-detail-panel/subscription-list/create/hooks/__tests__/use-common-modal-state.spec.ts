@@ -3,7 +3,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { ApiKeyStep, useCommonModalState } from '../use-common-modal-state'
 
 type MockPluginDetail = {
@@ -27,7 +27,7 @@ const createMockBuilder = (
   id: 'builder-1',
   name: 'builder',
   provider: 'provider-a',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://example.com/callback',
   parameters: {},
@@ -148,7 +148,7 @@ describe('useCommonModalState', () => {
 
     expect(mockCreateBuilder).toHaveBeenCalledWith({
       provider: 'provider-a',
-      credential_type: TriggerCredentialTypeEnum.ApiKey,
+      credential_type: TriggerCredentialType.ApiKey,
     })
     expect(result.current.currentStep).toBe(ApiKeyStep.Verify)
     expect(result.current.apiKeyCredentialsSchema[0]).toMatchObject({
@@ -248,7 +248,7 @@ describe('useCommonModalState', () => {
     vi.useFakeTimers()
 
     const builder = createMockBuilder({
-      credential_type: TriggerCredentialTypeEnum.Unauthorized,
+      credential_type: TriggerCredentialType.Unauthorized,
     })
     const { result } = renderHook(() =>
       useCommonModalState({

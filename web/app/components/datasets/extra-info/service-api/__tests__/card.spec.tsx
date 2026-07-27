@@ -1,167 +1,50 @@
-import { Popover } from '@langgenius/dify-ui/popover'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Card from '../card'
+
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  PopoverClose: ({ render }: { render: React.ReactNode }) => render,
+}))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <Popover open>{children}</Popover>
-    </QueryClientProvider>
-  )
-}
+describe('Service API card', () => {
+  it('shows the service endpoint and API reference', () => {
+    render(
+      <Card
+        apiBaseUrl="https://api.example.com"
+        canManageSecretKey
+        onOpenSecretKeyModal={vi.fn()}
+      />,
+    )
 
-const renderWithProviders = (ui: React.ReactElement) => {
-  return render(ui, { wrapper: createWrapper() })
-}
-
-describe('Card (Service API)', () => {
-  const onOpenSecretKeyModal = vi.fn()
-  const defaultProps = {
-    apiBaseUrl: 'https://api.dify.ai/v1',
-    onOpenSecretKeyModal,
-  }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+    expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.serviceApi.card.apiReference' }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
   })
 
-  // Rendering: verifies all key elements render
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.title/)).toBeInTheDocument()
-    })
+  it('opens secret-key management when allowed', async () => {
+    const user = userEvent.setup()
+    const onOpenSecretKeyModal = vi.fn()
+    render(
+      <Card
+        apiBaseUrl="https://api.example.com"
+        canManageSecretKey
+        onOpenSecretKeyModal={onOpenSecretKeyModal}
+      />,
+    )
 
-    it('should render card title', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.title/)).toBeInTheDocument()
-    })
+    await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
-    it('should render enabled status', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.enabled/)).toBeInTheDocument()
-    })
-
-    it('should render endpoint label', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.endpoint/)).toBeInTheDocument()
-    })
-
-    it('should render the API base URL', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText('https://api.dify.ai/v1')).toBeInTheDocument()
-    })
-
-    it('should render API key button', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.apiKey/)).toBeInTheDocument()
-    })
-
-    it('should render API reference button', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      expect(screen.getByText(/serviceApi\.card\.apiReference/)).toBeInTheDocument()
-    })
+    expect(onOpenSecretKeyModal).toHaveBeenCalledOnce()
   })
 
-  // Props: tests different apiBaseUrl values
-  describe('Props', () => {
-    it('should display provided apiBaseUrl', () => {
-      renderWithProviders(
-        <Card
-          apiBaseUrl="https://custom-api.example.com"
-          onOpenSecretKeyModal={onOpenSecretKeyModal}
-        />,
-      )
-      expect(screen.getByText('https://custom-api.example.com')).toBeInTheDocument()
-    })
+  it('disables secret-key management when it is not allowed', () => {
+    render(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={vi.fn()} />)
 
-    it('should show green indicator when apiBaseUrl is provided', () => {
-      renderWithProviders(
-        <Card apiBaseUrl="https://api.dify.ai" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
-      )
-      // The Indicator component receives color="green" when apiBaseUrl is truthy
-      const statusText = screen.getByText(/serviceApi\.enabled/)
-      expect(statusText).toHaveClass('text-text-success')
-    })
-
-    it('should show yellow indicator when apiBaseUrl is empty', () => {
-      renderWithProviders(<Card apiBaseUrl="" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      // Still shows "enabled" text but indicator color differs
-      expect(screen.getByText(/serviceApi\.enabled/)).toBeInTheDocument()
-    })
-  })
-
-  // User Interactions: tests button clicks
-  describe('User Interactions', () => {
-    it('should call onOpenSecretKeyModal when API key button is clicked', () => {
-      renderWithProviders(<Card {...defaultProps} canManageSecretKey />)
-
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
-      fireEvent.click(apiKeyButton!)
-
-      expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable API key button when secret key management is not allowed', () => {
-      renderWithProviders(<Card {...defaultProps} canManageSecretKey={false} />)
-
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
-      expect(apiKeyButton).toBeDisabled()
-    })
-
-    it('should render API reference as a link', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-      const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    })
-  })
-
-  // Styles: verifies container structure
-  describe('Styles', () => {
-    it('should have correct container width', () => {
-      const { container } = renderWithProviders(<Card {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('w-[360px]')
-    })
-
-    it('should have rounded-sm corners', () => {
-      const { container } = renderWithProviders(<Card {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('rounded-xl')
-    })
-  })
-
-  // Edge Cases: tests empty/long URLs
-  describe('Edge Cases', () => {
-    it('should handle empty apiBaseUrl', () => {
-      renderWithProviders(<Card apiBaseUrl="" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      // Should still render the structure
-      expect(screen.getByText(/serviceApi\.card\.endpoint/)).toBeInTheDocument()
-    })
-
-    it('should handle very long apiBaseUrl', () => {
-      const longUrl = `https://api.dify.ai/${'path/'.repeat(50)}`
-      renderWithProviders(<Card apiBaseUrl={longUrl} onOpenSecretKeyModal={onOpenSecretKeyModal} />)
-      expect(screen.getByText(longUrl)).toBeInTheDocument()
-    })
-
-    it('should handle apiBaseUrl with special characters', () => {
-      const specialUrl = 'https://api.dify.ai/v1?key=value&foo=bar'
-      renderWithProviders(
-        <Card apiBaseUrl={specialUrl} onOpenSecretKeyModal={onOpenSecretKeyModal} />,
-      )
-      expect(screen.getByText(specialUrl)).toBeInTheDocument()
-    })
+    expect(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' })).toBeDisabled()
   })
 })

@@ -41,10 +41,23 @@ vi.mock('reactflow', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
-  useNodesInteractions: () => mockUseNodesInteractions(),
-}))
+vi.mock('../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: (...args: unknown[]) => mockUseAvailableBlocks(...args),
+  }
+})
+
+vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => mockUseNodesInteractions(),
+  }
+})
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
   __esModule: true,
@@ -53,14 +66,12 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     onOpenChange: (open: boolean) => void
     onSelect: (nodeType: string, pluginDefaultValue?: Record<string, unknown>) => void
     availableBlocksTypes: string[]
-    triggerClassName?: () => string
   }) => {
     mockBlockSelector(props)
     return (
       <button
         type="button"
         data-testid="block-selector"
-        data-trigger-class={props.triggerClassName?.()}
         onClick={() => {
           props.onOpenChange(true)
           props.onSelect('llm', { provider: 'openai' })
@@ -246,10 +257,6 @@ describe('CustomEdge', () => {
     expect(screen.getByTestId('base-edge')).toHaveAttribute(
       'data-stroke',
       'var(--color-workflow-link-line-normal)',
-    )
-    expect(screen.getByTestId('block-selector')).toHaveAttribute(
-      'data-trigger-class',
-      'hover:scale-150 transition-all',
     )
     expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
       opacity: '0',

@@ -1,27 +1,61 @@
-"""Unit tests for `ToolFileManager` behavior.
+"""Unit tests for ``ToolFileManager`` behavior.
 
-Covers signing, file persistence flows, and retrieval APIs with mocked
-storage/session boundaries (httpx, SimpleNamespace, Mock/patch) to avoid real
-IO.
+File metadata is persisted through real SQLite-backed sessions. Storage and
+remote HTTP remain mocked because they are external I/O boundaries.
 """
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from collections.abc import Iterator
+from unittest.mock import Mock, patch
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
+import core.tools.tool_file_manager as tool_file_manager_module
 from core.tools.tool_file_manager import ToolFileManager
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
+from models.base import TypeBase
+from models.enums import CreatorUserRole
+from models.model import MessageFile
+from models.tools import ToolFile
 
 
-def _patch_session_factory(session: Mock):
-    session_cm = MagicMock()
-    session_cm.__enter__.return_value = session
-    session_cm.__exit__.return_value = False
-    return patch("core.tools.tool_file_manager.session_factory.create_session", return_value=session_cm)
+@pytest.fixture
+def sqlite_tool_file_session(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[Session]:
+    """Bind manager-owned sessions to SQLite and expose a setup/assertion session."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[ToolFile.__table__, MessageFile.__table__])
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(tool_file_manager_module.session_factory, "create_session", factory)
+    with factory() as session:
+        yield session
+
+
+def _tool_file(*, file_key: str = "k1", mimetype: str = "text/plain", name: str = "file.txt") -> ToolFile:
+    return ToolFile(
+        user_id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        conversation_id=str(uuid4()),
+        file_key=file_key,
+        mimetype=mimetype,
+        original_url=None,
+        name=name,
+        size=12,
+    )
+
+
+def _message_file(*, url: str | None) -> MessageFile:
+    return MessageFile(
+        message_id=str(uuid4()),
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+        url=url,
+    )
 
 
 def test_tool_file_manager_sign_file_builds_url() -> None:
@@ -29,120 +63,105 @@ def test_tool_file_manager_sign_file_builds_url() -> None:
     assert "/files/tools/tf-1.png" in url
 
 
-def test_create_file_by_raw_stores_file_and_persists_record() -> None:
+def test_create_file_by_raw_stores_file_and_persists_record(sqlite_tool_file_session: Session) -> None:
     manager = ToolFileManager()
-    session = Mock()
-    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-1")
-
-    def tool_file_factory(**kwargs):
-        return SimpleNamespace(**kwargs)
+    user_id = str(uuid4())
+    tenant_id = str(uuid4())
+    conversation_id = str(uuid4())
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
-        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
         patch("core.tools.tool_file_manager.guess_extension", return_value=".txt"),
-        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
-        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
     ):
         file_model = manager.create_file_by_raw(
-            user_id="u1",
-            tenant_id="t1",
-            conversation_id="c1",
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
             file_binary=b"hello",
             mimetype="text/plain",
             filename="readme",
         )
 
-    assert file_model.name.endswith(".txt")
-    storage.save.assert_called_once()
-    session.add.assert_called_once()
-    session.commit.assert_called_once()
-    session.refresh.assert_called_once_with(file_model)
+    persisted = sqlite_tool_file_session.get(ToolFile, file_model.id)
+    assert persisted is not None
+    assert persisted.name == "readme.txt"
+    assert persisted.file_key == f"tools/{tenant_id}/{UUID(int=0xABC).hex}.txt"
+    storage.save.assert_called_once_with(persisted.file_key, b"hello")
 
 
-def test_create_file_by_raw_prefers_filename_extension_over_mimetype() -> None:
+def test_create_file_by_raw_prefers_filename_extension_over_mimetype(
+    sqlite_tool_file_session: Session,
+) -> None:
     manager = ToolFileManager()
-    session = Mock()
-    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
-
-    def tool_file_factory(**kwargs):
-        return SimpleNamespace(**kwargs)
+    tenant_id = str(uuid4())
 
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
-        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
-        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="abc")),
-        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
     ):
         file_model = manager.create_file_by_raw(
-            user_id="u1",
-            tenant_id="t1",
-            conversation_id="c1",
+            user_id=str(uuid4()),
+            tenant_id=tenant_id,
+            conversation_id=str(uuid4()),
             file_binary=b"docx",
             mimetype="application/octet-stream",
             filename="report.docx",
         )
 
-    assert file_model.name == "report.docx"
-    assert file_model.file_key == "tools/t1/abc.docx"
-    storage.save.assert_called_once_with("tools/t1/abc.docx", b"docx")
-    session.add.assert_called_once_with(file_model)
-    session.commit.assert_called_once()
-    session.refresh.assert_called_once_with(file_model)
+    persisted = sqlite_tool_file_session.get(ToolFile, file_model.id)
+    assert persisted is not None
+    assert persisted.name == "report.docx"
+    assert persisted.file_key == f"tools/{tenant_id}/{UUID(int=0xABC).hex}.docx"
+    storage.save.assert_called_once_with(persisted.file_key, b"docx")
 
 
-def test_create_file_by_url_downloads_and_persists_record() -> None:
+def test_create_file_by_url_downloads_and_persists_record(sqlite_tool_file_session: Session) -> None:
     manager = ToolFileManager()
+    tenant_id = str(uuid4())
     response = Mock()
     response.content = b"binary"
     response.headers = {"Content-Type": "application/octet-stream"}
     response.raise_for_status.return_value = None
-    session = Mock()
 
-    def tool_file_factory(**kwargs):
-        return SimpleNamespace(**kwargs)
-
-    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-2")
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
-        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
-        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="def")),
-        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xDEF)),
         patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
-        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
+        file_model = manager.create_file_by_url(str(uuid4()), tenant_id, "https://example.com/f.bin", str(uuid4()))
 
-    assert file_model.file_key.startswith("tools/t1/")
-    storage.save.assert_called_once()
-    session.add.assert_called_once_with(file_model)
-    session.commit.assert_called_once()
-    session.refresh.assert_called_once_with(file_model)
+    persisted = sqlite_tool_file_session.get(ToolFile, file_model.id)
+    assert persisted is not None
+    assert persisted.file_key == f"tools/{tenant_id}/{UUID(int=0xDEF).hex}.bin"
+    assert persisted.original_url == "https://example.com/f.bin"
+    storage.save.assert_called_once_with(persisted.file_key, b"binary")
 
 
-def test_create_file_by_url_prefers_url_extension_over_mimetype() -> None:
+def test_create_file_by_url_prefers_url_extension_over_mimetype(
+    sqlite_tool_file_session: Session,
+) -> None:
     manager = ToolFileManager()
+    tenant_id = str(uuid4())
     response = Mock()
     response.content = b"docx"
     response.headers = {"Content-Type": "application/octet-stream"}
     response.raise_for_status.return_value = None
-    session = Mock()
 
-    def tool_file_factory(**kwargs):
-        return SimpleNamespace(**kwargs)
-
-    session.refresh.side_effect = lambda model: setattr(model, "id", "tf-docx")
     with (
         patch("core.tools.tool_file_manager.storage") as storage,
-        patch("core.tools.tool_file_manager.ToolFile", side_effect=tool_file_factory),
-        patch("core.tools.tool_file_manager.uuid4", return_value=SimpleNamespace(hex="urlabc")),
-        _patch_session_factory(session),
+        patch("core.tools.tool_file_manager.uuid4", return_value=UUID(int=0xABC)),
         patch("core.tools.tool_file_manager.remote_fetcher.make_request", return_value=response),
     ):
-        file_model = manager.create_file_by_url("u1", "t1", "https://example.com/report.docx?download=1", "c1")
+        file_model = manager.create_file_by_url(
+            str(uuid4()), tenant_id, "https://example.com/report.docx?download=1", str(uuid4())
+        )
 
-    assert file_model.file_key == "tools/t1/urlabc.docx"
-    assert file_model.name == "urlabc.docx"
-    storage.save.assert_called_once_with("tools/t1/urlabc.docx", b"docx")
+    persisted = sqlite_tool_file_session.get(ToolFile, file_model.id)
+    assert persisted is not None
+    assert persisted.file_key == f"tools/{tenant_id}/{UUID(int=0xABC).hex}.docx"
+    assert persisted.name == f"{UUID(int=0xABC).hex}.docx"
+    storage.save.assert_called_once_with(persisted.file_key, b"docx")
 
 
 def test_create_file_by_url_raises_on_timeout() -> None:
@@ -156,121 +175,72 @@ def test_create_file_by_url_raises_on_timeout() -> None:
             manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
 
-def test_get_file_binary_returns_none_when_not_found() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    session = Mock()
-    session.scalar.return_value = None
-
-    # Act
-    with _patch_session_factory(session):
-        result = manager.get_file_binary("missing")
-
-    # Assert
-    assert result is None
+def test_get_file_binary_returns_none_when_not_found(sqlite_tool_file_session: Session) -> None:
+    assert ToolFileManager().get_file_binary(str(uuid4())) is None
 
 
-def test_get_file_binary_returns_bytes_when_found() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    tool_file = SimpleNamespace(file_key="k1", mimetype="text/plain")
-    session = Mock()
-    session.scalar.return_value = tool_file
+def test_get_file_binary_returns_bytes_when_found(sqlite_tool_file_session: Session) -> None:
+    tool_file = _tool_file()
+    sqlite_tool_file_session.add(tool_file)
+    sqlite_tool_file_session.commit()
 
-    # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
         storage.load_once.return_value = b"hello"
-        with _patch_session_factory(session):
-            result = manager.get_file_binary("id1")
+        result = ToolFileManager().get_file_binary(tool_file.id)
 
-    # Assert
     assert result == (b"hello", "text/plain")
+    storage.load_once.assert_called_once_with("k1")
 
 
-def test_get_file_binary_by_message_file_id_when_messagefile_missing() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    session = Mock()
-    session.scalar.side_effect = [None, None]
-
-    # Act
-    with _patch_session_factory(session):
-        result = manager.get_file_binary_by_message_file_id("mf-1")
-
-    # Assert
-    assert result is None
+def test_get_file_binary_by_message_file_id_when_messagefile_missing(
+    sqlite_tool_file_session: Session,
+) -> None:
+    assert ToolFileManager().get_file_binary_by_message_file_id(str(uuid4())) is None
 
 
-def test_get_file_binary_by_message_file_id_when_url_is_none() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    message_file = SimpleNamespace(url=None)
-    session = Mock()
-    session.scalar.side_effect = [message_file, None]
+def test_get_file_binary_by_message_file_id_when_url_is_none(sqlite_tool_file_session: Session) -> None:
+    message_file = _message_file(url=None)
+    sqlite_tool_file_session.add(message_file)
+    sqlite_tool_file_session.commit()
 
-    # Act
-    with _patch_session_factory(session):
-        result = manager.get_file_binary_by_message_file_id("mf-1")
-
-    # Assert
-    assert result is None
+    assert ToolFileManager().get_file_binary_by_message_file_id(message_file.id) is None
 
 
-def test_get_file_binary_by_message_file_id_returns_bytes_when_found() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    message_file = SimpleNamespace(url="https://x/files/tools/tool123.png")
-    tool_file = SimpleNamespace(file_key="k2", mimetype="image/png")
-    session = Mock()
-    session.scalar.side_effect = [message_file, tool_file]
+def test_get_file_binary_by_message_file_id_returns_bytes_when_found(
+    sqlite_tool_file_session: Session,
+) -> None:
+    tool_file = _tool_file(file_key="k2", mimetype="image/png", name="image.png")
+    message_file = _message_file(url=f"https://x/files/tools/{tool_file.id}.png")
+    sqlite_tool_file_session.add_all([tool_file, message_file])
+    sqlite_tool_file_session.commit()
 
-    # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
         storage.load_once.return_value = b"img"
-        with _patch_session_factory(session):
-            result = manager.get_file_binary_by_message_file_id("mf-1")
+        result = ToolFileManager().get_file_binary_by_message_file_id(message_file.id)
 
-    # Assert
     assert result == (b"img", "image/png")
+    storage.load_once.assert_called_once_with("k2")
 
 
-def test_get_file_generator_returns_none_when_toolfile_missing() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    session = Mock()
-    session.scalar.return_value = None
+def test_get_file_generator_returns_none_when_toolfile_missing(sqlite_tool_file_session: Session) -> None:
+    stream, tool_file = ToolFileManager().get_file_generator_by_tool_file_id(str(uuid4()))
 
-    # Act
-    with _patch_session_factory(session):
-        stream, tool_file = manager.get_file_generator_by_tool_file_id("tool123")
-
-    # Assert
     assert stream is None
     assert tool_file is None
 
 
-def test_get_file_generator_returns_stream_when_found() -> None:
-    # Arrange
-    manager = ToolFileManager()
-    tool_file = SimpleNamespace(
-        id="tool123",
-        file_key="k2",
-        mimetype="image/png",
-        original_url=None,
-        name="image.png",
-        size=12,
-    )
-    session = Mock()
-    session.scalar.return_value = tool_file
+def test_get_file_generator_returns_stream_when_found(sqlite_tool_file_session: Session) -> None:
+    tool_file = _tool_file(file_key="k2", mimetype="image/png", name="image.png")
+    sqlite_tool_file_session.add(tool_file)
+    sqlite_tool_file_session.commit()
 
-    # Act
     with patch("core.tools.tool_file_manager.storage") as storage:
-        stream = iter([b"a", b"b"])
-        storage.load_stream.return_value = stream
-        with _patch_session_factory(session):
-            result_stream, result_file = manager.get_file_generator_by_tool_file_id("tool123")
-            assert list(result_stream) == [b"a", b"b"]
-            assert result_file is not None
-            assert result_file.related_id == "tool123"
-            assert result_file.mime_type == "image/png"
-            assert result_file.transfer_method == FileTransferMethod.TOOL_FILE
+        storage.load_stream.return_value = iter([b"a", b"b"])
+        result_stream, result_file = ToolFileManager().get_file_generator_by_tool_file_id(tool_file.id)
+
+    assert result_stream is not None
+    assert list(result_stream) == [b"a", b"b"]
+    assert result_file is not None
+    assert result_file.related_id == tool_file.id
+    assert result_file.mime_type == "image/png"
+    assert result_file.transfer_method == FileTransferMethod.TOOL_FILE

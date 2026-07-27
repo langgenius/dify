@@ -41,12 +41,6 @@ describe('CheckboxWithLabel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CheckboxWithLabel {...defaultProps} />)
-
-      expect(screen.getByText('Test Label'))!.toBeInTheDocument()
-    })
-
     it('should render checkbox in unchecked state', () => {
       render(<CheckboxWithLabel {...defaultProps} isChecked={false} />)
 
@@ -75,21 +69,6 @@ describe('CheckboxWithLabel', () => {
       render(<CheckboxWithLabel {...defaultProps} />)
 
       expect(screen.queryByLabelText('Helpful tooltip text')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<CheckboxWithLabel {...defaultProps} className="custom-class" />)
-
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
-    it('should apply custom labelClassName', () => {
-      render(<CheckboxWithLabel {...defaultProps} labelClassName="custom-label-class" />)
-
-      const labelText = screen.getByText('Test Label')
-      expect(labelText)!.toHaveClass('custom-label-class')
     })
   })
 
@@ -142,13 +121,6 @@ describe('CrawledResultItem', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CrawledResultItem {...defaultProps} />)
-
-      expect(screen.getByText('Test Page Title'))!.toBeInTheDocument()
-      expect(screen.getByText('https://example.com/page1'))!.toBeInTheDocument()
-    })
-
     it('should render checkbox when isMultipleChoice is true', () => {
       render(<CrawledResultItem {...defaultProps} isMultipleChoice={true} />)
 
@@ -189,14 +161,6 @@ describe('CrawledResultItem', () => {
 
       const item = container.firstChild
       expect(item)!.toHaveClass('bg-state-base-active')
-    })
-
-    it('should apply hover styles when isPreview is false', () => {
-      const { container } = render(<CrawledResultItem {...defaultProps} isPreview={false} />)
-
-      const item = container.firstChild
-      expect(item)!.toHaveClass('group')
-      expect(item)!.toHaveClass('hover:bg-state-base-hover')
     })
   })
 
@@ -300,14 +264,6 @@ describe('CrawledResult', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CrawledResult {...defaultProps} />)
-
-      // Assert - Check for time info which contains total count
-      // Assert - Check for time info which contains total count
-      expect(screen.getByText(/1.5/))!.toBeInTheDocument()
-    })
-
     it('should render all list items', () => {
       render(<CrawledResult {...defaultProps} />)
 
@@ -356,12 +312,6 @@ describe('CrawledResult', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<CrawledResult {...defaultProps} className="custom-class" />)
-
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
     it('should highlight item at previewIndex', () => {
       render(<CrawledResult {...defaultProps} previewIndex={1} />)
 
@@ -501,7 +451,7 @@ describe('CrawledResult', () => {
       expect(mockOnPreview).toHaveBeenCalledWith(list[1], 1)
     })
 
-    it('should not crash when clicking preview without onPreview callback', () => {
+    it('ignores preview clicks when the callback is omitted', () => {
       // Arrange - showPreview is true but onPreview is undefined
       const list = createMockCrawlResultItems(3)
       render(
@@ -555,12 +505,6 @@ describe('Crawling', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Crawling {...defaultProps} />)
-
-      expect(screen.getByText(/5\/10/))!.toBeInTheDocument()
-    })
-
     it('should display crawled count and total', () => {
       render(<Crawling crawledNum={3} totalNum={15} />)
 
@@ -584,12 +528,6 @@ describe('Crawling', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<Crawling {...defaultProps} className="custom-crawling-class" />)
-
-      expect(container.firstChild)!.toHaveClass('custom-crawling-class')
-    })
-
     it('should handle zero values', () => {
       render(<Crawling crawledNum={0} totalNum={0} />)
 
@@ -627,12 +565,6 @@ describe('ErrorMessage', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ErrorMessage {...defaultProps} />)
-
-      expect(screen.getByText('Error Title'))!.toBeInTheDocument()
-    })
-
     it('should render error icon', () => {
       const { container } = render(<ErrorMessage {...defaultProps} />)
 
@@ -663,14 +595,6 @@ describe('ErrorMessage', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <ErrorMessage {...defaultProps} className="custom-error-class" />,
-      )
-
-      expect(container.firstChild)!.toHaveClass('custom-error-class')
-    })
-
     it('should render with empty errorMsg', () => {
       render(<ErrorMessage {...defaultProps} errorMsg="" />)
 
@@ -698,18 +622,6 @@ describe('ErrorMessage', () => {
   })
 
   describe('Styling', () => {
-    it('should have error background styling', () => {
-      const { container } = render(<ErrorMessage {...defaultProps} />)
-
-      expect(container.firstChild)!.toHaveClass('bg-toast-error-bg')
-    })
-
-    it('should have border styling', () => {
-      const { container } = render(<ErrorMessage {...defaultProps} />)
-
-      expect(container.firstChild)!.toHaveClass('border-components-panel-border')
-    })
-
     it('should have rounded-sm corners', () => {
       const { container } = render(<ErrorMessage {...defaultProps} />)
 

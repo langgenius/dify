@@ -66,12 +66,6 @@ describe('CSVUploader', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<CSVUploader {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render upload area when no file is present', () => {
       render(<CSVUploader {...defaultProps} />)
 
