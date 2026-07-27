@@ -6,12 +6,15 @@ Owns CookieYes consent state and the Dify Cloud analytics boundary.
 
 - `consent-store`
 - `cookieyes-consent-bridge`
-- `cloud-analytics-boundary`
+- `cloud-analytics`
 - `cloud-analytics-runtime`
-- `cloud-analytics-state`
 - `request-boundary`
 
 ## External Modules
 
 - `app/components/base/amplitude`
 - `app/components/base/ga`
+- `app/components/external-attribution-recorder`
+- `config`
+- `context/query-client-server`
+- `features/system-features`

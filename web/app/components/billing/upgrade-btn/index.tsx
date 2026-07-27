@@ -2,11 +2,12 @@
 import type { CSSProperties, FC } from 'react'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PremiumBadgeButton } from '../../base/premium-badge'
 
 type Props = Readonly<{
@@ -37,9 +38,13 @@ const UpgradeBtn: FC<Props> = ({
   labelKey,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { setShowPricingModal } = useModalContext()
 
-  if (!IS_CLOUD_EDITION) return null
+  if (deploymentEdition !== 'CLOUD') return null
 
   const handleClick = () => {
     if (_onClick) _onClick()

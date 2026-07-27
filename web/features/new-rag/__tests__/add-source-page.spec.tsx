@@ -2,10 +2,19 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
+import { newKnowledgeSourceDraftStorageKey } from '../routes'
+
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 
@@ -18,6 +27,7 @@ type ConnectionsInfiniteData = {
 }
 
 type ConnectionsInfiniteOptions = {
+  enabled?: boolean
   getNextPageParam: (
     lastPage: GetKnowledgeSpacesByIdSourceConnectionsResponse,
   ) => string | undefined
@@ -45,37 +55,41 @@ const queryState = vi.hoisted(() => ({
 }))
 
 const clientMock = vi.hoisted(() => ({
-  cancelRun: vi.fn(),
   createConnection: vi.fn(),
-  createSource: vi.fn(),
-  deleteConnection: vi.fn(),
-  deleteSource: vi.fn(),
-  getPages: vi.fn(),
-  getRun: vi.fn(),
-  getSource: vi.fn(),
-  listSources: vi.fn(),
   refreshConnection: vi.fn(),
-  retryRun: vi.fn(),
-  startPreview: vi.fn(),
 }))
-
-const routerMock = vi.hoisted(() => ({ replace: vi.fn() }))
 
 const queryClientMock = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
 }))
 
-const providerQueryOptionsMock = vi.hoisted(() => vi.fn(() => ({ queryKey: ['source-providers'] })))
-const connectionInfiniteOptionsMock = vi.hoisted(() =>
-  vi.fn((_options: ConnectionsInfiniteOptions) => ({ queryKey: ['source-connections'] })),
+const providerQueryOptionsMock = vi.hoisted(() =>
+  vi.fn((options: { enabled?: boolean }) => ({
+    enabled: options.enabled,
+    queryKey: ['source-providers'],
+  })),
 )
+const connectionInfiniteOptionsMock = vi.hoisted(() =>
+  vi.fn((options: ConnectionsInfiniteOptions) => ({
+    enabled: options.enabled,
+    queryKey: ['source-connections'],
+  })),
+)
+const providerHookOptionsMock = vi.hoisted(() => vi.fn())
+const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => queryState.connections,
-    useQuery: () => queryState.providers,
+    useInfiniteQuery: (options: unknown) => {
+      connectionHookOptionsMock(options)
+      return queryState.connections
+    },
+    useQuery: (options: unknown) => {
+      providerHookOptionsMock(options)
+      return queryState.providers
+    },
     useQueryClient: () => queryClientMock,
   }
 })
@@ -83,18 +97,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId: clientMock.deleteConnection,
-      deleteKnowledgeSpacesByIdSourcesBySourceId: clientMock.deleteSource,
-      getKnowledgeSpacesByIdSources: clientMock.listSources,
-      getKnowledgeSpacesByIdSourcesBySourceId: clientMock.getSource,
-      getKnowledgeSpacesByIdSourceWorkflowsByRunId: clientMock.getRun,
-      getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages: clientMock.getPages,
       postKnowledgeSpacesByIdSourceConnections: clientMock.createConnection,
       postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh: clientMock.refreshConnection,
-      postKnowledgeSpacesByIdSources: clientMock.createSource,
-      postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview: clientMock.startPreview,
-      postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel: clientMock.cancelRun,
-      postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry: clientMock.retryRun,
     },
   },
   consoleQuery: {
@@ -108,10 +112,6 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => routerMock,
 }))
 
 const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
@@ -149,14 +149,6 @@ const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
       type: 'string',
     },
     {
-      description: 'Generic bearer token',
-      format: 'password',
-      name: 'token',
-      required: false,
-      secret: true,
-      type: 'string',
-    },
-    {
       description: 'Self-hosted endpoint',
       format: 'uri',
       name: 'endpoint',
@@ -165,32 +157,13 @@ const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
       type: 'string',
     },
   ],
-  displayName: 'Firecrawl',
+  displayName: 'Plugin daemon website crawl',
   id: 'plugin-daemon-website',
-}
-
-const jinaProvider: GetSourceProvidersResponse['items'][number] = {
-  authKinds: ['api-key'],
-  available: true,
-  capabilities: ['website-crawl'],
-  configuration: [
-    {
-      description: 'Jina API key',
-      format: 'password',
-      name: 'apiKey',
-      required: true,
-      secret: true,
-      type: 'string',
-    },
-  ],
-  displayName: 'Jina Reader',
-  id: 'jina-reader',
 }
 
 const connection = (
   status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked',
   version = 2,
-  overrides: Partial<GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]> = {},
 ) => ({
   authKind: 'api-key' as const,
   configuration: {
@@ -207,54 +180,17 @@ const connection = (
   status,
   updatedAt: '2026-07-20T10:00:00Z',
   version,
-  ...overrides,
 })
-
-const provisionalSource = {
-  connectionId: 'connection-1',
-  createdAt: '2026-07-20T10:00:00Z',
-  id: 'source-1',
-  knowledgeSpaceId: 'space-1',
-  metadata: { preview: true },
-  name: 'Dify docs',
-  status: 'disabled' as const,
-  type: 'web' as const,
-  updatedAt: '2026-07-20T10:00:00Z',
-  uri: 'https://docs.dify.ai/',
-  version: 1,
-}
-
-const previewRun = {
-  checkpoint: 'queued',
-  createdAt: '2026-07-20T10:00:00Z',
-  executionAttempts: 1,
-  id: 'run-1',
-  knowledgeSpaceId: 'space-1',
-  kind: 'crawl-preview',
-  maxExecutionAttempts: 3,
-  progressCompleted: 0,
-  progressFailed: 0,
-  progressSkipped: 0,
-  sourceId: 'source-1',
-  state: 'running',
-  updatedAt: '2026-07-20T10:00:00Z',
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((nextResolve) => {
-    resolve = nextResolve
-  })
-  return { promise, resolve }
-}
 
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    for (const mock of Object.values(clientMock)) mock.mockReset()
+    globalThis.sessionStorage.clear()
+    clientMock.createConnection.mockReset()
+    clientMock.refreshConnection.mockReset()
     queryState.connections.refetch.mockReset()
     queryState.providers.refetch.mockReset()
-    queryState.providers.data = { items: [firecrawlProvider, jinaProvider] }
+    queryState.providers.data = { items: [firecrawlProvider] }
     queryState.providers.error = null
     queryState.providers.isPending = false
     queryState.connections.data = { pages: [{ items: [] }] }
@@ -263,13 +199,10 @@ describe('AddSourcePage', () => {
     queryState.connections.isFetchNextPageError = false
     queryState.connections.isFetchingNextPage = false
     queryState.connections.isPending = false
-    clientMock.createSource.mockResolvedValue(provisionalSource)
-    clientMock.deleteSource.mockResolvedValue({ id: 'deletion-1' })
-    clientMock.getPages.mockResolvedValue({ items: [] })
-    clientMock.getRun.mockResolvedValue({ ...previewRun, state: 'preview_ready' })
-    clientMock.getSource.mockResolvedValue(provisionalSource)
-    clientMock.listSources.mockResolvedValue({ items: [] })
-    clientMock.startPreview.mockResolvedValue(previewRun)
+  })
+
+  afterEach(() => {
+    globalThis.sessionStorage.clear()
   })
 
   it('loads the provider catalog and every scoped connection cursor page', () => {
@@ -279,6 +212,7 @@ describe('AddSourcePage', () => {
 
     expect(providerQueryOptionsMock).toHaveBeenCalledWith({
       context: { silent: true },
+      enabled: true,
       input: {},
       retry: false,
     })
@@ -303,6 +237,32 @@ describe('AddSourcePage', () => {
     await waitFor(() => expect(queryState.connections.fetchNextPage).toHaveBeenCalledOnce())
   })
 
+  it('stops website connection pagination after switching source type', async () => {
+    const user = userEvent.setup()
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    queryState.connections.hasNextPage = true
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+
+    expect(queryState.connections.fetchNextPage).not.toHaveBeenCalled()
+  })
+
+  it.each(['onlineDocuments', 'onlineDrive'])(
+    'does not request website provider data for the %s state',
+    (initialSourceType) => {
+      queryState.providers.isPending = true
+      queryState.connections.isPending = true
+
+      render(<AddSourcePage initialSourceType={initialSourceType} knowledgeSpaceId="space-1" />)
+
+      expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+      expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+      expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    },
+  )
+
   it('stops automatic connection pagination after a cursor error', () => {
     queryState.connections.error = new Error('next page failed')
     queryState.connections.hasNextPage = true
@@ -324,7 +284,244 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
+  })
+
+  it('offers replacement setup when the saved provider connection is revoked', () => {
+    queryState.connections.data = { pages: [{ items: [connection('revoked')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
+  })
+
+  it('restores a website draft handed off by the creation flow', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: false,
+          maxPages: 25,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+    ).not.toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
+      25,
+    )
+  })
+
+  it('keeps the exact website provider selected and lets the user switch to Firecrawl', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Jina Reader',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'manual',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
+    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Firecrawl' }))
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+  })
+
+  it('clears a website dependency alert when the provider changes', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('restores online document configuration and reaches an honest backend boundary', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          provider: 'Google Docs',
+          sourceName: 'Shared product docs',
+          sourceType: 'onlineDocuments',
+          syncPolicy: 'daily',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Google Docs' })).toBeChecked()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Shared product docs',
+    )
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toHaveValue(
+      'daily',
+    )
+    const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    expect(addSource).toBeEnabled()
+    await user.click(addSource)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+  })
+
+  it('restores a website draft from session storage', async () => {
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    const storageKey = newKnowledgeSourceDraftStorageKey('draft-1')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: false,
+        maxPages: 25,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai',
+        sourceName: 'Dify docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
+      }),
+    )
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="draft-1" />)
+
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai')
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Dify docs',
+    )
+    expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
+  })
+
+  it('retains the draft through Strict Mode, delayed loading, and a real remount', async () => {
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    queryState.connections.isPending = true
+    const storageKey = newKnowledgeSourceDraftStorageKey('strict-draft')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: true,
+        maxPages: 100,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai/strict',
+        sourceName: 'Strict docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
+      }),
+    )
+
+    const view = render(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+    await waitFor(() => expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull())
+
+    queryState.connections.isPending = false
+    view.rerender(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai/strict')
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Strict docs',
+    )
+
+    view.unmount()
+    queryState.connections.isPending = false
+    render(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai/strict')
+  })
+
+  it('clears the stored draft when source setup is canceled', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    const storageKey = newKnowledgeSourceDraftStorageKey('cancel-draft')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: true,
+        maxPages: 100,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai',
+        sourceName: 'Dify docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
+      }),
+    )
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
+    await user.click(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
+    )
+
+    expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
+    expect(historyBack).toHaveBeenCalledOnce()
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+    expect(confirmation).not.toBeInTheDocument()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
@@ -333,12 +530,11 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    expect(screen.getByLabelText('Token')).toBeInTheDocument()
-    expect(screen.getByLabelText('Endpoint')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
+    await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -346,6 +542,7 @@ describe('AddSourcePage', () => {
           authKind: 'api-key',
           configuration: {
             datasource: 'crawl',
+            endpoint: 'https://crawl.example.com',
             pluginId: 'langgenius/firecrawl_datasource',
             provider: 'firecrawl',
           },
@@ -356,6 +553,8 @@ describe('AddSourcePage', () => {
         params: { id: 'space-1' },
       }),
     )
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
     })
@@ -363,82 +562,108 @@ describe('AddSourcePage', () => {
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
   })
 
-  it('renders the provider catalog returned by the API without invented entries', () => {
+  it('releases the parent history guard before the crawl preview owns navigation', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    clientMock.createConnection.mockResolvedValue(connection('active'))
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
+    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+
+    await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
+    expect(screen.queryByText(/dataset\.newKnowledge\.providerConnected/)).not.toBeInTheDocument()
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    await screen.findByText(/dataset\.newKnowledge\.providerConnected/)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(historyBack).toHaveBeenCalledOnce()
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+  })
+
+  it('keeps the website setup interactive until it reaches the backend boundary', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Dify docs',
+    )
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    const crawlAndPreview = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlAndPreview',
+    })
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+  })
+
+  it('keeps pending website edits when the provider connection becomes active', async () => {
+    const user = userEvent.setup()
+    const initialSourceDraft = {
+      includeSubpages: true,
+      maxPages: 100,
+      provider: 'Firecrawl' as const,
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl' as const,
+      syncPolicy: 'provider' as const,
+    }
+    const view = render(
+      <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+    )
+    const rootUrl = screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })
+    const sourceName = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://docs.dify.ai/edited')
+    await user.clear(sourceName)
+    await user.type(sourceName, 'Edited docs')
+
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    view.rerender(
+      <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+    )
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
+      'https://docs.dify.ai/edited',
+    )
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Edited docs',
+    )
+  })
+
+  it('does not select a lookalike provider by fuzzy display name', () => {
     queryState.providers.data = {
-      items: [{ ...jinaProvider, displayName: 'Workspace Reader' }],
+      items: [{ ...firecrawlProvider, displayName: 'Firecrawl impostor', id: 'impostor' }],
     }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('radio', { name: 'Workspace Reader' })).toBeChecked()
-    expect(screen.queryByRole('radio', { name: 'Firecrawl' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: 'WaterCrawl' })).not.toBeInTheDocument()
-  })
-
-  it('keeps every installed provider selectable when the preferred provider is returned later', () => {
-    queryState.providers.data = {
-      items: [
-        ...Array.from({ length: 4 }, (_, index) => ({
-          ...jinaProvider,
-          displayName: `Provider ${index + 1}`,
-          id: `provider-${index + 1}`,
-        })),
-        firecrawlProvider,
-      ],
-    }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-
-    expect(screen.getByRole('radio', { name: 'Provider 4' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-  })
-
-  it('switches providers and creates a connection from the selected catalog schema', async () => {
-    const user = userEvent.setup()
-    clientMock.createConnection.mockResolvedValue(
-      connection('active', 1, {
-        id: 'jina-connection',
-        name: 'Jina Reader',
-        providerId: 'jina-reader',
-      }),
-    )
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-    await user.type(screen.getByLabelText(/Api Key/), 'jina-secret')
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
-
-    await waitFor(() =>
-      expect(clientMock.createConnection).toHaveBeenCalledWith({
-        body: {
-          authKind: 'api-key',
-          configuration: {},
-          credentials: { apiKey: 'jina-secret' },
-          name: 'Jina Reader',
-          providerId: 'jina-reader',
-        },
-        params: { id: 'space-1' },
-      }),
-    )
-  })
-
-  it('clears the configuration form when the selected provider changes', async () => {
-    const user = userEvent.setup()
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-    await user.type(screen.getByLabelText(/Api Key/), 'firecrawl-secret')
-    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-
-    expect(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    ).toBeInTheDocument()
-    expect(screen.queryByDisplayValue('firecrawl-secret')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.firecrawlUnavailable')).toBeInTheDocument()
   })
 
   it('clears sensitive input but retains non-sensitive input after a connection error', async () => {
@@ -448,17 +673,15 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
-    expect(await screen.findByText(/dataset\.newKnowledge\.connectionFailed/)).toBeInTheDocument()
-    expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.api-key' }))
+    expect(await screen.findByText('dataset.newKnowledge.connectionFailed')).toBeInTheDocument()
     expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
+    expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
   })
 
   it('reconciles a response-lost create before showing an error', async () => {
@@ -470,32 +693,16 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
+    await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
-    expect(screen.queryByText(/dataset\.newKnowledge\.connectionFailed/)).not.toBeInTheDocument()
-  })
-
-  it('retries response-lost create reconciliation while the connection replica catches up', async () => {
-    const user = userEvent.setup()
-    clientMock.createConnection.mockRejectedValue(new Error('response lost'))
-    queryState.connections.refetch
-      .mockResolvedValueOnce({ data: { pages: [{ items: [] }] } })
-      .mockResolvedValueOnce({ data: { pages: [{ items: [connection('active')] }] } })
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
-
-    expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
-    expect(queryState.connections.refetch).toHaveBeenCalledTimes(2)
-    expect(screen.queryByText(/dataset\.newKnowledge\.connectionFailed/)).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()
   })
 
   it('clears an API key when authentication modes are changed and changed back', async () => {
@@ -504,7 +711,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-return')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
@@ -515,34 +722,19 @@ describe('AddSourcePage', () => {
 
   it('supports an endpoint descriptor without sending a hidden secret field', async () => {
     const user = userEvent.setup()
-    clientMock.createConnection.mockResolvedValue({ ...connection('active'), authKind: 'endpoint' })
-    queryState.providers.data = {
-      items: [
-        {
-          ...firecrawlProvider,
-          configuration: [
-            ...firecrawlProvider.configuration,
-            {
-              description: 'Deployment region',
-              name: 'region',
-              required: true,
-              secret: false,
-              type: 'string',
-            },
-          ],
-        },
-      ],
-    }
+    clientMock.createConnection.mockResolvedValue({
+      ...connection('active'),
+      authKind: 'endpoint',
+    })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
-    await user.type(screen.getByLabelText(/Region/), 'us-east-1')
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
     await waitFor(() =>
       expect(clientMock.createConnection).toHaveBeenCalledWith({
@@ -553,7 +745,6 @@ describe('AddSourcePage', () => {
             endpoint: 'https://crawl.example.com',
             pluginId: 'langgenius/firecrawl_datasource',
             provider: 'firecrawl',
-            region: 'us-east-1',
           },
           credentials: {},
           name: 'Firecrawl',
@@ -583,7 +774,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     )
 
     expect(screen.getByLabelText(/Api Key/)).toHaveAccessibleDescription('Firecrawl API key')
@@ -606,39 +797,6 @@ describe('AddSourcePage', () => {
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
     expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
-  })
-
-  it('revokes an invalid connection before offering a clean reconfiguration form', async () => {
-    const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('expired')] }] }
-    clientMock.deleteConnection.mockResolvedValue(connection('revoked', 3))
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-
-    await waitFor(() =>
-      expect(clientMock.deleteConnection).toHaveBeenCalledWith({
-        params: { connectionId: 'connection-1', id: 'space-1' },
-        query: { expectedVersion: 2 },
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-    expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
-  })
-
-  it('treats a revoked connection as available for clean configuration', () => {
-    queryState.connections.data = { pages: [{ items: [connection('revoked')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-
-    expect(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
   })
 
   it('reconciles a refresh version race and retries with the server version', async () => {
@@ -708,7 +866,7 @@ describe('AddSourcePage', () => {
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(
-      await screen.findByText(/dataset\.newKnowledge\.connectionProvisioning/),
+      await screen.findByText('dataset.newKnowledge.connectionProvisioning'),
     ).toBeInTheDocument()
 
     queryState.connections.data = {
@@ -781,7 +939,7 @@ describe('AddSourcePage', () => {
       'dataset.newKnowledge.connectionRefreshFailed',
     )
     expect(
-      screen.queryByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -795,26 +953,45 @@ describe('AddSourcePage', () => {
     })
     expect(onlineDocuments).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
     expect(
-      screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' }),
+      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
-    expect(screen.queryByRole('radio', { name: 'WaterCrawl' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: 'FakeCrawler' })).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'dataset.newKnowledge.moreProviders' }),
-    ).toHaveAttribute('href', '/marketplace?category=datasource')
 
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(
-      screen.queryByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Product docs',
+    )
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
+    await user.click(onlineDocuments)
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Product docs',
+    )
+  })
+
+  it('restores the selected source type from the create flow', () => {
+    render(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeChecked()
+    expect(
+      screen.getByRole('region', { name: 'dataset.newKnowledge.selectFilesAndFolders' }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
   })
 
-  it('keeps the final Add source action disabled until a crawl result is ready', async () => {
+  it('disables the final Add source action while its backend dependency is missing', async () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -822,265 +999,6 @@ describe('AddSourcePage', () => {
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeDisabled()
     expect(toastInfoMock).not.toHaveBeenCalled()
-  })
-
-  it('asks before discarding an edited source draft', async () => {
-    const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardSourceDraftTitle',
-    })
-    expect(dialog).toHaveTextContent('dataset.newKnowledge.discardSourceDraftDescription')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(routerMock.replace).not.toHaveBeenCalled()
-  })
-
-  it('asks before discarding provider connection credentials', async () => {
-    const user = userEvent.setup()
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.click(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
-    )
-    await user.type(screen.getByLabelText(/Api Key/), 'unsaved-secret')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardSourceDraftTitle',
-      }),
-    ).toBeInTheDocument()
-    expect(routerMock.replace).not.toHaveBeenCalled()
-  })
-
-  it('guards client-side marketplace navigation while the source draft is dirty', async () => {
-    const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.click(screen.getByRole('link', { name: /dataset\.newKnowledge\.moreProviders/ }))
-
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardSourceDraftTitle',
-    })
-    expect(routerMock.replace).not.toHaveBeenCalled()
-    await user.click(
-      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
-    )
-    await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
-
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-    expect(routerMock.replace).toHaveBeenCalledWith('/marketplace?category=datasource')
-  })
-
-  it('guards client-side navigation from links outside the add source form', async () => {
-    const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-
-    render(
-      <>
-        <a href="/datasets/space-1/documents">Documents</a>
-        <AddSourcePage knowledgeSpaceId="space-1" />
-      </>,
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.click(screen.getByRole('link', { name: 'Documents' }))
-
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardSourceDraftTitle',
-      }),
-    ).toBeInTheDocument()
-    expect(routerMock.replace).not.toHaveBeenCalled()
-  })
-
-  it('waits for source creation before deleting the provisional source on discard', async () => {
-    const user = userEvent.setup()
-    const sourceRequest = deferred<typeof provisionalSource>()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-    clientMock.createSource.mockReturnValue(sourceRequest.promise)
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
-      'Dify docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardSourceDraftTitle',
-    })
-    await user.click(
-      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
-    )
-    expect(clientMock.deleteSource).not.toHaveBeenCalled()
-
-    await act(async () => sourceRequest.resolve(provisionalSource))
-
-    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
-  })
-
-  it('starts with a fresh preview draft after switching active providers', async () => {
-    const user = userEvent.setup()
-    const jinaConnection = connection('active', 2, {
-      configuration: { provider: 'jina' },
-      id: 'jina-connection',
-      name: 'Jina Reader',
-      providerId: 'jina-reader',
-    })
-    const jinaSource = {
-      ...provisionalSource,
-      connectionId: jinaConnection.id,
-      id: 'source-2',
-    }
-    queryState.connections.data = {
-      pages: [{ items: [connection('active'), jinaConnection] }],
-    }
-    clientMock.createSource
-      .mockResolvedValueOnce(provisionalSource)
-      .mockResolvedValueOnce(jinaSource)
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
-      'Dify docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await screen.findByText(/^dataset\.newKnowledge\.noPagesFound:/)
-
-    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-
-    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue('')
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://jina.ai',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
-      'Jina docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-
-    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledTimes(2))
-    expect(clientMock.createSource.mock.calls[1]?.[0].body.connectionId).toBe('jina-connection')
-  })
-
-  it('reconciles a response-lost provisional source deletion before leaving', async () => {
-    const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-    clientMock.deleteSource.mockRejectedValue(new Error('response lost'))
-    clientMock.getSource.mockRejectedValue(
-      Object.assign(new Error('source not found'), { status: 404 }),
-    )
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
-      'Dify docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'dataset.newKnowledge.discardSourceDraftTitle',
-    })
-    await user.click(
-      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
-    )
-
-    await waitFor(() =>
-      expect(clientMock.deleteSource).toHaveBeenCalledWith({
-        body: { expectedRevision: 1 },
-        headers: { 'idempotency-key': expect.any(String) },
-        params: { id: 'space-1', sourceId: 'source-1' },
-        query: { documents: 'cascade' },
-      }),
-    )
-    expect(clientMock.getSource).toHaveBeenCalledWith({
-      params: { id: 'space-1', sourceId: 'source-1' },
-    })
-    expect(historyBack).toHaveBeenCalledOnce()
-    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
-    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
-  })
-
-  it('protects an edited source draft from browser unload', async () => {
-    const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    const event = new Event('beforeunload', { cancelable: true })
-
-    act(() => window.dispatchEvent(event))
-
-    expect(event.defaultPrevented).toBe(true)
-  })
-
-  it('deletes a known provisional source with keepalive when the page unloads', async () => {
-    const user = userEvent.setup()
-    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
-
-    render(<AddSourcePage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
-      'Dify docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
-
-    act(() => window.dispatchEvent(new Event('pagehide')))
-
-    await waitFor(() =>
-      expect(clientMock.deleteSource).toHaveBeenCalledWith(
-        {
-          body: { expectedRevision: 1 },
-          headers: { 'idempotency-key': expect.any(String) },
-          params: { id: 'space-1', sourceId: 'source-1' },
-          query: { documents: 'cascade' },
-        },
-        { context: { keepalive: true, silent: true } },
-      ),
-    )
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
@@ -1092,7 +1010,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('Disabled by admin')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 
@@ -1111,7 +1029,7 @@ describe('AddSourcePage', () => {
 
     expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+      screen.queryByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
     ).not.toBeInTheDocument()
   })
 })

@@ -1,10 +1,8 @@
-import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import DocumentList from '../../list'
 
@@ -83,25 +81,7 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
   }),
 }))
 
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: Number.POSITIVE_INFINITY,
-        staleTime: Number.POSITIVE_INFINITY,
-      },
-      mutations: { retry: false },
-    },
-  })
-
-const createWrapper = () => {
-  const queryClient = createConsoleQueryClient()
-  seedAccountProfileQuery(queryClient)
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-}
+const createWrapper = () => createConsoleQueryWrapper().wrapper
 
 const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail =>
   ({

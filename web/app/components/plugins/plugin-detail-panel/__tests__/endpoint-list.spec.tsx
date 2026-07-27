@@ -1,6 +1,7 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointList from '../endpoint-list'
 
 vi.mock('@langgenius/dify-ui/cn', () => ({

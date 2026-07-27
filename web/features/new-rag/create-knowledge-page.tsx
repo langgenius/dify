@@ -3,6 +3,8 @@
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
 import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
+import type { QueuedUpload } from './create-upload-queue'
+import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -30,13 +32,14 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
 import { CreateKnowledgeExitDialog } from './components/create-knowledge-exit-dialog'
@@ -47,12 +50,46 @@ import {
   KnowledgeCreationError,
   NAME_MAX_LENGTH,
 } from './create-knowledge-workflow'
-import { newKnowledgeDetailPath, newKnowledgeListPath } from './routes'
+import { CreateSourceSetup } from './create-source-setup'
+import { CreateUploadQueue } from './create-upload-queue'
+import { createRequestId } from './request-id'
+import {
+  createNewKnowledgeSourceDraft,
+  isValidWebsiteSourceDraft,
+  newKnowledgeAddSourcePath,
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+  newKnowledgeListPath,
+  newKnowledgeSourceDraftStorageKey,
+} from './routes'
+
+function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
+  if (value === 'source' || value === 'upload') return value
+  return 'empty'
+}
+
+async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
+  if (files.length === 1) {
+    await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocuments({
+      body: { file: files[0]! },
+      params: { id: knowledgeSpaceId },
+    })
+    return
+  }
+
+  const result = await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk({
+    body: { files },
+    params: { id: knowledgeSpaceId },
+  })
+  if (!result.accepted) throw new Error('No files were accepted')
+  return result
+}
 
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
@@ -65,16 +102,48 @@ export function CreateKnowledgePage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
+  const initialStartMode = normalizeStartMode(searchParams.get('start'))
+  const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(initialStartMode)
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
+    createNewKnowledgeSourceDraft('websiteCrawl'),
+  )
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({})
+  const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
+  const submissionPending = createMutation.isPending || uploading
+  const uploadSubmissionBlocked =
+    startMode === 'upload' && (!uploads.length || uploads.some((upload) => upload.issue))
+  const sourceSubmissionBlocked =
+    startMode === 'source' &&
+    (sourceDraft.sourceType === 'websiteCrawl'
+      ? !isValidWebsiteSourceDraft(sourceDraft)
+      : !sourceDraft.sourceName.trim())
+  const sourceDraftChanged = Object.values({
+    ...sourceDraftsRef.current,
+    [sourceDraft.sourceType]: sourceDraft,
+  }).some(
+    (draft) =>
+      JSON.stringify(draft) !== JSON.stringify(createNewKnowledgeSourceDraft(draft.sourceType)),
+  )
   const hasUnsavedChanges = Boolean(
-    name || description || visibility !== defaultVisibility || createdKnowledge,
+    name ||
+    description ||
+    visibility !== defaultVisibility ||
+    startMode !== initialStartMode ||
+    sourceDraftChanged ||
+    uploads.length ||
+    createdKnowledge,
   )
 
   const armHistoryGuard = useCallback(() => {
@@ -145,15 +214,16 @@ export function CreateKnowledgePage() {
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
+    setUploadError(false)
   }
 
   const requestClose = () => {
-    if (createMutation.isPending) return
+    if (submissionPending) return
     if (createdKnowledge) {
       setExitReason('partial')
       return
     }
-    if (name || description || visibility !== defaultVisibility) {
+    if (hasUnsavedChanges) {
       setExitReason('discard')
       return
     }
@@ -181,13 +251,13 @@ export function CreateKnowledgePage() {
   }
 
   const handleSubmit = async () => {
-    if (createMutation.isPending) return
+    if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
 
     const normalizedName = name.trim()
     const normalizedDescription = description.trim()
     if (!normalizedName) return
 
-    idempotencyKeyRef.current ??= globalThis.crypto.randomUUID()
+    idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
       const created = await createMutation.mutateAsync({
@@ -203,7 +273,54 @@ export function CreateKnowledgePage() {
         },
         visibility,
       })
-      replaceAfterHistoryGuard(newKnowledgeDetailPath(created.id))
+      if (startMode === 'upload') {
+        setUploading(true)
+        setUploadError(false)
+        try {
+          const result = await uploadCreatedDocuments(
+            created.id,
+            uploads.map((upload) => upload.file),
+          )
+          if (result?.excluded)
+            toast.warning(
+              t(($) => $['newKnowledge.documentUploadPartial'], {
+                accepted: result.accepted,
+                details: result.items
+                  .filter((item) => 'reason' in item)
+                  .map((item) => item.filename)
+                  .join(', '),
+                excluded: result.excluded,
+              }),
+            )
+        } catch {
+          setUploadError(true)
+          return
+        } finally {
+          setUploading(false)
+        }
+      }
+
+      if (startMode === 'source') {
+        try {
+          const sourceDraftKey = createRequestId()
+          globalThis.sessionStorage.setItem(
+            newKnowledgeSourceDraftStorageKey(sourceDraftKey),
+            JSON.stringify(sourceDraft),
+          )
+          replaceAfterHistoryGuard(
+            newKnowledgeAddSourcePath(created.id, sourceDraft.sourceType, sourceDraftKey),
+          )
+        } catch {
+          toast.error(t(($) => $['newKnowledge.addSourceFailed']))
+        }
+        return
+      }
+
+      replaceAfterHistoryGuard(
+        startMode === 'upload'
+          ? newKnowledgeDocumentsPath(created.id)
+          : newKnowledgeDetailPath(created.id),
+      )
     } catch (error) {
       if (error instanceof KnowledgeCreationError && error.createdKnowledge)
         setCreatedKnowledge(error.createdKnowledge)
@@ -238,7 +355,7 @@ export function CreateKnowledgePage() {
             aria-label={tCommon(($) => $['operation.close'])}
             className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
             onClick={requestClose}
-            disabled={createMutation.isPending}
+            disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
           </button>
@@ -246,7 +363,7 @@ export function CreateKnowledgePage() {
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
             <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
-              className="flex w-full max-w-[760px] shrink-0 flex-col [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:flex-1"
+              className="flex max-h-full min-h-0 w-full max-w-[760px] flex-col"
               onFormSubmit={handleSubmit}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -255,7 +372,7 @@ export function CreateKnowledgePage() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 flex-col gap-4 px-6 sm:px-10 [@media(max-height:850px)]:flex-1 [@media(max-height:850px)]:overflow-y-auto">
+              <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-6 sm:px-10">
                 <div className="space-y-4">
                   <Field
                     name="name"
@@ -361,32 +478,65 @@ export function CreateKnowledgePage() {
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.startWithHelp'])}
                   </p>
-                  <RadioGroup
-                    value="empty"
+                  <RadioGroup<NewKnowledgeStartMode>
+                    value={startMode}
                     aria-label={t(($) => $['newKnowledge.startWith'])}
                     className="mt-2 flex-col items-stretch gap-2"
-                    disabled={createMutation.isPending}
+                    disabled={submissionLocked}
+                    onValueChange={(value) => {
+                      setStartMode(value)
+                      resetUnsubmittedError()
+                    }}
                   >
                     <StartMode
                       value="empty"
                       icon="i-ri-folder-6-line"
+                      selected={startMode === 'empty'}
                       title={t(($) => $['newKnowledge.startEmpty'])}
                       description={t(($) => $['newKnowledge.startEmptyDescription'])}
                     />
                     <StartMode
-                      disabled
                       value="source"
                       icon="i-custom-vender-solid-development-api-connection-mod"
+                      selected={startMode === 'source'}
                       title={t(($) => $['newKnowledge.connectSource'])}
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
-                    />
+                    >
+                      <CreateSourceSetup
+                        disabled={submissionLocked}
+                        draft={sourceDraft}
+                        onDraftChange={(value) => {
+                          sourceDraftsRef.current[value.sourceType] = value
+                          setSourceDraft(value)
+                          resetUnsubmittedError()
+                        }}
+                        onSourceTypeChange={(value) => {
+                          sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+                          const nextDraft =
+                            sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value)
+                          sourceDraftsRef.current[value] = nextDraft
+                          setSourceDraft(nextDraft)
+                          resetUnsubmittedError()
+                        }}
+                      />
+                    </StartMode>
                     <StartMode
-                      disabled
                       value="upload"
                       icon="i-ri-file-text-line"
+                      selected={startMode === 'upload'}
                       title={t(($) => $['newKnowledge.uploadFiles'])}
                       description={t(($) => $['newKnowledge.uploadFilesDescription'])}
-                    />
+                    >
+                      <CreateUploadQueue
+                        disabled={submissionPending}
+                        uploads={uploads}
+                        uploading={uploading}
+                        onChange={(value) => {
+                          setUploads(value)
+                          resetUnsubmittedError()
+                        }}
+                      />
+                    </StartMode>
                   </RadioGroup>
                 </fieldset>
 
@@ -403,14 +553,27 @@ export function CreateKnowledgePage() {
                     )}
                   </div>
                 )}
+                {uploadError && (
+                  <div
+                    className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
+                    role="alert"
+                  >
+                    {t(($) => $['newKnowledge.documentUploadFailed'])}
+                  </div>
+                )}
               </div>
 
               <div className="shrink-0 px-6 pt-5 pb-10 sm:px-10">
                 <div className="flex justify-end gap-2">
-                  <Button type="button" disabled={createMutation.isPending} onClick={requestClose}>
+                  <Button type="button" disabled={submissionPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
                   </Button>
-                  <Button type="submit" variant="primary" loading={createMutation.isPending}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={submissionPending}
+                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked}
+                  >
                     {t(($) => $['newKnowledge.createTitle'])}
                   </Button>
                 </div>

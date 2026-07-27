@@ -38,6 +38,7 @@ from dify_agent.layers.shell import (
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import OperationalError
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -922,6 +923,12 @@ def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[D
     """Return workspace-bound Skills as prompt-safe runtime config skills."""
     from services.skill_management_service import SkillManagementService
 
+    try:
+        runtime_skills = SkillManagementService().list_runtime_agent_skills(tenant_id=tenant_id, agent_id=agent_id)
+    except OperationalError as exc:
+        if "no such table: agent_skill_bindings" not in str(exc.orig):
+            raise
+        runtime_skills = []
     return [
         DifyConfigSkillConfig(
             name=str(item["name"]),
@@ -929,7 +936,7 @@ def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[D
             size=cast(int | None, item.get("size")),
             mime_type=cast(str | None, item.get("mime_type")),
         )
-        for item in SkillManagementService().list_runtime_agent_skills(tenant_id=tenant_id, agent_id=agent_id)
+        for item in runtime_skills
     ]
 
 

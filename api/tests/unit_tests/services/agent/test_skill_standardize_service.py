@@ -20,7 +20,7 @@ _AGENT_ID = "22222222-2222-2222-2222-222222222222"
 _USER_ID = "33333333-3333-3333-3333-333333333333"
 
 _SKILL_MD = b"""---
-name: PDF Toolkit
+name: pdf-toolkit
 description: Work with PDFs.
 ---
 
@@ -121,7 +121,7 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     assert skill_row.is_skill is True
     assert skill_row.skill_metadata is not None
     skill_metadata = DriveSkillMetadata.model_validate_json(skill_row.skill_metadata)
-    assert skill_metadata.name == "PDF Toolkit"
+    assert skill_metadata.name == "pdf-toolkit"
     assert skill_metadata.manifest_files == ["SKILL.md", "scripts/run.py"]
     assert archive_row.file_kind == AgentDriveFileKind.TOOL_FILE
     assert archive_row.file_id == archive_tool_file.id
@@ -132,7 +132,7 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     # The returned upload response carries only the drive-derived fields the UI needs.
     skill = result["skill"]
     assert skill["path"] == "pdf-toolkit"
-    assert skill["name"] == "PDF Toolkit"
+    assert skill["name"] == "pdf-toolkit"
     assert skill["archive_key"] == "pdf-toolkit/.DIFY-SKILL-FULL.zip"
     assert skill["skill_md_key"] == "pdf-toolkit/SKILL.md"
     assert result["manifest"]["entry_path"] == "SKILL.md"

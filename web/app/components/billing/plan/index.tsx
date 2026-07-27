@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmountedRef } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -11,11 +12,11 @@ import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender
 import UsageInfo from '@/app/components/billing/usage-info'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileEmailAtom } from '@/context/account-state'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
@@ -34,6 +35,11 @@ type Props = Readonly<{
 
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const router = useRouter()
   const path = usePathname()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
@@ -97,16 +103,14 @@ const PlanComp: FC<Props> = ({ loc }) => {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {IS_CLOUD_EDITION &&
-              enableEducationPlan &&
-              (!isEducationAccount || isAboutToExpire) && (
-                <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                  {t(($) => $.toVerified, { ns: 'education' })}
-                  {isPending && <Loading className="ml-1 animate-spin-slow" />}
-                </Button>
-              )}
-            {IS_CLOUD_EDITION &&
+            {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+              <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
+                <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                {t(($) => $.toVerified, { ns: 'education' })}
+                {isPending && <Loading className="ml-1 animate-spin-slow" />}
+              </Button>
+            )}
+            {isCloudEdition &&
               enableEducationPlan &&
               isEducationAccount &&
               type === Plan.sandbox &&
@@ -121,7 +125,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
                   {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
                 </Button>
               )}
-            {IS_CLOUD_EDITION && !isEnterprisePlan && (
+            {isCloudEdition && !isEnterprisePlan && (
               <UpgradeBtn className="shrink-0" isPlain={type === Plan.team} isShort loc={loc} />
             )}
           </div>

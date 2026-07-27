@@ -1,8 +1,8 @@
 import type { RAGPipelineVariables, VAR_TYPE_MAP } from '@/models/pipeline'
-import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { Resolution, TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
 import {

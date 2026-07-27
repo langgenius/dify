@@ -52,25 +52,25 @@ def test_on_user_logged_in_sets_end_user_logging_identity() -> None:
     assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
 
 
-def test_on_user_logged_in_does_not_break_auth_when_identity_is_unavailable() -> None:
+def test_on_user_logged_in_does_not_break_auth_when_identity_is_unavailable(caplog: pytest.LogCaptureFixture) -> None:
     account = mock.Mock(spec=ext_login.Account)
     type(account).current_tenant_id = mock.PropertyMock(side_effect=RuntimeError("unavailable"))
     account.id = "account-id"
     clear_request_context()
 
-    with mock.patch.object(ext_login.logger, "exception") as logger_exception:
+    with caplog.at_level("ERROR", logger=ext_login.logger.name):
         ext_login.on_user_logged_in(None, account)
 
     assert get_identity_context() == ("", "", "")
-    logger_exception.assert_called_once_with("Failed to set logging identity context")
+    assert "Failed to set logging identity context" in caplog.text
 
 
-def test_on_user_logged_in_logs_unsupported_user_type() -> None:
+def test_on_user_logged_in_logs_unsupported_user_type(caplog: pytest.LogCaptureFixture) -> None:
     unsupported_user = cast(ext_login.LoginUser, object())
     clear_request_context()
 
-    with mock.patch.object(ext_login.logger, "exception") as logger_exception:
+    with caplog.at_level("ERROR", logger=ext_login.logger.name):
         ext_login.on_user_logged_in(None, unsupported_user)
 
     assert get_identity_context() == ("", "", "")
-    logger_exception.assert_called_once_with("Failed to set logging identity context")
+    assert "Failed to set logging identity context" in caplog.text
