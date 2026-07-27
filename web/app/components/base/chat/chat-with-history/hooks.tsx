@@ -166,10 +166,22 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [isInstalledApp, installedAppInfo, appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
   const [userId, setUserId] = useState<string>()
+  const [isUserIdResolved, setIsUserIdResolved] = useState(false)
   useEffect(() => {
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
-      setUserId(user_id)
-    })
+    let isActive = true
+
+    getProcessedSystemVariablesFromUrlParams()
+      .then(({ user_id }) => {
+        if (isActive) setUserId(user_id)
+      })
+      .catch(noop)
+      .finally(() => {
+        if (isActive) setIsUserIdResolved(true)
+      })
+
+    return () => {
+      isActive = false
+    }
   }, [])
   useEffect(() => {
     const setLocaleFromProps = async () => {
@@ -191,6 +203,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     () => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
     [appId, conversationIdInfo, userId],
   )
+  const chatInputDraftKey = useMemo(() => {
+    if (!appId || !isUserIdResolved) return undefined
+
+    return `chat-input-draft:${JSON.stringify([
+      appSourceType,
+      appId,
+      userId || 'DEFAULT',
+      currentConversationId || 'NEW',
+    ])}`
+  }, [appId, appSourceType, currentConversationId, isUserIdResolved, userId])
   const handleConversationIdInfoChange = useCallback(
     (changeConversationId: string) => {
       if (appId) {
@@ -603,7 +625,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   return {
     isInstalledApp,
     appId,
+    isUserIdResolved,
     currentConversationId,
+    chatInputDraftKey,
     currentConversationItem,
     handleConversationIdInfoChange,
     appData,

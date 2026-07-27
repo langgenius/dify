@@ -46,8 +46,10 @@ const mockAppData = {
 
 const defaultHookReturn: HookReturn = {
   isInstalledApp: false,
+  isUserIdResolved: true,
   appId: 'test-app-id',
   currentConversationId: '',
+  chatInputDraftKey: undefined,
   currentConversationItem: undefined,
   handleConversationIdInfoChange: vi.fn(),
   appData: mockAppData,
