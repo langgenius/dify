@@ -1,5 +1,5 @@
 import type { Locale } from '@/i18n-config'
-import type { AppIconType, AppModeEnum } from '@/types/app'
+import type { AppIconType } from '@/types/app'
 
 export type ConversationItem = {
   id: string
@@ -36,7 +36,6 @@ export type AppMeta = {
 export type CustomConfigValueType = string | number | boolean | null | undefined
 export type AppData = {
   app_id: string
-  mode: AppModeEnum
   can_replace_logo?: boolean
   custom_config: Record<string, CustomConfigValueType> | null
   enable_site?: boolean

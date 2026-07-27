@@ -132,7 +132,6 @@ const createContextValue = (
   appMeta: { tool_icons: {} },
   appData: {
     app_id: 'app-1',
-    mode: 'chat',
     can_replace_logo: true,
     custom_config: {
       remove_webapp_brand: false,
@@ -613,7 +612,6 @@ describe('EmbeddedChatbot chat-wrapper', () => {
         createContextValue({
           appData: {
             app_id: 'app-1',
-            mode: 'chat',
             can_replace_logo: true,
             custom_config: { remove_webapp_brand: false, replace_webapp_logo: '' },
             enable_site: true,

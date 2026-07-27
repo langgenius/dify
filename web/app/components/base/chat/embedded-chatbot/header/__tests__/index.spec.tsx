@@ -24,7 +24,6 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropd
 describe('EmbeddedChatbot Header', () => {
   const defaultAppData: AppData = {
     app_id: 'test-app-id',
-    mode: 'chat',
     can_replace_logo: true,
     custom_config: {
       remove_webapp_brand: false,

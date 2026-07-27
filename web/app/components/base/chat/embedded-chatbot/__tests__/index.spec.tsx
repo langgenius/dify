@@ -64,7 +64,6 @@ const createHookReturn = (
 ): EmbeddedChatbotHookReturn => {
   const appData: AppData = {
     app_id: 'app-1',
-    mode: 'chat',
     can_replace_logo: true,
     custom_config: {
       remove_webapp_brand: false,
@@ -173,7 +172,6 @@ describe('EmbeddedChatbot index', () => {
         createHookReturn({
           appData: {
             app_id: 'app-1',
-            mode: 'chat',
             can_replace_logo: true,
             custom_config: {
               remove_webapp_brand: false,
@@ -204,7 +202,6 @@ describe('EmbeddedChatbot index', () => {
         createHookReturn({
           appData: {
             app_id: 'app-1',
-            mode: 'chat',
             can_replace_logo: true,
             custom_config: {
               remove_webapp_brand: true,

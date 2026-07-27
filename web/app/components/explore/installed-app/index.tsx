@@ -73,7 +73,6 @@ const InstalledApp = ({ id }: { id: string }) => {
       const { id, app } = installedApp
       updateAppInfo({
         app_id: id,
-        mode: app.mode,
         site: {
           title: app.name,
           description: app.description,

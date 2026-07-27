@@ -154,7 +154,6 @@ describe('useChatWithHistory', () => {
     localStorage.removeItem('webappSidebarCollapse')
     mockStoreState.appInfo = {
       app_id: 'app-1',
-      mode: 'chat',
       custom_config: null,
       site: {
         title: 'Test App',

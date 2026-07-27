@@ -146,7 +146,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       const { id, app } = installedAppInfo!
       return {
         app_id: id,
-        mode: app.mode,
         site: {
           title: app.name,
           description: app.description,
