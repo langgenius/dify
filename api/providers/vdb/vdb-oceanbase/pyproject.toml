@@ -4,7 +4,7 @@ version = "0.0.1"
 
 dependencies = [
     "pyobvector==0.2.25",
-    "mysql-connector-python>=9.3.0,<10.0.0",
+    "mysql-connector-python>=9.7.0,<10.0.0",
 ]
 description = "Dify vector store backend (dify-vdb-oceanbase)."
 
