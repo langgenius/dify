@@ -16,7 +16,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import { resolveShareCode } from './share-code'
+import { isAppDeployRoute, resolveShareCode } from './share-code'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -158,8 +158,8 @@ async function base<T>(
   let base: string
   if (isMarketplaceAPI) base = MARKETPLACE_API_PREFIX
   else if (isPublicAPI) {
-    const shareCode = resolveShareCode()
-    base = isAppDeployShareCode(shareCode) ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
+    const useAppDeploy = isAppDeployShareCode(resolveShareCode()) && isAppDeployRoute(url)
+    base = useAppDeploy ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
   } else base = API_PREFIX
 
   if (getAbortController) {
