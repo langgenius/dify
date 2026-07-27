@@ -183,7 +183,7 @@ def parse_product_operation_gap_manifest(value: dict[str, Any]) -> ProductOperat
         raise ValueError("KnowledgeFS product operation gap manifest must use schemaVersion 2")
     gaps = value.get("gaps")
     exclusions = value.get("internalKfsOperationExclusions")
-    if not isinstance(gaps, list) or not gaps or not isinstance(exclusions, list):
+    if not isinstance(gaps, list) or not isinstance(exclusions, list):
         raise ValueError("KnowledgeFS product operation gap manifest lists are invalid")
     parsed_exclusions: list[InternalKfsOperationExclusion] = []
     for raw in exclusions:

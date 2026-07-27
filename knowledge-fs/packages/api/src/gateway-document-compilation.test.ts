@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type DifyCapabilityV2GatewayAuthenticator,
   type DifyCapabilityV2SanitizedGrant,
+  createDifyCapabilityV2RequestGuard,
   createDocumentCompilationJobStateMachine,
   createInMemoryDocumentAssetRepository,
   createInMemoryDocumentCompilationJobRepository,
@@ -163,6 +164,87 @@ describe("document compilation gateway integration", () => {
     });
   });
 
+  it("accepts document uploads through a Dify Capability and persists its provenance", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const capabilityGrantId = "20000000-0000-4000-8000-000000000001";
+    const spaces = createInMemoryKnowledgeSpaceRepository({
+      generateId: () => spaceId,
+      maxListLimit: 10,
+      maxSpaces: 10,
+    });
+    await spaces.create({
+      name: "Capability uploads",
+      slug: "capability-uploads",
+      tenantId: "tenant-1",
+    });
+    const grant = documentUploadGrant(spaceId, capabilityGrantId);
+    const requestGuard = createDifyCapabilityV2RequestGuard();
+    const authenticate = vi.fn<DifyCapabilityV2GatewayAuthenticator["authenticate"]>(
+      async ({ request }) => {
+        const authenticated = capabilityPrincipal(grant);
+        await requestGuard.authorize({ claims: authenticated.claims, request });
+        return authenticated;
+      },
+    );
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-capability-upload",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 2 }),
+    });
+    const started: Parameters<typeof compilationJobs.start>[0][] = [];
+    const logicalDocuments = createInMemoryLogicalDocumentRepository({
+      canReadDocument: ({ candidateGrants }) => candidateGrants.includes("scope-a"),
+      canReadRevision: ({ candidateGrants }) => candidateGrants.includes("scope-a"),
+      generateDocumentId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+      maxDocuments: 2,
+      maxRevisionsPerDocument: 2,
+    });
+    const createdRevisions: Parameters<typeof logicalDocuments.createCandidateRevision>[0][] = [];
+    const app = createKnowledgeGateway({
+      adapter,
+      difyCapabilityV2Auth: { authenticate },
+      documentCompilationJobs: {
+        ...compilationJobs,
+        start: async (input) => {
+          started.push(input);
+          return compilationJobs.start(input);
+        },
+      },
+      generateDocumentAssetId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+      knowledgeSpaces: spaces,
+      logicalDocuments: {
+        ...logicalDocuments,
+        createCandidateRevision: async (input) => {
+          createdRevisions.push(input);
+          return logicalDocuments.createCandidateRevision(input);
+        },
+      },
+    });
+    const form = new FormData();
+    form.set("file", new File(["Capability upload"], "Capability.md", { type: "text/markdown" }));
+
+    const upload = await app.request(`/knowledge-spaces/${spaceId}/documents`, {
+      body: form,
+      headers: { authorization: "Bearer capability-token" },
+      method: "POST",
+    });
+
+    expect(upload.status, await upload.clone().text()).toBe(202);
+    expect(createdRevisions).toEqual([
+      expect.objectContaining({
+        capabilityGrantId,
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+      }),
+    ]);
+    expect(started).toEqual([
+      expect.objectContaining({
+        capabilityGrantId,
+        documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+      }),
+    ]);
+  });
+
   it("authorizes status and cancellation from an exact child job Capability", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
@@ -228,6 +310,34 @@ describe("document compilation gateway integration", () => {
     await expect(canceled.json()).resolves.toMatchObject({ id: jobId, stage: "canceled" });
   });
 });
+
+function documentUploadGrant(spaceId: string, grantId: string): DifyCapabilityV2SanitizedGrant {
+  return {
+    action: "documents.create",
+    actor: "dify-account:user-1",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "dify-console",
+    callerKind: "interactive",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: ["scope-a"],
+    controlSpaceId: "control-space-1",
+    expiresAt: 2_000_000_060,
+    grantId,
+    issuedAt: 2_000_000_000,
+    jtiHash: `sha256:${"0".repeat(64)}`,
+    namespaceId: "tenant-1",
+    notBefore: 2_000_000_000,
+    resource: { id: spaceId, parent_id: null, type: "knowledge_space" },
+    subject: "dify-account:user-1",
+    traceId: "trace-1",
+  };
+}
 
 function compilationJobGrant(
   jobId: string,

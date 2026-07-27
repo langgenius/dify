@@ -5,27 +5,39 @@ from services.feature_service import FeatureService
 
 
 @pytest.mark.parametrize(
-    ("enabled", "direct_origin", "direct_upload_ready", "upload_enabled"),
+    ("enabled", "base_url", "capability_enabled", "signing_ready", "upload_enabled"),
     [
-        (True, "https://uploads.knowledge-fs.test", True, True),
-        (True, "https://uploads.knowledge-fs.test", False, False),
-        (True, None, True, False),
-        (False, "https://uploads.knowledge-fs.test", True, False),
+        (True, "https://knowledge-fs.test", True, True, True),
+        (True, None, True, True, False),
+        (True, "https://knowledge-fs.test", False, True, False),
+        (True, "https://knowledge-fs.test", True, False, False),
+        (False, "https://knowledge-fs.test", True, True, False),
     ],
 )
 def test_get_system_features_reads_knowledge_fs_availability(
     monkeypatch: pytest.MonkeyPatch,
     enabled: bool,
-    direct_origin: str | None,
-    direct_upload_ready: bool,
+    base_url: str | None,
+    capability_enabled: bool,
+    signing_ready: bool,
     upload_enabled: bool,
 ) -> None:
     monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_ENABLED", enabled)
-    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", direct_origin)
+    monkeypatch.setattr(feature_service_module.dify_config, "KNOWLEDGE_FS_BASE_URL", base_url)
     monkeypatch.setattr(
         feature_service_module.dify_config,
-        "KNOWLEDGE_FS_DIRECT_UPLOAD_READY",
-        direct_upload_ready,
+        "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
+        capability_enabled,
+    )
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID",
+        "signing-key" if signing_ready else None,
+    )
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM",
+        object() if signing_ready else None,
     )
 
     result = FeatureService.get_system_features()

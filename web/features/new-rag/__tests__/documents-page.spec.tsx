@@ -425,16 +425,12 @@ vi.mock('../knowledge-fs-upload', () => ({
     knowledgeSpaceId: string,
     uploads: Array<{ file: File; id: string }>,
   ) => {
-    const files = uploads.map(({ file }) => file)
-    if (files.length === 1)
-      return uploadMutation.mutateAsync({
-        body: { file: files[0] },
+    for (const { file } of uploads) {
+      await uploadMutation.mutateAsync({
+        body: { file },
         params: { control_space_id: knowledgeSpaceId },
       })
-    return bulkUploadMutation.mutateAsync({
-      body: { files },
-      params: { control_space_id: knowledgeSpaceId },
-    })
+    }
   },
 }))
 
@@ -975,9 +971,10 @@ describe('DocumentsPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('uploads one or multiple files through the pinned document contracts', async () => {
+  it('stages one or multiple files before uploading them through the Dify API contract', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
     expect(input).toHaveAttribute('hidden')
     expect(input).toHaveAttribute('tabindex', '-1')
@@ -987,19 +984,21 @@ describe('DocumentsPage', () => {
     )
 
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { file: expect.any(File) },
       params: { control_space_id: 'space-1' },
     })
 
-    await user.upload(input, [
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    const multipleInput = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
+    await user.upload(multipleInput, [
       new File(['two'], 'two.md', { type: 'text/markdown' }),
       new File(['three'], 'three.txt', { type: 'text/plain' }),
     ])
-    expect(bulkUploadMutation.mutateAsync).toHaveBeenCalledWith({
-      body: { files: [expect.any(File), expect.any(File)] },
-      params: { control_space_id: 'space-1' },
-    })
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
     const documentInvalidation = queryClient.invalidateQueries.mock.calls.find(
       ([options]) => options.queryKey[1] === 'documents',
@@ -1022,16 +1021,37 @@ describe('DocumentsPage', () => {
     ).toBe(false)
   })
 
+  it('cancels a staged upload without sending a request', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['draft'], 'draft.md', { type: 'text/markdown' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+  })
+
   it('excludes unsupported files locally while uploading valid files', async () => {
+    const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const validFile = new File(['one'], 'one.md', { type: 'text/markdown' })
     const unsupportedFile = new File(['two'], 'two.exe', {
       type: 'application/octet-stream',
     })
 
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
       target: { files: [validFile, unsupportedFile] },
     })
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     await waitFor(() =>
       expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
@@ -1039,49 +1059,46 @@ describe('DocumentsPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-    expect(bulkUploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(toastMock.warning).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"details":"two.exe (dataset.newKnowledge.documentUploadExclusion.fileType)","excluded":1}',
-    )
   })
 
   it('rejects oversized files before invoking an upload contract', async () => {
+    const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const oversizedFile = new File(['one'], 'oversized.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
 
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
       target: { files: [oversizedFile] },
     })
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(bulkUploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentUploadRejected:{"details":"oversized.pdf (dataset.newKnowledge.documentUploadExclusion.fileSize)"}',
-    )
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize')).toBeVisible()
   })
 
-  it('reports local exclusions and direct upload failures', async () => {
+  it('reports local exclusions and API upload failures', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
     const oversizedFile = new File(['large'], 'too-large.pdf', { type: 'application/pdf' })
     Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
 
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    const input = screen.getByLabelText('dataset.newKnowledge.uploadDocuments')
     await user.upload(input, [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       oversizedFile,
     ])
-    expect(toastMock.warning).toHaveBeenCalledWith(
-      'dataset.newKnowledge.documentUploadPartial:{"accepted":1,"details":"too-large.pdf (dataset.newKnowledge.documentUploadExclusion.fileSize)","excluded":1}',
-    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     queryClient.invalidateQueries.mockClear()
-    bulkUploadMutation.mutateAsync.mockRejectedValueOnce(new Error('quota exceeded'))
-    await user.upload(input, [
+    uploadMutation.mutateAsync.mockRejectedValueOnce(new Error('quota exceeded'))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
@@ -5634,10 +5651,12 @@ describe('DocumentsPage', () => {
     const user = userEvent.setup()
     uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
     const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     await user.upload(
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
     ).toHaveAttribute('aria-busy', 'true')
@@ -5663,12 +5682,12 @@ describe('DocumentsPage', () => {
     const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
     const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
     await user.click(addDocument)
-    expect(addDocument).toHaveFocus()
 
     await user.upload(
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(toastMock.error).not.toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
@@ -5718,16 +5737,17 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
-    const tasksButton = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    const documentsHeading = screen.getByRole('heading', {
+      name: 'dataset.newKnowledge.addDocument',
     })
-    tasksButton.focus()
-    expect(tasksButton).toHaveFocus()
+    documentsHeading.focus()
+    expect(documentsHeading).toHaveFocus()
 
     await act(async () => rejectUpload(new Response(null, { status: 403 })))
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
 
-    expect(tasksButton).toHaveFocus()
+    expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
   })
 
   it('locks re-indexing after a write mutation reveals revoked permission', async () => {
@@ -5834,9 +5854,12 @@ describe('DocumentsPage', () => {
       }),
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
       target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
     })
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce()
 

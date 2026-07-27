@@ -22,6 +22,7 @@ const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50";
 const REVISION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51";
 const HEAD_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52";
 const PERMISSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c53";
+const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c54";
 const SUBJECT_ID = "user:atomic-profile-owner";
 const NOW = "2026-07-14T12:00:00.000Z";
 
@@ -175,6 +176,18 @@ function createAtomicHarness(dialect: "postgres" | "tidb", options: AtomicHarnes
       };
     }
     if (input.tableName === "deletion_jobs") return { rows: [], rowsAffected: 0 };
+    if (input.tableName === "capability_grants") {
+      return {
+        rows: [
+          {
+            content_scope_ids: ["document:read"],
+            space_tombstoned: false,
+            subject_id: SUBJECT_ID,
+          },
+        ],
+        rowsAffected: 1,
+      };
+    }
     if (input.tableName === "knowledge_space_permission_snapshots") {
       return current.permissionActive
         ? { rows: [permissionRow()], rowsAffected: 1 }
@@ -444,6 +457,36 @@ describe("unpublished knowledge-space profile atomic activation", () => {
       expect(harness.calls.flatMap(({ input }) => input.params)).not.toContain(1536);
     },
   );
+
+  it("fences initial profile activation with the upload Capability and records its subject", async () => {
+    const harness = createAtomicHarness("postgres");
+    const fixture = initialTupleFixture();
+    harness.state.metadata.__knowledgeFsPendingModelConfiguration = fixture.pending;
+    const repository = createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository({
+      database: harness.database,
+    });
+
+    await repository.activateInitialTuple({
+      ...fixture.input,
+      createdBySubjectId: `capability-grant:${CAPABILITY_GRANT_ID}`,
+      permission: {
+        capabilityGrantId: CAPABILITY_GRANT_ID,
+        knowledgeSpaceId: SPACE_ID,
+        tenantId: TENANT_ID,
+      },
+    });
+
+    expect(
+      harness.calls.some(
+        ({ input }) =>
+          input.tableName === "capability_grants" && input.params.includes(CAPABILITY_GRANT_ID),
+      ),
+    ).toBe(true);
+    expect(Object.values(harness.state.revisions)).toEqual([
+      expect.objectContaining({ created_by_subject_id: SUBJECT_ID }),
+      expect.objectContaining({ created_by_subject_id: SUBJECT_ID }),
+    ]);
+  });
 
   it("rolls back both initial heads and keeps pending intent when tuple installation fails", async () => {
     const harness = createAtomicHarness("postgres", { failAfterManifestCas: true });

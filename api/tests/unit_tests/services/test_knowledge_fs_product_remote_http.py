@@ -12,6 +12,8 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
+    KnowledgeFSRemoteMultipartFile,
+    KnowledgeFSRemoteMultipartRequest,
 )
 from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemoteClient
 
@@ -51,6 +53,48 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert headers["Authorization"] == "Bearer capability-token"
     assert headers["X-Trace-Id"] == "trace-1"
     assert not any(name.lower() == "cookie" for name in headers)
+    assert captured["follow_redirects"] is False
+
+
+def test_remote_client_posts_bounded_multipart_with_capability_only_headers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        202,
+        json={"logicalDocumentId": "document-1"},
+        headers={"Content-Type": "application/json"},
+    )
+
+    def fake_make_request(**kwargs):
+        captured.update(kwargs)
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    request = KnowledgeFSRemoteMultipartRequest(
+        operation_id="createDocument",
+        method="POST",
+        path="/knowledge-spaces/space-1/documents",
+        namespace_id="tenant-1",
+        knowledge_space_id="space-1",
+        capability_token="capability-token",
+        trace_id="trace-1",
+        file=KnowledgeFSRemoteMultipartFile(
+            filename="notes.md",
+            content_type="text/markdown",
+            body=b"# Notes",
+        ),
+    )
+
+    assert client.execute_multipart(request) == {"logicalDocumentId": "document-1"}
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert headers["Authorization"] == "Bearer capability-token"
+    assert headers["X-Trace-Id"] == "trace-1"
+    assert not any(name.lower() in {"cookie", "content-type"} for name in headers)
+    assert captured["files"] == {"file": ("notes.md", b"# Notes", "text/markdown")}
     assert captured["follow_redirects"] is False
 
 

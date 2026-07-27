@@ -324,13 +324,23 @@ def test_upload_capability_is_bound_to_authorized_space_and_upload_session(sqlit
     [(KnowledgeFSControlSpace, KnowledgeFSAuthorizationRevision, KnowledgeFSCapabilityIssuanceReservation)],
     indirect=True,
 )
-def test_manifest_gap_fails_before_authorization_or_issuance(sqlite_session: Session) -> None:
+def test_document_upload_operation_authorizes_and_issues_capability(sqlite_session: Session) -> None:
     space = KnowledgeFSControlSpace(
         tenant_id="tenant-1",
         owner_account_id="account-1",
         provisioning_key="provision-1",
+        knowledge_space_id="space-1",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
     )
-    sqlite_session.add(space)
+    sqlite_session.add_all(
+        [
+            space,
+            KnowledgeFSAuthorizationRevision(
+                tenant_id="tenant-1",
+                control_space_id=space.id,
+            ),
+        ]
+    )
     sqlite_session.commit()
     product = FakeProduct(space)
     issuer = FakeIssuer()
@@ -341,16 +351,16 @@ def test_manifest_gap_fails_before_authorization_or_issuance(sqlite_session: Ses
         issuer=issuer,  # type: ignore[arg-type]
     )
 
-    with pytest.raises(KnowledgeFSOperationUnavailableError, match="createDocument"):
-        broker.issue_interactive(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id=space.id,
-            operation_id="createDocument",
-        )
+    issued = broker.issue_interactive(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id=space.id,
+        operation_id="createDocument",
+    )
 
-    assert product.calls == []
-    assert issuer.requests == []
+    assert issued.token == "signed-capability"
+    assert product.calls == [KnowledgeFSProductPermission.DOCUMENT_WRITE]
+    assert issuer.requests[0].operation_id == "uploadDocument"
 
 
 @pytest.mark.parametrize(

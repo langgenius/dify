@@ -25,8 +25,15 @@ from services.knowledge_fs.operation_admission import (
     KnowledgeFSOperationQuotaExceededError,
     KnowledgeFSOperationRateLimitExceededError,
 )
-from services.knowledge_fs.product_dto import KnowledgeFSSmallFileUploadResponse, KnowledgeFSSpaceCreatePayload
-from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSDocumentUploadAcceptedResponse,
+    KnowledgeFSSmallFileUploadResponse,
+    KnowledgeFSSpaceCreatePayload,
+)
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSRemoteMultipartFile,
+)
 
 _API_ROOT = Path(__file__).resolve().parents[3]
 
@@ -114,7 +121,6 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSExternalAccessPayload",
         "KnowledgeFSCredentialCreatePayload",
         "KnowledgeFSSettingsPayload",
-        "KnowledgeFSDocumentCreatePayload",
         "KnowledgeFSSourceCreatePayload",
         "KnowledgeFSQueryCreatePayload",
         "KnowledgeFSQueryStreamCapabilityResponse",
@@ -217,6 +223,68 @@ def test_small_file_console_bff_reads_only_through_facade_and_returns_no_capabil
             "account_id": "account-1",
             "control_space_id": "control-1",
             "upload_session_id": "session-1",
+        }
+    ]
+
+
+def test_document_upload_console_bff_reads_only_through_facade_and_returns_accepted_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class Facade:
+        def create_document(self, **kwargs):
+            calls.append({name: value for name, value in kwargs.items() if name != "body_reader"})
+            assert kwargs["body_reader"](15 * 1024 * 1024) == KnowledgeFSRemoteMultipartFile(
+                filename="notes.md",
+                content_type="text/markdown",
+                body=b"# Notes",
+            )
+            return KnowledgeFSDocumentUploadAcceptedResponse.model_validate(
+                {
+                    "asset": {
+                        "createdAt": "2030-01-01T00:00:00Z",
+                        "filename": "notes.md",
+                        "id": "asset-1",
+                        "knowledgeSpaceId": "space-1",
+                        "metadata": {},
+                        "mimeType": "text/markdown",
+                        "objectKey": "documents/asset-1/notes.md",
+                        "parserStatus": "pending",
+                        "sha256": "sha256",
+                        "sizeBytes": 7,
+                        "sourceId": None,
+                        "updatedAt": None,
+                        "version": 1,
+                    },
+                    "assetStatusUrl": "/knowledge-spaces/space-1/documents/asset-1",
+                    "compilationJob": {"id": "job-1", "stage": "queued"},
+                    "documentRevision": 1,
+                    "logicalDocument": {"id": "document-1", "revision": 1},
+                    "logicalDocumentId": "document-1",
+                    "statusUrl": "/knowledge-spaces/space-1/logical-documents/document-1/tasks/job-1",
+                }
+            )
+
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=Facade()))
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        method="POST",
+        data={"file": (BytesIO(b"# Notes"), "notes.md", "text/markdown")},
+        content_type="multipart/form-data",
+    ):
+        post = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentsApi.post)
+        response, status = post(console_resources.KnowledgeFSSpaceDocumentsApi(), "control-1")
+
+    assert status == 202
+    assert response["logical_document_id"] == "document-1"
+    assert calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
         }
     ]
 

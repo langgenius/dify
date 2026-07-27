@@ -11,6 +11,7 @@ import {
   UuidSchema,
 } from "@knowledge/core";
 
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -1546,7 +1547,7 @@ async function databasePublishDocumentCompilationCandidate(
     // Taking it first establishes one lock order for both operations and closes the
     // tombstone-probe/head-CAS check-then-act window.
     await requireDatabaseActiveKnowledgeSpacePublicationFence(database, transaction, input);
-    const permissionFence = await requireDatabaseDocumentCompilationPublicationFence(
+    const authorizationFence = await requireDatabaseDocumentCompilationPublicationFence(
       database,
       transaction,
       input,
@@ -1555,13 +1556,21 @@ async function databasePublishDocumentCompilationCandidate(
     // A worker may keep a valid attempt lease after its initiating member, policy, API access, or
     // API key has been revoked. Revalidate the exact durable permission provenance while the space
     // and attempt rows are locked, before reading or mutating any publication-owned aggregate.
-    await assertDatabaseKnowledgeSpacePermissionFence({
-      database,
-      executor: transaction,
-      fence: permissionFence,
-      now: updatedAt,
-      requiredAccess: "write",
-    });
+    if (authorizationFence.kind === "capability") {
+      await assertCapabilityJobPublicationAllowed(database, transaction, {
+        capabilityGrantId: authorizationFence.capabilityGrantId,
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        tenantId: input.tenantId,
+      });
+    } else {
+      await assertDatabaseKnowledgeSpacePermissionFence({
+        database,
+        executor: transaction,
+        fence: authorizationFence.permission,
+        now: updatedAt,
+        requiredAccess: "write",
+      });
+    }
     let head = await databaseGetHead(database, transaction, input, true);
     assertExpectedHeadRevision(head, expectedHeadRevision);
 
@@ -2391,7 +2400,10 @@ async function requireDatabaseDocumentCompilationPublicationFence(
   transaction: DatabaseExecutor,
   input: PublishDocumentCompilationCandidateInput,
   fence: DocumentCompilationPublicationFence,
-): Promise<DatabaseKnowledgeSpacePermissionFence> {
+): Promise<
+  | { readonly capabilityGrantId: string; readonly kind: "capability" }
+  | { readonly kind: "permission"; readonly permission: DatabaseKnowledgeSpacePermissionFence }
+> {
   const params: DatabaseQueryValue[] = [
     fence.attemptId,
     tenantIdValue(input.tenantId),
@@ -2413,6 +2425,7 @@ async function requireDatabaseDocumentCompilationPublicationFence(
     params,
     sql: `SELECT ${[
       "id",
+      "capability_grant_id",
       "permission_snapshot_id",
       "permission_snapshot_revision",
       "access_channel",
@@ -2468,6 +2481,21 @@ async function requireDatabaseDocumentCompilationPublicationFence(
     throw new ProjectionSetPublicationAttemptFenceConflictError();
   }
   try {
+    const capabilityGrantId = optionalStringColumn(result.rows[0], "capability_grant_id");
+    if (capabilityGrantId) {
+      if (
+        optionalStringColumn(result.rows[0], "permission_snapshot_id") ||
+        optionalNumberColumn(result.rows[0], "permission_snapshot_revision") !== undefined ||
+        optionalStringColumn(result.rows[0], "access_channel") ||
+        optionalStringColumn(result.rows[0], "requested_by_subject_id")
+      ) {
+        throw new Error("Conflicting document compilation permission provenance");
+      }
+      return {
+        capabilityGrantId: UuidSchema.parse(capabilityGrantId),
+        kind: "capability",
+      };
+    }
     const permissionSnapshotId = UuidSchema.parse(
       stringColumn(result.rows[0], "permission_snapshot_id"),
     );
@@ -2487,12 +2515,15 @@ async function requireDatabaseDocumentCompilationPublicationFence(
       throw new Error("Invalid document compilation permission provenance");
     }
     return {
-      accessChannel,
-      knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
-      permissionSnapshotId,
-      permissionSnapshotRevision,
-      requestedBySubjectId,
-      tenantId: tenantIdValue(input.tenantId),
+      kind: "permission",
+      permission: {
+        accessChannel,
+        knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
+        permissionSnapshotId,
+        permissionSnapshotRevision,
+        requestedBySubjectId,
+        tenantId: tenantIdValue(input.tenantId),
+      },
     };
   } catch {
     // Legacy all-null provenance and partially persisted bindings are intentionally not trusted.

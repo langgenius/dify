@@ -637,17 +637,13 @@ export const get11 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
 
-/**
- * @deprecated
- */
 export const post5 = oc
   .route({
-    deprecated: true,
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postKnowledgeFsSpacesByControlSpaceIdDocuments',
     path: '/knowledge-fs/spaces/{control_space_id}/documents',
-    successStatus: 201,
+    successStatus: 202,
     tags: ['console'],
   })
   .input(

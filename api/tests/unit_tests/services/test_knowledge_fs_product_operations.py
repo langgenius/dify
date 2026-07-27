@@ -32,6 +32,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "cancelSourceWorkflow",
         "completeUploadSession",
         "crawlSource",
+        "createDocument",
         "createQuery",
         "createResearchTask",
         "createSource",
@@ -94,7 +95,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "updateSpace",
         "uploadSmallFile",
     }
-    assert registered_ids == ready_ids | {"createDocument"}
+    assert registered_ids == ready_ids
     for operation_id in registered_ids:
         product_operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
         assert product_operation.capability_operation_id is not None
@@ -116,26 +117,17 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["reindexDocuments"].rate_limit_bucket == "import"
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createResearchTask"].rate_limit_bucket == "query"
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["getCompilationJob"].rate_limit_bucket == "job"
+    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createDocument"].max_request_bytes == 15 * 1024 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["uploadSmallFile"].max_request_bytes == 8 * 1024 * 1024
 
 
 def test_manifest_gaps_remain_explicit_and_stable() -> None:
-    expected = ("createDocument",)
+    expected = ()
     assert knowledge_fs_product_operation_gaps() == expected
     manifest_path = Path(__file__).resolve().parents[3] / "knowledge-fs-product-operation-gaps.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["schemaVersion"] == 2
     assert tuple(item["productOperationId"] for item in manifest["gaps"]) == expected
-    gap = manifest["gaps"][0]
-    assert gap["kfsOperationId"] == "uploadDocument"
-    assert gap["reasonCode"] == "NON_HOMOMORPHIC_MULTIPART_TRANSPORT"
-    assert gap["replacementProductOperationIds"] == [
-        "createUploadSession",
-        "presignUploadSessionPart",
-        "uploadSmallFile",
-        "completeUploadSession",
-        "abortUploadSession",
-    ]
     assert manifest["internalKfsOperationExclusions"] == [
         {
             "kfsOperationId": "activateDifyWorkspaceIntegration",

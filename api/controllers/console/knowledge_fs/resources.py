@@ -75,7 +75,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
@@ -84,6 +83,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentRevisionListResponse,
+    KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessPayload,
     KnowledgeFSExternalAccessResponse,
@@ -159,6 +159,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSProductResourceNotFoundError,
+    KnowledgeFSRemoteMultipartFile,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
 from services.knowledge_fs_capability import (
@@ -175,7 +176,6 @@ register_schema_models(
     KnowledgeFSCursorQuery,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSDocumentChunkListQuery,
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
@@ -228,6 +228,7 @@ register_response_schema_models(
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentResponse,
+    KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessResponse,
     KnowledgeFSJWKSResponse,
@@ -322,6 +323,14 @@ _SMALL_FILE_UPLOAD_PARAMS = {
         "required": True,
     }
 }
+_DOCUMENT_UPLOAD_PARAMS = {
+    "file": {
+        "description": "Document file to parse, chunk, and index (maximum 15 MB)",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
 _IDEMPOTENCY_HEADER_PARAMS = {
     "Idempotency-Key": {
         "description": "Stable key used to make the mutation safe to retry",
@@ -352,6 +361,28 @@ def _read_small_file_body(max_bytes: int) -> bytes:
     if not body:
         raise KnowledgeFSProductRequestRejectedError(status_code=422)
     return body
+
+
+def _read_document_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
+    content_length = request.content_length
+    if content_length is not None and content_length > max_bytes + _SMALL_FILE_MULTIPART_OVERHEAD_MAX_BYTES:
+        raise KnowledgeFSProductRequestRejectedError(status_code=413)
+    uploads = request.files.getlist("file")
+    if set(request.files) != {"file"} or len(uploads) != 1 or request.form:
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    upload = uploads[0]
+    if not upload.filename:
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    body = upload.stream.read(max_bytes + 1)
+    if len(body) > max_bytes:
+        raise KnowledgeFSProductRequestRejectedError(status_code=413)
+    if not body:
+        raise KnowledgeFSProductRequestRejectedError(status_code=422)
+    return KnowledgeFSRemoteMultipartFile(
+        filename=upload.filename,
+        content_type=upload.mimetype or "application/octet-stream",
+        body=body,
+    )
 
 
 def _actor() -> tuple[str, str]:
@@ -931,22 +962,25 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
         )
         return dump_response(KnowledgeFSDocumentListResponse, result)
 
-    @console_ns.expect(console_ns.models[KnowledgeFSDocumentCreatePayload.__name__])
-    @console_ns.doc(deprecated=True)
+    @console_ns.doc(consumes=["multipart/form-data"], params=_DOCUMENT_UPLOAD_PARAMS)
     @console_ns.response(
-        HTTPStatus.CREATED,
-        "KnowledgeFS document created",
-        console_ns.models[KnowledgeFSDocumentResponse.__name__],
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS document accepted for processing",
+        console_ns.models[KnowledgeFSDocumentUploadAcceptedResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
-        _ = control_space_id
-        raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS document creation is deprecated; use the P6 direct-upload capability flow"
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_document(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            body_reader=_read_document_upload,
         )
+        return dump_response(KnowledgeFSDocumentUploadAcceptedResponse, result), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")

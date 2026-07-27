@@ -25,6 +25,10 @@ import {
   updateKnowledgeSpaceEmbeddingProfile,
 } from "@knowledge/core";
 
+import {
+  type CapabilityJobScope,
+  assertCapabilityJobPublicationAllowed,
+} from "./capability-job-fence";
 import { numberColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
@@ -55,7 +59,7 @@ export interface UpdateKnowledgeSpaceManifestInput extends KnowledgeSpaceManifes
   readonly expectedManifestVersion?: number | undefined;
   readonly permission?:
     | {
-        readonly fence: DatabaseKnowledgeSpacePermissionFence;
+        readonly fence: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
         readonly now: string;
         readonly requiredAccess: "admin" | "write";
       }
@@ -434,13 +438,17 @@ export function createDatabaseKnowledgeSpaceManifestRepository({
           return null;
         }
         if (permission) {
-          await assertDatabaseKnowledgeSpacePermissionFence({
-            database,
-            executor: transaction,
-            fence: permission.fence,
-            now: permission.now,
-            requiredAccess: permission.requiredAccess,
-          });
+          if ("capabilityGrantId" in permission.fence) {
+            await assertCapabilityJobPublicationAllowed(database, transaction, permission.fence);
+          } else {
+            await assertDatabaseKnowledgeSpacePermissionFence({
+              database,
+              executor: transaction,
+              fence: permission.fence,
+              now: permission.now,
+              requiredAccess: permission.requiredAccess,
+            });
+          }
         }
         const existing = await databaseKnowledgeSpaceManifestGet(
           database,

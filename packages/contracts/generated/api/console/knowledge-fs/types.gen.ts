@@ -145,28 +145,15 @@ export type KnowledgeFsDocumentListResponse = {
   next_cursor?: string | null
 }
 
-export type KnowledgeFsDocumentCreatePayload = {
-  idempotency_key: string
-  name: string
-  text: string
-}
-
-export type KnowledgeFsDocumentResponse = {
-  created_at: string
-  filename: string
-  id: string
-  knowledge_space_id: string
-  metadata: {
-    [key: string]: unknown
-  }
-  mime_type: string
-  object_key: string
-  parser_status: 'failed' | 'parsed' | 'pending'
-  sha256: string
-  size_bytes: number
-  source_id?: string | null
-  updated_at?: string | null
-  version: number
+export type KnowledgeFsDocumentUploadAcceptedResponse = {
+  asset: KnowledgeFsDocumentResponse
+  asset_status_url?: string | null
+  compilation_job: KnowledgeFsDocumentUploadCompilationJobResponse
+  document_revision: number
+  logical_document: KnowledgeFsDocumentUploadLogicalDocumentResponse
+  logical_document_id: string
+  status?: 'accepted' | null
+  status_url: string
 }
 
 export type KnowledgeFsBulkDocumentDeletePayload = {
@@ -196,6 +183,24 @@ export type KnowledgeFsDocumentDeletePayload = {
 export type KnowledgeFsDurableDeletionAcceptedResponse = {
   job: KnowledgeFsDurableDeletionJobResponse
   status_url: string
+}
+
+export type KnowledgeFsDocumentResponse = {
+  created_at: string
+  filename: string
+  id: string
+  knowledge_space_id: string
+  metadata: {
+    [key: string]: unknown
+  }
+  mime_type: string
+  object_key: string
+  parser_status: 'failed' | 'parsed' | 'pending'
+  sha256: string
+  size_bytes: number
+  source_id?: string | null
+  updated_at?: string | null
+  version: number
 }
 
 export type KnowledgeFsDocumentMetadataPayload = {
@@ -799,6 +804,16 @@ export type KnowledgeFsCredentialItemResponse = {
   principal: string
   revision: number
   status: string
+}
+
+export type KnowledgeFsDocumentUploadCompilationJobResponse = {
+  id: string
+  stage: 'queued'
+}
+
+export type KnowledgeFsDocumentUploadLogicalDocumentResponse = {
+  id: string
+  revision: number
 }
 
 export type KnowledgeFsBulkDocumentDeleteItemPayload = {
@@ -1519,7 +1534,9 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
-  body: KnowledgeFsDocumentCreatePayload
+  body: {
+    file: Blob | File
+  }
   path: {
     control_space_id: string
   }
@@ -1528,7 +1545,7 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
-  201: KnowledgeFsDocumentResponse
+  202: KnowledgeFsDocumentUploadAcceptedResponse
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =

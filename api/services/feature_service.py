@@ -317,8 +317,10 @@ class FeatureService:
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
         system_features.knowledge_fs_upload_enabled = bool(
             dify_config.KNOWLEDGE_FS_ENABLED
-            and dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-            and dify_config.KNOWLEDGE_FS_DIRECT_UPLOAD_READY
+            and dify_config.KNOWLEDGE_FS_BASE_URL
+            and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED
+            and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID
+            and dify_config.KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM
         )
 
     @classmethod

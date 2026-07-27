@@ -58,6 +58,7 @@ const permissionMemberId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d65";
 const permissionPolicyId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d66";
 const permissionApiAccessId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d67";
 const permissionApiKeyId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d68";
+const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d69";
 const requestedBySubjectId = "editor-1";
 const permissionSnapshotRevision = 8;
 
@@ -90,6 +91,7 @@ interface FakePublicationDatabase {
   markIndexProjectionReady(): void;
   profileBindingCount(): number;
   removePublicationPartialMember(): void;
+  revokeCapabilityGrant(): void;
   revokePublicationMember(): void;
   setPublicationApiKeyState(state: "expired" | "revoked"): void;
   markSpaceDeleting(): void;
@@ -105,6 +107,7 @@ interface FakePublicationDatabase {
   useFullTargetClosure(): void;
   useLogicalDocumentHierarchy(): void;
   useEmbeddingProfileFence(): void;
+  useCapabilityGrantProvenance(): void;
   usePartialMemberPermission(): void;
 }
 
@@ -438,6 +441,7 @@ describe.each(["postgres", "tidb"] as const)(
       expect(attemptCall?.input.sql).toContain("smoke_eval_passed");
       expect(attemptCall?.input.sql).toContain("permission_snapshot_id");
       expect(attemptCall?.input.sql).toContain("permission_snapshot_revision");
+      expect(attemptCall?.input.sql).toContain("capability_grant_id");
       expect(attemptCall?.input.sql).toContain("access_channel");
       expect(attemptCall?.input.sql).toContain("requested_by_subject_id");
       expect(publicationCalls.slice(0, 7).map((call) => call.input.tableName)).toEqual([
@@ -645,6 +649,69 @@ describe.each(["postgres", "tidb"] as const)(
         expectNoDocumentPublicationEffects(publicationCalls);
       },
     );
+
+    it("publishes under one active durable capability grant fence", async () => {
+      const fake = createFakePublicationDatabase(dialect);
+      fake.useLogicalDocumentHierarchy();
+      fake.useCapabilityGrantProvenance();
+      const repository = createDatabaseProjectionSetPublicationRepository({
+        database: fake.database,
+        maxListLimit: 10,
+      });
+      await repository.createCandidate(candidate());
+      const beforePublication = fake.calls.length;
+
+      await expect(
+        repository.publishDocumentCompilationCandidate({
+          ...transition(fingerprintA, "2026-05-27T12:01:00.000Z"),
+          attemptFence: publicationFence(setIdA),
+          expectedHeadRevision: 0,
+          expectedMembers: [publicationMember()],
+          logicalDocumentFence: logicalPublicationFence(),
+        }),
+      ).resolves.toMatchObject({
+        headRevision: 1,
+        published: { fingerprint: fingerprintA, status: "published" },
+      });
+
+      const publicationCalls = fake.calls.slice(beforePublication);
+      expect(
+        publicationCalls.some(
+          (call) =>
+            call.input.tableName === "capability_grants" && call.input.sql.includes("FOR UPDATE"),
+        ),
+      ).toBe(true);
+      expect(
+        publicationCalls.some(
+          (call) => call.input.tableName === "knowledge_space_permission_snapshots",
+        ),
+      ).toBe(false);
+    });
+
+    it("rejects publication after the durable capability grant is revoked", async () => {
+      const fake = createFakePublicationDatabase(dialect);
+      fake.useLogicalDocumentHierarchy();
+      fake.useCapabilityGrantProvenance();
+      fake.revokeCapabilityGrant();
+      const repository = createDatabaseProjectionSetPublicationRepository({
+        database: fake.database,
+        maxListLimit: 10,
+      });
+      await repository.createCandidate(candidate());
+      const beforePublication = fake.calls.length;
+
+      await expect(
+        repository.publishDocumentCompilationCandidate({
+          ...transition(fingerprintA, "2026-05-27T12:01:00.000Z"),
+          attemptFence: publicationFence(setIdA),
+          expectedHeadRevision: 0,
+          expectedMembers: [publicationMember()],
+          logicalDocumentFence: logicalPublicationFence(),
+        }),
+      ).rejects.toThrow();
+
+      expectNoDocumentPublicationEffects(fake.calls.slice(beforePublication));
+    });
 
     it("rejects publication after the initiating member is revoked", async () => {
       const fake = createFakePublicationDatabase(dialect);
@@ -1489,7 +1556,8 @@ function createFakePublicationDatabase(dialect: Dialect): FakePublicationDatabas
   let tombstonedMemberDocumentAssetId: string | undefined;
   let spaceLifecycleState = "active";
   let logicalDocumentHierarchy = false;
-  let attemptPermissionProvenance: "complete" | "missing" | "partial" = "complete";
+  let attemptPermissionProvenance: "capability" | "complete" | "missing" | "partial" = "complete";
+  let capabilityGrantActive = true;
   let permissionAccessChannel: "interactive" | "service_api" = "interactive";
   let permissionVisibility: "all_members" | "partial_members" = "all_members";
   let publicationMemberActive = true;
@@ -1526,6 +1594,7 @@ function createFakePublicationDatabase(dialect: Dialect): FakePublicationDatabas
         attemptPermissionProvenance === "missing"
           ? {
               access_channel: null,
+              capability_grant_id: null,
               permission_snapshot_id: null,
               permission_snapshot_revision: null,
               requested_by_subject_id: null,
@@ -1533,18 +1602,42 @@ function createFakePublicationDatabase(dialect: Dialect): FakePublicationDatabas
           : attemptPermissionProvenance === "partial"
             ? {
                 access_channel: null,
+                capability_grant_id: null,
                 permission_snapshot_id: permissionSnapshotId,
                 permission_snapshot_revision: null,
                 requested_by_subject_id: requestedBySubjectId,
               }
-            : {
-                access_channel: permissionAccessChannel,
-                permission_snapshot_id: permissionSnapshotId,
-                permission_snapshot_revision: permissionSnapshotRevision,
-                requested_by_subject_id: requestedBySubjectId,
-              };
+            : attemptPermissionProvenance === "capability"
+              ? {
+                  access_channel: null,
+                  capability_grant_id: capabilityGrantId,
+                  permission_snapshot_id: null,
+                  permission_snapshot_revision: null,
+                  requested_by_subject_id: null,
+                }
+              : {
+                  access_channel: permissionAccessChannel,
+                  capability_grant_id: null,
+                  permission_snapshot_id: permissionSnapshotId,
+                  permission_snapshot_revision: permissionSnapshotRevision,
+                  requested_by_subject_id: requestedBySubjectId,
+                };
       return attemptFenceAccepted
         ? { rows: [{ id: input.params[0], ...provenance }], rowsAffected: 1 }
+        : { rows: [], rowsAffected: 0 };
+    }
+
+    if (input.tableName === "capability_grants") {
+      const active =
+        capabilityGrantActive &&
+        input.params[0] === tenantId &&
+        input.params[1] === knowledgeSpaceId &&
+        input.params[2] === capabilityGrantId;
+      return active
+        ? {
+            rows: [{ grant_id: capabilityGrantId, space_tombstoned: false }],
+            rowsAffected: 1,
+          }
         : { rows: [], rowsAffected: 0 };
     }
 
@@ -2161,6 +2254,9 @@ function createFakePublicationDatabase(dialect: Dialect): FakePublicationDatabas
     removePublicationPartialMember: () => {
       publicationPartialMemberPresent = false;
     },
+    revokeCapabilityGrant: () => {
+      capabilityGrantActive = false;
+    },
     revokePublicationMember: () => {
       publicationMemberActive = false;
     },
@@ -2206,6 +2302,9 @@ function createFakePublicationDatabase(dialect: Dialect): FakePublicationDatabas
     },
     useEmbeddingProfileFence: () => {
       embeddingProfileFence = true;
+    },
+    useCapabilityGrantProvenance: () => {
+      attemptPermissionProvenance = "capability";
     },
     usePartialMemberPermission: () => {
       permissionVisibility = "partial_members";

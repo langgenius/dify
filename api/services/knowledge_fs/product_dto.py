@@ -586,6 +586,33 @@ class KnowledgeFSDocumentResponse(ResponseModel):
     updated_at: datetime | None = Field(default=None, validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
+class KnowledgeFSDocumentUploadCompilationJobResponse(ResponseModel):
+    id: str
+    stage: Literal["queued"]
+
+
+class KnowledgeFSDocumentUploadLogicalDocumentResponse(ResponseModel):
+    id: str
+    revision: int = Field(ge=1)
+
+
+class KnowledgeFSDocumentUploadAcceptedResponse(ResponseModel):
+    asset: KnowledgeFSDocumentResponse
+    asset_status_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("asset_status_url", "assetStatusUrl")
+    )
+    compilation_job: KnowledgeFSDocumentUploadCompilationJobResponse = Field(
+        validation_alias=AliasChoices("compilation_job", "compilationJob")
+    )
+    document_revision: int = Field(ge=1, validation_alias=AliasChoices("document_revision", "documentRevision"))
+    logical_document: KnowledgeFSDocumentUploadLogicalDocumentResponse = Field(
+        validation_alias=AliasChoices("logical_document", "logicalDocument")
+    )
+    logical_document_id: str = Field(validation_alias=AliasChoices("logical_document_id", "logicalDocumentId"))
+    status: Literal["accepted"] | None = None
+    status_url: str = Field(validation_alias=AliasChoices("status_url", "statusUrl"))
+
+
 class KnowledgeFSDocumentListResponse(ResponseModel):
     data: list[KnowledgeFSDocumentResponse] = Field(validation_alias=AliasChoices("data", "items"))
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
@@ -1655,6 +1682,9 @@ __all__ = [
     "KnowledgeFSDocumentReindexResponse",
     "KnowledgeFSDocumentResponse",
     "KnowledgeFSDocumentRevisionListResponse",
+    "KnowledgeFSDocumentUploadAcceptedResponse",
+    "KnowledgeFSDocumentUploadCompilationJobResponse",
+    "KnowledgeFSDocumentUploadLogicalDocumentResponse",
     "KnowledgeFSDurableDeletionAcceptedResponse",
     "KnowledgeFSExternalAccessPayload",
     "KnowledgeFSExternalAccessResponse",

@@ -265,8 +265,8 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "multipart",
             resource_resolver="knowledge_space",
             billing_cost=10,
-            max_request_bytes=0,
-            max_response_bytes=0,
+            max_request_bytes=15 * 1024 * 1024,
+            max_response_bytes=1024 * 1024,
             stream_kind="buffered-multipart",
         ),
         "getDocument": _operation(
@@ -995,7 +995,7 @@ def is_product_operation_ready(operation_id: str) -> bool:
     operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS.get(operation_id)
     return bool(
         operation
-        and operation.transport in {"binary", "direct", "json"}
+        and operation.transport in {"binary", "direct", "json", "multipart"}
         and is_product_operation_registered(operation_id)
     )
 

@@ -18,6 +18,10 @@ import {
 } from "@knowledge/core";
 
 import {
+  type CapabilityJobScope,
+  resolveCapabilityJobPublicationGrant,
+} from "./capability-job-fence";
+import {
   numberColumn,
   optionalNumberColumn,
   optionalStringColumn,
@@ -160,7 +164,7 @@ export interface ActivateUnpublishedKnowledgeSpaceProfileInput extends Knowledge
   /** Allows the first verified embedding profile to materialize behind the ingestion freeze. */
   readonly initialActivation?: boolean | undefined;
   readonly now: string;
-  readonly permission: DatabaseKnowledgeSpacePermissionFence;
+  readonly permission: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
   /**
    * Initial compilation materializes a configuration that was already accepted at space
    * creation, so the document writer only needs a fresh write fence. Interactive settings
@@ -192,7 +196,7 @@ export interface ActivateInitialKnowledgeSpaceProfileTupleInput {
   };
   readonly knowledgeSpaceId: string;
   readonly now: string;
-  readonly permission: DatabaseKnowledgeSpacePermissionFence;
+  readonly permission: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
   readonly requiredAccess?: "admin" | "write" | undefined;
   readonly retrieval: {
     readonly capabilitySnapshot: Readonly<Record<string, unknown>>;
@@ -705,13 +709,11 @@ export function createDatabaseKnowledgeSpaceUnpublishedProfileActivationReposito
 
       return database.transaction(async (transaction) => {
         await requireWritableSpace(database, transaction, input);
-        await assertDatabaseKnowledgeSpacePermissionFence({
+        const authorizedSubjectId = await authorizeUnpublishedProfileActivation(
           database,
-          executor: transaction,
-          fence: input.permission,
-          now: input.now,
-          requiredAccess: input.requiredAccess,
-        });
+          transaction,
+          input,
+        );
 
         const published = await transaction.execute({
           maxRows: 1,
@@ -895,7 +897,7 @@ export function createDatabaseKnowledgeSpaceUnpublishedProfileActivationReposito
           database,
           generateHeadId,
           generateRevisionId,
-          input,
+          input: { ...input, createdBySubjectId: authorizedSubjectId },
           transaction,
         });
         return {
@@ -938,13 +940,11 @@ async function activateInitialKnowledgeSpaceProfileTuple({
 
   return database.transaction(async (transaction) => {
     await requireWritableSpace(database, transaction, scope);
-    await assertDatabaseKnowledgeSpacePermissionFence({
+    const authorizedSubjectId = await authorizeUnpublishedProfileActivation(
       database,
-      executor: transaction,
-      fence: input.permission,
-      now: input.now,
-      requiredAccess: input.requiredAccess,
-    });
+      transaction,
+      input,
+    );
 
     const published = await transaction.execute({
       maxRows: 1,
@@ -1109,7 +1109,7 @@ async function activateInitialKnowledgeSpaceProfileTuple({
           database,
           generateHeadId,
           generateRevisionId,
-          input: input.embedding,
+          input: { ...input.embedding, createdBySubjectId: authorizedSubjectId },
           transaction,
         })
       : undefined;
@@ -1117,7 +1117,7 @@ async function activateInitialKnowledgeSpaceProfileTuple({
       database,
       generateHeadId,
       generateRevisionId,
-      input: input.retrieval,
+      input: { ...input.retrieval, createdBySubjectId: authorizedSubjectId },
       transaction,
     });
 
@@ -1177,7 +1177,7 @@ interface NormalizedUnpublishedActivation extends NormalizedCandidate {
     | { readonly digest: string; readonly revision: number }
     | undefined;
   readonly initialActivation: boolean;
-  readonly permission: DatabaseKnowledgeSpacePermissionFence;
+  readonly permission: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
   readonly requiredAccess: "admin" | "write";
 }
 
@@ -1190,10 +1190,35 @@ interface NormalizedInitialProfileTuple {
   };
   readonly knowledgeSpaceId: string;
   readonly now: string;
-  readonly permission: DatabaseKnowledgeSpacePermissionFence;
+  readonly permission: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
   readonly requiredAccess: "admin" | "write";
   readonly retrieval: NormalizedUnpublishedActivation;
   readonly tenantId: string;
+}
+
+async function authorizeUnpublishedProfileActivation(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: {
+    readonly knowledgeSpaceId: string;
+    readonly now: string;
+    readonly permission: DatabaseKnowledgeSpacePermissionFence | CapabilityJobScope;
+    readonly requiredAccess: "admin" | "write";
+    readonly tenantId: string;
+  },
+): Promise<string> {
+  if ("capabilityGrantId" in input.permission) {
+    const grant = await resolveCapabilityJobPublicationGrant(database, executor, input.permission);
+    return grant.subjectId;
+  }
+  await assertDatabaseKnowledgeSpacePermissionFence({
+    database,
+    executor,
+    fence: input.permission,
+    now: input.now,
+    requiredAccess: input.requiredAccess,
+  });
+  return input.permission.requestedBySubjectId;
 }
 
 async function insertProfileRevision(
@@ -1914,7 +1939,8 @@ function normalizeUnpublishedActivationInput(
   if (
     input.permission.tenantId !== candidate.tenantId ||
     input.permission.knowledgeSpaceId !== candidate.knowledgeSpaceId ||
-    input.permission.requestedBySubjectId !== candidate.createdBySubjectId
+    ("requestedBySubjectId" in input.permission &&
+      input.permission.requestedBySubjectId !== candidate.createdBySubjectId)
   ) {
     throw unpublishedActivationError(
       "KNOWLEDGE_SPACE_PROFILE_PERMISSION_SCOPE_INVALID",
@@ -1928,7 +1954,14 @@ function normalizeUnpublishedActivationInput(
     expectedManifestVersion,
     ...(expectedPendingConfiguration ? { expectedPendingConfiguration } : {}),
     initialActivation,
-    permission: { ...input.permission },
+    permission:
+      "capabilityGrantId" in input.permission
+        ? {
+            capabilityGrantId: UuidSchema.parse(input.permission.capabilityGrantId),
+            knowledgeSpaceId: candidate.knowledgeSpaceId,
+            tenantId: candidate.tenantId,
+          }
+        : { ...input.permission },
     requiredAccess: input.requiredAccess === "write" ? "write" : "admin",
   };
 }

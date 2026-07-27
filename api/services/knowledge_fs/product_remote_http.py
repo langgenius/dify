@@ -23,6 +23,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
+    KnowledgeFSRemoteMultipartRequest,
 )
 
 _JSON_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
@@ -150,6 +151,87 @@ class HTTPKnowledgeFSProductRemoteClient:
                 headers=headers,
                 params=request.query,
                 content=request.body,
+                timeout=self._timeout_seconds,
+                follow_redirects=False,
+                max_retries=0,
+                stream_response=True,
+            )
+            response = ssrf_proxy.buffer_response(response, max_response_bytes=response_limit)
+        except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
+        try:
+            if response.status_code == 409:
+                raise KnowledgeFSProductRequestRejectedError(status_code=409)
+            if response.status_code == 413:
+                raise KnowledgeFSProductRequestRejectedError(status_code=413)
+            if response.status_code == 422:
+                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+            if content_type != "application/json" and not content_type.endswith("+json"):
+                raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
+            if response.status_code == HTTPStatus.NOT_FOUND:
+                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
+            if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
+                raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
+            try:
+                return _JSON_ADAPTER.validate_python(response.json())
+            except (ValueError, ValidationError) as exc:
+                raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
+        finally:
+            response.close()
+
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> JsonValue:
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS.get(request.operation_id)
+        if (
+            operation is None
+            or operation.transport != "multipart"
+            or not is_product_operation_ready(request.operation_id)
+        ):
+            raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {request.operation_id}")
+        if (
+            request.method != operation.method
+            or operation.kfs_path is None
+            or not _matches_path(operation.kfs_path, request.path)
+        ):
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS request does not match its operation manifest")
+        file = request.file
+        if (
+            not request.namespace_id
+            or not request.knowledge_space_id
+            or not request.capability_token
+            or not request.trace_id
+            or request.query
+        ):
+            raise KnowledgeFSProductRemoteError("KnowledgeFS multipart request binding is incomplete")
+        if (
+            not file.filename.strip()
+            or len(file.filename) > 255
+            or any(character in file.filename for character in ("\0", "\r", "\n"))
+            or not file.content_type.strip()
+            or len(file.content_type) > 255
+            or any(character in file.content_type for character in ("\0", "\r", "\n"))
+            or not isinstance(file.body, bytes)
+            or not file.body
+        ):
+            raise KnowledgeFSProductRequestRejectedError(status_code=422)
+        if len(file.body) > operation.max_request_bytes:
+            raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        response_limit = min(self._max_response_bytes, operation.max_response_bytes)
+        if response_limit <= 0:
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS operation response limit is unavailable")
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "identity",
+            "Authorization": f"Bearer {request.capability_token}",
+            "X-Trace-Id": request.trace_id,
+        }
+        try:
+            upstream_url = httpx.URL(f"{self._base_url.rstrip('/')}/").join(request.path.lstrip("/"))
+            response = ssrf_proxy.make_request(
+                method=request.method,
+                url=str(upstream_url),
+                headers=headers,
+                files={"file": (file.filename, file.body, file.content_type)},
                 timeout=self._timeout_seconds,
                 follow_redirects=False,
                 max_retries=0,

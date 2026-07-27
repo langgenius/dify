@@ -1027,24 +1027,31 @@ export function registerDocumentWriteHandlers({
           space,
         }),
       );
-      const issuedPermissionSnapshot = documentCompilationJobs
-        ? await issueDocumentOperationPermission({
-            access,
-            authorization,
-            context,
-            knowledgeSpaceId,
-          })
-        : undefined;
-      if (documentCompilationJobs && !issuedPermissionSnapshot) {
+      const capabilityGrant = context.get("capabilityV2Grant");
+      const issuedPermissionSnapshot =
+        documentCompilationJobs && !capabilityGrant
+          ? await issueDocumentOperationPermission({
+              access,
+              authorization,
+              context,
+              knowledgeSpaceId,
+            })
+          : undefined;
+      if (documentCompilationJobs && !capabilityGrant && !issuedPermissionSnapshot) {
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
       const compilationAuthorization =
-        documentCompilationJobs && issuedPermissionSnapshot
+        documentCompilationJobs && capabilityGrant
           ? {
+              capabilityGrantId: capabilityGrant.grantId,
               jobs: documentCompilationJobs,
-              permissionSnapshot: issuedPermissionSnapshot,
             }
-          : undefined;
+          : documentCompilationJobs && issuedPermissionSnapshot
+            ? {
+                jobs: documentCompilationJobs,
+                permissionSnapshot: issuedPermissionSnapshot,
+              }
+            : undefined;
       if (logicalDocuments && !compilationAuthorization) {
         return context.json({ error: "Logical document uploads require durable compilation" }, 503);
       }
@@ -1067,8 +1074,12 @@ export function registerDocumentWriteHandlers({
           knowledgeSpaceId,
           metadata: {
             permissionScope:
-              upload.documentId && issuedPermissionSnapshot
-                ? [...issuedPermissionSnapshot.permissionScopes]
+              upload.documentId && (issuedPermissionSnapshot || capabilityGrant)
+                ? [
+                    ...(issuedPermissionSnapshot?.permissionScopes ??
+                      capabilityGrant?.contentScopeIds ??
+                      []),
+                  ]
                 : [],
             tenantId: subject.tenantId,
             traceId,
@@ -1227,7 +1238,7 @@ export function registerDocumentWriteHandlers({
           (await traceAsync(traces, traceId, "ingestion.asset_create", createAsset));
         metadataAsset = asset;
         await assertWritable();
-        if (logicalDocuments) {
+        if (logicalDocuments && compilationAuthorization) {
           logicalRevision = (
             await traceAsync(traces, traceId, "ingestion.logical_revision_create", () =>
               logicalDocuments.createCandidateRevision({
@@ -1244,8 +1255,12 @@ export function registerDocumentWriteHandlers({
                 knowledgeSpaceId,
                 mimeType: asset.mimeType,
                 now: now(),
-                permissionSnapshot: compilationAuthorization?.permissionSnapshot,
-                requestedBySubjectId: subject.subjectId,
+                ...("capabilityGrantId" in compilationAuthorization
+                  ? { capabilityGrantId: compilationAuthorization.capabilityGrantId }
+                  : {
+                      permissionSnapshot: compilationAuthorization.permissionSnapshot,
+                      requestedBySubjectId: subject.subjectId,
+                    }),
                 sizeBytes: asset.sizeBytes,
                 systemMetadata: {
                   provenance: { documentAssetId: asset.id, uploadedBy: subject.subjectId },
@@ -1300,10 +1315,14 @@ export function registerDocumentWriteHandlers({
               try {
                 return await compilationAuthorization.jobs.start({
                   ...(compilationAuthorization.jobs.releaseDispatch ? { deferDispatch: true } : {}),
+                  ...("capabilityGrantId" in compilationAuthorization
+                    ? { capabilityGrantId: compilationAuthorization.capabilityGrantId }
+                    : {
+                        permissionSnapshot: compilationAuthorization.permissionSnapshot,
+                        requestedBySubjectId: subject.subjectId,
+                      }),
                   documentAssetId: asset.id,
                   knowledgeSpaceId,
-                  permissionSnapshot: compilationAuthorization.permissionSnapshot,
-                  requestedBySubjectId: subject.subjectId,
                   tenantId: subject.tenantId,
                   version: asset.version,
                 });

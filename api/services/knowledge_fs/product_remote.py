@@ -54,6 +54,24 @@ class KnowledgeFSRemoteBinaryRequest(NamedTuple):
     query: tuple[tuple[str, str], ...]
 
 
+class KnowledgeFSRemoteMultipartFile(NamedTuple):
+    filename: str
+    content_type: str
+    body: bytes
+
+
+class KnowledgeFSRemoteMultipartRequest(NamedTuple):
+    operation_id: str
+    method: str
+    path: str
+    namespace_id: str
+    knowledge_space_id: str
+    capability_token: str
+    trace_id: str
+    file: KnowledgeFSRemoteMultipartFile
+    query: tuple[tuple[str, str], ...] = ()
+
+
 class KnowledgeFSProductRemotePort(Protocol):
     def batch_space_summaries(
         self,
@@ -70,6 +88,9 @@ class KnowledgeFSProductRemotePort(Protocol):
 
     def execute_binary(self, request: KnowledgeFSRemoteBinaryRequest) -> JsonValue:
         """Execute one strictly bounded binary request using only its operation capability."""
+
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> JsonValue:
+        """Execute one strictly bounded multipart request using only its operation capability."""
 
 
 class UnavailableKnowledgeFSProductRemote:
@@ -94,6 +115,10 @@ class UnavailableKnowledgeFSProductRemote:
         _ = request
         raise KnowledgeFSOperationUnavailableError("KnowledgeFS product remote is not configured")
 
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest) -> JsonValue:
+        _ = request
+        raise KnowledgeFSOperationUnavailableError("KnowledgeFS product remote is not configured")
+
 
 __all__ = [
     "KnowledgeFSOperationUnavailableError",
@@ -103,5 +128,7 @@ __all__ = [
     "KnowledgeFSProductResourceNotFoundError",
     "KnowledgeFSRemoteBinaryRequest",
     "KnowledgeFSRemoteJSONRequest",
+    "KnowledgeFSRemoteMultipartFile",
+    "KnowledgeFSRemoteMultipartRequest",
     "UnavailableKnowledgeFSProductRemote",
 ]

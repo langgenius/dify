@@ -63,6 +63,35 @@ describe("first-document model profile activation", () => {
     expect(harness.manifest.pendingModelConfiguration).toBeUndefined();
   });
 
+  it("uses a durable Capability grant when the first integrated upload activates profiles", async () => {
+    const harness = createHarness("fast");
+    const {
+      permissionSnapshot: _permissionSnapshot,
+      requestedBySubjectId: _requestedBySubjectId,
+      ...attempt
+    } = harness.execution.attempt;
+    const execution = {
+      ...harness.execution,
+      attempt: {
+        ...attempt,
+        capabilityGrantId: "10000000-0000-4000-8000-000000000024",
+      },
+    };
+
+    await harness.coordinator.ensureReady(execution);
+
+    expect(harness.activations.activateInitialTuple).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdBySubjectId: "capability-grant:10000000-0000-4000-8000-000000000024",
+        permission: {
+          capabilityGrantId: "10000000-0000-4000-8000-000000000024",
+          knowledgeSpaceId,
+          tenantId,
+        },
+      }),
+    );
+  });
+
   it("activates Research with reasoning only and never probes embedding, rerank, or graph", async () => {
     const harness = createHarness("research");
 

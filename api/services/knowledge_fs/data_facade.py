@@ -23,7 +23,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
@@ -32,6 +31,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentRevisionListResponse,
+    KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
@@ -82,6 +82,8 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
+    KnowledgeFSRemoteMultipartFile,
+    KnowledgeFSRemoteMultipartRequest,
 )
 
 
@@ -242,12 +244,50 @@ class KnowledgeFSDataFacade:
         tenant_id: str,
         account_id: str,
         control_space_id: str,
-        payload: KnowledgeFSDocumentCreatePayload,
-    ) -> KnowledgeFSDocumentResponse:
-        _ = (tenant_id, account_id, control_space_id, payload)
-        raise KnowledgeFSOperationUnavailableError(
-            "Buffered KnowledgeFS document creation is deprecated; use the P6 direct-upload capability flow"
-        )
+        body_reader: Callable[[int], KnowledgeFSRemoteMultipartFile],
+    ) -> KnowledgeFSDocumentUploadAcceptedResponse:
+        operation_id = "createDocument"
+        _assert_multipart_bff_ready(operation_id)
+        with self._admitted(tenant_id=tenant_id, operation_id=operation_id):
+            issued = self._broker.issue_interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id=operation_id,
+            )
+            operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+            upload = body_reader(operation.max_request_bytes)
+            if (
+                not upload.filename
+                or not upload.content_type
+                or not isinstance(upload.body, bytes)
+                or not upload.body
+            ):
+                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if len(upload.body) > operation.max_request_bytes:
+                raise KnowledgeFSProductRequestRejectedError(status_code=413)
+            if operation.kfs_path is None:
+                raise KnowledgeFSOperationUnavailableError(f"KnowledgeFS operation is unavailable: {operation_id}")
+            path = _resolve_product_path(
+                template=operation.kfs_path,
+                knowledge_space_id=issued.knowledge_space_id,
+                resource_id=None,
+                resource_resolver=operation.resource_resolver,
+                path_parameters=(),
+            )
+            raw = self._remote.execute_multipart(
+                KnowledgeFSRemoteMultipartRequest(
+                    operation_id=operation_id,
+                    method=operation.method,
+                    path=path,
+                    namespace_id=tenant_id,
+                    knowledge_space_id=issued.knowledge_space_id,
+                    capability_token=issued.token,
+                    trace_id=issued.trace_id,
+                    file=upload,
+                )
+            )
+        return KnowledgeFSDocumentUploadAcceptedResponse.model_validate(raw)
 
     def upload_small_file(
         self,
@@ -1385,6 +1425,14 @@ def _assert_binary_bff_ready(operation_id: str) -> None:
     if KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id].transport != "binary":
         raise KnowledgeFSOperationUnavailableError(
             f"KnowledgeFS operation does not allow the bounded binary BFF: {operation_id}"
+        )
+
+
+def _assert_multipart_bff_ready(operation_id: str) -> None:
+    _assert_ready(operation_id)
+    if KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id].transport != "multipart":
+        raise KnowledgeFSOperationUnavailableError(
+            f"KnowledgeFS operation does not allow the bounded multipart BFF: {operation_id}"
         )
 
 

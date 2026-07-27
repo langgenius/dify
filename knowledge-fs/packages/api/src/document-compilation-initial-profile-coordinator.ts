@@ -226,7 +226,10 @@ async function activatePendingConfiguration(input: {
       );
     }
     await input.activations.activateInitialTuple({
-      createdBySubjectId: permission.requestedBySubjectId,
+      createdBySubjectId:
+        "capabilityGrantId" in permission
+          ? `capability-grant:${permission.capabilityGrantId}`
+          : permission.requestedBySubjectId,
       ...(verified.embedding
         ? {
             embedding: {
@@ -455,6 +458,13 @@ function activeTupleSupportsCompilation(heads: {
 function initialActivationPermission(
   attempt: DocumentCompilationExecutionContext["attempt"],
 ): Parameters<KnowledgeSpaceUnpublishedProfileActivationRepository["activate"]>[0]["permission"] {
+  if (attempt.capabilityGrantId) {
+    return {
+      capabilityGrantId: attempt.capabilityGrantId,
+      knowledgeSpaceId: attempt.knowledgeSpaceId,
+      tenantId: attempt.tenantId,
+    };
+  }
   if (!attempt.permissionSnapshot || !attempt.requestedBySubjectId) {
     throw compilationError(
       "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED",

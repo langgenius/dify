@@ -42,7 +42,8 @@ import {
   documentTaskListFromApi,
   logicalDocumentListFromApi,
 } from './document-models'
-import { DOCUMENT_UPLOAD_ACCEPT, documentUploadIssue } from './document-upload-policy'
+import { DocumentUploadForm } from './document-upload-form'
+import { documentUploadIssue } from './document-upload-policy'
 import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { createRequestId } from './request-id'
@@ -190,7 +191,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const permissionPending = workspacePermissionKeysLoading
   const permissionQueryError = Boolean(workspacePermissionKeysError)
   const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
-  const uploadInputRef = useRef<HTMLInputElement>(null)
   const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
@@ -201,6 +201,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
+  const [uploadFormOpen, setUploadFormOpen] = useState(false)
+  const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
   const [tasksOpen, setTasksOpen] = useState(false)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
   const [writePermissionRecoveryGeneration, setWritePermissionRecoveryGeneration] = useState<
@@ -1369,8 +1371,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   ])
 
   const handleUploadFiles = useCallback(
-    async (files: File[]) => {
-      if (!canUpload || !files.length || uploadPendingRef.current) return
+    async (files: File[]): Promise<boolean> => {
+      if (!canUpload || !files.length || uploadPendingRef.current) return false
       const uploadableFiles: File[] = []
       const localExclusions: Array<{
         filename: string
@@ -1404,7 +1406,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             details: formatExclusionDetails(localExclusions),
           }),
         )
-        return
+        return false
       }
       let writePermissionDenied = false
       uploadPendingRef.current = true
@@ -1429,7 +1431,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               details: exclusionDetails,
             }),
           )
-          return
+          return false
         }
         if (exclusions.length)
           toast.warning(
@@ -1441,11 +1443,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           )
         else toast.success(t(($) => $['newKnowledge.documentUploadStarted']))
         refreshDocumentsAndTasks()
+        return true
       } catch (error) {
         if (responseStatus(error) === 403) {
           writePermissionDenied = true
+          setUploadFormOpen(false)
+          setUploadFormInitialFiles([])
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+        return false
       } finally {
         if (!writePermissionDenied) {
           writePermissionFocusRecoveryRequestedRef.current = false
@@ -1856,22 +1862,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           />
         )
       })}
-      {canUpload && (
-        <input
-          ref={uploadInputRef}
-          multiple
-          hidden
-          accept={DOCUMENT_UPLOAD_ACCEPT}
-          aria-label={t(($) => $['newKnowledge.uploadDocuments'])}
-          tabIndex={-1}
-          type="file"
-          onChange={(event) => {
-            const files = [...(event.currentTarget.files ?? [])]
-            event.currentTarget.value = ''
-            void handleUploadFiles(files)
-          }}
-        />
-      )}
       <section
         ref={documentsSectionRef}
         className={cn(
@@ -1881,7 +1871,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             documentSurfaceHadFocusRef.current = false
-            if (event.relatedTarget && event.relatedTarget !== uploadInputRef.current) {
+            if (event.relatedTarget) {
               writePermissionFocusRecoveryRequestedRef.current = false
               writePermissionFocusOriginRef.current = null
             }
@@ -1910,10 +1900,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             className="title-xl-semi-bold text-text-primary"
             tabIndex={-1}
           >
-            {t(($) => $['newKnowledge.documents'])}
+            {t(($) =>
+              uploadFormOpen ? $['newKnowledge.addDocument'] : $['newKnowledge.documents'],
+            )}
           </h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.documentsDescription'])}
+            {t(($) =>
+              uploadFormOpen
+                ? $['newKnowledge.uploadFilesDescription']
+                : $['newKnowledge.documentsDescription'],
+            )}
           </p>
           {permissionPending && (
             <p
@@ -2109,6 +2105,25 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               {tCommon(($) => $['operation.retry'])}
             </Button>
           </div>
+        ) : uploadFormOpen ? (
+          <DocumentUploadForm
+            initialFiles={uploadFormInitialFiles}
+            uploading={uploading}
+            onCancel={() => {
+              setUploadFormOpen(false)
+              setUploadFormInitialFiles([])
+            }}
+            onSubmit={async (files) => {
+              writePermissionFocusRecoveryRequestedRef.current = true
+              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
+              const uploaded = await handleUploadFiles(files)
+              if (uploaded) {
+                setUploadFormOpen(false)
+                setUploadFormInitialFiles([])
+              }
+              return uploaded
+            }}
+          />
         ) : !documents.length ? (
           <DocumentsEmpty
             activeTaskCount={activeTasks.length}
@@ -2118,9 +2133,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onAddDocument={() => {
               writePermissionFocusRecoveryRequestedRef.current = true
               writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              uploadInputRef.current?.click()
+              setUploadFormInitialFiles([])
+              setUploadFormOpen(true)
             }}
-            onDropFiles={(files) => void handleUploadFiles(files)}
+            onDropFiles={(files) => {
+              writePermissionFocusRecoveryRequestedRef.current = true
+              writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
+              setUploadFormInitialFiles(files)
+              setUploadFormOpen(true)
+            }}
             onOpenTasks={() => setTasksOpen(true)}
             readOnlyReasonId={documentUploadRestrictionReasonId}
             tasksButtonLabel={tasksButtonLabel}
@@ -2151,7 +2172,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onAddDocument={() => {
               writePermissionFocusRecoveryRequestedRef.current = true
               writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null
-              uploadInputRef.current?.click()
+              setUploadFormInitialFiles([])
+              setUploadFormOpen(true)
             }}
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}

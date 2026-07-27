@@ -9,7 +9,6 @@ from services.knowledge_fs import data_facade as data_facade_module
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import (
-    KnowledgeFSDocumentCreatePayload,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSProfileModelSelection,
     KnowledgeFSQueryCreatePayload,
@@ -24,6 +23,8 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
+    KnowledgeFSRemoteMultipartFile,
+    KnowledgeFSRemoteMultipartRequest,
 )
 
 
@@ -94,6 +95,11 @@ class FailingRemote:
         self.calls += 1
         raise AssertionError("must not perform binary I/O")
 
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+        _ = request
+        self.calls += 1
+        raise AssertionError("must not perform multipart I/O")
+
 
 class RecordingBroker:
     def __init__(self) -> None:
@@ -116,6 +122,7 @@ class RecordingRemote:
     def __init__(self) -> None:
         self.requests: list[KnowledgeFSRemoteJSONRequest] = []
         self.binary_requests: list[KnowledgeFSRemoteBinaryRequest] = []
+        self.multipart_requests: list[KnowledgeFSRemoteMultipartRequest] = []
 
     def batch_space_summaries(self, **kwargs):
         _ = kwargs
@@ -234,6 +241,32 @@ class RecordingRemote:
             }
         }
 
+    def execute_multipart(self, request: KnowledgeFSRemoteMultipartRequest):
+        self.multipart_requests.append(request)
+        return {
+            "asset": {
+                "createdAt": "2030-01-01T00:00:00Z",
+                "filename": request.file.filename,
+                "id": "asset-1",
+                "knowledgeSpaceId": "space-1",
+                "metadata": {},
+                "mimeType": request.file.content_type,
+                "objectKey": "documents/asset-1/upload.md",
+                "parserStatus": "pending",
+                "sha256": "sha256",
+                "sizeBytes": len(request.file.body),
+                "sourceId": None,
+                "updatedAt": None,
+                "version": 1,
+            },
+            "assetStatusUrl": "/knowledge-spaces/space-1/documents/asset-1",
+            "compilationJob": {"id": "job-1", "stage": "queued"},
+            "documentRevision": 1,
+            "logicalDocument": {"id": "document-1", "revision": 1},
+            "logicalDocumentId": "document-1",
+            "statusUrl": "/knowledge-spaces/space-1/logical-documents/document-1/tasks/job-1",
+        }
+
 
 def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_io() -> None:
     admission = RecordingAdmission()
@@ -268,18 +301,61 @@ def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_i
     assert (failing_admission.charges[0].commits, failing_admission.charges[0].refunds) == (0, 1)
 
 
-def test_legacy_buffered_document_and_query_fail_before_capability_or_remote_io() -> None:
+def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_request() -> None:
+    remote = RecordingRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
+    observed: list[str] = []
+
+    def read_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
+        observed.append(f"read:{max_bytes}")
+        assert broker.calls
+        return KnowledgeFSRemoteMultipartFile(
+            filename="upload.md",
+            content_type="text/markdown",
+            body=b"# Upload",
+        )
+
+    result = facade.create_document(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        body_reader=read_upload,
+    )
+
+    assert result.logical_document_id == "document-1"
+    assert observed == ["read:15728640"]
+    assert broker.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "control-1",
+            "operation_id": "createDocument",
+        }
+    ]
+    assert remote.multipart_requests == [
+        KnowledgeFSRemoteMultipartRequest(
+            operation_id="createDocument",
+            method="POST",
+            path="/knowledge-spaces/space-1/documents",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            file=KnowledgeFSRemoteMultipartFile(
+                filename="upload.md",
+                content_type="text/markdown",
+                body=b"# Upload",
+            ),
+        )
+    ]
+
+
+def test_legacy_buffered_query_fails_before_capability_or_remote_io() -> None:
     broker = FailingBroker()
     remote = FailingRemote()
     facade = KnowledgeFSDataFacade(admission=NoopAdmission(), broker=broker, remote=remote)  # type: ignore[arg-type]
 
-    with pytest.raises(KnowledgeFSOperationUnavailableError, match="direct-upload"):
-        facade.create_document(
-            tenant_id="tenant-1",
-            account_id="account-1",
-            control_space_id="control-1",
-            payload=KnowledgeFSDocumentCreatePayload(name="ignored", text="ignored", idempotency_key="once"),
-        )
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="queries/admission"):
         facade.create_query(
             tenant_id="tenant-1",
