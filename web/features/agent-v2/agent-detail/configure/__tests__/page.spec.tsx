@@ -710,6 +710,55 @@ describe('AgentConfigurePage', () => {
       ).toBeVisible()
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
     })
+
+    it('should initialize the composer from recovered query data after the initial request fails', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: undefined as unknown,
+        isFetching: false,
+        isError: true,
+        isPending: false,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'recovered draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:recovered draft prompt',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+    })
   })
 
   describe('Right panel mode', () => {

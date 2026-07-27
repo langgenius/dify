@@ -183,7 +183,6 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-c
 
 vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   useWorkflowInlineAgentConfigureSync: () => ({
-    draftSavedAt: undefined,
     saveAgentSoulConfig: mocks.saveAgentSoulConfig,
     saveDraft: mocks.saveDraft,
   }),
