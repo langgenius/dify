@@ -13,11 +13,11 @@ import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
 import { DocumentDetailStatus } from './document-detail-status'
+import { documentRevisionListFromApi, logicalDocumentFromApi } from './document-models'
 import { DocumentRevisionContent } from './document-revision-content'
 import { newKnowledgeDocumentsPath } from './routes'
 import { useDocumentReindex } from './use-document-reindex'
 
-const REVISION_PAGE_SIZE = 50
 const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 const documentRevisionParser = createParser<number>({
   parse: (value) => {
@@ -66,28 +66,38 @@ export function DocumentDetailPage({
 
   const documentQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocumentsByDocumentId.queryOptions({
-        input: { params: { documentId, id: knowledgeSpaceId } },
-        retry: (failureCount, error) => {
-          const status = responseStatus(error)
-          return status !== 403 && status !== 404 && failureCount < 2
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.get.queryOptions(
+        {
+          input: {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              document_id: documentId,
+            },
+          },
+          retry: (failureCount, error) => {
+            const status = responseStatus(error)
+            return status !== 403 && status !== 404 && failureCount < 2
+          },
+          select: logicalDocumentFromApi,
         },
-      }),
+      ),
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
   const revisionsQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions.infiniteOptions(
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.get.infiniteOptions(
         {
           input: (pageParam) => ({
-            params: { documentId, id: knowledgeSpaceId },
+            params: {
+              control_space_id: knowledgeSpaceId,
+              document_id: documentId,
+            },
             query: {
-              limit: REVISION_PAGE_SIZE,
               ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
             },
           }),
-          getNextPageParam: (lastPage) => lastPage.nextCursor,
+          getNextPageParam: (lastPage) => lastPage.next_cursor,
           initialPageParam: null as string | null,
         },
       ),
@@ -95,7 +105,8 @@ export function DocumentDetailPage({
   )
   const revisionsQuery = useInfiniteQuery(revisionsQueryOptions)
   const revisions = useMemo(
-    () => revisionsQuery.data?.pages.flatMap((page) => page.items).filter(Boolean) ?? [],
+    () =>
+      revisionsQuery.data?.pages.flatMap((page) => documentRevisionListFromApi(page).items) ?? [],
     [revisionsQuery.data],
   )
   const availableRevisions = useMemo(() => {
@@ -108,7 +119,7 @@ export function DocumentDetailPage({
     ? (selectedRevision ?? initialDocumentRevision(documentQuery.data, availableRevisions))
     : undefined
   const chunksQueryKey =
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks.key()
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const documentActiveRevision =
     documentQuery.data?.activeRevision ?? documentQuery.data?.active?.revision ?? 0
   const documentErrorStatus = responseStatus(documentQuery.error)

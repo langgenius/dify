@@ -209,6 +209,127 @@ describe.each(["postgres", "tidb"] as const)(
       );
     });
 
+    it("attributes capability workflow completion to the admitted grant subject", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = orderedMutationDatabase(
+        dialect,
+        calls,
+        runningCapabilitySourceRunRow(),
+        false,
+      );
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(
+        repository.complete({
+          fence: { leaseToken, rowVersion: 7, runId, workerId: "source-worker" },
+          now,
+        }),
+      ).resolves.toMatchObject({ state: "completed" });
+
+      const activity = calls.find(
+        (call) =>
+          call.tableName === "knowledge_space_activity_events" && call.operation === "insert",
+      );
+      expect(activity?.params.slice(3, 5)).toEqual(["member", "editor-a"]);
+    });
+
+    it("attributes capability workflow failure to the admitted grant subject", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = orderedMutationDatabase(
+        dialect,
+        calls,
+        runningCapabilitySourceRunRow(),
+        false,
+      );
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(
+        repository.fail({
+          errorCode: "SOURCE_IMPORT_FAILED",
+          errorMessage: "provider unavailable",
+          fence: { leaseToken, rowVersion: 7, runId, workerId: "source-worker" },
+          now,
+        }),
+      ).resolves.toMatchObject({ state: "failed" });
+
+      const activity = calls.find(
+        (call) =>
+          call.tableName === "knowledge_space_activity_events" && call.operation === "insert",
+      );
+      expect(activity?.params.slice(3, 5)).toEqual(["member", "editor-a"]);
+    });
+
+    it("keeps capability workflow update columns aligned with their parameters", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = orderedMutationDatabase(dialect, calls, capabilitySourceRunRow(), false);
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await repository.cancel({
+        capabilityGrantId,
+        now,
+        reason: "stop",
+        runId,
+      });
+
+      const update = calls.find(
+        (call) => call.tableName === "source_workflow_runs" && call.operation === "update",
+      );
+      expect(update?.sql).toContain("capability_grant_id");
+      expect(update?.params[11]).toBe(capabilityGrantId);
+      const placeholders = update?.sql.match(dialect === "postgres" ? /\$\d+/gu : /\?/gu) ?? [];
+      expect(placeholders).toHaveLength(update?.params.length ?? 0);
+    });
+
+    it("terminalizes a fenced worker failure while durable deletion is active", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = orderedMutationDatabase(dialect, calls, runRow(), false, true);
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(
+        repository.fail({
+          errorCode: "SOURCE_IMPORT_PARTIAL_FAILURE",
+          errorMessage: "Import compensation requested deletion",
+          fence: { leaseToken, rowVersion: 7, runId, workerId: "source-worker" },
+          now,
+        }),
+      ).resolves.toMatchObject({
+        activeSlot: undefined,
+        state: "failed",
+      });
+      expect(
+        calls.some(
+          (call) => call.tableName === "source_workflow_runs" && call.operation === "update",
+        ),
+      ).toBe(true);
+    });
+
+    it("cancels an authorized source workflow while durable deletion is active", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = orderedMutationDatabase(
+        dialect,
+        calls,
+        sourceRunRow("running"),
+        false,
+        true,
+      );
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(
+        repository.cancel({
+          accessChannel: "interactive",
+          now,
+          permissionSnapshotId,
+          permissionSnapshotRevision: 1,
+          reason: "stop",
+          requestedBySubjectId: "editor-a",
+          runId,
+        }),
+      ).resolves.toMatchObject({
+        activeSlot: undefined,
+        state: "canceled",
+      });
+    });
+
     it("revalidates capability source workflows at restart and terminals revoked work", async () => {
       const build = (active: boolean) => {
         const calls: DatabaseExecuteInput[] = [];
@@ -1863,6 +1984,7 @@ function claimDatabase(
     if (input.tableName === "knowledge_space_permission_snapshots") {
       return { rows: [permissionRow()], rowsAffected: 1 };
     }
+    if (input.tableName === "capability_grants") return activeCapabilityGrant();
     if (isAccessLock(input.tableName)) return oneRow(input.tableName);
     if (input.tableName === "sources") return { rows: [sourceRow([])], rowsAffected: 1 };
     if (input.tableName === "source_workflow_outbox" && input.operation === "select") {
@@ -2138,6 +2260,18 @@ function capabilitySourceRunRow(): DatabaseRow {
   };
 }
 
+function runningCapabilitySourceRunRow(): DatabaseRow {
+  return {
+    ...sourceRunRow("running"),
+    access_channel: null,
+    capability_grant_id: capabilityGrantId,
+    permission_snapshot_id: null,
+    permission_snapshot_revision: null,
+    requested_by_subject_id: null,
+    required_permission_scope: null,
+  };
+}
+
 function newBulkRun(): NewSourceWorkflowRun {
   return {
     accessChannel: "interactive",
@@ -2262,14 +2396,19 @@ function orderedMutationDatabase(
   calls: DatabaseExecuteInput[],
   row: DatabaseRow,
   idempotencyMiss: boolean,
+  activeDeletion = false,
 ): DatabaseAdapter {
+  let storedActivity: DatabaseRow | undefined;
   return testDatabase(dialect, async (input) => {
     calls.push(input);
     if (input.tableName === "knowledge_spaces") return activeSpace();
-    if (input.tableName === "deletion_jobs") return empty();
+    if (input.tableName === "deletion_jobs") {
+      return activeDeletion ? oneRow("deletion_jobs") : empty();
+    }
     if (input.tableName === "knowledge_space_permission_snapshots") {
       return { rows: [permissionRow()], rowsAffected: 1 };
     }
+    if (input.tableName === "capability_grants") return activeCapabilityGrant();
     if (isAccessLock(input.tableName)) return oneRow(input.tableName);
     if (input.tableName === "sources") {
       return { rows: [sourceRow([])], rowsAffected: 1 };
@@ -2285,6 +2424,13 @@ function orderedMutationDatabase(
     }
     if (input.tableName === "source_crawl_preview_pages" && input.operation === "select") {
       return { rows: [{ page_id: "page-a" }], rowsAffected: 1 };
+    }
+    if (input.tableName === "knowledge_space_activity_events") {
+      if (input.operation === "insert") {
+        storedActivity = activityRow(input.params);
+        return { rows: [], rowsAffected: 1 };
+      }
+      return storedActivity ? { rows: [storedActivity], rowsAffected: 1 } : empty();
     }
     return { rows: [], rowsAffected: 1 };
   });

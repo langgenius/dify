@@ -46,7 +46,20 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/credentials",
         "/knowledge-fs/spaces/<string:control_space_id>/settings",
         "/knowledge-fs/spaces/<string:control_space_id>/documents",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/sources",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-connections",
+        ("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh"),
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection",
+        "/knowledge-fs/spaces/<string:control_space_id>/source-providers",
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",
         "/knowledge-fs/spaces/<string:control_space_id>/traces",
@@ -114,6 +127,18 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSStreamCapabilityResponse",
         "KnowledgeFSJWKSResponse",
         "KnowledgeFSSmallFileUploadResponse",
+        "KnowledgeFSCrawlPreviewPageListQuery",
+        "KnowledgeFSCrawlPreviewPageListResponse",
+        "KnowledgeFSCrawlPreviewSelectionPayload",
+        "KnowledgeFSSourceConnectionCreatePayload",
+        "KnowledgeFSSourceConnectionListQuery",
+        "KnowledgeFSSourceConnectionListResponse",
+        "KnowledgeFSSourceConnectionRefreshPayload",
+        "KnowledgeFSSourceProviderListResponse",
+        "KnowledgeFSSourceSyncPolicyPayload",
+        "KnowledgeFSSourceSyncPolicyResponse",
+        "KnowledgeFSSourceWorkflowCancelPayload",
+        "KnowledgeFSSourceWorkflowResponse",
     }.issubset(console_ns.models)
     assert {
         "KnowledgeFSDocumentCreatePayload",
@@ -524,6 +549,7 @@ def test_upload_and_task_stream_capabilities_use_direct_operation_admission(
 
     runtime = SimpleNamespace(direct_operation_admission=DirectAdmission())
     monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.test")
+    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", True)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     app = Flask(__name__)

@@ -210,7 +210,10 @@ export function createDocumentCompilationPublicationCoordinator({
       const initialAttempt = validateAttempt(input.execution.attempt);
       const deletionToken = await captureCompilationDeletionFence(deletionFence, initialAttempt);
       const assertWritable = () => assertCompilationDeletionFence(deletionFence, deletionToken);
-      const candidateId = normalizeUuid(input.candidateId);
+      const proposedCandidateId = normalizeUuid(input.candidateId);
+      const candidateId = initialAttempt.candidatePublicationId
+        ? normalizeUuid(initialAttempt.candidatePublicationId)
+        : proposedCandidateId;
       const createdAt = DateTimeSchema.parse(input.createdAt);
       const projectionVersion = positiveInteger(input.projectionVersion, "projectionVersion");
       const fingerprintMaterial = ProjectionSetFingerprintMaterialSchema.parse(
@@ -249,20 +252,48 @@ export function createDocumentCompilationPublicationCoordinator({
         projectionVersion,
         tenantId: initialAttempt.tenantId,
       });
-      assertCandidateIdentity(candidate, {
+      const reusesCurrentPublication = await isCurrentPublishedSnapshot(publications, candidate, {
         attempt: initialAttempt,
-        candidateId,
         fingerprint,
         projectionVersion,
       });
+      if (!reusesCurrentPublication) {
+        assertCandidateIdentity(candidate, {
+          attempt: initialAttempt,
+          candidateId: proposedCandidateId,
+          fingerprint,
+          projectionVersion,
+        });
+      }
 
       let attempt = validateAttempt(input.execution.attempt);
       assertSameAttemptScope(attempt, initialAttempt);
       if (!attempt.candidatePublicationId) {
         await assertWritable();
-        attempt = await bindCandidate(input.execution, attempt, candidateId, fingerprint);
+        attempt = await bindCandidate(input.execution, attempt, candidate.id, fingerprint);
       } else {
-        assertAttemptCandidateBinding(attempt, candidateId, fingerprint);
+        assertAttemptCandidateBinding(attempt, candidate.id, fingerprint);
+      }
+
+      if (reusesCurrentPublication) {
+        assertExecutionFence(input.execution);
+        await assertWritable();
+        attempt = validateAttempt(await input.execution.heartbeat());
+        assertSameAttemptScope(attempt, initialAttempt);
+        assertAttemptCandidateBinding(attempt, candidate.id, fingerprint);
+        if (attempt.checkpoint === "nodes_generated") {
+          attempt = await input.execution.advance({
+            candidateFingerprint: fingerprint,
+            candidatePublicationId: candidate.id,
+            checkpoint: "projection_built",
+          });
+        }
+        return {
+          attempt,
+          candidate,
+          inheritedMemberCount: 0,
+          replacedMemberCount: 0,
+        };
       }
 
       assertExecutionFence(input.execution);
@@ -345,13 +376,20 @@ export function createDocumentCompilationPublicationCoordinator({
           "Document compilation candidate publication was not found",
         );
       }
-      assertCandidateIdentity(candidate, {
-        allowedStatuses: ["candidate", "published"],
+      const reusesCurrentPublication = await isCurrentPublishedSnapshot(publications, candidate, {
         attempt: initialAttempt,
-        candidateId: candidatePublicationId,
         fingerprint: candidateFingerprint,
         projectionVersion: candidate.projectionVersion,
       });
+      if (!reusesCurrentPublication) {
+        assertCandidateIdentity(candidate, {
+          allowedStatuses: ["candidate", "published"],
+          attempt: initialAttempt,
+          candidateId: candidatePublicationId,
+          fingerprint: candidateFingerprint,
+          projectionVersion: candidate.projectionVersion,
+        });
+      }
 
       try {
         if (candidate.status === "published") {
@@ -360,7 +398,8 @@ export function createDocumentCompilationPublicationCoordinator({
             !published ||
             published.id !== candidatePublicationId ||
             published.fingerprint !== candidateFingerprint ||
-            published.headRevision !== initialAttempt.baseHeadRevision + 1
+            published.headRevision !==
+              initialAttempt.baseHeadRevision + (reusesCurrentPublication ? 0 : 1)
           ) {
             throw new DocumentCompilationCandidateIdentityConflictError(
               "Published document compilation candidate is not the expected publication head",
@@ -512,6 +551,33 @@ export function createDocumentCompilationPublicationCoordinator({
       }
     },
   };
+}
+
+async function isCurrentPublishedSnapshot(
+  publications: Pick<ProjectionSetPublicationRepository, "getPublished">,
+  candidate: ProjectionSetPublication,
+  expected: {
+    readonly attempt: DocumentCompilationAttempt;
+    readonly fingerprint: string;
+    readonly projectionVersion: number;
+  },
+): Promise<boolean> {
+  if (
+    candidate.status !== "published" ||
+    candidate.fingerprint !== expected.fingerprint ||
+    candidate.projectionVersion !== expected.projectionVersion
+  ) {
+    return false;
+  }
+  const published = await publications.getPublished({
+    knowledgeSpaceId: expected.attempt.knowledgeSpaceId,
+    tenantId: expected.attempt.tenantId,
+  });
+  return (
+    published?.id === candidate.id &&
+    published.fingerprint === expected.fingerprint &&
+    published.headRevision === expected.attempt.baseHeadRevision
+  );
 }
 
 async function ensureExclusiveCandidate(

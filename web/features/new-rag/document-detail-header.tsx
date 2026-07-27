@@ -1,8 +1,5 @@
-import type {
-  LogicalDocument,
-  LogicalDocumentRevision,
-} from '@dify/contracts/knowledge-fs/types.gen'
 import type { RefObject } from 'react'
+import type { LogicalDocument, LogicalDocumentRevision } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Select,

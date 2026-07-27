@@ -3473,6 +3473,89 @@ describe("document write gateway integration", () => {
     ).toThrow("Bulk document reindex maxBulkReindexDocuments must be at least 1");
   });
 
+  it("resolves a logical document id to its active asset for reindexing", async () => {
+    const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const logicalDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3d01";
+    const assetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3a01";
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
+    const asset = await assets.create({
+      filename: "Logical.md",
+      id: assetId,
+      knowledgeSpaceId,
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/logical.md",
+      sha256: "a".repeat(64),
+      sizeBytes: 1,
+    });
+    const logicalDocuments = createInMemoryLogicalDocumentRepository({
+      canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      generateDocumentId: () => logicalDocumentId,
+      maxDocuments: 10,
+      maxRevisionsPerDocument: 2,
+    });
+    const candidate = await logicalDocuments.createCandidateRevision({
+      contentHash: "a".repeat(64),
+      documentAssetId: asset.id,
+      documentAssetVersion: asset.version,
+      knowledgeSpaceId,
+      mimeType: asset.mimeType,
+      now: "2026-07-27T00:00:00.000Z",
+      sizeBytes: asset.sizeBytes,
+      systemMetadata: {},
+      tenantId: "tenant-1",
+      title: asset.filename,
+    });
+    await logicalDocuments.activateRevision({
+      documentId: logicalDocumentId,
+      expectedActiveRevision: null,
+      expectedRowVersion: 0,
+      knowledgeSpaceId,
+      now: "2026-07-27T00:01:00.000Z",
+      revision: candidate.revision.revision,
+      tenantId: "tenant-1",
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "logical-reindex-job-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+    });
+    const app = createKnowledgeGateway({
+      adapter,
+      auth: createTestAuthVerifier(),
+      documentAssets: assets,
+      documentCompilationJobs: compilationJobs,
+      generateBulkUploadId: () => "logical-reindex-bulk-1",
+      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+        generateId: () => knowledgeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+      logicalDocuments,
+    });
+    await app.request("/knowledge-spaces", {
+      body: JSON.stringify({ name: "Logical reindex", slug: "logical-reindex" }),
+      headers: { ...bearer(writeToken), "content-type": "application/json" },
+      method: "POST",
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/documents/bulk/reindex`,
+      {
+        body: JSON.stringify({ documentIds: [logicalDocumentId] }),
+        headers: { ...bearer(writeToken), "content-type": "application/json" },
+        method: "POST",
+      },
+    );
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      items: [{ asset: { id: assetId }, status: "queued" }],
+      total: 1,
+    });
+  });
+
   it("reports tenant-scoped bulk job progress across queued and completed operations", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const assets = createInMemoryDocumentAssetRepository({

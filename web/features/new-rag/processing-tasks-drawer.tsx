@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  DocumentProcessingTask,
-  LogicalDocument,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { DocumentProcessingTask, LogicalDocument } from './document-models'
 import type { TaskProgressStore } from './task-progress-store'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -22,8 +19,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { consoleQuery } from '@/service/client'
+import { consoleClient } from '@/service/client'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
+import { documentTaskFromApi } from './document-models'
 
 type TaskAction = 'cancel' | 'retry'
 
@@ -144,12 +142,40 @@ export function ProcessingTasksDrawer({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const cancelTask = useMutation(
-    consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
-  )
-  const retryTask = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
-  )
+  const cancelTask = useMutation({
+    mutationFn: async (task: DocumentProcessingTask) => {
+      const updated = documentTaskFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post(
+          {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              task_id: task.id,
+              task_kind: task.taskKind ?? 'document',
+            },
+          },
+        ),
+      )
+      if (!updated) throw new Error('KnowledgeFS returned a non-document task')
+      return updated
+    },
+  })
+  const retryTask = useMutation({
+    mutationFn: async (task: DocumentProcessingTask) => {
+      const updated = documentTaskFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
+          {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              task_id: task.id,
+              task_kind: task.taskKind ?? 'document',
+            },
+          },
+        ),
+      )
+      if (!updated) throw new Error('KnowledgeFS returned a non-document task')
+      return updated
+    },
+  })
   const pendingActionsRef = useRef(new Set<string>())
   const drawerCloseButtonRef = useRef<HTMLButtonElement>(null)
   const taskQueryRetryButtonRef = useRef<HTMLButtonElement>(null)
@@ -322,17 +348,8 @@ export function ProcessingTasksDrawer({
       return next
     })
     try {
-      const input = {
-        params: {
-          documentId: task.documentId,
-          id: knowledgeSpaceId,
-          taskId: task.id,
-        },
-      }
       const updated =
-        action === 'cancel'
-          ? await cancelTask.mutateAsync(input)
-          : await retryTask.mutateAsync(input)
+        action === 'cancel' ? await cancelTask.mutateAsync(task) : await retryTask.mutateAsync(task)
       if (
         !actionResultsValidRef.current ||
         taskLifecycleGenerationsRef.current.get(task.id)?.generation !== actionLifecycleGeneration

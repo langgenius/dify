@@ -64,6 +64,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCapabilityResponse,
+    KnowledgeFSCrawlPreviewPageListQuery,
+    KnowledgeFSCrawlPreviewPageListResponse,
+    KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSCredentialCreatePayload,
     KnowledgeFSCredentialCreateResponse,
     KnowledgeFSCredentialListResponse,
@@ -86,6 +89,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSExternalAccessResponse,
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSJWKSResponse,
+    KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
     KnowledgeFSOverviewBaseStatsResponse,
@@ -111,6 +115,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSmallFileUploadResponse,
+    KnowledgeFSSourceConnectionCreatePayload,
+    KnowledgeFSSourceConnectionListQuery,
+    KnowledgeFSSourceConnectionListResponse,
+    KnowledgeFSSourceConnectionRefreshPayload,
+    KnowledgeFSSourceConnectionResponse,
     KnowledgeFSSourceCrawlResponse,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceCredentialTestResponse,
@@ -124,8 +133,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceListResponse,
     KnowledgeFSSourcePagesQuery,
     KnowledgeFSSourcePagesResponse,
+    KnowledgeFSSourceProviderListResponse,
     KnowledgeFSSourceResponse,
+    KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowCancelPayload,
+    KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSSpaceDetailResponse,
@@ -143,6 +157,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
 )
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, create_knowledge_fs_runtime
 from services.knowledge_fs_capability import (
@@ -164,6 +179,7 @@ register_schema_models(
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSExternalAccessPayload,
+    KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSMembersReplacePayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSResearchTaskPartialsQuery,
@@ -171,6 +187,10 @@ register_schema_models(
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSourceCreatePayload,
+    KnowledgeFSSourceConnectionCreatePayload,
+    KnowledgeFSSourceConnectionListQuery,
+    KnowledgeFSSourceConnectionRefreshPayload,
+    KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSSourceDeletePayload,
     KnowledgeFSSourceDeleteQuery,
     KnowledgeFSSourceFilesQuery,
@@ -178,6 +198,8 @@ register_schema_models(
     KnowledgeFSSourceImportPagesPayload,
     KnowledgeFSSourcePagesQuery,
     KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceSyncPolicyPayload,
+    KnowledgeFSSourceWorkflowCancelPayload,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListQuery,
     KnowledgeFSSpaceUpdatePayload,
@@ -208,6 +230,7 @@ register_response_schema_models(
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessResponse,
     KnowledgeFSJWKSResponse,
+    KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSQueryResponse,
     KnowledgeFSQueryAdmissionResponse,
@@ -218,6 +241,9 @@ register_response_schema_models(
     KnowledgeFSResearchTaskListResponse,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSmallFileUploadResponse,
+    KnowledgeFSCrawlPreviewPageListResponse,
+    KnowledgeFSSourceConnectionListResponse,
+    KnowledgeFSSourceConnectionResponse,
     KnowledgeFSSourceListResponse,
     KnowledgeFSSourceCrawlResponse,
     KnowledgeFSSourceCredentialTestResponse,
@@ -225,6 +251,9 @@ register_response_schema_models(
     KnowledgeFSSourceImportResponse,
     KnowledgeFSSourcePagesResponse,
     KnowledgeFSSourceResponse,
+    KnowledgeFSSourceProviderListResponse,
+    KnowledgeFSSourceSyncPolicyResponse,
+    KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSSpaceDetailResponse,
     KnowledgeFSSpaceListResponse,
@@ -255,6 +284,8 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSSpaceNotFoundHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSOperationUnavailableHTTPError() from exc
+        except KnowledgeFSProductResourceNotFoundError as exc:
+            raise NotFound() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSUpstreamUnavailableHTTPError() from exc
         except KnowledgeFSOperationRateLimitExceededError as exc:
@@ -288,6 +319,14 @@ _SMALL_FILE_UPLOAD_PARAMS = {
         "in": "formData",
         "type": "file",
         "required": True,
+    }
+}
+_IDEMPOTENCY_HEADER_PARAMS = {
+    "Idempotency-Key": {
+        "description": "Stable key used to make the mutation safe to retry",
+        "in": "header",
+        "required": True,
+        "type": "string",
     }
 }
 _SMALL_FILE_MULTIPART_OVERHEAD_MAX_BYTES = 64 * 1024
@@ -822,6 +861,52 @@ class KnowledgeFSSpaceOverviewHealthApi(Resource):
         return dump_response(KnowledgeFSOverviewHealthResponse, result)
 
 
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents")
+class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical documents",
+        console_ns.models[KnowledgeFSLogicalDocumentListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSCursorQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_logical_documents(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+        )
+        return dump_response(KnowledgeFSLogicalDocumentListResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>")
+class KnowledgeFSSpaceLogicalDocumentApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical document",
+        console_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, document_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_logical_document(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+        )
+        return dump_response(KnowledgeFSLogicalDocumentResponse, result)
+
+
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents")
 class KnowledgeFSSpaceDocumentsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
@@ -866,6 +951,7 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")
 class KnowledgeFSSpaceBulkDocumentsApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSBulkDocumentDeletePayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "KnowledgeFS document deletions accepted",
@@ -953,6 +1039,7 @@ class KnowledgeFSSpaceDocumentApi(Resource):
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "KnowledgeFS document deletion accepted",
@@ -1225,6 +1312,96 @@ class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
         return dump_response(KnowledgeFSBackgroundTaskResponse, result)
 
 
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-providers")
+class KnowledgeFSSourceProvidersApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source providers",
+        console_ns.models[KnowledgeFSSourceProviderListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.list_source_providers(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+        )
+        return dump_response(KnowledgeFSSourceProviderListResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-connections")
+class KnowledgeFSSourceConnectionsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceConnectionListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source connections",
+        console_ns.models[KnowledgeFSSourceConnectionListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSSourceConnectionListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_source_connections(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSSourceConnectionListResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionCreatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS source connection created",
+        console_ns.models[KnowledgeFSSourceConnectionResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_source_connection(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSSourceConnectionCreatePayload),
+        )
+        return dump_response(KnowledgeFSSourceConnectionResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh")
+class KnowledgeFSSourceConnectionRefreshApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSSourceConnectionRefreshPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source connection refreshed",
+        console_ns.models[KnowledgeFSSourceConnectionResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, connection_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.refresh_source_connection(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            connection_id=connection_id,
+            payload=_payload(KnowledgeFSSourceConnectionRefreshPayload),
+        )
+        return dump_response(KnowledgeFSSourceConnectionResponse, result)
+
+
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources")
 class KnowledgeFSSpaceSourcesApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
@@ -1303,7 +1480,7 @@ class KnowledgeFSSpaceSourceApi(Resource):
         return dump_response(KnowledgeFSSourceResponse, result)
 
     @console_ns.expect(console_ns.models[KnowledgeFSSourceDeletePayload.__name__])
-    @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery))
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery) | _IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "KnowledgeFS source deletion accepted",
@@ -1347,10 +1524,13 @@ class KnowledgeFSSpaceSourceTestApi(Resource):
         return dump_response(KnowledgeFSSourceCredentialTestResponse, result)
 
 
-@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl")
-class KnowledgeFSSpaceSourceCrawlApi(Resource):
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync")
+class KnowledgeFSSpaceSourceSyncApi(Resource):
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
-        HTTPStatus.OK, "KnowledgeFS source crawl", console_ns.models[KnowledgeFSSourceCrawlResponse.__name__]
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS source sync accepted",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1358,10 +1538,201 @@ class KnowledgeFSSpaceSourceCrawlApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str, source_id: str):
         actor_id, tenant_id = _actor()
-        result = _console_services().facade.crawl_source(
-            tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id, source_id=source_id
+        result = _console_services().facade.sync_source(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            idempotency_key=_idempotency_key(),
         )
-        return dump_response(KnowledgeFSSourceCrawlResponse, result)
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview")
+class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS source crawl preview accepted",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.preview_source_crawl(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy")
+class KnowledgeFSSpaceSourceSyncPolicyApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source sync policy",
+        console_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_source_sync_policy(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+        )
+        return dump_response(KnowledgeFSSourceSyncPolicyResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSSourceSyncPolicyPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source sync policy updated",
+        console_ns.models[KnowledgeFSSourceSyncPolicyResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def put(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.update_source_sync_policy(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=_payload(KnowledgeFSSourceSyncPolicyPayload),
+        )
+        return dump_response(KnowledgeFSSourceSyncPolicyResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>")
+class KnowledgeFSSourceWorkflowApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source workflow",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_source_workflow(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel")
+class KnowledgeFSSourceWorkflowCancelApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSSourceWorkflowCancelPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source workflow canceled",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.cancel_source_workflow(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+            payload=_payload(KnowledgeFSSourceWorkflowCancelPayload),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry")
+class KnowledgeFSSourceWorkflowRetryApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS source workflow retried",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.retry_source_workflow(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages")
+class KnowledgeFSSourceWorkflowPagesApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSCrawlPreviewPageListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS crawl preview pages",
+        console_ns.models[KnowledgeFSCrawlPreviewPageListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSCrawlPreviewPageListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_crawl_preview_pages(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSCrawlPreviewPageListResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection")
+class KnowledgeFSSourceWorkflowSelectionApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSCrawlPreviewSelectionPayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS crawl preview selection accepted",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.select_crawl_preview_pages(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+            payload=_payload(KnowledgeFSCrawlPreviewSelectionPayload),
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/pages")
@@ -1760,7 +2131,7 @@ class KnowledgeFSSpaceUploadCapabilitiesApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         direct_origin = dify_config.KNOWLEDGE_FS_DIRECT_ORIGIN
-        if direct_origin is None:
+        if direct_origin is None or not dify_config.KNOWLEDGE_FS_DIRECT_UPLOAD_READY:
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS direct upload is not configured")
         actor_id, tenant_id = _actor()
         payload = _payload(KnowledgeFSUploadCapabilityPayload)

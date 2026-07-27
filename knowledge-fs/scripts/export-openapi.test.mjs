@@ -54,6 +54,23 @@ test("OpenAPI export is hermetic when invoked from a production environment", ()
       document.paths["/upload-sessions/{id}/abort"].post.operationId,
       "abortUploadSession",
     );
+    assert.equal(
+      document.paths["/knowledge-spaces/{id}/sources/{sourceId}/sync"].post.operationId,
+      "createSourceSyncWorkflow",
+    );
+    assert.equal(document.paths["/source-providers"].get.operationId, "listSourceProviders");
+    assert.equal(
+      document.paths["/knowledge-spaces/{id}/source-connections"].post.operationId,
+      "createSourceConnection",
+    );
+    assert.equal(
+      document.paths["/knowledge-spaces/{id}/sources/{sourceId}/crawl-preview"].post.operationId,
+      "createSourceCrawlPreviewWorkflow",
+    );
+    assert.equal(
+      document.paths["/knowledge-spaces/{id}/source-workflows/{runId}/selection"].post.operationId,
+      "selectCrawlPreviewPages",
+    );
     for (const legacyPath of [
       "/knowledge-spaces/{id}/access-policy",
       "/knowledge-spaces/{id}/members",

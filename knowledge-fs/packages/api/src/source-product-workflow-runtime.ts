@@ -271,6 +271,7 @@ export function createSourceProductWorkflowRuntime(input: {
       ) {
         await cleanupStagedContent(input, execution, maxCleanupBatchesPerRun);
       }
+      await activateImportedPreviewSource(input, execution, source);
       await execution.assertActive();
       await input.repository.complete({
         fence: fence(execution.run()),
@@ -595,6 +596,32 @@ async function cleanupStagedContent(
     "SOURCE_WORKFLOW_CLEANUP_INCOMPLETE",
     "Staged source content cleanup exceeded its bounded batch budget and must be retried",
   );
+}
+
+async function activateImportedPreviewSource(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source | null,
+): Promise<void> {
+  const run = execution.run();
+  if (
+    !source ||
+    run.kind !== "crawl-preview" ||
+    selectedPageIds(run).length === 0 ||
+    source.status !== "disabled" ||
+    source.metadata.preview !== true
+  ) {
+    return;
+  }
+  await execution.assertActive();
+  const activated = await input.sources.update({
+    expectedVersion: source.version,
+    id: source.id,
+    knowledgeSpaceId: run.knowledgeSpaceId,
+    metadata: { ...source.metadata, preview: false },
+    status: "active",
+  });
+  if (!activated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
 }
 
 async function processCrawlPreview(

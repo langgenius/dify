@@ -69,24 +69,28 @@ export function NewKnowledgeList({
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useState('')
   const knowledgeSpacesQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.listKnowledgeSpaces.infiniteOptions({
+    consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
       input: (pageParam) => ({
         query: {
           limit: PAGE_SIZE,
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          page: pageParam,
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-      initialPageParam: null as string | null,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
     }),
   )
-  const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.items) ?? []
+  const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []
   const normalizedSearchValue = searchValue.trim().toLocaleLowerCase()
   const visibleKnowledgeSpaces = normalizedSearchValue
     ? knowledgeSpaces.filter(
         (knowledgeSpace) =>
-          knowledgeSpace.name.toLocaleLowerCase().includes(normalizedSearchValue) ||
-          knowledgeSpace.description?.toLocaleLowerCase().includes(normalizedSearchValue),
+          knowledgeSpace.technical_summary?.name
+            .toLocaleLowerCase()
+            .includes(normalizedSearchValue) ||
+          knowledgeSpace.technical_summary?.description
+            ?.toLocaleLowerCase()
+            .includes(normalizedSearchValue),
       )
     : knowledgeSpaces
 
@@ -175,7 +179,10 @@ export function NewKnowledgeList({
           <>
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
               {visibleKnowledgeSpaces.map((knowledgeSpace) => (
-                <KnowledgeSpaceCard key={knowledgeSpace.id} knowledgeSpace={knowledgeSpace} />
+                <KnowledgeSpaceCard
+                  key={knowledgeSpace.control_space_id}
+                  knowledgeSpace={knowledgeSpace}
+                />
               ))}
             </ul>
             {knowledgeSpacesQuery.isFetchNextPageError ? (

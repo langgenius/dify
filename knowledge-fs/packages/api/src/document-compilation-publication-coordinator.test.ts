@@ -288,6 +288,90 @@ describe("document compilation publication coordinator", () => {
     expect(compose).not.toHaveBeenCalled();
   });
 
+  it("completes a rebuild as a no-op when it resolves to the current published snapshot", async () => {
+    const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+    const execution = fakeExecution(attempt());
+    const members = createInMemoryProjectionSetPublicationMemberRepository({
+      attempts: {
+        get: async (id) => (id === execution.context.attempt.id ? execution.context.attempt : null),
+      },
+      maxListLimit: 10,
+      maxMembers: 10,
+      publications,
+    });
+    const compose = vi.spyOn(members, "composeDocumentCandidate");
+    const material = fingerprintMaterial();
+    const fingerprint = await buildProjectionSetFingerprint(material);
+    await publications.createCandidate({
+      createdAt: now,
+      fingerprint,
+      id: conflictingPublicationId,
+      knowledgeSpaceId,
+      metadata: {
+        [DocumentCompilationCandidateMetadataKey]: {
+          attemptId: conflictingPublicationId,
+        },
+      },
+      projectionVersion: 3,
+      tenantId,
+    });
+    await publications.publish({
+      expectedHeadRevision: 0,
+      fingerprint,
+      knowledgeSpaceId,
+      tenantId,
+      updatedAt: now,
+    });
+    const coordinator = createDocumentCompilationPublicationCoordinator({
+      maxComponents: 100,
+      members,
+      publications,
+      validator: allowingValidator(),
+    });
+
+    await expect(
+      coordinator.composeCandidate({
+        candidateId: candidatePublicationId,
+        componentReceipt: replacementReceipt(),
+        createdAt: now,
+        execution: execution.context,
+        fingerprintMaterial: material,
+        projectionVersion: 3,
+      }),
+    ).resolves.toMatchObject({
+      attempt: {
+        candidateFingerprint: fingerprint,
+        candidatePublicationId: conflictingPublicationId,
+        checkpoint: "projection_built",
+      },
+      candidate: { id: conflictingPublicationId, status: "published" },
+      inheritedMemberCount: 0,
+      replacedMemberCount: 0,
+    });
+    expect(compose).not.toHaveBeenCalled();
+
+    await expect(
+      coordinator.evaluateAndPublishCandidate({
+        evaluator: {
+          evaluate: async () => {
+            throw new Error("an identical published snapshot must not be evaluated again");
+          },
+        },
+        execution: execution.context,
+        updatedAt: now,
+      }),
+    ).resolves.toMatchObject({
+      attempt: { checkpoint: "smoke_eval_passed" },
+      evaluation: "previously-passed",
+      publication: { headRevision: 1, published: { id: conflictingPublicationId } },
+    });
+    await expect(publications.getPublished({ knowledgeSpaceId, tenantId })).resolves.toMatchObject({
+      fingerprint,
+      headRevision: 1,
+      id: conflictingPublicationId,
+    });
+  });
+
   it("requires server-side component validation before candidate creation or member mutation", async () => {
     const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
     const members = createInMemoryProjectionSetPublicationMemberRepository({

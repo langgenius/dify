@@ -1,8 +1,8 @@
 'use client'
 
-import type { LogicalDocument } from '@dify/contracts/knowledge-fs/types.gen'
 import type { FocusEventHandler } from 'react'
 import type { DocumentDisplayStatus } from './document-model'
+import type { LogicalDocument } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -310,6 +310,7 @@ export function DocumentsList({
   allSelected,
   attentionTaskBadge,
   canEdit,
+  canUpload,
   completingResults,
   documents,
   filter,
@@ -340,12 +341,14 @@ export function DocumentsList({
   tasksPending,
   tasksButtonLabel,
   tasksLiveStatus,
+  uploadRestrictionReasonId,
   uploading,
 }: {
   activeTaskCount: number
   allSelected: boolean
   attentionTaskBadge?: string
   canEdit: boolean
+  canUpload: boolean
   completingResults: boolean
   documents: LogicalDocument[]
   filter: DocumentFilter
@@ -376,6 +379,7 @@ export function DocumentsList({
   tasksPending: boolean
   tasksButtonLabel: string
   tasksLiveStatus: string
+  uploadRestrictionReasonId?: string
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -455,9 +459,9 @@ export function DocumentsList({
         <Button
           variant="primary"
           aria-busy={uploading}
-          disabled={!canEdit}
+          disabled={!canUpload}
           loading={uploading}
-          aria-describedby={!canEdit ? readOnlyReasonId : undefined}
+          aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
           onClick={onAddDocument}
         >
           <span aria-hidden className="i-ri-add-line size-4" />

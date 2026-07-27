@@ -15,7 +15,12 @@ import {
 } from "@knowledge/core";
 
 import { deterministicChildId } from "./api-shared-utils";
-import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
+import {
+  nonnegativeSafeIntegerColumn,
+  numberColumn,
+  optionalStringColumn,
+  stringColumn,
+} from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonArrayColumn, jsonObjectColumn } from "./json-utils";
 import {
@@ -745,9 +750,9 @@ async function readLockedDatabasePageIndex(
     ) as typeof PageIndexTokenizerVersion,
   };
   return {
-    actualNodeCount: numberColumn(manifestRow, "actual_node_count"),
-    actualTermCount: numberColumn(manifestRow, "actual_term_count"),
-    invalidTermCount: numberColumn(manifestRow, "invalid_term_count"),
+    actualNodeCount: nonnegativeSafeIntegerColumn(manifestRow, "actual_node_count"),
+    actualTermCount: nonnegativeSafeIntegerColumn(manifestRow, "actual_term_count"),
+    invalidTermCount: nonnegativeSafeIntegerColumn(manifestRow, "invalid_term_count"),
     manifest,
   };
 }

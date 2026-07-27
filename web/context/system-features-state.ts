@@ -17,3 +17,7 @@ export const deploymentEditionAtom = atom((get) => {
 export const brandingEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).branding.enabled
 })
+
+export const knowledgeFsUploadEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).knowledge_fs_upload_enabled
+})

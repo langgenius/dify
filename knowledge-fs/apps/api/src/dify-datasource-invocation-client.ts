@@ -38,7 +38,11 @@ export function createDifyDatasourceInvocationClient(input: {
         case "get_website_crawl":
           yield* input.client.getWebsiteCrawl({
             ...common,
-            datasourceParameters: withCrawlUrl(config.parameters, invocation.source.uri),
+            datasourceParameters: withCrawlOptions(
+              config.parameters,
+              invocation.source,
+              invocation.source.uri,
+            ),
           });
           return;
         case "get_online_document_pages":
@@ -143,6 +147,24 @@ function withCrawlUrl(parameters: Record<string, unknown>, uri: string): Record<
   return typeof parameters.url === "string" && parameters.url.trim()
     ? parameters
     : { ...parameters, url: uri };
+}
+
+function withCrawlOptions(
+  parameters: Record<string, unknown>,
+  source: Source,
+  uri: string,
+): Record<string, unknown> {
+  const crawlOptions = plainObject(source.metadata.crawlOptions);
+  const includeSubpages = crawlOptions.includeSubpages;
+  const limit = crawlOptions.limit;
+  return withCrawlUrl(
+    {
+      ...parameters,
+      ...(typeof includeSubpages === "boolean" ? { crawl_subpages: includeSubpages } : {}),
+      ...(Number.isSafeInteger(limit) && Number(limit) > 0 ? { limit } : {}),
+    },
+    uri,
+  );
 }
 
 function decodeNextPageParameters(token: string): Record<string, unknown> {

@@ -212,11 +212,7 @@ class KnowledgeFSProductService:
             trace_id=str(uuid.uuid4()),
         )
         item = _list_item(space, summaries=summaries, permission_keys=authorized.permission_keys)
-        return KnowledgeFSSpaceDetailResponse(
-            **item.model_dump(),
-            created_at=space.created_at,
-            updated_at=space.updated_at,
-        )
+        return KnowledgeFSSpaceDetailResponse(**item.model_dump())
 
     def require_product_routes(self, *, tenant_id: str) -> None:
         self._cutover_gate.require_product_routes(tenant_id=tenant_id)
@@ -308,6 +304,7 @@ def _list_item(
         technical_status = "available"
     return KnowledgeFSSpaceListItemResponse(
         control_space_id=space.id,
+        created_at=space.created_at,
         state=space.state,
         visibility=space.visibility,
         owner_account_id=space.owner_account_id,
@@ -316,6 +313,7 @@ def _list_item(
         permission_keys=list(permission_keys),
         technical_status=technical_status,
         technical_summary=summary,
+        updated_at=space.updated_at,
     )
 
 

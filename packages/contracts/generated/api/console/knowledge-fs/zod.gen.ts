@@ -3,16 +3,61 @@
 import * as z from 'zod'
 
 /**
+ * KnowledgeFSBackgroundTaskResponse
+ */
+export const zKnowledgeFsBackgroundTaskResponse = z.object({
+  can_cancel: z.boolean(),
+  can_retry: z.boolean(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  document_id: z.string().nullish(),
+  document_revision: z.int().gte(1).nullish(),
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  operation: z.enum([
+    'document_delete',
+    'document_processing',
+    'document_reindex',
+    'document_upload',
+    'source_bulk',
+    'source_crawl_import',
+    'source_crawl_preview',
+    'source_online_document_import',
+    'source_online_drive_import',
+    'source_sync',
+  ]),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_percent: z.int().gte(0).lte(100),
+  progress_total: z.int().gte(0),
+  source_id: z.string().nullish(),
+  state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),
+  task_kind: z.enum(['document', 'document_bulk', 'source']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskListResponse
+ */
+export const zKnowledgeFsBackgroundTaskListResponse = z.object({
+  data: z.array(zKnowledgeFsBackgroundTaskResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSBulkJobResponse
  */
 export const zKnowledgeFsBulkJobResponse = z.object({
+  canceled_items: z.int().gte(0),
   completed_items: z.int().gte(0),
   created_at: z.iso.datetime(),
   failed_item_ids: z.array(z.string()),
   failed_items: z.int().gte(0),
   id: z.string(),
   knowledge_space_id: z.string(),
-  status: z.enum(['completed', 'failed', 'running']),
+  status: z.enum(['canceled', 'completed', 'failed', 'running']),
   total_items: z.int().gte(0),
   type: z.enum(['document_delete', 'document_reindex', 'document_upload']),
   updated_at: z.iso.datetime(),
@@ -217,6 +262,89 @@ export const zKnowledgeFsResearchTaskPlanPayload = z.object({
 })
 
 /**
+ * KnowledgeFSSourceConnectionCreatePayload
+ */
+export const zKnowledgeFsSourceConnectionCreatePayload = z.object({
+  authKind: z.enum(['api-key', 'endpoint']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.int(), z.string()])).optional(),
+  credentials: z.record(z.string(), z.unknown()),
+  name: z.string().min(1).max(160),
+  providerId: z.string().min(1).max(128),
+})
+
+/**
+ * KnowledgeFSSourceConnectionResponse
+ */
+export const zKnowledgeFsSourceConnectionResponse = z.object({
+  auth_kind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.int(), z.string()])),
+  created_at: z.iso.datetime(),
+  error_code: z.string().nullish(),
+  expires_at: z.iso.datetime().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  name: z.string(),
+  provider_id: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['active', 'error', 'expired', 'provisioning', 'revoked']),
+  updated_at: z.iso.datetime(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceConnectionListResponse
+ */
+export const zKnowledgeFsSourceConnectionListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceConnectionResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceConnectionRefreshPayload
+ */
+export const zKnowledgeFsSourceConnectionRefreshPayload = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowResponse
+ */
+export const zKnowledgeFsSourceWorkflowResponse = z.object({
+  canceled_at: z.iso.datetime().nullish(),
+  checkpoint: z.string(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  cursor: z.string().nullish(),
+  execution_attempts: z.int().gte(0),
+  id: z.string(),
+  kind: z.string(),
+  knowledge_space_id: z.string(),
+  last_error_code: z.string().nullish(),
+  max_execution_attempts: z.int().gte(1),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_skipped: z.int().gte(0),
+  progress_total: z.int().gte(0).nullish(),
+  source_id: z.string().nullish(),
+  state: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowCancelPayload
+ */
+export const zKnowledgeFsSourceWorkflowCancelPayload = z.object({
+  reason: z.string().max(1000).nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlPreviewSelectionPayload
+ */
+export const zKnowledgeFsCrawlPreviewSelectionPayload = z.object({
+  pageIds: z.array(z.string()).min(1).max(200),
+})
+
+/**
  * KnowledgeFSSourceCreatePayload
  */
 export const zKnowledgeFsSourceCreatePayload = z.object({
@@ -272,6 +400,34 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
   metadata: z.record(z.string(), z.unknown()).nullish(),
   name: z.string().min(1).max(200).nullish(),
   status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceSyncPolicyResponse
+ */
+export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
+  created_at: z.iso.datetime(),
+  custom_interval_seconds: z.int().nullish(),
+  enabled: z.boolean(),
+  expected_source_version: z.int().gte(1),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+  next_run_at: z.iso.datetime().nullish(),
+  revision: z.int().gte(1),
+  source_id: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceSyncPolicyPayload
+ */
+export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  expectedRevision: z.int().gte(0),
+  expectedSourceVersion: z.int().gte(1),
+  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
 })
 
 /**
@@ -447,6 +603,7 @@ export const zKnowledgeFsSpaceDetailResponse = z.object({
  */
 export const zKnowledgeFsSpaceListItemResponse = z.object({
   control_space_id: z.string(),
+  created_at: z.iso.datetime(),
   knowledge_space_id: z.string().nullable(),
   owner_account_id: z.string(),
   permission_keys: z.array(zKnowledgeFsProductPermission),
@@ -454,6 +611,7 @@ export const zKnowledgeFsSpaceListItemResponse = z.object({
   state: zKnowledgeFsControlSpaceState,
   technical_status: z.enum(['available', 'not_ready', 'unavailable']),
   technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
+  updated_at: z.iso.datetime(),
   visibility: zKnowledgeFsControlSpaceVisibility,
 })
 
@@ -604,6 +762,14 @@ export const zKnowledgeFsDocumentRevisionListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSLogicalDocumentListResponse
+ */
+export const zKnowledgeFsLogicalDocumentListResponse = z.object({
+  data: z.array(zKnowledgeFsLogicalDocumentResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSDocumentOutlineNodeResponse
  */
 export const zKnowledgeFsDocumentOutlineNodeResponse = z.object({
@@ -640,6 +806,118 @@ export const zKnowledgeFsDocumentOutlineResponse = z.object({
   parse_artifact_id: z.string(),
   updated_at: z.iso.datetime().nullish(),
   version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSOverviewInventoryDeltaResponse
+ */
+export const zKnowledgeFsOverviewInventoryDeltaResponse = z.object({
+  added_last_7d: z.int().gte(0),
+  total: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSOverviewIndexCoverageResponse
+ */
+export const zKnowledgeFsOverviewIndexCoverageResponse = z.object({
+  indexed: z.int().gte(0),
+  percentage: z.number().gte(0).lte(100),
+  total: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSOverviewSourceCategoriesResponse
+ */
+export const zKnowledgeFsOverviewSourceCategoriesResponse = z.object({
+  crawl: z.int().gte(0),
+  online_documents: z.int().gte(0),
+  online_drives: z.int().gte(0),
+  uploads: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSOverviewInventoryResponse
+ */
+export const zKnowledgeFsOverviewInventoryResponse = z.object({
+  generated_at: z.iso.datetime(),
+  graph_entities: zKnowledgeFsOverviewInventoryDeltaResponse,
+  graph_relations: zKnowledgeFsOverviewInventoryDeltaResponse,
+  index_coverage: zKnowledgeFsOverviewIndexCoverageResponse,
+  knowledge_space_id: z.string(),
+  source_categories: zKnowledgeFsOverviewSourceCategoriesResponse,
+})
+
+/**
+ * KnowledgeFSOverviewQueryOutcomeBucketResponse
+ */
+export const zKnowledgeFsOverviewQueryOutcomeBucketResponse = z.object({
+  answered: z.int().gte(0),
+  end_at: z.iso.datetime(),
+  low_confidence: z.int().gte(0),
+  no_evidence: z.int().gte(0),
+  query_count: z.int().gte(0),
+  start_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSOverviewQueryOutcomeCountsResponse
+ */
+export const zKnowledgeFsOverviewQueryOutcomeCountsResponse = z.object({
+  answer_rate: z.number().gte(0).lte(1),
+  answered: z.int().gte(0),
+  low_confidence: z.int().gte(0),
+  no_evidence: z.int().gte(0),
+  query_count: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSOverviewQueryOutcomesResponse
+ */
+export const zKnowledgeFsOverviewQueryOutcomesResponse = z.object({
+  buckets: z.array(zKnowledgeFsOverviewQueryOutcomeBucketResponse),
+  current: zKnowledgeFsOverviewQueryOutcomeCountsResponse,
+  generated_at: z.iso.datetime(),
+  knowledge_space_id: z.string(),
+  previous: zKnowledgeFsOverviewQueryOutcomeCountsResponse,
+  previous_since: z.iso.datetime(),
+  since: z.iso.datetime(),
+  window: z.enum(['24h', '30d', '7d']),
+})
+
+/**
+ * KnowledgeFSOverviewRateComparisonResponse
+ */
+export const zKnowledgeFsOverviewRateComparisonResponse = z.object({
+  change_percentage_points: z.number(),
+  previous_value: z.number().gte(0).lte(1),
+  value: z.number().gte(0).lte(1),
+})
+
+/**
+ * KnowledgeFSOverviewCountComparisonResponse
+ */
+export const zKnowledgeFsOverviewCountComparisonResponse = z.object({
+  change_rate: z.number().nullable(),
+  previous_value: z.int().gte(0),
+  value: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSOverviewStatsResponse
+ */
+export const zKnowledgeFsOverviewStatsResponse = z.object({
+  answer_rate: zKnowledgeFsOverviewRateComparisonResponse,
+  documents: z.int().gte(0),
+  fresh_source_count: z.int().gte(0),
+  freshness_seconds: z.int().gte(0).nullish(),
+  generated_at: z.iso.datetime(),
+  knowledge_space_id: z.string(),
+  latest_source_sync_at: z.iso.datetime().nullish(),
+  linked_apps: z.int().gte(0),
+  queries: zKnowledgeFsOverviewCountComparisonResponse,
+  source_count: z.int().gte(0),
+  stale_source_count: z.int().gte(0),
+  window: z.enum(['24h', '30d', '7d']),
 })
 
 /**
@@ -802,27 +1080,22 @@ export const zKnowledgeFsProfileModelSelection = z.object({
 })
 
 /**
- * KnowledgeFSCrawledPageResponse
+ * KnowledgeFSCrawlPreviewPageResponse
  */
-export const zKnowledgeFsCrawledPageResponse = z.object({
-  content: z.string(),
+export const zKnowledgeFsCrawlPreviewPageResponse = z.object({
   description: z.string().nullish(),
+  etag: z.string().nullish(),
+  page_id: z.string(),
   source_url: z.string(),
   title: z.string().nullish(),
 })
 
 /**
- * KnowledgeFSSourceCrawlResponse
+ * KnowledgeFSCrawlPreviewPageListResponse
  */
-export const zKnowledgeFsSourceCrawlResponse = z.object({
-  completed: z.int().gte(0).nullish(),
-  failed: z.int().gte(0).nullish(),
-  imported: z.int().gte(0).nullish(),
-  pages: z.array(zKnowledgeFsCrawledPageResponse),
-  replaced: z.int().gte(0).nullish(),
-  skipped: z.int().gte(0).nullish(),
-  status: z.string().nullish(),
-  total: z.int().gte(0).nullish(),
+export const zKnowledgeFsCrawlPreviewPageListResponse = z.object({
+  data: z.array(zKnowledgeFsCrawlPreviewPageResponse),
+  next_cursor: z.string().nullish(),
 })
 
 /**
@@ -1128,6 +1401,36 @@ export const zKnowledgeFsPermissionListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSOverviewHealthComponentResponse
+ */
+export const zKnowledgeFsOverviewHealthComponentResponse = z.object({
+  codes: z.array(z.string()),
+  state: z.enum(['degraded', 'healthy', 'unavailable', 'unknown']),
+})
+
+/**
+ * KnowledgeFSOverviewHealthComponentsResponse
+ */
+export const zKnowledgeFsOverviewHealthComponentsResponse = z.object({
+  index: zKnowledgeFsOverviewHealthComponentResponse,
+  ingestion: zKnowledgeFsOverviewHealthComponentResponse,
+  profile_publication: zKnowledgeFsOverviewHealthComponentResponse,
+  query_availability: zKnowledgeFsOverviewHealthComponentResponse,
+  source_freshness: zKnowledgeFsOverviewHealthComponentResponse,
+  worker_readiness: zKnowledgeFsOverviewHealthComponentResponse,
+})
+
+/**
+ * KnowledgeFSOverviewHealthResponse
+ */
+export const zKnowledgeFsOverviewHealthResponse = z.object({
+  components: zKnowledgeFsOverviewHealthComponentsResponse,
+  generated_at: z.iso.datetime(),
+  knowledge_space_id: z.string(),
+  state: z.enum(['degraded', 'healthy', 'unavailable', 'unknown']),
+})
+
+/**
  * KnowledgeFSProductRerankProfile
  */
 export const zKnowledgeFsProductRerankProfile = z.object({
@@ -1189,6 +1492,38 @@ export const zKnowledgeFsSettingsPayload = z.object({
   embedding: zKnowledgeFsProfileModelSelection.nullish(),
   expectedRevision: z.int().gte(1),
   retrieval: zKnowledgeFsProductRetrievalProfile.nullish(),
+})
+
+/**
+ * KnowledgeFSSourceProviderFieldResponse
+ */
+export const zKnowledgeFsSourceProviderFieldResponse = z.object({
+  description: z.string().nullish(),
+  format: z.enum(['password', 'uri']).nullish(),
+  name: z.string(),
+  required: z.boolean(),
+  secret: z.boolean(),
+  type: z.enum(['boolean', 'integer', 'string']),
+})
+
+/**
+ * KnowledgeFSSourceProviderResponse
+ */
+export const zKnowledgeFsSourceProviderResponse = z.object({
+  auth_kinds: z.array(z.enum(['api-key', 'endpoint', 'oauth2'])),
+  available: z.boolean(),
+  capabilities: z.array(z.enum(['online-document', 'online-drive', 'website-crawl'])),
+  configuration: z.array(zKnowledgeFsSourceProviderFieldResponse),
+  display_name: z.string(),
+  id: z.string(),
+  unavailable_reason: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceProviderListResponse
+ */
+export const zKnowledgeFsSourceProviderListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceProviderResponse),
 })
 
 /**
@@ -1388,6 +1723,47 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAp
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdResponse =
   z.void()
 
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksQuery = z.object({
+  cursor: z.string().min(1).max(8192).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * KnowledgeFS background tasks
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse =
+  zKnowledgeFsBackgroundTaskListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelPath =
+  z.object({
+    control_space_id: z.string(),
+    task_id: z.string(),
+    task_kind: z.string(),
+  })
+
+/**
+ * KnowledgeFS background task canceled
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelResponse =
+  zKnowledgeFsBackgroundTaskResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryPath =
+  z.object({
+    control_space_id: z.string(),
+    task_id: z.string(),
+    task_kind: z.string(),
+  })
+
+/**
+ * KnowledgeFS background task retried
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryResponse =
+  zKnowledgeFsBackgroundTaskResponse
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object({
   control_space_id: z.string(),
   job_id: z.string(),
@@ -1460,6 +1836,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse = zKnowledg
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders = z.object({
+  'Idempotency-Key': z.string(),
+})
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath = z.object({
   control_space_id: z.string(),
 })
@@ -1485,6 +1865,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody =
   zKnowledgeFsDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders = z.object({
+  'Idempotency-Key': z.string(),
+})
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),
@@ -1637,6 +2021,31 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath = z.obje
 export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
   zKnowledgeFsDocumentCompilationJobResponse
 
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+})
+
+/**
+ * KnowledgeFS logical documents
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
+  zKnowledgeFsLogicalDocumentListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical document
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsLogicalDocumentResponse
+
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersBody = zKnowledgeFsMembersReplacePayload
 
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersPath = z.object({
@@ -1648,6 +2057,54 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdMembersPath = z.object({
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   zKnowledgeFsPermissionListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS health
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthResponse =
+  zKnowledgeFsOverviewHealthResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS inventory
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryResponse =
+  zKnowledgeFsOverviewInventoryResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesQuery = z.object({
+  window: z.enum(['24h', '30d', '7d']).optional().default('24h'),
+})
+
+/**
+ * KnowledgeFS query outcomes
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesResponse =
+  zKnowledgeFsOverviewQueryOutcomesResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsQuery = z.object({
+  window: z.enum(['24h', '30d', '7d']).optional().default('24h'),
+})
+
+/**
+ * KnowledgeFS Overview statistics
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsResponse =
+  zKnowledgeFsOverviewStatsResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdPermissionsPath = z.object({
   control_space_id: z.string(),
@@ -1791,6 +2248,130 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse = zKnowledgeFsSettingsResponse
 
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * KnowledgeFS source connections
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  zKnowledgeFsSourceConnectionListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsBody =
+  zKnowledgeFsSourceConnectionCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source connection created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  zKnowledgeFsSourceConnectionResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshBody =
+  zKnowledgeFsSourceConnectionRefreshPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshPath =
+  z.object({
+    connection_id: z.string(),
+    control_space_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS source connection refreshed
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponse =
+  zKnowledgeFsSourceConnectionResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source providers
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse =
+  zKnowledgeFsSourceProviderListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source workflow
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelBody =
+  zKnowledgeFsSourceWorkflowCancelPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source workflow canceled
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * KnowledgeFS crawl preview pages
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse =
+  zKnowledgeFsCrawlPreviewPageListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source workflow retried
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionBody =
+  zKnowledgeFsCrawlPreviewSelectionPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionHeaders =
+  z.object({
+    'Idempotency-Key': z.string(),
+  })
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * KnowledgeFS crawl preview selection accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesPath = z.object({
   control_space_id: z.string(),
 })
@@ -1817,6 +2398,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeF
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody =
   zKnowledgeFsSourceDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders = z.object({
+  'Idempotency-Key': z.string(),
+})
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
   control_space_id: z.string(),
@@ -1858,16 +2443,20 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.ob
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
 
-export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPath = z.object({
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
+  'Idempotency-Key': z.string(),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewPath = z.object({
   control_space_id: z.string(),
   source_id: z.string(),
 })
 
 /**
- * KnowledgeFS source crawl
+ * KnowledgeFS source crawl preview accepted
  */
-export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponse =
-  zKnowledgeFsSourceCrawlResponse
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse =
+  zKnowledgeFsSourceWorkflowResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesPath = z.object({
   control_space_id: z.string(),
@@ -1930,6 +2519,46 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = 
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse =
   zKnowledgeFsSourcePagesResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncHeaders = z.object({
+  'Idempotency-Key': z.string(),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source sync accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source sync policy
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  zKnowledgeFsSourceSyncPolicyResponse
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyBody =
+  zKnowledgeFsSourceSyncPolicyPayload
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS source sync policy updated
+ */
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  zKnowledgeFsSourceSyncPolicyResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestPath = z.object({
   control_space_id: z.string(),
@@ -2029,7 +2658,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdUploadCapabilitiesResponse =
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileBody =
   z.object({
-    file: z.custom<Blob | File>(),
+    file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   })
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFilePath =

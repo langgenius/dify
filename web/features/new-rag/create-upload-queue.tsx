@@ -21,7 +21,7 @@ export type QueuedUpload = {
 function createQueuedUpload(file: File): QueuedUpload {
   return {
     file,
-    id: `${file.name}:${file.size}:${file.lastModified}:${createRequestId()}`,
+    id: createRequestId(),
     issue: documentUploadIssue(file),
   }
 }

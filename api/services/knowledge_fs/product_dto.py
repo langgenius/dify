@@ -354,6 +354,7 @@ class KnowledgeFSOverviewStatsResponse(ResponseModel):
 
 class KnowledgeFSSpaceListItemResponse(ResponseModel):
     control_space_id: str
+    created_at: datetime
     state: KnowledgeFSControlSpaceState
     visibility: KnowledgeFSControlSpaceVisibility
     owner_account_id: str
@@ -362,6 +363,7 @@ class KnowledgeFSSpaceListItemResponse(ResponseModel):
     permission_keys: list[KnowledgeFSProductPermission]
     technical_status: Literal["available", "not_ready", "unavailable"]
     technical_summary: KnowledgeFSTechnicalSummary | None = None
+    updated_at: datetime
 
 
 class KnowledgeFSSpaceListResponse(ResponseModel):
@@ -372,8 +374,7 @@ class KnowledgeFSSpaceListResponse(ResponseModel):
 
 
 class KnowledgeFSSpaceDetailResponse(KnowledgeFSSpaceListItemResponse):
-    created_at: datetime
-    updated_at: datetime
+    pass
 
 
 class KnowledgeFSSpaceCreateResponse(ResponseModel):
@@ -660,6 +661,11 @@ class KnowledgeFSLogicalDocumentResponse(ResponseModel):
     title: str
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
     user_metadata: dict[str, object] = Field(validation_alias=AliasChoices("user_metadata", "userMetadata"))
+
+
+class KnowledgeFSLogicalDocumentListResponse(ResponseModel):
+    data: list[KnowledgeFSLogicalDocumentResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
 class KnowledgeFSDocumentRevisionListResponse(ResponseModel):
@@ -961,6 +967,162 @@ class KnowledgeFSSourceCredentialTestResponse(ResponseModel):
     code: str | None = None
     error: str | None = None
     valid: bool
+
+
+class KnowledgeFSSourceWorkflowResponse(ResponseModel):
+    canceled_at: datetime | None = Field(default=None, validation_alias=AliasChoices("canceled_at", "canceledAt"))
+    checkpoint: str
+    completed_at: datetime | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    cursor: str | None = None
+    execution_attempts: int = Field(ge=0, validation_alias=AliasChoices("execution_attempts", "executionAttempts"))
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    kind: str
+    last_error_code: str | None = Field(default=None, validation_alias=AliasChoices("last_error_code", "lastErrorCode"))
+    max_execution_attempts: int = Field(
+        ge=1, validation_alias=AliasChoices("max_execution_attempts", "maxExecutionAttempts")
+    )
+    progress_completed: int = Field(ge=0, validation_alias=AliasChoices("progress_completed", "progressCompleted"))
+    progress_failed: int = Field(ge=0, validation_alias=AliasChoices("progress_failed", "progressFailed"))
+    progress_skipped: int = Field(ge=0, validation_alias=AliasChoices("progress_skipped", "progressSkipped"))
+    progress_total: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("progress_total", "progressTotal")
+    )
+    source_id: str | None = Field(default=None, validation_alias=AliasChoices("source_id", "sourceId"))
+    state: str
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSSourceProviderFieldResponse(ResponseModel):
+    description: str | None = None
+    format: Literal["password", "uri"] | None = None
+    name: str
+    required: bool
+    secret: bool
+    type: Literal["boolean", "integer", "string"]
+
+
+class KnowledgeFSSourceProviderResponse(ResponseModel):
+    auth_kinds: list[Literal["api-key", "endpoint", "oauth2"]] = Field(
+        validation_alias=AliasChoices("auth_kinds", "authKinds")
+    )
+    available: bool
+    capabilities: list[Literal["website-crawl", "online-document", "online-drive"]]
+    configuration: list[KnowledgeFSSourceProviderFieldResponse]
+    display_name: str = Field(validation_alias=AliasChoices("display_name", "displayName"))
+    id: str
+    unavailable_reason: str | None = Field(
+        default=None, validation_alias=AliasChoices("unavailable_reason", "unavailableReason")
+    )
+
+
+class KnowledgeFSSourceProviderListResponse(ResponseModel):
+    data: list[KnowledgeFSSourceProviderResponse] = Field(validation_alias=AliasChoices("data", "items"))
+
+
+class KnowledgeFSSourceConnectionCreatePayload(BaseModel):
+    auth_kind: Literal["api-key", "endpoint"] = Field(alias="authKind")
+    configuration: dict[str, bool | int | str] = Field(default_factory=dict)
+    credentials: dict[str, object]
+    name: str = Field(min_length=1, max_length=160)
+    provider_id: str = Field(min_length=1, max_length=128, alias="providerId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSSourceConnectionResponse(ResponseModel):
+    auth_kind: Literal["api-key", "endpoint", "oauth2"] = Field(validation_alias=AliasChoices("auth_kind", "authKind"))
+    configuration: dict[str, bool | int | str]
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
+    expires_at: datetime | None = Field(default=None, validation_alias=AliasChoices("expires_at", "expiresAt"))
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    name: str
+    provider_id: str = Field(validation_alias=AliasChoices("provider_id", "providerId"))
+    scopes: list[str]
+    status: Literal["provisioning", "active", "expired", "error", "revoked"]
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+    version: int = Field(ge=1)
+
+
+class KnowledgeFSSourceConnectionListQuery(BaseModel):
+    cursor: str | None = Field(default=None, min_length=1, max_length=4_096)
+    limit: int = Field(default=50, ge=1, le=200)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSSourceConnectionListResponse(ResponseModel):
+    data: list[KnowledgeFSSourceConnectionResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSSourceConnectionRefreshPayload(BaseModel):
+    expected_version: int = Field(ge=1, alias="expectedVersion")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSSourceSyncPolicyResponse(ResponseModel):
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    custom_interval_seconds: int | None = Field(
+        default=None, validation_alias=AliasChoices("custom_interval_seconds", "customIntervalSeconds")
+    )
+    enabled: bool
+    expected_source_version: int = Field(
+        ge=1, validation_alias=AliasChoices("expected_source_version", "expectedSourceVersion")
+    )
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    mode: Literal["provider", "manual", "interval", "custom"]
+    next_run_at: datetime | None = Field(default=None, validation_alias=AliasChoices("next_run_at", "nextRunAt"))
+    revision: int = Field(ge=1)
+    source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSSourceSyncPolicyPayload(BaseModel):
+    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
+    enabled: bool
+    expected_revision: int = Field(ge=0, alias="expectedRevision")
+    expected_source_version: int = Field(ge=1, alias="expectedSourceVersion")
+    mode: Literal["provider", "manual", "interval", "custom"]
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSSourceWorkflowCancelPayload(BaseModel):
+    reason: str | None = Field(default=None, max_length=1_000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSCrawlPreviewPageResponse(ResponseModel):
+    description: str | None = None
+    etag: str | None = None
+    page_id: str = Field(validation_alias=AliasChoices("page_id", "pageId"))
+    source_url: str = Field(validation_alias=AliasChoices("source_url", "sourceUrl"))
+    title: str | None = None
+
+
+class KnowledgeFSCrawlPreviewPageListQuery(BaseModel):
+    cursor: str | None = Field(default=None, min_length=1, max_length=4_096)
+    limit: int = Field(default=50, ge=1, le=200)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSCrawlPreviewPageListResponse(ResponseModel):
+    data: list[KnowledgeFSCrawlPreviewPageResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSCrawlPreviewSelectionPayload(BaseModel):
+    page_ids: list[str] = Field(min_length=1, max_length=200, alias="pageIds")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
 class KnowledgeFSCrawledPageResponse(ResponseModel):
@@ -1468,6 +1630,9 @@ __all__ = [
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
     "KnowledgeFSCapabilityResponse",
+    "KnowledgeFSCrawlPreviewPageListQuery",
+    "KnowledgeFSCrawlPreviewPageListResponse",
+    "KnowledgeFSCrawlPreviewSelectionPayload",
     "KnowledgeFSCredentialCreatePayload",
     "KnowledgeFSCredentialCreateResponse",
     "KnowledgeFSCredentialItemResponse",
@@ -1492,6 +1657,8 @@ __all__ = [
     "KnowledgeFSIdempotencyHeader",
     "KnowledgeFSJWKResponse",
     "KnowledgeFSJWKSResponse",
+    "KnowledgeFSLogicalDocumentListResponse",
+    "KnowledgeFSLogicalDocumentResponse",
     "KnowledgeFSMemberBindingPayload",
     "KnowledgeFSMembersReplacePayload",
     "KnowledgeFSModelIntent",
@@ -1532,6 +1699,11 @@ __all__ = [
     "KnowledgeFSSettingsPayload",
     "KnowledgeFSSettingsResponse",
     "KnowledgeFSSmallFileUploadResponse",
+    "KnowledgeFSSourceConnectionCreatePayload",
+    "KnowledgeFSSourceConnectionListQuery",
+    "KnowledgeFSSourceConnectionListResponse",
+    "KnowledgeFSSourceConnectionRefreshPayload",
+    "KnowledgeFSSourceConnectionResponse",
     "KnowledgeFSSourceCrawlResponse",
     "KnowledgeFSSourceCreatePayload",
     "KnowledgeFSSourceCredentialTestResponse",
@@ -1545,8 +1717,13 @@ __all__ = [
     "KnowledgeFSSourceListResponse",
     "KnowledgeFSSourcePagesQuery",
     "KnowledgeFSSourcePagesResponse",
+    "KnowledgeFSSourceProviderListResponse",
     "KnowledgeFSSourceResponse",
+    "KnowledgeFSSourceSyncPolicyPayload",
+    "KnowledgeFSSourceSyncPolicyResponse",
     "KnowledgeFSSourceUpdatePayload",
+    "KnowledgeFSSourceWorkflowCancelPayload",
+    "KnowledgeFSSourceWorkflowResponse",
     "KnowledgeFSSpaceCreatePayload",
     "KnowledgeFSSpaceCreateResponse",
     "KnowledgeFSSpaceDetailResponse",

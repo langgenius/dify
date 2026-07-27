@@ -1430,7 +1430,10 @@ describe.each(["postgres", "tidb"] as const)(
     it("retries and then completes a fenced external item with redaction", async () => {
       const running = runningJobRow({ checkpoint: "deleting_objects" });
       const itemId = "del-item-1";
-      const pending = itemRow({ id: itemId });
+      const pending = itemRow({
+        id: itemId,
+        ...(dialect === "postgres" ? { ordinal: "1" } : {}),
+      });
       const retryAt = "2026-07-14T12:01:00.000Z";
       const retrying = itemRow({
         attempts: 1,
@@ -1467,7 +1470,7 @@ describe.each(["postgres", "tidb"] as const)(
           now: createdAt,
         }),
       ).resolves.toMatchObject([
-        { attempts: 0, id: itemId, objectKey: pending.object_key, status: "pending" },
+        { attempts: 0, id: itemId, objectKey: pending.object_key, ordinal: 1, status: "pending" },
       ]);
       claimScript.expectDone();
 
@@ -1515,11 +1518,13 @@ describe.each(["postgres", "tidb"] as const)(
         redactedAt: completedAt,
         status: "completed",
       });
-      expect(
-        completeScript.calls.find(
-          (call) => call.operation === "update" && call.tableName === "deletion_job_items",
-        )?.sql,
-      ).toContain("redacted_at");
+      const completeItemSql = completeScript.calls.find(
+        (call) => call.operation === "update" && call.tableName === "deletion_job_items",
+      )?.sql;
+      expect(completeItemSql).toContain("redacted_at");
+      if (dialect === "postgres") {
+        expect(completeItemSql).toContain("THEN CAST($3 AS TIMESTAMPTZ)");
+      }
       completeScript.expectDone();
     });
 

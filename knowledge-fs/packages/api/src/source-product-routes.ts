@@ -71,6 +71,7 @@ const BulkWorkflowItem = z.object({
 
 export const listSourceProvidersRoute = createRoute({
   method: "get",
+  operationId: "listSourceProviders",
   path: "/source-providers",
   responses: {
     200: {
@@ -83,6 +84,7 @@ export const listSourceProvidersRoute = createRoute({
 
 export const createSourceConnectionRoute = createRoute({
   method: "post",
+  operationId: "createSourceConnection",
   path: "/knowledge-spaces/{id}/source-connections",
   request: {
     params: SpaceParams,
@@ -189,6 +191,7 @@ export const completeSourceOAuthRoute = createRoute({
 
 export const listSourceConnectionsRoute = createRoute({
   method: "get",
+  operationId: "listSourceConnections",
   path: "/knowledge-spaces/{id}/source-connections",
   request: {
     params: SpaceParams,
@@ -231,6 +234,7 @@ export const getSourceConnectionRoute = createRoute({
 
 export const refreshSourceConnectionRoute = createRoute({
   method: "post",
+  operationId: "refreshSourceConnection",
   path: "/knowledge-spaces/{id}/source-connections/{connectionId}/refresh",
   request: {
     params: ConnectionParams,
@@ -277,6 +281,7 @@ export const revokeSourceConnectionRoute = createRoute({
 
 export const createSourceSyncWorkflowRoute = createRoute({
   method: "post",
+  operationId: "createSourceSyncWorkflow",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/sync",
   request: { params: SourceParams, headers: IdempotencyHeader },
   responses: {
@@ -294,6 +299,7 @@ export const createSourceSyncWorkflowRoute = createRoute({
 
 export const createSourceCrawlPreviewWorkflowRoute = createRoute({
   method: "post",
+  operationId: "createSourceCrawlPreviewWorkflow",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
   request: { params: SourceParams, headers: IdempotencyHeader },
   responses: {
@@ -374,6 +380,7 @@ export const createSourceImportWorkflowRoute = createRoute({
 
 export const getSourceSyncPolicyRoute = createRoute({
   method: "get",
+  operationId: "getSourceSyncPolicy",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
   request: { params: SourceParams },
   responses: {
@@ -389,6 +396,7 @@ export const getSourceSyncPolicyRoute = createRoute({
 
 export const putSourceSyncPolicyRoute = createRoute({
   method: "put",
+  operationId: "putSourceSyncPolicy",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
   request: {
     params: SourceParams,
@@ -487,6 +495,7 @@ export const listSourceWorkflowsRoute = createRoute({
 
 export const getSourceWorkflowRoute = createRoute({
   method: "get",
+  operationId: "getSourceWorkflow",
   path: "/knowledge-spaces/{id}/source-workflows/{runId}",
   request: { params: WorkflowParams },
   responses: {
@@ -532,6 +541,7 @@ export const listSourceBulkWorkflowItemsRoute = createRoute({
 
 export const cancelSourceWorkflowRoute = createRoute({
   method: "post",
+  operationId: "cancelSourceWorkflow",
   path: "/knowledge-spaces/{id}/source-workflows/{runId}/cancel",
   request: {
     params: WorkflowParams,
@@ -558,6 +568,7 @@ export const cancelSourceWorkflowRoute = createRoute({
 
 export const retrySourceWorkflowRoute = createRoute({
   method: "post",
+  operationId: "retrySourceWorkflow",
   path: "/knowledge-spaces/{id}/source-workflows/{runId}/retry",
   request: { params: WorkflowParams },
   responses: {
@@ -574,6 +585,7 @@ export const retrySourceWorkflowRoute = createRoute({
 
 export const listCrawlPreviewPagesRoute = createRoute({
   method: "get",
+  operationId: "listCrawlPreviewPages",
   path: "/knowledge-spaces/{id}/source-workflows/{runId}/pages",
   request: {
     params: WorkflowParams,
@@ -612,6 +624,7 @@ export const listCrawlPreviewPagesRoute = createRoute({
 
 export const selectCrawlPreviewPagesRoute = createRoute({
   method: "post",
+  operationId: "selectCrawlPreviewPages",
   path: "/knowledge-spaces/{id}/source-workflows/{runId}/selection",
   request: {
     params: WorkflowParams,

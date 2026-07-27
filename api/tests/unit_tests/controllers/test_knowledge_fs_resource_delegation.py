@@ -384,11 +384,11 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
-        "KnowledgeFSSpaceSourceCrawlApi",
+        "KnowledgeFSSpaceSourceSyncApi",
         "post",
         ("space-1", "source-1"),
         "facade",
-        "crawl_source",
+        "sync_source",
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
@@ -987,6 +987,7 @@ def test_console_direct_capabilities_bind_the_authorized_resource(monkeypatch: p
         ]
     )
     monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example/")
+    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", True)
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(
         console_resources,
@@ -1064,6 +1065,16 @@ def test_direct_routes_fail_before_admission_when_origin_is_unconfigured(
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match=message):
         _invoke(resource_module, class_name, "post", "resource-1")
+
+
+def test_console_upload_capability_fails_before_admission_until_upload_is_verified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_ORIGIN", "https://kfs.example")
+    monkeypatch.setattr(console_resources.dify_config, "KNOWLEDGE_FS_DIRECT_UPLOAD_READY", False)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="direct upload"):
+        _invoke(console_resources, "KnowledgeFSSpaceUploadCapabilitiesApi", "post", "space-1")
 
 
 def test_console_resource_helpers_validate_feature_payload_headers_and_query_pairs(
@@ -1194,7 +1205,10 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     from services.knowledge_fs.control_plane_service import KnowledgeFSControlPlaneInvariantError
     from services.knowledge_fs.credential_service import KnowledgeFSCredentialPolicyError
     from services.knowledge_fs.product_authorization import KnowledgeFSProductNotFoundError
-    from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError
+    from services.knowledge_fs.product_remote import (
+        KnowledgeFSProductRemoteError,
+        KnowledgeFSProductResourceNotFoundError,
+    )
     from services.knowledge_fs_capability import KnowledgeFSCapabilityConfigurationError
 
     with pytest.raises(ValidationError) as raised_validation:
@@ -1202,6 +1216,7 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     validation_error = raised_validation.value
     mappings = (
         (KnowledgeFSProductNotFoundError("hidden"), KnowledgeFSSpaceNotFoundHTTPError),
+        (KnowledgeFSProductResourceNotFoundError("missing child"), NotFound),
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSOperationUnavailableHTTPError),
         (KnowledgeFSProductRemoteError("upstream unavailable"), KnowledgeFSUpstreamUnavailableHTTPError),
         (KnowledgeFSAppBindingManagementError("invalid binding"), KnowledgeFSInvalidRequestHTTPError),
@@ -1223,7 +1238,10 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     from pydantic import ValidationError
 
     from services.knowledge_fs.credential_service import KnowledgeFSCredentialValidationError
-    from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError
+    from services.knowledge_fs.product_remote import (
+        KnowledgeFSProductRemoteError,
+        KnowledgeFSProductResourceNotFoundError,
+    )
 
     with pytest.raises(ValidationError) as raised_validation:
         KnowledgeFSQueryCreatePayload.model_validate({"query": ""})
@@ -1231,6 +1249,7 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     mappings = (
         (KnowledgeFSCredentialValidationError("revoked"), KnowledgeFSInvalidCredentialHTTPError),
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSServiceOperationUnavailableHTTPError),
+        (KnowledgeFSProductResourceNotFoundError("missing child"), NotFound),
         (KnowledgeFSProductRemoteError("upstream unavailable"), KnowledgeFSServiceUpstreamUnavailableHTTPError),
         (validation_error, KnowledgeFSServiceInvalidRequestHTTPError),
     )

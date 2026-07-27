@@ -1,68 +1,67 @@
-import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
-import { withEventMeta } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { streamProcessingTaskEvents } from '../services/processing-task-events'
 
-const { mockStreamEvents } = vi.hoisted(() => ({
-  mockStreamEvents: vi.fn(),
+const { listBackgroundTasks } = vi.hoisted(() => ({
+  listBackgroundTasks: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents: mockStreamEvents,
+      spaces: {
+        byControlSpaceId: {
+          backgroundTasks: {
+            get: listBackgroundTasks,
+          },
+        },
+      },
     },
   },
 }))
 
-async function* eventIterator(...events: DocumentProcessingTaskEvent[]) {
-  yield* events
-}
+const task = (
+  state: 'completed' | 'failed' | 'queued' | 'running',
+  overrides: { documentId?: string; id?: string } = {},
+) => ({
+  can_cancel: state === 'queued' || state === 'running',
+  can_retry: state === 'failed',
+  completed_at: state === 'completed' ? '2026-07-20T01:03:00Z' : null,
+  created_at: '2026-07-20T01:00:00Z',
+  document_id: overrides.documentId ?? 'document/1',
+  document_revision: 2,
+  error_code: state === 'failed' ? 'PROCESSING_FAILED' : null,
+  error_message: null,
+  id: overrides.id ?? 'task/1',
+  knowledge_space_id: 'space/1',
+  operation: 'document_processing',
+  progress_percent: state === 'completed' ? 100 : 45,
+  state,
+  task_kind: 'document',
+  updated_at: state === 'completed' ? '2026-07-20T01:03:00Z' : '2026-07-20T01:02:03Z',
+})
 
 describe('KnowledgeFS processing task events', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
-  it('uses the generated streaming client and resumes from the last event id', async () => {
-    mockStreamEvents.mockResolvedValue(
-      eventIterator(
-        withEventMeta(
-          {
-            data: {
-              progressPercent: 45,
-              stage: 'parsed',
-              state: 'running',
-              updatedAt: '2026-07-20T01:02:03Z',
-            },
-            event: 'progress',
-          },
-          { id: 'task-1:2026-07-20T01:02:03Z' },
-        ),
-        withEventMeta(
-          {
-            data: { state: 'succeeded' },
-            event: 'terminal',
-          },
-          { id: 'task-1:terminal' },
-        ),
-      ),
-    )
+  it('polls the unified background-task endpoint until the task is terminal', async () => {
+    vi.useFakeTimers()
+    listBackgroundTasks
+      .mockResolvedValueOnce({ data: [task('running')], next_cursor: null })
+      .mockResolvedValueOnce({ data: [task('completed')], next_cursor: null })
     const abortController = new AbortController()
-
-    const events = []
-    for await (const event of streamProcessingTaskEvents({
+    const events = streamProcessingTaskEvents({
       documentId: 'document/1',
       knowledgeSpaceId: 'space/1',
-      lastEventId: 'task-1:previous',
       signal: abortController.signal,
       taskId: 'task/1',
-    })) {
-      events.push(event)
-    }
+    })
 
-    expect(events).toEqual([
-      {
+    await expect(events.next()).resolves.toEqual({
+      done: false,
+      value: {
         data: {
           progressPercent: 45,
           stage: 'parsed',
@@ -70,46 +69,92 @@ describe('KnowledgeFS processing task events', () => {
           updatedAt: '2026-07-20T01:02:03Z',
         },
         event: 'progress',
-        id: 'task-1:2026-07-20T01:02:03Z',
+        id: '2026-07-20T01:02:03Z:running:45',
       },
-      {
-        data: { state: 'succeeded' },
+    })
+    const terminal = events.next()
+    await vi.advanceTimersByTimeAsync(5000)
+    await expect(terminal).resolves.toEqual({
+      done: false,
+      value: {
+        data: { errorCode: undefined, state: 'succeeded' },
         event: 'terminal',
-        id: 'task-1:terminal',
+        id: '2026-07-20T01:03:00Z:succeeded:100',
       },
-    ])
-    expect(mockStreamEvents).toHaveBeenCalledWith(
+    })
+    await expect(events.next()).resolves.toEqual({ done: true, value: undefined })
+    expect(listBackgroundTasks).toHaveBeenNthCalledWith(
+      1,
       {
-        headers: { 'last-event-id': 'task-1:previous' },
-        params: {
-          documentId: 'document/1',
-          id: 'space/1',
-          taskId: 'task/1',
-        },
+        params: { control_space_id: 'space/1' },
+        query: { limit: 200 },
       },
-      {
+      expect.objectContaining({
         context: { silent: true },
-        signal: abortController.signal,
-      },
+        signal: expect.any(AbortSignal),
+      }),
     )
   })
 
-  it('rejects events without a resumable event id', async () => {
-    mockStreamEvents.mockResolvedValue(
-      eventIterator({
-        data: { state: 'failed' },
-        event: 'terminal',
+  it('continues through cursor pages and stops when the requested task is absent', async () => {
+    listBackgroundTasks
+      .mockResolvedValueOnce({ data: [], next_cursor: 'next-page' })
+      .mockResolvedValueOnce({ data: [], next_cursor: null })
+
+    const events = streamProcessingTaskEvents({
+      documentId: 'document-1',
+      knowledgeSpaceId: 'space-1',
+      taskId: 'task-1',
+    })
+
+    await expect(events.next()).resolves.toEqual({ done: true, value: undefined })
+    expect(listBackgroundTasks).toHaveBeenNthCalledWith(
+      2,
+      {
+        params: { control_space_id: 'space-1' },
+        query: { cursor: 'next-page', limit: 200 },
+      },
+      expect.objectContaining({
+        context: { silent: true },
+        signal: expect.any(AbortSignal),
       }),
     )
+  })
 
-    await expect(async () => {
-      for await (const event of streamProcessingTaskEvents({
-        documentId: 'document-1',
-        knowledgeSpaceId: 'space-1',
-        taskId: 'task-1',
-      })) {
-        void event
-      }
-    }).rejects.toThrow('missing an event id')
+  it('shares one paginated snapshot across concurrent task observers', async () => {
+    listBackgroundTasks
+      .mockResolvedValueOnce({
+        data: [task('running', { documentId: 'document/2', id: 'task/2' })],
+        next_cursor: 'next-page',
+      })
+      .mockResolvedValueOnce({
+        data: [task('running', { documentId: 'document/1', id: 'task/1' })],
+        next_cursor: null,
+      })
+    const firstController = new AbortController()
+    const secondController = new AbortController()
+    const firstEvents = streamProcessingTaskEvents({
+      documentId: 'document/1',
+      knowledgeSpaceId: 'space/1',
+      signal: firstController.signal,
+      taskId: 'task/1',
+    })
+    const secondEvents = streamProcessingTaskEvents({
+      documentId: 'document/2',
+      knowledgeSpaceId: 'space/1',
+      signal: secondController.signal,
+      taskId: 'task/2',
+    })
+
+    const [first, second] = await Promise.all([firstEvents.next(), secondEvents.next()])
+
+    expect(first.done).toBe(false)
+    expect(second.done).toBe(false)
+    expect(listBackgroundTasks).toHaveBeenCalledTimes(2)
+
+    firstController.abort()
+    secondController.abort()
+    await firstEvents.return(undefined)
+    await secondEvents.return(undefined)
   })
 })

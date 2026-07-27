@@ -2,7 +2,7 @@ import type {
   DocumentRevisionChunk,
   LogicalDocument,
   LogicalDocumentRevision,
-} from '@dify/contracts/knowledge-fs/types.gen'
+} from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'

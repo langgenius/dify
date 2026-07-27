@@ -161,7 +161,7 @@ export function createIncrementalReindexer({
         }
       : {}),
     reindex: async (input) => {
-      validateIncrementalReindexInput(input, { denseBuilder, visualBuilder });
+      validateIncrementalReindexInput(input, { visualBuilder });
       const parseArtifact = cloneParseArtifact(ParseArtifactSchema.parse(input.parseArtifact));
       const publicationGenerationId =
         input.publicationGenerationId === undefined
@@ -375,10 +375,7 @@ function validateReindexProjectionDimensions(
 
 function validateIncrementalReindexInput(
   input: IncrementalReindexInput,
-  {
-    denseBuilder,
-    visualBuilder,
-  }: Pick<IncrementalReindexerOptions, "denseBuilder" | "visualBuilder">,
+  { visualBuilder }: Pick<IncrementalReindexerOptions, "visualBuilder">,
 ): void {
   if (!input.knowledgeSpaceId.trim()) {
     throw new Error("Incremental reindexer knowledgeSpaceId is required");
@@ -394,10 +391,6 @@ function validateIncrementalReindexInput(
 
   if (input.publicationGenerationId !== undefined) {
     PublicationGenerationIdSchema.parse(input.publicationGenerationId);
-  }
-
-  if (denseBuilder && !input.denseModel?.trim()) {
-    throw new Error("Incremental reindexer denseModel is required when denseBuilder is configured");
   }
 
   if (visualBuilder && !input.visualModel?.trim()) {

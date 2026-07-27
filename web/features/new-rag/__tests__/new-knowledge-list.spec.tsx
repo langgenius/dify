@@ -1,17 +1,31 @@
-import type { KnowledgeSpaceList } from '@dify/contracts/knowledge-fs/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { NewKnowledgeList } from '../new-knowledge-list'
 
+type KnowledgeSpaceList = {
+  items: Array<{
+    createdAt: string
+    description?: string
+    iconRef?: string
+    id: string
+    name: string
+    revision: number
+    slug: string
+    tenantId: string
+    updatedAt: string
+  }>
+  nextCursor?: string
+}
+
 type ListKnowledgeSpacesInfiniteOptions = {
-  getNextPageParam: (lastPage: KnowledgeSpaceList) => string | undefined
-  initialPageParam: string | null
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
+  initialPageParam: number
   input: (pageParam: unknown) => {
     query: {
-      cursor?: string
       limit: number
+      page: number
     }
   }
 }
@@ -21,6 +35,28 @@ const externalApiPanelMock = vi.hoisted(() => ({
   setOpen: vi.fn(),
 }))
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const knowledgeSpaceApiResponse = vi.hoisted(
+  () => (space: KnowledgeSpaceList['items'][number]) => ({
+    control_space_id: space.id,
+    created_at: space.createdAt,
+    knowledge_space_id: space.id,
+    owner_account_id: 'account-1',
+    permission_keys: ['knowledge_space_read'],
+    resource_version: space.revision,
+    state: 'active',
+    technical_status: 'available',
+    technical_summary: {
+      description: space.description ?? null,
+      icon: space.iconRef ?? null,
+      knowledge_space_id: space.id,
+      name: space.name,
+      revision: space.revision,
+      slug: space.slug,
+    },
+    updated_at: space.updatedAt,
+    visibility: 'only_me',
+  }),
+)
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { info: toastInfoMock },
@@ -69,7 +105,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => queryMock,
+    useInfiniteQuery: () => ({
+      ...queryMock,
+      data: queryMock.data
+        ? {
+            ...queryMock.data,
+            pages: queryMock.data.pages.map((page, index) => ({
+              data: page.items.map(knowledgeSpaceApiResponse),
+              has_more: Boolean(page.nextCursor),
+              limit: 30,
+              page: index + 1,
+            })),
+          }
+        : undefined,
+    }),
   }
 })
 
@@ -92,8 +141,10 @@ vi.mock('@/context/permission-state', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
-      listKnowledgeSpaces: {
-        infiniteOptions: consoleQueryMock.infiniteOptions,
+      spaces: {
+        get: {
+          infiniteOptions: consoleQueryMock.infiniteOptions,
+        },
       },
     },
   },
@@ -137,13 +188,13 @@ describe('NewKnowledgeList', () => {
 
     const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
     expect(options).toBeDefined()
-    expect(options?.initialPageParam).toBeNull()
-    expect(options?.input(null)).toEqual({ query: { limit: 30 } })
-    expect(options?.input('next-page')).toEqual({
-      query: { cursor: 'next-page', limit: 30 },
+    expect(options?.initialPageParam).toBe(1)
+    expect(options?.input(1)).toEqual({ query: { limit: 30, page: 1 } })
+    expect(options?.input(2)).toEqual({
+      query: { limit: 30, page: 2 },
     })
-    expect(options?.getNextPageParam({ items: [], nextCursor: 'next-page' })).toBe('next-page')
-    expect(options?.getNextPageParam({ items: [] })).toBeUndefined()
+    expect(options?.getNextPageParam({ has_more: true, page: 1 })).toBe(2)
+    expect(options?.getNextPageParam({ has_more: false, page: 1 })).toBeUndefined()
   })
 
   it('links real knowledge spaces to the new detail shell', () => {

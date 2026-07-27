@@ -6,8 +6,8 @@ import { KnowledgeSpaceShell } from '../knowledge-space-shell'
 const queryMock = vi.hoisted(() => ({
   data: undefined as
     | {
-        id: string
-        name: string
+        control_space_id: string
+        technical_summary: { name: string }
       }
     | undefined,
   error: null as unknown,
@@ -37,8 +37,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
-      getKnowledgeSpacesById: {
-        queryOptions: queryOptionsMock,
+      spaces: {
+        byControlSpaceId: {
+          get: {
+            queryOptions: queryOptionsMock,
+          },
+        },
       },
     },
   },
@@ -60,12 +64,17 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">content</KnowledgeSpaceShell>)
 
-    expect(queryOptionsMock).toHaveBeenCalledWith({ input: { params: { id: 'space-1' } } })
+    expect(queryOptionsMock).toHaveBeenCalledWith({
+      input: { params: { control_space_id: 'space-1' } },
+    })
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('renders a refresh-safe header and route navigation when loaded', () => {
-    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+    queryMock.data = {
+      control_space_id: 'space-1',
+      technical_summary: { name: 'Support knowledge' },
+    }
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
@@ -129,7 +138,10 @@ describe('KnowledgeSpaceShell', () => {
 
   it('marks Documents as the only current detail route', () => {
     pathnameMock.value = '/datasets/new/space-1/documents'
-    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+    queryMock.data = {
+      control_space_id: 'space-1',
+      technical_summary: { name: 'Support knowledge' },
+    }
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>)
 

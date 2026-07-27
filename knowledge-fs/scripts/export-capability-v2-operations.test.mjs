@@ -20,7 +20,46 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 63);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 78);
+    assert.deepEqual(
+      document.operations.find((operation) => operation.operationId === "createSourceSyncWorkflow"),
+      {
+        action: "source_workflows.sync.create",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "POST",
+        operationId: "createSourceSyncWorkflow",
+        parentResourceBinding: { pathParameter: "id" },
+        path: "/knowledge-spaces/{id}/sources/{sourceId}/sync",
+        resourceBinding: { pathParameter: "sourceId" },
+        resourceType: "source",
+      },
+    );
+    assert.deepEqual(
+      document.operations.find((operation) => operation.operationId === "listSourceProviders"),
+      {
+        action: "source_providers.list",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "GET",
+        operationId: "listSourceProviders",
+        parentResourceBinding: null,
+        path: "/source-providers",
+        resourceBinding: { namespace: true },
+        resourceType: "namespace",
+      },
+    );
+    assert.deepEqual(
+      document.operations.find((operation) => operation.operationId === "getSourceWorkflow"),
+      {
+        action: "source_workflows.read",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "GET",
+        operationId: "getSourceWorkflow",
+        parentResourceBinding: { pathParameter: "id" },
+        path: "/knowledge-spaces/{id}/source-workflows/{runId}",
+        resourceBinding: { pathParameter: "runId" },
+        resourceType: "job",
+      },
+    );
     assert.deepEqual(
       document.operations.find((operation) => operation.operationId === "cancelBackgroundTask"),
       {

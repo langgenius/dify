@@ -1,7 +1,5 @@
 import { consoleQuery } from '@/service/client'
 
-const CHUNK_PAGE_SIZE = 100
-
 export function documentChunksQueryOptions({
   documentId,
   effectiveRevision,
@@ -12,17 +10,21 @@ export function documentChunksQueryOptions({
   knowledgeSpaceId: string
 }) {
   const chunksQuery =
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision
+      .chunks
 
-  return chunksQuery.infiniteOptions({
+  return chunksQuery.get.infiniteOptions({
     input: (pageParam) => ({
-      params: { documentId, id: knowledgeSpaceId, revision: effectiveRevision },
+      params: {
+        control_space_id: knowledgeSpaceId,
+        document_id: documentId,
+        revision: effectiveRevision,
+      },
       query: {
-        limit: CHUNK_PAGE_SIZE,
         ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
       },
     }),
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
   })
 }

@@ -43,17 +43,15 @@ export function useDocumentReindex({
   const [submissionRecoveryBusy, setSubmissionRecoveryBusy] = useState(false)
   const [submittedReindex, setSubmittedReindex] = useState<{
     baselineRevision: number
-    generation: number
     timedOut: boolean
   }>()
-  const nextSubmissionGenerationRef = useRef(0)
   const permissionRecoveryPendingRef = useRef(false)
   const reindexPendingRef = useRef(false)
   const previousTaskStateRef = useRef<string | undefined>(undefined)
   const acceptedTaskIdRef = useRef<string | undefined>(undefined)
   const invalidatedTerminalTaskRef = useRef<string | undefined>(undefined)
   const { mutateAsync: reindexDocument } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
   const taskStatus = useDocumentTaskStatus({
     documentId,
@@ -62,7 +60,6 @@ export function useDocumentReindex({
     minimumRevision: submittedReindex
       ? submittedReindex.baselineRevision + 1
       : documentActiveRevision,
-    submissionDiscoveryGeneration: submittedReindex?.generation,
     submissionNeedsRecheck: Boolean(submittedReindex),
     submissionPending: Boolean(submittedReindex && !submittedReindex.timedOut),
   })
@@ -174,7 +171,7 @@ export function useDocumentReindex({
     try {
       const result = await reindexDocument({
         body: { documentIds: [documentId] },
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
       })
       if (!result.items[0] || result.items[0].status === 'not_found') {
         setDocumentMissing(true)
@@ -191,7 +188,6 @@ export function useDocumentReindex({
           documentActiveRevision,
           latestTaskRef.current?.documentRevision ?? documentActiveRevision,
         ),
-        generation: ++nextSubmissionGenerationRef.current,
         timedOut: false,
       })
       await Promise.all([

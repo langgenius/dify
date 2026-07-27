@@ -266,6 +266,12 @@ describe("Dify Capability v2 request guard", () => {
         "sources.crawl",
         "source",
       ],
+      createSourceSyncWorkflow: [
+        "POST",
+        "/knowledge-spaces/{id}/sources/{sourceId}/sync",
+        "source_workflows.sync.create",
+        "source",
+      ],
       getAnswerTrace: ["GET", "/queries/{traceId}", "queries.read", "query"],
       getBulkOperation: ["GET", "/bulk-jobs/{id}", "bulk_jobs.read", "job"],
       getDocument: [

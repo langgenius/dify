@@ -1,9 +1,9 @@
 import type {
-  GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse,
-  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse,
+  CrawlPreviewPageList,
   Source,
+  SourceSyncPolicy,
   SourceWorkflowRun,
-} from '@dify/contracts/knowledge-fs/types.gen'
+} from '../source-models'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -13,19 +13,55 @@ import datasetTranslations from '@/i18n/en-US/dataset.json'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
+type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse = SourceSyncPolicy
+type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse = CrawlPreviewPageList
+
 const clientMock = vi.hoisted(() => ({
   getPolicy: vi.fn(),
   getWorkflow: vi.fn(),
   selectPages: vi.fn(),
   updatePolicy: vi.fn(),
 }))
+const policyApiResponse = vi.hoisted(() => (policy: SourceSyncPolicy) => ({
+  created_at: policy.createdAt,
+  custom_interval_seconds: policy.customIntervalSeconds ?? null,
+  enabled: policy.enabled,
+  expected_source_version: policy.expectedSourceVersion,
+  id: policy.id,
+  knowledge_space_id: policy.knowledgeSpaceId,
+  mode: policy.mode,
+  next_run_at: policy.nextRunAt ?? null,
+  revision: policy.revision,
+  source_id: policy.sourceId,
+  updated_at: policy.updatedAt,
+}))
+const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
+  canceled_at: workflow.canceledAt ?? null,
+  checkpoint: workflow.checkpoint,
+  completed_at: workflow.completedAt ?? null,
+  created_at: workflow.createdAt,
+  cursor: workflow.cursor ?? null,
+  execution_attempts: workflow.executionAttempts,
+  id: workflow.id,
+  knowledge_space_id: workflow.knowledgeSpaceId,
+  kind: workflow.kind,
+  last_error_code: workflow.lastErrorCode ?? null,
+  max_execution_attempts: workflow.maxExecutionAttempts,
+  progress_completed: workflow.progressCompleted,
+  progress_failed: workflow.progressFailed,
+  progress_skipped: workflow.progressSkipped,
+  progress_total: workflow.progressTotal ?? null,
+  source_id: workflow.sourceId ?? null,
+  state: workflow.state,
+  updated_at: workflow.updatedAt,
+}))
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const queryClientMock = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
 const policyQueryOptionsMock = vi.hoisted(() =>
-  vi.fn(({ input }) => ({
-    queryFn: () => clientMock.getPolicy(input),
-    queryKey: ['sync-policy', input.params.sourceId],
+  vi.fn(({ input, select }) => ({
+    queryFn: async () => select(policyApiResponse(await clientMock.getPolicy(input))),
+    queryKey: ['sync-policy', input.params.source_id],
     retry: false,
   })),
 )
@@ -40,27 +76,51 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
-      getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: clientMock.getPolicy,
-      getKnowledgeSpacesByIdSourceWorkflowsByRunId: clientMock.getWorkflow,
+      spaces: {
+        byControlSpaceId: {
+          sourceWorkflows: {
+            byRunId: {
+              get: async (input: unknown) =>
+                workflowApiResponse(await clientMock.getWorkflow(input)),
+              selection: {
+                post: async (input: unknown) =>
+                  workflowApiResponse(await clientMock.selectPages(input)),
+              },
+            },
+          },
+          sources: {
+            bySourceId: {
+              syncPolicy: {
+                get: async (input: unknown) => policyApiResponse(await clientMock.getPolicy(input)),
+                put: async (input: unknown) =>
+                  policyApiResponse(await clientMock.updatePolicy(input)),
+              },
+            },
+            get: {
+              key: vi.fn(() => ['knowledge-sources']),
+            },
+          },
+        },
+      },
     },
   },
   consoleQuery: {
     knowledgeFs: {
-      getKnowledgeSpacesByIdSources: {
-        key: vi.fn(() => ['knowledge-sources']),
-      },
-      getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: {
-        queryOptions: policyQueryOptionsMock,
-      },
-      postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection: {
-        mutationOptions: vi.fn(() => ({
-          mutationFn: (input: unknown) => clientMock.selectPages(input),
-        })),
-      },
-      putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: {
-        mutationOptions: vi.fn(() => ({
-          mutationFn: (input: unknown) => clientMock.updatePolicy(input),
-        })),
+      spaces: {
+        byControlSpaceId: {
+          sources: {
+            bySourceId: {
+              syncPolicy: {
+                get: {
+                  queryOptions: policyQueryOptionsMock,
+                },
+              },
+            },
+            get: {
+              key: vi.fn(() => ['knowledge-sources']),
+            },
+          },
+        },
       },
     },
   },
@@ -346,13 +406,13 @@ describe('CrawlSelectionForm', () => {
         expectedSourceVersion: 3,
         mode: 'custom',
       },
-      params: { id: 'space-1', sourceId: 'source-1' },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
     })
     expect(clientMock.selectPages).toHaveBeenCalledOnce()
     expect(clientMock.selectPages).toHaveBeenCalledWith({
       body: { pageIds: ['page-1'] },
       headers: { 'Idempotency-Key': expect.any(String) },
-      params: { id: 'space-1', runId: 'run-1' },
+      params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
 
     selectionRequest.resolve({ ...run, checkpoint: 'import', state: 'queued' })
@@ -499,7 +559,7 @@ describe('CrawlSelectionForm', () => {
           expectedSourceVersion: 3,
           mode,
         },
-        params: { id: 'space-1', sourceId: 'source-1' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
       })
       expect(clientMock.selectPages).toHaveBeenCalledOnce()
     },
@@ -587,7 +647,7 @@ describe('CrawlSelectionForm', () => {
         expectedSourceVersion: 4,
         mode: 'manual',
       },
-      params: { id: 'space-1', sourceId: 'source-1' },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
     })
     expect(clientMock.selectPages).toHaveBeenCalledOnce()
   })
@@ -628,7 +688,7 @@ describe('CrawlSelectionForm', () => {
         expectedSourceVersion: 3,
         mode: 'provider',
       },
-      params: { id: 'space-1', sourceId: 'source-1' },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
     })
     expect(clientMock.selectPages).toHaveBeenCalledOnce()
   })

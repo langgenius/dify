@@ -1,6 +1,7 @@
 'use client'
 
-import type { DocumentProcessingTask } from '@dify/contracts/knowledge-fs/types.gen'
+import type { DocumentProcessingTask } from './document-models'
+import type { KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
   ProcessingTaskProgressEvent,
@@ -22,6 +23,7 @@ import {
   workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
@@ -35,14 +37,21 @@ import {
   taskNeedsAttention,
   taskVersionIsAfter,
 } from './document-model'
+import {
+  documentTaskFromApi,
+  documentTaskListFromApi,
+  logicalDocumentListFromApi,
+} from './document-models'
 import { DOCUMENT_UPLOAD_ACCEPT, documentUploadIssue } from './document-upload-policy'
+import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
+import { createRequestId } from './request-id'
 import { newKnowledgeDocumentDetailPath } from './routes'
+import { sourceFromApi } from './source-models'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
-const DOCUMENT_PAGE_SIZE = 50
 const TASK_PAGE_SIZE = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
@@ -76,6 +85,24 @@ const uploadExclusionReasonKey = {
   revision_conflict: 'target',
   unsupported_mime_type: 'fileType',
 } as const
+
+async function findBackgroundTask(knowledgeSpaceId: string, taskId: string, signal?: AbortSignal) {
+  let cursor: string | undefined
+  for (let page = 0; page < MAX_AUTO_CURSOR_PAGES; page += 1) {
+    const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get(
+      {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { ...(cursor ? { cursor } : {}), limit: TASK_PAGE_SIZE },
+      },
+      { signal },
+    )
+    const task = response.data.find((candidate) => candidate.id === taskId)
+    if (task) return documentTaskFromApi(task)
+    cursor = response.next_cursor ?? undefined
+    if (!cursor) return undefined
+  }
+  return undefined
+}
 
 type UploadExclusionReasonKey =
   (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
@@ -131,7 +158,10 @@ function queryKeyMatchesKnowledgeSpace(queryKey: readonly unknown[], knowledgeSp
   if (!input || typeof input !== 'object' || !('params' in input)) return false
   const params = input.params
   return Boolean(
-    params && typeof params === 'object' && 'id' in params && params.id === knowledgeSpaceId,
+    params &&
+    typeof params === 'object' &&
+    'control_space_id' in params &&
+    params.control_space_id === knowledgeSpaceId,
   )
 }
 
@@ -151,6 +181,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeysFetching = useAtomValue(workspacePermissionKeysFetchingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const retryWorkspacePermissionKeys = useSetAtom(retryWorkspacePermissionKeysAtom)
   const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
@@ -164,6 +195,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
   const uploadPendingRef = useRef(false)
+  const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
+  const uploadRequestIdsRef = useRef(new Map<string, string>())
   const reindexPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
   const [search, setSearch] = useQueryState('query', documentSearchParser)
@@ -204,26 +237,19 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const taskProgressStore = taskProgressStoreRef.current
   const [uploading, setUploading] = useState(false)
   const [reindexing, setReindexing] = useState(false)
-  const { mutateAsync: uploadDocument } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocuments.mutationOptions(),
-  )
-  const { mutateAsync: bulkUploadDocuments } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk.mutationOptions(),
-  )
   const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulkReindex.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
 
   const documentsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocuments.infiniteOptions({
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
       input: (pageParam) => ({
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
         query: {
-          limit: DOCUMENT_PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
     }),
   )
@@ -245,32 +271,37 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [documentPermissionDenied])
   const tasksQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
         enabled: !documentPermissionDenied,
         input: (pageParam) => ({
-          params: { id: knowledgeSpaceId },
+          params: { control_space_id: knowledgeSpaceId },
           query: {
             limit: TASK_PAGE_SIZE,
             ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
           },
         }),
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
+        getNextPageParam: (lastPage) => lastPage.next_cursor,
         initialPageParam: null as string | null,
+        refetchInterval: (query) =>
+          query.state.data?.pages.some((page) =>
+            page.data.some((task) => task.state === 'queued' || task.state === 'running'),
+          )
+            ? BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL
+            : false,
       }),
     [documentPermissionDenied, knowledgeSpaceId],
   )
   const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const sourcesQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.infiniteOptions({
       enabled: !documentPermissionDenied,
       input: (pageParam) => ({
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
         query: {
-          limit: TASK_PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
     }),
   )
@@ -284,6 +315,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     recoveryQueryMaskForPermissionDenials(permissionDenialMask),
   )
   const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
+  const canUpload = canWrite && uploadAvailable
   const documentWriteRestrictionReasonId = permissionPending
     ? 'documents-permission-pending'
     : permissionQueryError
@@ -291,6 +323,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       : !canEdit || writePermissionRevoked
         ? 'documents-readonly-reason'
         : undefined
+  const documentUploadRestrictionReasonId = !uploadAvailable
+    ? 'documents-upload-unavailable'
+    : documentWriteRestrictionReasonId
   const documentsRecoveryDescription = auxiliaryReadPermissionDenied
     ? t(($) => $['newKnowledge.documentsPermissionDescription'])
     : t(($) => $['newKnowledge.documentsErrorDescription'])
@@ -329,11 +364,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     hasNextTaskPage && (tasksQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
   const documents = useMemo(
-    () => documentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    () =>
+      documentsQuery.data?.pages.flatMap((page) => logicalDocumentListFromApi(page).items) ?? [],
     [documentsQuery.data],
   )
   const baseTasks = useMemo(
-    () => tasksQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    () => tasksQuery.data?.pages.flatMap((page) => documentTaskListFromApi(page).items) ?? [],
     [tasksQuery.data],
   )
   const documentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents])
@@ -371,10 +407,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const sourceNames = useMemo(
     () =>
       new Map(
-        (sourcesQuery.data?.pages.flatMap((page) => page.items) ?? []).map((source) => [
-          source.id,
-          source.name,
-        ]),
+        (sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? []).map(
+          (source) => [source.id, source.name],
+        ),
       ),
     [sourcesQuery.data],
   )
@@ -399,7 +434,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const disabledSourceIds = useMemo(
     () =>
       new Set(
-        (sourcesQuery.data?.pages.flatMap((page) => page.items) ?? [])
+        (sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi)) ?? [])
           .filter((source) => source.status === 'disabled')
           .map((source) => source.id),
       ),
@@ -939,7 +974,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const refreshDocuments = useCallback(() => {
     void queryClient.invalidateQueries({
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocuments.key(),
+      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
     })
   }, [knowledgeSpaceId, queryClient])
 
@@ -947,11 +982,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     void Promise.allSettled([
       queryClient.invalidateQueries({
         predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocuments.key(),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
       }),
       queryClient.invalidateQueries({
         predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.key(),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
       }),
     ])
   }, [knowledgeSpaceId, queryClient])
@@ -1025,17 +1060,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         TERMINAL_RECONCILIATION_REQUEST_TIMEOUT,
       )
       try {
-        const snapshot =
-          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
-            {
-              params: {
-                documentId: currentTask.documentId,
-                id: knowledgeSpaceId,
-                taskId,
-              },
-            },
-            { signal: controller.signal },
-          )
+        const snapshot = await findBackgroundTask(knowledgeSpaceId, taskId, controller.signal)
+        if (!snapshot) return
         if (
           terminalReconciliationControllersRef.current.get(taskId) !== controller ||
           terminalReconciliationGenerationsRef.current.get(taskId) !== reconciliationGeneration
@@ -1165,11 +1191,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     if (!permissionDenied) return
     void queryClient.cancelQueries({
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.key(),
+      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
     })
     void queryClient.cancelQueries({
       predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+      queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
     })
     for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
       controller.abort()
@@ -1344,7 +1370,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
-      if (!canWrite || !files.length || uploadPendingRef.current) return
+      if (!canUpload || !files.length || uploadPendingRef.current) return
       const uploadableFiles: File[] = []
       const localExclusions: Array<{
         filename: string
@@ -1386,24 +1412,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       try {
         let acceptedCount = 0
         const exclusions = [...localExclusions]
-        if (uploadableFiles.length === 1) {
-          await uploadDocument({
-            body: { file: uploadableFiles[0]! },
-            params: { id: knowledgeSpaceId },
-          })
-          acceptedCount = 1
-        } else {
-          const result = await bulkUploadDocuments({
-            body: { files: uploadableFiles },
-            params: { id: knowledgeSpaceId },
-          })
-          acceptedCount = result.accepted
-          for (const item of result.items) {
-            if (!('reason' in item)) continue
-            const reasonKey = uploadExclusionReasonKey[item.reason]
-            exclusions.push({ filename: item.filename, reasonKey })
-          }
-        }
+        const uploads = uploadableFiles.map((file) => {
+          const fingerprint = `${knowledgeSpaceId}:${file.name}:${file.size}:${file.lastModified}`
+          const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
+          uploadRequestIdsRef.current.set(fingerprint, id)
+          return { file, id }
+        })
+        await uploadKnowledgeFsDocuments(knowledgeSpaceId, uploads, uploadProgressRef.current)
+        uploadProgressRef.current.clear()
+        uploadRequestIdsRef.current.clear()
+        acceptedCount = uploadableFiles.length
         const exclusionDetails = formatExclusionDetails(exclusions)
         if (!acceptedCount) {
           toast.error(
@@ -1437,15 +1455,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         setUploading(false)
       }
     },
-    [
-      bulkUploadDocuments,
-      canWrite,
-      handleWritePermissionDenied,
-      knowledgeSpaceId,
-      refreshDocumentsAndTasks,
-      t,
-      uploadDocument,
-    ],
+    [canUpload, handleWritePermissionDenied, knowledgeSpaceId, refreshDocumentsAndTasks, t],
   )
 
   const handleReindexDocuments = useCallback(async () => {
@@ -1462,11 +1472,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const selectedIds = [...validSelectedDocumentIds].sort()
       const result = await reindexDocuments({
         body: { documentIds: selectedIds },
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
       })
       const missingIds = result.items
         .filter((item) => item.status === 'not_found')
-        .map((item) => item.documentId)
+        .flatMap((item) => (item.document_id ? [item.document_id] : []))
       const queuedCount = result.items.length - missingIds.length
       if (!queuedCount) {
         setSelectedDocumentIds(new Set())
@@ -1699,17 +1709,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               rejectDeadline?.(new DOMException('Task snapshot request aborted', 'AbortError'))
             }
             try {
-              const request =
-                consoleClient.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId(
-                  {
-                    params: {
-                      documentId: task.documentId,
-                      id: knowledgeSpaceId,
-                      taskId: task.id,
-                    },
-                  },
-                  { signal: requestController.signal },
-                )
+              const request = findBackgroundTask(
+                knowledgeSpaceId,
+                task.id,
+                requestController.signal,
+              )
               const deadline = new Promise<never>((_resolve, reject) => {
                 rejectDeadline = reject
                 requestTimeout = window.setTimeout(() => {
@@ -1719,6 +1723,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               })
               cancelRequests.add(cancelRequest)
               const snapshot = await Promise.race([request, deadline])
+              if (!snapshot) return
               if (
                 canceled ||
                 failedTaskPollGenerationsRef.current.get(task.id) !== requestGeneration
@@ -1851,7 +1856,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           />
         )
       })}
-      {canWrite && (
+      {canUpload && (
         <input
           ref={uploadInputRef}
           multiple
@@ -1893,6 +1898,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           documentSurfaceHadFocusRef.current = true
         }}
       >
+        {!uploadAvailable && (
+          <span id="documents-upload-unavailable" className="sr-only">
+            {t(($) => $['cornerLabel.unavailable'])}
+          </span>
+        )}
         <header>
           <h2
             ref={documentsTitleRef}
@@ -2103,7 +2113,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <DocumentsEmpty
             activeTaskCount={activeTasks.length}
             attentionTaskBadge={attentionTaskBadge}
-            canEdit={canWrite}
+            canEdit={canUpload}
             hasTaskError={hasTaskError}
             onAddDocument={() => {
               writePermissionFocusRecoveryRequestedRef.current = true
@@ -2112,7 +2122,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             }}
             onDropFiles={(files) => void handleUploadFiles(files)}
             onOpenTasks={() => setTasksOpen(true)}
-            readOnlyReasonId={documentWriteRestrictionReasonId}
+            readOnlyReasonId={documentUploadRestrictionReasonId}
             tasksButtonLabel={tasksButtonLabel}
             tasksLiveStatus={tasksLiveStatus}
             uploading={uploading}
@@ -2123,6 +2133,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             allSelected={allFilteredSelected}
             attentionTaskBadge={attentionTaskBadge}
             canEdit={canWrite}
+            canUpload={canUpload}
             completingResults={completingFilteredResults}
             documents={filteredDocuments}
             filter={filter}
@@ -2161,6 +2172,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             tasksPending={taskResultsIncomplete}
             tasksButtonLabel={tasksButtonLabel}
             tasksLiveStatus={tasksLiveStatus}
+            uploadRestrictionReasonId={documentUploadRestrictionReasonId}
             uploading={uploading}
           />
         )}

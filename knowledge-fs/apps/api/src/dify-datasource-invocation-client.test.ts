@@ -61,6 +61,48 @@ describe("createDifyDatasourceInvocationClient", () => {
     expect(JSON.stringify(getOnlineDocumentPages.mock.calls)).not.toContain("credentials");
   });
 
+  it("maps product crawl options to the Firecrawl datasource parameters", async () => {
+    const getWebsiteCrawl = vi.fn(() => chunks({ result: { web_info_list: [] } }));
+    const adapter = createDifyDatasourceInvocationClient({
+      client: difyClient({ getWebsiteCrawl }),
+    });
+    const source: Source = {
+      ...SOURCE,
+      metadata: {
+        credentialId: "dify-credential-1",
+        crawlOptions: { includeSubpages: false, limit: 1 },
+        datasource: "crawl",
+        parameters: { formats: ["markdown"] },
+        pluginId: "langgenius/firecrawl_datasource",
+        provider: "firecrawl",
+      },
+      type: "web",
+      uri: "https://example.com",
+    };
+
+    await collect(
+      adapter.dispatch({
+        operation: "get_website_crawl",
+        source,
+        tenantId: "tenant-1",
+      }),
+    );
+
+    expect(getWebsiteCrawl).toHaveBeenCalledWith({
+      credentialId: "dify-credential-1",
+      datasource: "crawl",
+      datasourceParameters: {
+        crawl_subpages: false,
+        formats: ["markdown"],
+        limit: 1,
+        url: "https://example.com",
+      },
+      pluginId: "langgenius/firecrawl_datasource",
+      provider: "firecrawl",
+      tenantId: "tenant-1",
+    });
+  });
+
   it("rejects inline credentials in integrated mode", async () => {
     const adapter = createDifyDatasourceInvocationClient({ client: difyClient() });
     const source = {

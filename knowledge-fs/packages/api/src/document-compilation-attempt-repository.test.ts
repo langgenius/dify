@@ -1311,8 +1311,10 @@ describe("database document compilation attempt repository", () => {
       knowledgeSpaceId,
       candidatePublicationId,
       candidateFingerprint,
-      "candidate",
+      2,
     ]);
+    expect(fake.calls[1]?.sql).toContain("'published'");
+    expect(fake.calls[1]?.sql).toContain("projection_set_publication_heads");
     expect(fake.calls[1]?.sql).toContain("FOR UPDATE");
   });
 

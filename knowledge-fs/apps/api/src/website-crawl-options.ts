@@ -20,6 +20,7 @@ export function createApiWebsiteCrawlConnector(input: {
   return {
     crawl: async ({ signal, source, tenantId, userId }): Promise<WebsiteCrawlResult> => {
       const pages = new Map<string, CrawledPage>();
+      const pageLimit = crawlPageLimit(source.metadata.crawlOptions);
       let status: string | undefined;
       let total: number | undefined;
       let completed: number | undefined;
@@ -55,13 +56,23 @@ export function createApiWebsiteCrawlConnector(input: {
       }
 
       return {
-        pages: Array.from(pages.values()),
-        ...(completed === undefined ? {} : { completed }),
+        pages: Array.from(pages.values()).slice(0, pageLimit),
+        ...(completed === undefined ? {} : { completed: Math.min(completed, pageLimit) }),
         ...(status === undefined ? {} : { status }),
-        ...(total === undefined ? {} : { total }),
+        ...(total === undefined ? {} : { total: Math.min(total, pageLimit) }),
       };
     },
   };
+}
+
+function crawlPageLimit(value: unknown): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  const limit = (value as Readonly<Record<string, unknown>>).limit;
+  return Number.isSafeInteger(limit) && Number(limit) > 0
+    ? Number(limit)
+    : Number.POSITIVE_INFINITY;
 }
 
 export function createApiWebsiteCrawlOptions(input: {

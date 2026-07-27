@@ -1,12 +1,8 @@
 'use client'
 
-import type {
-  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse,
-  Source,
-  SourceWorkflowRun,
-} from '@dify/contracts/knowledge-fs/types.gen'
 import type { FormEvent } from 'react'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
+import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -30,13 +26,12 @@ import {
   newKnowledgeDetailPath,
   normalizeWebsiteSourceUrl,
 } from './routes'
+import { crawlPreviewPageListFromApi, sourceFromApi, sourceWorkflowFromApi } from './source-models'
 
 type ConnectionReference = {
   id: string
   providerId: string
 }
-
-type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
 
 type CrawlConfiguration = {
   includeSubpages: boolean
@@ -70,9 +65,54 @@ const MAX_CURSOR_PAGES = 100
 const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 200
-const SUCCESS_STATES = new Set(['complete', 'completed', 'preview_ready', 'success', 'succeeded'])
+const SUCCESS_STATES = new Set([
+  'complete',
+  'completed',
+  'preview_ready',
+  'success',
+  'succeeded',
+  'zero_results',
+])
 const FAILURE_STATES = new Set(['error', 'exhausted', 'failed', 'timed_out', 'timeout'])
 const CANCELED_STATES = new Set(['canceled', 'cancelled', 'superseded'])
+
+async function getSourceWorkflow(knowledgeSpaceId: string, runId: string) {
+  return sourceWorkflowFromApi(
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get({
+      params: { control_space_id: knowledgeSpaceId, run_id: runId },
+    }),
+  )
+}
+
+async function previewSourceCrawl(
+  knowledgeSpaceId: string,
+  sourceId: string,
+  idempotencyKey: string,
+) {
+  return sourceWorkflowFromApi(
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post({
+      headers: { 'Idempotency-Key': idempotencyKey },
+      params: { control_space_id: knowledgeSpaceId, source_id: sourceId },
+    }),
+  )
+}
+
+async function retrySourceWorkflow(knowledgeSpaceId: string, runId: string) {
+  return sourceWorkflowFromApi(
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
+      params: { control_space_id: knowledgeSpaceId, run_id: runId },
+    }),
+  )
+}
+
+async function cancelSourceWorkflow(knowledgeSpaceId: string, runId: string) {
+  return sourceWorkflowFromApi(
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.cancel.post({
+      body: { reason: 'user_requested' },
+      params: { control_space_id: knowledgeSpaceId, run_id: runId },
+    }),
+  )
+}
 
 function normalizedState(state: string) {
   return state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
@@ -92,6 +132,10 @@ function isCanceled(state: string) {
 
 function isTerminal(state: string) {
   return isSuccessful(state) || isFailed(state) || isCanceled(state)
+}
+
+function requiresCancellation(state: string) {
+  return normalizedState(state) === 'preview_ready' || !isTerminal(state)
 }
 
 function configurationKey(configuration: CrawlConfiguration) {
@@ -140,6 +184,10 @@ function isCancelConfirmed(target: SourceWorkflowRun, current: SourceWorkflowRun
   return (
     target.id === current.id &&
     current.executionAttempts >= target.executionAttempts &&
+    !(
+      normalizedState(target.state) === 'preview_ready' &&
+      normalizedState(current.state) === 'preview_ready'
+    ) &&
     isTerminal(current.state)
   )
 }
@@ -174,11 +222,12 @@ async function listWorkflowPageUpdates(
   do {
     pageCount += 1
     if (pageCount > MAX_CURSOR_PAGES) throw new Error('Workflow page cursor limit exceeded')
-    const response =
-      await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages({
-        params: { id: knowledgeSpaceId, runId },
+    const response = crawlPreviewPageListFromApi(
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.pages.get({
+        params: { control_space_id: knowledgeSpaceId, run_id: runId },
         query: { ...(cursor ? { cursor } : {}), limit: PAGE_SIZE },
-      })
+      }),
+    )
     for (const page of response.items) pages.set(page.pageId, page)
     const nextCursor = response.nextCursor
     if (!nextCursor || seenCursors.has(nextCursor)) break
@@ -198,15 +247,15 @@ async function findProvisionalSource(knowledgeSpaceId: string, clientRequestId: 
   do {
     pageCount += 1
     if (pageCount > MAX_CURSOR_PAGES) throw new Error('Source cursor limit exceeded')
-    const response = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSources({
-      params: { id: knowledgeSpaceId },
-      query: { ...(cursor ? { cursor } : {}), limit: PAGE_SIZE },
+    const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.get({
+      params: { control_space_id: knowledgeSpaceId },
+      query: { ...(cursor ? { cursor } : {}) },
     })
-    const source = response.items.find(
-      (candidate) => candidate.metadata.clientRequestId === clientRequestId,
-    )
+    const source = response.data
+      .map(sourceFromApi)
+      .find((candidate) => candidate.metadata.clientRequestId === clientRequestId)
     if (source) return source
-    const nextCursor = response.nextCursor
+    const nextCursor = response.next_cursor ?? undefined
     if (!nextCursor || seenCursors.has(nextCursor)) return undefined
     seenCursors.add(nextCursor)
     cursor = nextCursor
@@ -306,6 +355,8 @@ export function WebsiteCrawlPreview({
       ? initialLimit
       : DEFAULT_PAGE_LIMIT
   })
+  const crawlOptionsAreDefault =
+    includeSubpages && (pageLimit === '' || pageLimit === DEFAULT_PAGE_LIMIT)
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
@@ -545,25 +596,27 @@ export function WebsiteCrawlPreview({
 
       draft.creationAttempted = true
       try {
-        draft.source = await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSources({
-          body: {
-            connectionId: connection.id,
-            metadata: {
-              clientRequestId: draft.clientRequestId,
-              crawlOptions: {
-                includeSubpages: nextConfiguration.includeSubpages,
-                limit: nextConfiguration.limit,
+        draft.source = sourceFromApi(
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.post({
+            body: {
+              connectionId: connection.id,
+              metadata: {
+                clientRequestId: draft.clientRequestId,
+                crawlOptions: {
+                  includeSubpages: nextConfiguration.includeSubpages,
+                  limit: nextConfiguration.limit,
+                },
+                preview: true,
+                providerId: connection.providerId,
               },
-              preview: true,
-              providerId: connection.providerId,
+              name: nextConfiguration.name,
+              status: 'disabled',
+              type: 'web',
+              uri: nextConfiguration.url,
             },
-            name: nextConfiguration.name,
-            status: 'disabled',
-            type: 'web',
-            uri: nextConfiguration.url,
-          },
-          params: { id: knowledgeSpaceId },
-        })
+            params: { control_space_id: knowledgeSpaceId },
+          }),
+        )
         updateWorkflowUncertain(false)
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
@@ -600,11 +653,11 @@ export function WebsiteCrawlPreview({
           draft = await ensureProvisionalSource(nextConfiguration)
           if (!draft.source) throw new Error('Provisional source is missing')
           if (discardRequestedRef.current) return undefined
-          const nextRun =
-            await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview({
-              headers: { 'Idempotency-Key': draft.previewRequestId },
-              params: { id: knowledgeSpaceId, sourceId: draft.source.id },
-            })
+          const nextRun = await previewSourceCrawl(
+            knowledgeSpaceId,
+            draft.source.id,
+            draft.previewRequestId,
+          )
           uncertainWorkflowRef.current = undefined
           retryFingerprintRef.current = undefined
           cancelFingerprintRef.current = undefined
@@ -618,12 +671,7 @@ export function WebsiteCrawlPreview({
             const sourceId = draft.source.id
             uncertainWorkflowRef.current = async () => {
               try {
-                return await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview(
-                  {
-                    headers: { 'Idempotency-Key': previewRequestId },
-                    params: { id: knowledgeSpaceId, sourceId },
-                  },
-                )
+                return await previewSourceCrawl(knowledgeSpaceId, sourceId, previewRequestId)
               } catch {
                 return undefined
               }
@@ -681,10 +729,7 @@ export function WebsiteCrawlPreview({
       try {
         if (retryAlreadySent) {
           try {
-            const reconciled =
-              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-                params: { id: knowledgeSpaceId, runId: run.id },
-              })
+            const reconciled = await getSourceWorkflow(knowledgeSpaceId, run.id)
             if (!isRetryConfirmed(run, reconciled)) {
               setRequestError('RETRY_FAILED')
               return undefined
@@ -699,20 +744,14 @@ export function WebsiteCrawlPreview({
         retryFingerprintRef.current = attemptKey
         const reconcileRetry = async () => {
           try {
-            const reconciled =
-              await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-                params: { id: knowledgeSpaceId, runId: run.id },
-              })
+            const reconciled = await getSourceWorkflow(knowledgeSpaceId, run.id)
             return isRetryConfirmed(run, reconciled) ? reconciled : undefined
           } catch {
             return undefined
           }
         }
         try {
-          const retried =
-            await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry({
-              params: { id: knowledgeSpaceId, runId: run.id },
-            })
+          const retried = await retrySourceWorkflow(knowledgeSpaceId, run.id)
           return acceptRun(retried)
         } catch (error) {
           if (isDefinitiveRequestFailure(error)) {
@@ -753,10 +792,7 @@ export function WebsiteCrawlPreview({
 
     const poll = async () => {
       try {
-        const nextRun =
-          await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-            params: { id: knowledgeSpaceId, runId },
-          })
+        const nextRun = await getSourceWorkflow(knowledgeSpaceId, runId)
         if (disposed) return
         const currentRun = runRef.current
         const retryPredecessor = retryPredecessorRef.current
@@ -842,7 +878,7 @@ export function WebsiteCrawlPreview({
   }, [knowledgeSpaceId, runId, shouldPoll, updateRun])
 
   const stop = async (targetRun = run) => {
-    if (!targetRun || isTerminal(targetRun.state)) return true
+    if (!targetRun || !requiresCancellation(targetRun.state)) return true
     if (actionPendingRef.current) return false
     const attemptKey = workflowAttemptKey(targetRun)
     const cancelAlreadySent = cancelFingerprintRef.current === attemptKey
@@ -852,10 +888,7 @@ export function WebsiteCrawlPreview({
     try {
       if (cancelAlreadySent) {
         try {
-          const reconciled =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-              params: { id: knowledgeSpaceId, runId: targetRun.id },
-            })
+          const reconciled = await getSourceWorkflow(knowledgeSpaceId, targetRun.id)
           if (!isCancelConfirmed(targetRun, reconciled)) {
             setRequestError('CANCEL_FAILED')
             return false
@@ -871,11 +904,7 @@ export function WebsiteCrawlPreview({
 
       cancelFingerprintRef.current = attemptKey
       try {
-        const canceled =
-          await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel({
-            body: { reason: 'user_requested' },
-            params: { id: knowledgeSpaceId, runId: targetRun.id },
-          })
+        const canceled = await cancelSourceWorkflow(knowledgeSpaceId, targetRun.id)
         cancelFingerprintRef.current = undefined
         updateRun(canceled)
         return true
@@ -886,10 +915,7 @@ export function WebsiteCrawlPreview({
           return false
         }
         try {
-          const reconciled =
-            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
-              params: { id: knowledgeSpaceId, runId: targetRun.id },
-            })
+          const reconciled = await getSourceWorkflow(knowledgeSpaceId, targetRun.id)
           if (!isCancelConfirmed(targetRun, reconciled)) {
             setRequestError('CANCEL_FAILED')
             return false
@@ -921,7 +947,18 @@ export function WebsiteCrawlPreview({
       setPollPaused(false)
       return
     }
-    if (run && (isFailed(run.state) || isSuccessful(run.state) || isCanceled(run.state))) {
+    if (run && isSuccessful(run.state)) {
+      const currentRun = run
+      void (async () => {
+        if (requiresCancellation(currentRun.state) && !(await stop(currentRun))) return
+        const currentKey = configurationKey(configuration)
+        if (draftRef.current?.configurationKey === currentKey)
+          draftRef.current.previewRequestId = createRequestId()
+        await startPreview(configuration)
+      })()
+      return
+    }
+    if (run && (isFailed(run.state) || isCanceled(run.state))) {
       const currentKey = configurationKey(configuration)
       if (draftRef.current?.configurationKey === currentKey) {
         void retryRun()
@@ -1000,7 +1037,7 @@ export function WebsiteCrawlPreview({
       updateWorkflowUncertain(false)
     }
     const runToCancel = pendingRun ?? pendingCancelRunRef.current ?? runRef.current
-    if (runToCancel && !isTerminal(runToCancel.state) && !(await stop(runToCancel))) {
+    if (runToCancel && requiresCancellation(runToCancel.state) && !(await stop(runToCancel))) {
       pendingCancelRunRef.current = runToCancel
       discardRequestedRef.current = false
       resetPreviewPages()
@@ -1111,7 +1148,15 @@ export function WebsiteCrawlPreview({
               </span>
               {!optionsExpanded && (
                 <span className="ml-auto system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.usingDefaults'])}
+                  {crawlOptionsAreDefault
+                    ? t(($) => $['newKnowledge.usingDefaults'])
+                    : `${t(($) => $['newKnowledge.includeSubpages'])}: ${t(($) =>
+                        includeSubpages
+                          ? $['newKnowledge.booleanTrue']
+                          : $['newKnowledge.booleanFalse'],
+                      )} · ${t(($) => $['newKnowledge.maxPages'])}: ${
+                        pageLimit || DEFAULT_PAGE_LIMIT
+                      }`}
                 </span>
               )}
             </button>
@@ -1219,7 +1264,7 @@ export function WebsiteCrawlPreview({
         )}
         {showSuccess && run && draftRef.current?.source && configuration && (
           <CrawlSelectionForm
-            busy={starting}
+            busy={starting || stopping}
             discardRequested={() => discardRequestedRef.current}
             initialSyncMode={
               initialDraft?.syncPolicy === 'daily' ? 'interval' : initialDraft?.syncPolicy

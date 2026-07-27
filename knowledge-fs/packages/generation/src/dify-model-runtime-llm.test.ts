@@ -116,6 +116,30 @@ describe("Dify model runtime LLM provider", () => {
     });
   });
 
+  it("keeps content from Dify stream frames with null usage", async () => {
+    const provider = createDifyModelRuntimeLlmProvider({
+      ...BASE,
+      client: fakeClient(() => [
+        {
+          delta: {
+            finish_reason: null,
+            message: { content: "Reply OK." },
+            usage: null,
+          },
+          model: BASE.model,
+        },
+      ]),
+    });
+
+    const result = await provider.generate({
+      messages: [{ content: "Reply OK.", role: "user" }],
+      model: BASE.model,
+      tenantId: "tenant-abc",
+    });
+
+    expect(result.text).toBe("Reply OK.");
+  });
+
   it("requires a per-call tenantId and validates constructor options", async () => {
     const provider = createDifyModelRuntimeLlmProvider({
       ...BASE,

@@ -25,6 +25,8 @@ from models.base import TypeBase
 from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
 
+_USER_UUID = "00000000-0000-4000-8000-000000000001"
+
 
 @pytest.fixture
 def sqlite_plugin_engine(
@@ -101,14 +103,14 @@ class TestGetUser:
         """Test returning existing user when found by ID"""
         _persist_end_user(
             sqlite_plugin_engine,
-            user_id="user123",
+            user_id=_USER_UUID,
             session_id="existing-session",
         )
 
         with app.app_context():
-            result = get_user("tenant123", "user123")
+            result = get_user("tenant123", _USER_UUID)
 
-        assert result.id == "user123"
+        assert result.id == _USER_UUID
         assert result.tenant_id == "tenant123"
 
     def test_should_not_resolve_non_anonymous_users_across_tenants(
@@ -157,6 +159,39 @@ class TestGetUser:
         with Session(sqlite_plugin_engine) as session:
             users = session.scalars(select(EndUser)).all()
         assert [user.id for user in users] == ["persisted-user-id"]
+
+    def test_should_skip_uuid_id_lookup_for_text_session_id(
+        self,
+        sqlite_plugin_engine: Engine,
+        app: Flask,
+    ):
+        """Service actor names must not be compared with the UUID primary key."""
+        _persist_end_user(
+            sqlite_plugin_engine,
+            user_id="persisted-user-id",
+            session_id="knowledge-fs",
+        )
+        statements: list[str] = []
+
+        def _record_statement(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: bool,
+        ) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_plugin_engine, "before_cursor_execute", _record_statement)
+        try:
+            with app.app_context():
+                result = get_user("tenant123", "knowledge-fs")
+        finally:
+            event.remove(sqlite_plugin_engine, "before_cursor_execute", _record_statement)
+
+        assert result.id == "persisted-user-id"
+        assert not any("WHERE end_users.id =" in statement for statement in statements)
 
     def test_should_return_existing_anonymous_user_by_session_id(
         self,
@@ -244,17 +279,17 @@ class TestGetUserTenant:
         _persist_tenant(sqlite_plugin_engine)
         _persist_end_user(
             sqlite_plugin_engine,
-            user_id="user456",
+            user_id=_USER_UUID,
             session_id="user-session",
         )
 
-        with app.test_request_context(json={"tenant_id": "tenant123", "user_id": "user456"}):
+        with app.test_request_context(json={"tenant_id": "tenant123", "user_id": _USER_UUID}):
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
                 result = protected_view()
 
         assert result["tenant"].id == "tenant123"
-        assert result["user"].id == "user456"
+        assert result["user"].id == _USER_UUID
 
     def test_should_raise_error_when_tenant_id_missing(self, app: Flask):
         """Test that Pydantic ValidationError is raised when tenant_id is missing from payload"""

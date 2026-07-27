@@ -1,20 +1,19 @@
 'use client'
 
-import type {
-  GetKnowledgeSpacesByIdSourceConnectionsResponse,
-  GetSourceProvidersResponse,
-} from '@dify/contracts/knowledge-fs/types.gen'
+import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type {
   NewKnowledgeSourceDraft,
   NewKnowledgeSourceType,
   NewKnowledgeWebsiteProvider,
 } from './routes'
+import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
@@ -25,11 +24,14 @@ import {
   newKnowledgeSourceDraftStorageKey,
   parseNewKnowledgeSourceDraft,
 } from './routes'
+import {
+  sourceConnectionFromApi,
+  sourceConnectionListFromApi,
+  sourceProviderListFromApi,
+} from './source-models'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
-type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
-type Connection = GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
 type SourceType = NewKnowledgeSourceType
 
@@ -40,6 +42,7 @@ const FIRECRAWL_CONFIGURATION = {
   datasource: 'crawl',
   pluginId: 'langgenius/firecrawl_datasource',
   provider: 'firecrawl',
+  providerKind: 'website',
 } as const
 const WEBSITE_PROVIDER_OPTIONS: Array<{
   icon: string
@@ -49,7 +52,10 @@ const WEBSITE_PROVIDER_OPTIONS: Array<{
   { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
   { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
 ]
-const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
+const FIRECRAWL_FIXED_FIELD_NAMES = new Set([
+  ...Object.keys(FIRECRAWL_CONFIGURATION),
+  'credentialId',
+])
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
   provisioning: 1,
@@ -72,6 +78,18 @@ function fieldValue(value: string, type: ProviderField['type']) {
 
 function findFirecrawl(providers: Provider[]) {
   return providers.find((provider) => provider.id === FIRECRAWL_PROVIDER_ID)
+}
+
+function findFirecrawlCredential(providers: DatasourceProviderAuthListResponse['result']) {
+  const datasourceProvider = providers.find(
+    (provider) =>
+      provider.plugin_id === FIRECRAWL_CONFIGURATION.pluginId &&
+      provider.provider === FIRECRAWL_CONFIGURATION.provider,
+  )
+  return (
+    datasourceProvider?.credentials_list.find((credential) => credential.is_default) ??
+    datasourceProvider?.credentials_list[0]
+  )
 }
 
 function findProviderConnection(connections: Connection[], providerId?: string) {
@@ -101,7 +119,17 @@ function normalizeSourceType(value: string | null): SourceType {
   return 'websiteCrawl'
 }
 
-function getSupportedAuthKinds(provider: Provider) {
+function isDifyManagedProvider(provider: Provider) {
+  const fieldNames = new Set(provider.configuration.map((field) => field.name))
+  return fieldNames.has('credentialId') && fieldNames.has('providerKind')
+}
+
+function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
+  if (isDifyManagedProvider(provider))
+    return credentialId && provider.authKinds.includes('endpoint')
+      ? (['endpoint'] satisfies ConnectionAuthKind[])
+      : []
+
   const fields = provider.configuration.filter(
     (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
   )
@@ -275,15 +303,17 @@ function ConnectionForm({
   onDraftChange,
   onReconcile,
   provider,
+  credentialId,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
+  credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
-  const supportedAuthKinds = getSupportedAuthKinds(provider)
+  const supportedAuthKinds = getSupportedAuthKinds(provider, credentialId)
   const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
   const [credentials, setCredentials] = useState<Record<string, string>>({})
@@ -323,13 +353,17 @@ function ConnectionForm({
     setError(false)
     setPending(true)
     try {
+      const fixedValues: Record<string, string> = {
+        ...FIRECRAWL_CONFIGURATION,
+        ...(credentialId ? { credentialId } : {}),
+      }
       const fixedConfiguration = Object.fromEntries(
         provider.configuration
           .filter((field) => FIRECRAWL_FIXED_FIELD_NAMES.has(field.name))
-          .map((field) => [
-            field.name,
-            FIRECRAWL_CONFIGURATION[field.name as keyof typeof FIRECRAWL_CONFIGURATION],
-          ]),
+          .flatMap((field) => {
+            const value = fixedValues[field.name]
+            return value === undefined ? [] : ([[field.name, value]] as const)
+          }),
       )
       const safeConfiguration = {
         ...fixedConfiguration,
@@ -344,8 +378,8 @@ function ConnectionForm({
           .filter((field) => field.secret && credentials[field.name]?.trim())
           .map((field) => [field.name, fieldValue(credentials[field.name] ?? '', field.type)]),
       )
-      const createdConnection =
-        await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceConnections({
+      const createdConnection = sourceConnectionFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
           body: {
             authKind,
             configuration: safeConfiguration,
@@ -353,8 +387,9 @@ function ConnectionForm({
             name: FIRECRAWL_CONNECTION_NAME,
             providerId: provider.id,
           },
-          params: { id: knowledgeSpaceId },
-        })
+          params: { control_space_id: knowledgeSpaceId },
+        }),
+      )
       setCredentials({})
       onDraftChange(false)
       onConnected(createdConnection)
@@ -416,7 +451,9 @@ function ConnectionForm({
       <Button type="submit" variant="primary" className="mt-4" disabled={pending}>
         {pending
           ? t(($) => $['newKnowledge.connectingProvider'])
-          : t(($) => $['newKnowledge.connectProvider'])}
+          : t(($) => $['newKnowledge.connectProvider'], {
+              provider: FIRECRAWL_CONNECTION_NAME,
+            })}
       </Button>
     </form>
   )
@@ -425,22 +462,28 @@ function ConnectionForm({
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
+  onConfigureManagedProvider,
   onDraftChange,
   onReconcile,
   provider,
+  credentialId,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onConfigureManagedProvider: () => void
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
+  credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
   const [configuring, setConfiguring] = useState(false)
+  const difyManaged = isDifyManagedProvider(provider)
 
-  if (configuring)
+  if ((difyManaged && credentialId) || configuring)
     return (
       <ConnectionForm
+        credentialId={credentialId}
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
         onDraftChange={onDraftChange}
@@ -460,14 +503,24 @@ function UnconfiguredProvider({
         })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
-          provider: FIRECRAWL_CONNECTION_NAME,
-        })}
+        {difyManaged
+          ? t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
+              provider: FIRECRAWL_CONNECTION_NAME,
+            })
+          : t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
+              provider: FIRECRAWL_CONNECTION_NAME,
+            })}
       </p>
-      <Button variant="primary" className="mt-4" onClick={() => setConfiguring(true)}>
-        {t(($) => $['newKnowledge.configureProvider'], {
-          provider: FIRECRAWL_CONNECTION_NAME,
-        })}
+      <Button
+        variant="primary"
+        className="mt-4"
+        onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
+      >
+        {difyManaged
+          ? t(($) => $['newKnowledge.openDataSourceSettings'])
+          : t(($) => $['newKnowledge.configureProvider'], {
+              provider: FIRECRAWL_CONNECTION_NAME,
+            })}
       </Button>
     </div>
   )
@@ -494,13 +547,17 @@ function ConnectionProblem({
     setPending(true)
     setError(false)
     try {
-      const refreshed =
-        await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh(
+      const refreshed = sourceConnectionFromApi(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post(
           {
             body: { expectedVersion: connection.version },
-            params: { connectionId: connection.id, id: knowledgeSpaceId },
+            params: {
+              connection_id: connection.id,
+              control_space_id: knowledgeSpaceId,
+            },
           },
-        )
+        ),
+      )
       onConnected(refreshed)
     } catch {
       let reconciledConnection: Connection | undefined
@@ -657,31 +714,42 @@ export function AddSourcePage({
     }
   }, [sourceDraftKey])
   const providersQuery = useQuery(
-    consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
-      input: {},
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+      context: { silent: true },
+      enabled: websiteSourceSelected,
+      retry: false,
+      select: sourceProviderListFromApi,
+    }),
+  )
+  const datasourceAuthQuery = useQuery(
+    consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
       context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
-        params: { id: knowledgeSpaceId },
+        params: { control_space_id: knowledgeSpaceId },
         query: {
           limit: CONNECTION_PAGE_SIZE,
           ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
         },
       }),
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
       retry: false,
     }),
   )
-  const provider = findFirecrawl(providersQuery.data?.items ?? [])
-  const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
+  const provider = findFirecrawl(providersQuery.data ?? [])
+  const datasourceCredential = findFirecrawlCredential(datasourceAuthQuery.data?.result ?? [])
+  const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
+  const remoteConnections =
+    connectionsQuery.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
   const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
   const matchingRemoteConnection = connectionOverride
@@ -706,7 +774,11 @@ export function AddSourcePage({
     }
     return localConnection
   }, [connectionOverride, matchingRemoteConnection, provider?.id, remoteConnection])
-  const supportsDirectConnection = provider ? getSupportedAuthKinds(provider).length > 0 : false
+  const supportsDirectConnection = provider
+    ? difyManagedProvider
+      ? provider.authKinds.includes('endpoint')
+      : getSupportedAuthKinds(provider).length > 0
+    : false
   const {
     fetchNextPage: fetchNextConnectionPage,
     hasNextPage: hasNextConnectionPage,
@@ -734,7 +806,7 @@ export function AddSourcePage({
     (updatedConnection: Connection) => {
       setConnectionOverride(updatedConnection)
       void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.key(),
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key(),
       })
     },
     [queryClient],
@@ -744,7 +816,8 @@ export function AddSourcePage({
     if (connection) setConnectionOverride(connection)
     const refreshed = await refetchConnections()
     if (refreshed.error) throw refreshed.error
-    const refreshedConnections = refreshed.data?.pages.flatMap((page) => page.items) ?? []
+    const refreshedConnections =
+      refreshed.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
     const refreshedCurrentConnection = connection
       ? findConnectionById(refreshedConnections, connection.id)
       : undefined
@@ -762,7 +835,10 @@ export function AddSourcePage({
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
   const queryError =
-    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
+    providersQuery.error ||
+    connectionsQuery.error ||
+    connectionsQuery.isFetchNextPageError ||
+    (difyManagedProvider ? datasourceAuthQuery.error : null)
   const websiteReady = Boolean(
     websiteSourceSelected &&
     !queryError &&
@@ -933,7 +1009,8 @@ export function AddSourcePage({
 
   if (
     !sourceDraftResolved ||
-    (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
+    (websiteSourceSelected &&
+      (providersQuery.isPending || datasourceAuthQuery.isPending || loadingConnections))
   )
     return (
       <div className="flex min-h-64 items-center justify-center">
@@ -987,7 +1064,11 @@ export function AddSourcePage({
                   <Button
                     className="mt-3"
                     onClick={() =>
-                      void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
+                      void Promise.all([
+                        providersQuery.refetch(),
+                        datasourceAuthQuery.refetch(),
+                        connectionsQuery.refetch(),
+                      ])
                     }
                   >
                     {t(($) => $['newKnowledge.retryProviderLoad'])}
@@ -1030,8 +1111,12 @@ export function AddSourcePage({
                 />
               ) : (
                 <UnconfiguredProvider
+                  credentialId={datasourceCredential?.id}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onConnected={rememberConnection}
+                  onConfigureManagedProvider={() =>
+                    requestNavigation(buildIntegrationPath('data-source'))
+                  }
                   onDraftChange={setConnectionDraftDirty}
                   onReconcile={reconcileConnection}
                   provider={provider}

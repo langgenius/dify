@@ -20,6 +20,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
 )
@@ -167,6 +168,8 @@ class HTTPKnowledgeFSProductRemoteClient:
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
+            if response.status_code == HTTPStatus.NOT_FOUND:
+                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
             if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
                 raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
             try:
@@ -234,9 +237,17 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code == 409:
+                raise KnowledgeFSProductRequestRejectedError(status_code=409)
+            if response.status_code == 413:
+                raise KnowledgeFSProductRequestRejectedError(status_code=413)
+            if response.status_code == 422:
+                raise KnowledgeFSProductRequestRejectedError(status_code=422)
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
+            if response.status_code == HTTPStatus.NOT_FOUND:
+                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
             if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
                 raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
             try:

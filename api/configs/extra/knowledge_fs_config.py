@@ -12,7 +12,7 @@ class KnowledgeFSConfig(BaseSettings):
 
     KNOWLEDGE_FS_ENABLED: bool = Field(
         default=False,
-        description="Enable the private KnowledgeFS Console bridge.",
+        description="Enable the KnowledgeFS control-plane product routes.",
     )
     KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED: bool = Field(
         default=False,
@@ -33,6 +33,10 @@ class KnowledgeFSConfig(BaseSettings):
     KNOWLEDGE_FS_DIRECT_ORIGIN: str | None = Field(
         default=None,
         description="Public KnowledgeFS origin returned with direct upload capabilities.",
+    )
+    KNOWLEDGE_FS_DIRECT_UPLOAD_READY: bool = Field(
+        default=False,
+        description="Confirm that KnowledgeFS direct upload and its browser origin policy are deployed and verified.",
     )
     KNOWLEDGE_FS_CAPABILITY_V2_ENABLED: bool = Field(
         default=False,

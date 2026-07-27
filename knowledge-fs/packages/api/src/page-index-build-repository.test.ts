@@ -161,13 +161,13 @@ describe("flattened PageIndex build repository", () => {
           rows: [
             {
               checksum: manifestParams[10],
-              actual_node_count: nodeRows.length,
-              actual_term_count: termRows.length,
+              actual_node_count: String(nodeRows.length),
+              actual_term_count: String(termRows.length),
               document_asset_id: manifestParams[3],
               document_outline_id: manifestParams[4],
               document_version: manifestParams[5],
               id: manifestParams[0],
-              invalid_term_count: 0,
+              invalid_term_count: "0",
               knowledge_space_id: manifestParams[1],
               node_count: manifestParams[8],
               publication_generation_id: manifestParams[2],
