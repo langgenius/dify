@@ -70,15 +70,6 @@ function WorkspaceCardSkeleton({
   )
 }
 
-function WorkspaceSwitcherSkeleton() {
-  return (
-    <div aria-hidden="true" className="space-y-1 p-1 pb-2">
-      <div className={cn(workspaceCardSkeletonClassName, 'h-8 w-full rounded-lg')} />
-      <div className={cn(workspaceCardSkeletonClassName, 'h-8 w-full rounded-lg')} />
-    </div>
-  )
-}
-
 function WorkspaceCreditsLabel({ credits, unit }: { credits: string; unit: string }) {
   const label = `${credits} ${unit}`
 
@@ -341,18 +332,14 @@ export function WorkspaceCard() {
               setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
             }}
           />
-          {workspacesQuery.isPending && <WorkspaceSwitcherSkeleton />}
-          {workspaces && workspaces.length > 0 && (
-            <div className="p-1 pb-2">
-              <WorkspaceSwitcher
-                workspaces={workspaces}
-                onSwitchWorkspace={(workspaceId) => {
-                  setOpen(false)
-                  void handleSwitchWorkspace(workspaceId)
-                }}
-              />
-            </div>
-          )}
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            isPending={workspacesQuery.isPending}
+            onSwitchWorkspace={(workspaceId) => {
+              setOpen(false)
+              void handleSwitchWorkspace(workspaceId)
+            }}
+          />
         </PopoverContent>
       </>
     </Popover>

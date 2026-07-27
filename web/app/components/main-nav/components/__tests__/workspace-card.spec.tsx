@@ -234,6 +234,23 @@ describe('WorkspaceCard', () => {
     expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
   })
 
+  it('keeps workspace controls visible and disabled while the workspace list is loading', async () => {
+    const user = userEvent.setup()
+    mockFetchWorkspaces.mockReturnValue(new Promise(() => {}))
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByText('common.userProfile.workspace')).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }),
+    ).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
+    expect(panel.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()
+  })
+
   it('uses the current workspace query for billing plan UI', () => {
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
