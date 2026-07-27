@@ -2,6 +2,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
@@ -15,8 +16,14 @@ import {
 } from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
-const { mockSwitchWorkspace, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(
+const {
+  mockFetchWorkspaces,
+  mockSwitchWorkspace,
+  mockCurrentWorkspaceQueryKey,
+  mockWorkspacesQueryKey,
+} = vi.hoisted(
   () => ({
+    mockFetchWorkspaces: vi.fn(),
     mockSwitchWorkspace: vi.fn(),
     mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
     mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
@@ -64,9 +71,10 @@ vi.mock('@/service/client', async (importOriginal) => {
           },
           get: {
             queryKey: () => mockWorkspacesQueryKey,
-            queryOptions: () => ({
+            queryOptions: (options?: object) => ({
               queryKey: mockWorkspacesQueryKey,
-              queryFn: () => new Promise(() => {}),
+              queryFn: mockFetchWorkspaces,
+              ...options,
             }),
           },
           switch: {
@@ -163,6 +171,7 @@ describe('WorkspaceCard', () => {
         current: false,
       },
     ]
+    mockFetchWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
@@ -210,16 +219,24 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByText('Evan Workspace')).not.toBeInTheDocument()
   })
 
-  it('renders a skeleton while the workspaces query has no data', () => {
+  it('renders the current workspace before loading the workspace list', async () => {
+    const user = userEvent.setup()
     renderWorkspaceCard({ seedWorkspaces: false })
 
     expect(
-      screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('Solar Studio')).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Solar Studio')).toBeInTheDocument()
+    expect(mockFetchWorkspaces).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Solar Studio' })).toBeInTheDocument()
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
   })
 
-  it('uses the workspaces query current item for billing plan UI', () => {
+  it('uses the current workspace query for billing plan UI', () => {
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
       plan: Plan.team,
@@ -234,23 +251,17 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
-    expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
-    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
-    expect(screen.queryByText(Plan.team)).not.toBeInTheDocument()
-    expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
+    expect(screen.getByText(Plan.team)).toBeInTheDocument()
+    expect(screen.getByText('billing.upgradeBtn.plain')).toBeInTheDocument()
+    expect(screen.queryByText(Plan.sandbox)).not.toBeInTheDocument()
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
   })
 
   it('uses the original paid plan badge for paid workspaces', () => {
-    mockWorkspaces = [
-      {
-        id: 'workspace-1',
-        name: 'Solar Studio',
-        plan: Plan.team,
-        status: 'normal',
-        created_at: 0,
-        current: true,
-      },
-    ]
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: Plan.team,
+    })
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -265,6 +276,10 @@ describe('WorkspaceCard', () => {
   })
 
   it('shows the Enterprise license status independently of the Cloud billing state', () => {
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: '',
+    })
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,

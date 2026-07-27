@@ -556,6 +556,7 @@ describe('Console bootstrap', () => {
           expect.objectContaining({
             email: 'user@example.com',
             workspace_id: 'workspace-1',
+            workspace_plan: 'sandbox',
             workspace_role: 'editor',
           }),
         )

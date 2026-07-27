@@ -1,5 +1,6 @@
 'use client'
 
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -65,6 +66,15 @@ function WorkspaceCardSkeleton({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function WorkspaceSwitcherSkeleton() {
+  return (
+    <div aria-hidden="true" className="space-y-1 p-1 pb-2">
+      <div className={cn(workspaceCardSkeletonClassName, 'h-8 w-full rounded-lg')} />
+      <div className={cn(workspaceCardSkeletonClassName, 'h-8 w-full rounded-lg')} />
     </div>
   )
 }
@@ -221,16 +231,15 @@ function WorkspaceMenuHeader({
   )
 }
 
-const selectCurrentWorkspaceCardData = (workspace: {
-  id: string
-  name?: string | null
-  role?: string | null
-  trial_credits?: number | null
-  trial_credits_used?: number | null
-}) => ({
+type CurrentWorkspaceCardSource = Pick<
+  PostWorkspacesCurrentResponse,
+  'id' | 'name' | 'plan' | 'trial_credits' | 'trial_credits_used'
+>
+
+const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) => ({
   id: workspace.id,
   name: workspace.name,
-  role: workspace.role,
+  plan: workspace.plan,
   credits: getRemainingCredits(workspace.trial_credits ?? 0, workspace.trial_credits_used ?? 0),
 })
 
@@ -245,27 +254,21 @@ export function WorkspaceCard() {
       select: selectCurrentWorkspaceCardData,
     }),
   )
-  const workspacesQuery = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const [open, setOpen] = useState(false)
+  const workspacesQuery = useQuery(
+    consoleQuery.workspaces.get.queryOptions({
+      enabled: open,
+    }),
+  )
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const currentWorkspace = currentWorkspaceQuery.data
-  const workspacesData = workspacesQuery.data
-  const workspaces = workspacesData?.workspaces
-  const currentWorkspaceInList = workspaces?.find((workspace) => workspace.current)
+  const workspaces = workspacesQuery.data?.workspaces
   const { enableBilling } = useProviderContext()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const showCloudBilling = deploymentEdition === 'CLOUD' && enableBilling
-  const [open, setOpen] = useState(false)
 
-  if (
-    currentWorkspaceQuery.isPending ||
-    workspacesQuery.isPending ||
-    !currentWorkspace?.name ||
-    !currentWorkspace.role ||
-    !workspaces ||
-    !currentWorkspaceInList ||
-    !isWorkspacePlan(currentWorkspaceInList.plan)
-  ) {
+  if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
       <WorkspaceCardSkeleton
         showCloudBilling={showCloudBilling}
@@ -274,9 +277,9 @@ export function WorkspaceCard() {
     )
   }
 
-  const workspacePlan = currentWorkspaceInList.plan
+  const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
   const isFreePlan = workspacePlan === Plan.sandbox
-  const showPlanAction = showCloudBilling
+  const showPlanAction = showCloudBilling && workspacePlan !== null
   const planActionLabel = t(
     ($) => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'],
     { ns: 'billing' },
@@ -284,7 +287,7 @@ export function WorkspaceCard() {
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const renderWorkspaceStatus = () => {
     if (deploymentEdition === 'CLOUD')
-      return enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+      return enableBilling && workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
     if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
     return null
   }
@@ -338,7 +341,8 @@ export function WorkspaceCard() {
               setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
             }}
           />
-          {workspaces.length > 0 && (
+          {workspacesQuery.isPending && <WorkspaceSwitcherSkeleton />}
+          {workspaces && workspaces.length > 0 && (
             <div className="p-1 pb-2">
               <WorkspaceSwitcher
                 workspaces={workspaces}
