@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -90,6 +90,7 @@ function WorkspaceCardTrigger({
   showPlanAction,
   planActionLabel,
   creditsHref,
+  onPrefetchWorkspaces,
   onPlanClick,
 }: {
   open: boolean
@@ -100,6 +101,7 @@ function WorkspaceCardTrigger({
   showPlanAction: boolean
   planActionLabel: string
   creditsHref: string
+  onPrefetchWorkspaces: () => void
   onPlanClick: () => void
 }) {
   const { t } = useTranslation()
@@ -112,6 +114,8 @@ function WorkspaceCardTrigger({
       <PopoverTrigger
         aria-label={t(($) => $['mainNav.workspace.openMenu'], { ns: 'common' })}
         title={name}
+        onMouseEnter={onPrefetchWorkspaces}
+        onFocus={onPrefetchWorkspaces}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
           showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
@@ -236,6 +240,7 @@ const selectCurrentWorkspaceCardData = (workspace: CurrentWorkspaceCardSource) =
 
 export function WorkspaceCard() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -246,11 +251,11 @@ export function WorkspaceCard() {
     }),
   )
   const [open, setOpen] = useState(false)
-  const workspacesQuery = useQuery(
-    consoleQuery.workspaces.get.queryOptions({
-      enabled: open,
-    }),
-  )
+  const workspacesQueryOptions = consoleQuery.workspaces.get.queryOptions()
+  const workspacesQuery = useQuery({
+    ...workspacesQueryOptions,
+    enabled: open,
+  })
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
@@ -258,6 +263,9 @@ export function WorkspaceCard() {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const showCloudBilling = deploymentEdition === 'CLOUD' && enableBilling
+  const prefetchWorkspaces = () => {
+    void queryClient.prefetchQuery(workspacesQueryOptions)
+  }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
@@ -307,6 +315,7 @@ export function WorkspaceCard() {
           showPlanAction={showPlanAction}
           planActionLabel={planActionLabel}
           creditsHref={buildIntegrationPath('provider')}
+          onPrefetchWorkspaces={prefetchWorkspaces}
           onPlanClick={setShowPricingModal}
         />
         <PopoverContent

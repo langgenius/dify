@@ -234,6 +234,33 @@ describe('WorkspaceCard', () => {
     expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
   })
 
+  it('prefetches the workspace list when the trigger is hovered', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    const trigger = screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })
+    await user.hover(trigger)
+
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument()
+
+    await user.click(trigger)
+
+    expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
+    expect(mockFetchWorkspaces).toHaveBeenCalledOnce()
+  })
+
+  it('prefetches the workspace list when the trigger receives keyboard focus', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    await user.tab()
+
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toHaveFocus()
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument()
+  })
+
   it('keeps workspace controls visible and disabled while the workspace list is loading', async () => {
     const user = userEvent.setup()
     mockFetchWorkspaces.mockReturnValue(new Promise(() => {}))
