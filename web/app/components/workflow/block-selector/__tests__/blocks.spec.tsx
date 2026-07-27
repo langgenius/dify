@@ -222,6 +222,12 @@ describe('Blocks', () => {
     const migrateNow = await screen.findByRole('button', {
       name: /workflow.nodes.humanInputMigration.action.migrateNow/,
     })
+    expect(
+      screen.getByText('workflow.nodes.humanInputMigration.preview.author'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.humanInputMigration.preview.description'),
+    ).toBeInTheDocument()
     await user.click(migrateNow)
     expect(openMigrationDialog).toHaveBeenCalledTimes(1)
 

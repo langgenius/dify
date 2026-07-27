@@ -1,5 +1,7 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassification } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -173,8 +175,16 @@ const Blocks = ({
                         if (!isHumanInputDisabled) onSelect(block.metaData.type)
                       }}
                     >
-                      <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
-                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
+                      <BlockIcon
+                        className={cn('mr-2 shrink-0', isHumanInputDisabled && 'opacity-30')}
+                        type={block.metaData.type}
+                      />
+                      <span
+                        className={cn(
+                          'min-w-0 grow truncate text-sm text-text-secondary',
+                          isHumanInputDisabled && 'opacity-30',
+                        )}
+                      >
                         {block.metaData.title}
                       </span>
                       {isHumanInputDisabled && (
@@ -182,7 +192,8 @@ const Blocks = ({
                           text={t(($) => $['nodes.humanInputMigration.disabledBadge'], {
                             ns: 'workflow',
                           })}
-                          className="ml-2 shrink-0"
+                          size="xs"
+                          className="ml-2 shrink-0 px-[5px] py-[3px]"
                         />
                       )}
                       {block.metaData.type === BlockEnum.LoopEnd && (
@@ -239,6 +250,50 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
 
   const { block, disabled } = payload
 
+  if (disabled) {
+    return (
+      <BlockSelectorPreviewCardContent>
+        <div className="-mx-2 -my-1.5 flex flex-col gap-1">
+          <div className="p-2">
+            <div className="flex items-center gap-2">
+              <BlockIcon size="md" className="shrink-0" type={block.metaData.type} />
+              <div className="system-md-medium text-text-primary">{block.metaData.title}</div>
+            </div>
+            <div className="mt-2 system-xs-regular wrap-break-word text-text-tertiary">
+              {block.metaData.description}
+            </div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['nodes.humanInputMigration.preview.author'], { ns: 'workflow' })}
+            </div>
+          </div>
+          <div className="rounded-lg bg-background-section p-2">
+            <div className="flex items-start gap-2">
+              <span
+                aria-hidden
+                className="mt-0.5 i-ri-loader-2-line size-4 shrink-0 text-text-tertiary"
+              />
+              <div className="system-xs-regular text-text-secondary">
+                {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
+              </div>
+            </div>
+            {migration?.canEdit && (
+              <Button
+                size="small"
+                variant="primary"
+                className="mt-2 gap-0.5"
+                disabled={migration.pending}
+                onClick={migration.openMigrationDialog}
+              >
+                {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
+                <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </BlockSelectorPreviewCardContent>
+    )
+  }
+
   return (
     <BlockSelectorPreviewCardContent>
       <BlockIcon size="md" className="mb-2" type={block.metaData.type} />
@@ -246,22 +301,6 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
       <div className="system-xs-regular wrap-break-word text-text-tertiary">
         {block.metaData.description}
       </div>
-      {disabled && (
-        <div className="mt-3 rounded-lg bg-state-accent-hover px-3 py-2">
-          <div className="system-xs-regular text-text-secondary">
-            {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
-          </div>
-          {migration?.canEdit && (
-            <button
-              type="button"
-              className="mt-1 rounded-sm system-xs-medium text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={migration.openMigrationDialog}
-            >
-              {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })} →
-            </button>
-          )}
-        </div>
-      )}
     </BlockSelectorPreviewCardContent>
   )
 }

@@ -68,8 +68,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-const createLegacyNode = (unsupported = false): Node => ({
-  id: 'legacy-human-input',
+const createLegacyNode = (unsupported = false, id = 'legacy-human-input'): Node => ({
+  id,
   type: 'custom',
   position: { x: 100, y: 100 },
   data: {
@@ -132,7 +132,9 @@ describe('Human Input migration provider', () => {
     ).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
     )
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
@@ -154,15 +156,37 @@ describe('Human Input migration provider', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
+  it('shows the current legacy-node count in the shared confirmation dialog', async () => {
+    runtime.nodes = [createLegacyNode(false, 'legacy-one'), createLegacyNode(false, 'legacy-two')]
+    const user = userEvent.setup()
+    renderProvider()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
+    )
+
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'workflow.nodes.humanInputMigration.dialog.title:{"count":2}',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('finishes preflight before mutation and reports a node-specific blocker', async () => {
     runtime.nodes = [createLegacyNode(true)]
     const user = userEvent.setup()
     renderProvider()
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
     )
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrate',
+      }),
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Approval')
@@ -186,7 +210,9 @@ describe('Human Input migration provider', () => {
     const user = userEvent.setup()
     renderProvider()
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
     )
     const confirm = screen.getByRole('button', {
       name: 'workflow.nodes.humanInputMigration.action.migrate',
@@ -214,7 +240,9 @@ describe('Human Input migration provider', () => {
     const user = userEvent.setup()
     renderProvider()
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
     )
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
@@ -228,6 +256,8 @@ describe('Human Input migration provider', () => {
     expect(mocks.saveHistory).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInputMigration.banner.title')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
+    ).toBeInTheDocument()
   })
 })

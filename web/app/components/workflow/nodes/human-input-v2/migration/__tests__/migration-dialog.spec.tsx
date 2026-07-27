@@ -16,6 +16,7 @@ const DialogHarness = ({ onConfirm = vi.fn() }: { onConfirm?: () => void }) => {
       <HumanInputMigrationDialog
         open={open}
         pending={pending}
+        nodeCount={3}
         onOpenChange={setOpen}
         onConfirm={() => {
           onConfirm()
@@ -35,13 +36,16 @@ describe('Human Input migration dialog', () => {
 
     expect(
       screen.getByRole('alertdialog', {
-        name: 'workflow.nodes.humanInputMigration.dialog.title',
+        name: 'workflow.nodes.humanInputMigration.dialog.title:{"count":3}',
       }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('workflow.nodes.humanInputMigration.dialog.description'),
     ).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.humanInputMigration.dialog.review')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.humanInputMigration.dialog.draftNotice'),
+    ).toBeInTheDocument()
     expect(screen.getByText('outside')).not.toHaveFocus()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -84,6 +88,7 @@ describe('Human Input migration dialog', () => {
       <HumanInputMigrationDialog
         open
         pending={false}
+        nodeCount={1}
         error="Approval could not be migrated"
         onOpenChange={vi.fn()}
         onConfirm={vi.fn()}

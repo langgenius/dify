@@ -1,6 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type HumanInputMigrationBannerProps = {
   canEdit: boolean
@@ -18,36 +20,29 @@ const HumanInputMigrationBanner = ({
   return (
     <aside
       aria-label={t(($) => $['nodes.humanInputMigration.banner.ariaLabel'], { ns: 'workflow' })}
-      className="pointer-events-auto flex max-w-[720px] items-center gap-3 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 py-3 shadow-lg"
+      className="pointer-events-auto flex w-full min-w-0 items-center justify-center gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2 shadow-xs"
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn">
-        <span aria-hidden className="i-ri-information-2-line size-4 text-text-accent" />
+      <BlockIcon size="sm" className="shrink-0" type={BlockEnum.HumanInputV2} />
+      <div className="min-w-0 truncate system-xs-regular text-text-secondary">
+        {t(($) => $['nodes.humanInputMigration.banner.description'], { ns: 'workflow' })}
       </div>
-      <div className="min-w-0 grow">
-        <div className="system-sm-semibold text-text-primary">
-          {t(($) => $['nodes.humanInputMigration.banner.title'], { ns: 'workflow' })}
-        </div>
-        <div className="system-xs-regular text-text-tertiary">
-          {t(($) => $['nodes.humanInputMigration.banner.description'], { ns: 'workflow' })}
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {helpLink && (
-          <a
-            href={helpLink}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-6 items-center justify-center rounded-md px-2 text-xs font-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            {t(($) => $['nodes.humanInputMigration.banner.learnMore'], { ns: 'workflow' })}
-          </a>
-        )}
-        {canEdit && (
-          <Button size="small" variant="primary" onClick={onMigrate}>
-            {t(($) => $['nodes.humanInputMigration.action.migrate'], { ns: 'workflow' })}
-          </Button>
-        )}
-      </div>
+      {helpLink && (
+        <a
+          href={helpLink}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-6 shrink-0 items-center gap-0.5 rounded-md px-1.5 system-xs-medium text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          {t(($) => $['nodes.humanInputMigration.banner.learnMore'], { ns: 'workflow' })}
+          <span aria-hidden className="i-ri-external-link-line size-3.5" />
+        </a>
+      )}
+      {canEdit && (
+        <Button size="small" variant="secondary" className="shrink-0 gap-0.5" onClick={onMigrate}>
+          {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
+          <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
+        </Button>
+      )}
     </aside>
   )
 }

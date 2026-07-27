@@ -20,7 +20,6 @@ describe('Human Input migration banner', () => {
         name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInputMigration.banner.title')).toBeInTheDocument()
     expect(
       screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
     ).toBeInTheDocument()
@@ -31,7 +30,7 @@ describe('Human Input migration banner', () => {
     ).toHaveAttribute('href', 'https://docs.example/human-input')
 
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrateNow' }),
     )
     expect(onMigrate).toHaveBeenCalledTimes(1)
   })
@@ -50,7 +49,9 @@ describe('Human Input migration banner', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+      screen.queryByRole('button', {
+        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+      }),
     ).not.toBeInTheDocument()
   })
 })

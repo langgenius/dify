@@ -21,7 +21,7 @@ import { executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
 import HumanInputMigrationDialog from './migration-dialog'
 import { createMockHumanInputMigrationApi } from './mock-api'
-import { getHumanInputCreationPolicy } from './policy'
+import { getHumanInputCreationPolicy, isLegacyHumanInputNodeData } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
 type HumanInputMigrationProviderProps = PropsWithChildren<{
@@ -83,6 +83,10 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
   const [error, setError] = useState<string>()
   const pendingRef = useRef(false)
   const policy = useMemo(() => getHumanInputCreationPolicy(nodes, canEdit), [canEdit, nodes])
+  const legacyNodeCount = useMemo(
+    () => nodes.filter((node) => isLegacyHumanInputNodeData(node.data)).length,
+    [nodes],
+  )
   const helpLink = nodesMap?.[BlockEnum.HumanInputV2]?.metaData.helpLinkUri
 
   const openMigrationDialog = useCallback(() => {
@@ -184,7 +188,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
     <HumanInputMigrationContext value={contextValue}>
       {children}
       {policy.hasLegacyHumanInput && (
-        <div className="pointer-events-none absolute top-14 left-1/2 z-20 -translate-x-1/2 px-4">
+        <div className="pointer-events-none absolute top-1 right-1 left-16 z-20">
           <HumanInputMigrationBanner
             canEdit={canEdit}
             helpLink={helpLink}
@@ -195,6 +199,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
       <HumanInputMigrationDialog
         open={dialogOpen && policy.hasLegacyHumanInput}
         pending={pending}
+        nodeCount={legacyNodeCount}
         error={error}
         onOpenChange={handleDialogOpenChange}
         onConfirm={handleConfirm}
