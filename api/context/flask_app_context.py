@@ -135,6 +135,10 @@ class FlaskExecutionContext:
         """Get user object."""
         return self._user
 
+    def refresh_context_vars(self) -> None:
+        """Re-capture current context variables for propagation to worker threads."""
+        self._context_vars = contextvars.copy_context()
+
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
         # Restore non-Flask context variables to avoid leaking Flask tokens across threads

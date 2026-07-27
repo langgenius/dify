@@ -57,6 +57,10 @@ class IExecutionContext(Protocol):
         """Get user object."""
         ...
 
+    def refresh_context_vars(self) -> None:
+        """Re-capture current context variables for propagation to worker threads."""
+        ...
+
 
 @final
 class ExecutionContext:
@@ -92,6 +96,15 @@ class ExecutionContext:
     def user(self) -> Any:
         """Get captured user object."""
         return self._user
+
+    def refresh_context_vars(self) -> None:
+        """Re-capture current context variables.
+
+        Call this after ContextVars have been updated in the current thread
+        (e.g. by a GraphEngine layer's ``on_graph_start``) so that worker
+        threads created afterwards receive the updated values.
+        """
+        self._context_vars = contextvars.copy_context()
 
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
