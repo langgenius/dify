@@ -31,6 +31,7 @@ export function KnowledgeSpaceShell({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const { t: tHit } = useTranslation('datasetHitTesting')
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
@@ -136,14 +137,14 @@ export function KnowledgeSpaceShell({
             className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
             aria-label={knowledgeSpaceName}
           >
-            <button
-              type="button"
-              className={cn(navItemClassName, 'text-text-secondary')}
+            <Button
+              variant="ghost"
+              className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
               <span aria-hidden className="i-ri-layout-grid-line size-4" />
               {t(($) => $['newKnowledge.overview'])}
-            </button>
+            </Button>
             <Link
               href={sourcesPath}
               aria-current={sourcesActive ? 'page' : undefined}
@@ -153,7 +154,7 @@ export function KnowledgeSpaceShell({
               )}
             >
               <span aria-hidden className="i-ri-links-line size-4" />
-              {t(($) => $['newKnowledge.sources'])}
+              {t(($) => $['newKnowledge.sourceColumn'])}
             </Link>
             <Link
               href={documentsPath}
@@ -164,40 +165,41 @@ export function KnowledgeSpaceShell({
               )}
             >
               <span aria-hidden className="i-ri-file-text-line size-4" />
-              {t(($) => $['newKnowledge.documents'])}
+              {t(($) => $['newKnowledge.documentColumn'])}
             </Link>
-            <button
-              type="button"
-              className={cn(navItemClassName, 'text-text-secondary')}
+            <Button
+              variant="ghost"
+              className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
               <span aria-hidden className="i-ri-test-tube-line size-4" />
-              {tCommon(($) => $['datasetMenus.hitTesting'])}
-            </button>
-            <button
-              type="button"
-              className={cn(navItemClassName, 'text-text-secondary')}
+              {tHit(($) => $.title)}
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
               <span aria-hidden className="i-ri-bar-chart-box-line size-4" />
               {t(($) => $['newKnowledge.quality'])}
-            </button>
-            <button
-              type="button"
-              className={cn(navItemClassName, 'text-text-secondary')}
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
               <span aria-hidden className="i-ri-settings-3-line size-4" />
               {tCommon(($) => $['datasetMenus.settings'])}
-            </button>
-            <button
-              type="button"
-              className={cn(navItemClassName, 'text-text-secondary')}
+            </Button>
+            <span className="hidden flex-1 sm:block" />
+            <Button
+              variant="ghost"
+              className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
               <span aria-hidden className="i-ri-code-box-line size-4" />
               {t(($) => $['newKnowledge.apiAgentAccess'])}
-            </button>
+            </Button>
           </nav>
         </aside>
         <section className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg shadow-xs">

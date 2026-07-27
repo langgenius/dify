@@ -326,11 +326,11 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
-    expect(pageLimit).toHaveAttribute('max', '200')
+    const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, '1000')
-    expect(pageLimit).toHaveValue(200)
+    await user.tab()
+    expect(pageLimit).toHaveValue('200')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
@@ -341,10 +341,10 @@ describe('WebsiteCrawlPreview', () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, '50')
-    expect(pageLimit).toHaveValue(50)
+    expect(pageLimit).toHaveValue('50')
     await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
     expect(
       screen.getByText(

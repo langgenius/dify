@@ -702,7 +702,9 @@ describe('DocumentsPage', () => {
     expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.documentActionsUnavailable')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
-    expect(screen.getByRole('combobox')).toHaveValue('failed')
+    expect(screen.getByRole('combobox')).toHaveTextContent(
+      'dataset.newKnowledge.documentStatus.failed',
+    )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
   })
@@ -778,7 +780,7 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getAllByText('dataset.newKnowledge.documentStatus.disabled')).toHaveLength(2)
+    expect(screen.getByText('dataset.newKnowledge.documentStatus.disabled')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Orphaned.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -804,6 +806,18 @@ describe('DocumentsPage', () => {
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
     expect(fireEvent(emptyState!, dragOver)).toBe(false)
     expect(dataTransfer.dropEffect).toBe('copy')
+  })
+
+  it('keeps the standard document toolbar free of an empty task shortcut', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps direct-upload actions unavailable until the deployment is verified', () => {
@@ -2096,9 +2110,15 @@ describe('DocumentsPage', () => {
   it('shows task loading instead of an empty result while the task query is pending', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
     const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
 
+    tasksQuery.data = undefined
     tasksQuery.isPending = true
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -5349,7 +5369,10 @@ describe('DocumentsPage', () => {
     tasksQuery.hasNextPage = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.selectOptions(screen.getByRole('combobox'), 'failed')
+    await user.click(screen.getByRole('combobox'))
+    await user.click(
+      screen.getByRole('option', { name: 'dataset.newKnowledge.documentStatus.failed' }),
+    )
 
     expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()

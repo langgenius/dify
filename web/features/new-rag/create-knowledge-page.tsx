@@ -21,6 +21,7 @@ import {
   FieldError,
   FieldLabel,
 } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
@@ -331,15 +332,16 @@ export function CreateKnowledgePage() {
           aria-labelledby={dialogTitleId}
           className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden xl:grid-cols-2"
         >
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="large"
             aria-label={tCommon(($) => $['operation.close'])}
-            className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+            className="absolute top-3 right-3 z-10 size-9 rounded-xl bg-background-section-burn px-0 text-text-tertiary"
             onClick={requestClose}
             disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
-          </button>
+          </Button>
 
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
             <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
@@ -452,10 +454,10 @@ export function CreateKnowledgePage() {
                   </div>
                 </div>
 
-                <fieldset>
-                  <legend className="system-md-semibold text-text-secondary">
+                <Fieldset>
+                  <FieldsetLegend className="py-0 system-md-semibold">
                     {t(($) => $['newKnowledge.startWith'])}
-                  </legend>
+                  </FieldsetLegend>
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.startWithHelp'])}
                   </p>
@@ -520,7 +522,7 @@ export function CreateKnowledgePage() {
                       />
                     </StartMode>
                   </RadioGroup>
-                </fieldset>
+                </Fieldset>
 
                 {createMutation.isError && (
                   <div

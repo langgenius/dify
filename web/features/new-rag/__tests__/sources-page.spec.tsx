@@ -234,22 +234,23 @@ describe('SourcesPage', () => {
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.active')).toHaveLength(2)
-    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.syncing')).toHaveLength(2)
-    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.disabled')).toHaveLength(2)
-    expect(screen.getAllByText('dataset.newKnowledge.sourceStatus.error')).toHaveLength(2)
+    expect(screen.getByText('dataset.newKnowledge.sourceStatus.active')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sourceStatus.syncing')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sourceStatus.disabled')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sourceStatus.error')).toBeInTheDocument()
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.sourceFilterLabel' }),
-      'error',
+    const sourceFilter = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.sourceFilterLabel',
+    })
+    await user.click(sourceFilter)
+    await user.click(
+      screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.error' }),
     )
     expect(screen.getByText('Support site')).toBeInTheDocument()
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.sourceFilterLabel' }),
-      'all',
-    )
+    await user.click(sourceFilter)
+    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.allSources' }))
     await user.type(
       screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
       'api',

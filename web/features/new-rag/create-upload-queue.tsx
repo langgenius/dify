@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -181,24 +182,25 @@ export function CreateUploadQueue({
               {!uploading &&
                 !upload.issue &&
                 PREVIEWABLE_EXTENSIONS.has(documentUploadFileExtension(upload.file.name)) && (
-                  <button
-                    type="button"
+                  <Button
+                    size="small"
                     disabled
                     aria-describedby={`${inputId}-preview-unavailable`}
-                    className="h-7 shrink-0 rounded-md px-2 system-xs-medium text-text-disabled"
+                    className="shrink-0"
                   >
                     {t(($) => $['newKnowledge.preview'])}
-                  </button>
+                  </Button>
                 )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="small"
                 disabled={disabled}
                 aria-label={`${tCommon(($) => $['operation.remove'])} ${upload.file.name}`}
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+                className="size-7 shrink-0 px-0"
                 onClick={() => onChange(uploads.filter((candidate) => candidate.id !== upload.id))}
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

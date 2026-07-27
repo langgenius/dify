@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
+  PopoverClose,
   PopoverContent,
   PopoverDescription,
   PopoverTitle,
@@ -59,12 +60,13 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         <PopoverTrigger
           aria-label={t(($) => $['newKnowledge.guideTitle'])}
           render={
-            <button
-              type="button"
-              className="absolute top-[5px] right-1 z-10 flex size-3.5 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            <Button
+              variant="ghost"
+              size="small"
+              className="absolute top-[5px] right-1 z-10 size-3.5 rounded-sm p-0 text-text-tertiary hover:text-text-secondary"
             >
               <span aria-hidden className="i-ri-question-line size-3.5" />
-            </button>
+            </Button>
           }
         />
         <PopoverContent
@@ -94,9 +96,12 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
               >
                 {t(($) => $['newKnowledge.learnMore'])}
               </a>
-              <Button variant="primary" size="small" onClick={dismissGuide}>
+              <PopoverClose
+                render={<Button variant="primary" size="small" />}
+                onClick={dismissGuide}
+              >
                 {t(($) => $['newKnowledge.gotIt'])}
-              </Button>
+              </PopoverClose>
             </div>
           </div>
         </PopoverContent>

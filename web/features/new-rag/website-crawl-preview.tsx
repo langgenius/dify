@@ -1,6 +1,5 @@
 'use client'
 
-import type { FormEvent } from 'react'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
 import {
@@ -13,7 +12,19 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset } from '@langgenius/dify-ui/fieldset'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -275,12 +286,7 @@ const CrawlPageList = memo(
             key={page.pageId}
             className="flex items-start gap-2.5 px-4 py-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]"
           >
-            <input
-              type="checkbox"
-              disabled
-              aria-label={page.title || page.sourceUrl}
-              className="mt-0.5 size-4"
-            />
+            <Checkbox disabled aria-label={page.title || page.sourceUrl} className="mt-0.5" />
             <span className="min-w-0">
               <span className="block truncate system-xs-medium text-text-primary">
                 {page.title || page.sourceUrl}
@@ -968,10 +974,7 @@ export function WebsiteCrawlPreview({
     void startPreview(configuration)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    handlePrimaryAction()
-  }
+  const handleSubmit = () => handlePrimaryAction()
 
   const primaryLabel =
     starting || (active && !pollPaused)
@@ -1079,69 +1082,61 @@ export function WebsiteCrawlPreview({
       <p role="status" className="sr-only">
         {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
-      <form onSubmit={handleSubmit}>
-        <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
+      <Form onFormSubmit={handleSubmit}>
+        <Fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="system-xs-medium text-text-secondary">
+            <Field name="rootUrl" invalid={urlTouched && !normalizedURL} className="gap-1.5">
+              <FieldLabel>
                 {t(($) => $['newKnowledge.rootUrl'])}
                 <span className="ml-0.5 text-text-destructive">*</span>
-              </span>
-              <input
+              </FieldLabel>
+              <FieldControl
                 ref={rootUrlInputRef}
                 type="url"
+                inputMode="url"
+                autoComplete="off"
                 required
                 maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
                 value={rootUrl}
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-                aria-invalid={urlTouched && !normalizedURL}
                 aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
                 onBlur={() => setUrlTouched(true)}
-                onChange={(event) => setRootUrl(event.target.value)}
-                className={cn(
-                  'mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid',
-                  urlTouched && !normalizedURL && 'ring-1 ring-text-destructive',
-                )}
+                onValueChange={setRootUrl}
+                size="large"
               />
               {urlTouched && !normalizedURL && (
-                <span
-                  id={rootUrlErrorId}
-                  className="mt-1 block system-xs-regular text-text-destructive"
-                >
+                <FieldError id={rootUrlErrorId} match>
                   {t(($) => $['newKnowledge.invalidRootUrl'])}
-                </span>
+                </FieldError>
               )}
-            </label>
-            <label className="block">
-              <span className="system-xs-medium text-text-secondary">
+            </Field>
+            <Field name="sourceName" className="gap-1.5">
+              <FieldLabel>
                 {t(($) => $['newKnowledge.sourceName'])}
                 <span className="ml-0.5 text-text-destructive">*</span>
-              </span>
-              <input
+              </FieldLabel>
+              <FieldControl
                 ref={sourceNameInputRef}
                 type="text"
+                autoComplete="off"
                 required
                 maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                 value={sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                onChange={(event) => setSourceName(event.target.value)}
-                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+                onValueChange={setSourceName}
+                size="large"
               />
-            </label>
+            </Field>
           </div>
-          <div className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default">
-            <button
-              type="button"
-              aria-expanded={optionsExpanded}
-              className="flex h-9 w-full items-center gap-2 px-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-              onClick={() => setOptionsExpanded((expanded) => !expanded)}
-            >
+          <Collapsible
+            open={optionsExpanded}
+            onOpenChange={setOptionsExpanded}
+            className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default"
+          >
+            <CollapsibleTrigger className="h-9 min-h-9 justify-start rounded-none px-3">
               <span
                 aria-hidden
-                className={cn(
-                  'i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform',
-                  optionsExpanded && 'rotate-90',
-                )}
+                className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
               />
               <span className="system-xs-medium text-text-primary">
                 {t(($) => $['newKnowledge.crawlOptions'])}
@@ -1159,46 +1154,47 @@ export function WebsiteCrawlPreview({
                       }`}
                 </span>
               )}
-            </button>
-            {optionsExpanded && (
+            </CollapsibleTrigger>
+            <CollapsiblePanel>
               <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
                 <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
-                  <input
-                    type="checkbox"
-                    checked={includeSubpages}
-                    onChange={(event) => setIncludeSubpages(event.target.checked)}
-                  />
+                  <Checkbox checked={includeSubpages} onCheckedChange={setIncludeSubpages} />
                   {t(($) => $['newKnowledge.includeSubpages'])}
                 </label>
-                <label className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span className="system-xs-regular text-text-secondary">
                     {t(($) => $['newKnowledge.maxPages'])}
                   </span>
-                  <input
-                    type="number"
+                  <NumberField
                     min={1}
                     max={MAX_PAGE_LIMIT}
-                    value={pageLimit}
-                    onBlur={() => {
-                      if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
-                    }}
-                    onChange={(event) =>
+                    value={pageLimit === '' ? null : pageLimit}
+                    onValueChange={(value) =>
                       setPageLimit(
-                        Number.isFinite(event.target.valueAsNumber)
-                          ? Math.min(
-                              Math.max(Math.trunc(event.target.valueAsNumber), 1),
-                              MAX_PAGE_LIMIT,
-                            )
-                          : '',
+                        value === null
+                          ? ''
+                          : Math.min(Math.max(Math.trunc(value), 1), MAX_PAGE_LIMIT),
                       )
                     }
-                    className="ml-auto h-8 w-24 rounded-lg border-0 bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-                  />
-                </label>
+                  >
+                    <NumberFieldGroup className="ml-auto w-28">
+                      <NumberFieldInput
+                        aria-label={t(($) => $['newKnowledge.maxPages'])}
+                        onBlur={() => {
+                          if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
+                        }}
+                      />
+                      <NumberFieldControls>
+                        <NumberFieldIncrement />
+                        <NumberFieldDecrement />
+                      </NumberFieldControls>
+                    </NumberFieldGroup>
+                  </NumberField>
+                </div>
               </div>
-            )}
-          </div>
-        </fieldset>
+            </CollapsiblePanel>
+          </Collapsible>
+        </Fieldset>
 
         {!showSuccess && (
           <Button
@@ -1214,7 +1210,7 @@ export function WebsiteCrawlPreview({
             {primaryLabel}
           </Button>
         )}
-      </form>
+      </Form>
 
       <div className="mt-4">
         {!run && !requestError && <EmptyPreview />}

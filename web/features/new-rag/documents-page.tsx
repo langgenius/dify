@@ -2164,6 +2164,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             search={search}
             selectionDisabled={selectionDisabled}
             selectedDocumentIds={validSelectedDocumentIds}
+            showTasks={Boolean(
+              tasks.length ||
+              tasksQuery.error ||
+              tasksQuery.isFetchNextPageError ||
+              hasNextTaskPage,
+            )}
             someSelected={someFilteredSelected}
             sourcesPending={sourceResultsIncomplete}
             sourceNames={sourceNames}

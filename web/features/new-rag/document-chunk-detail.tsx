@@ -8,6 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Markdown } from '@/app/components/base/markdown'
 import {
   chunkCharacterCount,
   chunkContentParts,
@@ -133,9 +134,10 @@ export function DocumentChunkDetail({
                     </Button>
                   </div>
                   {content.body && (
-                    <p className="mt-3 body-md-regular break-words whitespace-pre-wrap text-text-primary">
-                      {content.body}
-                    </p>
+                    <Markdown
+                      className="mt-3 body-md-regular break-words text-text-primary"
+                      content={content.body}
+                    />
                   )}
                   {!chunk.text && (
                     <p className="mt-3 body-md-regular text-text-tertiary">

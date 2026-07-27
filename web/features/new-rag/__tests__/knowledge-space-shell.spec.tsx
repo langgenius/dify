@@ -81,18 +81,18 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' })).toHaveAttribute(
       'href',
       '/datasets/new/space-1/sources',
     )
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
-      'href',
-      '/datasets/new/space-1/documents',
-    )
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents')
+    expect(screen.getByRole('button', { name: 'datasetHitTesting.title' })).toBeInTheDocument()
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 
@@ -168,13 +168,12 @@ describe('KnowledgeSpaceShell', () => {
 
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>)
 
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.sources' })).not.toHaveAttribute(
-      'aria-current',
-    )
-    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.sourceColumn' }),
+    ).not.toHaveAttribute('aria-current')
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
+    ).toHaveAttribute('aria-current', 'page')
   })
 
   it('offers a real retry for recoverable loading errors', async () => {

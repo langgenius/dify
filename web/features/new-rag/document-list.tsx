@@ -13,10 +13,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { sourceName } from './document-model'
@@ -333,6 +343,7 @@ export function DocumentsList({
   search,
   selectionDisabled,
   selectedDocumentIds,
+  showTasks,
   someSelected,
   sourcesPending,
   sourceNames,
@@ -371,6 +382,7 @@ export function DocumentsList({
   search: string
   selectionDisabled: boolean
   selectedDocumentIds: Set<string>
+  showTasks: boolean
   someSelected: boolean
   sourcesPending: boolean
   sourceNames: Map<string, string>
@@ -406,52 +418,59 @@ export function DocumentsList({
   return (
     <>
       <div className="mt-5 flex flex-col gap-2 xl:flex-row xl:items-center">
-        <label className="sr-only" htmlFor="document-filter">
-          {t(($) => $['newKnowledge.documentFilterLabel'])}
-        </label>
-        <select
-          id="document-filter"
+        <Select<DocumentFilter>
           disabled={statusPending}
           value={filter}
-          onChange={(event) => {
+          onValueChange={(value) => {
+            if (!value) return
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-            onFilterChange(event.target.value as DocumentFilter)
+            onFilterChange(value)
           }}
-          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid xl:w-36"
         >
-          <option value="all">{t(($) => $['newKnowledge.allDocumentStatuses'])}</option>
-          {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
-            <option key={status} value={status}>
-              {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-            </option>
-          ))}
-        </select>
-        <label className="relative xl:w-60">
-          <span className="sr-only">{t(($) => $['newKnowledge.searchDocuments'])}</span>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-2 left-2.5 i-ri-search-line size-4 text-text-quaternary"
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => {
-              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-              onSearchChange(event.target.value)
-            }}
-            placeholder={t(($) => $['newKnowledge.searchDocuments'])}
-            className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
-          />
-        </label>
-        <span className="min-w-0 flex-1" />
-        <TaskTrigger
-          activeTaskCount={activeTaskCount}
-          attentionTaskBadge={attentionTaskBadge}
-          hasTaskError={hasTaskError}
-          onOpenTasks={onOpenTasks}
-          tasksButtonLabel={tasksButtonLabel}
-          tasksLiveStatus={tasksLiveStatus}
+          <SelectLabel className="sr-only">
+            {t(($) => $['newKnowledge.documentFilterLabel'])}
+          </SelectLabel>
+          <SelectTrigger className="xl:w-36">
+            {filter === 'all'
+              ? t(($) => $['newKnowledge.allDocumentStatuses'])
+              : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">
+              <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
+              <SelectItem key={status} value={status}>
+                <SelectItemText>
+                  {t(($) => $[`newKnowledge.documentStatus.${status}`])}
+                </SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <SearchInput
+          aria-label={t(($) => $['newKnowledge.searchDocuments'])}
+          className="xl:w-60"
+          value={search}
+          onValueChange={(value) => {
+            setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
+            onSearchChange(value)
+          }}
+          placeholder={t(($) => $['newKnowledge.searchDocuments'])}
         />
+        <span className="min-w-0 flex-1" />
+        {showTasks && (
+          <TaskTrigger
+            activeTaskCount={activeTaskCount}
+            attentionTaskBadge={attentionTaskBadge}
+            hasTaskError={hasTaskError}
+            onOpenTasks={onOpenTasks}
+            tasksButtonLabel={tasksButtonLabel}
+            tasksLiveStatus={tasksLiveStatus}
+          />
+        )}
         <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
@@ -672,14 +691,15 @@ export function DocumentBulkActions({
         >
           {t(($) => $['newKnowledge.reindexDocuments'])}
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="small"
           aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="size-7 shrink-0 px-0"
           onClick={onClear}
         >
           <span aria-hidden className="i-ri-close-line size-4" />
-        </button>
+        </Button>
         <span className="shrink-0 px-1 system-xs-medium text-text-primary">
           {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
         </span>

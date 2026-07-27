@@ -1,6 +1,5 @@
 'use client'
 
-import type { FormEvent } from 'react'
 import type {
   CrawlPreviewPage as PreviewPage,
   Source,
@@ -10,6 +9,25 @@ import type {
 } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -299,8 +317,7 @@ function ReadyCrawlSelectionForm({
     setSubmitError(false)
   }
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submit = async () => {
     if (!canSubmit || busy || submissionPendingRef.current) return
     submissionPendingRef.current = true
     setSubmitting(true)
@@ -422,7 +439,7 @@ function ReadyCrawlSelectionForm({
   }
 
   return (
-    <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+    <Form className="space-y-4" onFormSubmit={() => void submit()}>
       <section aria-labelledby="crawl-selection-summary">
         <div className="flex flex-wrap items-center gap-2">
           <h3
@@ -515,59 +532,82 @@ function ReadyCrawlSelectionForm({
         </div>
       </section>
 
-      <fieldset disabled={selectionLocked}>
-        <label className="block">
-          <span className="system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.syncPolicy'])}
-          </span>
-          <select
-            name="syncMode"
-            value={syncMode}
-            onChange={(event) => {
-              setSyncMode(event.target.value as SyncMode)
-              setSubmitError(false)
-            }}
-            className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid sm:w-72"
-          >
-            <option value="provider">{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
-            <option value="manual">{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
-            <option value="interval">{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
-            <option value="custom">{t(($) => $['newKnowledge.syncPolicyCustom'])}</option>
-          </select>
-        </label>
+      <div>
+        <Select<SyncMode>
+          name="syncMode"
+          disabled={selectionLocked}
+          value={syncMode}
+          onValueChange={(value) => {
+            if (!value) return
+            setSyncMode(value)
+            setSubmitError(false)
+          }}
+        >
+          <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
+          <SelectTrigger className="sm:w-72" size="large">
+            {t(($) =>
+              syncMode === 'provider'
+                ? $['newKnowledge.syncPolicyProvider']
+                : syncMode === 'manual'
+                  ? $['newKnowledge.syncPolicyManual']
+                  : syncMode === 'interval'
+                    ? $['newKnowledge.syncPolicyDaily']
+                    : $['newKnowledge.syncPolicyCustom'],
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="provider">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="manual">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="interval">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="custom">
+              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>
         {syncMode === 'custom' && (
-          <label className="mt-3 block sm:w-72">
-            <span className="system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.customIntervalHours'])}
-            </span>
-            <input
-              type="number"
+          <Field name="customIntervalHours" invalid={!customIntervalValid} className="mt-3 sm:w-72">
+            <FieldLabel>{t(($) => $['newKnowledge.customIntervalHours'])}</FieldLabel>
+            <NumberField
               name="customIntervalHours"
+              disabled={selectionLocked}
               min={MIN_CUSTOM_INTERVAL_HOURS}
               max={MAX_CUSTOM_INTERVAL_HOURS}
               step={1}
-              value={customIntervalHours}
-              aria-invalid={!customIntervalValid}
-              aria-describedby={!customIntervalValid ? customIntervalErrorId : undefined}
-              onChange={(event) => {
-                setCustomIntervalHours(
-                  Number.isFinite(event.target.valueAsNumber) ? event.target.valueAsNumber : '',
-                )
+              value={customIntervalHours === '' ? null : customIntervalHours}
+              onValueChange={(value) => {
+                setCustomIntervalHours(value ?? '')
                 setSubmitError(false)
               }}
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-            />
+            >
+              <NumberFieldGroup>
+                <NumberFieldInput
+                  aria-label={t(($) => $['newKnowledge.customIntervalHours'])}
+                  aria-describedby={!customIntervalValid ? customIntervalErrorId : undefined}
+                />
+                <NumberFieldControls>
+                  <NumberFieldIncrement />
+                  <NumberFieldDecrement />
+                </NumberFieldControls>
+              </NumberFieldGroup>
+            </NumberField>
             {!customIntervalValid && (
-              <span
-                id={customIntervalErrorId}
-                className="mt-1 block system-xs-regular text-text-destructive"
-              >
+              <FieldError id={customIntervalErrorId} match>
                 {t(($) => $['newKnowledge.customIntervalInvalid'])}
-              </span>
+              </FieldError>
             )}
-          </label>
+          </Field>
         )}
-      </fieldset>
+      </div>
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
@@ -593,7 +633,7 @@ function ReadyCrawlSelectionForm({
           </span>
         )}
       </div>
-    </form>
+    </Form>
   )
 }
 

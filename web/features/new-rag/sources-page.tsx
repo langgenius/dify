@@ -11,7 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -22,6 +22,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
@@ -29,6 +38,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -587,40 +597,49 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       ) : (
         <>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-            <label className="sr-only" htmlFor="source-filter">
-              {t(($) => $['newKnowledge.sourceFilterLabel'])}
-            </label>
-            <select
-              id="source-filter"
+            <Select<SourceFilter>
               value={filter}
-              onChange={(event) => setFilter(event.target.value as SourceFilter)}
-              className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+              onValueChange={(value) => {
+                if (value) setFilter(value)
+              }}
             >
-              <option value="all">{t(($) => $['newKnowledge.allSources'])}</option>
-              {(['active', 'syncing', 'disabled', 'error'] as const).map((status) => (
-                <option key={status} value={status}>
-                  {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
-                </option>
-              ))}
-            </select>
-            <label className="relative sm:w-64">
-              <span className="sr-only">{t(($) => $['newKnowledge.searchSources'])}</span>
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-2 left-2.5 i-ri-search-line size-4 text-text-quaternary"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t(($) => $['newKnowledge.searchSources'])}
-                className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
-              />
-            </label>
+              <SelectLabel className="sr-only">
+                {t(($) => $['newKnowledge.sourceFilterLabel'])}
+              </SelectLabel>
+              <SelectTrigger className="sm:w-36">
+                {filter === 'all'
+                  ? t(($) => $['newKnowledge.allSources'])
+                  : t(($) => $[`newKnowledge.sourceStatus.${filter}`])}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  <SelectItemText>{t(($) => $['newKnowledge.allSources'])}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+                {(['active', 'syncing', 'disabled', 'error'] as const).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    <SelectItemText>
+                      {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
+                    </SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <SearchInput
+              aria-label={t(($) => $['newKnowledge.searchSources'])}
+              className="sm:w-64"
+              value={search}
+              onValueChange={setSearch}
+              placeholder={t(($) => $['newKnowledge.searchSources'])}
+            />
             {canManageSources && (
               <Link
                 href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-                className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:ml-auto"
+                className={buttonVariants({
+                  className: 'gap-1 sm:ml-auto',
+                  variant: 'primary',
+                })}
               >
                 <span aria-hidden className="i-ri-add-line size-4" />
                 {t(($) => $['newKnowledge.addSource'])}
@@ -658,12 +677,13 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     }
                     className="pb-2 font-medium"
                   >
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="small"
                       onClick={() =>
                         setSort((current) => (current === 'name-asc' ? 'name-desc' : 'name-asc'))
                       }
-                      className="inline-flex items-center gap-1 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="h-auto gap-1 rounded px-0"
                     >
                       {t(($) => $['newKnowledge.sourceColumn'])}
                       <span
@@ -674,7 +694,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           !sort && 'opacity-40',
                         )}
                       />
-                    </button>
+                    </Button>
                   </th>
                   <th className="hidden pb-2 font-medium sm:table-cell">
                     {t(($) => $['metadata.createMetadata.type'])}

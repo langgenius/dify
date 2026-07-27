@@ -39,14 +39,14 @@ function isUnavailableError(error: unknown) {
 
 function MetadataFilter({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      className="flex h-8 items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-text-tertiary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+    <Button
+      variant="tertiary"
+      className="gap-0 border-0 bg-components-input-bg-normal px-2 font-normal text-text-tertiary shadow-none hover:bg-components-input-bg-hover"
       onClick={onClick}
     >
       <span className="px-1 system-sm-regular">{label}</span>
       <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-    </button>
+    </Button>
   )
 }
 

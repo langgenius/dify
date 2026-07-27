@@ -489,6 +489,28 @@ describe('DocumentDetailPage', () => {
     expect(screen.getAllByText('dataset.newKnowledge.sourceType.connector')).not.toHaveLength(0)
   })
 
+  it('renders markdown links in document chunks instead of exposing source syntax', async () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              text: 'Example Domain\n[Learn more](https://www.iana.org/domains/example)',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(await screen.findByRole('link', { name: 'Learn more' })).toHaveAttribute(
+      'href',
+      'https://www.iana.org/domains/example',
+    )
+    expect(screen.queryByText(/\[Learn more\]\(/)).not.toBeInTheDocument()
+  })
+
   it('expands the parent-child tree and shows selected chunk content and metadata', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {

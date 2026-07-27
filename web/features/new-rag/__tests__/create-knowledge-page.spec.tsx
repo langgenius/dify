@@ -634,7 +634,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
     await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
-    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    const maxPages = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
@@ -678,10 +678,8 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
       'Shared product docs',
     )
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'daily',
-    )
+    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
+    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() =>
@@ -839,7 +837,7 @@ describe('CreateKnowledgePage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
     await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
-    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    const maxPages = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
 

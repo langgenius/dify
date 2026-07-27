@@ -66,6 +66,20 @@ const policyQueryOptionsMock = vi.hoisted(() =>
   })),
 )
 
+const selectSyncPolicy = async (
+  user: ReturnType<typeof userEvent.setup>,
+  mode: 'custom' | 'interval' | 'manual' | 'provider',
+) => {
+  const optionNames = {
+    custom: 'dataset.newKnowledge.syncPolicyCustom',
+    interval: 'dataset.newKnowledge.syncPolicyDaily',
+    manual: 'dataset.newKnowledge.syncPolicyManual',
+    provider: 'dataset.newKnowledge.syncPolicyProvider',
+  }
+  await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
+  await user.click(screen.getByRole('option', { name: optionNames[mode] }))
+}
+
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -284,7 +298,7 @@ describe('CrawlSelectionForm', () => {
 
     expect(
       await screen.findByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-    ).toHaveValue('manual')
+    ).toHaveTextContent('dataset.newKnowledge.syncPolicyManual')
   })
 
   it('selects only valid same-domain pages and exposes an indeterminate select-all state', async () => {
@@ -380,18 +394,13 @@ describe('CrawlSelectionForm', () => {
     renderSelectionForm()
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'custom',
-    )
-    const interval = screen.getByRole('spinbutton', {
+    await selectSyncPolicy(user, 'custom')
+    const interval = screen.getByRole('textbox', {
       name: 'dataset.newKnowledge.customIntervalHours',
     })
     await user.clear(interval)
-    await user.type(interval, '0')
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
     expect(interval).toHaveAccessibleDescription('dataset.newKnowledge.customIntervalInvalid')
-    await user.clear(interval)
     await user.type(interval, '6')
 
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
@@ -468,10 +477,7 @@ describe('CrawlSelectionForm', () => {
     const user = userEvent.setup()
     const { onWorkflowPending } = renderSelectionForm(vi.fn(), false, () => discardRequested)
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'manual',
-    )
+    await selectSyncPolicy(user, 'manual')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
     expect(onWorkflowPending).toHaveBeenCalledOnce()
@@ -545,10 +551,7 @@ describe('CrawlSelectionForm', () => {
       renderSelectionForm()
 
       await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-      await user.selectOptions(
-        screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-        mode,
-      )
+      await selectSyncPolicy(user, mode)
       await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
       await waitFor(() => expect(clientMock.updatePolicy).toHaveBeenCalledOnce())
@@ -575,10 +578,7 @@ describe('CrawlSelectionForm', () => {
     renderSelectionForm()
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'manual',
-    )
+    await selectSyncPolicy(user, 'manual')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
     await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledOnce())
@@ -596,10 +596,7 @@ describe('CrawlSelectionForm', () => {
     const user = userEvent.setup()
     const { onSubmissionUncertainChange } = renderSelectionForm(onCancel)
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'manual',
-    )
+    await selectSyncPolicy(user, 'manual')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -629,10 +626,7 @@ describe('CrawlSelectionForm', () => {
     renderSelectionForm()
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'manual',
-    )
+    await selectSyncPolicy(user, 'manual')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.addSourceFailed',
@@ -749,10 +743,7 @@ describe('CrawlSelectionForm', () => {
     const { onSubmissionUncertainChange, onWorkflowPending, onWorkflowRun } = renderSelectionForm()
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-      'manual',
-    )
+    await selectSyncPolicy(user, 'manual')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.addSourceFailed',

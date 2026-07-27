@@ -9,6 +9,19 @@ import type {
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Form } from '@langgenius/dify-ui/form'
+import { Radio, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -159,35 +172,31 @@ function SourceTypeSelector({
   ]
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
+    <Fieldset>
+      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
         {t(($) => $['newKnowledge.sourceTypeLabel'])}
-      </legend>
-      <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3">
+      </FieldsetLegend>
+      <RadioGroup<SourceType>
+        value={value}
+        className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
+        onValueChange={onChange}
+      >
         {options.map((option) => (
-          <label
+          <RadioItem<SourceType>
             key={option.key}
+            value={option.key}
             className={cn(
-              'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              value === option.key
-                ? 'bg-background-default text-text-primary shadow-xs'
-                : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
+              'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
+              'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'data-checked:bg-background-default data-checked:text-text-primary data-checked:shadow-xs',
             )}
           >
-            <input
-              type="radio"
-              name="source-type"
-              value={option.key}
-              checked={value === option.key}
-              onChange={() => onChange(option.key)}
-              className="sr-only"
-            />
             <span aria-hidden className={`${option.icon} size-4`} />
             {t(($) => $[`newKnowledge.${option.key}`])}
-          </label>
+          </RadioItem>
         ))}
-      </div>
-    </fieldset>
+      </RadioGroup>
+    </Fieldset>
   )
 }
 
@@ -201,35 +210,31 @@ function ProviderSelector({
   const { t } = useTranslation('datasetCreation')
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
+    <Fieldset>
+      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
         {t(($) => $['stepOne.website.chooseProvider'])}
-      </legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      </FieldsetLegend>
+      <RadioGroup<NewKnowledgeWebsiteProvider>
+        value={provider}
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        onValueChange={onChange}
+      >
         {WEBSITE_PROVIDER_OPTIONS.map((option) => (
-          <label
+          <RadioItem<NewKnowledgeWebsiteProvider>
             key={option.value}
+            value={option.value}
             className={cn(
-              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              provider === option.value
-                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
+              'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
             )}
           >
-            <input
-              type="radio"
-              name="source-provider"
-              value={option.value}
-              checked={provider === option.value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
             <span aria-hidden className={`${option.icon} size-4`} />
             {option.value}
-          </label>
+          </RadioItem>
         ))}
-      </div>
-    </fieldset>
+      </RadioGroup>
+    </Fieldset>
   )
 }
 
@@ -244,56 +249,77 @@ function ProviderFieldControl({
 }) {
   const { t } = useTranslation('dataset')
   const generatedId = useId()
-  const inputId = `${generatedId}-input`
   const descriptionId = field.description ? `${generatedId}-description` : undefined
   const label = humanizeFieldName(field.name)
-  const sharedProps = {
-    'aria-describedby': descriptionId,
-    id: inputId,
-    required: field.required,
-    value: values[field.name] ?? '',
-    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setValues((current) => ({ ...current, [field.name]: event.target.value })),
-  }
+  const value = values[field.name] ?? ''
+  const setValue = (nextValue: string) =>
+    setValues((current) => ({ ...current, [field.name]: nextValue }))
 
   return (
-    <div>
-      <label htmlFor={inputId} className="system-xs-medium text-text-secondary">
-        {label}
-        {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
-      </label>
+    <Field name={field.name} className="gap-1.5">
       {field.type === 'boolean' ? (
-        <select
-          {...sharedProps}
-          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+        <Select<'true' | 'false' | null>
+          name={field.name}
+          required={field.required}
+          value={value === 'true' || value === 'false' ? value : null}
+          onValueChange={(nextValue) => setValue(nextValue ?? '')}
         >
-          <option value="">—</option>
-          <option value="true">{t(($) => $['newKnowledge.booleanTrue'])}</option>
-          <option value="false">{t(($) => $['newKnowledge.booleanFalse'])}</option>
-        </select>
+          <SelectLabel>
+            {label}
+            {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
+          </SelectLabel>
+          <SelectTrigger aria-describedby={descriptionId} size="large">
+            {value === 'true'
+              ? t(($) => $['newKnowledge.booleanTrue'])
+              : value === 'false'
+                ? t(($) => $['newKnowledge.booleanFalse'])
+                : '—'}
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={null}>
+              <SelectItemText>—</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="true">
+              <SelectItemText>{t(($) => $['newKnowledge.booleanTrue'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="false">
+              <SelectItemText>{t(($) => $['newKnowledge.booleanFalse'])}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>
       ) : (
-        <input
-          {...sharedProps}
-          type={
-            field.secret
-              ? 'password'
-              : field.type === 'integer'
-                ? 'number'
-                : field.format === 'uri'
-                  ? 'url'
-                  : 'text'
-          }
-          inputMode={field.format === 'uri' ? 'url' : undefined}
-          autoComplete={field.secret ? 'new-password' : 'off'}
-          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-        />
+        <>
+          <FieldLabel>
+            {label}
+            {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
+          </FieldLabel>
+          <FieldControl
+            aria-describedby={descriptionId}
+            required={field.required}
+            value={value}
+            type={
+              field.secret
+                ? 'password'
+                : field.type === 'integer'
+                  ? 'number'
+                  : field.format === 'uri'
+                    ? 'url'
+                    : 'text'
+            }
+            inputMode={field.format === 'uri' ? 'url' : undefined}
+            autoComplete={field.secret ? 'new-password' : 'off'}
+            size="large"
+            onValueChange={setValue}
+          />
+        </>
       )}
       {field.description && (
-        <p id={descriptionId} className="mt-1 system-xs-regular text-text-tertiary">
-          {field.description}
-        </p>
+        <FieldDescription id={descriptionId}>{field.description}</FieldDescription>
       )}
-    </div>
+    </Field>
   )
 }
 
@@ -340,8 +366,7 @@ function ConnectionForm({
     setAuthKind(nextAuthKind)
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleSubmit = async () => {
     if (pending) return
 
     const missingRequiredField = visibleFields.some((field) => {
@@ -408,30 +433,28 @@ function ConnectionForm({
   }
 
   return (
-    <form className="rounded-xl bg-background-section p-4" onSubmit={handleSubmit}>
+    <Form className="rounded-xl bg-background-section p-4" onFormSubmit={() => void handleSubmit()}>
       {supportedAuthKinds.length > 1 && (
-        <fieldset className="mb-4">
-          <legend className="mb-1.5 system-xs-medium text-text-secondary">
+        <Fieldset className="mb-4">
+          <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
             {t(($) => $['newKnowledge.authenticationMethod'])}
-          </legend>
-          <div className="flex gap-2">
+          </FieldsetLegend>
+          <RadioGroup<ConnectionAuthKind>
+            name="auth-kind"
+            value={authKind}
+            onValueChange={changeAuthKind}
+          >
             {supportedAuthKinds.map((kind) => (
               <label
                 key={kind}
                 className="flex items-center gap-1.5 system-xs-regular text-text-secondary"
               >
-                <input
-                  type="radio"
-                  name="auth-kind"
-                  value={kind}
-                  checked={authKind === kind}
-                  onChange={() => changeAuthKind(kind)}
-                />
+                <Radio<ConnectionAuthKind> value={kind} />
                 {t(($) => $[`newKnowledge.authKind.${kind}`])}
               </label>
             ))}
-          </div>
-        </fieldset>
+          </RadioGroup>
+        </Fieldset>
       )}
       <div className="space-y-3">
         {visibleFields.map((field) => (
@@ -448,14 +471,14 @@ function ConnectionForm({
           {t(($) => $['newKnowledge.connectionFailed'])}
         </p>
       )}
-      <Button type="submit" variant="primary" className="mt-4" disabled={pending}>
+      <Button type="submit" variant="primary" className="mt-4" loading={pending}>
         {pending
           ? t(($) => $['newKnowledge.connectingProvider'])
           : t(($) => $['newKnowledge.connectProvider'], {
               provider: FIRECRAWL_CONNECTION_NAME,
             })}
       </Button>
-    </form>
+    </Form>
   )
 }
 

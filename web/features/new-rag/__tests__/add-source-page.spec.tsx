@@ -508,9 +508,7 @@ describe('AddSourcePage', () => {
     expect(
       screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
     ).not.toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
-      25,
-    )
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue('25')
   })
 
   it('keeps the exact website provider selected and lets the user switch to Firecrawl', async () => {
@@ -581,9 +579,9 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
       'Shared product docs',
     )
-    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toHaveValue(
-      'daily',
-    )
+    expect(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeEnabled()
     await user.click(addSource)

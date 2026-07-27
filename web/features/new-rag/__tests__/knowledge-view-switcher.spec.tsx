@@ -35,4 +35,22 @@ describe('KnowledgeViewSwitcher', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
   })
+
+  it('dismisses the guide without changing the selected knowledge view', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    render(<KnowledgeViewSwitcher value="new" onChange={onChange} />)
+
+    await user.click(
+      within(
+        screen.getByRole('dialog', {
+          name: 'dataset.newKnowledge.guideTitle',
+        }),
+      ).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }),
+    )
+
+    expect(guideStorageMock.setDismissed).toHaveBeenCalledWith(true)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })

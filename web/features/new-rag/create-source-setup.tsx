@@ -7,7 +7,29 @@ import type {
   NewKnowledgeWebsiteProvider,
 } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -56,45 +78,60 @@ function ConnectedSourceConfiguration({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label className="block system-xs-medium text-text-secondary">
-        {t(($) => $['newKnowledge.sourceName'])}
-        <span aria-hidden className="ml-0.5 text-text-destructive">
-          *
-        </span>
-        <input
+      <Field name="sourceName" className="gap-1.5">
+        <FieldLabel>
+          {t(($) => $['newKnowledge.sourceName'])}
+          <span aria-hidden className="ml-0.5 text-text-destructive">
+            *
+          </span>
+        </FieldLabel>
+        <FieldControl
           type="text"
           autoComplete="off"
-          name="sourceName"
           disabled={disabled}
           maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
           value={draft.sourceName}
           placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
-          onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
+          size="large"
+          onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.preventDefault()
           }}
         />
-      </label>
-      <label className="block system-xs-medium text-text-secondary">
-        {t(($) => $['newKnowledge.syncPolicy'])}
-        <select
-          name="syncPolicy"
-          disabled={disabled}
-          value={draft.syncPolicy}
-          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
-          onChange={(event) =>
-            onDraftChange({
-              ...draft,
-              syncPolicy: event.target.value as NewKnowledgeSourceDraft['syncPolicy'],
-            })
-          }
-        >
-          <option value="provider">{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
-          <option value="daily">{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
-          <option value="manual">{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
-        </select>
-      </label>
+      </Field>
+      <Select<NewKnowledgeSourceDraft['syncPolicy']>
+        name="syncPolicy"
+        disabled={disabled}
+        value={draft.syncPolicy}
+        onValueChange={(value) => {
+          if (value) onDraftChange({ ...draft, syncPolicy: value })
+        }}
+      >
+        <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
+        <SelectTrigger size="large">
+          {t(($) =>
+            draft.syncPolicy === 'provider'
+              ? $['newKnowledge.syncPolicyProvider']
+              : draft.syncPolicy === 'daily'
+                ? $['newKnowledge.syncPolicyDaily']
+                : $['newKnowledge.syncPolicyManual'],
+          )}
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="provider">
+            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          <SelectItem value="daily">
+            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          <SelectItem value="manual">
+            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }
@@ -138,143 +175,135 @@ export function CreateSourceSetup({
 
   return (
     <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
-      <fieldset disabled={disabled}>
-        <legend className="mb-1.5 system-xs-medium text-text-secondary">
+      <Fieldset disabled={disabled}>
+        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
           {t(($) => $['newKnowledge.sourceTypeLabel'])}
-        </legend>
-        <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-default p-0.5 sm:grid-cols-3">
+        </FieldsetLegend>
+        <RadioGroup<NewKnowledgeSourceDraft['sourceType']>
+          value={sourceType}
+          disabled={disabled}
+          className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-default p-0.5 sm:grid-cols-3"
+          onValueChange={(value) => {
+            setBackendBoundaryVisible(false)
+            onSourceTypeChange(value)
+          }}
+        >
           {sourceTypes.map((option) => (
-            <label
+            <RadioItem<NewKnowledgeSourceDraft['sourceType']>
               key={option.value}
+              value={option.value}
               className={cn(
-                'relative flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-                sourceType === option.value
-                  ? 'bg-components-option-card-option-selected-bg text-text-primary shadow-xs'
-                  : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
-                disabled && 'cursor-not-allowed opacity-60',
+                'relative flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden',
+                'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs',
+                'data-disabled:cursor-not-allowed data-disabled:opacity-60',
               )}
             >
-              <input
-                type="radio"
-                name="create-source-type"
-                value={option.value}
-                checked={sourceType === option.value}
-                onChange={() => {
-                  setBackendBoundaryVisible(false)
-                  onSourceTypeChange(option.value)
-                }}
-                className="sr-only"
-              />
               <span aria-hidden className={`${option.icon} size-4`} />
               {t(($) => $[`newKnowledge.${option.value}`])}
-            </label>
+            </RadioItem>
           ))}
-        </div>
-      </fieldset>
+        </RadioGroup>
+      </Fieldset>
 
-      <fieldset disabled={disabled}>
-        <legend className="sr-only">{tCreation(($) => $['stepOne.website.chooseProvider'])}</legend>
+      <Fieldset disabled={disabled}>
+        <FieldsetLegend className="sr-only">
+          {tCreation(($) => $['stepOne.website.chooseProvider'])}
+        </FieldsetLegend>
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <span className="system-xs-medium text-text-secondary">
             {tCreation(($) => $['stepOne.website.chooseProvider'])}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost-accent"
+            size="small"
             disabled={disabled}
-            className="rounded-sm system-xs-medium text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+            className="h-auto px-0"
             onClick={showBackendBoundary}
           >
             {t(($) => $['newKnowledge.moreProviders'])}
-          </button>
+          </Button>
         </div>
-        <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
+        <RadioGroup<string>
+          value={activeProvider}
+          disabled={disabled}
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          onValueChange={selectProvider}
+        >
           {providers[sourceType].map((provider) => {
             return (
-              <label
+              <RadioItem<string>
                 key={provider.label}
+                value={provider.label}
                 className={cn(
-                  'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-                  activeProvider === provider.label
-                    ? 'border-components-option-card-option-selected-border text-text-primary'
-                    : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
-                  disabled && 'cursor-not-allowed opacity-60',
+                  'flex min-h-10 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-3 system-xs-medium text-text-secondary outline-hidden',
+                  'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  'data-checked:border-components-option-card-option-selected-border data-checked:text-text-primary',
+                  'data-disabled:cursor-not-allowed data-disabled:opacity-60',
                 )}
               >
-                <input
-                  type="radio"
-                  name="create-source-provider"
-                  value={provider.label}
-                  checked={activeProvider === provider.label}
-                  disabled={disabled}
-                  onChange={() => selectProvider(provider.label)}
-                  className="sr-only"
-                />
                 <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
                 <span className="truncate">{provider.label}</span>
-              </label>
+              </RadioItem>
             )
           })}
-        </div>
-      </fieldset>
+        </RadioGroup>
+      </Fieldset>
 
       {draft.sourceType === 'websiteCrawl' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.rootUrl'])}
-              <input
+            <Field name="rootUrl" className="gap-1.5">
+              <FieldLabel>{t(($) => $['newKnowledge.rootUrl'])}</FieldLabel>
+              <FieldControl
                 type="url"
                 inputMode="url"
                 autoComplete="off"
-                name="rootUrl"
                 disabled={disabled}
                 maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
                 value={draft.rootUrl}
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
-                onChange={(event) => {
-                  updateDraft({ ...draft, rootUrl: event.target.value })
+                size="large"
+                onValueChange={(value) => {
+                  updateDraft({ ...draft, rootUrl: value })
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') event.preventDefault()
                 }}
               />
-            </label>
-            <label className="block system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.sourceName'])}
-              <input
+            </Field>
+            <Field name="sourceName" className="gap-1.5">
+              <FieldLabel>{t(($) => $['newKnowledge.sourceName'])}</FieldLabel>
+              <FieldControl
                 type="text"
                 autoComplete="off"
-                name="sourceName"
                 disabled={disabled}
                 maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                 value={draft.sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
-                onChange={(event) => {
-                  updateDraft({ ...draft, sourceName: event.target.value })
+                size="large"
+                onValueChange={(value) => {
+                  updateDraft({ ...draft, sourceName: value })
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') event.preventDefault()
                 }}
               />
-            </label>
+            </Field>
           </div>
-          <div className="overflow-hidden rounded-lg bg-background-section">
-            <button
-              type="button"
+          <Collapsible
+            open={optionsExpanded}
+            onOpenChange={setOptionsExpanded}
+            className="overflow-hidden rounded-lg bg-background-section"
+          >
+            <CollapsibleTrigger
               aria-label={t(($) => $['newKnowledge.crawlOptions'])}
-              aria-expanded={optionsExpanded}
               disabled={disabled}
-              className="flex min-h-9 w-full items-center gap-2 px-3 text-left system-xs-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
-              onClick={() => setOptionsExpanded((value) => !value)}
+              className="min-h-9 justify-start px-3 system-xs-medium"
             >
               <span
                 aria-hidden
-                className={cn(
-                  'size-4 transition-transform motion-reduce:transition-none',
-                  optionsExpanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line',
-                )}
+                className="i-ri-arrow-right-s-line size-4 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
               />
               {t(($) => $['newKnowledge.crawlOptions'])}
               {!optionsExpanded && (
@@ -288,43 +317,52 @@ export function CreateSourceSetup({
                       )} · ${t(($) => $['newKnowledge.maxPages'])}: ${draft.maxPages}`}
                 </span>
               )}
-            </button>
-            {optionsExpanded && (
-              <fieldset
+            </CollapsibleTrigger>
+            <CollapsiblePanel>
+              <Fieldset
                 disabled={disabled}
                 className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2"
               >
                 <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     name="includeSubpages"
                     checked={draft.includeSubpages}
-                    onChange={(event) =>
-                      updateDraft({ ...draft, includeSubpages: event.target.checked })
+                    disabled={disabled}
+                    onCheckedChange={(checked) =>
+                      updateDraft({ ...draft, includeSubpages: checked })
                     }
                   />
                   {t(($) => $['newKnowledge.includeSubpages'])}
                 </label>
-                <label className="system-xs-medium text-text-secondary">
-                  {t(($) => $['newKnowledge.maxPages'])}
-                  <input
-                    type="number"
+                <div>
+                  <span className="system-xs-medium text-text-secondary">
+                    {t(($) => $['newKnowledge.maxPages'])}
+                  </span>
+                  <NumberField
+                    disabled={disabled}
                     name="maxPages"
                     min={1}
                     max={200}
                     value={draft.maxPages}
-                    className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-                    onChange={(event) =>
-                      updateDraft({ ...draft, maxPages: event.target.valueAsNumber || 0 })
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') event.preventDefault()
-                    }}
-                  />
-                </label>
-              </fieldset>
-            )}
-          </div>
+                    onValueChange={(value) => updateDraft({ ...draft, maxPages: value ?? 0 })}
+                  >
+                    <NumberFieldGroup className="mt-1.5">
+                      <NumberFieldInput
+                        aria-label={t(($) => $['newKnowledge.maxPages'])}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') event.preventDefault()
+                        }}
+                      />
+                      <NumberFieldControls>
+                        <NumberFieldIncrement />
+                        <NumberFieldDecrement />
+                      </NumberFieldControls>
+                    </NumberFieldGroup>
+                  </NumberField>
+                </div>
+              </Fieldset>
+            </CollapsiblePanel>
+          </Collapsible>
           <Button
             type="button"
             variant="primary"
@@ -371,14 +409,14 @@ export function CreateSourceSetup({
                     {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
                   </p>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   disabled={disabled}
-                  className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                  className="shrink-0"
                   onClick={showBackendBoundary}
                 >
                   {t(($) => $['newKnowledge.connectNotion'])}
-                </button>
+                </Button>
               </div>
             </section>
           )}
