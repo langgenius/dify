@@ -1,3 +1,5 @@
+import logging
+import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
@@ -22,6 +24,10 @@ from services.workflow_draft_variable_service import DraftVariableSaver as Draft
 
 if TYPE_CHECKING:
     from graphon.variables.input_entities import VariableEntity
+
+logger = logging.getLogger(__name__)
+
+_WORKER_THREAD_JOIN_TIMEOUT_SECONDS = 300
 
 
 @final
@@ -63,6 +69,29 @@ class _DebuggerDraftVariableSaver:
 
 class BaseAppGenerator:
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _join_worker_thread(worker_thread: threading.Thread) -> None:
+        # Bound the wait so a leaked app worker cannot occupy an execution slot indefinitely.
+        worker_thread.join(timeout=_WORKER_THREAD_JOIN_TIMEOUT_SECONDS)
+        if worker_thread.is_alive():
+            logger.warning(
+                "Possible app worker thread leak: thread_name=%s timeout_seconds=%s; "
+                "continuing without waiting further to avoid occupying an execution slot indefinitely",
+                worker_thread.name,
+                _WORKER_THREAD_JOIN_TIMEOUT_SECONDS,
+            )
+
+    @staticmethod
+    def _wrap_stream_with_worker_thread_join[ResponseT](
+        response_stream: Generator[ResponseT, None, None],
+        worker_thread: threading.Thread,
+    ) -> Generator[ResponseT, None, None]:
+        """Keep the producer owned by the response stream until both finish."""
+        try:
+            yield from response_stream
+        finally:
+            BaseAppGenerator._join_worker_thread(worker_thread)
 
     @staticmethod
     def _bind_file_access_scope(

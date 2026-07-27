@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
@@ -41,6 +42,20 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 logger = logging.getLogger(__name__)
 
 AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
+RecentAppMode = Literal[
+    AppMode.COMPLETION,
+    AppMode.WORKFLOW,
+    AppMode.CHAT,
+    AppMode.ADVANCED_CHAT,
+    AppMode.AGENT_CHAT,
+]
+RECENT_APP_MODES: tuple[RecentAppMode, ...] = (
+    AppMode.COMPLETION,
+    AppMode.WORKFLOW,
+    AppMode.CHAT,
+    AppMode.ADVANCED_CHAT,
+    AppMode.AGENT_CHAT,
+)
 
 
 class AppListBaseParams(BaseModel):
@@ -63,6 +78,19 @@ class AppListParams(AppListBaseParams):
 
 class StarredAppListParams(AppListBaseParams):
     pass
+
+
+@dataclass(frozen=True)
+class RecentAppListItem:
+    id: str
+    name: str
+    icon_type: IconType | None
+    icon: str | None
+    icon_background: str | None
+    mode: RecentAppMode
+    author_name: str | None
+    updated_at: datetime
+    maintainer: str | None
 
 
 class CreateAppParams(BaseModel):
@@ -322,6 +350,62 @@ class AppService:
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    def get_recent_apps(
+        self,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> list[RecentAppListItem]:
+        """Return recently modified apps as one lightweight, non-paginated projection."""
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
+        if not filters:
+            return []
+
+        stmt = (
+            sa.select(
+                App.id,
+                App.name,
+                App.icon_type,
+                App.icon,
+                App.icon_background,
+                App.mode,
+                Account.name.label("author_name"),
+                App.updated_at,
+                App.maintainer,
+            )
+            .outerjoin(Account, Account.id == App.created_by)
+            .where(*filters, App.mode.in_(RECENT_APP_MODES))
+            .order_by(App.updated_at.desc())
+            .limit(params.limit)
+        )
+        rows = session.execute(stmt).all()
+
+        return [
+            RecentAppListItem(
+                id=str(app_id),
+                name=name,
+                icon_type=icon_type,
+                icon=icon,
+                icon_background=icon_background,
+                mode=cast(RecentAppMode, mode),
+                author_name=author_name,
+                updated_at=updated_at,
+                maintainer=maintainer,
+            )
+            for (
+                app_id,
+                name,
+                icon_type,
+                icon,
+                icon_background,
+                mode,
+                author_name,
+                updated_at,
+                maintainer,
+            ) in rows
+        ]
 
     def get_paginate_starred_apps(
         self,
