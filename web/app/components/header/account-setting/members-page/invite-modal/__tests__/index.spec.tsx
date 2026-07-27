@@ -5,6 +5,11 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { vi } from 'vitest'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { ContactsManagementMockProvider } from '@/features/contacts/management/composition'
+import {
+  ContactsMockScenario,
+  createContactsMockScenario,
+} from '@/features/contacts/management/mock/scenarios'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { InviteModal } from '../index'
 
@@ -101,22 +106,35 @@ describe('InviteModal', () => {
     open = true,
     isEmailSetup = true,
     queryClient = createQueryClient(),
+    contactsScenario,
   }: {
     open?: boolean
     isEmailSetup?: boolean
     queryClient?: QueryClient
-  } = {}) =>
-    render(
+    contactsScenario?: ContactsMockScenario
+  } = {}) => {
+    const modal = (
+      <InviteModal
+        open={open}
+        trigger={<button type="button">members.invite</button>}
+        isEmailSetup={isEmailSetup}
+        onOpenChange={onOpenChange}
+        onSend={onSend}
+      />
+    )
+
+    return render(
       <QueryClientProvider client={queryClient}>
-        <InviteModal
-          open={open}
-          trigger={<button type="button">members.invite</button>}
-          isEmailSetup={isEmailSetup}
-          onOpenChange={onOpenChange}
-          onSend={onSend}
-        />
+        {contactsScenario ? (
+          <ContactsManagementMockProvider scenario={createContactsMockScenario(contactsScenario)}>
+            {modal}
+          </ContactsManagementMockProvider>
+        ) : (
+          modal
+        )}
       </QueryClientProvider>,
     )
+  }
 
   const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('combobox', { name: /members\.role/i }))
@@ -313,6 +331,93 @@ describe('InviteModal', () => {
         },
       })
     })
+  })
+
+  it('asks for confirmation before inviting an email used by an External Contact', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
+
+    await addRecipients(user, 'external@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: /contacts\.memberInviteUpgrade\.title/i,
+    })
+    expect(inviteMember).not.toHaveBeenCalled()
+
+    await user.click(
+      within(confirmation).getByRole('button', { name: /contacts\.action\.cancel/i }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('alertdialog', {
+          name: /contacts\.memberInviteUpgrade\.title/i,
+        }),
+      ).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('external@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /members\.role/i })).toHaveTextContent('Admin')
+    expect(inviteMember).not.toHaveBeenCalled()
+  })
+
+  it('submits the pending invitation only after Add and upgrade is confirmed', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
+
+    await addRecipients(user, 'external@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: /contacts\.memberInviteUpgrade\.title/i,
+    })
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: /contacts\.memberInviteUpgrade\.confirm/i,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledOnce()
+      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
+        body: {
+          emails: ['external@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
+  it('submits directly when no invited email belongs to an External Contact', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    } satisfies MemberInviteResponse)
+    renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
+
+    await addRecipients(user, 'new-member@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => expect(inviteMember).toHaveBeenCalledOnce())
+    expect(
+      screen.queryByRole('alertdialog', { name: /contacts\.memberInviteUpgrade\.title/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('accepts an address allowed by the browser without requiring a dotted domain', async () => {

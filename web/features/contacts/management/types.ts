@@ -72,6 +72,25 @@ export type CreateExternalContactResult =
   | { contactId: string; kind: 'matches_platform_contact' }
   | { kind: 'failed' }
 
+export type FindExternalContactsByEmailsCommand = {
+  emails: string[]
+}
+
+export type ExternalContactInviteConflict = {
+  email: string
+  id: string
+  name: string
+}
+
+export type UpgradeExternalContactsToWorkspaceCommand = {
+  contactIds: string[]
+}
+
+export type UpgradeExternalContactsToWorkspaceResult = {
+  contactIds: string[]
+  kind: 'upgraded'
+}
+
 export type AddPlatformContactsCommand = {
   contactIds: string[]
 }

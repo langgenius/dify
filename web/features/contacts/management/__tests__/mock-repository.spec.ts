@@ -74,6 +74,38 @@ describe('contacts mock repository', () => {
     )
   })
 
+  it('finds External Contact invite conflicts and upgrades them with a stable id', async () => {
+    const repository = createContactsMockRepository({
+      scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
+    })
+
+    const conflicts = await repository.findExternalContactsByEmails({
+      emails: ['EXTERNAL@example.com', 'owner@example.com', 'missing@example.com'],
+    })
+
+    expect(conflicts).toEqual([
+      expect.objectContaining({
+        email: 'external@example.com',
+        id: 'contact-external',
+        name: 'Courtney Henry',
+      }),
+    ])
+
+    await expect(
+      repository.upgradeExternalContactsToWorkspace({
+        contactIds: conflicts.map((contact) => contact.id),
+      }),
+    ).resolves.toEqual({ contactIds: ['contact-external'], kind: 'upgraded' })
+    expect((await listContacts(repository)).data).toContainEqual(
+      expect.objectContaining({
+        email: 'external@example.com',
+        id: 'contact-external',
+        name: 'Courtney Henry',
+        type: 'workspace',
+      }),
+    )
+  })
+
   it('excludes existing contacts from available Platform contacts', async () => {
     const repository = createContactsMockRepository({
       scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),

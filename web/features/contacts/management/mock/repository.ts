@@ -48,6 +48,23 @@ export function createContactsMockRepository({
   }
 
   return {
+    async findExternalContactsByEmails(command) {
+      await wait()
+      const emails = new Set(command.emails.map(normalizeEmail))
+
+      return contacts.flatMap((contact) => {
+        if (
+          contact.type !== 'external' ||
+          !contact.email ||
+          !emails.has(normalizeEmail(contact.email))
+        ) {
+          return []
+        }
+
+        return [{ email: contact.email, id: contact.id, name: contact.name }]
+      })
+    },
+
     async listContacts(query) {
       await wait()
       if (scenario.failures.directory) throw new Error('contacts_directory_failed')
@@ -182,6 +199,20 @@ export function createContactsMockRepository({
 
       contacts = contacts.filter((item) => item.id !== contact.id)
       return { contactId: contact.id, contactOutcome: 'removed', kind: 'removed' }
+    },
+
+    async upgradeExternalContactsToWorkspace(command) {
+      await wait()
+      const selectedIds = new Set(command.contactIds)
+      const contactIds: string[] = []
+
+      contacts = contacts.map((contact) => {
+        if (contact.type !== 'external' || !selectedIds.has(contact.id)) return contact
+        contactIds.push(contact.id)
+        return { ...contact, type: 'workspace' }
+      })
+
+      return { contactIds, kind: 'upgraded' }
     },
   }
 }

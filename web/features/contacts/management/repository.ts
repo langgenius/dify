@@ -8,10 +8,14 @@ import type {
   ContactView,
   CreateExternalContactCommand,
   CreateExternalContactResult,
+  ExternalContactInviteConflict,
+  FindExternalContactsByEmailsCommand,
   RemoveContactsCommand,
   RemoveContactsResult,
   RemoveMemberCommand,
   RemoveMemberResult,
+  UpgradeExternalContactsToWorkspaceCommand,
+  UpgradeExternalContactsToWorkspaceResult,
 } from './types'
 
 /**
@@ -24,10 +28,16 @@ export type ContactsManagementRepository = {
   createExternalContact: (
     command: CreateExternalContactCommand,
   ) => Promise<CreateExternalContactResult>
+  findExternalContactsByEmails: (
+    command: FindExternalContactsByEmailsCommand,
+  ) => Promise<ExternalContactInviteConflict[]>
   listAvailablePlatformContacts: (
     query: AvailablePlatformContactsQuery,
   ) => Promise<ContactPage<AvailablePlatformContact>>
   listContacts: (query: ContactsListQuery) => Promise<ContactPage<ContactView>>
   removeContacts: (command: RemoveContactsCommand) => Promise<RemoveContactsResult>
   removeMember: (command: RemoveMemberCommand) => Promise<RemoveMemberResult>
+  upgradeExternalContactsToWorkspace: (
+    command: UpgradeExternalContactsToWorkspaceCommand,
+  ) => Promise<UpgradeExternalContactsToWorkspaceResult>
 }
