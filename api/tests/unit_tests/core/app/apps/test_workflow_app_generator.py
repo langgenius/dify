@@ -290,12 +290,17 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
 
     mocker.patch("core.app.apps.workflow.app_generator.WorkflowAppRunner", side_effect=runner_ctor)
 
+    worker_lifecycle: dict[str, bool] = {}
+
     class ImmediateThread:
         def __init__(self, target, kwargs):
             target(**kwargs)
 
         def start(self):
             return None
+
+        def join(self):
+            worker_lifecycle["joined"] = True
 
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", ImmediateThread)
 
@@ -335,5 +340,6 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
     )
 
     assert result == "raw-response"
+    assert worker_lifecycle["joined"] is True
     runner_instance.run.assert_called_once()
     queue_manager.graph_runtime_state = runtime_state
