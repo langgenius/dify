@@ -1,11 +1,13 @@
 import os
+import shutil
 from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 # Getting the absolute path of the current file's directory
@@ -119,23 +121,41 @@ def _unit_test_engine():
 
 
 @pytest.fixture
-def sqlite_engine() -> Iterator[Engine]:
-    """Create an isolated in-memory SQLite engine for tests that need a disposable database."""
+def sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
+    """Create an engine over a pristine per-test copy of the SQLite schema."""
 
-    engine = create_engine("sqlite:///:memory:")
+    database_path = tmp_path / "unit-tests.sqlite3"
+    shutil.copyfile(_sqlite_database_template, database_path)
+    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+
     try:
         yield engine
     finally:
         engine.dispose()
+        database_path.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="session")
+def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create one empty full-schema SQLite database per pytest worker."""
+
+    database_path = tmp_path_factory.mktemp("sqlite-template") / "unit-tests.sqlite3"
+    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+    try:
+        TypeBase.metadata.create_all(engine)
+    finally:
+        engine.dispose()
+    return database_path
 
 
 @pytest.fixture
-def sqlite_session(request: pytest.FixtureRequest, sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield a SQLite session after creating the model tables passed through ``request.param``."""
+def sqlite_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Yield a session over the pristine full-schema SQLite database.
 
-    models: tuple[type[TypeBase], ...] = request.param
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    Legacy indirect model parameters remain accepted by pytest but are ignored.
+    Remove those decorators as their test files receive individual review.
+    """
+
     session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with session_factory() as session:
         yield session
