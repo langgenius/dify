@@ -67,8 +67,7 @@ export function KnowledgeSpaceCard({
         <div className="mt-auto flex w-full min-w-0 items-center gap-2 px-4 pt-1 pb-2.5 system-xs-regular text-text-tertiary">
           <span className="flex shrink-0 items-center gap-1 text-text-disabled">
             <span aria-hidden className="i-ri-file-text-line size-3.5" />
-            <span aria-hidden>—</span>
-            <span className="sr-only">{t(($) => $['newKnowledge.documentsUnavailable'])}</span>
+            <span>{summary?.document_count ?? 0}</span>
           </span>
           <span className="flex shrink-0 items-center gap-1 text-text-disabled">
             <span aria-hidden className="i-ri-robot-2-line size-3.5" />

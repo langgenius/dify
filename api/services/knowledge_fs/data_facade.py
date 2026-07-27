@@ -575,14 +575,23 @@ class KnowledgeFSDataFacade:
         return KnowledgeFSBackgroundTaskResponse.model_validate(raw)
 
     def list_sources(
-        self, *, tenant_id: str, account_id: str, control_space_id: str, cursor: str | None = None
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 50,
     ) -> KnowledgeFSSourceListResponse:
         raw = self._interactive(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             operation_id="listSources",
-            query=(("cursor", cursor),) if cursor else (),
+            query=(
+                *((("cursor", cursor),) if cursor else ()),
+                ("limit", str(limit)),
+            ),
         )
         return KnowledgeFSSourceListResponse.model_validate(raw)
 

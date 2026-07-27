@@ -20,7 +20,10 @@ describe.each(["postgres", "tidb"] as const)("capability job fence (%s)", (diale
     const calls: DatabaseExecuteInput[] = [];
     const database = adapter(dialect, async (input) => {
       calls.push(input);
-      return { rows: [{ grant_id: scope.capabilityGrantId }], rowsAffected: 0 };
+      return {
+        rows: [{ grant_id: scope.capabilityGrantId, space_tombstoned: false }],
+        rowsAffected: 0,
+      };
     });
 
     await database.transaction(async (transaction) => {
@@ -35,10 +38,10 @@ describe.each(["postgres", "tidb"] as const)("capability job fence (%s)", (diale
       params: [scope.tenantId, scope.knowledgeSpaceId, scope.capabilityGrantId],
       tableName: "capability_grants",
     });
-    expect(calls[0]?.sql).toContain("capability_space_fences");
     expect(calls[0]?.sql).toContain("state");
+    expect(calls[0]?.sql).toContain("capability_space_fences");
     expect(calls[0]?.sql).toContain("tombstoned");
-    expect(calls[0]?.sql).toContain("highest_revoke_sequence");
+    expect(calls[0]?.sql).toContain("FOR UPDATE");
     expect(calls[0]?.sql.toLowerCase()).not.toContain("bearer");
     expect(calls[0]?.sql.toLowerCase()).not.toContain("jti");
     assertPlaceholderArity(calls[0] as DatabaseExecuteInput, dialect);
@@ -46,6 +49,19 @@ describe.each(["postgres", "tidb"] as const)("capability job fence (%s)", (diale
 
   it("fails closed when revoke or a space tombstone removes the active row", async () => {
     const database = adapter(dialect, async () => ({ rows: [], rowsAffected: 0 }));
+
+    await expect(
+      database.transaction((transaction) =>
+        assertCapabilityJobPublicationAllowed(database, transaction, scope),
+      ),
+    ).rejects.toBeInstanceOf(CapabilityPublicationFencedError);
+  });
+
+  it("fails closed when the locked space fence is tombstoned", async () => {
+    const database = adapter(dialect, async () => ({
+      rows: [{ grant_id: scope.capabilityGrantId, space_tombstoned: true }],
+      rowsAffected: 0,
+    }));
 
     await expect(
       database.transaction((transaction) =>

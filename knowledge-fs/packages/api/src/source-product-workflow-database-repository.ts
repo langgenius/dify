@@ -1168,8 +1168,8 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             const sourceResult = await tx.execute({
               maxRows: 1,
               operation: "select",
-              params: [candidate.tenantId, candidate.knowledgeSpaceId, candidate.sourceId],
-              sql: `SELECT ${q(database, "version")}, ${q(database, "status")}, ${q(database, "permission_scope")} FROM ${q(database, "sources")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "id")} = ${p(database, 3)} LIMIT 1;`,
+              params: [candidate.knowledgeSpaceId, candidate.sourceId],
+              sql: `SELECT ${q(database, "version")}, ${q(database, "status")}, ${q(database, "permission_scope")} FROM ${q(database, "sources")} WHERE ${q(database, "knowledge_space_id")} = ${p(database, 1)} AND ${q(database, "id")} = ${p(database, 2)} LIMIT 1;`,
               tableName: "sources",
             });
             sourceRow = sourceResult.rows[0];

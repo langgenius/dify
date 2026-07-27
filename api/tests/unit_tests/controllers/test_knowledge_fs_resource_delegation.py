@@ -341,7 +341,7 @@ _CONSOLE_DELEGATION_CASES = (
         ("space-1",),
         "facade",
         "list_sources",
-        {"control_space_id": "space-1"},
+        {"control_space_id": "space-1", "limit": 50},
     ),
     (
         "KnowledgeFSSpaceSourcesApi",

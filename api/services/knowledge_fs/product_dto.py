@@ -123,6 +123,10 @@ class KnowledgeFSCursorQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class KnowledgeFSSourceListQuery(KnowledgeFSCursorQuery):
+    limit: int = Field(default=50, ge=1, le=200)
+
+
 class KnowledgeFSBackgroundTaskListQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=8_192)
     limit: int = Field(default=50, ge=1, le=100)
@@ -1714,6 +1718,7 @@ __all__ = [
     "KnowledgeFSSourceImportFilesPayload",
     "KnowledgeFSSourceImportPagesPayload",
     "KnowledgeFSSourceImportResponse",
+    "KnowledgeFSSourceListQuery",
     "KnowledgeFSSourceListResponse",
     "KnowledgeFSSourcePagesQuery",
     "KnowledgeFSSourcePagesResponse",

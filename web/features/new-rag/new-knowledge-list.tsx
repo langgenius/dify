@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -140,15 +140,17 @@ export function NewKnowledgeList({
           </div>
           {canCreate && (
             <div className="flex items-center gap-1">
-              <Button
-                render={<Link href="/datasets/new/create" />}
-                variant="primary"
-                size="medium"
-                className="gap-0.5 px-2 shadow-xs"
+              <Link
+                href="/datasets/new/create"
+                className={buttonVariants({
+                  className: 'gap-0.5 px-2 shadow-xs',
+                  size: 'medium',
+                  variant: 'primary',
+                })}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>
-              </Button>
+              </Link>
             </div>
           )}
         </div>

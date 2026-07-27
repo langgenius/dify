@@ -56,6 +56,34 @@ describe.each(["postgres", "tidb"] as const)(
       replay.expectDone();
     });
 
+    it("reads PostgreSQL bigint grant counters as safe integers", async () => {
+      const script = scriptedDatabase(dialect, [
+        step("capability_grants", "select", [grantRow({ highest_revoke_sequence: "7" })]),
+      ]);
+
+      await expect(
+        createDatabaseCapabilityGrantProvenanceRepository({
+          database: script.database,
+        }).get({ grantId, knowledgeSpaceId, tenantId }),
+      ).resolves.toMatchObject({ highestRevokeSequence: 7 });
+      script.expectDone();
+    });
+
+    it("rejects capability grant counters outside the JavaScript safe-integer range", async () => {
+      const script = scriptedDatabase(dialect, [
+        step("capability_grants", "select", [
+          grantRow({ highest_revoke_sequence: "9007199254740992" }),
+        ]),
+      ]);
+
+      await expect(
+        createDatabaseCapabilityGrantProvenanceRepository({
+          database: script.database,
+        }).get({ grantId, knowledgeSpaceId, tenantId }),
+      ).rejects.toThrow("must be a nonnegative safe integer");
+      script.expectDone();
+    });
+
     it("applies only a higher grant revoke sequence and records stale delivery", async () => {
       const applied = scriptedDatabase(dialect, [
         step("capability_revoke_receipts", "select", []),

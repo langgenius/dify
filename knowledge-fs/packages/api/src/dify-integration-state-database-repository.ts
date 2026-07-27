@@ -5,7 +5,7 @@ import type {
   DatabaseRow,
 } from "@knowledge/core";
 
-import { numberColumn, stringColumn } from "./database-row-utils";
+import { nonnegativeSafeIntegerColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import {
   DifyIntegrationActivationConflictError,
@@ -151,7 +151,7 @@ function stateFromRow(row: DatabaseRow): DifyIntegrationState {
   const state = {
     activatedAt: stringColumn(row, "activated_at"),
     activationId: stringColumn(row, "activation_id"),
-    activationRevision: numberColumn(row, "activation_revision"),
+    activationRevision: nonnegativeSafeIntegerColumn(row, "activation_revision"),
     namespaceId: stringColumn(row, "tenant_id"),
     sourceRevisionDigest: stringColumn(row, "source_revision_digest"),
     updatedAt: stringColumn(row, "updated_at"),

@@ -13,7 +13,7 @@ import json
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from typing import Literal, NamedTuple, cast
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
@@ -1682,7 +1682,12 @@ class KnowledgeFSWorkspaceCutoverService:
                 knowledge_space_revision=space.knowledge_space_revision,
                 visibility=visibility,
                 state=KnowledgeFSControlSpaceState.ACTIVE,
-                lifecycle_operation_id="migration-backfill",
+                lifecycle_operation_id=str(
+                    uuid5(
+                        NAMESPACE_URL,
+                        f"dify-kfs-cutover-backfill:{tenant_id}:{knowledge_space_id}",
+                    )
+                ),
             )
             session.add(existing)
             session.flush()

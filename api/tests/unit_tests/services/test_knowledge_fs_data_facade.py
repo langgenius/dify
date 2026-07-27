@@ -450,6 +450,7 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
         account_id="account-1",
         control_space_id="control-1",
         cursor="source-cursor",
+        limit=25,
     )
     source = facade.create_source(
         tenant_id="tenant-1",
@@ -502,7 +503,7 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
         "embedding": {"model": "embed-v1", "pluginId": "plugin-1", "provider": "provider-1"},
         "expectedRevision": 1,
     }
-    assert remote.requests[2].query == (("cursor", "source-cursor"),)
+    assert remote.requests[2].query == (("cursor", "source-cursor"), ("limit", "25"))
     assert remote.requests[3].payload == {
         "metadata": {"team": "search"},
         "name": "Docs",

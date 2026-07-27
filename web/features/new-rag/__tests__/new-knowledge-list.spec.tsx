@@ -15,6 +15,7 @@ type KnowledgeSpaceList = {
     slug: string
     tenantId: string
     updatedAt: string
+    documentCount?: number
   }>
   nextCursor?: string
 }
@@ -47,6 +48,7 @@ const knowledgeSpaceApiResponse = vi.hoisted(
     technical_status: 'available',
     technical_summary: {
       description: space.description ?? null,
+      document_count: space.documentCount ?? 0,
       icon: space.iconRef ?? null,
       knowledge_space_id: space.id,
       name: space.name,
@@ -202,6 +204,7 @@ describe('NewKnowledgeList', () => {
       {
         createdAt: '2026-07-15T00:00:00Z',
         description: 'Answers for customer support',
+        documentCount: 12,
         iconRef: 'builtin:camera',
         id: 'space-1',
         name: 'Support knowledge',
@@ -238,7 +241,8 @@ describe('NewKnowledgeList', () => {
     expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
-    expect(within(list).getAllByText('dataset.newKnowledge.documentsUnavailable')).toHaveLength(2)
+    expect(within(supportCard).getByText('12')).toBeInTheDocument()
+    expect(within(list).getByText('0')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.appsUnavailable')).toHaveLength(2)
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })

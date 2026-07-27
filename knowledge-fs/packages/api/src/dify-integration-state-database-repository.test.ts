@@ -148,6 +148,31 @@ describe.each(["postgres", "tidb"] as const)("database Dify integration state (%
     script.expectDone();
   });
 
+  it("accepts a safe bigint revision returned as a decimal string", async () => {
+    const script = scriptedDatabase(dialect, [
+      { operation: "select", rows: [{ ...stateRow(), activation_revision: "7" }] },
+    ]);
+
+    await expect(
+      createDatabaseDifyIntegrationStateRepository({ database: script.database }).get("tenant-a"),
+    ).resolves.toMatchObject({ activationRevision: 7 });
+    script.expectDone();
+  });
+
+  it("rejects bigint revisions outside JavaScript's safe integer range", async () => {
+    const script = scriptedDatabase(dialect, [
+      {
+        operation: "select",
+        rows: [{ ...stateRow(), activation_revision: "9007199254740992" }],
+      },
+    ]);
+
+    await expect(
+      createDatabaseDifyIntegrationStateRepository({ database: script.database }).get("tenant-a"),
+    ).rejects.toThrow("nonnegative safe integer");
+    script.expectDone();
+  });
+
   it("fails closed when durable activation evidence is corrupt", async () => {
     const script = scriptedDatabase(dialect, [
       {

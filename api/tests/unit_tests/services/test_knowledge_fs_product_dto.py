@@ -12,6 +12,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
+    KnowledgeFSSourceListQuery,
 )
 
 
@@ -58,6 +59,16 @@ def test_background_task_query_rejects_invalid_limits_and_empty_cursors(
 
     with pytest.raises(ValidationError):
         KnowledgeFSBackgroundTaskListQuery.model_validate(payload)
+
+
+@pytest.mark.parametrize("payload", [{"limit": 0}, {"limit": 201}, {"cursor": ""}])
+def test_source_list_query_matches_the_knowledge_fs_pagination_contract(
+    payload: dict[str, object],
+) -> None:
+    assert KnowledgeFSSourceListQuery().limit == 50
+
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceListQuery.model_validate(payload)
 
 
 def test_bulk_job_dto_accepts_canceled_items_and_terminal_status() -> None:

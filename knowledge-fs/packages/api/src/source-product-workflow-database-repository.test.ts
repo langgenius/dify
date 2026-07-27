@@ -1792,6 +1792,11 @@ describe("database source-product workflow repository edge coverage", () => {
           call.params.includes("sync-policy-a"),
       ),
     ).toBe(true);
+    const sourceRead = calls.find(
+      (call) => call.tableName === "sources" && call.operation === "select",
+    );
+    expect(sourceRead?.sql).not.toContain('"tenant_id"');
+    expect(sourceRead?.params).toEqual([knowledgeSpaceId, sourceId]);
   });
 
   it("rejects stale policy writes and accepts nullable schedule fields", async () => {

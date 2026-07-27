@@ -36,6 +36,7 @@ export function KnowledgeSpaceShell({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
+    refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
     retry: (failureCount, error) => {
       const status = responseStatus(error)
       if (status === 403 || status === 404) return false
@@ -47,7 +48,7 @@ export function KnowledgeSpaceShell({
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   useDocumentTitle(knowledgeSpaceName)
 
-  if (knowledgeSpaceQuery.isPending)
+  if (knowledgeSpaceQuery.isPending || knowledgeSpaceQuery.data?.state === 'provisioning')
     return (
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
         <Loading />

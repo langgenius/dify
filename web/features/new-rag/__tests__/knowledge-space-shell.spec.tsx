@@ -7,6 +7,7 @@ const queryMock = vi.hoisted(() => ({
   data: undefined as
     | {
         control_space_id: string
+        state?: 'active' | 'provisioning'
         technical_summary: { name: string }
       }
     | undefined,
@@ -73,6 +74,7 @@ describe('KnowledgeSpaceShell', () => {
   it('renders a refresh-safe header and route navigation when loaded', () => {
     queryMock.data = {
       control_space_id: 'space-1',
+      state: 'active',
       technical_summary: { name: 'Support knowledge' },
     }
 
@@ -92,6 +94,27 @@ describe('KnowledgeSpaceShell', () => {
       '/datasets/new/space-1/documents',
     )
     expect(screen.getByText('source content')).toBeInTheDocument()
+  })
+
+  it('polls provisioning spaces without mounting data-plane children', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'provisioning',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('source content')).not.toBeInTheDocument()
+
+    const options = useQueryOptionsMock.mock.lastCall?.[0] as {
+      refetchInterval: (query: {
+        state: { data?: { state?: 'active' | 'provisioning' } }
+      }) => false | number
+    }
+    expect(options.refetchInterval({ state: { data: queryMock.data } })).toBe(1000)
+    expect(options.refetchInterval({ state: { data: { state: 'active' } } })).toBe(false)
   })
 
   it('shows a not-found state without rendering children', () => {

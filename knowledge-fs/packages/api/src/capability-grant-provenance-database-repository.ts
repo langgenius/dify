@@ -24,7 +24,12 @@ import {
   validateCapabilityGrantScope,
   validateCapabilitySpaceFence,
 } from "./capability-grant-provenance";
-import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
+import {
+  nonnegativeSafeIntegerColumn,
+  numberColumn,
+  optionalStringColumn,
+  stringColumn,
+} from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
 
@@ -357,7 +362,7 @@ async function findReceipt(
     ...(grantId ? { grantId } : {}),
     knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
     reasonCode: stringColumn(row, "reason_code"),
-    revokeSequence: numberColumn(row, "revoke_sequence"),
+    revokeSequence: nonnegativeSafeIntegerColumn(row, "revoke_sequence"),
     targetKind,
     tenantId: stringColumn(row, "tenant_id"),
     ...(tombstoned === undefined ? {} : { tombstoned }),
@@ -424,7 +429,10 @@ async function findSpaceFence(
   });
   return result.rows[0]
     ? {
-        highestRevokeSequence: numberColumn(result.rows[0], "highest_revoke_sequence"),
+        highestRevokeSequence: nonnegativeSafeIntegerColumn(
+          result.rows[0],
+          "highest_revoke_sequence",
+        ),
         tombstoned: booleanColumn(result.rows[0], "tombstoned"),
       }
     : null;
@@ -524,7 +532,7 @@ function storedGrantFromRow(row: DatabaseRow): StoredGrant {
       contentScopeIds: jsonStringArrayColumn(row, "content_scope_ids"),
       expiresAt: stringColumn(row, "expires_at"),
       grantId: stringColumn(row, "grant_id"),
-      highestRevokeSequence: numberColumn(row, "highest_revoke_sequence"),
+      highestRevokeSequence: nonnegativeSafeIntegerColumn(row, "highest_revoke_sequence"),
       issuedAt: stringColumn(row, "issued_at"),
       jtiHash: stringColumn(row, "jti_hash"),
       knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),

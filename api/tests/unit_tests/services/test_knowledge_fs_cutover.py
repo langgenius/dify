@@ -533,6 +533,8 @@ def test_inventory_and_backfill_are_fail_closed_and_do_not_query_legacy_product_
         "content_policy_revision": revision.content_policy_revision,
     } == _SOURCE_REVISION
     assert control_space is not None
+    assert control_space.lifecycle_operation_id is not None
+    assert str(UUID(control_space.lifecycle_operation_id)) == control_space.lifecycle_operation_id
     assert control_space.visibility.value == "all_team_members"
     assert len(permissions) == 1
     assert all("secret" not in item.details for item in quarantine)
