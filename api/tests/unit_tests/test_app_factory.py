@@ -36,11 +36,11 @@ def gated_app() -> Flask:
 
     @app.route("/mcp/server/<server_code>/mcp", methods=["POST"])
     def mcp_route(server_code: str):
-        return {"surface": "mcp", "server_code": server_code}
+        return {"surface": "mcp"}
 
     @app.route("/triggers/webhook/<webhook_id>", methods=["POST"])
     def trigger_route(webhook_id: str):
-        return {"surface": "triggers", "webhook_id": webhook_id}
+        return {"surface": "triggers"}
 
     @app.route("/console/api/apps")
     def console_route():
