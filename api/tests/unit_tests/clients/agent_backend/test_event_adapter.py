@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
@@ -83,7 +85,19 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
             data=RunSucceededEventData(
                 output={"summary": "done"},
                 session_snapshot=snapshot,
-                usage=AgentRunUsage(prompt_tokens=2, completion_tokens=3),
+                usage=AgentRunUsage(
+                    prompt_tokens=2,
+                    prompt_unit_price=Decimal(5),
+                    prompt_price_unit=Decimal("0.000001"),
+                    prompt_price=Decimal("0.000010"),
+                    completion_tokens=3,
+                    completion_unit_price=Decimal(30),
+                    completion_price_unit=Decimal("0.000001"),
+                    completion_price=Decimal("0.000090"),
+                    total_price=Decimal("0.000100"),
+                    currency="USD",
+                    latency=0.4,
+                ),
             ),
         )
     )
@@ -94,7 +108,22 @@ def test_event_adapter_maps_run_succeeded_to_final_output():
             source_event_id="3-0",
             output={"summary": "done"},
             session_snapshot=snapshot,
-            usage={"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5},
+            usage={
+                "prompt_tokens": 2,
+                "prompt_unit_price": "5",
+                "prompt_price_unit": "0.000001",
+                "prompt_price": "0.000010",
+                "completion_tokens": 3,
+                "completion_unit_price": "30",
+                "completion_price_unit": "0.000001",
+                "completion_price": "0.000090",
+                "total_tokens": 5,
+                "total_price": "0.000100",
+                "currency": "USD",
+                "latency": 0.4,
+                "time_to_first_token": None,
+                "time_to_generate": None,
+            },
         )
     ]
 

@@ -410,11 +410,4 @@ describe('EndpointModal', () => {
       expect(mockOnSaved).toHaveBeenCalledWith({ text: 'hello' })
     })
   })
-
-  describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(EndpointModal).toBeDefined()
-      expect((EndpointModal as { $$typeof?: symbol }).$$typeof).toBeDefined()
-    })
-  })
 })

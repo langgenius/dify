@@ -1,35 +1,54 @@
-from types import SimpleNamespace
+import pytest
+from sqlalchemy.orm import Session
 
-from pytest_mock import MockerFixture
-
+from models.dataset import PipelineBuiltInTemplate
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
+TEMPLATE_ID = "11111111-1111-1111-1111-111111111111"
 
-def test_get_pipeline_templates(mocker: MockerFixture) -> None:
-    built_in_template = SimpleNamespace(
-        id="tpl-1",
-        name="Template 1",
+
+def _template(
+    *,
+    template_id: str = TEMPLATE_ID,
+    language: str = "en-US",
+    name: str = "Template 1",
+) -> PipelineBuiltInTemplate:
+    template = PipelineBuiltInTemplate(
+        name=name,
         description="desc",
         icon={"background": "#fff"},
         copyright="copyright",
         privacy_policy="https://example.com/privacy",
         position=1,
         chunk_structure="general",
+        yaml_content="workflow:\n  graph:\n    nodes: []",
+        install_count=0,
+        language=language,
     )
-    scalars_mock = mocker.Mock()
-    scalars_mock.all.return_value = [built_in_template]
-    session_mock = mocker.Mock()
-    session_mock.scalars.return_value = scalars_mock
+    template.id = template_id
+    return template
+
+
+@pytest.mark.parametrize("sqlite_session", [(PipelineBuiltInTemplate,)], indirect=True)
+def test_get_pipeline_templates(sqlite_session: Session) -> None:
+    target = _template()
+    wrong_language = _template(
+        template_id="22222222-2222-2222-2222-222222222222",
+        language="zh-Hans",
+        name="Wrong Language",
+    )
+    sqlite_session.add_all([target, wrong_language])
+    sqlite_session.commit()
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US", session=session_mock)
+    result = retrieval.get_pipeline_templates("en-US", session=sqlite_session)
 
     assert retrieval.get_type() == PipelineTemplateType.DATABASE
     assert result == {
         "pipeline_templates": [
             {
-                "id": "tpl-1",
+                "id": TEMPLATE_ID,
                 "name": "Template 1",
                 "description": "desc",
                 "icon": {"background": "#fff"},
@@ -40,24 +59,19 @@ def test_get_pipeline_templates(mocker: MockerFixture) -> None:
             }
         ]
     }
+    assert sqlite_session.in_transaction()
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
-    session_mock = mocker.Mock()
-    session_mock.get.return_value = SimpleNamespace(
-        id="tpl-1",
-        name="Template 1",
-        icon={"background": "#fff"},
-        description="desc",
-        chunk_structure="general",
-        yaml_content="workflow:\n  graph:\n    nodes: []",
-    )
+@pytest.mark.parametrize("sqlite_session", [(PipelineBuiltInTemplate,)], indirect=True)
+def test_get_pipeline_template_detail_returns_detail(sqlite_session: Session) -> None:
+    sqlite_session.add(_template())
+    sqlite_session.commit()
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1", session=session_mock)
+    detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
 
     assert detail == {
-        "id": "tpl-1",
+        "id": TEMPLATE_ID,
         "name": "Template 1",
         "icon_info": {"background": "#fff"},
         "description": "desc",
@@ -65,13 +79,14 @@ def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> N
         "export_data": "workflow:\n  graph:\n    nodes: []",
         "graph": {"nodes": []},
     }
+    assert sqlite_session.in_transaction()
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
-    session_mock = mocker.Mock()
-    session_mock.get.return_value = None
+@pytest.mark.parametrize("sqlite_session", [(PipelineBuiltInTemplate,)], indirect=True)
+def test_get_pipeline_template_detail_returns_none_when_not_found(sqlite_session: Session) -> None:
     retrieval = DatabasePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("missing", session=session_mock)
+    result = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
 
     assert result is None
+    assert sqlite_session.in_transaction()

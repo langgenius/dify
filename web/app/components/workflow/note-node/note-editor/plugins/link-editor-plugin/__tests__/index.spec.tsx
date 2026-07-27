@@ -20,8 +20,19 @@ const StoreProbe = ({ onReady }: { onReady?: (store: NoteEditorStore) => void })
 }
 
 describe('LinkEditorPlugin', () => {
+  let anchor: HTMLAnchorElement
+  let portalRoot: HTMLDivElement
+
   beforeEach(() => {
     vi.clearAllMocks()
+    anchor = document.createElement('a')
+    portalRoot = document.createElement('div')
+    document.body.append(anchor, portalRoot)
+  })
+
+  afterEach(() => {
+    anchor.remove()
+    portalRoot.remove()
   })
 
   // Without an anchor element the plugin should stay hidden.
@@ -43,7 +54,7 @@ describe('LinkEditorPlugin', () => {
       render(
         <NoteEditorContextProvider value={emptyValue}>
           <StoreProbe onReady={(instance) => (store = instance)} />
-          <LinkEditorPlugin containerElement={document.createElement('div')} />
+          <LinkEditorPlugin containerElement={portalRoot} />
         </NoteEditorContextProvider>,
       )
 
@@ -53,7 +64,7 @@ describe('LinkEditorPlugin', () => {
 
       act(() => {
         store!.setState({
-          linkAnchorElement: document.createElement('a'),
+          linkAnchorElement: anchor,
           linkOperatorShow: false,
           selectedLinkUrl: 'https://example.com',
         })

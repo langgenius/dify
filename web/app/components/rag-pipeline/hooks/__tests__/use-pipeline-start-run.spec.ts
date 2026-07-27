@@ -14,17 +14,20 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
 }))
 
 const mockDoSyncWorkflowDraft = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: vi.fn(),
   }),

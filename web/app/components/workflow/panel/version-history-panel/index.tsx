@@ -21,8 +21,10 @@ import {
   useUpdateWorkflow,
   useWorkflowVersionHistory,
 } from '@/service/use-workflow'
-import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
+import { useDSL } from '../../hooks/use-DSL'
+import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
+import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../../store'
 import {
   VersionHistoryContextMenuOptions,

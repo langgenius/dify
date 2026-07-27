@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from libs.helper import OptionalTimestampField, escape_like_pattern, extract_tenant_id
+from libs.helper import OptionalTimestampField, email, escape_like_pattern, extract_tenant_id
 from models.account import Account
 from models.model import EndUser
 
@@ -126,3 +126,30 @@ class TestEscapeLikePattern:
         result = escape_like_pattern("test\\%_value")
         # Should be: test\\\%\_value
         assert result == "test\\\\\\%\\_value"
+
+
+class TestEmailValidator:
+    """Tests for the email() validator — regression for #39234."""
+
+    def test_valid_email_accepted(self):
+        assert email("user@example.com") == "user@example.com"
+
+    def test_trailing_newline_rejected(self):
+        with pytest.raises(ValueError, match="not a valid email"):
+            email("user@example.com\n")
+
+    def test_trailing_carriage_return_newline_rejected(self):
+        with pytest.raises(ValueError, match="not a valid email"):
+            email("user@example.com\r\n")
+
+    def test_multiple_newlines_rejected(self):
+        with pytest.raises(ValueError, match="not a valid email"):
+            email("user@example.com\n\n")
+
+    def test_empty_string_rejected(self):
+        with pytest.raises(ValueError, match="not a valid email"):
+            email("")
+
+    def test_invalid_email_rejected(self):
+        with pytest.raises(ValueError, match="not a valid email"):
+            email("not-an-email")

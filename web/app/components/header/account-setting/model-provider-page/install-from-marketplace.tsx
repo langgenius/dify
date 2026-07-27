@@ -18,11 +18,13 @@ type InstallFromMarketplaceProps = {
   onOpenMarketplace?: () => void
   providers: ModelProvider[]
   searchText: string
+  stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
   onOpenMarketplace,
   providers,
   searchText,
+  stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -42,54 +44,61 @@ const InstallFromMarketplace = ({
   return (
     <div id="model-provider-marketplace" className="flex scroll-mt-4 flex-col gap-2">
       <Divider className="my-2! h-px" />
-      <div className="flex h-5 items-center justify-between">
-        <button
-          type="button"
-          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
-          onClick={() => setCollapse((prev) => !prev)}
-          aria-expanded={!collapse}
-        >
-          <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
-          {t(($) => $['modelProvider.installProvider'], { ns: 'common' })}
-        </button>
-        <div className="flex items-center gap-1">
-          <span className="system-sm-regular text-text-tertiary">
-            {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
-          </span>
-          {onOpenMarketplace ? (
-            <button
-              type="button"
-              className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
-              onClick={onOpenMarketplace}
-            >
-              {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
-            </button>
-          ) : (
-            <Link
-              target="_blank"
-              rel="noopener noreferrer"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
-              className="inline-flex items-center system-sm-medium text-text-accent"
-            >
-              {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
-            </Link>
-          )}
-        </div>
-      </div>
-      {!collapse && isAllPluginsLoading && <Loading type="area" />}
-      {!isAllPluginsLoading && !collapse && (
-        <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
-          plugins={allPlugins}
-          showInstallButton={canInstallPlugin}
-          cardContainerClassName="grid grid-cols-3 gap-2"
-          cardRender={cardRender}
-          emptyClassName="h-auto"
+      <div className="relative flex flex-col gap-2">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[174px]"
+          data-step-by-step-tour-target={stepByStepTourTarget}
         />
-      )}
+        <div className="flex h-5 items-center justify-between">
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
+            onClick={() => setCollapse((prev) => !prev)}
+            aria-expanded={!collapse}
+          >
+            <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
+            {t(($) => $['modelProvider.installProvider'], { ns: 'common' })}
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
+            </span>
+            {onOpenMarketplace ? (
+              <button
+                type="button"
+                className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
+                onClick={onOpenMarketplace}
+              >
+                {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              </button>
+            ) : (
+              <Link
+                target="_blank"
+                rel="noopener noreferrer"
+                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                className="inline-flex items-center system-sm-medium text-text-accent"
+              >
+                {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+        </div>
+        {!collapse && isAllPluginsLoading && <Loading type="area" />}
+        {!isAllPluginsLoading && !collapse && (
+          <List
+            marketplaceCollections={[]}
+            marketplaceCollectionPluginsMap={{}}
+            plugins={allPlugins}
+            showInstallButton={canInstallPlugin}
+            cardContainerClassName="grid grid-cols-3 gap-2"
+            cardRender={cardRender}
+            emptyClassName="h-auto"
+          />
+        )}
+      </div>
     </div>
   )
 }

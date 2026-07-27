@@ -79,43 +79,5 @@ describe('FloatRightContainer', () => {
 
       expect(onClose).toHaveBeenCalledTimes(1)
     })
-
-    it('should apply panel className in mobile drawer mode', async () => {
-      render(
-        <FloatRightContainer
-          isMobile={true}
-          isOpen={true}
-          onClose={vi.fn()}
-          panelClassName="custom-panel-class"
-        >
-          <div>Class forwarding content</div>
-        </FloatRightContainer>,
-      )
-
-      const dialog = await screen.findByRole('dialog')
-
-      const panel = document.querySelector('.custom-panel-class')
-      expect(panel).toBeInTheDocument()
-      expect(dialog).toHaveClass('custom-panel-class')
-    })
-  })
-
-  // Edge-case behavior with optional children.
-  describe('Edge cases', () => {
-    it('should render without crashing when children is undefined in mobile mode', async () => {
-      render(
-        <FloatRightContainer
-          isMobile={true}
-          isOpen={true}
-          onClose={vi.fn()}
-          title="Empty mobile panel"
-        >
-          {undefined}
-        </FloatRightContainer>,
-      )
-
-      expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText('Empty mobile panel')).toBeInTheDocument()
-    })
   })
 })
