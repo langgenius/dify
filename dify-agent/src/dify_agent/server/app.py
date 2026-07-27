@@ -128,7 +128,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         create_runs_router(
             get_store,
             get_scheduler,
-            auth_dependency=create_bearer_token_dependency(resolved_settings.run_api_token),
+            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
         )
     )
     app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
