@@ -123,24 +123,22 @@ class AppDslVersionApi(Resource):
 @console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
     @console_ns.doc("get_system_features")
-    @console_ns.doc(description="Get system-wide feature configuration")
+    @console_ns.doc(
+        description="Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. "
+        "This is not a general feature registry."
+    )
     @console_ns.response(
         200,
         "Success",
         console_ns.models[SystemFeatureModel.__name__],
     )
     def get(self):
-        """Get system-wide feature configuration
+        """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
-        NOTE: This endpoint is unauthenticated by design, as it provides system features
-        data required for dashboard initialization.
-
-        Authentication would create circular dependency (can't login without dashboard loading).
-
-        Only non-sensitive configuration data should be returned by this endpoint. Authenticated
-        license detail is served separately by SystemFeatureLicenseApi.
+        Authentication configuration must be available before the authentication flow can be selected.
+        Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
-        return FeatureService.get_system_features().model_dump()
+        return dump_response(SystemFeatureModel, FeatureService.get_system_features())
 
 
 @console_ns.route("/system-features/license")

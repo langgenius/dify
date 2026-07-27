@@ -14,11 +14,16 @@ import { useConfig } from '../use-config'
 
 const mockHandleNodeDataUpdateWithSyncDraft = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-}))
+vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
 
 const createNodeData = createNodeDataFactory<KnowledgeBaseNodeType>({
   title: 'Knowledge Base',

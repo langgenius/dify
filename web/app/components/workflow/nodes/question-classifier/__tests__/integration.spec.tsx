@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { useEdgesInteractions } from '../../../hooks'
+import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
 import AdvancedSetting from '../components/advanced-setting'
 import ClassItem from '../components/class-item'
 import ClassList from '../components/class-list'
@@ -43,8 +43,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   })),
 }))
 
-vi.mock('../../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks')>()
+vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-edges-interactions')>()
   return {
     ...actual,
     useEdgesInteractions: vi.fn(),

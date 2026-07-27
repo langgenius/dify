@@ -18,7 +18,7 @@ let mockIsPreviewing = false
 let mockIsEditing = false
 let mockCanEdit = true
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../../../../hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
     toggleInputFieldPreviewPanel: mockToggleInputFieldPreviewPanel,
@@ -61,7 +61,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),

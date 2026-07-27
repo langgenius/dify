@@ -18,7 +18,6 @@ import { PartnerStackCookieRecorder } from './components/billing/partner-stack/c
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
-import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.css'
 
@@ -85,7 +84,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>
-          <RoutePrefixHandle />
           <AgentationLoader />
         </div>
       </body>
