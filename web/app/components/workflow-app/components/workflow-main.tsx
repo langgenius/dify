@@ -12,28 +12,26 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
-import {
-  useAvailableNodesMetaData,
-  useConfigsMap,
-  useDSLByCanEdit,
-  useGetRunAndTraceUrl,
-  useInspectVarsCrud,
-  useNodesSyncDraftByCanEdit,
-  useSetWorkflowVarsWithValue,
-  useWorkflowRefreshDraft,
-  useWorkflowRunByCanEdit,
-  useWorkflowStartRunByCanEdit,
-} from '../hooks'
+import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
+import { useConfigsMap } from '../hooks/use-configs-map'
+import { useDSLByCanEdit } from '../hooks/use-DSL'
+import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
+import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
+import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
+import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
+import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
+import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
+import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>

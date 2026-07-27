@@ -7,7 +7,9 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAvailableBlocks, useNodesInteractions, useNodesReadOnly } from '../../hooks'
+import { useAvailableBlocks } from '../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 
 type AddBlockProps = {
   loopNodeId: string

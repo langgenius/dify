@@ -22,7 +22,6 @@ import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -33,6 +32,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { useIsChatMode } from '../../../../hooks/use-workflow'
 import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
 import { ComparisonOperator } from '../../types'

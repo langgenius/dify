@@ -104,36 +104,99 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useAvailableBlocks: () => ({ availableNextBlocks: [] }),
-  useEdgesInteractions: () => ({
-    handleEdgeDeleteByDeleteBranch: vi.fn(),
-  }),
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-  useNodesMetaData: () => ({
-    nodesMap: {
-      [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-      [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({ availableNextBlocks: [] }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-edges-interactions')>()
+
+  return {
+    ...actual,
+    useEdgesInteractions: () => ({
+      handleEdgeDeleteByDeleteBranch: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: mockHandleNodeDataUpdate,
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeSelect: mockHandleNodeSelect,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-nodes-meta-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-nodes-meta-data')>()
+
+  return {
+    ...actual,
+    useNodesMetaData: () => ({
+      nodesMap: {
+        [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+        [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
+      },
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
+    useToolIcon: () => undefined,
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      nodesReadOnly: mockNodesReadOnly,
+    }),
+  }
+})
+
+vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow-history')>()
+
+  return {
+    ...actual,
+    useWorkflowHistory: () => ({
+      saveStateToHistory: mockSaveStateToHistory,
+    }),
+    WorkflowHistoryEvent: {
+      NodeTitleChange: 'NodeTitleChange',
+      NodeDescriptionChange: 'NodeDescriptionChange',
     },
-  }),
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-  useToolIcon: () => undefined,
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-  WorkflowHistoryEvent: {
-    NodeTitleChange: 'NodeTitleChange',
-    NodeDescriptionChange: 'NodeDescriptionChange',
-  },
-}))
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (
@@ -153,7 +216,7 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     appendNodeInspectVars: vi.fn(),
   }),
