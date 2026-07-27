@@ -265,6 +265,13 @@ class TestPluginParameterEntities:
         with pytest.raises(ValueError, match="not found in tool config"):
             init_frontend_parameter(required_rule, PluginParameterType.STRING, None)
 
+    def test_init_frontend_parameter_allows_empty_tools_selector(self):
+        """Empty tools list is valid after all tools are removed from an agent node."""
+        tools_rule = PluginParameter(name="tools", label=self._label(), required=True, default=None)
+
+        assert init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, []) == []
+        assert init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, None) is None
+
 
 class TestPluginDaemonEntities:
     def test_credential_type_helpers(self):

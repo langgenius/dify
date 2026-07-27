@@ -202,7 +202,9 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     init frontend parameter by rule
     """
     parameter_value = value
-    if not parameter_value and parameter_value != 0:
+    # Empty list is a valid tools selector value (e.g. all tools removed from an agent).
+    # Skip the missing-value check so required tools params do not raise on [].
+    if not parameter_value and parameter_value != 0 and type != PluginParameterType.TOOLS_SELECTOR:
         # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:
