@@ -3,7 +3,42 @@ from unittest.mock import MagicMock, patch
 from configs import dify_config
 from controllers.web import site as site_module
 from extensions.storage.storage_type import StorageType
-from models.model import IconType, Site
+from models.model import AppMode, IconType, Site
+from services.feature_service import FeatureModel
+
+
+def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
+    app_model = MagicMock()
+    app_model.id = "app-id"
+    app_model.tenant_id = "tenant-id"
+    app_model.tenant = MagicMock(id="tenant-id", status="normal")
+    app_model.mode_compatible_with_agent_with_session.return_value = AppMode.AGENT_CHAT
+    end_user = MagicMock(id="end-user-id")
+    site = MagicMock(spec=Site)
+    response = MagicMock()
+    response.model_dump.return_value = {"mode": AppMode.AGENT_CHAT}
+
+    with (
+        patch.object(site_module, "db") as mock_db,
+        patch.object(site_module.FeatureService, "get_features", return_value=FeatureModel(can_replace_logo=False)),
+        patch.object(site_module, "_build_site_icon_url", return_value=None),
+        patch.object(site_module.WebAppSiteResponse, "from_app_site", return_value=response) as mock_from_app_site,
+    ):
+        mock_db.session.scalar.return_value = site
+        result = site_module.AppSiteApi().get(app_model, end_user)
+
+    assert result["mode"] == AppMode.AGENT_CHAT
+    app_model.mode_compatible_with_agent_with_session.assert_called_once_with(session=mock_db.session())
+    mock_from_app_site.assert_called_once_with(
+        tenant=app_model.tenant,
+        app_model=app_model,
+        mode=AppMode.AGENT_CHAT,
+        site=site,
+        end_user_id=end_user.id,
+        features=FeatureModel(can_replace_logo=False),
+        can_replace_logo=False,
+        icon_url=None,
+    )
 
 
 def test_build_site_icon_url_uses_s3_presigned_url() -> None:

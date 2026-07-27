@@ -401,7 +401,7 @@ const consoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
-    plan: Plan.sandbox,
+    plan: Plan.team,
     status: 'normal',
     created_at: 0,
     role: 'owner',
@@ -1131,16 +1131,13 @@ describe('MainNav', () => {
   })
 
   it('shows the upgrade shortcut for sandbox workspaces', () => {
-    mockWorkspaces = [
-      {
-        id: 'workspace-1',
-        name: 'Solar Studio',
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: {
+        ...consoleState.currentWorkspace,
         plan: Plan.sandbox,
-        status: 'normal',
-        created_at: 0,
-        current: true,
       },
-    ]
+    }
 
     renderMainNav()
 
@@ -1149,13 +1146,13 @@ describe('MainNav', () => {
   })
 
   it('shows the view plan shortcut for paid workspaces', () => {
-    ;(useProviderContext as Mock).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: true,
-      plan: { type: Plan.team },
-    } as ProviderContextState)
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: {
+        ...consoleState.currentWorkspace,
+        plan: Plan.professional,
+      },
+    }
 
     renderMainNav()
 
