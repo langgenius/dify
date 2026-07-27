@@ -2,6 +2,7 @@ import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/conso
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { KnowledgeSpaceIcon } from './knowledge-space-icon'
 
 function getBuiltinIconName(iconRef: string | undefined) {
   if (!iconRef?.startsWith('builtin:')) return undefined
@@ -35,15 +36,9 @@ export function KnowledgeSpaceCard({
           <div
             aria-label={iconName ?? t(($) => $['newKnowledge.cardType'])}
             title={iconName}
-            className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft"
+            className="shrink-0"
           >
-            {iconName ? (
-              <span aria-hidden className="system-md-semibold text-text-tertiary">
-                {iconName.charAt(0).toUpperCase()}
-              </span>
-            ) : (
-              <span aria-hidden className="i-ri-book-open-line size-5 text-text-tertiary" />
-            )}
+            <KnowledgeSpaceIcon icon={summary?.icon} size="large" />
           </div>
           <div className="min-w-0 flex-1 py-px">
             <h2 className="truncate system-md-semibold text-text-secondary">{name}</h2>

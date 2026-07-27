@@ -11,6 +11,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
 import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
 
 function responseStatus(error: unknown) {
@@ -118,9 +119,10 @@ export function KnowledgeSpaceShell({
           </div>
           <div className="flex min-w-0 items-center px-1 py-2">
             <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft">
-                <span aria-hidden className="i-ri-book-open-line size-[18px] text-text-tertiary" />
-              </div>
+              <KnowledgeSpaceIcon
+                icon={knowledgeSpaceQuery.data.technical_summary?.icon}
+                size="medium"
+              />
               <div className="min-w-0 flex-1">
                 <h1 className="truncate system-md-semibold text-text-secondary">
                   {knowledgeSpaceName}
@@ -153,7 +155,7 @@ export function KnowledgeSpaceShell({
                 sourcesActive ? 'bg-state-base-active text-text-accent' : 'text-text-secondary',
               )}
             >
-              <span aria-hidden className="i-ri-links-line size-4" />
+              <span aria-hidden className="i-ri-book-open-line size-4" />
               {t(($) => $['newKnowledge.sourceColumn'])}
             </Link>
             <Link
@@ -172,7 +174,7 @@ export function KnowledgeSpaceShell({
               className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-ri-test-tube-line size-4" />
+              <span aria-hidden className="i-ri-search-eye-line size-4" />
               {tHit(($) => $.title)}
             </Button>
             <Button
@@ -180,7 +182,7 @@ export function KnowledgeSpaceShell({
               className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-ri-bar-chart-box-line size-4" />
+              <span aria-hidden className="i-ri-shield-check-line size-4" />
               {t(($) => $['newKnowledge.quality'])}
             </Button>
             <Button
@@ -188,16 +190,19 @@ export function KnowledgeSpaceShell({
               className={cn(navItemClassName, 'justify-start text-text-secondary')}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-ri-settings-3-line size-4" />
+              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
               {tCommon(($) => $['datasetMenus.settings'])}
             </Button>
             <span className="hidden flex-1 sm:block" />
             <Button
               variant="ghost"
-              className={cn(navItemClassName, 'justify-start text-text-secondary')}
+              className={cn(
+                navItemClassName,
+                'justify-start border-[0.5px] border-components-panel-border text-text-secondary',
+              )}
               onClick={showDeferredPage}
             >
-              <span aria-hidden className="i-ri-code-box-line size-4" />
+              <span aria-hidden className="i-custom-vender-workflow-agent size-4" />
               {t(($) => $['newKnowledge.apiAgentAccess'])}
             </Button>
           </nav>
