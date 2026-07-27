@@ -7,7 +7,6 @@ import pytest
 
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
 
-
 MALICIOUS_TEMPLATES = [
     pytest.param(
         "{{ lipsum.__globals__.__builtins__.__import__('os').popen('id').read() }}",
