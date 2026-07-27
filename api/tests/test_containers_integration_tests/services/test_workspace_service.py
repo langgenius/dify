@@ -6,6 +6,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from enums.deployment_edition import DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
@@ -611,7 +612,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "SELF_HOSTED"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
@@ -632,7 +633,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -657,7 +658,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -685,7 +686,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -713,7 +714,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -749,7 +750,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -779,7 +780,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"
@@ -808,7 +809,7 @@ class TestWorkspaceService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
         feature.can_replace_logo = False
         feature.next_credit_reset_date = "2025-02-01"

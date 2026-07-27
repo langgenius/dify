@@ -1,7 +1,8 @@
 import type { SortType } from '@/service/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DocumentsHeader from '../documents-header'
 
 // Mock the context hooks

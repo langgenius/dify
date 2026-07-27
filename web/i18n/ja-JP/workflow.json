@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "ワークフロー処理は一時停止中です",
   "common.workflowProcessRunning": "ワークフロー処理を実行中です",
   "common.workflowProcessSucceeded": "ワークフロー処理が成功しました",
+  "common.workflowSaveStatus": "ワークフローの保存状態",
   "customWebhook": "カスタムWebhook",
   "debug.copyLastRun": "最後の実行をコピー",
   "debug.copyLastRunError": "最後の実行の入力をコピーできませんでした",

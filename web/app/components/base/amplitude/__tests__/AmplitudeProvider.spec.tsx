@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
-  IS_CLOUD_EDITION: true,
 }))
 const mockConsent = vi.hoisted(() => ({
   value: 'granted' as 'unknown' | 'denied' | 'granted',
@@ -16,12 +15,6 @@ let AmplitudeProvider: typeof import('../AmplitudeProvider').AmplitudeProvider
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
     return mockConfig.AMPLITUDE_API_KEY
-  },
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
-  get isAmplitudeEnabled() {
-    return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
   },
 }))
 
@@ -44,7 +37,6 @@ describe('AmplitudeProvider', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    mockConfig.IS_CLOUD_EDITION = true
     mockConsent.value = 'granted'
     ;({ AmplitudeProvider } = await import('../AmplitudeProvider'))
   })

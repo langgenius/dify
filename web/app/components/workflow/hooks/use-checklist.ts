@@ -44,7 +44,6 @@ import { AppModeEnum } from '@/types/app'
 import { FlowType } from '@/types/common'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
-import { useGetToolIcon, useNodesMetaData } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
@@ -68,6 +67,8 @@ import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
+import { useNodesMetaData } from './use-nodes-meta-data'
+import { useGetToolIcon } from './use-tool-icon'
 
 export type ChecklistItem = {
   id: string

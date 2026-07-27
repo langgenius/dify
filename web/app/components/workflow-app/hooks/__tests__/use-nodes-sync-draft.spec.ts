@@ -14,6 +14,7 @@ const mockCollaborationGetIsLeader = vi.fn()
 const mockCollaborationRequestWorkflowSync = vi.fn()
 const mockCollaborationCanPersistLocalGraph = vi.fn()
 const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
+const mockCollaborationCanUseLocalDraftFallback = vi.fn()
 let isCollaborationEnabled = false
 
 let reactFlowState: {
@@ -72,6 +73,8 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     canPersistLocalGraph: (...args: unknown[]) => mockCollaborationCanPersistLocalGraph(...args),
     canFlushGraphOnPageClose: (...args: unknown[]) =>
       mockCollaborationCanFlushGraphOnPageClose(...args),
+    canUseLocalDraftFallback: (...args: unknown[]) =>
+      mockCollaborationCanUseLocalDraftFallback(...args),
   },
 }))
 
@@ -93,7 +96,7 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
 }))
 
@@ -139,6 +142,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationGetIsLeader.mockReturnValue(true)
     mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
     mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
     mockCollaborationRequestWorkflowSync.mockResolvedValue({
       hash: 'remote-hash',
       updatedAt: 2,
@@ -210,6 +214,26 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(error.json).toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onError).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should treat unavailable workflow data as a skipped sync instead of an error', async () => {
+    workflowStoreState = {
+      ...workflowStoreState,
+      isWorkflowDataLoaded: false,
+    }
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
@@ -568,22 +592,29 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(true)
     mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
 
     const { result } = renderUseNodesSyncDraft()
 
     let syncResult: unknown
     await act(async () => {
-      syncResult = await result.current.doSyncWorkflowDraft(false)
+      syncResult = await result.current.doSyncWorkflowDraft(false, callbacks)
     })
 
     expect(syncResult).toBeNull()
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
   it('should skip keepalive sync on page close when current user is collaboration follower', () => {
     isCollaborationEnabled = true
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
 
     const { result } = renderUseNodesSyncDraft()
 
@@ -607,5 +638,38 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     })
 
     expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+  })
+
+  it('should still flush with keepalive on page close when collaboration is enabled but never connected', () => {
+    // Without a connection there is no leader election, so the collaborative flush guard can never
+    // be satisfied. Skipping the save here would silently drop the edits made before leaving.
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationGetIsLeader.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(true)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not flush an untrusted graph after an established collaboration disconnects', () => {
+    isCollaborationEnabled = true
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
+    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
+
+    const { result } = renderUseNodesSyncDraft()
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 })

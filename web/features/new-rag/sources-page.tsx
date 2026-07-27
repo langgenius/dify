@@ -55,6 +55,10 @@ function metadataString(metadata: Source['metadata'], key: string) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
+function isPreviewDraft(source: Source) {
+  return source.metadata.preview === true && source.status === 'disabled'
+}
+
 function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
@@ -404,15 +408,15 @@ function SourcesEmpty({
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div aria-hidden className="flex items-center gap-3">
-        <span data-brand="firecrawl" className="i-ri-fire-fill size-8 text-orange-500" />
-        <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
+        <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-5" />
+        <span data-brand="jina" className="i-custom-public-llm-jina size-5" />
         <span
           data-brand="notion"
-          className="i-custom-public-common-notion size-8 text-text-primary"
+          className="i-custom-public-common-notion size-5 text-text-primary"
         />
-        <span data-brand="google-drive" className="i-custom-public-plugins-google size-8" />
-        <span data-brand="confluence" className="i-custom-public-common-confluence size-8" />
-        <span data-brand="more" className="i-ri-more-fill size-8 text-text-tertiary" />
+        <span data-brand="google-drive" className="i-custom-public-common-google-drive size-5" />
+        <span data-brand="confluence" className="i-custom-public-common-confluence size-5" />
+        <span data-brand="dropbox" className="i-custom-public-common-dropbox size-5" />
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
@@ -472,7 +476,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     () =>
       (remoteSources ?? [])
         .filter((source) => !removedSourceIds.has(source.id))
-        .map((source) => getCurrentSource(source, sourceOverrides[source.id])),
+        .map((source) => getCurrentSource(source, sourceOverrides[source.id]))
+        .filter((source) => !isPreviewDraft(source))
+        .sort(
+          (left, right) =>
+            right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+        ),
     [remoteSources, removedSourceIds, sourceOverrides],
   )
   const loadedPageCount = sourcesQuery.data?.pages.length ?? 0
@@ -492,8 +501,18 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const localTransformActive = filter !== 'all' || Boolean(search.trim()) || Boolean(sort)
   const canAutoCompleteFilteredResults =
     localTransformActive && loadedPageCount < MAX_AUTO_FILTER_PAGES
+  const latestSourcePage = sourcesQuery.data?.pages.at(-1)
+  const needsVisibleSource =
+    latestSourcePage !== undefined &&
+    latestSourcePage.items.some((source) =>
+      isPreviewDraft(getCurrentSource(source, sourceOverrides[source.id])),
+    ) &&
+    !latestSourcePage.items.some((source) => {
+      if (removedSourceIds.has(source.id)) return false
+      return !isPreviewDraft(getCurrentSource(source, sourceOverrides[source.id]))
+    })
   const completingFilteredResults =
-    canAutoCompleteFilteredResults &&
+    (canAutoCompleteFilteredResults || needsVisibleSource) &&
     !sourcesQuery.isFetchNextPageError &&
     (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
   const allFilteredSourcesSelected =
@@ -510,7 +529,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   useEffect(() => {
     if (
-      canAutoCompleteFilteredResults &&
+      (canAutoCompleteFilteredResults || needsVisibleSource) &&
       hasNextSourcePage &&
       !isFetchingNextSourcePage &&
       !sourcesQuery.isFetchNextPageError
@@ -521,6 +540,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     fetchNextSourcePage,
     hasNextSourcePage,
     isFetchingNextSourcePage,
+    needsVisibleSource,
     sourcesQuery.isFetchNextPageError,
   ])
 

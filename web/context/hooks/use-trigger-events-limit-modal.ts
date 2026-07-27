@@ -1,10 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { ModalState } from '../modal-context'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isServer } from '@/utils/client'
 
 export type TriggerEventsLimitModalPayload = {
@@ -43,12 +44,16 @@ export const useTriggerEventsLimitModal = ({
   isFetchedPlan,
   currentWorkspaceId,
 }: UseTriggerEventsLimitModalOptions): UseTriggerEventsLimitModalResult => {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const [showTriggerEventsLimitModal, setShowTriggerEventsLimitModal] =
     useState<ModalState<TriggerEventsLimitModalPayload> | null>(null)
   const dismissedTriggerEventsLimitStorageKeysRef = useRef<Record<string, boolean>>({})
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION) return
+    if (deploymentEdition !== 'CLOUD') return
     if (isServer) return
     if (!currentWorkspaceId) return
     if (!isFetchedPlan) {
@@ -98,7 +103,7 @@ export const useTriggerEventsLimitModal = ({
         persistDismiss,
       },
     })
-  }, [plan, isFetchedPlan, showTriggerEventsLimitModal, currentWorkspaceId])
+  }, [plan, isFetchedPlan, showTriggerEventsLimitModal, currentWorkspaceId, deploymentEdition])
 
   const persistTriggerEventsLimitModalDismiss = useCallback(() => {
     const storageKey = showTriggerEventsLimitModal?.payload.storageKey

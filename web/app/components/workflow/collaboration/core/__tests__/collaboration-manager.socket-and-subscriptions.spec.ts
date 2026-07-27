@@ -161,6 +161,23 @@ describe('CollaborationManager socket and subscription behavior', () => {
     vi.clearAllMocks()
   })
 
+  it('allows local draft fallback only before the first collaboration connection', () => {
+    const { manager, internals } = setupManagerWithDoc()
+    const socket = createMockSocket('socket-fallback')
+
+    internals.currentAppId = 'app-fallback'
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    expect(manager.canUseLocalDraftFallback()).toBe(true)
+
+    socket.trigger('connect')
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
+
+    socket.trigger('disconnect', 'transport close')
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
+  })
+
   it('emits cursor/sync/workflow events via collaboration_event when connected', async () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-connected')

@@ -99,7 +99,7 @@ def _external_source_operation(
     *,
     request_headers: tuple[str, ...] = ("x-trace-id",),
 ) -> KnowledgeFSOperation:
-    """Declare a source-connection operation restricted to dataset editors."""
+    """Declare an external-source operation restricted to dataset editors."""
     return _console_operation(
         operation_id,
         method,
@@ -347,12 +347,10 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
     ),
-    _console_operation(
-        operation_id="putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
-        method="PUT",
-        path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
+    _external_source_operation(
+        "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
+        "PUT",
+        "knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
     ),
     _dataset_read_operation("getKnowledgeSpacesByIdDocuments", "knowledge-spaces/{id}/documents"),
     _dataset_edit_operation("postKnowledgeSpacesByIdDocuments", "POST", "knowledge-spaces/{id}/documents"),

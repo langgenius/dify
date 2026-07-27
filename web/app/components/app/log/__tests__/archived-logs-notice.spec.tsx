@@ -5,16 +5,9 @@ import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -57,6 +50,12 @@ function mockProviderPlan(planType: Plan) {
 
 describe('ArchivedLogsNotice', () => {
   const setShowAccountSettingModal = vi.fn()
+  const renderNotice = () => {
+    const { wrapper } = createConsoleQueryWrapper({
+      systemFeatures: { deployment_edition: 'CLOUD' },
+    })
+    return render(<ArchivedLogsNotice />, { wrapper })
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -69,7 +68,7 @@ describe('ArchivedLogsNotice', () => {
   })
 
   it('should show notice for paid workspace managers', () => {
-    render(<ArchivedLogsNotice />)
+    renderNotice()
 
     expect(screen.getByText('appLog.archives.notice.description')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.notice.action' }))
@@ -81,7 +80,7 @@ describe('ArchivedLogsNotice', () => {
   it('should not show notice for sandbox workspaces', () => {
     mockProviderPlan(Plan.sandbox)
 
-    render(<ArchivedLogsNotice />)
+    renderNotice()
 
     expect(screen.queryByText('appLog.archives.notice.description')).not.toBeInTheDocument()
   })

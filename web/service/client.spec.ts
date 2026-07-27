@@ -35,6 +35,16 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   return module.consoleQuery
 }
 
+const loadConsoleQueryWithFetch = async () => {
+  vi.resetModules()
+  vi.doUnmock('./base')
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const module = await import('./client')
+  warnSpy.mockRestore()
+  return module.consoleQuery
+}
+
 const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
@@ -355,7 +365,7 @@ describe('consoleQuery transport context', () => {
   })
 
   it('should serialize trial app dataset ids as repeated query params', async () => {
-    const request = vi.fn().mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           data: [],
@@ -372,7 +382,7 @@ describe('consoleQuery transport context', () => {
         },
       ),
     )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const consoleQuery = await loadConsoleQueryWithFetch()
     const queryOptions = consoleQuery.trialApps.byAppId.datasets.get.queryOptions({
       input: {
         params: {
@@ -386,14 +396,12 @@ describe('consoleQuery transport context', () => {
 
     await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
 
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/trial-apps/app-1/datasets?ids=id-1&ids=id-2'),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-      }),
-    )
-    expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('ids')).toEqual(['id-1', 'id-2'])
+    expect(requestURL.searchParams.has('ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
 
   it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
