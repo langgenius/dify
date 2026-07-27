@@ -7,14 +7,11 @@ settings:
 catalogs:
   default:
     '@amplitude/analytics-browser':
-      specifier: 2.44.3
-      version: 2.44.3
+      specifier: 2.45.2
+      version: 2.45.2
     '@amplitude/plugin-session-replay-browser':
-      specifier: 1.32.3
-      version: 1.32.3
-    '@antfu/eslint-config':
-      specifier: 9.1.0
-      version: 9.1.0
+      specifier: 1.33.4
+      version: 1.33.4
     '@base-ui/react':
       specifier: 1.6.0
       version: 1.6.0
@@ -22,26 +19,29 @@ catalogs:
       specifier: 5.2.1
       version: 5.2.1
     '@cucumber/cucumber':
-      specifier: 13.0.0
-      version: 13.0.0
+      specifier: 13.1.1
+      version: 13.1.1
     '@egoist/tailwindcss-icons':
       specifier: 1.9.2
       version: 1.9.2
     '@emoji-mart/data':
       specifier: 1.2.1
       version: 1.2.1
+    '@eslint-community/eslint-plugin-eslint-comments':
+      specifier: 4.7.2
+      version: 4.7.2
     '@eslint-react/eslint-plugin':
-      specifier: 5.9.5
-      version: 5.9.5
-    '@eslint/js':
-      specifier: 10.0.1
-      version: 10.0.1
+      specifier: 5.17.1
+      version: 5.17.1
+    '@eslint/markdown':
+      specifier: 8.0.3
+      version: 8.0.3
     '@floating-ui/react':
-      specifier: 0.27.19
-      version: 0.27.19
+      specifier: 0.27.20
+      version: 0.27.20
     '@formatjs/intl-localematcher':
-      specifier: 0.8.10
-      version: 0.8.10
+      specifier: 0.8.13
+      version: 0.8.13
     '@heroicons/react':
       specifier: 2.2.0
       version: 2.2.0
@@ -49,8 +49,8 @@ catalogs:
       specifier: 0.99.0
       version: 0.99.0
     '@hono/node-server':
-      specifier: 2.0.6
-      version: 2.0.6
+      specifier: 2.0.10
+      version: 2.0.10
     '@iconify-json/heroicons':
       specifier: 1.2.3
       version: 1.2.3
@@ -58,23 +58,23 @@ catalogs:
       specifier: 1.2.10
       version: 1.2.10
     '@lexical/link':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@lexical/list':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@lexical/react':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@lexical/selection':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@lexical/text':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@lexical/utils':
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     '@mdx-js/loader':
       specifier: 3.1.1
       version: 3.1.1
@@ -84,30 +84,30 @@ catalogs:
     '@mdx-js/rollup':
       specifier: 3.1.1
       version: 3.1.1
+    '@mediabunny/mp3-encoder':
+      specifier: 1.50.9
+      version: 1.50.9
     '@monaco-editor/react':
       specifier: 4.7.0
       version: 4.7.0
     '@napi-rs/keyring':
       specifier: 1.3.0
       version: 1.3.0
-    '@next/eslint-plugin-next':
-      specifier: 16.2.9
-      version: 16.2.9
     '@next/mdx':
-      specifier: 16.2.9
-      version: 16.2.9
+      specifier: 16.2.11
+      version: 16.2.11
     '@orpc/client':
-      specifier: 1.14.6
-      version: 1.14.6
+      specifier: 1.14.8
+      version: 1.14.8
     '@orpc/contract':
-      specifier: 1.14.6
-      version: 1.14.6
+      specifier: 1.14.8
+      version: 1.14.8
     '@orpc/openapi-client':
-      specifier: 1.14.6
-      version: 1.14.6
+      specifier: 1.14.8
+      version: 1.14.8
     '@orpc/tanstack-query':
-      specifier: 1.14.6
-      version: 1.14.6
+      specifier: 1.14.8
+      version: 1.14.8
     '@playwright/test':
       specifier: 1.61.1
       version: 1.61.1
@@ -115,68 +115,71 @@ catalogs:
       specifier: 4.9.0
       version: 4.9.0
     '@rgrove/parse-xml':
-      specifier: 4.2.1
-      version: 4.2.1
+      specifier: 4.2.2
+      version: 4.2.2
     '@sentry/react':
-      specifier: 10.62.0
-      version: 10.62.0
+      specifier: 10.66.0
+      version: 10.66.0
     '@storybook/addon-a11y':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/addon-docs':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/addon-links':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/addon-onboarding':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/addon-themes':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/addon-vitest':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/nextjs-vite':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/react':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@storybook/react-vite':
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     '@streamdown/math':
       specifier: 1.0.2
       version: 1.0.2
     '@svgdotjs/svg.js':
-      specifier: 3.2.5
-      version: 3.2.5
+      specifier: 3.2.6
+      version: 3.2.6
+    '@t3-oss/env-core':
+      specifier: 0.13.11
+      version: 0.13.11
     '@t3-oss/env-nextjs':
       specifier: 0.13.11
       version: 0.13.11
     '@tailwindcss/postcss':
-      specifier: 4.3.1
-      version: 4.3.1
+      specifier: 4.3.3
+      version: 4.3.3
     '@tailwindcss/typography':
       specifier: 0.5.20
       version: 0.5.20
     '@tailwindcss/vite':
-      specifier: 4.3.1
-      version: 4.3.1
+      specifier: 4.3.3
+      version: 4.3.3
     '@tanstack/eslint-plugin-query':
       specifier: 5.101.2
       version: 5.101.2
     '@tanstack/form-core':
-      specifier: 1.33.0
-      version: 1.33.0
+      specifier: 1.33.2
+      version: 1.33.2
     '@tanstack/query-core':
       specifier: 5.101.2
       version: 5.101.2
     '@tanstack/react-form':
-      specifier: 1.33.0
-      version: 1.33.0
+      specifier: 1.33.2
+      version: 1.33.2
     '@tanstack/react-hotkeys':
       specifier: 0.10.0
       version: 0.10.0
@@ -184,8 +187,8 @@ catalogs:
       specifier: 5.101.2
       version: 5.101.2
     '@tanstack/react-virtual':
-      specifier: 3.14.4
-      version: 3.14.4
+      specifier: 3.14.6
+      version: 3.14.6
     '@testing-library/dom':
       specifier: 10.4.1
       version: 10.4.1
@@ -210,9 +213,6 @@ catalogs:
     '@types/js-cookie':
       specifier: 3.0.6
       version: 3.0.6
-    '@types/js-yaml':
-      specifier: 4.0.9
-      version: 4.0.9
     '@types/lockfile':
       specifier: 1.0.4
       version: 1.0.4
@@ -220,8 +220,8 @@ catalogs:
       specifier: 0.6.4
       version: 0.6.4
     '@types/node':
-      specifier: 25.9.4
-      version: 25.9.4
+      specifier: 25.9.5
+      version: 25.9.5
     '@types/qs':
       specifier: 6.15.1
       version: 6.15.1
@@ -234,33 +234,30 @@ catalogs:
     '@types/sortablejs':
       specifier: 1.15.9
       version: 1.15.9
-    '@typescript-eslint/eslint-plugin':
-      specifier: 8.62.0
-      version: 8.62.0
     '@typescript-eslint/parser':
-      specifier: 8.62.0
-      version: 8.62.0
-    '@typescript/native-preview':
-      specifier: 7.0.0-dev.20260627.2
-      version: 7.0.0-dev.20260627.2
+      specifier: 8.64.0
+      version: 8.64.0
+    '@typescript/native':
+      specifier: npm:typescript@7.0.2
+      version: 7.0.2
     '@vitejs/plugin-react':
       specifier: 6.0.3
       version: 6.0.3
     '@vitejs/plugin-rsc':
-      specifier: 0.5.27
-      version: 0.5.27
+      specifier: 0.5.30
+      version: 0.5.30
     '@vitest/browser':
-      specifier: 4.1.9
-      version: 4.1.9
+      specifier: 4.1.10
+      version: 4.1.10
     '@vitest/browser-playwright':
-      specifier: 4.1.9
-      version: 4.1.9
+      specifier: 4.1.10
+      version: 4.1.10
     '@vitest/coverage-v8':
-      specifier: 4.1.9
-      version: 4.1.9
+      specifier: 4.1.10
+      version: 4.1.10
     abcjs:
-      specifier: 6.6.3
-      version: 6.6.3
+      specifier: 6.6.4
+      version: 6.6.4
     agentation:
       specifier: 3.0.2
       version: 3.0.2
@@ -282,12 +279,9 @@ catalogs:
     clsx:
       specifier: 2.1.1
       version: 2.1.1
-    cmdk:
-      specifier: 1.1.1
-      version: 1.1.1
     code-inspector-plugin:
-      specifier: 1.6.2
-      version: 1.6.2
+      specifier: 1.6.6
+      version: 1.6.6
     concurrently:
       specifier: ^10.0.3
       version: 10.0.3
@@ -295,8 +289,8 @@ catalogs:
       specifier: 4.0.2
       version: 4.0.2
     cron-parser:
-      specifier: 5.6.1
-      version: 5.6.1
+      specifier: 5.6.2
+      version: 5.6.2
     dayjs:
       specifier: 1.11.21
       version: 1.11.21
@@ -304,8 +298,8 @@ catalogs:
       specifier: 10.6.0
       version: 10.6.0
     dompurify:
-      specifier: 3.4.11
-      version: 3.4.11
+      specifier: 3.4.12
+      version: 3.4.12
     echarts:
       specifier: 6.1.0
       version: 6.1.0
@@ -331,35 +325,59 @@ catalogs:
       specifier: 1.49.0
       version: 1.49.0
     eslint:
-      specifier: 10.6.0
-      version: 10.6.0
+      specifier: 10.7.0
+      version: 10.7.0
     eslint-markdown:
-      specifier: 0.11.0
-      version: 0.11.0
-    eslint-plugin-better-tailwindcss:
-      specifier: 4.6.0
-      version: 4.6.0
+      specifier: 0.12.1
+      version: 0.12.1
+    eslint-plugin-antfu:
+      specifier: 3.2.3
+      version: 3.2.3
+    eslint-plugin-command:
+      specifier: 3.5.3
+      version: 3.5.3
+    eslint-plugin-erasable-syntax-only:
+      specifier: 0.4.2
+      version: 0.4.2
     eslint-plugin-hyoban:
       specifier: 0.14.1
       version: 0.14.1
-    eslint-plugin-jsx-a11y:
-      specifier: 6.10.2
-      version: 6.10.2
+    eslint-plugin-jsdoc:
+      specifier: 63.1.0
+      version: 63.1.0
+    eslint-plugin-jsonc:
+      specifier: 3.3.0
+      version: 3.3.0
     eslint-plugin-markdown-preferences:
       specifier: 0.41.1
       version: 0.41.1
+    eslint-plugin-n:
+      specifier: 18.2.2
+      version: 18.2.2
     eslint-plugin-no-barrel-files:
       specifier: 1.3.1
       version: 1.3.1
-    eslint-plugin-react-refresh:
-      specifier: 0.5.3
-      version: 0.5.3
-    eslint-plugin-sonarjs:
-      specifier: 4.1.0
-      version: 4.1.0
+    eslint-plugin-perfectionist:
+      specifier: 5.10.0
+      version: 5.10.0
+    eslint-plugin-pnpm:
+      specifier: 1.6.1
+      version: 1.6.1
+    eslint-plugin-regexp:
+      specifier: 3.1.1
+      version: 3.1.1
     eslint-plugin-storybook:
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
+    eslint-plugin-toml:
+      specifier: 1.4.0
+      version: 1.4.0
+    eslint-plugin-unicorn:
+      specifier: 71.1.0
+      version: 71.1.0
+    eslint-plugin-yml:
+      specifier: 3.6.0
+      version: 3.6.0
     eventsource-parser:
       specifier: 3.1.0
       version: 3.1.0
@@ -370,17 +388,17 @@ catalogs:
       specifier: 0.3.8
       version: 0.3.8
     fuse.js:
-      specifier: 7.4.2
-      version: 7.4.2
+      specifier: 7.5.0
+      version: 7.5.0
     happy-dom:
-      specifier: 20.10.6
-      version: 20.10.6
+      specifier: 20.11.0
+      version: 20.11.0
     hast-util-to-jsx-runtime:
       specifier: 2.3.6
       version: 2.3.6
     hono:
-      specifier: 4.12.27
-      version: 4.12.27
+      specifier: 4.12.31
+      version: 4.12.31
     html-entities:
       specifier: 2.6.0
       version: 2.6.0
@@ -388,8 +406,8 @@ catalogs:
       specifier: 1.11.13
       version: 1.11.13
     i18next:
-      specifier: 26.3.3
-      version: 26.3.3
+      specifier: 26.3.6
+      version: 26.3.6
     i18next-resources-to-backend:
       specifier: 1.2.1
       version: 1.2.1
@@ -397,26 +415,26 @@ catalogs:
       specifier: 0.2.0
       version: 0.2.0
     immer:
-      specifier: 11.1.8
-      version: 11.1.8
+      specifier: 11.1.15
+      version: 11.1.15
     jotai:
-      specifier: 2.20.1
-      version: 2.20.1
+      specifier: 2.20.2
+      version: 2.20.2
+    jotai-effect:
+      specifier: 2.3.1
+      version: 2.3.1
     jotai-scope:
       specifier: 0.11.0
       version: 0.11.0
     jotai-tanstack-query:
       specifier: 0.11.0
       version: 0.11.0
-    js-audio-recorder:
-      specifier: 1.0.7
-      version: 1.0.7
     js-cookie:
       specifier: 3.0.8
       version: 3.0.8
     js-yaml:
-      specifier: 4.3.0
-      version: 4.3.0
+      specifier: 5.2.1
+      version: 5.2.1
     jsonschema:
       specifier: 1.5.0
       version: 1.5.0
@@ -424,23 +442,23 @@ catalogs:
       specifier: 0.17.0
       version: 0.17.0
     knip:
-      specifier: 6.22.0
-      version: 6.22.0
+      specifier: 6.27.0
+      version: 6.27.0
     ky:
       specifier: 2.0.2
       version: 2.0.2
-    lamejs:
-      specifier: 1.2.1
-      version: 1.2.1
     lexical:
-      specifier: 0.46.0
-      version: 0.46.0
+      specifier: 0.47.0
+      version: 0.47.0
     lockfile:
       specifier: 1.0.4
       version: 1.0.4
     loro-crdt:
-      specifier: 1.13.6
-      version: 1.13.6
+      specifier: 1.13.7
+      version: 1.13.7
+    mediabunny:
+      specifier: 1.50.9
+      version: 1.50.9
     mermaid:
       specifier: 11.16.0
       version: 11.16.0
@@ -451,20 +469,20 @@ catalogs:
       specifier: 3.0.1
       version: 3.0.1
     motion:
-      specifier: 12.42.0
-      version: 12.42.0
+      specifier: 12.42.2
+      version: 12.42.2
     negotiator:
       specifier: 1.0.0
       version: 1.0.0
     next:
-      specifier: 16.2.9
-      version: 16.2.9
+      specifier: 16.2.11
+      version: 16.2.11
     next-themes:
       specifier: 0.4.6
       version: 0.4.6
     nuqs:
-      specifier: 2.8.9
-      version: 2.8.9
+      specifier: 2.9.1
+      version: 2.9.1
     open:
       specifier: 11.0.0
       version: 11.0.0
@@ -481,8 +499,8 @@ catalogs:
       specifier: 1.61.1
       version: 1.61.1
     postcss:
-      specifier: 8.5.16
-      version: 8.5.16
+      specifier: 8.5.19
+      version: 8.5.19
     qrcode.react:
       specifier: 4.2.0
       version: 4.2.0
@@ -490,20 +508,17 @@ catalogs:
       specifier: 6.15.3
       version: 6.15.3
     react:
-      specifier: 19.2.7
-      version: 19.2.7
+      specifier: 19.2.8
+      version: 19.2.8
     react-dom:
-      specifier: 19.2.7
-      version: 19.2.7
+      specifier: 19.2.8
+      version: 19.2.8
     react-easy-crop:
-      specifier: 6.0.2
-      version: 6.0.2
+      specifier: 6.2.2
+      version: 6.2.2
     react-i18next:
-      specifier: 16.6.6
-      version: 16.6.6
-    react-multi-email:
-      specifier: 1.0.25
-      version: 1.0.25
+      specifier: 17.0.10
+      version: 17.0.10
     react-papaparse:
       specifier: 4.4.0
       version: 4.4.0
@@ -511,8 +526,8 @@ catalogs:
       specifier: 8.0.0-rc.0
       version: 8.0.0-rc.0
     react-server-dom-webpack:
-      specifier: 19.2.7
-      version: 19.2.7
+      specifier: 19.2.8
+      version: 19.2.8
     react-sortablejs:
       specifier: 6.1.4
       version: 6.1.4
@@ -535,11 +550,11 @@ catalogs:
       specifier: 0.0.1
       version: 0.0.1
     sharp:
-      specifier: 0.35.2
-      version: 0.35.2
+      specifier: 0.35.3
+      version: 0.35.3
     shiki:
-      specifier: 4.3.0
-      version: 4.3.0
+      specifier: 4.3.1
+      version: 4.3.1
     socket.io-client:
       specifier: 4.8.3
       version: 4.8.3
@@ -550,8 +565,8 @@ catalogs:
       specifier: 1.0.8
       version: 1.0.8
     storybook:
-      specifier: 10.4.6
-      version: 10.4.6
+      specifier: 10.5.2
+      version: 10.5.2
     streamdown:
       specifier: 2.5.0
       version: 2.5.0
@@ -562,17 +577,17 @@ catalogs:
       specifier: 3.6.0
       version: 3.6.0
     tailwindcss:
-      specifier: 4.3.1
-      version: 4.3.1
+      specifier: 4.3.3
+      version: 4.3.3
     tldts:
-      specifier: 7.4.4
-      version: 7.4.4
+      specifier: 7.4.9
+      version: 7.4.9
     tsx:
-      specifier: 4.22.4
-      version: 4.22.4
+      specifier: 4.23.1
+      version: 4.23.1
     typescript:
-      specifier: 6.0.3
-      version: 6.0.3
+      specifier: npm:@typescript/typescript6@6.0.2
+      version: 6.0.2
     uglify-js:
       specifier: 3.19.3
       version: 3.19.3
@@ -589,14 +604,17 @@ catalogs:
       specifier: 14.0.1
       version: 14.0.1
     vinext:
-      specifier: 0.1.8
-      version: 0.1.8
+      specifier: 1.0.0-beta.2
+      version: 1.0.0-beta.2
     vite-plugin-inspect:
-      specifier: 12.0.0-beta.3
-      version: 12.0.0-beta.3
+      specifier: 12.0.2
+      version: 12.0.2
     vite-plus:
-      specifier: 0.2.1
-      version: 0.2.1
+      specifier: 0.2.5
+      version: 0.2.5
+    vitest:
+      specifier: 4.1.10
+      version: 4.1.10
     vitest-browser-react:
       specifier: 2.2.0
       version: 2.2.0
@@ -622,19 +640,18 @@ overrides:
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   js-yaml@<=4.1.1: ^4.1.2
-  picomatch@>=4.0.0 <4.0.4: 4.0.4
+  picomatch@>=4.0.0 <4.0.4: 4.0.5
   postcss-selector-parser@>=6.0.0 <6.1.3: 6.1.4
   postcss-selector-parser@>=7.0.0 <7.1.3: 7.1.4
   postcss@<8.5.10: ^8.5.10
   rollup@>=4.0.0 <4.59.0: 4.62.2
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
-  solid-js: 1.9.13
-  string-width: ~8.2.1
+  solid-js: 1.9.14
+  string-width: ~8.2.2
   tar@<=7.5.15: ^7.5.16
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
-  vitest: 4.1.9
-  ws@>=8.0.0 <8.20.1: ^8.21.0
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.5
+  ws@>=8.0.0 <8.20.1: ^8.21.1
   yaml@>=2.0.0 <2.8.3: 2.9.0
   yauzl@<3.2.1: 3.2.1
 
