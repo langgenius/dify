@@ -21,14 +21,12 @@ const {
   mockSwitchWorkspace,
   mockCurrentWorkspaceQueryKey,
   mockWorkspacesQueryKey,
-} = vi.hoisted(
-  () => ({
-    mockFetchWorkspaces: vi.fn(),
-    mockSwitchWorkspace: vi.fn(),
-    mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
-    mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
-  }),
-)
+} = vi.hoisted(() => ({
+  mockFetchWorkspaces: vi.fn(),
+  mockSwitchWorkspace: vi.fn(),
+  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
+  mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
+}))
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],
