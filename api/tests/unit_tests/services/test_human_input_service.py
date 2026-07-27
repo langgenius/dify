@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -39,13 +38,6 @@ from services.human_input_service import (
     HumanInputService,
     InvalidFormDataError,
 )
-
-
-@pytest.fixture
-def sqlite_session_factory(sqlite_engine: Engine) -> Iterator[tuple[sessionmaker[Session], Session]]:
-    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with factory() as session:
-        yield factory, session
 
 
 def _persist_app(sqlite_session: Session, mode: AppMode) -> App:
@@ -103,8 +95,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(
     sqlite_session_factory,
     sqlite_session: Session,
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     workflow_run = MagicMock()
     workflow_run.app_id = "app-id"
@@ -130,8 +121,7 @@ def test_enqueue_resume_dispatches_task_for_workflow(
 def test_ensure_form_active_respects_global_timeout(
     monkeypatch, sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
     expired_record = dataclasses.replace(
         sample_form_record,
         created_at=naive_utc_now() - timedelta(hours=2),
@@ -149,8 +139,7 @@ def test_enqueue_resume_dispatches_task_for_advanced_chat(
     sqlite_session_factory,
     sqlite_session: Session,
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     workflow_run = MagicMock()
     workflow_run.app_id = "app-id"
@@ -179,8 +168,7 @@ def test_enqueue_resume_skips_unsupported_app_mode(
     sqlite_session_factory,
     sqlite_session: Session,
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     workflow_run = MagicMock()
     workflow_run.app_id = "app-id"
@@ -204,12 +192,11 @@ def test_enqueue_resume_skips_unsupported_app_mode(
 def test_get_form_definition_by_token_for_console_uses_repository(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     console_record = dataclasses.replace(sample_form_record, recipient_type=RecipientType.CONSOLE)
     repo.get_by_token.return_value = console_record
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     form = service.get_form_definition_by_token_for_console("token")
 
     repo.get_by_token.assert_called_once_with("token")
@@ -247,7 +234,6 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
 def test_resolve_form_inputs_uses_runtime_select_options(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ):
-    session_factory, _ = sqlite_session_factory
     configured_input = SelectInputConfig(
         output_variable_name="decision",
         option_source=StringListSource(
@@ -272,7 +258,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
         "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
         return_value=workflow_run_repo,
     )
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     resolved_inputs = service.resolve_form_inputs(Form(record))
 
@@ -286,11 +272,10 @@ def test_resolve_form_inputs_uses_runtime_select_options(
 def test_submit_form_by_token_calls_repository_and_enqueue(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
@@ -317,7 +302,6 @@ def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
 ):
     # ENG-635: a conversation-owned (Agent v2 chat) form routes to the chat
     # resume, not the workflow resume.
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     conversation_record = dataclasses.replace(
         sample_form_record,
@@ -326,7 +310,7 @@ def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
     )
     repo.get_by_token.return_value = conversation_record
     repo.mark_submitted.return_value = conversation_record
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     workflow_enqueue_spy = mocker.patch.object(service, "enqueue_resume")
     chat_enqueue_spy = mocker.patch.object(service, "enqueue_agent_app_resume")
 
@@ -345,7 +329,6 @@ def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     test_record = dataclasses.replace(
         sample_form_record,
@@ -354,7 +337,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
     )
     repo.get_by_token.return_value = test_record
     repo.mark_submitted.return_value = test_record
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
@@ -370,11 +353,10 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
 def test_submit_form_by_token_passes_submission_user_id(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(
@@ -392,10 +374,9 @@ def test_submit_form_by_token_passes_submission_user_id(
 
 
 def test_submit_form_by_token_invalid_action(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     with pytest.raises(InvalidFormDataError) as exc_info:
         service.submit_form_by_token(
@@ -410,7 +391,6 @@ def test_submit_form_by_token_invalid_action(sample_form_record: HumanInputFormR
 
 
 def test_submit_form_by_token_missing_inputs(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
 
     definition_with_input = FormDefinition(
@@ -422,7 +402,7 @@ def test_submit_form_by_token_missing_inputs(sample_form_record: HumanInputFormR
     )
     form_with_input = dataclasses.replace(sample_form_record, definition=definition_with_input)
     repo.get_by_token.return_value = form_with_input
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     with pytest.raises(InvalidFormDataError) as exc_info:
         service.submit_form_by_token(
@@ -437,8 +417,7 @@ def test_submit_form_by_token_missing_inputs(sample_form_record: HumanInputFormR
 
 
 def test_validate_human_input_submission_accepts_select_file_and_file_list(sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
     definition = FormDefinition.model_validate(
         {
             "form_content": "Pick one and upload files",
@@ -527,7 +506,6 @@ def test_validate_human_input_submission_rejects_invalid_select_and_file_payload
     submitted_value,
     expected_message,
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition.model_validate(
         {
@@ -539,7 +517,7 @@ def test_validate_human_input_submission_rejects_invalid_select_and_file_payload
         }
     )
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record, definition=definition)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     with pytest.raises(InvalidFormDataError) as exc_info:
         service.submit_form_by_token(
@@ -581,30 +559,27 @@ def test_human_input_service_init_with_engine(sqlite_engine: Engine):
 
 
 def test_get_form_by_token_none(sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = None
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     assert service.get_form_by_token("invalid") is None
 
 
 def test_get_form_definition_by_token_mismatch(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     # RecipientType mismatch
     assert service.get_form_definition_by_token(RecipientType.CONSOLE, "token") is None
 
 
 def test_get_form_definition_by_token_success(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     form = service.get_form_definition_by_token(RecipientType.STANDALONE_WEB_APP, "token")
     assert form is not None
     assert form.id == sample_form_record.form_id
@@ -613,20 +588,18 @@ def test_get_form_definition_by_token_success(sample_form_record: HumanInputForm
 def test_get_form_definition_by_token_for_console_mismatch(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record  # is STANDALONE_WEB_APP
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     assert service.get_form_definition_by_token_for_console("token") is None
 
 
 def test_submit_form_by_token_delivery_not_enabled(sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = None
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     with pytest.raises(human_input_service_module.WebAppDeliveryNotEnabledError):
         service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "action", {})
 
@@ -634,7 +607,6 @@ def test_submit_form_by_token_delivery_not_enabled(sqlite_session_factory):
 def test_submit_form_by_token_no_workflow_run_id(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ):
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
 
@@ -642,7 +614,7 @@ def test_submit_form_by_token_no_workflow_run_id(
     result_record = dataclasses.replace(sample_form_record, workflow_run_id=None)
     repo.mark_submitted.return_value = result_record
 
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     enqueue_spy = mocker.patch.object(service, "enqueue_resume")
 
     service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "submit", {})
@@ -650,8 +622,7 @@ def test_submit_form_by_token_no_workflow_run_id(
 
 
 def test_ensure_form_active_errors(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     # Submitted
     submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
@@ -672,8 +643,7 @@ def test_ensure_form_active_errors(sample_form_record: HumanInputFormRecord, sql
 
 
 def test_ensure_not_submitted_raises(sample_form_record: HumanInputFormRecord, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
     submitted_record = dataclasses.replace(sample_form_record, submitted_at=naive_utc_now())
 
     with pytest.raises(human_input_service_module.FormSubmittedError):
@@ -681,8 +651,7 @@ def test_ensure_not_submitted_raises(sample_form_record: HumanInputFormRecord, s
 
 
 def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, sqlite_session_factory):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     workflow_run_repo = MagicMock()
     workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = None
@@ -703,8 +672,7 @@ def test_enqueue_resume_app_not_found(
     sqlite_session: Session,
     caplog: pytest.LogCaptureFixture,
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     workflow_run = MagicMock()
     workflow_run.app_id = "app-id"
@@ -724,8 +692,7 @@ def test_enqueue_resume_app_not_found(
 def test_is_globally_expired_zero_timeout(
     monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ):
-    session_factory, _ = sqlite_session_factory
-    service = HumanInputService(session_factory)
+    service = HumanInputService(sqlite_session_factory)
 
     monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
     assert service._is_globally_expired(Form(sample_form_record)) is False
@@ -734,7 +701,6 @@ def test_is_globally_expired_zero_timeout(
 def test_submit_form_by_token_normalizes_select_and_files(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ) -> None:
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
         form_content="hello",
@@ -753,7 +719,7 @@ def test_submit_form_by_token_normalizes_select_and_files(
     form_with_inputs = dataclasses.replace(sample_form_record, definition=definition)
     repo.get_by_token.return_value = form_with_inputs
     repo.mark_submitted.return_value = form_with_inputs
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     single_file = File(
         file_id="file-1",
@@ -817,7 +783,6 @@ def test_submit_form_by_token_normalizes_select_and_files(
 def test_submit_form_by_token_invalid_select_value(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ) -> None:
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
         form_content="hello",
@@ -832,7 +797,7 @@ def test_submit_form_by_token_invalid_select_value(
         expiration_time=sample_form_record.expiration_time,
     )
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record, definition=definition)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     with pytest.raises(InvalidFormDataError, match="Invalid value for select input 'decision'"):
         service.submit_form_by_token(
@@ -846,7 +811,6 @@ def test_submit_form_by_token_invalid_select_value(
 def test_submit_form_by_token_invalid_file_list_item(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory
 ) -> None:
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
         form_content="hello",
@@ -856,7 +820,7 @@ def test_submit_form_by_token_invalid_file_list_item(
         expiration_time=sample_form_record.expiration_time,
     )
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record, definition=definition)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
 
     with pytest.raises(
         InvalidFormDataError,
@@ -873,7 +837,6 @@ def test_submit_form_by_token_invalid_file_list_item(
 def test_submit_form_by_token_rejects_cross_tenant_file(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ) -> None:
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
         form_content="hello",
@@ -883,7 +846,7 @@ def test_submit_form_by_token_rejects_cross_tenant_file(
         expiration_time=sample_form_record.expiration_time,
     )
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record, definition=definition)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     mocker.patch("services.human_input_service.build_from_mapping", side_effect=ValueError("Invalid upload file"))
 
     with pytest.raises(InvalidFormDataError, match="Invalid value for file input 'attachment'"):
@@ -906,7 +869,6 @@ def test_submit_form_by_token_rejects_cross_tenant_file(
 def test_submit_form_by_token_rejects_cross_tenant_file_list(
     sample_form_record: HumanInputFormRecord, sqlite_session_factory, mocker: MockerFixture
 ) -> None:
-    session_factory, _ = sqlite_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     definition = FormDefinition(
         form_content="hello",
@@ -916,7 +878,7 @@ def test_submit_form_by_token_rejects_cross_tenant_file_list(
         expiration_time=sample_form_record.expiration_time,
     )
     repo.get_by_token.return_value = dataclasses.replace(sample_form_record, definition=definition)
-    service = HumanInputService(session_factory, form_repository=repo)
+    service = HumanInputService(sqlite_session_factory, form_repository=repo)
     mocker.patch("services.human_input_service.build_from_mappings", side_effect=ValueError("Invalid upload file"))
 
     with pytest.raises(
