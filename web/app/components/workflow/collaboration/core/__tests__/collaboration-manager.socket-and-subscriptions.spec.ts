@@ -13,6 +13,7 @@ import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
   getState: () => {
@@ -147,6 +148,7 @@ const createMockSocket = (id = 'socket-1'): MockSocket => {
 
 const setupManagerWithDoc = () => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
@@ -1371,6 +1373,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
   it('covers private guard branches for socket helpers and container migration', async () => {
     const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-private')
     const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)
