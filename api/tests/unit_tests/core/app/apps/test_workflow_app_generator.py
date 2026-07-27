@@ -211,6 +211,9 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
         def start(self):
             return None
 
+        def join(self):
+            worker_kwargs["joined"] = True
+
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
 
     app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
@@ -244,6 +247,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
     assert result == "converted"
     assert worker_kwargs["kwargs"]["graph_engine_layers"] == ("base-layer", pause_layer)
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
+    assert worker_kwargs["joined"] is True
     assert draft_saver_factory.call_args.kwargs["tenant_id"] == app_model.tenant_id
 
 
