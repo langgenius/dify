@@ -21,7 +21,7 @@
   "archives.empty.title": "Keine archivierten Protokolle",
   "archives.error.description": "Aktualisieren Sie die Seite oder versuchen Sie es später erneut.",
   "archives.error.title": "Archivierte Protokolle konnten nicht geladen werden",
-  "archives.notice.action": "Archivierte Protokolle anzeigen",
+  "archives.notice.action": "Archivierte Protokolle öffnen",
   "archives.notice.description": "Einige Protokolle in diesem Zeitraum wurden möglicherweise archiviert.",
   "archives.summary.latest": "Neueste Archivierung",
   "archives.summary.months": "Archivierte Monate",
