@@ -138,11 +138,6 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
-    def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
-        """Helper method to verify that specific exception is raised."""
-        with pytest.raises(exception_type):
-            callable_func(*args, **kwargs)
-
     # ==================== Authentication Tests ====================
 
     def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies):
@@ -164,13 +159,8 @@ class TestAccountService:
 
     def test_authenticate_account_not_found(self, sqlite_session: Session):
         """Test authentication when account does not exist."""
-        self._assert_exception_raised(
-            AccountPasswordError,
-            AccountService.authenticate,
-            "notfound@example.com",
-            "password",
-            session=sqlite_session,
-        )
+        with pytest.raises(AccountPasswordError):
+            AccountService.authenticate("notfound@example.com", "password", session=sqlite_session)
 
     def test_authenticate_account_banned(self, sqlite_session: Session):
         """Test authentication when account is banned."""
@@ -184,13 +174,8 @@ class TestAccountService:
         sqlite_session.add(account)
         sqlite_session.commit()
 
-        self._assert_exception_raised(
-            AccountLoginError,
-            AccountService.authenticate,
-            "banned@example.com",
-            "password",
-            session=sqlite_session,
-        )
+        with pytest.raises(AccountLoginError):
+            AccountService.authenticate("banned@example.com", "password", session=sqlite_session)
 
     def test_authenticate_password_error(self, sqlite_session: Session, mock_password_dependencies):
         """Test authentication with wrong password."""
@@ -205,13 +190,8 @@ class TestAccountService:
 
         mock_password_dependencies["compare_password"].return_value = False
 
-        self._assert_exception_raised(
-            AccountPasswordError,
-            AccountService.authenticate,
-            "test@example.com",
-            "wrongpassword",
-            session=sqlite_session,
-        )
+        with pytest.raises(AccountPasswordError):
+            AccountService.authenticate("test@example.com", "wrongpassword", session=sqlite_session)
 
     def test_authenticate_pending_account_activates(self, sqlite_session: Session, mock_password_dependencies):
         """Test authentication for a pending account, which should activate on login."""
@@ -294,14 +274,13 @@ class TestAccountService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = False
 
         # Execute test and verify exception
-        self._assert_exception_raised(
-            Exception,  # AccountNotFound
-            AccountService.create_account,
-            email="test@example.com",
-            name="Test User",
-            interface_language="en-US",
-            session=sqlite_session,
-        )
+        with pytest.raises(Exception):  # noqa: B017
+            AccountService.create_account(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                session=sqlite_session,
+            )
 
     def test_create_account_email_frozen(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account creation with frozen email address."""
@@ -309,14 +288,13 @@ class TestAccountService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
         with patch("services.account_service.dify_config.BILLING_ENABLED", True):
-            self._assert_exception_raised(
-                AccountRegisterError,
-                AccountService.create_account,
-                email="frozen@example.com",
-                name="Test User",
-                interface_language="en-US",
-                session=sqlite_session,
-            )
+            with pytest.raises(AccountRegisterError):
+                AccountService.create_account(
+                    email="frozen@example.com",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=sqlite_session,
+                )
 
     def test_create_account_without_password(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test account creation without password (for invite-based registration)."""
@@ -392,14 +370,13 @@ class TestAccountService:
         mock_password_dependencies["compare_password"].return_value = False
 
         # Execute test and verify exception
-        self._assert_exception_raised(
-            CurrentPasswordIncorrectError,
-            AccountService.update_account_password,
-            mock_account,
-            "wrong_password",
-            "new_password123",
-            session=sqlite_session,
-        )
+        with pytest.raises(CurrentPasswordIncorrectError):
+            AccountService.update_account_password(
+                mock_account,
+                "wrong_password",
+                "new_password123",
+                session=sqlite_session,
+            )
 
         # Verify password comparison was called
         mock_password_dependencies["compare_password"].assert_called_once_with(
@@ -419,14 +396,13 @@ class TestAccountService:
         mock_password_dependencies["valid_password"].side_effect = ValueError("Password too short")
 
         # Execute test and verify exception
-        self._assert_exception_raised(
-            ValueError,
-            AccountService.update_account_password,
-            mock_account,
-            "old_password",
-            "short",
-            session=sqlite_session,
-        )
+        with pytest.raises(ValueError):
+            AccountService.update_account_password(
+                mock_account,
+                "old_password",
+                "short",
+                session=sqlite_session,
+            )
 
         # Verify password validation was called
         mock_password_dependencies["valid_password"].assert_called_once_with("short")
@@ -470,12 +446,8 @@ class TestAccountService:
         sqlite_session.add(account)
         sqlite_session.commit()
 
-        self._assert_exception_raised(
-            Exception,  # Unauthorized
-            AccountService.load_user,
-            account.id,
-            sqlite_session,
-        )
+        with pytest.raises(Exception):  # noqa: B017
+            AccountService.load_user(account.id, sqlite_session)
 
     def test_load_user_no_current_tenant(self, sqlite_session: Session):
         """Test user loading when user has no current tenant but has available tenants."""
@@ -646,11 +618,6 @@ class TestTenantService:
                 "feature_service": mock_feature_service,
                 "billing_service": mock_billing_service,
             }
-
-    def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
-        """Helper method to verify that specific exception is raised."""
-        with pytest.raises(exception_type):
-            callable_func(*args, **kwargs)
 
     def _add_tenant_account_join(
         self,
@@ -952,9 +919,8 @@ class TestTenantService:
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        self._assert_exception_raised(
-            ValueError, TenantService.switch_tenant, mock_account, None, session=sqlite_session
-        )
+        with pytest.raises(ValueError):
+            TenantService.switch_tenant(mock_account, None, session=sqlite_session)
 
     # ==================== Role Management Tests ====================
 
@@ -1074,15 +1040,14 @@ class TestTenantService:
         # Execute test and verify exception
         from services.errors.account import CannotOperateSelfError
 
-        self._assert_exception_raised(
-            CannotOperateSelfError,
-            TenantService.check_member_permission,
-            mock_tenant,
-            mock_operator,
-            mock_operator,  # Same as operator
-            "add",
-            session=sqlite_session,
-        )
+        with pytest.raises(CannotOperateSelfError):
+            TenantService.check_member_permission(
+                mock_tenant,
+                mock_operator,
+                mock_operator,  # Same as operator
+                "add",
+                session=sqlite_session,
+            )
 
     def test_admin_can_remove_non_owner_member(self, sqlite_session: Session):
         """Test admin can remove a non-owner member."""
@@ -1234,11 +1199,6 @@ class TestRegisterService:
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
             yield mock_send_mail
 
-    def _assert_exception_raised(self, exception_type, callable_func, *args, **kwargs):
-        """Helper method to verify that specific exception is raised."""
-        with pytest.raises(exception_type):
-            callable_func(*args, **kwargs)
-
     # ==================== Setup Tests ====================
 
     def test_setup_success(self, sqlite_session: Session, mock_external_service_dependencies):
@@ -1319,16 +1279,15 @@ class TestRegisterService:
             mock_create_account.side_effect = Exception("Database error")
 
             # Execute test and verify exception
-            self._assert_exception_raised(
-                ValueError,
-                RegisterService.setup,
-                "admin@example.com",
-                "Admin User",
-                "password123",
-                "192.168.1.1",
-                "en-US",
-                session=sqlite_session,
-            )
+            with pytest.raises(ValueError):
+                RegisterService.setup(
+                    "admin@example.com",
+                    "Admin User",
+                    "password123",
+                    "192.168.1.1",
+                    "en-US",
+                    session=sqlite_session,
+                )
 
             assert sqlite_session.scalar(select(DifySetup)) is None
 
@@ -1710,15 +1669,14 @@ class TestRegisterService:
             with patch("services.account_service.TenantService.create_tenant") as mock_create_tenant:
                 mock_create_tenant.side_effect = WorkSpaceNotAllowedCreateError()
 
-                self._assert_exception_raised(
-                    AccountRegisterError,
-                    RegisterService.register,
-                    email="test@example.com",
-                    name="Test User",
-                    password="password123",
-                    language="en-US",
-                    session=sqlite_session,
-                )
+                with pytest.raises(AccountRegisterError):
+                    RegisterService.register(
+                        email="test@example.com",
+                        name="Test User",
+                        password="password123",
+                        language="en-US",
+                        session=sqlite_session,
+                    )
 
                 assert sqlite_session.scalar(select(Account).where(Account.email == "test@example.com")) is None
 
@@ -1733,15 +1691,14 @@ class TestRegisterService:
             mock_create_account.side_effect = Exception("Unexpected error")
 
             # Execute test and verify exception
-            self._assert_exception_raised(
-                AccountRegisterError,
-                RegisterService.register,
-                email="test@example.com",
-                name="Test User",
-                password="password123",
-                language="en-US",
-                session=sqlite_session,
-            )
+            with pytest.raises(AccountRegisterError):
+                RegisterService.register(
+                    email="test@example.com",
+                    name="Test User",
+                    password="password123",
+                    language="en-US",
+                    session=sqlite_session,
+                )
 
             assert sqlite_session.scalar(select(Account).where(Account.email == "test@example.com")) is None
 
@@ -1975,16 +1932,15 @@ class TestRegisterService:
         ):
             mock_lookup.return_value = mock_existing_account
             # Execute test and verify exception
-            self._assert_exception_raised(
-                AccountAlreadyInTenantError,
-                RegisterService.invite_new_member,
-                tenant=mock_tenant,
-                email="existing@example.com",
-                language="en-US",
-                role="normal",
-                inviter=mock_inviter,
-                session=sqlite_session,
-            )
+            with pytest.raises(AccountAlreadyInTenantError):
+                RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="existing@example.com",
+                    language="en-US",
+                    role="normal",
+                    inviter=mock_inviter,
+                    session=sqlite_session,
+                )
             mock_lookup.assert_called_once()
 
     def test_invite_new_member_no_inviter(self, sqlite_session: Session):
@@ -1993,16 +1949,15 @@ class TestRegisterService:
         mock_tenant = MagicMock()
 
         # Execute test and verify exception
-        self._assert_exception_raised(
-            ValueError,
-            RegisterService.invite_new_member,
-            tenant=mock_tenant,
-            email="test@example.com",
-            language="en-US",
-            role="normal",
-            inviter=None,
-            session=sqlite_session,
-        )
+        with pytest.raises(ValueError):
+            RegisterService.invite_new_member(
+                tenant=mock_tenant,
+                email="test@example.com",
+                language="en-US",
+                role="normal",
+                inviter=None,
+                session=sqlite_session,
+            )
 
     # ==================== RBAC Member Invitation Tests ====================
 
