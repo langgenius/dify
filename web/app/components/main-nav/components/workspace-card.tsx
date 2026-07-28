@@ -260,18 +260,23 @@ export function WorkspaceCard() {
   const workspaces = workspacesQuery.data?.workspaces
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const isCloud = deploymentEdition === 'CLOUD'
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
     void queryClient.prefetchQuery(workspacesQueryOptions)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
-    return <WorkspaceCardSkeleton showCloudBilling={isCloud} showPlanAction={isCloud} />
+    return (
+      <WorkspaceCardSkeleton
+        showCloudBilling={isCloudEdition}
+        showPlanAction={isCloudEdition}
+      />
+    )
   }
 
   const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
   const hasBillingPlan = typeof currentWorkspace.plan === 'string'
-  const showCloudBilling = isCloud && hasBillingPlan
+  const showCloudBilling = isCloudEdition && hasBillingPlan
   const showPlanAction = showCloudBilling && workspacePlan !== null
   const isFreePlan = workspacePlan === Plan.sandbox
   const planActionLabel = t(
