@@ -240,3 +240,4 @@ scripts/stress-test/reports/
 
 # Code Agent Folder
 .qoder/*
+node_modules/
