@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Tahun hingga saat ini",
   "filter.sortBy": "Urutkan berdasarkan",
   "monitoring.description": "Monitoring mencatat status berjalan aplikasi, termasuk performa, aktivitas pengguna, dan biaya.",
+  "retention.upgradeTip.description": "Tingkatkan paket untuk menyimpan semua log yang dibuat setelah upgrade tanpa batas waktu; log yang kedaluwarsa sebelum upgrade tidak dapat dipulihkan.",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "Rincian File",
   "runDetail.testWithParams": "Uji Dengan Param",

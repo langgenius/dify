@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Od początku roku",
   "filter.sortBy": "Sortuj według:",
   "monitoring.description": "Monitoring rejestruje stan działania aplikacji, w tym wydajność, aktywność użytkowników i koszty.",
+  "retention.upgradeTip.description": "Przejdź na wyższy plan, aby bezterminowo przechowywać wszystkie logi wygenerowane po zmianie planu. Logów, których okres przechowywania upłynął przed zmianą planu, nie można odzyskać.",
   "runDetail.fileListDetail": "Detal",
   "runDetail.fileListLabel": "Szczegóły pliku",
   "runDetail.testWithParams": "Test z parametrami",
