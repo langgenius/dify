@@ -28,7 +28,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
 
 
-def test_retire_unowned_commits_resource_retirement(monkeypatch) -> None:
+def test_retire_unowned_commits_resource_retirement(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
     session.scalars.return_value.all.return_value = [SimpleNamespace(id="binding-1")]
@@ -132,7 +132,9 @@ def test_retire_unowned_keeps_effectively_owned_agent_active(
     )
 
     assert result == ([], [])
-    assert sqlite_session.get(Agent, agent.id).status is AgentStatus.ACTIVE
+    stored_agent = sqlite_session.get(Agent, agent.id)
+    assert stored_agent is not None
+    assert stored_agent.status is AgentStatus.ACTIVE
 
 
 @pytest.mark.parametrize(
@@ -189,7 +191,15 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
     )
 
     assert result == ([binding.id], [home.id])
-    assert sqlite_session.get(Agent, agent.id).status is AgentStatus.ARCHIVED
-    assert sqlite_session.get(AgentWorkspaceBinding, binding.id).status is AgentWorkingResourceStatus.RETIRED
-    assert sqlite_session.get(AgentWorkspace, workspace.id).status is AgentWorkingResourceStatus.RETIRED
-    assert sqlite_session.get(AgentHomeSnapshot, home.id).status is AgentWorkingResourceStatus.RETIRED
+    stored_agent = sqlite_session.get(Agent, agent.id)
+    stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
+    stored_workspace = sqlite_session.get(AgentWorkspace, workspace.id)
+    stored_home = sqlite_session.get(AgentHomeSnapshot, home.id)
+    assert stored_agent is not None
+    assert stored_binding is not None
+    assert stored_workspace is not None
+    assert stored_home is not None
+    assert stored_agent.status is AgentStatus.ARCHIVED
+    assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
+    assert stored_workspace.status is AgentWorkingResourceStatus.RETIRED
+    assert stored_home.status is AgentWorkingResourceStatus.RETIRED

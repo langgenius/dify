@@ -1,4 +1,7 @@
+from typing import Protocol, cast
 from unittest.mock import MagicMock
+
+import pytest
 
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -8,11 +11,16 @@ from tasks.collect_agent_resources_task import (
 )
 
 
+class _TaskWithQueue(Protocol):
+    queue: str
+
+
 def test_collection_task_uses_retention_queue() -> None:
-    assert collect_agent_resources.queue == "retention"
+    task = cast(_TaskWithQueue, collect_agent_resources)
+    assert task.queue == "retention"
 
 
-def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch) -> None:
+def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
     delay = MagicMock()
     monkeypatch.setattr(collect_agent_resources, "delay", delay)
 
@@ -31,10 +39,10 @@ def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch) -> None:
     )
 
 
-def test_collection_continues_in_workspace_binding_snapshot_order(monkeypatch) -> None:
+def test_collection_continues_in_workspace_binding_snapshot_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
-    def collect_workspace(**_kwargs) -> None:
+    def collect_workspace(**_kwargs: object) -> None:
         calls.append("workspace")
         raise RuntimeError("workspace failed")
 
@@ -60,7 +68,7 @@ def test_collection_continues_in_workspace_binding_snapshot_order(monkeypatch) -
     assert calls == ["workspace", "binding", "home"]
 
 
-def test_enqueue_failure_is_best_effort(monkeypatch) -> None:
+def test_enqueue_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         collect_agent_resources,
         "delay",

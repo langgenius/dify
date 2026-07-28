@@ -39,7 +39,7 @@ def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
     return client
 
 
-def test_create_initial_persists_backend_snapshot_ref(monkeypatch) -> None:
+def test_create_initial_persists_backend_snapshot_ref(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     client = _client()
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
@@ -56,7 +56,7 @@ def test_create_initial_persists_backend_snapshot_ref(monkeypatch) -> None:
     session.flush.assert_called_once_with()
 
 
-def test_create_initial_flush_failure_does_not_delete_backend_snapshot(monkeypatch) -> None:
+def test_create_initial_flush_failure_does_not_delete_backend_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = MagicMock()
     session.flush.side_effect = RuntimeError("flush failed")
     client = _client()
@@ -124,7 +124,7 @@ def test_build_apply_fails_fast_without_source_binding() -> None:
         )
 
 
-def test_home_snapshot_collection_database_failure_is_best_effort(monkeypatch) -> None:
+def test_home_snapshot_collection_database_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
     session.scalar.side_effect = RuntimeError("database unavailable")

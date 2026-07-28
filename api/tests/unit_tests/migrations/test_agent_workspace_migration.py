@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, cast
 
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
@@ -13,13 +15,18 @@ _MIGRATION_PATH = (
 )
 
 
-def _load_migration_module():
+class _MigrationModule(Protocol):
+    op: Operations
+    upgrade: Callable[[], None]
+
+
+def _load_migration_module() -> _MigrationModule:
     spec = importlib.util.spec_from_file_location("agent_workspace_migration", _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load Agent Workspace migration")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module
+    return cast(_MigrationModule, module)
 
 
 def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
@@ -84,7 +91,7 @@ def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
     metadata.create_all(engine)
 
 
-def _run_upgrade(module: object, engine: sa.Engine) -> None:
+def _run_upgrade(module: _MigrationModule, engine: sa.Engine) -> None:
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
         original_op = module.op

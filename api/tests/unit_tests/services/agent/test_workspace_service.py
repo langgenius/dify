@@ -320,7 +320,9 @@ def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_s
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_collect_binding_without_retired_workspace_destroys_binding_only(monkeypatch, sqlite_session: Session) -> None:
+def test_collect_binding_without_retired_workspace_destroys_binding_only(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     binding = _binding(status=AgentWorkingResourceStatus.RETIRED)
     workspace = _workspace()
     sqlite_session.add_all([workspace, binding])
@@ -342,7 +344,9 @@ def test_collect_binding_without_retired_workspace_destroys_binding_only(monkeyp
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_collect_workspace_destroys_workspace_then_remaining_bindings(monkeypatch, sqlite_session: Session) -> None:
+def test_collect_workspace_destroys_workspace_then_remaining_bindings(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
     anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
     remaining = _binding(
@@ -374,7 +378,7 @@ def test_collect_workspace_destroys_workspace_then_remaining_bindings(monkeypatc
     assert sqlite_session.get(AgentWorkspaceBinding, remaining.id) is None
 
 
-def test_binding_collection_database_failure_is_best_effort(monkeypatch) -> None:
+def test_binding_collection_database_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
     session.scalar.side_effect = RuntimeError("database unavailable")

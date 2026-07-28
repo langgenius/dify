@@ -1,13 +1,17 @@
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
+from models.account import Account
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
-def test_save_synchronously_writes_sql_when_dual_write_is_disabled(monkeypatch) -> None:
+def test_save_synchronously_writes_sql_when_dual_write_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOGSTORE_DUAL_WRITE_ENABLED", raising=False)
     with (
         patch("extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore"),
@@ -19,7 +23,7 @@ def test_save_synchronously_writes_sql_when_dual_write_is_disabled(monkeypatch) 
         repository = LogstoreWorkflowNodeExecutionRepository(
             session_factory=MagicMock(),
             tenant_id="tenant-1",
-            user=SimpleNamespace(id="account-1"),
+            user=cast(Account, SimpleNamespace(id="account-1")),
             app_id="app-1",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
