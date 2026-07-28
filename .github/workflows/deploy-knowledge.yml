@@ -6,7 +6,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["KnowledgeFS CI"]
+    workflows: ["Build and Push API & Web"]
     branches:
       - "deploy/konwledge"
     types:
@@ -19,13 +19,13 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'deploy/konwledge'
     steps:
-      - name: Wait for API and Web image build
+      - name: Wait for KnowledgeFS CI
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         timeout-minutes: 35
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const workflowId = "build-push.yml";
+            const workflowId = "knowledge-fs-ci.yml";
             const headBranch = context.payload.workflow_run.head_branch;
             const headSha = context.payload.workflow_run.head_sha;
             const deadline = Date.now() + 30 * 60 * 1000;
@@ -52,7 +52,7 @@ jobs:
                   `${workflowId} did not succeed for ${headSha}: ${run.conclusion} (${run.html_url})`,
                 );
               } else {
-                core.info(`Both image workflows succeeded for ${headSha}: ${run.html_url}`);
+                core.info(`KnowledgeFS CI succeeded for ${headSha}: ${run.html_url}`);
                 return;
               }
 
