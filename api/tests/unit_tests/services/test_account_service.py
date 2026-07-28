@@ -107,7 +107,7 @@ class TestAccountService:
 
     # ==================== Authentication Tests ====================
 
-    def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies) -> None:
+    def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies: _MockDependencies) -> None:
         """Test successful authentication with correct email and password."""
         account = Account(
             name="Test User",
@@ -144,7 +144,9 @@ class TestAccountService:
         with pytest.raises(AccountLoginError):
             AccountService.authenticate("banned@example.com", "password", session=sqlite_session)
 
-    def test_authenticate_password_error(self, sqlite_session: Session, mock_password_dependencies) -> None:
+    def test_authenticate_password_error(
+        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
+    ) -> None:
         """Test authentication with wrong password."""
         account = Account(
             name="Test User",
@@ -160,7 +162,9 @@ class TestAccountService:
         with pytest.raises(AccountPasswordError):
             AccountService.authenticate("test@example.com", "wrongpassword", session=sqlite_session)
 
-    def test_authenticate_pending_account_activates(self, sqlite_session: Session, mock_password_dependencies) -> None:
+    def test_authenticate_pending_account_activates(
+        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
+    ) -> None:
         """Test authentication for a pending account, which should activate on login."""
         account = Account(
             name="Pending User",
@@ -183,7 +187,10 @@ class TestAccountService:
     # ==================== Account Creation Tests ====================
 
     def test_create_account_success(
-        self, sqlite_session: Session, mock_password_dependencies, mock_external_service_dependencies
+        self,
+        sqlite_session: Session,
+        mock_password_dependencies: _MockDependencies,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test successful account creation with all required parameters."""
         # Setup mocks
@@ -214,7 +221,10 @@ class TestAccountService:
         assert persisted_account is result
 
     def test_create_account_uses_explicit_timezone(
-        self, sqlite_session: Session, mock_password_dependencies, mock_external_service_dependencies
+        self,
+        sqlite_session: Session,
+        mock_password_dependencies: _MockDependencies,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test account creation prefers explicit browser timezone."""
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -236,7 +246,7 @@ class TestAccountService:
         assert persisted_account.timezone == "Asia/Shanghai"
 
     def test_create_account_registration_disabled(
-        self, unbound_session: Session, mock_external_service_dependencies
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         """Test account creation when registration is disabled."""
         from controllers.console.error import AccountNotFound
@@ -253,7 +263,9 @@ class TestAccountService:
                 session=unbound_session,
             )
 
-    def test_create_account_email_frozen(self, unbound_session: Session, mock_external_service_dependencies) -> None:
+    def test_create_account_email_frozen(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test account creation with frozen email address."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -267,7 +279,9 @@ class TestAccountService:
                     session=unbound_session,
                 )
 
-    def test_create_account_without_password(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_create_account_without_password(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test account creation without password (for invite-based registration)."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -297,7 +311,9 @@ class TestAccountService:
 
     # ==================== Password Management Tests ====================
 
-    def test_update_account_password_success(self, sqlite_session: Session, mock_password_dependencies) -> None:
+    def test_update_account_password_success(
+        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
+    ) -> None:
         """Test successful password update with correct current password and valid new password."""
         account = Account(
             name="Test User",
@@ -328,7 +344,7 @@ class TestAccountService:
         # Verify database operations
 
     def test_update_account_password_current_password_incorrect(
-        self, unbound_session: Session, mock_password_dependencies
+        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
     ) -> None:
         """Test password update with incorrect current password."""
         # Setup test data
@@ -355,7 +371,7 @@ class TestAccountService:
         )
 
     def test_update_account_password_invalid_new_password(
-        self, unbound_session: Session, mock_password_dependencies
+        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
     ) -> None:
         """Test password update with invalid new password."""
         # Setup test data
@@ -699,7 +715,10 @@ class TestTenantService:
     # ==================== Tenant Creation Tests ====================
 
     def test_create_owner_tenant_if_not_exist_new_user(
-        self, sqlite_session: Session, mock_rsa_dependencies, mock_external_service_dependencies
+        self,
+        sqlite_session: Session,
+        mock_rsa_dependencies: MagicMock,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Creating an owner workspace persists both the tenant and owner membership."""
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
@@ -903,7 +922,7 @@ class TestTenantService:
         assert target_join.role == TenantAccountRole.ADMIN
 
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
-        self, sqlite_session: Session, mock_external_service_dependencies
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
@@ -1164,7 +1183,9 @@ class TestRegisterService:
 
     # ==================== Setup Tests ====================
 
-    def test_setup_success(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_setup_success(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test successful system setup."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1206,7 +1227,7 @@ class TestRegisterService:
                 mock_report_install.assert_called_once_with(session=sqlite_session)
 
     def test_setup_succeeds_when_telemetry_install_report_fails(
-        self, sqlite_session: Session, mock_external_service_dependencies
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1231,7 +1252,9 @@ class TestRegisterService:
 
         assert sqlite_session.scalar(select(DifySetup)) is not None
 
-    def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_setup_failure_rollback(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test setup failure with proper rollback."""
         # Setup mocks to simulate failure
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1257,7 +1280,10 @@ class TestRegisterService:
     # ==================== Registration Tests ====================
 
     def test_create_account_and_tenant_calls_default_workspace_join_when_enterprise_enabled(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should be invoked when ENTERPRISE_ENABLED is True."""
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
@@ -1289,7 +1315,10 @@ class TestRegisterService:
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
     def test_create_account_and_tenant_does_not_call_default_workspace_join_when_enterprise_disabled(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
@@ -1320,7 +1349,10 @@ class TestRegisterService:
             mock_join_default_workspace.assert_not_called()
 
     def test_create_account_and_tenant_still_calls_default_workspace_join_when_workspace_creation_fails(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Default workspace join should still be attempted when personal workspace creation fails."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
@@ -1352,7 +1384,9 @@ class TestRegisterService:
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
-    def test_register_success(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_register_success(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test successful account registration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1395,7 +1429,10 @@ class TestRegisterService:
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should be invoked after successful register commit."""
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", True, raising=False)
@@ -1426,7 +1463,10 @@ class TestRegisterService:
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
     def test_register_does_not_call_default_workspace_join_when_enterprise_disabled(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked when ENTERPRISE_ENABLED is False."""
         monkeypatch.setattr(dify_config, "ENTERPRISE_ENABLED", False, raising=False)
@@ -1456,7 +1496,10 @@ class TestRegisterService:
             mock_join_default_workspace.assert_not_called()
 
     def test_register_still_calls_default_workspace_join_when_personal_workspace_creation_fails(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Default workspace join should run even when personal workspace creation raises."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
@@ -1493,7 +1536,10 @@ class TestRegisterService:
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
     def test_register_still_calls_default_workspace_join_when_workspace_limit_exceeded(
-        self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Default workspace join should run before propagating workspace-limit registration failure."""
         from services.errors.workspace import WorkspacesLimitExceededError
@@ -1529,7 +1575,9 @@ class TestRegisterService:
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
-    def test_register_with_oauth(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_register_with_oauth(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test account registration with OAuth integration."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1571,7 +1619,9 @@ class TestRegisterService:
                 assert result == mock_account
                 mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
 
-    def test_register_with_pending_status(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_register_with_pending_status(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test account registration with pending status."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1611,7 +1661,9 @@ class TestRegisterService:
                 assert result == mock_account
                 assert result.status == "pending"
 
-    def test_register_workspace_not_allowed(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_register_workspace_not_allowed(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test registration when workspace creation is not allowed."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -1643,7 +1695,9 @@ class TestRegisterService:
 
                 assert sqlite_session.scalar(select(Account).where(Account.email == "test@example.com")) is None
 
-    def test_register_general_exception(self, sqlite_session: Session, mock_external_service_dependencies) -> None:
+    def test_register_general_exception(
+        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
         """Test registration with general exception handling."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -2108,7 +2162,7 @@ class TestRegisterService:
 
     # ==================== Token Management Tests ====================
 
-    def test_generate_invite_token_success(self, mock_redis_dependencies) -> None:
+    def test_generate_invite_token_success(self, mock_redis_dependencies: MagicMock) -> None:
         """Test successful invite token generation."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -2138,7 +2192,7 @@ class TestRegisterService:
             assert stored_data["role"] == "admin"
             assert stored_data["requires_setup"] is True
 
-    def test_is_valid_invite_token_valid(self, mock_redis_dependencies) -> None:
+    def test_is_valid_invite_token_valid(self, mock_redis_dependencies: MagicMock) -> None:
         """Test checking valid invite token."""
         # Setup mock
         mock_redis_dependencies.get.return_value = b'{"test": "data"}'
@@ -2150,7 +2204,7 @@ class TestRegisterService:
         assert result is True
         mock_redis_dependencies.get.assert_called_once_with("member_invite:token:valid-token")
 
-    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies) -> None:
+    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies: MagicMock) -> None:
         """Test checking invalid invite token."""
         # Setup mock
         mock_redis_dependencies.get.return_value = None
@@ -2162,7 +2216,7 @@ class TestRegisterService:
         assert result is False
         mock_redis_dependencies.get.assert_called_once_with("member_invite:token:invalid-token")
 
-    def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies) -> None:
+    def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test revoking token with workspace ID and email."""
         # Execute test
         RegisterService.revoke_token("workspace-123", "test@example.com", "token-123")
@@ -2174,7 +2228,7 @@ class TestRegisterService:
         # The email is hashed, so we check for the hash pattern instead
         assert "member_invite_token:" in call_args[0][0]
 
-    def test_revoke_token_without_workspace_and_email(self, mock_redis_dependencies) -> None:
+    def test_revoke_token_without_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test revoking token without workspace ID and email."""
         # Execute test
         RegisterService.revoke_token("", "", "token-123")
@@ -2209,7 +2263,7 @@ class TestRegisterService:
             assert result["data"] == invitation_data
 
     def test_get_invitation_if_token_valid_no_token_data(
-        self, unbound_session: Session, mock_redis_dependencies
+        self, unbound_session: Session, mock_redis_dependencies: MagicMock
     ) -> None:
         """Test invitation validation with no token data."""
         # Setup mock
@@ -2224,7 +2278,7 @@ class TestRegisterService:
         assert result is None
 
     def test_get_invitation_if_token_valid_tenant_not_found(
-        self, sqlite_session: Session, mock_redis_dependencies
+        self, sqlite_session: Session, mock_redis_dependencies: MagicMock
     ) -> None:
         """Test invitation validation when tenant is not found."""
         # Setup mock Redis data
@@ -2243,7 +2297,7 @@ class TestRegisterService:
         assert result is None
 
     def test_get_invitation_if_token_valid_account_not_found(
-        self, sqlite_session: Session, mock_redis_dependencies
+        self, sqlite_session: Session, mock_redis_dependencies: MagicMock
     ) -> None:
         """Test invitation validation when account is not found."""
         tenant = Tenant(name="Test Workspace")
@@ -2266,7 +2320,7 @@ class TestRegisterService:
         assert result is None
 
     def test_get_invitation_if_token_valid_account_id_mismatch(
-        self, sqlite_session: Session, mock_redis_dependencies
+        self, sqlite_session: Session, mock_redis_dependencies: MagicMock
     ) -> None:
         """Test invitation validation when account ID doesn't match."""
         tenant = Tenant(name="Test Workspace")
@@ -2329,7 +2383,7 @@ class TestRegisterService:
         # Verify results
         assert result == "member_invite:token:test-token"
 
-    def test_get_invitation_by_token_with_workspace_and_email(self, mock_redis_dependencies) -> None:
+    def test_get_invitation_by_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test get_invitation_by_token with workspace ID and email."""
         # Setup mock
         mock_redis_dependencies.get.return_value = b"user-123"
@@ -2343,7 +2397,7 @@ class TestRegisterService:
         assert result["email"] == "test@example.com"
         assert result["workspace_id"] == "workspace-456"
 
-    def test_get_invitation_by_token_without_workspace_and_email(self, mock_redis_dependencies) -> None:
+    def test_get_invitation_by_token_without_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
         """Test get_invitation_by_token without workspace ID and email."""
         # Setup mock
         invitation_data = {
@@ -2360,7 +2414,7 @@ class TestRegisterService:
         assert result is not None
         assert result == invitation_data
 
-    def test_get_invitation_by_token_no_data(self, mock_redis_dependencies) -> None:
+    def test_get_invitation_by_token_no_data(self, mock_redis_dependencies: MagicMock) -> None:
         """Test get_invitation_by_token with no data."""
         # Setup mock
         mock_redis_dependencies.get.return_value = None
