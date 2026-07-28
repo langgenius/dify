@@ -1,6 +1,6 @@
-# Marketplace Home
+# Marketplace Catalog Home
 
-The redesigned Marketplace homepage composes the header, hero, search, trending, catalog navigation, and existing plugin list.
+The redesigned Marketplace catalog shell provides the shared header, hero, search, trending, tabs, and sticky category navigation used by the Plugins and Templates pages.
 
 ## Internal Modules
 
