@@ -216,7 +216,7 @@ class KnowledgeFSDataFacade:
                     control_space_id=control_space_id,
                     operation_id="updateRetrievalProfile",
                     payload=KnowledgeFSRetrievalProfileUpdatePayload(
-                        expected_revision=retrieval_revision,
+                        expectedRevision=retrieval_revision,
                         profile=payload.retrieval,
                     ),
                 )
