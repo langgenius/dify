@@ -139,21 +139,6 @@ jobs:
             exit 1
           fi
 
-          teardown_external_runtime() {
-            local run_status=$?
-            trap - EXIT
-            if ! vp run e2e:middleware:down; then
-              echo "::error title=E2E teardown failed::External runtime middleware did not shut down cleanly."
-              if [[ "$run_status" -eq 0 ]]; then
-                run_status=1
-              fi
-            fi
-            exit "$run_status"
-          }
-
-          trap teardown_external_runtime EXIT
-          vp run e2e:middleware:up
-          vp run e2e:post-merge:prepare
           vp run e2e:post-merge
 
       - name: Upload Cucumber report
