@@ -1399,7 +1399,28 @@ describe('AgentSkills', () => {
     )
   })
 
-  it('should disable add and remove actions when viewing a version', () => {
+  it('should disable add and remove actions when viewing a version', async () => {
+    const user = userEvent.setup()
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: ['workspace-skill-1'],
+          data: [
+            {
+              ...createWorkspaceSkill(),
+              priority: 0,
+              status: 'published',
+              file_count: 1,
+              latest_published_at: 1,
+            },
+          ],
+        }),
+      }
+    })
     const { container } = renderAgentSkills({
       apiContext: {
         agentId: 'agent-1',
@@ -1414,6 +1435,20 @@ describe('AgentSkills', () => {
       screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
     ).not.toBeInTheDocument()
     expect(container.querySelector('[data-agent-skill-remove-button]')).toBeNull()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.skills.openInLibrary'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.skills.removeAction'),
+    ).not.toBeInTheDocument()
+    expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
   })
 
   it('should keep the add menu available for build draft skills', async () => {
