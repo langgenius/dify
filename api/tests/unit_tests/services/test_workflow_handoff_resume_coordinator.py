@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from threading import Event
@@ -224,14 +225,14 @@ def test_dispatch_is_wrapped_in_claim_lease_heartbeat() -> None:
     captured_leases: list[WorkflowHandoffLease] = []
 
     @contextmanager
-    def heartbeat(lease: WorkflowHandoffLease):
+    def heartbeat(lease: WorkflowHandoffLease) -> Generator[None, None, None]:
         captured_leases.append(lease)
         lifecycle.append("enter")
         yield
         lifecycle.append("exit")
 
     dispatcher = Mock()
-    dispatcher.dispatch.side_effect = lambda request: lifecycle.append("dispatch")
+    dispatcher.dispatch.side_effect = lambda _request: lifecycle.append("dispatch")
     coordinator = WorkflowHandoffResumeCoordinator(
         repository=repository,
         handoff_service=service,
@@ -259,7 +260,7 @@ def test_default_heartbeat_renews_until_ack_or_lease_loss() -> None:
     repository = Mock()
     renewed = Event()
 
-    def renew_lease(**kwargs) -> bool:
+    def renew_lease(**_kwargs: object) -> bool:
         renewed.set()
         return False
 

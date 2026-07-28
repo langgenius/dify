@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -42,9 +43,9 @@ def _terminal_event(route: WorkflowHandoffResumeRoute) -> WorkflowHandoffTermina
 
 def _repository() -> Mock:
     repository = Mock()
-    repository.list_failed_pending_terminal_compensation.return_value = []
-    repository.list_pending_terminal_events.return_value = []
-    repository.list_snapshot_gc_candidates.return_value = []
+    repository.list_failed_pending_terminal_compensation.return_value = ()
+    repository.list_pending_terminal_events.return_value = ()
+    repository.list_snapshot_gc_candidates.return_value = ()
     repository.cleanup_expired_cancellations.return_value = 0
     return repository
 
@@ -157,8 +158,14 @@ def test_scan_marks_never_uploaded_snapshot_missing_and_retries_storage_errors()
     storage = Mock()
     storage.exists.side_effect = [False, RuntimeError("object store unavailable")]
 
-    def delete_if_unreferenced(**kwargs):
-        existed = kwargs["delete_object"](kwargs["snapshot_object_key"])
+    def delete_if_unreferenced(
+        *,
+        snapshot_object_key: str,
+        deleted_at: datetime,
+        delete_object: Callable[[str], bool],
+    ) -> WorkflowHandoffSnapshotDeleteOutcome:
+        del deleted_at
+        existed = delete_object(snapshot_object_key)
         return WorkflowHandoffSnapshotDeleteOutcome.DELETED if existed else WorkflowHandoffSnapshotDeleteOutcome.MISSING
 
     repository.delete_snapshot_if_unreferenced.side_effect = delete_if_unreferenced

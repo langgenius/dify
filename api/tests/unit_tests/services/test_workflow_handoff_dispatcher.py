@@ -33,8 +33,9 @@ def test_scan_enqueues_before_marking_durable_dispatch() -> None:
     def enqueue(handoff_id: str, generation: int) -> None:
         calls.append(("enqueue", handoff_id, generation))
 
-    def mark(**kwargs: object) -> bool:
-        calls.append(("mark", str(kwargs["handoff_id"]), int(kwargs["generation"])))
+    def mark(*, handoff_id: str, generation: int, dispatched_at: datetime) -> bool:
+        del dispatched_at
+        calls.append(("mark", handoff_id, generation))
         return True
 
     repository.mark_dispatched.side_effect = mark
@@ -111,7 +112,8 @@ def test_scan_terminalizes_stale_never_claimed_ready_without_enqueuing_it() -> N
     repository.fail_stale_prepared.return_value = 0
     repository.fail_stale_ready.return_value = 1
     repository.fail_exhausted.return_value = 0
-    repository.list_due.return_value = []
+    due: list[WorkflowRunHandoff] = []
+    repository.list_due.return_value = due
     enqueue = Mock()
     now = datetime(2026, 7, 28, 12, 0, 0)
 

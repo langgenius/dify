@@ -1,5 +1,8 @@
 from types import SimpleNamespace
+from typing import Protocol, cast
 from unittest.mock import ANY, Mock
+
+import pytest
 
 from models.workflow_handoff import RagPipelineHandoffGroupIdentity, RagPipelineQueueKind
 from services.workflow_handoff_dispatcher import WorkflowHandoffDispatchResult
@@ -11,8 +14,13 @@ from services.workflow_handoff_terminal_service import WorkflowHandoffTerminalSc
 from tasks import workflow_handoff_tasks as module
 
 
+class _TaskWithExecOptions(Protocol):
+    def _get_exec_options(self) -> dict[str, object]: ...
+
+
 def test_scan_task_uses_capability_isolated_queue() -> None:
-    assert module.scan_workflow_handoffs_task._get_exec_options()["queue"] == module.dify_config.WORKFLOW_HANDOFF_QUEUE
+    task = cast(_TaskWithExecOptions, module.scan_workflow_handoffs_task)
+    assert task._get_exec_options()["queue"] == module.dify_config.WORKFLOW_HANDOFF_QUEUE
     assert module.dify_config.WORKFLOW_HANDOFF_QUEUE == "workflow_handoff"
 
 
@@ -31,7 +39,9 @@ def _terminal_scan_result(**updates: int) -> WorkflowHandoffTerminalScanResult:
     return WorkflowHandoffTerminalScanResult(**values)
 
 
-def test_scan_task_recovers_existing_rows_when_new_handoffs_are_disabled(monkeypatch) -> None:
+def test_scan_task_recovers_existing_rows_when_new_handoffs_are_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_ENABLED", False)
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_LEASE_SECONDS", 120)
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS", 600)
@@ -65,7 +75,7 @@ def test_scan_task_recovers_existing_rows_when_new_handoffs_are_disabled(monkeyp
     terminal_service.scan.assert_called_once()
 
 
-def test_scan_task_uses_lease_as_redispatch_window(monkeypatch) -> None:
+def test_scan_task_uses_lease_as_redispatch_window(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_ENABLED", True)
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_LEASE_SECONDS", 120)
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_DRAIN_TIMEOUT_SECONDS", 600)
@@ -145,7 +155,7 @@ def test_scan_task_uses_lease_as_redispatch_window(monkeypatch) -> None:
     )
 
 
-def test_enqueue_targets_configured_queue(monkeypatch) -> None:
+def test_enqueue_targets_configured_queue(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_QUEUE", "handoff-priority")
     apply_async = Mock()
     monkeypatch.setattr(module.resume_workflow_handoff_task, "apply_async", apply_async)
@@ -158,7 +168,7 @@ def test_enqueue_targets_configured_queue(monkeypatch) -> None:
     )
 
 
-def test_rag_group_release_targets_handoff_capability_queue(monkeypatch) -> None:
+def test_rag_group_release_targets_handoff_capability_queue(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_QUEUE", "handoff-priority")
     monkeypatch.setattr(module, "db", Mock(engine=object()))
     monkeypatch.setattr(module, "sessionmaker", Mock(return_value=Mock()))
@@ -188,7 +198,7 @@ def test_lease_owner_keeps_uniqueness_when_hostname_is_long() -> None:
     assert first != second
 
 
-def test_resume_task_passes_unique_worker_identity_to_coordinator(monkeypatch) -> None:
+def test_resume_task_passes_unique_worker_identity_to_coordinator(monkeypatch: pytest.MonkeyPatch) -> None:
     # Disabling creation must not strand a durable handoff that already exists.
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_ENABLED", False)
     repository = Mock()
@@ -214,7 +224,7 @@ def test_resume_task_passes_unique_worker_identity_to_coordinator(monkeypatch) -
     assert kwargs["lease_owner"]
 
 
-def test_resume_task_reconciles_owning_rag_handoff_group(monkeypatch) -> None:
+def test_resume_task_reconciles_owning_rag_handoff_group(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(module.dify_config, "WORKFLOW_HANDOFF_ENABLED", True)
     identity = RagPipelineHandoffGroupIdentity(
         source_batch_id="source-batch-1",

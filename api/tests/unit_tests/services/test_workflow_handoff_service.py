@@ -1,10 +1,12 @@
 from collections.abc import Callable
 from datetime import datetime
+from typing import cast, override
 from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -27,7 +29,7 @@ from services.workflow_handoff_service import (
 
 
 class _MemoryStorage:
-    def __init__(self):
+    def __init__(self) -> None:
         self.objects: dict[str, bytes] = {}
         self.save_calls = 0
 
@@ -43,10 +45,11 @@ class _MemoryStorage:
 
 
 class _CallbackMemoryStorage(_MemoryStorage):
-    def __init__(self, on_save: Callable[[], None]):
+    def __init__(self, on_save: Callable[[], None]) -> None:
         super().__init__()
         self._on_save = on_save
 
+    @override
     def save(self, filename: str, data: bytes) -> None:
         super().save(filename, data)
         self._on_save()
@@ -54,14 +57,18 @@ class _CallbackMemoryStorage(_MemoryStorage):
 
 def _sql_repository() -> tuple[SQLAlchemyWorkflowRunHandoffRepository, str]:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
-    WorkflowHandoffCancellation.__table__.create(engine)
-    WorkflowHandoffSnapshotGC.__table__.create(engine)
+    workflow_run_table = cast(Table, WorkflowRun.__table__)
+    workflow_handoff_table = cast(Table, WorkflowRunHandoff.__table__)
+    cancellation_table = cast(Table, WorkflowHandoffCancellation.__table__)
+    snapshot_gc_table = cast(Table, WorkflowHandoffSnapshotGC.__table__)
+    workflow_run_table.create(engine)
+    workflow_handoff_table.create(engine)
+    cancellation_table.create(engine)
+    snapshot_gc_table.create(engine)
     run_id = str(uuid4())
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            workflow_run_table.insert(),
             {
                 "id": run_id,
                 "tenant_id": str(uuid4()),
@@ -159,12 +166,14 @@ def test_create_prepared_does_not_upload_when_intent_commit_fails() -> None:
 def test_stop_during_storage_save_wins_and_upload_never_becomes_prepared() -> None:
     repository, run_id = _sql_repository()
     requested_at = datetime(2026, 7, 28, 12, 0, 0)
-    storage = _CallbackMemoryStorage(
-        lambda: repository.request_cancel_by_task_id(
+
+    def request_stop() -> None:
+        repository.request_cancel_by_task_id(
             task_id="task-stop-during-save",
             requested_at=requested_at,
         )
-    )
+
+    storage = _CallbackMemoryStorage(request_stop)
     service = WorkflowHandoffService(repository=repository, storage=storage)
 
     with pytest.raises(WorkflowHandoffPreparationCancelledError):

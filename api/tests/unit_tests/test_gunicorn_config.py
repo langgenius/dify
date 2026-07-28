@@ -30,7 +30,7 @@ def test_post_worker_init_drains_workflows_before_gunicorn_sigterm(
     begin_shutdown = MagicMock(side_effect=lambda **_: calls.append("workflow"))
     worker = MagicMock()
 
-    monkeypatch.setattr(signal, "getsignal", lambda signum: original_handler)
+    monkeypatch.setattr(signal, "getsignal", lambda _signum: original_handler)
     monkeypatch.setattr(signal, "signal", lambda signum, handler: installed_handlers.__setitem__(signum, handler))
     monkeypatch.setattr(signal, "siginterrupt", siginterrupt)
     monkeypatch.setattr(workflow_warm_shutdown.dify_config, "WORKFLOW_HANDOFF_ENABLED", True)
@@ -57,7 +57,7 @@ def test_post_worker_init_preserves_gunicorn_sigterm_when_drain_setup_fails(
     installed_handlers: dict[signal.Signals, object] = {}
     worker = MagicMock()
 
-    monkeypatch.setattr(signal, "getsignal", lambda signum: original_handler)
+    monkeypatch.setattr(signal, "getsignal", lambda _signum: original_handler)
     monkeypatch.setattr(signal, "signal", lambda signum, handler: installed_handlers.__setitem__(signum, handler))
     monkeypatch.setattr(signal, "siginterrupt", MagicMock())
     monkeypatch.setattr(workflow_warm_shutdown.dify_config, "WORKFLOW_HANDOFF_ENABLED", True)

@@ -203,6 +203,22 @@ class TestCeleryWorkflowNodeExecutionRepository:
         repo._sql_repository.save_synchronously.assert_called_once_with(sample_workflow_node_execution)
         assert repo._execution_cache[sample_workflow_node_execution.id] is sample_workflow_node_execution
 
+    def test_get_max_index_uses_durable_sql_state_with_fresh_cache(self, mock_session_factory, mock_account):
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        workflow_execution_id = str(uuid4())
+        repo._sql_repository.get_max_index = Mock(return_value=7)
+
+        assert repo._execution_cache == {}
+        assert repo._workflow_execution_mapping == {}
+        assert repo.get_max_index(workflow_execution_id) == 7
+        repo._sql_repository.get_max_index.assert_called_once_with(workflow_execution_id)
+
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_handles_celery_failure(
         self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution

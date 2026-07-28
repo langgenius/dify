@@ -53,6 +53,7 @@ class _RepoRecorder:
         self.saved_exec_data.append(entity)
 
     def get_max_index(self, workflow_execution_id: str) -> int:
+        del workflow_execution_id
         return 0
 
 
@@ -129,7 +130,7 @@ class TestWorkflowPersistenceLayer:
 
     def test_graph_start_continues_existing_node_sequence_after_handoff(self):
         layer, _, node_repo, _ = _make_layer()
-        node_repo.get_max_index = lambda workflow_execution_id: 7
+        node_repo.get_max_index = lambda _workflow_execution_id: 7
         layer.on_graph_start()
 
         layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))

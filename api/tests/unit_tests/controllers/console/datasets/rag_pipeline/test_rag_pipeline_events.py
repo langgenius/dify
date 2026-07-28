@@ -1,6 +1,7 @@
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
@@ -10,18 +11,21 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
+from models import Account
+from models.dataset import Pipeline
+from models.workflow import WorkflowRun
 
 
-def _account(account_id: str = "account-1"):
-    return SimpleNamespace(id=account_id)
+def _account(account_id: str = "account-1") -> Account:
+    return cast(Account, SimpleNamespace(id=account_id))
 
 
-def _pipeline():
-    return SimpleNamespace(id="pipeline-1", tenant_id="tenant-1")
+def _pipeline() -> Pipeline:
+    return cast(Pipeline, SimpleNamespace(id="pipeline-1", tenant_id="tenant-1"))
 
 
-def _workflow_run(**overrides):
-    values = {
+def _workflow_run(**overrides: object) -> WorkflowRun:
+    values: dict[str, object] = {
         "id": "run-1",
         "app_id": "pipeline-1",
         "tenant_id": "tenant-1",
@@ -30,7 +34,7 @@ def _workflow_run(**overrides):
         "finished_at": None,
     }
     values.update(overrides)
-    return SimpleNamespace(**values)
+    return cast(WorkflowRun, SimpleNamespace(**values))
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +42,7 @@ def _patch_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> N
     monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
-def _patch_repository(monkeypatch: pytest.MonkeyPatch, workflow_run) -> Mock:
+def _patch_repository(monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
     repository = Mock()
     repository.get_workflow_run_by_id_and_tenant_id.return_value = workflow_run
     monkeypatch.setattr(
@@ -61,7 +65,7 @@ def _patch_repository(monkeypatch: pytest.MonkeyPatch, workflow_run) -> Mock:
 def test_rag_events_rejects_missing_or_cross_owner_run(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
-    workflow_run,
+    workflow_run: WorkflowRun | None,
 ) -> None:
     _patch_repository(monkeypatch, workflow_run)
     api = module.RagPipelineWorkflowRunEventsApi()

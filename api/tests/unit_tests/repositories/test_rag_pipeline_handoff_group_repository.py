@@ -1,8 +1,11 @@
 from datetime import datetime
+from typing import cast
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import Table
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -19,6 +22,9 @@ from models.workflow_handoff import (
 from repositories.rag_pipeline_handoff_group_repository import SQLAlchemyRagPipelineHandoffGroupRepository
 
 NOW = datetime(2026, 7, 28, 15, 0, 0)
+WORKFLOW_RUN_TABLE = cast(Table, WorkflowRun.__table__)
+WORKFLOW_RUN_HANDOFF_TABLE = cast(Table, WorkflowRunHandoff.__table__)
+DOCUMENT_TABLE = cast(Table, Document.__table__)
 
 
 def _workflow_run(run_id: str, tenant_id: str, status: WorkflowExecutionStatus) -> dict[str, object]:
@@ -36,7 +42,12 @@ def _workflow_run(run_id: str, tenant_id: str, status: WorkflowExecutionStatus) 
     }
 
 
-def _handoff(run_id: str, identity: RagPipelineHandoffGroupIdentity, *, isolated: bool | None = True):
+def _handoff(
+    run_id: str,
+    identity: RagPipelineHandoffGroupIdentity,
+    *,
+    isolated: bool | None = True,
+) -> dict[str, object]:
     return {
         "workflow_run_id": run_id,
         "generation": 1,
@@ -60,8 +71,8 @@ def _handoff(run_id: str, identity: RagPipelineHandoffGroupIdentity, *, isolated
 
 def test_group_release_requires_seal_and_all_workflow_runs_terminal_and_is_cas_once() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
+    WORKFLOW_RUN_TABLE.create(engine)
+    WORKFLOW_RUN_HANDOFF_TABLE.create(engine)
     tenant_id = str(uuid4())
     run_ids = [str(uuid4()), str(uuid4())]
     identity = RagPipelineHandoffGroupIdentity(
@@ -71,14 +82,14 @@ def test_group_release_requires_seal_and_all_workflow_runs_terminal_and_is_cas_o
     )
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            WORKFLOW_RUN_TABLE.insert(),
             [
                 _workflow_run(run_ids[0], tenant_id, WorkflowExecutionStatus.RUNNING),
                 _workflow_run(run_ids[1], tenant_id, WorkflowExecutionStatus.SUCCEEDED),
             ],
         )
         connection.execute(
-            WorkflowRunHandoff.__table__.insert(),
+            WORKFLOW_RUN_HANDOFF_TABLE.insert(),
             [_handoff(run_id, identity) for run_id in run_ids],
         )
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
@@ -118,8 +129,8 @@ def test_group_release_requires_seal_and_all_workflow_runs_terminal_and_is_cas_o
 
 def test_scanner_lists_sealed_and_unsealed_groups_for_heartbeat_compensation() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
+    WORKFLOW_RUN_TABLE.create(engine)
+    WORKFLOW_RUN_HANDOFF_TABLE.create(engine)
     tenant_id = str(uuid4())
     run_id = str(uuid4())
     identity = RagPipelineHandoffGroupIdentity(
@@ -137,14 +148,14 @@ def test_scanner_lists_sealed_and_unsealed_groups_for_heartbeat_compensation() -
     row["rag_group_sealed_at"] = NOW
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            WORKFLOW_RUN_TABLE.insert(),
             [
                 _workflow_run(run_id, tenant_id, WorkflowExecutionStatus.STOPPED),
                 _workflow_run(unsealed_run_id, tenant_id, WorkflowExecutionStatus.STOPPED),
             ],
         )
         connection.execute(
-            WorkflowRunHandoff.__table__.insert(),
+            WORKFLOW_RUN_HANDOFF_TABLE.insert(),
             [row, _handoff(unsealed_run_id, unsealed_identity)],
         )
     repository = SQLAlchemyRagPipelineHandoffGroupRepository(
@@ -156,8 +167,8 @@ def test_scanner_lists_sealed_and_unsealed_groups_for_heartbeat_compensation() -
 
 def test_group_with_missing_isolation_ownership_is_rejected_by_schema() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
+    WORKFLOW_RUN_TABLE.create(engine)
+    WORKFLOW_RUN_HANDOFF_TABLE.create(engine)
     tenant_id = str(uuid4())
     run_id = str(uuid4())
     identity = RagPipelineHandoffGroupIdentity(
@@ -167,18 +178,18 @@ def test_group_with_missing_isolation_ownership_is_rejected_by_schema() -> None:
     )
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            WORKFLOW_RUN_TABLE.insert(),
             _workflow_run(run_id, tenant_id, WorkflowExecutionStatus.STOPPED),
         )
-    with engine.begin() as connection, pytest.raises(sa.exc.IntegrityError):
-        connection.execute(WorkflowRunHandoff.__table__.insert(), _handoff(run_id, identity, isolated=None))
+    with engine.begin() as connection, pytest.raises(IntegrityError):
+        connection.execute(WORKFLOW_RUN_HANDOFF_TABLE.insert(), _handoff(run_id, identity, isolated=None))
 
 
 def test_permanently_failed_latest_handoff_marks_owned_document_error_once() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
-    Document.__table__.create(engine)
+    WORKFLOW_RUN_TABLE.create(engine)
+    WORKFLOW_RUN_HANDOFF_TABLE.create(engine)
+    DOCUMENT_TABLE.create(engine)
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_id = str(uuid4())
@@ -212,14 +223,14 @@ def test_permanently_failed_latest_handoff_marks_owned_document_error_once() -> 
     )
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            WORKFLOW_RUN_TABLE.insert(),
             [
                 _workflow_run(run_id, tenant_id, WorkflowExecutionStatus.STOPPED),
                 _workflow_run(completed_run_id, tenant_id, WorkflowExecutionStatus.SUCCEEDED),
             ],
         )
         connection.execute(
-            Document.__table__.insert(),
+            DOCUMENT_TABLE.insert(),
             [
                 {
                     "id": document_id,
@@ -253,7 +264,7 @@ def test_permanently_failed_latest_handoff_marks_owned_document_error_once() -> 
                 },
             ],
         )
-        connection.execute(WorkflowRunHandoff.__table__.insert(), [row, completed_row])
+        connection.execute(WORKFLOW_RUN_HANDOFF_TABLE.insert(), [row, completed_row])
     session_factory = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
     repository = SQLAlchemyRagPipelineHandoffGroupRepository(session_factory)
 

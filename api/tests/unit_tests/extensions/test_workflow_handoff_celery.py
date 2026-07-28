@@ -1,14 +1,16 @@
 from datetime import timedelta
 from unittest.mock import Mock
 
+import pytest
+
 from extensions import ext_celery
 
 
-def test_register_workflow_handoff_recovery_schedule(monkeypatch) -> None:
+def test_register_workflow_handoff_recovery_schedule(monkeypatch: pytest.MonkeyPatch) -> None:
     config = Mock(WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS=15, WORKFLOW_HANDOFF_QUEUE="handoff-v2")
     monkeypatch.setattr(ext_celery, "dify_config", config)
     imports: list[str] = []
-    beat_schedule = {}
+    beat_schedule: dict[str, ext_celery.CeleryBeatScheduleEntry] = {}
 
     ext_celery._register_workflow_handoff_schedule(imports=imports, beat_schedule=beat_schedule)
 

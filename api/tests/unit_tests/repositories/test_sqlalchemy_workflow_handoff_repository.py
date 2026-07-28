@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+from typing import cast
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
@@ -43,24 +45,34 @@ RUN_ID = str(uuid4())
 APP_ID = str(uuid4())
 TENANT_ID = str(uuid4())
 WORKFLOW_ID = str(uuid4())
+WORKFLOW_RUN_TABLE = cast(Table, WorkflowRun.__table__)
+WORKFLOW_RUN_HANDOFF_TABLE = cast(Table, WorkflowRunHandoff.__table__)
+WORKFLOW_HANDOFF_CANCELLATION_TABLE = cast(Table, WorkflowHandoffCancellation.__table__)
+WORKFLOW_HANDOFF_SNAPSHOT_GC_TABLE = cast(Table, WorkflowHandoffSnapshotGC.__table__)
+CONVERSATION_TABLE = cast(Table, Conversation.__table__)
+MESSAGE_TABLE = cast(Table, Message.__table__)
+UPLOAD_FILE_TABLE = cast(Table, UploadFile.__table__)
+MESSAGE_FILE_TABLE = cast(Table, MessageFile.__table__)
+WORKFLOW_TRIGGER_LOG_TABLE = cast(Table, WorkflowTriggerLog.__table__)
+DOCUMENT_TABLE = cast(Table, Document.__table__)
 
 
 @pytest.fixture
 def repository() -> SQLAlchemyWorkflowRunHandoffRepository:
     engine = sa.create_engine("sqlite:///:memory:")
-    WorkflowRun.__table__.create(engine)
-    WorkflowRunHandoff.__table__.create(engine)
-    WorkflowHandoffCancellation.__table__.create(engine)
-    WorkflowHandoffSnapshotGC.__table__.create(engine)
-    Conversation.__table__.create(engine)
-    Message.__table__.create(engine)
-    UploadFile.__table__.create(engine)
-    MessageFile.__table__.create(engine)
-    WorkflowTriggerLog.__table__.create(engine)
-    Document.__table__.create(engine)
+    WORKFLOW_RUN_TABLE.create(engine)
+    WORKFLOW_RUN_HANDOFF_TABLE.create(engine)
+    WORKFLOW_HANDOFF_CANCELLATION_TABLE.create(engine)
+    WORKFLOW_HANDOFF_SNAPSHOT_GC_TABLE.create(engine)
+    CONVERSATION_TABLE.create(engine)
+    MESSAGE_TABLE.create(engine)
+    UPLOAD_FILE_TABLE.create(engine)
+    MESSAGE_FILE_TABLE.create(engine)
+    WORKFLOW_TRIGGER_LOG_TABLE.create(engine)
+    DOCUMENT_TABLE.create(engine)
     with engine.begin() as connection:
         connection.execute(
-            WorkflowRun.__table__.insert(),
+            WORKFLOW_RUN_TABLE.insert(),
             {
                 "id": RUN_ID,
                 "tenant_id": TENANT_ID,
@@ -316,6 +328,7 @@ def test_claim_reclaims_expired_lease_and_fences_stale_claim_token(
     )
     assert second_claim is not None
     assert second_claim.attempts == 2
+    assert second_claim.lease_token is not None
     assert second_claim.lease_token != first_claim.lease_token
 
     assert not repository.mark_resumed(
@@ -1168,7 +1181,7 @@ def test_trigger_terminal_compensation_marks_log_failed_with_timing(
         workflow_run.error = "resume attempts exhausted"
         workflow_run.total_tokens = 11
         session.execute(
-            WorkflowTriggerLog.__table__.insert(),
+            WORKFLOW_TRIGGER_LOG_TABLE.insert(),
             {
                 "id": trigger_log_id,
                 "tenant_id": workflow_run.tenant_id,
@@ -1223,7 +1236,7 @@ def test_advanced_chat_terminal_compensation_preserves_partial_answer(
         workflow_run.finished_at = NOW
         workflow_run.error = "resume attempts exhausted"
         session.execute(
-            Conversation.__table__.insert(),
+            CONVERSATION_TABLE.insert(),
             {
                 "id": conversation_id,
                 "app_id": APP_ID,
@@ -1236,7 +1249,7 @@ def test_advanced_chat_terminal_compensation_preserves_partial_answer(
             },
         )
         session.execute(
-            Message.__table__.insert(),
+            MESSAGE_TABLE.insert(),
             {
                 "id": message_id,
                 "app_id": APP_ID,
@@ -1282,7 +1295,7 @@ def test_cancelled_pre_ack_advanced_chat_compensation_keeps_message_normal(
     message_id = str(uuid4())
     with repository._session_factory.begin() as session:
         session.execute(
-            Conversation.__table__.insert(),
+            CONVERSATION_TABLE.insert(),
             {
                 "id": conversation_id,
                 "app_id": APP_ID,
@@ -1295,7 +1308,7 @@ def test_cancelled_pre_ack_advanced_chat_compensation_keeps_message_normal(
             },
         )
         session.execute(
-            Message.__table__.insert(),
+            MESSAGE_TABLE.insert(),
             {
                 "id": message_id,
                 "app_id": APP_ID,
@@ -1418,7 +1431,7 @@ def test_resumed_trigger_failure_reconciles_trigger_log_in_same_terminal_transac
     trigger_log_id = str(uuid4())
     with repository._session_factory.begin() as session:
         session.execute(
-            WorkflowTriggerLog.__table__.insert(),
+            WORKFLOW_TRIGGER_LOG_TABLE.insert(),
             {
                 "id": trigger_log_id,
                 "tenant_id": TENANT_ID,
@@ -1463,7 +1476,7 @@ def test_resumed_advanced_chat_failure_persists_segment_partial_answer(
     message_id = str(uuid4())
     with repository._session_factory.begin() as session:
         session.execute(
-            Conversation.__table__.insert(),
+            CONVERSATION_TABLE.insert(),
             {
                 "id": conversation_id,
                 "app_id": APP_ID,
@@ -1476,7 +1489,7 @@ def test_resumed_advanced_chat_failure_persists_segment_partial_answer(
             },
         )
         session.execute(
-            Message.__table__.insert(),
+            MESSAGE_TABLE.insert(),
             {
                 "id": message_id,
                 "app_id": APP_ID,
@@ -1529,7 +1542,7 @@ def test_user_stop_wins_resumed_advanced_chat_failure_race_and_keeps_partial_ans
         workflow_run.error = "stopped by user"
         workflow_run.finished_at = NOW + timedelta(seconds=5)
         session.execute(
-            Conversation.__table__.insert(),
+            CONVERSATION_TABLE.insert(),
             {
                 "id": conversation_id,
                 "app_id": APP_ID,
@@ -1542,7 +1555,7 @@ def test_user_stop_wins_resumed_advanced_chat_failure_race_and_keeps_partial_ans
             },
         )
         session.execute(
-            Message.__table__.insert(),
+            MESSAGE_TABLE.insert(),
             {
                 "id": message_id,
                 "app_id": APP_ID,
@@ -1605,7 +1618,7 @@ def test_resumed_rag_failure_atomically_marks_owned_document_error(
     _mark_resumed(repository, handoff)
     with repository._session_factory.begin() as session:
         session.execute(
-            Document.__table__.insert(),
+            DOCUMENT_TABLE.insert(),
             {
                 "id": document_id,
                 "tenant_id": TENANT_ID,

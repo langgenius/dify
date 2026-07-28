@@ -156,7 +156,9 @@ def test_maintenance_pause_persists_versioned_context_and_exposes_prepared_hando
     context = WorkflowResumptionContext.loads(call["serialized_state"])
     assert context.serialized_graph_runtime_state == '{"runtime": "snapshot"}'
     assert context.serialized_response_stream_filter_state == '{"filter": "snapshot"}'
-    assert context.get_generate_entity().workflow_execution_id == "run-123"
+    resumed_entity = context.get_generate_entity()
+    assert isinstance(resumed_entity, WorkflowAppGenerateEntity)
+    assert resumed_entity.workflow_execution_id == "run-123"
     assert context.root_node_id == "root-node"
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 from types import SimpleNamespace
+from typing import Protocol
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,6 +11,14 @@ from core.rag.pipeline.queue import TenantTaskDispatchClaimOutcome
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipeline_run_task
 from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 from tasks.rag_pipeline.rag_pipeline_task_support import RAG_PIPELINE_DISPATCH_TOKEN_HEADER
+
+
+class _RagPipelineTask(Protocol):
+    acks_late: bool
+    reject_on_worker_lost: bool
+    max_retries: int | None
+
+    def run(self, source_batch_id: str, tenant_id: str, dispatch_token: str | None = None) -> object: ...
 
 
 @pytest.mark.parametrize(
@@ -23,7 +32,7 @@ from tasks.rag_pipeline.rag_pipeline_task_support import RAG_PIPELINE_DISPATCH_T
     ],
     ids=["regular", "priority"],
 )
-def test_completed_dispatch_is_skipped_before_loading_source_file(task, module_path: str) -> None:
+def test_completed_dispatch_is_skipped_before_loading_source_file(task: _RagPipelineTask, module_path: str) -> None:
     with (
         patch(f"{module_path}.RagPipelineDispatchLease.acquire") as acquire,
         patch(f"{module_path}.FileService") as file_service,
@@ -47,7 +56,7 @@ def test_completed_dispatch_is_skipped_before_loading_source_file(task, module_p
     ],
     ids=["regular", "priority"],
 )
-def test_busy_dispatch_retries_without_loading_source_file(task, module_path: str) -> None:
+def test_busy_dispatch_retries_without_loading_source_file(task: _RagPipelineTask, module_path: str) -> None:
     retry_error = RuntimeError("retry scheduled")
     with (
         patch(f"{module_path}.RagPipelineDispatchLease.acquire") as acquire,
@@ -65,7 +74,7 @@ def test_busy_dispatch_retries_without_loading_source_file(task, module_path: st
 
 
 @pytest.mark.parametrize("task", [rag_pipeline_run_task, priority_rag_pipeline_run_task])
-def test_rag_pipeline_tasks_use_worker_loss_redelivery(task) -> None:
+def test_rag_pipeline_tasks_use_worker_loss_redelivery(task: _RagPipelineTask) -> None:
     assert task.acks_late is True
     assert task.reject_on_worker_lost is True
     assert task.max_retries is None

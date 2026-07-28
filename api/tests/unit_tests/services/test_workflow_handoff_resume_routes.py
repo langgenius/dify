@@ -1,8 +1,10 @@
-from collections.abc import Generator
-from types import SimpleNamespace
+from collections.abc import Callable, Generator
+from types import SimpleNamespace, TracebackType
+from typing import Self, cast
 from unittest.mock import ANY, Mock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -10,12 +12,15 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from models.enums import WorkflowRunTriggeredFrom
-from models.model import App, AppMode, Conversation
+from models.model import App, AppMode, Conversation, Message
 from models.snippet import CustomizedSnippet
-from models.workflow import WorkflowKind
+from models.workflow import Workflow, WorkflowKind, WorkflowRun
 from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services import workflow_handoff_resume_routes as routes
-from services.workflow_handoff_resume_coordinator import PermanentWorkflowHandoffResumeError
+from services.workflow_handoff_resume_coordinator import (
+    PermanentWorkflowHandoffResumeError,
+    WorkflowHandoffResumeRequest,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -24,29 +29,44 @@ def _durable_event_transport(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _Session:
-    def __init__(self, values: dict[type, object] | None = None, *, scalar: object | None = None):
+    def __init__(self, values: dict[type, object] | None = None, *, scalar: object | None = None) -> None:
         self._values = values or {}
         self._scalar = scalar
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        return None
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        del exc_type, exc_value, traceback
 
-    def get(self, model, object_id):
+    def get(self, model: type[object], object_id: object) -> object | None:
+        del object_id
         return self._values.get(model)
 
-    def scalar(self, statement):
+    def scalar(self, statement: object) -> object | None:
+        del statement
         return self._scalar
 
 
-def _entity(entity_type: type, *, route: WorkflowHandoffResumeRoute):
+def _model[ModelT](model_type: type[ModelT], **values: object) -> ModelT:
+    del model_type
+    return cast(ModelT, SimpleNamespace(**values))
+
+
+def _entity[GenerateEntityT: (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity, RagPipelineGenerateEntity)](
+    entity_type: type[GenerateEntityT], *, route: WorkflowHandoffResumeRoute
+) -> GenerateEntityT:
+    del route
     entity = Mock(spec=entity_type)
     entity.task_id = "task-1"
     entity.user_id = "user-1"
     entity.inputs = {"input": "value"}
-    entity.extras = {}
+    entity.extras = dict[str, object]()
     entity.app_config = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", workflow_id="workflow-1")
     if entity_type is AdvancedChatAppGenerateEntity:
         entity.workflow_run_id = "run-1"
@@ -56,11 +76,12 @@ def _entity(entity_type: type, *, route: WorkflowHandoffResumeRoute):
     if entity_type is RagPipelineGenerateEntity:
         entity.dataset_id = "dataset-1"
         entity.document_id = "document-1"
-    return entity
+    return cast(GenerateEntityT, entity)
 
 
-def _request(route: WorkflowHandoffResumeRoute):
-    return SimpleNamespace(
+def _request(route: WorkflowHandoffResumeRoute) -> WorkflowHandoffResumeRequest:
+    return _model(
+        WorkflowHandoffResumeRequest,
         serialized_state=b"checkpoint",
         handoff=SimpleNamespace(
             id="handoff-1",
@@ -73,7 +94,7 @@ def _request(route: WorkflowHandoffResumeRoute):
     )
 
 
-def _generator(on_next=None) -> Generator[object, None, None]:
+def _generator(on_next: Callable[[], object] | None = None) -> Generator[object, None, None]:
     if on_next is not None:
         on_next()
     yield object()
@@ -161,7 +182,8 @@ def test_resumed_terminal_failure_handler_passes_full_owner_scope(monkeypatch: p
     monkeypatch.setattr(routes, "WorkflowHandoffTerminalService", service_factory)
     monkeypatch.setattr(routes, "naive_utc_now", lambda: failed_at)
     request = _request(WorkflowHandoffResumeRoute.ADVANCED_CHAT)
-    workflow_run = SimpleNamespace(
+    workflow_run = _model(
+        WorkflowRun,
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -196,13 +218,14 @@ def test_resumed_terminal_failure_handler_passes_full_owner_scope(monkeypatch: p
 
 def test_validate_entity_identity_reports_all_ownership_mismatches() -> None:
     entity = _entity(WorkflowAppGenerateEntity, route=WorkflowHandoffResumeRoute.WORKFLOW)
-    run = SimpleNamespace(
+    run = _model(
+        WorkflowRun,
         tenant_id="other-tenant",
         app_id="other-app",
         workflow_id="other-workflow",
         created_by="other",
     )
-    workflow = SimpleNamespace(id="definition-id")
+    workflow = _model(Workflow, id="definition-id")
 
     with pytest.raises(PermanentWorkflowHandoffResumeError) as raised:
         routes._validate_entity_identity(generate_entity=entity, workflow_run=run, workflow=workflow)
@@ -212,18 +235,19 @@ def test_validate_entity_identity_reports_all_ownership_mismatches() -> None:
 
 
 def test_load_run_dependencies_rejects_cross_owner_workflow_definition() -> None:
-    workflow_run = SimpleNamespace(
+    workflow_run = _model(
+        WorkflowRun,
         id="run-1",
         status=routes.WorkflowExecutionStatus.RUNNING,
         workflow_id="workflow-1",
         tenant_id="tenant-1",
         app_id="app-1",
     )
-    workflow = SimpleNamespace(id="workflow-1", tenant_id="other-tenant", app_id="app-1")
+    workflow = _model(Workflow, id="workflow-1", tenant_id="other-tenant", app_id="app-1")
     session = _Session({routes.WorkflowRun: workflow_run, routes.Workflow: workflow})
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match="Workflow definition ownership mismatch: tenant"):
-        routes._load_run_dependencies(session, _request(WorkflowHandoffResumeRoute.WORKFLOW))
+        routes._load_run_dependencies(cast(Session, session), _request(WorkflowHandoffResumeRoute.WORKFLOW))
 
 
 @pytest.mark.parametrize(
@@ -234,8 +258,8 @@ def test_load_run_dependencies_rejects_cross_owner_workflow_definition() -> None
     ],
 )
 def test_validate_app_ownership_rejects_mismatch(app_id: str, tenant_id: str, mismatch: str) -> None:
-    app = SimpleNamespace(id=app_id, tenant_id=tenant_id)
-    workflow_run = SimpleNamespace(app_id="app-1", tenant_id="tenant-1")
+    app = _model(App, id=app_id, tenant_id=tenant_id)
+    workflow_run = _model(WorkflowRun, app_id="app-1", tenant_id="tenant-1")
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match=rf"Workflow app ownership mismatch: {mismatch}"):
         routes._validate_app_ownership(app, workflow_run)
@@ -270,9 +294,9 @@ def test_validate_chat_records_rejects_cross_owner_records(
         match=rf"Chatflow {resource} ownership mismatch: {mismatch}",
     ):
         routes._validate_chat_records(
-            conversation=SimpleNamespace(**conversation_values),
-            message=SimpleNamespace(**message_values),
-            workflow_run=SimpleNamespace(id="run-1", app_id="app-1", tenant_id="tenant-1"),
+            conversation=_model(Conversation, **conversation_values),
+            message=_model(Message, **message_values),
+            workflow_run=_model(WorkflowRun, id="run-1", app_id="app-1", tenant_id="tenant-1"),
         )
 
 
@@ -296,7 +320,8 @@ def test_trigger_layers_reject_cross_owner_trigger_log(field: str, value: str, m
     }
     trigger_log_values[field] = value
     session = _Session(scalar=SimpleNamespace(**trigger_log_values))
-    workflow_run = SimpleNamespace(
+    workflow_run = _model(
+        WorkflowRun,
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -307,7 +332,7 @@ def test_trigger_layers_reject_cross_owner_trigger_log(field: str, value: str, m
         PermanentWorkflowHandoffResumeError,
         match=rf"Workflow trigger log ownership mismatch: {mismatch}",
     ):
-        routes._trigger_layers(session, workflow_run)
+        routes._trigger_layers(cast(Session, session), workflow_run)
 
 
 def test_trigger_layers_preserve_initial_post_only_policy(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -319,7 +344,8 @@ def test_trigger_layers_preserve_initial_post_only_policy(monkeypatch: pytest.Mo
         workflow_run_id="run-1",
         queue_name=next(iter(routes.AsyncWorkflowQueue)).value,
     )
-    workflow_run = SimpleNamespace(
+    workflow_run = _model(
+        WorkflowRun,
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -329,7 +355,7 @@ def test_trigger_layers_preserve_initial_post_only_policy(monkeypatch: pytest.Mo
     post_layer_factory = Mock(return_value=post_layer)
     monkeypatch.setattr(routes, "TriggerPostLayer", post_layer_factory)
 
-    layers = routes._trigger_layers(_Session(scalar=trigger_log), workflow_run)
+    layers = routes._trigger_layers(cast(Session, _Session(scalar=trigger_log)), workflow_run)
 
     assert layers == [post_layer]
     post_layer_factory.assert_called_once()
@@ -338,7 +364,7 @@ def test_trigger_layers_preserve_initial_post_only_policy(monkeypatch: pytest.Mo
 @pytest.mark.parametrize(
     ("route", "triggered_from", "trigger_layers"),
     [
-        (WorkflowHandoffResumeRoute.WORKFLOW, WorkflowRunTriggeredFrom.DEBUGGING, []),
+        (WorkflowHandoffResumeRoute.WORKFLOW, WorkflowRunTriggeredFrom.DEBUGGING, list[object]()),
         (WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW, WorkflowRunTriggeredFrom.WEBHOOK, [Mock()]),
     ],
 )
@@ -352,7 +378,10 @@ def test_workflow_resume_rebuilds_route_and_publishes_stream(
     context = Mock()
     context.root_node_id = "custom-trigger-root"
     runtime_state = Mock()
-    frozen_graph = {"nodes": [{"id": "custom-trigger-root", "data": {"type": "start"}}], "edges": []}
+    frozen_graph: dict[str, object] = {
+        "nodes": [{"id": "custom-trigger-root", "data": {"type": "start"}}],
+        "edges": [],
+    }
     workflow_run = SimpleNamespace(
         id="run-1",
         app_id="app-1",
@@ -378,13 +407,13 @@ def test_workflow_resume_rebuilds_route_and_publishes_stream(
     ack_layer = Mock()
 
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (context, entity, runtime_state))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, user))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (context, entity, runtime_state))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, user))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
-    monkeypatch.setattr(routes, "_trigger_layers", lambda session, workflow_run: trigger_layers)
-    monkeypatch.setattr(routes, "_build_repositories", lambda **kwargs: ("run-repository", "node-repository"))
-    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda request: ack_layer)
+    monkeypatch.setattr(routes, "_trigger_layers", lambda _session, _workflow_run: trigger_layers)
+    monkeypatch.setattr(routes, "_build_repositories", lambda **_kwargs: ("run-repository", "node-repository"))
+    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda _request: ack_layer)
     monkeypatch.setattr(routes, "set_login_user", Mock())
     monkeypatch.setattr(routes, "WorkflowAppGenerator", lambda: generator)
     monkeypatch.setattr(routes, "_publish_streaming_response", publisher)
@@ -422,9 +451,9 @@ def test_workflow_resume_rejects_trigger_route_source_mismatch(monkeypatch: pyte
     workflow = SimpleNamespace(id="workflow-1", created_by="owner-1")
     session = _Session()
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (Mock(), entity, Mock()))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, Mock()))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, Mock()))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match="trigger route"):
@@ -437,12 +466,20 @@ def test_snippet_resume_rebuilds_adapter_filters_virtual_start_and_preserves_sin
     single_run: str | None,
 ) -> None:
     entity = _entity(WorkflowAppGenerateEntity, route=WorkflowHandoffResumeRoute.SNIPPET)
-    entity.single_iteration_run = SimpleNamespace(node_id="iteration-1") if single_run == "iteration" else None
-    entity.single_loop_run = SimpleNamespace(node_id="loop-1") if single_run == "loop" else None
+    entity.single_iteration_run = (
+        WorkflowAppGenerateEntity.SingleIterationRunEntity(node_id="iteration-1", inputs={"input": "value"})
+        if single_run == "iteration"
+        else None
+    )
+    entity.single_loop_run = (
+        WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id="loop-1", inputs={"input": "value"})
+        if single_run == "loop"
+        else None
+    )
     context = Mock()
     context.root_node_id = "snippet-root"
     runtime_state = Mock()
-    frozen_graph = {
+    frozen_graph: dict[str, object] = {
         "nodes": [{"id": routes.SnippetGenerateService._VIRTUAL_START_NODE_ID, "data": {"type": "start"}}],
         "edges": [],
     }
@@ -465,7 +502,7 @@ def test_snippet_resume_rebuilds_adapter_filters_virtual_start_and_preserves_sin
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
     generator = Mock()
 
-    def response():
+    def response() -> Generator[dict[str, object], None, None]:
         yield {
             "event": "node_started",
             "data": {"node_id": routes.SnippetGenerateService._VIRTUAL_START_NODE_ID},
@@ -479,12 +516,12 @@ def test_snippet_resume_rebuilds_adapter_filters_virtual_start_and_preserves_sin
     draft_loader_factory = Mock(return_value=draft_loader)
 
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (context, entity, runtime_state))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, user))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (context, entity, runtime_state))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, user))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
-    monkeypatch.setattr(routes, "_build_repositories", lambda **kwargs: ("run-repository", "node-repository"))
-    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda request: ack_layer)
+    monkeypatch.setattr(routes, "_build_repositories", lambda **_kwargs: ("run-repository", "node-repository"))
+    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda _request: ack_layer)
     monkeypatch.setattr(routes, "set_login_user", Mock())
     monkeypatch.setattr(routes.SnippetGenerateService, "build_app_model", Mock(return_value=app_model))
     monkeypatch.setattr(routes, "DraftVarLoader", draft_loader_factory)
@@ -548,9 +585,9 @@ def test_snippet_resume_rejects_missing_or_cross_owner_resources(
     session = _Session({CustomizedSnippet: snippet} if snippet is not None else {})
 
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (Mock(), entity, Mock()))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, Mock()))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, Mock()))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match=error):
@@ -564,7 +601,7 @@ def test_advanced_chat_resume_preserves_message_and_publishes_continuation(
     context = Mock()
     context.root_node_id = "chat-root"
     runtime_state = Mock()
-    frozen_graph = {"nodes": [{"id": "chat-root"}], "edges": []}
+    frozen_graph: dict[str, object] = {"nodes": [{"id": "chat-root"}], "edges": []}
     workflow_run = SimpleNamespace(
         id="run-1",
         app_id="app-1",
@@ -586,12 +623,12 @@ def test_advanced_chat_resume_preserves_message_and_publishes_continuation(
     ack_layer = Mock()
 
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (context, entity, runtime_state))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, user))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (context, entity, runtime_state))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, user))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
-    monkeypatch.setattr(routes, "_build_repositories", lambda **kwargs: ("run-repository", "node-repository"))
-    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda request: ack_layer)
+    monkeypatch.setattr(routes, "_build_repositories", lambda **_kwargs: ("run-repository", "node-repository"))
+    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda _request: ack_layer)
     monkeypatch.setattr(routes, "set_login_user", Mock())
     monkeypatch.setattr(routes, "AdvancedChatAppGenerator", lambda: generator)
     monkeypatch.setattr(routes, "_publish_streaming_response", publisher)
@@ -619,7 +656,7 @@ def test_rag_resume_validates_ownership_and_drains_generator(monkeypatch: pytest
     context = Mock()
     context.root_node_id = "rag-root"
     runtime_state = Mock()
-    frozen_graph = {"nodes": [{"id": "rag-root"}], "edges": []}
+    frozen_graph: dict[str, object] = {"nodes": [{"id": "rag-root"}], "edges": []}
     workflow_run = SimpleNamespace(
         id="run-1",
         app_id="app-1",
@@ -631,7 +668,7 @@ def test_rag_resume_validates_ownership_and_drains_generator(monkeypatch: pytest
     workflow = SimpleNamespace(id="workflow-1", created_by="owner-1")
     user = Mock()
     dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
-    pipeline = SimpleNamespace(tenant_id="tenant-1", retrieve_dataset=lambda session: dataset)
+    pipeline = SimpleNamespace(tenant_id="tenant-1", retrieve_dataset=lambda _session: dataset)
     document = SimpleNamespace(dataset_id="dataset-1", tenant_id="tenant-1")
     session = _Session({routes.Pipeline: pipeline, routes.Document: document})
     generator = Mock()
@@ -641,12 +678,12 @@ def test_rag_resume_validates_ownership_and_drains_generator(monkeypatch: pytest
 
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(routes, "g", SimpleNamespace())
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (context, entity, runtime_state))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, user))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (context, entity, runtime_state))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, user))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
-    monkeypatch.setattr(routes, "_build_repositories", lambda **kwargs: ("run-repository", "node-repository"))
-    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda request: ack_layer)
+    monkeypatch.setattr(routes, "_build_repositories", lambda **_kwargs: ("run-repository", "node-repository"))
+    monkeypatch.setattr(routes, "_acknowledgement_layer", lambda _request: ack_layer)
     monkeypatch.setattr(routes, "set_login_user", Mock())
     monkeypatch.setattr(routes, "PipelineGenerator", lambda: generator)
     monkeypatch.setattr(
@@ -669,14 +706,14 @@ def test_rag_resume_rejects_cross_tenant_document(monkeypatch: pytest.MonkeyPatc
     workflow_run = SimpleNamespace(id="run-1", app_id="app-1", tenant_id="tenant-1")
     workflow = SimpleNamespace(id="workflow-1", created_by="owner-1")
     dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
-    pipeline = SimpleNamespace(tenant_id="tenant-1", retrieve_dataset=lambda session: dataset)
+    pipeline = SimpleNamespace(tenant_id="tenant-1", retrieve_dataset=lambda _session: dataset)
     document = SimpleNamespace(dataset_id="dataset-1", tenant_id="other-tenant")
     session = _Session({routes.Pipeline: pipeline, routes.Document: document})
     monkeypatch.setattr(routes, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(routes, "g", SimpleNamespace())
-    monkeypatch.setattr(routes, "sessionmaker", lambda **kwargs: lambda: session)
-    monkeypatch.setattr(routes, "_load_context", lambda request: (Mock(), entity, Mock()))
-    monkeypatch.setattr(routes, "_load_run_dependencies", lambda session, request: (workflow_run, workflow, Mock()))
+    monkeypatch.setattr(routes, "sessionmaker", lambda **_kwargs: lambda: session)
+    monkeypatch.setattr(routes, "_load_context", lambda _request: (Mock(), entity, Mock()))
+    monkeypatch.setattr(routes, "_load_run_dependencies", lambda _session, _request: (workflow_run, workflow, Mock()))
     monkeypatch.setattr(routes, "_validate_entity_identity", Mock())
 
     with pytest.raises(PermanentWorkflowHandoffResumeError, match="document identity"):

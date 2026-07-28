@@ -38,7 +38,9 @@ def test_service_requests_cancel_by_task_id() -> None:
     )
 
 
-def test_controller_helper_drains_existing_handoffs_when_feature_is_disabled(monkeypatch) -> None:
+def test_controller_helper_drains_existing_handoffs_when_feature_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     repository = Mock()
     repository.request_cancel_by_task_id.return_value = 1
     repository_type = Mock(return_value=repository)
@@ -60,7 +62,7 @@ def test_controller_helper_drains_existing_handoffs_when_feature_is_disabled(mon
     )
 
 
-def test_controller_helper_uses_explicit_timestamp(monkeypatch) -> None:
+def test_controller_helper_uses_explicit_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
     repository = Mock()
     repository.request_cancel_by_task_id.return_value = 1
     monkeypatch.setattr(module, "SQLAlchemyWorkflowRunHandoffRepository", Mock(return_value=repository))
@@ -99,7 +101,7 @@ def test_public_owner_scope_rejects_app_without_tenant() -> None:
         )
 
 
-def test_public_app_helper_forwards_mandatory_owner_scope(monkeypatch) -> None:
+def test_public_app_helper_forwards_mandatory_owner_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     scoped_cancel = Mock(return_value=1)
     monkeypatch.setattr(module, "request_workflow_handoff_cancel_by_task_id", scoped_cancel)
     requested_at = datetime(2026, 7, 28, 12, 0, 0)
