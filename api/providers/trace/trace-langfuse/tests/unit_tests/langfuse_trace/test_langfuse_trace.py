@@ -458,21 +458,25 @@ def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyP
         type=EndUserType.BROWSER,
         session_id="session-id-123",
     )
-    sqlite3_session.add(end_user)
-    sqlite3_session.commit()
-    monkeypatch.setattr(
-        "dify_trace_langfuse.langfuse_trace.db",
-        SimpleNamespace(engine=sqlite3_session.get_bind(), session=sqlite3_session),
-    )
+    engine = sqlite3_session.get_bind()
+    with Session(engine) as write_session:
+        write_session.add(end_user)
+        write_session.commit()
 
-    trace_instance.add_trace = MagicMock()
-    trace_instance.add_generation = MagicMock()
+    with Session(engine) as read_session:
+        monkeypatch.setattr(
+            "dify_trace_langfuse.langfuse_trace.db",
+            SimpleNamespace(engine=engine, session=read_session),
+        )
 
-    trace_instance.message_trace(trace_info)
+        trace_instance.add_trace = MagicMock()
+        trace_instance.add_generation = MagicMock()
 
-    trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
-    assert trace_data.user_id == "session-id-123"
-    assert trace_data.metadata["user_id"] == "session-id-123"
+        trace_instance.message_trace(trace_info)
+
+        trace_data = trace_instance.add_trace.call_args[1]["langfuse_trace_data"]
+        assert trace_data.user_id == "session-id-123"
+        assert trace_data.metadata["user_id"] == "session-id-123"
 
 
 def test_message_trace_none_data(trace_instance):
