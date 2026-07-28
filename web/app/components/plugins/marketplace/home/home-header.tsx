@@ -71,7 +71,6 @@ const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: H
           <HomeCatalogTabs
             activeTab={activeTab}
             className={styles.headerCatalogTabs}
-            compact
             isMarketplacePlatform={isMarketplacePlatform}
           />
         </HomeStickyCatalogTabs>
