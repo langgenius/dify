@@ -464,6 +464,7 @@
   "operation.downloading": "در حال دانلود...",
   "operation.duplicate": "تکرار",
   "operation.edit": "ویرایش",
+  "operation.export": "خروجی گرفتن",
   "operation.exporting": "در حال خروجی گرفتن",
   "operation.fill": "پر کردن خودکار",
   "operation.format": "قالب",
