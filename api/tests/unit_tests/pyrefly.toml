@@ -651,7 +651,6 @@ project-excludes = [
   "events/event_handlers/test_delete_tool_parameters_cache_when_sync_draft_workflow.py",
   "events/test_app_event_signals.py",
   "events/test_events_package_compat.py",
-  "events/test_update_provider_when_message_created.py",
   "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
   "extensions/logstore/test_sql_escape.py",
   "extensions/otel/conftest.py",
