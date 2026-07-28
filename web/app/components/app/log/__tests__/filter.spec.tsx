@@ -184,7 +184,7 @@ describe('Filter', () => {
       expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
         expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
         expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
-        expect.stringMatching(/(?:^|\.)filter\.period\.last4weeks(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
       ])
     })
 
@@ -197,7 +197,11 @@ describe('Filter', () => {
       fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
 
       const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
-      expect(periodOptions.getAllByRole('listitem')).toHaveLength(3)
+      expect(periodOptions.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        expect.stringMatching(/(?:^|\.)filter\.period\.today(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
+        expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
+      ])
     })
 
     it('should keep all periods when Cloud billing is known to be disabled', () => {

@@ -229,7 +229,7 @@ describe('Filter', () => {
       ).toEqual([
         'appLog.filter.period.today',
         'appLog.filter.period.last7days',
-        'appLog.filter.period.last4weeks',
+        'appLog.filter.period.last30days',
       ])
     })
 
@@ -254,11 +254,16 @@ describe('Filter', () => {
       mockRuntime.deploymentEdition = 'CLOUD'
       mockRuntime.planType = 'sandbox'
 
-      render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams({ period: '3' })}
+          setQueryParams={setQueryParams}
+        />,
+      )
 
       await user.click(
         screen.getByRole('button', {
-          name: /common\.operation\.clear appLog\.filter\.period\.last7days/,
+          name: /common\.operation\.clear appLog\.filter\.period\.last30days/,
         }),
       )
 

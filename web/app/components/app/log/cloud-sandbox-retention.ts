@@ -8,6 +8,12 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 export const CLOUD_SANDBOX_TIME_PERIOD_KEYS = new Set(['1', '2', '3'])
 export const CLOUD_SANDBOX_CLEARED_TIME_PERIOD = '1'
 
+const CLOUD_SANDBOX_LONGEST_TIME_PERIOD = '3'
+const CLOUD_SANDBOX_LONGEST_TIME_PERIOD_OPTION = {
+  value: 30,
+  name: 'last30days',
+} as const
+
 export type CloudSandboxPlanState = 'pending' | 'sandbox' | 'unrestricted'
 
 export function isLogTimePeriodRestricted(planState: CloudSandboxPlanState) {
@@ -19,6 +25,17 @@ export function resolveLogTimePeriod(period: string, planState: CloudSandboxPlan
     return period
 
   return CLOUD_SANDBOX_CLEARED_TIME_PERIOD
+}
+
+export function resolveLogTimePeriodOption<T extends { value: number; name: string }>(
+  period: string,
+  option: T,
+  planState: CloudSandboxPlanState,
+) {
+  if (isLogTimePeriodRestricted(planState) && period === CLOUD_SANDBOX_LONGEST_TIME_PERIOD)
+    return CLOUD_SANDBOX_LONGEST_TIME_PERIOD_OPTION
+
+  return option
 }
 
 export function useCloudSandboxPlanStatus(): CloudSandboxPlanState {

@@ -21,6 +21,7 @@ import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } fr
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
@@ -475,6 +476,29 @@ describe('Logs Container', () => {
         expect(lastCall?.params).not.toHaveProperty('created_at__after')
         expect(lastCall?.params).not.toHaveProperty('created_at__before')
       })
+    })
+
+    it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+      const user = userEvent.setup()
+      mockPlanState.value = 'sandbox'
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByText('appLog.filter.period.last7days'))
+      await user.click(await screen.findByText('appLog.filter.period.last30days'))
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.last30days' }),
+      ).toBeInTheDocument()
+      const params = getMockCallParams()?.params
+      expect(
+        dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
+      ).toBe(30)
     })
 
     it('should use a valid period for the real Chip and request when plan state settles to Sandbox', async () => {

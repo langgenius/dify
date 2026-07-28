@@ -184,6 +184,41 @@ describe('Logs', () => {
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })
 
+  it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+    const user = userEvent.setup()
+    mockPlanState.value = 'sandbox'
+    mockUseChatConversations.mockReturnValue({
+      data: { total: 0 },
+      refetch: vi.fn(),
+    })
+
+    render(
+      <Logs
+        appDetail={
+          {
+            id: 'app-sandbox-last-30-days',
+            mode: AppModeEnum.CHAT,
+          } as any
+        }
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /appLog\.filter\.period\.last7days/ }))
+    await user.click(await screen.findByText(/appLog\.filter\.period\.last30days/))
+
+    expect(
+      screen.getByRole('combobox', { name: /appLog\.filter\.period\.last30days/ }),
+    ).toBeInTheDocument()
+    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        }),
+      }),
+    )
+  })
+
   it('should use a valid period for the real Chip and request when a cached period settles to Sandbox', async () => {
     const user = userEvent.setup()
     const appDetail = {

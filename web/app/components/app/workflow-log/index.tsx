@@ -19,7 +19,11 @@ import { useWorkflowLogs } from '@/service/use-log'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
-import { resolveLogTimePeriod, useCloudSandboxPlanStatus } from '../log/cloud-sandbox-retention'
+import {
+  resolveLogTimePeriod,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from '../log/cloud-sandbox-retention'
 import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -50,6 +54,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+  const requestTimePeriod = resolveLogTimePeriodOption(
+    requestQueryParams.period,
+    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
+    cloudSandboxPlanState,
+  )
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
   const query = {
@@ -61,7 +70,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(requestQueryParams.period !== '9'
       ? {
           created_at__after: dayjs()
-            .subtract(TIME_PERIOD_MAPPING[requestQueryParams.period]!.value, 'day')
+            .subtract(requestTimePeriod.value, 'day')
             .startOf('day')
             .tz(timezone)
             .format('YYYY-MM-DDTHH:mm:ssZ'),

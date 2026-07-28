@@ -15,7 +15,11 @@ import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PageTitle from '../log-annotation/page-title'
-import { resolveLogTimePeriod, useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
+import {
+  resolveLogTimePeriod,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from './cloud-sandbox-retention'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -71,6 +75,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+  const requestTimePeriod = resolveLogTimePeriodOption(
+    requestQueryParams.period,
+    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
+    cloudSandboxPlanState,
+  )
 
   useEffect(() => {
     const pageFromParams = getPageFromParams()
@@ -94,7 +103,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(requestQueryParams.period !== '9'
       ? {
           start: dayjs()
-            .subtract(TIME_PERIOD_MAPPING[requestQueryParams.period]!.value, 'day')
+            .subtract(requestTimePeriod.value, 'day')
             .startOf('day')
             .format('YYYY-MM-DD HH:mm'),
           end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),

@@ -15,6 +15,7 @@ import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
   isLogTimePeriodRestricted,
+  resolveLogTimePeriodOption,
   useCloudSandboxPlanStatus,
 } from './cloud-sandbox-retention'
 
@@ -53,9 +54,9 @@ const Filter: FC<IFilterProps> = ({
   const { t } = useTranslation()
   const planState = useCloudSandboxPlanStatus()
   const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
-  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING).filter(
-    ([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
-  )
+  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
+    .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
+    .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
   if (isLoading || !data) return null
   return (
