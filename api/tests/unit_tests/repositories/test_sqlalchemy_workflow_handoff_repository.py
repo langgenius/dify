@@ -715,6 +715,7 @@ def test_cancel_does_not_change_run_after_latest_handoff_is_resumed(
 @pytest.mark.parametrize(
     ("scope_tenant_id", "scope_app_id"),
     [(TENANT_ID, None), (None, APP_ID)],
+    ids=("tenant-only", "app-only"),
 )
 def test_task_cancellation_rejects_partial_owner_scope(
     repository: SQLAlchemyWorkflowRunHandoffRepository,
