@@ -1186,11 +1186,11 @@ export const segments = {
  * Returns:
  * - total_segments: Total number of segments in the document
  * - summary_status: Dictionary with status counts
- * - completed: Number of summaries completed
- * - generating: Number of summaries being generated
- * - error: Number of summaries with errors
- * - not_started: Number of segments without summary records
- * - timeout: Number of summaries that timed out
+ *   - completed: Number of summaries completed
+ *   - generating: Number of summaries being generated
+ *   - error: Number of summaries with errors
+ *   - not_started: Number of segments without summary records
+ *   - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
  */
 export const get22 = oc

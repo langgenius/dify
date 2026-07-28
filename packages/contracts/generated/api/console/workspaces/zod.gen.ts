@@ -246,7 +246,8 @@ export const zWorkspacePermissionResponse = z.object({
  * BinaryFileResponse
  */
 export const zBinaryFileResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
+  (value) =>
+    Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
 )
 
 /**
@@ -873,21 +874,9 @@ export const zMemberInviteFailedResponse = z.object({
 export const zMemberInviteResponse = z.object({
   invitation_results: z.array(
     z.union([
-      z
-        .object({
-          status: z.literal('success'),
-        })
-        .and(zMemberInviteSuccessResponse),
-      z
-        .object({
-          status: z.literal('already_member'),
-        })
-        .and(zMemberInviteAlreadyMemberResponse),
-      z
-        .object({
-          status: z.literal('failed'),
-        })
-        .and(zMemberInviteFailedResponse),
+      zMemberInviteSuccessResponse,
+      zMemberInviteAlreadyMemberResponse,
+      zMemberInviteFailedResponse,
     ]),
   ),
   result: z.literal('success'),
@@ -3093,7 +3082,7 @@ export const zToolParameter = z.object({
  * ApiToolBundle
  *
  * This class is used to store the schema information of an api based tool.
- * such as the url, the method, the parameters, etc.
+ *  such as the url, the method, the parameters, etc.
  */
 export const zApiToolBundle = z.object({
   author: z.string(),
@@ -4227,7 +4216,10 @@ export const zPostWorkspacesCurrentPluginUploadGithubBody = zParserGithubUpload
 export const zPostWorkspacesCurrentPluginUploadGithubResponse = zPluginDecodeResponse
 
 export const zPostWorkspacesCurrentPluginUploadPkgBody = z.object({
-  pkg: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  pkg: z.custom<Blob | File>(
+    (value) =>
+      Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
+  ),
 })
 
 /**
@@ -5255,7 +5247,10 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  file: z.custom<Blob | File>(
+    (value) =>
+      Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
+  ),
 })
 
 /**

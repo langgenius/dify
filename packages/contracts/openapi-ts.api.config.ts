@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig } from '@hey-api/openapi-ts'
-import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
 
@@ -40,16 +39,8 @@ type ApiSpec = {
 }
 
 type ApiJob = {
-  clean?: boolean
   document: SwaggerDocument
   outputPath: string
-  plugins?: UserConfig['plugins']
-  source?: {
-    callback: () => void
-    enabled: true
-    path: null
-    serialize: () => string
-  }
 }
 
 type ApiContractOperation = {
@@ -414,24 +405,6 @@ const writeConsoleRouterContract = (segments: string[]) => {
   fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
 }
 
-const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
-  return {
-    clean: false,
-    document,
-    outputPath: 'generated/api/console',
-    plugins: [],
-    source: {
-      callback: () => {
-        writeConsoleContractEntry(segments)
-        writeConsoleRouterContract(segments)
-      },
-      enabled: true,
-      path: null,
-      serialize: () => '',
-    },
-  }
-}
-
 const splitConsoleDocument = (document: SwaggerDocument) => {
   const pathsBySegment = new Map<string, Record<string, Record<string, unknown>>>()
 
@@ -450,7 +423,12 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
     }),
   )
 
-  return [...jobs, createConsoleContractEntryJob(document, segments)]
+  // An empty plugin list falls back to the generator defaults, so write the root entries
+  // directly instead of creating a no-op job that would also emit a client and SDK.
+  writeConsoleContractEntry(segments)
+  writeConsoleRouterContract(segments)
+
+  return jobs
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
@@ -478,15 +456,13 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
-    ...(job.clean === undefined ? {} : { clean: job.clean }),
     entryFile: false,
     fileName: {
       suffix: '.gen',
     },
     path: job.outputPath,
-    ...(job.source ? { source: job.source } : {}),
   },
-  plugins: job.plugins ?? [
+  plugins: [
     {
       comments: false,
       name: '@hey-api/typescript',
@@ -501,8 +477,10 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
               .call(
                 $.func((predicate) => {
                   const value = $.id('value')
-                  const isBlob = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('Blob'))
-                  const isFile = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('File'))
+                  const objectValue = $('Object').call(value)
+                  // `instanceof` is not exposed by the generator's AST DSL.
+                  const isBlob = $('Blob').attr('prototype').attr('isPrototypeOf').call(objectValue)
+                  const isFile = $('File').attr('prototype').attr('isPrototypeOf').call(objectValue)
                   predicate.param('value')
                   predicate.do($.return($.binary(isBlob, '||', isFile)))
                 }),

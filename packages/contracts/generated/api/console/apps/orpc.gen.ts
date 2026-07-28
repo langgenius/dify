@@ -567,7 +567,7 @@ export const get2 = oc
     summary: 'Return the lightweight app cards needed by the Explore home page',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsRecentQuery.optional() }))
+  .input(z.object({ query: zGetAppsRecentQuery.optional() }).optional())
   .output(zGetAppsRecentResponse)
 
 export const recent = {

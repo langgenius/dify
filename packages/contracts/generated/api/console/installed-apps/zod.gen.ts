@@ -145,7 +145,8 @@ export const zTextToAudioPayload = z.object({
  * AudioBinaryResponse
  */
 export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
+  (value) =>
+    Blob.prototype.isPrototypeOf(Object(value)) || File.prototype.isPrototypeOf(Object(value)),
 )
 
 /**
