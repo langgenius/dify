@@ -99,6 +99,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   onCompletionParamsChange,
   onConfirmUseGPT4,
   onEnableMultipleModelDebug,
+  onFeatureStoreChange,
   onFeaturesChange,
   onHideDebugPanel,
   onModelChange,
@@ -128,7 +129,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 
   return (
     <ConfigContext.Provider value={contextValue}>
-      <FeaturesProvider features={featuresData}>
+      <FeaturesProvider features={featuresData} onFeaturesChange={onFeatureStoreChange}>
         <MittProvider>
           <div className="flex h-full flex-col">
             <div className="relative flex h-[200px] grow pt-14">

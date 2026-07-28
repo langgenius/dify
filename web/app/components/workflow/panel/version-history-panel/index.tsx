@@ -16,11 +16,13 @@ import { useProviderContext } from '@/context/provider-context'
 import {
   useDeleteWorkflow,
   useInvalidAllLastRun,
+  useInvalidateAppWorkflow,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
   useUpdateWorkflow,
   useWorkflowVersionHistory,
 } from '@/service/use-workflow'
+import { FlowType } from '@/types/common'
 import { useHooksStore } from '../../hooks-store'
 import { useDSL } from '../../hooks/use-DSL'
 import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
@@ -76,6 +78,7 @@ export const VersionHistoryPanel = ({
   const configsMap = useHooksStore((s) => s.configsMap)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation()
 
@@ -314,7 +317,12 @@ export const VersionHistoryPanel = ({
           onSuccess: () => {
             setEditModalOpen(false)
             toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
-            resetWorkflowVersionHistory()
+            if (
+              id === latestVersionId &&
+              configsMap?.flowType === FlowType.appFlow &&
+              configsMap.flowId
+            )
+              invalidateAppWorkflow(configsMap.flowId)
           },
           onError: () => {
             toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
@@ -325,7 +333,15 @@ export const VersionHistoryPanel = ({
         },
       )
     },
-    [t, updateWorkflow, resetWorkflowVersionHistory, updateVersionUrl],
+    [
+      configsMap?.flowId,
+      configsMap?.flowType,
+      invalidateAppWorkflow,
+      latestVersionId,
+      t,
+      updateWorkflow,
+      updateVersionUrl,
+    ],
   )
 
   return (

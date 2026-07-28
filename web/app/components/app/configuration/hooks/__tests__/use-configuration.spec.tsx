@@ -1,5 +1,6 @@
 /* oxlint-disable typescript/no-explicit-any */
 import { act, waitFor } from '@testing-library/react'
+import { APP_PUBLISH_DRAFT_CHANGED } from '@/app/components/app/app-publisher/events'
 import { updateAppModelConfig } from '@/service/apps'
 import { renderHook } from '@/test/console/render'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -20,7 +21,14 @@ const mockSetConversationHistoriesRole = vi.fn()
 const mockSetChatPromptConfig = vi.fn()
 const mockSetCompletionPromptConfig = vi.fn()
 const mockSetCurrentAdvancedPrompt = vi.fn()
+type MockEvent = {
+  type: string
+  instanceId?: string
+}
+let mockEventSubscription: ((event: MockEvent) => void) | undefined
+const mockEventEmit = vi.fn((event: MockEvent) => mockEventSubscription?.(event))
 type AdvancedPromptConfigOptions = {
+  onPublishConfigChange?: () => void
   onUserChangedPrompt: () => void
   setStop: (stop: string[]) => void
 }
@@ -82,6 +90,17 @@ vi.mock('@/context/modal-context', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     isAPIKeySet: true,
+  }),
+}))
+
+vi.mock('@/context/event-emitter', () => ({
+  useEventEmitterContextContext: () => ({
+    eventEmitter: {
+      emit: mockEventEmit,
+      useSubscription: (callback: (event: MockEvent) => void) => {
+        mockEventSubscription = callback
+      },
+    },
   }),
 }))
 
@@ -195,6 +214,7 @@ vi.mock('@/utils/completion-params', () => ({
 describe('useConfiguration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockEventSubscription = undefined
     latestAdvancedPromptConfigOptions = undefined
     mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
@@ -302,6 +322,236 @@ describe('useConfiguration', () => {
         url: '/apps/app-1/model-config',
       }),
     )
+  })
+
+  it('should track configuration events and clear them after publishing', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(true)
+    expect(mockEventEmit).toHaveBeenCalledWith({
+      type: APP_PUBLISH_DRAFT_CHANGED,
+      instanceId: 'app-1',
+    })
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+    expect(result.current.appPublisherProps.publishedConfig.datasetConfigs.top_k).toBe(8)
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 10,
+      })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(true)
+
+    mockEventEmit.mockClear()
+    mockSetChatPromptConfig.mockClear()
+    mockSetCompletionPromptConfig.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+    expect(result.current.contextValue.datasetConfigs.top_k).toBe(8)
+    expect(mockSetChatPromptConfig).toHaveBeenCalledWith({
+      prompt: [{ role: 'system', text: 'hi' }],
+    })
+    expect(mockSetCompletionPromptConfig).toHaveBeenCalledWith({
+      prompt: { text: 'completion' },
+      conversation_histories_role: {
+        assistant_prefix: 'assistant',
+        user_prefix: 'user',
+      },
+    })
+    expect(mockEventEmit).not.toHaveBeenCalled()
+  })
+
+  it('should ignore debug formatting events and track feature-store changes', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      mockEventSubscription?.({ type: 'ORCHESTRATE_CHANGED' })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+
+    act(() => {
+      result.current.onFeatureStoreChange()
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+
+    act(() => {
+      result.current.onFeatureStoreChange({ moreLikeThis: { enabled: true } })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(true)
+  })
+
+  it('should enable multiple-model mode without marking publish config dirty', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+    mockEventEmit.mockClear()
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(
+      true,
+      expect.arrayContaining([
+        expect.objectContaining({
+          model: 'gpt-4o',
+          provider: 'langgenius/openai/openai',
+        }),
+      ]),
+    )
+    expect(mockEventEmit).not.toHaveBeenCalled()
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+  })
+
+  it('should update multiple-model debug configs without marking publish config dirty', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+    mockEventEmit.mockClear()
+
+    const modelConfigs = [
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+      {
+        id: 'model-2',
+        model: 'gpt-4.1',
+        provider: 'langgenius/openai/openai',
+        parameters: {},
+      },
+      {
+        id: 'model-3',
+        model: '',
+        provider: '',
+        parameters: {},
+      },
+    ]
+
+    act(() => {
+      result.current.onMultipleModelConfigsChange(true, modelConfigs)
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalledWith(true, modelConfigs)
+    expect(mockEventEmit).not.toHaveBeenCalled()
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+  })
+
+  it('should keep multiple-model debug state when restoring published config', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.onEnableMultipleModelDebug()
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(true)
+
+    mockEventEmit.mockClear()
+    mockHandleMultipleModelConfigsChange.mockClear()
+    act(() => {
+      result.current.appPublisherProps.resetAppConfig?.()
+    })
+
+    expect(mockHandleMultipleModelConfigsChange).not.toHaveBeenCalled()
+    expect(mockEventEmit).not.toHaveBeenCalled()
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+  })
+
+  it('should silently sync the selected multiple-model config after publishing', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.contextValue.setDatasetConfigs({
+        ...result.current.contextValue.datasetConfigs,
+        top_k: 8,
+      })
+    })
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(true)
+
+    mockEventEmit.mockClear()
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(
+        {
+          id: 'model-2',
+          model: 'gpt-4.1',
+          provider: 'langgenius/openai/openai',
+          parameters: { temperature: 0.2 },
+        },
+        result.current.featuresData,
+      )
+    })
+
+    expect(result.current.contextValue.modelConfig.model_id).toBe('gpt-4.1')
+    expect(result.current.contextValue.modelConfig.provider).toBe('langgenius/openai/openai')
+    expect(result.current.contextValue.completionParams).toEqual({ temperature: 0.2 })
+    expect(result.current.appPublisherProps.publishedConfig.modelConfig.model_id).toBe('gpt-4.1')
+    expect(result.current.appPublisherProps.hasUnpublishedChanges).toBe(false)
+    expect(mockEventEmit).not.toHaveBeenCalled()
+  })
+
+  it('should refresh the latest published time after publishing a non-workflow app', async () => {
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    const previousPublishedAt = result.current.appPublisherProps.publishedAt ?? 0
+    expect(previousPublishedAt).toBe(1710000000000)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(result.current.appPublisherProps.publishedAt).toBeGreaterThan(previousPublishedAt)
   })
 
   it('should block publishing when app release permission is missing', async () => {

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import type { PublishWorkflowParams, VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -30,9 +30,12 @@ type SummarySectionProps = Pick<
   formatTimeFromNow: (value: number) => string
   handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
   handleRestore: () => Promise<void>
+  hasUnpublishedChanges?: boolean
   isChatApp: boolean
-  published: boolean
+  isWorkflowApp?: boolean
+  onEditVersion?: () => void
   upgradeHighlightStyle: CSSProperties
+  versionInfo?: VersionHistory | null
 }
 
 type AccessSectionProps = {
@@ -90,97 +93,227 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
   )
 }
 
+const PublisherTimelineMarker = ({ position }: { position: 'top' | 'bottom' }) => (
+  <span
+    className={cn(
+      'relative flex w-4 shrink-0 items-start p-1',
+      position === 'top' ? 'self-stretch' : 'h-4',
+    )}
+  >
+    <span
+      aria-hidden
+      className="relative z-1 size-2 rounded-full border-2 border-text-quaternary bg-components-panel-bg"
+    />
+    <span
+      aria-hidden
+      className={cn(
+        'absolute left-1/2 w-0.5 -translate-x-1/2 bg-divider-subtle',
+        position === 'top' ? 'top-3.5 -bottom-3.5' : '-top-3.5 h-4',
+      )}
+    />
+  </span>
+)
+
 export const PublisherSummarySection = ({
   debugWithMultipleModel = false,
   draftUpdatedAt,
   formatTimeFromNow,
   handlePublish,
   handleRestore,
+  hasUnpublishedChanges,
   isChatApp,
+  isWorkflowApp = false,
   multipleModelConfigs = [],
+  onEditVersion,
   publishDisabled = false,
-  published,
   publishedAt,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
+  versionInfo,
 }: SummarySectionProps) => {
   const { t } = useTranslation()
+  const hasPublishedVersion = Boolean(publishedAt)
+  const resolvedHasUnpublishedChanges = hasUnpublishedChanges ?? !hasPublishedVersion
+  const publishedTimestamp =
+    publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
+  const publisherName = versionInfo?.created_by.name
+  const markedName = versionInfo?.marked_name
+  const markedComment = versionInfo?.marked_comment
+  const publishButtonDisabled =
+    publishDisabled || (hasPublishedVersion && !resolvedHasUnpublishedChanges)
+  const publishButtonLabel = !hasPublishedVersion
+    ? t(($) => $['common.publish'], { ns: 'workflow' })
+    : resolvedHasUnpublishedChanges
+      ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
+      : t(($) => $['common.published'], { ns: 'workflow' })
 
   return (
-    <div className="p-4 pt-3">
-      <div className="flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
-        {publishedAt
-          ? t(($) => $['common.latestPublished'], { ns: 'workflow' })
-          : t(($) => $['common.currentDraftUnpublished'], { ns: 'workflow' })}
-      </div>
-      {publishedAt ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center system-sm-medium text-text-secondary">
-            {t(($) => $['common.publishedAt'], { ns: 'workflow' })} {formatTimeFromNow(publishedAt)}
+    <div className="flex flex-col gap-3 p-4">
+      <div className="flex items-start gap-1 px-1 py-0.5">
+        <PublisherTimelineMarker position="top" />
+        {!hasPublishedVersion ? (
+          <p className="min-w-0 flex-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['common.notPublishedYet'], { ns: 'workflow' })}
+          </p>
+        ) : isWorkflowApp ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex min-h-4 min-w-0 items-center gap-1">
+              <span className="truncate system-sm-semibold text-text-secondary">
+                {markedName || versionInfo?.version}
+              </span>
+              <span aria-hidden className="system-xs-regular text-text-tertiary">
+                ·
+              </span>
+              {markedName ? (
+                <button
+                  type="button"
+                  className="flex size-4 shrink-0 items-center justify-center rounded text-text-tertiary outline-hidden hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  aria-label={t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflow' })}
+                  disabled={!versionInfo || !onEditVersion}
+                  onClick={onEditVersion}
+                >
+                  <span aria-hidden className="i-ri-edit-line size-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="flex min-w-0 items-center gap-1 rounded text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-wait"
+                  disabled={!versionInfo || !onEditVersion}
+                  onClick={onEditVersion}
+                >
+                  <span aria-hidden className="i-ri-edit-line size-3.5 shrink-0" />
+                  <span className="truncate system-xs-medium">
+                    {t(($) => $['versionHistory.nameIt'], { ns: 'workflow' })}
+                  </span>
+                </button>
+              )}
+            </div>
+            {markedComment && (
+              <>
+                <p className="line-clamp-3 system-xs-regular wrap-break-word text-text-tertiary">
+                  {markedComment}
+                </p>
+                <span aria-hidden className="my-1 h-px w-4 bg-divider-regular" />
+              </>
+            )}
+            {publishedTimestamp && (
+              <p className="system-xs-regular text-text-tertiary">
+                {publisherName
+                  ? t(($) => $['common.publishedBy'], {
+                      ns: 'workflow',
+                      time: formatTimeFromNow(publishedTimestamp),
+                      author: publisherName,
+                    })
+                  : `${t(($) => $['common.publishedAt'], { ns: 'workflow' })} ${formatTimeFromNow(publishedTimestamp)}`}
+              </p>
+            )}
           </div>
-          {isChatApp && (
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-col">
+              <p className="truncate system-sm-semibold text-text-secondary">
+                {t(($) => $['common.latestPublished'], { ns: 'workflow' })}
+              </p>
+              {publishedTimestamp && (
+                <p className="truncate system-xs-regular text-text-tertiary">
+                  {publisherName
+                    ? t(($) => $['common.publishedBy'], {
+                        ns: 'workflow',
+                        time: formatTimeFromNow(publishedTimestamp),
+                        author: publisherName,
+                      })
+                    : `${t(($) => $['common.publishedAt'], { ns: 'workflow' })} ${formatTimeFromNow(publishedTimestamp)}`}
+                </p>
+              )}
+            </div>
+            {isChatApp && (
+              <Button
+                variant="secondary"
+                size="small"
+                className="h-6 shrink-0 gap-1"
+                onClick={handleRestore}
+                disabled={!resolvedHasUnpublishedChanges}
+              >
+                <span aria-hidden className="i-ri-reset-left-line size-3.5" />
+                {t(($) => $['common.restore'], { ns: 'workflow' })}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex w-full flex-col items-stretch">
+        {debugWithMultipleModel ? (
+          <PublishWithMultipleModel
+            disabled={publishDisabled}
+            multipleModelConfigs={multipleModelConfigs}
+            onSelect={(item) => handlePublish(item)}
+          />
+        ) : (
+          <>
             <Button
-              variant="secondary-accent"
-              size="small"
-              onClick={handleRestore}
-              disabled={published}
+              variant="primary"
+              className="w-full"
+              onClick={() => handlePublish()}
+              disabled={publishButtonDisabled}
             >
-              {t(($) => $['common.restore'], { ns: 'workflow' })}
+              {publishButtonDisabled ? (
+                publishButtonLabel
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span>{publishButtonLabel}</span>
+                  <KbdGroup aria-hidden>
+                    {APP_PUBLISH_HOTKEY.split('+').map((key) => (
+                      <Kbd key={key} color="white">
+                        {formatForDisplay(key)}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
+                </span>
+              )}
             </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex items-center system-sm-medium text-text-secondary">
-          {t(($) => $['common.autoSaved'], { ns: 'workflow' })} ·
-          {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
-        </div>
-      )}
-      {debugWithMultipleModel ? (
-        <PublishWithMultipleModel
-          multipleModelConfigs={multipleModelConfigs}
-          onSelect={(item) => handlePublish(item)}
-        />
-      ) : (
-        <>
-          <Button
-            variant="primary"
-            className="mt-3 w-full"
-            onClick={() => handlePublish()}
-            disabled={publishDisabled || published}
-          >
-            {published ? (
-              t(($) => $['common.published'], { ns: 'workflow' })
-            ) : (
-              <div className="flex gap-1">
-                <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
-                <KbdGroup>
-                  {APP_PUBLISH_HOTKEY.split('+').map((key) => (
-                    <Kbd key={key} color="white">
-                      {formatForDisplay(key)}
-                    </Kbd>
-                  ))}
-                </KbdGroup>
+            {startNodeLimitExceeded && (
+              <div className="flex flex-col items-stretch">
+                <p
+                  className="text-sm/5 font-semibold text-transparent"
+                  style={upgradeHighlightStyle}
+                >
+                  <span className="block">
+                    {t(($) => $['publishLimit.startNodeTitlePrefix'], { ns: 'workflow' })}
+                  </span>
+                  <span className="block">
+                    {t(($) => $['publishLimit.startNodeTitleSuffix'], { ns: 'workflow' })}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs/4 text-text-secondary">
+                  {t(($) => $['publishLimit.startNodeDesc'], { ns: 'workflow' })}
+                </p>
+                <UpgradeBtn isShort className="mt-2.25 mb-3 h-8 w-23.25 self-start" />
               </div>
             )}
-          </Button>
-          {startNodeLimitExceeded && (
-            <div className="mt-3 flex flex-col items-stretch">
-              <p className="text-sm/5 font-semibold text-transparent" style={upgradeHighlightStyle}>
-                <span className="block">
-                  {t(($) => $['publishLimit.startNodeTitlePrefix'], { ns: 'workflow' })}
-                </span>
-                <span className="block">
-                  {t(($) => $['publishLimit.startNodeTitleSuffix'], { ns: 'workflow' })}
-                </span>
-              </p>
-              <p className="mt-1 text-xs/4 text-text-secondary">
-                {t(($) => $['publishLimit.startNodeDesc'], { ns: 'workflow' })}
-              </p>
-              <UpgradeBtn isShort className="mt-2.25 mb-3 h-8 w-23.25 self-start" />
-            </div>
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
+        <PublisherTimelineMarker position="bottom" />
+        <p className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
+          {resolvedHasUnpublishedChanges ? (
+            <>
+              {t(($) => $['common.unpublishedChanges'], { ns: 'workflow' })}
+              {isWorkflowApp && Boolean(draftUpdatedAt) && (
+                <>
+                  {' · '}
+                  {t(($) => $['common.savedAt'], {
+                    ns: 'workflow',
+                    time: formatTimeFromNow(draftUpdatedAt!),
+                  })}
+                </>
+              )}
+            </>
+          ) : (
+            t(($) => $['common.noChanges'], { ns: 'workflow' })
           )}
-        </>
-      )}
+        </p>
+      </div>
     </div>
   )
 }
@@ -351,7 +484,7 @@ export const PublisherActionsSection = ({
     workflowToolMessage ?? (workflowToolOutdated ? workflowToolDescription : undefined)
 
   return (
-    <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-2">
+    <div className="flex flex-col border-t-[0.5px] border-t-divider-regular p-3">
       {showOpenWebApp && (
         <ActionTooltip disabled={disabledFunctionButton} tooltip={disabledFunctionTooltip}>
           <SuggestedAction

@@ -37,8 +37,12 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
-import { useInvalidateAppWorkflow } from '@/service/use-workflow'
-import { fetchPublishedWorkflow } from '@/service/workflow'
+import {
+  appWorkflowQueryOptions,
+  useAppWorkflow,
+  useInvalidateAppWorkflow,
+  useUpdateWorkflow,
+} from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import AccessControl from '../app-access-control'
 import { APP_PUBLISH_HOTKEY } from './hotkeys'
@@ -53,6 +57,7 @@ import {
   getPublisherAppUrl,
   isPublisherAccessConfigured,
 } from './utils'
+import VersionInfoModal from './version-info-modal'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -60,6 +65,10 @@ export type AppPublisherProps = {
   publishedAt?: number
   /** only needed in workflow / chatflow mode */
   draftUpdatedAt?: number
+  /** Current persisted workflow draft hash, used to compare with the published workflow. */
+  draftHash?: string
+  /** Non-workflow editors should pass their local dirty state. */
+  hasUnpublishedChanges?: boolean
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
@@ -91,6 +100,8 @@ export function AppPublisher({
   publishDisabled = false,
   publishedAt,
   draftUpdatedAt,
+  draftHash,
+  hasUnpublishedChanges,
   debugWithMultipleModel = false,
   multipleModelConfigs = [],
   onPublish,
@@ -109,7 +120,6 @@ export function AppPublisher({
 }: AppPublisherProps) {
   const { t } = useTranslation()
 
-  const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
@@ -119,6 +129,7 @@ export function AppPublisher({
     Record<string, WorkflowLaunchInputValue>
   >({})
   const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
+  const [editVersionInfoOpen, setEditVersionInfoOpen] = useState(false)
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore((state) => state.appDetail)
@@ -131,9 +142,22 @@ export function AppPublisher({
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
-  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(
-    appDetail?.mode || AppModeEnum.CHAT,
+  const appMode = appDetail?.mode
+  const isWorkflowApp = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
+  const isChatApp =
+    appMode === AppModeEnum.CHAT ||
+    appMode === AppModeEnum.AGENT_CHAT ||
+    appMode === AppModeEnum.COMPLETION
+  const { data: publishedWorkflow, isSuccess: isPublishedWorkflowSuccess } = useAppWorkflow(
+    isWorkflowApp ? (appDetail?.id ?? '') : '',
   )
+  const currentPublishedAt =
+    isWorkflowApp && isPublishedWorkflowSuccess
+      ? publishedWorkflow?.created_at
+        ? publishedWorkflow.created_at * 1000
+        : undefined
+      : publishedAt
+  const { mutate: updateWorkflow } = useUpdateWorkflow()
   const hiddenLaunchVariables: WorkflowHiddenStartVariable[] = (inputs ?? []).filter(
     (input) => input.hide === true,
   )
@@ -171,10 +195,10 @@ export function AppPublisher({
     appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
     !userCanAccessApp?.result,
   )
-  const disabledFunctionButton = !publishedAt || missingStartNode || noAccessPermission
+  const disabledFunctionButton = !currentPublishedAt || missingStartNode || noAccessPermission
   const disabledFunctionTooltip = getDisabledFunctionTooltip({
     t,
-    publishedAt,
+    publishedAt: currentPublishedAt,
     missingStartNode,
     noAccessPermission,
   })
@@ -182,7 +206,6 @@ export function AppPublisher({
   async function handlePublish(params?: ModelAndParameter | PublishWorkflowParams) {
     try {
       await onPublish?.(params)
-      setPublished(true)
 
       const appId = appDetail?.id
       const socket = appId ? webSocketClient.getSocket(appId) : null
@@ -209,7 +232,6 @@ export function AppPublisher({
       })
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
-      setPublished(false)
     }
   }
 
@@ -228,8 +250,6 @@ export function AppPublisher({
 
     onToggle?.(nextOpen)
     setOpen(nextOpen)
-
-    if (nextOpen) setPublished(false)
   }
 
   async function handleAccessControlUpdate() {
@@ -282,9 +302,50 @@ export function AppPublisher({
     }
   }
 
+  const hasPublishedVersion = Boolean(currentPublishedAt)
+  const workflowHasUnpublishedChanges =
+    !currentPublishedAt ||
+    !draftHash ||
+    !publishedWorkflow?.hash ||
+    draftHash !== publishedWorkflow.hash
+  const resolvedHasUnpublishedChanges =
+    hasUnpublishedChanges ?? (isWorkflowApp ? workflowHasUnpublishedChanges : !currentPublishedAt)
+
+  function handleOpenVersionInfo() {
+    if (!publishedWorkflow) return
+
+    handleOpenChange(false)
+    setEditVersionInfoOpen(true)
+  }
+
+  function handleUpdateVersionInfo(params: { id?: string; title: string; releaseNotes: string }) {
+    if (!appDetail?.id || !params.id) return
+
+    updateWorkflow(
+      {
+        url: `/apps/${appDetail.id}/workflows/${params.id}`,
+        title: params.title,
+        releaseNotes: params.releaseNotes,
+      },
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
+          invalidateAppWorkflow(appDetail.id)
+        },
+        onError: () => {
+          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
+        },
+        onSettled: () => {
+          setEditVersionInfoOpen(false)
+        },
+      },
+    )
+  }
+
   useHotkey(APP_PUBLISH_HOTKEY, (e) => {
+    if (debugWithMultipleModel) return
     e.preventDefault()
-    if (publishDisabled || published) return
+    if (publishDisabled || (hasPublishedVersion && !resolvedHasUnpublishedChanges)) return
     handlePublish()
   })
 
@@ -295,11 +356,10 @@ export function AppPublisher({
     const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
       if (action === 'published') {
-        invalidateAppWorkflow(appId)
-        fetchPublishedWorkflow(`/apps/${appId}/workflows/publish`)
+        void queryClient
+          .fetchQuery(appWorkflowQueryOptions(appId))
           .then((publishedWorkflow) => {
-            if (publishedWorkflow?.created_at)
-              workflowStore?.getState().setPublishedAt(publishedWorkflow.created_at)
+            workflowStore?.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
           })
           .catch((error) => {
             console.warn('[app-publisher] refresh published workflow failed', error)
@@ -308,9 +368,8 @@ export function AppPublisher({
     })
 
     return unsubscribe
-  }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
+  }, [appDetail?.id, queryClient, workflowStore])
 
-  const hasPublishedVersion = !!publishedAt
   const workflowToolVisible =
     appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const workflowToolAvailableForUser = workflowToolAvailable && canManageTools
@@ -331,7 +390,7 @@ export function AppPublisher({
   const workflowTool = useConfigureButton({
     enabled: workflowToolVisible && canManageTools,
     published: workflowToolPublished,
-    detailNeedUpdate: workflowToolPublished && published,
+    detailNeedUpdate: workflowToolPublished && !resolvedHasUnpublishedChanges,
     workflowAppId: appDetail?.id ?? '',
     icon: workflowToolIcon,
     name: appDetail?.name ?? '',
@@ -373,20 +432,23 @@ export function AppPublisher({
           alignOffset={crossAxisOffset}
           popupClassName="border-none bg-transparent shadow-none"
         >
-          <div className="w-86 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+          <div className="w-98 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <PublisherSummarySection
               debugWithMultipleModel={debugWithMultipleModel}
               draftUpdatedAt={draftUpdatedAt}
               formatTimeFromNow={formatTimeFromNow}
               handlePublish={handlePublish}
               handleRestore={handleRestore}
+              hasUnpublishedChanges={resolvedHasUnpublishedChanges}
               isChatApp={isChatApp}
+              isWorkflowApp={isWorkflowApp}
               multipleModelConfigs={multipleModelConfigs}
+              onEditVersion={handleOpenVersionInfo}
               publishDisabled={publishDisabled}
-              published={published}
-              publishedAt={publishedAt}
+              publishedAt={currentPublishedAt}
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
+              versionInfo={publishedWorkflow}
             />
             <PublisherAccessSection
               enabled={systemFeatures.webapp_auth.enabled}
@@ -409,7 +471,7 @@ export function AppPublisher({
               handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
-              publishedAt={publishedAt}
+              publishedAt={currentPublishedAt}
               showDeployAction={
                 appDetail?.mode === AppModeEnum.WORKFLOW &&
                 isCurrentWorkspaceEditor &&
@@ -424,10 +486,10 @@ export function AppPublisher({
               onConfigureWorkflowTool={openWorkflowToolDrawer}
             />
             {systemFeatures.enable_creators_platform && (
-              <div className="border-t border-divider-subtle p-2">
+              <div className="border-t border-divider-subtle p-3">
                 <SuggestedAction
                   icon={<span className="i-ri-store-2-line size-4" />}
-                  disabled={!publishedAt || publishingToMarketplace}
+                  disabled={!currentPublishedAt || publishingToMarketplace}
                   description={t(($) => $['common.publishToMarketplaceDescription'], {
                     ns: 'workflow',
                   })}
@@ -461,6 +523,14 @@ export function AppPublisher({
           onSubmit={handleWorkflowLaunchConfirm}
         />
       </Popover>
+      {editVersionInfoOpen && (
+        <VersionInfoModal
+          isOpen={editVersionInfoOpen}
+          versionInfo={publishedWorkflow ?? undefined}
+          onClose={() => setEditVersionInfoOpen(false)}
+          onPublish={handleUpdateVersionInfo}
+        />
+      )}
       {workflowToolDrawerOpen && canManageTools && (
         <WorkflowToolDrawer
           isAdd={!workflowToolPublished}

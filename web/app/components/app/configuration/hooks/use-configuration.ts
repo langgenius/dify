@@ -1,5 +1,6 @@
 'use client'
 import type { ComponentProps } from 'react'
+import type { ConfigurationPublishConfig } from './use-configuration-utils'
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
@@ -32,6 +33,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import { APP_PUBLISH_DRAFT_CHANGED } from '@/app/components/app/app-publisher/events'
 import {
   useDebugWithSingleOrMultipleModel,
   useFormattingChangedDispatcher,
@@ -57,6 +59,7 @@ import {
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
 import { userProfileIdAtom } from '@/context/account-state'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
@@ -76,11 +79,6 @@ import {
   createPublishHandler,
   loadConfigurationState,
 } from './use-configuration-utils'
-
-type PublishConfig = {
-  modelConfig: ModelConfig
-  completionParams: FormValue
-}
 
 type DebugConfigurationValue = ComponentProps<typeof ConfigContext.Provider>['value']
 
@@ -104,6 +102,7 @@ export type ConfigurationViewModel = {
   onCompletionParamsChange: (params: FormValue) => void
   onConfirmUseGPT4: () => void
   onEnableMultipleModelDebug: () => void
+  onFeatureStoreChange: OnFeaturesChange
   onFeaturesChange: OnFeaturesChange
   onHideDebugPanel: () => void
   onModelChange: ComponentProps<typeof ModelParameterModal>['setModel']
@@ -141,7 +140,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const setDetailSidebarMode = useSetDetailSidebarMode()
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
+  const serverLatestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const appACLCapabilities = useMemo(
     () =>
       getAppACLCapabilities(appDetail?.permission_keys, {
@@ -157,36 +156,117 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.[1] || ''
+  const [publishedAtOverride, setPublishedAtOverride] = useState({
+    appId,
+    value: 0,
+  })
+  const latestPublishedAt =
+    publishedAtOverride.appId === appId
+      ? Math.max(serverLatestPublishedAt || 0, publishedAtOverride.value)
+      : serverLatestPublishedAt
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
-  const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
+  const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
+  const [unpublishedChangesState, setUnpublishedChangesState] = useState({
+    appId,
+    value: false,
+  })
+  const hasUnpublishedChanges =
+    unpublishedChangesState.appId === appId && unpublishedChangesState.value
   const [conversationId, setConversationId] = useState<string | null>('')
+  const { eventEmitter } = useEventEmitterContextContext()
+  const publishChangeTrackingAppIdRef = useRef('')
+  const dispatchPublishDraftChanged = useCallback(() => {
+    if (publishChangeTrackingAppIdRef.current !== appId) return
+    eventEmitter?.emit({
+      type: APP_PUBLISH_DRAFT_CHANGED,
+      instanceId: appId,
+    })
+  }, [appId, eventEmitter])
+
+  eventEmitter?.useSubscription((event) => {
+    if (
+      typeof event !== 'string' &&
+      event.type === APP_PUBLISH_DRAFT_CHANGED &&
+      event.instanceId === appId
+    )
+      setUnpublishedChangesState({ appId, value: true })
+  })
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] =
     useBoolean(false)
 
-  const [introduction, setIntroduction] = useState('')
-  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  const [introduction, doSetIntroduction] = useState('')
+  const setIntroduction = useCallback(
+    (value: string) => {
+      doSetIntroduction(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [suggestedQuestions, doSetSuggestedQuestions] = useState<string[]>([])
+  const setSuggestedQuestions = useCallback(
+    (value: string[]) => {
+      doSetSuggestedQuestions(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
   const [prevPromptConfig, setPrevPromptConfig] = useState<PromptConfig>({
     prompt_template: '',
     prompt_variables: [],
   })
-  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig>({
+  const [moreLikeThisConfig, doSetMoreLikeThisConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] =
+  const setMoreLikeThisConfig = useCallback(
+    (value: MoreLikeThisConfig) => {
+      doSetMoreLikeThisConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [suggestedQuestionsAfterAnswerConfig, doSetSuggestedQuestionsAfterAnswerConfig] =
     useState<MoreLikeThisConfig>({ enabled: false })
-  const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
+  const setSuggestedQuestionsAfterAnswerConfig = useCallback(
+    (value: MoreLikeThisConfig) => {
+      doSetSuggestedQuestionsAfterAnswerConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [speechToTextConfig, doSetSpeechToTextConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig>({
+  const setSpeechToTextConfig = useCallback(
+    (value: MoreLikeThisConfig) => {
+      doSetSpeechToTextConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [textToSpeechConfig, doSetTextToSpeechConfig] = useState<TextToSpeechConfig>({
     enabled: false,
     voice: '',
     language: '',
   })
-  const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({ enabled: false })
+  const setTextToSpeechConfig = useCallback(
+    (value: TextToSpeechConfig) => {
+      doSetTextToSpeechConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [citationConfig, doSetCitationConfig] = useState<MoreLikeThisConfig>({ enabled: false })
+  const setCitationConfig = useCallback(
+    (value: MoreLikeThisConfig) => {
+      doSetCitationConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
   const [annotationConfig, doSetAnnotationConfig] = useState<AnnotationReplyConfig>({
     id: '',
     enabled: false,
@@ -205,8 +285,22 @@ export const useConfiguration = (): ConfigurationViewModel => {
     [formattingChangedDispatcher],
   )
 
-  const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({ enabled: false })
-  const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
+  const [moderationConfig, doSetModerationConfig] = useState<ModerationConfig>({ enabled: false })
+  const setModerationConfig = useCallback(
+    (value: ModerationConfig) => {
+      doSetModerationConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
+  const [externalDataToolsConfig, doSetExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
+  const setExternalDataToolsConfig = useCallback(
+    (value: ExternalDataTool[]) => {
+      doSetExternalDataToolsConfig(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
   const [completionParamsState, doSetCompletionParams] = useState<FormValue>({})
@@ -257,13 +351,18 @@ export const useConfiguration = (): ConfigurationViewModel => {
         setTempStop([])
       }
       doSetCompletionParams(params)
+      dispatchPublishDraftChanged()
     },
-    [getTempStop, setTempStop],
+    [dispatchPublishDraftChanged, getTempStop, setTempStop],
   )
 
-  const setModelConfig = useCallback((newModelConfig: ModelConfig) => {
-    doSetModelConfig(newModelConfig)
-  }, [])
+  const setModelConfig = useCallback(
+    (newModelConfig: ModelConfig) => {
+      doSetModelConfig(newModelConfig)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
 
   const isAgent = mode === AppModeEnum.AGENT_CHAT
 
@@ -282,12 +381,23 @@ export const useConfiguration = (): ConfigurationViewModel => {
     },
   })
   const datasetConfigsRef = useRef(datasetConfigs)
-  const setDatasetConfigs = useCallback((newDatasetConfigs: DatasetConfigs) => {
-    doSetDatasetConfigs(newDatasetConfigs)
-    datasetConfigsRef.current = newDatasetConfigs
-  }, [])
+  const setDatasetConfigs = useCallback(
+    (newDatasetConfigs: DatasetConfigs) => {
+      doSetDatasetConfigs(newDatasetConfigs)
+      datasetConfigsRef.current = newDatasetConfigs
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
 
-  const [dataSets, setDataSets] = useState<DataSet[]>([])
+  const [dataSets, doSetDataSets] = useState<DataSet[]>([])
+  const setDataSets = useCallback(
+    (value: DataSet[]) => {
+      doSetDataSets(value)
+      dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
   const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] =
@@ -300,30 +410,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
     useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
-
-  const syncToPublishedConfig = useCallback(
-    (_publishedConfig: PublishConfig) => {
-      const publishedModelConfig = _publishedConfig.modelConfig
-      setModelConfig(publishedModelConfig)
-      setCompletionParams(_publishedConfig.completionParams)
-      setDataSets(publishedModelConfig.dataSets || [])
-      setIntroduction(publishedModelConfig.opening_statement || '')
-      setMoreLikeThisConfig(publishedModelConfig.more_like_this || { enabled: false })
-      setSuggestedQuestionsAfterAnswerConfig(
-        publishedModelConfig.suggested_questions_after_answer || { enabled: false },
-      )
-      setSpeechToTextConfig(publishedModelConfig.speech_to_text || { enabled: false })
-      setTextToSpeechConfig(
-        publishedModelConfig.text_to_speech || {
-          enabled: false,
-          voice: '',
-          language: '',
-        },
-      )
-      setCitationConfig(publishedModelConfig.retriever_resource || { enabled: false })
-    },
-    [setCompletionParams, setModelConfig],
-  )
 
   const { isAPIKeySet } = useProviderContext()
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
@@ -361,9 +447,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
         detail: config.detail || Resolution.low,
         transfer_methods: config.transfer_methods || [TransferMethod.local_file],
       })
+      dispatchPublishDraftChanged()
       if (!notNoticeFormattingChanged) formattingChangedDispatcher()
     },
-    [formattingChangedDispatcher],
+    [dispatchPublishDraftChanged, formattingChangedDispatcher],
   )
 
   const {
@@ -389,7 +476,76 @@ export const useConfiguration = (): ConfigurationViewModel => {
     completionParams: completionParamsState,
     setCompletionParams,
     setStop: setTempStop,
+    onPublishConfigChange: dispatchPublishDraftChanged,
   })
+
+  const syncToPublishedConfig = useCallback(
+    (_publishedConfig: ConfigurationPublishConfig) => {
+      const trackedAppId = publishChangeTrackingAppIdRef.current
+      publishChangeTrackingAppIdRef.current = ''
+
+      try {
+        const publishedModelConfig = _publishedConfig.modelConfig
+        setModelConfig(publishedModelConfig)
+        setCompletionParams(_publishedConfig.completionParams)
+        doSetPromptMode(_publishedConfig.promptMode)
+        setCanReturnToSimpleMode(_publishedConfig.promptMode !== PromptMode.advanced)
+        setChatPromptConfig(_publishedConfig.chatPromptConfig)
+        setCompletionPromptConfig(_publishedConfig.completionPromptConfig)
+        setDataSets(publishedModelConfig.dataSets || [])
+        setDatasetConfigs(_publishedConfig.datasetConfigs)
+        setExternalDataToolsConfig(_publishedConfig.externalDataToolsConfig)
+        setIntroduction(publishedModelConfig.opening_statement || '')
+        setSuggestedQuestions(publishedModelConfig.suggested_questions || [])
+        setMoreLikeThisConfig(publishedModelConfig.more_like_this || { enabled: false })
+        setSuggestedQuestionsAfterAnswerConfig(
+          publishedModelConfig.suggested_questions_after_answer || { enabled: false },
+        )
+        setSpeechToTextConfig(publishedModelConfig.speech_to_text || { enabled: false })
+        setTextToSpeechConfig(
+          publishedModelConfig.text_to_speech || {
+            enabled: false,
+            voice: '',
+            language: '',
+          },
+        )
+        setCitationConfig(publishedModelConfig.retriever_resource || { enabled: false })
+        setModerationConfig(publishedModelConfig.sensitive_word_avoidance || { enabled: false })
+        const publishedVisionConfig = publishedModelConfig.file_upload?.image
+        handleSetVisionConfig(
+          {
+            enabled: publishedVisionConfig?.enabled || false,
+            number_limits: publishedVisionConfig?.number_limits || 2,
+            detail: publishedVisionConfig?.detail || Resolution.low,
+            transfer_methods: publishedVisionConfig?.transfer_methods || [
+              TransferMethod.local_file,
+            ],
+          },
+          true,
+        )
+      } finally {
+        publishChangeTrackingAppIdRef.current = trackedAppId
+      }
+    },
+    [
+      handleSetVisionConfig,
+      setChatPromptConfig,
+      setCitationConfig,
+      setCompletionParams,
+      setCompletionPromptConfig,
+      setDataSets,
+      setDatasetConfigs,
+      setExternalDataToolsConfig,
+      setIntroduction,
+      setModelConfig,
+      setModerationConfig,
+      setMoreLikeThisConfig,
+      setSpeechToTextConfig,
+      setSuggestedQuestions,
+      setSuggestedQuestionsAfterAnswerConfig,
+      setTextToSpeechConfig,
+    ],
+  )
 
   const setPromptMode = useCallback(
     async (nextMode: PromptMode) => {
@@ -398,8 +554,9 @@ export const useConfiguration = (): ConfigurationViewModel => {
         setCanReturnToSimpleMode(true)
       }
       doSetPromptMode(nextMode)
+      dispatchPublishDraftChanged()
     },
-    [migrateToDefaultPrompt],
+    [dispatchPublishDraftChanged, migrateToDefaultPrompt],
   )
 
   const handleSelect = useCallback(
@@ -479,6 +636,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
     },
     [formattingChangedDispatcher, setShowAppConfigureFeaturesModal],
   )
+  const handleFeatureStoreChange = useCallback<OnFeaturesChange>(
+    (features) => {
+      if (features) dispatchPublishDraftChanged()
+    },
+    [dispatchPublishDraftChanged],
+  )
 
   const handleAddPromptVariable = useCallback(
     (variables: PromptVariable[]) => {
@@ -492,6 +655,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   )
 
   useEffect(() => {
+    publishChangeTrackingAppIdRef.current = ''
     void (async () => {
       const configurationState = await loadConfigurationState({
         appId,
@@ -502,35 +666,14 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
       setCollectionList(configurationState.collectionList)
       setMode(configurationState.mode)
-      doSetPromptMode(configurationState.promptMode)
-      setDataSets(configurationState.nextDataSets)
-      setIntroduction(configurationState.introduction)
-      setSuggestedQuestions(configurationState.suggestedQuestions)
-      setMoreLikeThisConfig(configurationState.moreLikeThisConfig)
-      setSuggestedQuestionsAfterAnswerConfig(configurationState.suggestedQuestionsAfterAnswerConfig)
-      setSpeechToTextConfig(configurationState.speechToTextConfig)
-      setTextToSpeechConfig(configurationState.textToSpeechConfig)
-      setCitationConfig(configurationState.citationConfig)
-      setModerationConfig(configurationState.moderationConfig || { enabled: false })
-      setExternalDataToolsConfig(configurationState.externalDataToolsConfig)
-      setDatasetConfigs(configurationState.datasetConfigs)
-
-      if (configurationState.promptMode === PromptMode.advanced) {
-        setChatPromptConfig(configurationState.chatPromptConfig)
-        setCompletionPromptConfig(configurationState.completionPromptConfig as never)
-        setCanReturnToSimpleMode(false)
-      } else {
-        setCanReturnToSimpleMode(configurationState.canReturnToSimpleMode)
-      }
+      syncToPublishedConfig(configurationState.publishedConfig)
 
       if (configurationState.annotationConfig)
         setAnnotationConfig(configurationState.annotationConfig, true)
 
-      if (configurationState.visionConfig)
-        handleSetVisionConfig(configurationState.visionConfig, true)
-
-      syncToPublishedConfig(configurationState.publishedConfig as PublishConfig)
-      setPublishedConfig(configurationState.publishedConfig as PublishConfig)
+      setPublishedConfig(configurationState.publishedConfig)
+      setUnpublishedChangesState({ appId, value: false })
+      publishChangeTrackingAppIdRef.current = appId
       setHasFetchedDetail(true)
     })()
   }, [appId])
@@ -569,11 +712,14 @@ export const useConfiguration = (): ConfigurationViewModel => {
         params && 'model' in params && 'provider' in params && 'parameters' in params
           ? params
           : undefined
+      const handlePublishedConfigChange = (config: ConfigurationPublishConfig) => {
+        setPublishedConfig(config)
+        if (modelAndParameter) syncToPublishedConfig(config)
+      }
 
-      return createPublishHandler({
+      const result = await createPublishHandler({
         appId,
         chatPromptConfig,
-        citationConfig,
         completionParamsState,
         completionPromptConfig,
         contextVar,
@@ -582,28 +728,30 @@ export const useConfiguration = (): ConfigurationViewModel => {
         datasetConfigs,
         externalDataToolsConfig,
         hasSetBlockStatus,
-        introduction,
         isAdvancedMode,
         isFunctionCall,
         mode,
         modelConfig,
-        moreLikeThisConfig,
         promptEmpty,
         promptMode,
         resolvedModelModeType,
         setCanReturnToSimpleMode,
-        setPublishedConfig,
-        speechToTextConfig,
-        suggestedQuestionsAfterAnswerConfig,
+        setPublishedConfig: handlePublishedConfigChange,
         t,
-        textToSpeechConfig,
       })(updateAppModelConfig, modelAndParameter, features)
+
+      if (result) {
+        setUnpublishedChangesState({ appId, value: false })
+        // The publish API currently returns only a result flag, so keep the summary current
+        // locally until app detail is refreshed with the server-side updated_at value.
+        setPublishedAtOverride({ appId, value: Math.floor(Date.now() / 1000) })
+      }
+      return result
     },
     [
       appACLCapabilities.canReleaseAndVersion,
       appId,
       chatPromptConfig,
-      citationConfig,
       completionParamsState,
       completionPromptConfig,
       contextVar,
@@ -612,21 +760,16 @@ export const useConfiguration = (): ConfigurationViewModel => {
       datasetConfigs,
       externalDataToolsConfig,
       hasSetBlockStatus,
-      introduction,
       isAdvancedMode,
       isFunctionCall,
       mode,
       modelConfig,
-      moreLikeThisConfig,
       promptEmpty,
       promptMode,
       resolvedModelModeType,
       setCanReturnToSimpleMode,
-      setPublishedConfig,
-      speechToTextConfig,
-      suggestedQuestionsAfterAnswerConfig,
+      syncToPublishedConfig,
       t,
-      textToSpeechConfig,
     ],
   )
 
@@ -746,11 +889,16 @@ export const useConfiguration = (): ConfigurationViewModel => {
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (latestPublishedAt || 0) * 1000,
+      hasUnpublishedChanges: !latestPublishedAt || hasUnpublishedChanges,
       debugWithMultipleModel,
       multipleModelConfigs,
       onPublish,
-      publishedConfig: publishedConfig as PublishConfig,
-      resetAppConfig: () => publishedConfig && syncToPublishedConfig(publishedConfig),
+      publishedConfig: publishedConfig as ConfigurationPublishConfig,
+      resetAppConfig: () => {
+        if (!publishedConfig) return
+        syncToPublishedConfig(publishedConfig)
+        setUnpublishedChangesState({ appId, value: false })
+      },
     },
     contextValue,
     featuresData,
@@ -773,6 +921,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
+    onFeatureStoreChange: handleFeatureStoreChange,
     onFeaturesChange: handleFeaturesChange,
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,

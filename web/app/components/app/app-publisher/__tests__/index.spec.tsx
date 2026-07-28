@@ -1,6 +1,8 @@
 /* oxlint-disable typescript/no-explicit-any */
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { WorkflowContext } from '@/app/components/workflow/context'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -20,8 +22,12 @@ const mockRefetch = vi.fn()
 const mockUseGetUserCanAccessApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockToastError = vi.fn()
+const mockToastSuccess = vi.fn()
 const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
+const mockUpdateWorkflow = vi.fn()
+const mockFetchPublishedWorkflow = vi.fn()
+let mockPublishedWorkflow: Record<string, any> | null = null
 
 const sectionProps = vi.hoisted(() => ({
   summary: null as null | Record<string, any>,
@@ -31,6 +37,16 @@ const sectionProps = vi.hoisted(() => ({
 const hotkeyMocks = vi.hoisted(() => ({
   hotkeys: [] as string[],
   handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
+}))
+const collaborationMocks = vi.hoisted(() => ({
+  handler: undefined as
+    | ((update: {
+        type: 'app_publish_update'
+        userId: string
+        data: Record<string, unknown>
+        timestamp: number
+      }) => void)
+    | undefined,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
@@ -86,7 +102,22 @@ vi.mock('@/service/apps', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
+  appWorkflowQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'publish', appId],
+    queryFn: () => mockFetchPublishedWorkflow(appId),
+  }),
+  useAppWorkflow: () => ({ data: mockPublishedWorkflow, isSuccess: true }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
+  useUpdateWorkflow: () => ({ mutate: mockUpdateWorkflow }),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    onAppPublishUpdate: (handler: NonNullable<(typeof collaborationMocks)['handler']>) => {
+      collaborationMocks.handler = handler
+      return vi.fn()
+    },
+  },
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -117,6 +148,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
   },
 }))
 
@@ -162,6 +194,7 @@ vi.mock('../sections', () => ({
       <div>
         <button onClick={() => void props.handlePublish()}>publisher-summary-publish</button>
         <button onClick={() => void props.handleRestore()}>publisher-summary-restore</button>
+        <button onClick={props.onEditVersion}>publisher-summary-edit-version</button>
       </div>
     )
   },
@@ -189,9 +222,12 @@ describe('AppPublisher', () => {
     vi.clearAllMocks()
     hotkeyMocks.hotkeys.length = 0
     hotkeyMocks.handlers.length = 0
+    collaborationMocks.handler = undefined
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
+    mockPublishedWorkflow = null
+    mockFetchPublishedWorkflow.mockResolvedValue(null)
     mockWorkspacePermissionKeys = ['tool.manage']
     mockIsCurrentWorkspaceEditor = true
     mockAppDetail = {
@@ -251,6 +287,57 @@ describe('AppPublisher', () => {
         }),
       )
     })
+  })
+
+  it('should edit the current workflow version from the publish summary', () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockPublishedWorkflow = {
+      created_at: Math.floor(Date.now() / 1000),
+      id: 'workflow-version-5',
+      marked_name: 'Release 5',
+      marked_comment: 'Initial notes',
+    }
+
+    render(<AppPublisher publishedAt={Date.now()} />)
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.summary).toEqual(
+      expect.objectContaining({
+        isWorkflowApp: true,
+        versionInfo: mockPublishedWorkflow,
+      }),
+    )
+    fireEvent.click(screen.getByText('publisher-summary-edit-version'))
+
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    const [titleInput, notesInput] = screen.getAllByRole('textbox')
+    fireEvent.change(titleInput!, { target: { value: 'Release 6' } })
+    fireEvent.change(notesInput!, { target: { value: 'Updated notes' } })
+    const publishButtons = screen.getAllByRole('button', {
+      name: /(?:^|\.)common\.publish(?=$|:)/,
+    })
+    fireEvent.click(publishButtons.at(-1)!)
+
+    expect(mockUpdateWorkflow).toHaveBeenCalledWith(
+      {
+        url: '/apps/app-1/workflows/workflow-version-5',
+        title: 'Release 6',
+        releaseNotes: 'Updated notes',
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+        onSettled: expect.any(Function),
+      }),
+    )
+
+    const mutationCallbacks = mockUpdateWorkflow.mock.calls[0]![1]
+    mutationCallbacks.onSuccess()
+    expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
+    expect(mockToastSuccess).toHaveBeenCalled()
   })
 
   it('should expose the Deploy quick link for editable workflow apps when enabled', () => {
@@ -401,8 +488,13 @@ describe('AppPublisher', () => {
     const onRestore = vi.fn().mockResolvedValue(undefined)
     mockOnPublish.mockResolvedValue(undefined)
 
-    render(
-      <AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} onRestore={onRestore} />,
+    const { rerender } = render(
+      <AppPublisher
+        hasUnpublishedChanges
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
     )
 
     expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
@@ -411,6 +503,30 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
       expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
+
+    rerender(
+      <AppPublisher
+        hasUnpublishedChanges={false}
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
+    )
+    hotkeyMocks.handlers.at(-1)!({ preventDefault })
+    expect(mockOnPublish).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <AppPublisher
+        hasUnpublishedChanges
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
+    )
+    hotkeyMocks.handlers.at(-1)!({ preventDefault })
+    await waitFor(() => {
+      expect(mockOnPublish).toHaveBeenCalledTimes(2)
     })
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
@@ -422,13 +538,44 @@ describe('AppPublisher', () => {
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
   })
 
-  it('should keep the popover open when restore fails and reset published state after publish failures', async () => {
+  it('should require an explicit model selection when publishing in multiple model mode', () => {
+    const preventDefault = vi.fn()
+
+    render(
+      <AppPublisher
+        debugWithMultipleModel
+        hasUnpublishedChanges
+        multipleModelConfigs={[
+          {
+            id: 'model-1',
+            model: 'gpt-4o',
+            provider: 'openai',
+            parameters: {},
+          },
+        ]}
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+      />,
+    )
+
+    hotkeyMocks.handlers[0]!({ preventDefault })
+
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(mockOnPublish).not.toHaveBeenCalled()
+  })
+
+  it('should keep the popover open when restore and publish fail', async () => {
     const preventDefault = vi.fn()
     const onRestore = vi.fn().mockRejectedValue(new Error('restore failed'))
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
 
     render(
-      <AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} onRestore={onRestore} />,
+      <AppPublisher
+        hasUnpublishedChanges
+        publishedAt={Date.now()}
+        onPublish={mockOnPublish}
+        onRestore={onRestore}
+      />,
     )
 
     hotkeyMocks.handlers[0]!({ preventDefault })
@@ -526,5 +673,117 @@ describe('AppPublisher', () => {
       expect(mockFetchAppDetail).not.toHaveBeenCalled()
     })
     expect(screen.getByTestId('access-control'))!.toBeInTheDocument()
+  })
+
+  it('should not infer an app mode when app detail is unavailable', async () => {
+    const user = userEvent.setup()
+    mockAppDetail = null
+
+    render(<AppPublisher publishedAt={Date.now()} />)
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(sectionProps.summary).toEqual(
+      expect.objectContaining({
+        isChatApp: false,
+        isWorkflowApp: false,
+      }),
+    )
+  })
+
+  it('should derive workflow changes from draft and published hashes', async () => {
+    const user = userEvent.setup()
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockPublishedWorkflow = {
+      created_at: 1_710_000_100,
+      hash: 'published-hash',
+    }
+
+    const { rerender } = render(
+      <AppPublisher
+        draftHash="published-hash"
+        draftUpdatedAt={1_710_000_200_000}
+        publishedAt={1_710_000_100_000}
+      />,
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.summary?.hasUnpublishedChanges).toBe(false)
+
+    rerender(
+      <AppPublisher
+        draftHash="changed-draft-hash"
+        draftUpdatedAt={1_710_000_100_000}
+        publishedAt={1_710_000_200_000}
+      />,
+    )
+    expect(sectionProps.summary?.hasUnpublishedChanges).toBe(true)
+  })
+
+  it('should keep workflow publishing available when the published hash is unavailable', async () => {
+    const user = userEvent.setup()
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockPublishedWorkflow = {
+      created_at: 1_710_000_100,
+      hash: '',
+    }
+
+    render(
+      <AppPublisher
+        draftHash="draft-hash"
+        draftUpdatedAt={1_710_000_200_000}
+        publishedAt={1_710_000_100_000}
+      />,
+    )
+
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+
+    expect(sectionProps.summary).toEqual(
+      expect.objectContaining({
+        hasUnpublishedChanges: true,
+        publishedAt: 1_710_000_100_000,
+      }),
+    )
+  })
+
+  it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
+    const setPublishedAt = vi.fn()
+    const workflowStore = {
+      getState: () => ({ setPublishedAt }),
+    }
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+    mockFetchPublishedWorkflow.mockResolvedValue({
+      created_at: 1_710_000_300,
+      hash: 'published-hash',
+    })
+
+    render(
+      <WorkflowContext value={workflowStore as any}>
+        <AppPublisher draftHash="draft-hash" publishedAt={1_710_000_100_000} />
+      </WorkflowContext>,
+    )
+
+    act(() => {
+      collaborationMocks.handler?.({
+        type: 'app_publish_update',
+        userId: 'collaborator-1',
+        data: { action: 'published' },
+        timestamp: 1_710_000_300_000,
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockFetchPublishedWorkflow).toHaveBeenCalledWith('app-1')
+      expect(setPublishedAt).toHaveBeenCalledWith(1_710_000_300)
+    })
   })
 })
