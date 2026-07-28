@@ -7,17 +7,6 @@ function stubImageLoader() {
 
   function TestImage(_width?: number, _height?: number): HTMLImageElement {
     const image = document.createElement('img')
-    Object.defineProperties(image, {
-      complete: {
-        configurable: true,
-        value: false,
-      },
-      src: {
-        configurable: true,
-        value: '',
-        writable: true,
-      },
-    })
     images.push(image)
     return image
   }
