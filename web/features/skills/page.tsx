@@ -40,6 +40,8 @@ import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { downloadBlob } from '@/utils/download'
+import { fetchSkillArchiveBlob } from './client'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 
 const placeholderCardIds = Array.from(
@@ -283,6 +285,15 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
+  const exportMutation = useMutation({
+    mutationFn: () => fetchSkillArchiveBlob(skill.id),
+    onSuccess: (blob) => {
+      downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
+    },
+    onError: () => {
+      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    },
+  })
   const tags = skill.tags ?? []
   const isDraft = !skill.latest_published_version_id
   const updatedAt = formatTime(
@@ -312,6 +323,12 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
         },
       },
     )
+  }
+
+  const handleExport = () => {
+    if (exportMutation.isPending) return
+
+    exportMutation.mutate()
   }
 
   return (
@@ -395,6 +412,15 @@ function SkillCard({ skill }: { skill: SkillResponse }) {
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
+            {skill.latest_published_version_id && (
+              <DropdownMenuItem className="gap-2" onClick={handleExport}>
+                <span
+                  aria-hidden
+                  className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
+                />
+                <span>{tCommon(($) => $['operation.export'])}</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               variant="destructive"

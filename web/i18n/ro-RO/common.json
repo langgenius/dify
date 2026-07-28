@@ -464,6 +464,7 @@
   "operation.downloading": "Se descarcă...",
   "operation.duplicate": "Duplică",
   "operation.edit": "Editează",
+  "operation.export": "Exportă",
   "operation.exporting": "Se exportă",
   "operation.fill": "Completare automată",
   "operation.format": "Format",

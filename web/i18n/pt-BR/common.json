@@ -464,6 +464,7 @@
   "operation.downloading": "Baixando...",
   "operation.duplicate": "Duplicada",
   "operation.edit": "Editar",
+  "operation.export": "Exportar",
   "operation.exporting": "Exportando",
   "operation.fill": "Preenchimento automático",
   "operation.format": "Formato",

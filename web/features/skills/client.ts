@@ -140,6 +140,15 @@ export async function fetchSkillFileBlob({
   return response.blob()
 }
 
+export async function fetchSkillArchiveBlob(skillId: string) {
+  const response = await get<Response>(
+    `/workspaces/current/skills/${encodeURIComponent(skillId)}/export`,
+    {},
+    { needAllResponseContent: true },
+  )
+  return response.blob()
+}
+
 export function sendSkillAssistMessage({
   attachments,
   getAbortController,
@@ -148,7 +157,9 @@ export function sendSkillAssistMessage({
   onCompleted,
   onData,
   onError,
+  onUnhandledEvent,
   skillId,
+  targetPath,
 }: {
   attachments?: SkillAssistAttachmentPayload[]
   getAbortController?: (abortController: AbortController) => void
@@ -159,7 +170,9 @@ export function sendSkillAssistMessage({
   onCompleted?: IOnCompleted
   onData?: IOnData
   onError?: IOnError
+  onUnhandledEvent?: (event: Record<string, unknown>) => void
   skillId: string
+  targetPath?: string
 }) {
   return ssePost(
     `/workspaces/current/skills/${encodeURIComponent(skillId)}/assist/messages`,
@@ -168,6 +181,7 @@ export function sendSkillAssistMessage({
         attachments,
         message,
         model,
+        target_path: targetPath,
       },
     },
     {
@@ -175,6 +189,7 @@ export function sendSkillAssistMessage({
       onCompleted,
       onData,
       onError,
+      onUnhandledEvent,
     },
   )
 }

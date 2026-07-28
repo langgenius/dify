@@ -21,7 +21,9 @@ type SkillsInfiniteOptions = {
 const mocks = vi.hoisted(() => ({
   createSkillMutationFn: vi.fn(),
   deleteSkillMutationFn: vi.fn(),
+  downloadBlob: vi.fn(),
   duplicateSkillMutationFn: vi.fn(),
+  exportSkillArchiveBlob: vi.fn(),
   importSkillMutationFn: vi.fn(),
   push: vi.fn(),
   queryState: {
@@ -109,6 +111,15 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mocks.push,
   }),
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+}))
+
+vi.mock('../client', () => ({
+  fetchSkillArchiveBlob: mocks.exportSkillArchiveBlob,
+  uploadSkillFile: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -218,6 +229,7 @@ describe('SkillsPage', () => {
     mocks.createSkillMutationFn.mockResolvedValue(createSkill({ id: 'created-skill' }))
     mocks.importSkillMutationFn.mockResolvedValue(createSkill({ id: 'imported-skill' }))
     mocks.duplicateSkillMutationFn.mockResolvedValue(createSkill({ id: 'duplicated-skill' }))
+    mocks.exportSkillArchiveBlob.mockResolvedValue(new Blob(['skill archive']))
     mocks.deleteSkillMutationFn.mockResolvedValue({
       deleted: true,
       id: 'skill-1',
@@ -385,6 +397,40 @@ describe('SkillsPage', () => {
       )
     })
     expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.duplicateSuccess')
+  })
+
+  it('exports a published skill from the card action menu', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.export'))
+
+    await waitFor(() => {
+      expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+    })
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'refund-approval.zip',
+    })
+  })
+
+  it('does not show export for an unpublished skill', async () => {
+    const user = userEvent.setup()
+    mocks.skills = [createSkill({ latest_published_version_id: null })]
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+
+    expect(screen.queryByText('common.operation.export')).not.toBeInTheDocument()
   })
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
