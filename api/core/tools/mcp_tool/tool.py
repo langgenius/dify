@@ -103,10 +103,12 @@ class MCPTool(Tool):
                 case _:
                     logger.warning("Unsupported content type=%s", type(content))
 
-        # outputSchema is optional in MCP, so preserve structuredContent even when no schema was declared.
-        if result.structuredContent:
+        # handle MCP structured output
+        if self.entity.output_schema and result.structuredContent:
             for k, v in result.structuredContent.items():
                 yield self.create_variable_message(k, v)
+        elif result.structuredContent:
+            yield self.create_json_message(result.structuredContent)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""
