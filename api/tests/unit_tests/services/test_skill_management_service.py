@@ -21,6 +21,9 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigSnapshot,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -91,6 +94,7 @@ def _tables() -> Generator[None, None, None]:
         AgentConfigSnapshot,
         AgentConfigDraft,
         AgentConfigRevision,
+        AgentRuntimeSession,
         ToolFile,
         Tag,
         TagBinding,
@@ -323,6 +327,7 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
             scope=AgentScope.WORKFLOW_ONLY,
             source=AgentSource.WORKFLOW,
             status=AgentStatus.ACTIVE,
+            backing_app_id=str(uuid4()),
             created_by=USER,
             updated_by=USER,
         )
@@ -350,6 +355,17 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
             updated_by=USER,
         )
         session.add(draft)
+        runtime_session = AgentRuntimeSession(
+            tenant_id=TENANT,
+            app_id=agent.backing_app_id,
+            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
+            agent_id=agent.id,
+            agent_config_snapshot_id=draft.id,
+            conversation_id=str(uuid4()),
+            session_snapshot="{}",
+            status=AgentRuntimeSessionStatus.ACTIVE,
+        )
+        session.add(runtime_session)
         session.flush()
 
         SkillManagementService._sync_assistant_model_config(
@@ -363,6 +379,62 @@ def test_sync_assistant_model_config_updates_debugger_draft() -> None:
         assert updated_draft.model is not None
         assert updated_draft.model.model_provider == "langgenius/tongyi/tongyi"
         assert updated_draft.model.model == "qwen3.7-plus"
+        assert runtime_session.status == AgentRuntimeSessionStatus.CLEANED
+
+
+def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> None:
+    openai_model = AgentSoulModelConfig(
+        plugin_id="langgenius/openai",
+        model_provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        model_settings=AgentSoulModelSettings(temperature=0.2),
+    )
+    tongyi_model = AgentSoulModelConfig(
+        plugin_id="langgenius/tongyi",
+        model_provider="langgenius/tongyi/tongyi",
+        model="qwen3.7-plus",
+        model_settings=AgentSoulModelSettings(temperature=0.2),
+    )
+
+    with session_factory.create_session() as session:
+        agent = Agent(
+            tenant_id=TENANT,
+            name="Skill Authoring Assistant",
+            role="__skill_authoring_assistant__",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            status=AgentStatus.ACTIVE,
+            backing_app_id=str(uuid4()),
+            created_by=USER,
+            updated_by=USER,
+        )
+        session.add(agent)
+        session.flush()
+        draft = AgentConfigDraft(
+            tenant_id=TENANT,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            config_snapshot=AgentSoulConfig(model=openai_model),
+            created_by=USER,
+            updated_by=USER,
+        )
+        session.add(draft)
+        session.flush()
+
+        SkillManagementService._sync_assistant_model_config(
+            session,
+            assistant=agent,
+            model_config=tongyi_model,
+        )
+        session.flush()
+
+        updated_draft = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        assert updated_draft.model is not None
+        assert updated_draft.model.model_provider == "langgenius/tongyi/tongyi"
+        assert agent.active_config_has_model is True
 
 
 def test_update_display_name_auto_syncs_name_for_unpublished_placeholder() -> None:
