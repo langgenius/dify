@@ -404,7 +404,7 @@ class TrialWorkflowResponseSource:
         return self.workflow.get_tool_published(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 register_schema_models(
