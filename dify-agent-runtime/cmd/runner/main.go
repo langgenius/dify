@@ -76,6 +76,7 @@ func parentMode() {
 	})
 
 	envOverlay := loadEnvJSON(envPath)
+	removeIsolationOverrides(envOverlay)
 	env = mergeEnv(env, envOverlay)
 
 	// Ensure HOME exists.
@@ -84,13 +85,12 @@ func parentMode() {
 		cmdutil.HandleError(os.MkdirAll(home, 0755), 125, "mkdir HOME %s", home)
 	}
 
-	// Create a per-workspace temp directory under cwd and inject TMPDIR.
-	// This avoids granting RW access to the shared /tmp.
-	agentTmp := filepath.Join(cwd, ".tmp")
-	cmdutil.HandleError(os.MkdirAll(agentTmp, 0755), 125, "mkdir TMPDIR %s", agentTmp)
-	env = setEnvIfEmpty(env, "TMPDIR", agentTmp)
-	env = setEnvIfEmpty(env, "TMP", agentTmp)
-	env = setEnvIfEmpty(env, "TEMP", agentTmp)
+	// Temp files stay inside the already-authorized cwd. The runner does not
+	// create a separate directory and command-provided temp paths cannot widen
+	// the Landlock write surface.
+	env = setEnv(env, "TMPDIR", cwd)
+	env = setEnv(env, "TMP", cwd)
+	env = setEnv(env, "TEMP", cwd)
 
 	// Determine if path isolation is enabled.
 	enableIsolation := envvar.PathIsolationEnabled()
@@ -173,8 +173,7 @@ func childMode() {
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
 		if err := landlock.Restrict(cfg); err != nil {
-			// the landlock is best-effort, so we just log the error whatever it is
-			fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
+			cmdutil.HandleError(err, 126, "apply Landlock filesystem isolation")
 		}
 	}
 
@@ -234,6 +233,20 @@ func filterEnv(env []string, remove []string) []string {
 	return result
 }
 
+// removeIsolationOverrides keeps Landlock policy under deployment control.
+// Job env may carry application variables, but it must not widen or replace
+// the runner's inherited filesystem allow-list.
+func removeIsolationOverrides(env map[string]string) {
+	for _, key := range []string{
+		envvar.EnvEnablePathIsolation,
+		envvar.EnvRWPaths,
+		envvar.EnvROPaths,
+		envvar.EnvRWDevPaths,
+	} {
+		delete(env, key)
+	}
+}
+
 // mergeEnv applies overlay key=value pairs onto the env slice.
 func mergeEnv(env []string, overlay map[string]string) []string {
 	for k, v := range overlay {
@@ -264,12 +277,17 @@ func envGet(env []string, key string) string {
 	return ""
 }
 
-// setEnvIfEmpty sets key=value in the env slice only if the key is not already present.
-func setEnvIfEmpty(env []string, key, value string) []string {
-	if envGet(env, key) != "" {
-		return env
+// setEnv sets key=value in the env slice even when the command supplied a
+// different value.
+func setEnv(env []string, key, value string) []string {
+	prefix := key + "="
+	for index, entry := range env {
+		if strings.HasPrefix(entry, prefix) {
+			env[index] = prefix + value
+			return env
+		}
 	}
-	return append(env, key+"="+value)
+	return append(env, prefix+value)
 }
 
 // writeAtomic writes value to dest via a temp file + rename.

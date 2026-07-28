@@ -13,6 +13,14 @@ class HomeSnapshotNotFoundError(RuntimeBackendError):
     pass
 
 
+class HomeArchiveStoreError(RuntimeBackendError):
+    pass
+
+
+class HomeArchiveConflictError(HomeArchiveStoreError):
+    pass
+
+
 class BindingCreateError(RuntimeBackendError):
     pass
 
@@ -62,6 +70,8 @@ __all__ = [
     "BindingCreateError",
     "BindingDestroyError",
     "BindingLostError",
+    "HomeArchiveConflictError",
+    "HomeArchiveStoreError",
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
     "RuntimeBackendError",

@@ -13,6 +13,11 @@ from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRe
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
 from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
+from dify_agent.runtime_backend.e2b_s3 import (
+    E2BS3ExecutionBindingBackend,
+    E2BS3HomeSnapshotBackend,
+    OpenDALHomeArchiveStore,
+)
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
@@ -302,6 +307,81 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
     assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
     assert profile.execution_bindings.active_timeout_seconds == 900
     assert profile.execution_bindings.template == "difys-default-team/dify-agent-local-sandbox"
+
+
+def test_build_runtime_backend_profile_and_gateway_for_e2b_s3(monkeypatch: pytest.MonkeyPatch) -> None:
+    store_calls: list[dict[str, object]] = []
+    stores: list[OpenDALHomeArchiveStore] = []
+
+    def create_s3_store(
+        cls: type[OpenDALHomeArchiveStore],
+        **kwargs: object,
+    ) -> OpenDALHomeArchiveStore:
+        del cls
+        store_calls.append(kwargs)
+        store = cast(OpenDALHomeArchiveStore, object())
+        stores.append(store)
+        return store
+
+    monkeypatch.setattr(OpenDALHomeArchiveStore, "create_s3", classmethod(create_s3_store))
+    settings = ServerSettings(
+        runtime_backend="e2b_s3",
+        e2b_api_key="e2b-secret",
+        e2b_s3_bucket="snapshots",
+        e2b_s3_root="tenant-root",
+        e2b_s3_region="us-east-1",
+        e2b_s3_endpoint="https://s3.example.test",
+        e2b_s3_access_key_id="access-key",
+        e2b_s3_secret_access_key="secret-key",
+        e2b_s3_session_token="session-token",
+        agent_stub_api_base_url="https://agent.example/agent-stub",
+        server_secret_key=_base64url_secret(b"s" * 32),
+    )
+
+    profile = settings.build_runtime_backend_profile()
+    gateway = settings.build_home_snapshot_gateway()
+
+    assert profile is not None
+    assert isinstance(profile.execution_bindings, E2BS3ExecutionBindingBackend)
+    assert isinstance(profile.home_snapshots, E2BS3HomeSnapshotBackend)
+    assert profile.home_snapshots.control_plane is profile.execution_bindings.control_plane
+    assert profile.home_snapshots.lifecycle_cli is profile.execution_bindings.lifecycle_cli
+    assert gateway is not None
+    expected_store_settings = {
+        "bucket": "snapshots",
+        "root": "tenant-root",
+        "region": "us-east-1",
+        "endpoint": "https://s3.example.test",
+        "access_key_id": "access-key",
+        "secret_access_key": "secret-key",
+        "session_token": "session-token",
+    }
+    assert store_calls == [expected_store_settings, expected_store_settings]
+    assert profile.home_snapshots.archive_store is stores[0]
+    assert gateway.archive_store is stores[1]
+    assert gateway.token_codec is not profile.home_snapshots.lifecycle_cli.token_codec
+
+
+def test_home_snapshot_gateway_is_not_built_for_other_profiles() -> None:
+    assert ServerSettings().build_home_snapshot_gateway() is None
+
+
+def test_server_settings_rejects_e2b_s3_without_required_s3_or_http_settings() -> None:
+    with pytest.raises(ValidationError, match="DIFY_AGENT_E2B_S3_BUCKET"):
+        _ = ServerSettings(
+            runtime_backend="e2b_s3",
+            e2b_api_key="e2b-secret",
+            agent_stub_api_base_url="https://agent.example/agent-stub",
+            server_secret_key=_base64url_secret(b"s" * 32),
+        )
+    with pytest.raises(ValidationError, match="HTTP\\(S\\)"):
+        _ = ServerSettings(
+            runtime_backend="e2b_s3",
+            e2b_api_key="e2b-secret",
+            e2b_s3_bucket="snapshots",
+            agent_stub_api_base_url="grpc://agent.example:9091",
+            server_secret_key=_base64url_secret(b"s" * 32),
+        )
 
 
 def test_sandbox_file_upload_limit_defaults_to_tool_file_limit() -> None:

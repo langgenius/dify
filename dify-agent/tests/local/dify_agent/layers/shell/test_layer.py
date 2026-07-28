@@ -9,6 +9,7 @@ from typing import cast
 import pytest
 
 import dify_agent.layers.shell.layer as shell_layer_module
+import dify_agent.runtime_backend.shellctl as shellctl_backend_module
 from dify_agent.layers.shell import (
     DIFY_SHELL_LAYER_TYPE_ID,
     DifyShellCliToolConfig,
@@ -322,6 +323,7 @@ def test_shell_layer_create_bootstraps_inside_sandbox_workspace() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
         assert env == {"HOME": expected_home}
         assert cwd == expected_workspace_cwd
+        assert timeout == pytest.approx(30.0, abs=0.01)
         assert "apt-get install -y ripgrep" in script
         return _command_result("bootstrap-job", status="exited", done=True, exit_code=0)
 
@@ -959,7 +961,6 @@ def test_run_remote_script_complete_uses_agent_specific_home_and_workspace_cwd()
     expected_workspace_cwd = "/home/agent-1/workspace/abc12ff"
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
-        del timeout
         assert script == "pwd"
         assert cwd == expected_workspace_cwd
         assert env == {"HOME": expected_home}
@@ -1025,10 +1026,10 @@ def test_run_remote_script_uses_agent_specific_home_and_workspace_cwd() -> None:
     expected_workspace_cwd = "/home/agent-1/workspace/abc12ff"
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
-        del timeout
         assert script == "pwd"
         assert cwd == expected_workspace_cwd
         assert env == {"HOME": expected_home}
+        assert timeout == pytest.approx(60.0, abs=0.01)
         return _command_result(
             "remote-job",
             status="exited",
@@ -1098,7 +1099,7 @@ def test_run_remote_script_complete_returns_incomplete_reason_for_timeout(
     def fake_monotonic() -> float:
         return now
 
-    monkeypatch.setattr(shell_layer_module.time, "monotonic", fake_monotonic)
+    monkeypatch.setattr(shellctl_backend_module.time, "monotonic", fake_monotonic)
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
         nonlocal now

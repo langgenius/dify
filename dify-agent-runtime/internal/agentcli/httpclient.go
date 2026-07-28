@@ -2,7 +2,9 @@ package agentcli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -12,28 +14,45 @@ import (
 	"time"
 )
 
+const homeSnapshotArchivePath = "/home-snapshots/archive"
+
 // HTTPClient wraps HTTP interactions with the Agent Stub server.
 type HTTPClient struct {
-	baseURL string
-	authJWE string
-	client  *http.Client
+	baseURL            string
+	authJWE            string
+	client             *http.Client
+	homeSnapshotClient httpDoer
+}
+
+type httpDoer interface {
+	Do(request *http.Request) (*http.Response, error)
+}
+
+func newHomeSnapshotHTTPClient() *http.Client {
+	return &http.Client{
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
 
 // NewHTTPClient creates a new HTTP client for the Agent Stub API.
 func NewHTTPClient(env *Environment) *HTTPClient {
 	return &HTTPClient{
-		baseURL: env.URL,
-		authJWE: env.AuthJWE,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		baseURL:            env.URL,
+		authJWE:            env.AuthJWE,
+		client:             &http.Client{Timeout: 30 * time.Second},
+		homeSnapshotClient: newHomeSnapshotHTTPClient(),
 	}
 }
 
 // NewHTTPClientWithTimeout creates a client with a custom timeout.
 func NewHTTPClientWithTimeout(env *Environment, timeout time.Duration) *HTTPClient {
 	return &HTTPClient{
-		baseURL: env.URL,
-		authJWE: env.AuthJWE,
-		client:  &http.Client{Timeout: timeout},
+		baseURL:            env.URL,
+		authJWE:            env.AuthJWE,
+		client:             &http.Client{Timeout: timeout},
+		homeSnapshotClient: newHomeSnapshotHTTPClient(),
 	}
 }
 
@@ -215,9 +234,58 @@ func (c *HTTPClient) downloadFromURL(downloadURL string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// checkHTTPError returns a formatted error if status >= 400.
+func (c *HTTPClient) uploadHomeSnapshot(ctx context.Context, archive io.Reader) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.baseURL+homeSnapshotArchivePath, archive)
+	if err != nil {
+		return fmt.Errorf("create Home Snapshot upload request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.authJWE)
+	req.Header.Set("Content-Type", "application/zstd")
+
+	resp, err := c.homeSnapshotClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("Home Snapshot upload request failed: %w", err)
+	}
+	if resp == nil || resp.Body == nil {
+		return errors.New("Home Snapshot upload response is missing a body")
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		return checkHTTPError(body, resp.StatusCode, "Home Snapshot upload")
+	}
+	_, err = io.Copy(io.Discard, resp.Body)
+	if err != nil {
+		return fmt.Errorf("read Home Snapshot upload response: %w", err)
+	}
+	return nil
+}
+
+func (c *HTTPClient) downloadHomeSnapshot(ctx context.Context) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+homeSnapshotArchivePath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create Home Snapshot download request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.authJWE)
+
+	resp, err := c.homeSnapshotClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Home Snapshot download request failed: %w", err)
+	}
+	if resp == nil || resp.Body == nil {
+		return nil, errors.New("Home Snapshot download response is missing a body")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		defer func() { _ = resp.Body.Close() }()
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+		return nil, checkHTTPError(body, resp.StatusCode, "Home Snapshot download")
+	}
+	return resp.Body, nil
+}
+
+// checkHTTPError returns a formatted error for any non-2xx status.
 func checkHTTPError(body []byte, statusCode int, operation string) error {
-	if statusCode < 400 {
+	if statusCode >= 200 && statusCode < 300 {
 		return nil
 	}
 	var detail struct {

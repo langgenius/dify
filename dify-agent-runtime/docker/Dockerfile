@@ -26,7 +26,8 @@ ARG UV_VERSION=0.8.9
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    SHELLCTL_ENABLE_PATH_ISOLATION=true
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

@@ -41,16 +41,35 @@ if TYPE_CHECKING:
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
 
 
-class _E2BControlPlaneNotFoundError(RuntimeError):
+class E2BControlPlaneNotFoundError(RuntimeError):
     """Typed boundary error for SDK resources that no longer exist."""
 
 
-class _E2BFileSystem(Protocol):
+class E2BFileType(Protocol):
+    @property
+    def value(self) -> str: ...
+
+
+class E2BFileInfo(Protocol):
+    @property
+    def type(self) -> E2BFileType | None: ...
+
+    @property
+    def symlink_target(self) -> str | None: ...
+
+
+class E2BSandboxFileSystem(Protocol):
     async def make_dir(self, path: str) -> bool: ...
 
     async def exists(self, path: str) -> bool: ...
 
+    async def get_info(self, path: str) -> E2BFileInfo: ...
+
     async def remove(self, path: str) -> None: ...
+
+    async def read(self, path: str) -> str: ...
+
+    async def write(self, path: str, data: str | bytes) -> object: ...
 
 
 class _E2BSnapshotInfo(Protocol):
@@ -58,10 +77,12 @@ class _E2BSnapshotInfo(Protocol):
     names: list[str]
 
 
-class _E2BSandbox(Protocol):
+class E2BSandbox(Protocol):
     sandbox_id: str
     traffic_access_token: str | None
-    files: _E2BFileSystem
+
+    @property
+    def files(self) -> E2BSandboxFileSystem: ...
 
     def get_host(self, port: int) -> str: ...
 
@@ -80,9 +101,9 @@ class E2BControlPlane(Protocol):
         timeout: int,
         metadata: dict[str, str],
         on_timeout: Literal["kill", "pause"],
-    ) -> _E2BSandbox: ...
+    ) -> E2BSandbox: ...
 
-    async def connect(self, handle: str, *, timeout: int) -> _E2BSandbox: ...
+    async def connect(self, handle: str, *, timeout: int) -> E2BSandbox: ...
 
     async def kill(self, handle: str) -> bool: ...
 
@@ -110,12 +131,12 @@ class E2BSDKControlPlane:
         timeout: int,
         metadata: dict[str, str],
         on_timeout: Literal["kill", "pause"],
-    ) -> _E2BSandbox:
+    ) -> E2BSandbox:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
 
         try:
             return cast(
-                _E2BSandbox,
+                E2BSandbox,
                 cast(
                     object,
                     await AsyncSandbox.create(
@@ -128,18 +149,18 @@ class E2BSDKControlPlane:
                 ),
             )
         except (SandboxNotFoundException, NotFoundException) as exc:
-            raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+            raise E2BControlPlaneNotFoundError(str(exc)) from exc
 
-    async def connect(self, handle: str, *, timeout: int) -> _E2BSandbox:
+    async def connect(self, handle: str, *, timeout: int) -> E2BSandbox:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
 
         try:
             return cast(
-                _E2BSandbox,
+                E2BSandbox,
                 cast(object, await AsyncSandbox.connect(handle, timeout=timeout, **self._options())),
             )
         except (SandboxNotFoundException, NotFoundException) as exc:
-            raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+            raise E2BControlPlaneNotFoundError(str(exc)) from exc
 
     async def kill(self, handle: str) -> bool:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
@@ -147,7 +168,7 @@ class E2BSDKControlPlane:
         try:
             return await AsyncSandbox.kill(handle, **self._options())
         except (SandboxNotFoundException, NotFoundException) as exc:
-            raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+            raise E2BControlPlaneNotFoundError(str(exc)) from exc
 
     async def delete_snapshot(self, snapshot_ref: str) -> bool:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
@@ -155,7 +176,7 @@ class E2BSDKControlPlane:
         try:
             return await AsyncSandbox.delete_snapshot(snapshot_ref, **self._options())
         except (SandboxNotFoundException, NotFoundException) as exc:
-            raise _E2BControlPlaneNotFoundError(str(exc)) from exc
+            raise E2BControlPlaneNotFoundError(str(exc)) from exc
 
 
 @dataclass(slots=True)
@@ -185,7 +206,7 @@ class E2BHomeSnapshotBackend:
     async def delete(self, snapshot_ref: str) -> None:
         try:
             _ = await self.control_plane.delete_snapshot(snapshot_ref)
-        except _E2BControlPlaneNotFoundError:
+        except E2BControlPlaneNotFoundError:
             return
         except Exception as exc:
             raise BindingDestroyError(str(exc)) from exc
@@ -215,7 +236,7 @@ class E2BExecutionBindingBackend:
         """Create one paused E2B resource from a snapshot or deployment template."""
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
-        sandbox: _E2BSandbox | None = None
+        sandbox: E2BSandbox | None = None
         try:
             sandbox = await self.control_plane.create(
                 self.template if spec.home_snapshot_ref is None else spec.home_snapshot_ref,
@@ -249,13 +270,13 @@ class E2BExecutionBindingBackend:
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         """Acquire operation-scoped shellctl access for an opaque Binding ref."""
-        sandbox: _E2BSandbox | None = None
+        sandbox: E2BSandbox | None = None
         try:
             sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
             if not await sandbox.files.exists(self.layout.workspace_dir):
                 raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
             return await self._lease(sandbox)
-        except _E2BControlPlaneNotFoundError as exc:
+        except E2BControlPlaneNotFoundError as exc:
             raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
         except BindingLostError:
             await _best_effort_pause(sandbox)
@@ -292,40 +313,17 @@ class E2BExecutionBindingBackend:
             raise BindingDestroyError("E2B Workspace ref must equal its Binding ref")
         try:
             _ = await self.control_plane.kill(spec.binding_ref)
-        except _E2BControlPlaneNotFoundError:
+        except E2BControlPlaneNotFoundError:
             return
         except Exception as exc:
             raise BindingDestroyError(str(exc)) from exc
 
-    async def _lease(self, sandbox: _E2BSandbox) -> "E2BRuntimeLease":
-        entrypoint = f"https://{sandbox.get_host(self.shellctl_port)}"
-        traffic_token = sandbox.traffic_access_token
-        headers = {"X-Access-Token": traffic_token} if isinstance(traffic_token, str) and traffic_token else {}
-        http_client = httpx.AsyncClient(
-            base_url=entrypoint,
-            headers=headers,
-            follow_redirects=True,
-            timeout=httpx.Timeout(60.0),
-        )
-
-        def client_factory() -> ShellctlClientProtocol:
-            from shellctl.client import ShellctlClient
-
-            return cast(
-                ShellctlClientProtocol,
-                cast(
-                    object,
-                    ShellctlClient(entrypoint, token=self.shellctl_auth_token, client=http_client),
-                ),
-            )
-
-        data_plane = await create_owned_shellctl_lease(
-            handle=sandbox.sandbox_id,
+    async def _lease(self, sandbox: E2BSandbox) -> "E2BRuntimeLease":
+        data_plane = await create_e2b_shellctl_lease(
+            sandbox=sandbox,
             layout=self.layout,
-            entrypoint=entrypoint,
-            token=self.shellctl_auth_token,
-            client_factory=client_factory,
-            owned_transport=http_client,
+            shellctl_auth_token=self.shellctl_auth_token,
+            shellctl_port=self.shellctl_port,
         )
         return E2BRuntimeLease(sandbox=sandbox, data_plane=data_plane)
 
@@ -334,7 +332,7 @@ class E2BExecutionBindingBackend:
 class E2BRuntimeLease:
     """Invocation-local E2B SDK object plus the owned shellctl data-plane lease."""
 
-    sandbox: _E2BSandbox
+    sandbox: E2BSandbox
     data_plane: ShellctlRuntimeLease
 
     @property
@@ -354,7 +352,46 @@ class E2BRuntimeLease:
         return self.data_plane.files
 
 
-async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
+async def create_e2b_shellctl_lease(
+    *,
+    sandbox: E2BSandbox,
+    layout: RuntimeLayout,
+    shellctl_auth_token: str,
+    shellctl_port: int,
+) -> ShellctlRuntimeLease:
+    """Create one operation-local shellctl data plane for a dynamic E2B layout."""
+    entrypoint = f"https://{sandbox.get_host(shellctl_port)}"
+    traffic_token = sandbox.traffic_access_token
+    headers = {"X-Access-Token": traffic_token} if isinstance(traffic_token, str) and traffic_token else {}
+    http_client = httpx.AsyncClient(
+        base_url=entrypoint,
+        headers=headers,
+        follow_redirects=True,
+        timeout=httpx.Timeout(60.0),
+    )
+
+    def client_factory() -> ShellctlClientProtocol:
+        from shellctl.client import ShellctlClient
+
+        return cast(
+            ShellctlClientProtocol,
+            cast(
+                object,
+                ShellctlClient(entrypoint, token=shellctl_auth_token, client=http_client),
+            ),
+        )
+
+    return await create_owned_shellctl_lease(
+        handle=sandbox.sandbox_id,
+        layout=layout,
+        entrypoint=entrypoint,
+        token=shellctl_auth_token,
+        client_factory=client_factory,
+        owned_transport=http_client,
+    )
+
+
+async def _best_effort_pause(sandbox: E2BSandbox | None) -> None:
     if sandbox is None:
         return
     try:
@@ -366,8 +403,14 @@ async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
 __all__ = [
     "E2B_MAX_ACTIVE_TIMEOUT_SECONDS",
     "E2BControlPlane",
+    "E2BControlPlaneNotFoundError",
     "E2BExecutionBindingBackend",
+    "E2BFileInfo",
+    "E2BFileType",
     "E2BHomeSnapshotBackend",
     "E2BSDKControlPlane",
+    "E2BSandbox",
+    "E2BSandboxFileSystem",
     "E2BRuntimeLease",
+    "create_e2b_shellctl_lease",
 ]

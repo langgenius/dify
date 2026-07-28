@@ -59,18 +59,30 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 | Access               | Paths (defaults)                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Read-Write**       | `$HOME` (always, includes `$CWD/.tmp` as `TMPDIR`)                                                            |
+| **Read-Write**       | `$HOME` and `$CWD`                                                                                              |
 | **Read-Write (dev)** | `/dev/null`, `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/tty`                                           |
 | **Read-Only + Exec** | `/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/etc`, `/proc`, `/opt/dify-agent-tools`, `/opt/homebrew`, `/snap` |
 | **Denied**           | Everything else (`/tmp`, other agents' homes, `/var`, `/srv`, etc.)                                           |
 
-The runner automatically creates `$CWD/.tmp` and sets `TMPDIR`, `TMP`, `TEMP` to it, so temp files stay isolated per workspace.
+The runner creates no temp directory. It always sets `TMPDIR`, `TMP`, and
+`TEMP` to `$CWD`, overriding command-provided values so temporary files remain
+inside the existing writable layout.
+
+When `SHELLCTL_ENABLE_PATH_ISOLATION=true`, Landlock setup is fail-closed: a
+restriction error prevents the user script from executing.
+
+Landlock denies opening, listing, or mutating paths outside the allow-list, but
+Linux does not currently let Landlock restrict `stat(2)`. A job may therefore
+observe sibling path metadata even though it cannot read or write sibling Home
+content.
 
 ### Environment Variables
 
 See [here](./internal/envvar/envvar.go)
 
-Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
+Path isolation requires Landlock ABI V3 (upstream Linux 6.2+; actual availability
+depends on the running kernel's reported ABI). Unsupported kernels or other
+Landlock setup failures stop the job before its script runs.
 
 ## Dependencies
 

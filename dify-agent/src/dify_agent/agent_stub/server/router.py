@@ -15,6 +15,7 @@ from fastapi import APIRouter
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestHandler
+from dify_agent.agent_stub.server.home_snapshots import HomeSnapshotGatewayService
 from dify_agent.agent_stub.server.routes.agent_stub import create_agent_stub_http_router
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 
@@ -25,6 +26,7 @@ def create_agent_stub_router(
     file_request_handler: AgentStubFileRequestHandler | None = None,
     drive_request_handler: AgentStubDriveRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    home_snapshot_gateway: HomeSnapshotGatewayService | None = None,
 ) -> APIRouter:
     """Build the embeddable stub router from pre-built server dependencies."""
     return create_agent_stub_http_router(
@@ -32,6 +34,7 @@ def create_agent_stub_router(
         file_request_handler,
         drive_request_handler,
         config_request_handler,
+        home_snapshot_gateway,
     )
 
 

@@ -93,7 +93,8 @@ def _patch_file_help(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
     ) -> CompleteRemoteCommandResult:
-        del self, timeout, inject_agent_stub_env
+        del self, inject_agent_stub_env
+        assert timeout == 10.0
         captured_scripts.append(script)
         return _remote_result(_file_help_output(script))
 

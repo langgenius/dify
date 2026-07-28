@@ -1,6 +1,9 @@
 package agentcli
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 // StubClient abstracts Agent Stub control-plane and data-plane operations.
 // Business logic depends only on this interface, never on HTTP/gRPC details.
@@ -21,6 +24,10 @@ type StubClient interface {
 	PushConfig(ctx context.Context, payload any) ([]byte, error)
 	PatchConfigEnv(ctx context.Context, envText string) ([]byte, error)
 	PutConfigNote(ctx context.Context, note string) ([]byte, error)
+
+	// Home Snapshot transfer (HTTP-only, unbounded total duration).
+	UploadHomeSnapshot(ctx context.Context, archive io.Reader) error
+	DownloadHomeSnapshot(ctx context.Context) (io.ReadCloser, error)
 
 	// Data-plane (always HTTP, signed URLs)
 	UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error)

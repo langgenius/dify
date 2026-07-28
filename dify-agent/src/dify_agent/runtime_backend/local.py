@@ -31,9 +31,10 @@ from dify_agent.runtime_backend.protocols import (
     RuntimeLease,
 )
 from dify_agent.runtime_backend.shellctl import (
+    CONTROL_COMMAND_OUTPUT_LIMIT,
     ShellctlRuntimeLease,
     create_shellctl_lease,
-    run_shellctl_control_command,
+    execute_complete_with_commands,
 )
 
 _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -62,8 +63,15 @@ class LocalHomeSnapshotBackend:
             ]
         )
         try:
-            result = await run_shellctl_control_command(lease.commands, script)
-            if result.exit_code != 0:
+            result = await execute_complete_with_commands(
+                lease.commands,
+                script,
+                cwd=None,
+                env=None,
+                timeout=30.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
+            )
+            if result.exit_code != 0 or not result.output_complete:
                 raise HomeSnapshotCreateError(result.output)
             return snapshot_ref
         except BaseException as exc:
@@ -80,11 +88,15 @@ class LocalHomeSnapshotBackend:
         normalized = _validated_ref_part(snapshot_ref)
         lease = self._control_lease(normalized)
         try:
-            result = await run_shellctl_control_command(
+            result = await execute_complete_with_commands(
                 lease.commands,
                 f"rm -rf -- {shlex.quote(self._snapshot_dir(normalized))}",
+                cwd=None,
+                env=None,
+                timeout=30.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
             )
-            if result.exit_code != 0:
+            if result.exit_code != 0 or not result.output_complete:
                 raise BindingDestroyError(result.output)
         except BaseException:
             await _close_best_effort(lease, resource_ref=normalized)
@@ -145,8 +157,15 @@ class LocalExecutionBindingBackend:
         script = "\n".join(setup)
         lease = self._control_lease(binding_ref)
         try:
-            result = await run_shellctl_control_command(lease.commands, script)
-            if result.exit_code != 0:
+            result = await execute_complete_with_commands(
+                lease.commands,
+                script,
+                cwd=None,
+                env=None,
+                timeout=30.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
+            )
+            if result.exit_code != 0 or not result.output_complete:
                 raise BindingCreateError(result.output)
             return ExecutionBindingAllocation(binding_ref=binding_ref, workspace_ref=workspace_ref)
         except BaseException as exc:
@@ -170,7 +189,7 @@ class LocalExecutionBindingBackend:
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         lease = self._lease(binding_ref)
         try:
-            result = await run_shellctl_control_command(
+            result = await execute_complete_with_commands(
                 lease.commands,
                 "\n".join(
                     [
@@ -179,8 +198,15 @@ class LocalExecutionBindingBackend:
                         f"test -d {shlex.quote(lease.layout.workspace_dir)}",
                     ]
                 ),
+                cwd=None,
+                env=None,
                 timeout=10.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
             )
+            if not result.output_complete:
+                raise BindingAcquireError(
+                    f"Local Binding {binding_ref!r} validation did not complete: {result.incomplete_reason}"
+                )
             if result.exit_code != 0:
                 raise BindingLostError(f"Local Binding {binding_ref!r} no longer exists")
             return lease
@@ -211,11 +237,15 @@ class LocalExecutionBindingBackend:
         if spec.destroy_workspace:
             targets.append(self._workspace_dir(workspace_id))
         try:
-            result = await run_shellctl_control_command(
+            result = await execute_complete_with_commands(
                 lease.commands,
                 "rm -rf -- " + " ".join(shlex.quote(target) for target in targets),
+                cwd=None,
+                env=None,
+                timeout=30.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
             )
-            if result.exit_code != 0:
+            if result.exit_code != 0 or not result.output_complete:
                 raise BindingDestroyError(result.output)
         except BaseException:
             await _close_best_effort(lease, resource_ref=spec.binding_ref)
@@ -291,8 +321,15 @@ async def _remove_partial(
 ) -> None:
     try:
         target_words = target if target_is_shell_words else shlex.quote(target)
-        result = await run_shellctl_control_command(commands, f"rm -rf -- {target_words}")
-        if result.exit_code != 0:
+        result = await execute_complete_with_commands(
+            commands,
+            f"rm -rf -- {target_words}",
+            cwd=None,
+            env=None,
+            timeout=30.0,
+            max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
+        )
+        if result.exit_code != 0 or not result.output_complete:
             logger.warning("failed to remove partial local resource", extra={"resource_ref": resource_ref})
     except BaseException:
         logger.warning("failed to remove partial local resource", exc_info=True, extra={"resource_ref": resource_ref})

@@ -11,15 +11,20 @@
 package tests
 
 import (
+	"archive/tar"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 var (
@@ -28,6 +33,10 @@ var (
 
 	goURLNoIsolation     = os.Getenv("SHELLCTL_GO_URL_NO_ISOLATION")
 	authTokenNoIsolation = os.Getenv("SHELLCTL_TEST_TOKEN_NO_ISOLATION")
+
+	goURLBrokenIsolation     = os.Getenv("SHELLCTL_GO_URL_BROKEN_ISOLATION")
+	authTokenBrokenIsolation = os.Getenv("SHELLCTL_TEST_TOKEN_BROKEN_ISOLATION")
+	containerBrokenIsolation = os.Getenv("SHELLCTL_TEST_CONTAINER_BROKEN_ISOLATION")
 
 	httpClient = &http.Client{Timeout: 120 * time.Second}
 )
@@ -51,6 +60,13 @@ func noIsolationTarget() (target, bool) {
 	return target{name: "go-no-isolation", baseURL: goURLNoIsolation}, true
 }
 
+func brokenIsolationTarget() (target, bool) {
+	if goURLBrokenIsolation == "" {
+		return target{}, false
+	}
+	return target{name: "go-broken-isolation", baseURL: goURLBrokenIsolation}, true
+}
+
 func TestMain(m *testing.M) {
 	// Warmup: wait for both servers to be ready before running tests
 	for _, tgt := range targets() {
@@ -60,6 +76,12 @@ func TestMain(m *testing.M) {
 		}
 	}
 	if tgt, ok := noIsolationTarget(); ok {
+		if !waitForServer(tgt) {
+			fmt.Fprintf(os.Stderr, "ERROR: %s server not ready at %s\n", tgt.name, tgt.baseURL)
+			os.Exit(1)
+		}
+	}
+	if tgt, ok := brokenIsolationTarget(); ok {
 		if !waitForServer(tgt) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s server not ready at %s\n", tgt.name, tgt.baseURL)
 			os.Exit(1)
@@ -554,19 +576,38 @@ func TestLandlockCanReadSystemBinaries(t *testing.T) {
 func TestLandlockCanWriteTmpdir(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			// TMPDIR ($CWD/.tmp) should be writable; /tmp should be denied.
+			// All temp variables are forced to CWD, caller values are ignored,
+			// no .tmp directory is created, and shared /tmp remains denied.
 			result := runJob(t, tgt, map[string]any{
-				"script":  "echo TMPDIR=$TMPDIR && touch $TMPDIR/landlock-tmp-test && echo tmpdir_ok && touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
-				"env":     map[string]string{"HOME": "/home/dify"},
+				"script": `set -eu
+printf 'CWD=%s TMPDIR=%s TMP=%s TEMP=%s\n' "$PWD" "$TMPDIR" "$TMP" "$TEMP"
+test "$TMPDIR" = "$PWD"
+test "$TMP" = "$PWD"
+test "$TEMP" = "$PWD"
+test ! -e "$PWD/.tmp"
+touch "$TMPDIR/landlock-tmp-test"
+test -f "$TMPDIR/landlock-tmp-test"
+printf 'marker=%s\n' "$TMPDIR/landlock-tmp-test"
+if touch /tmp/landlock-denied 2>/dev/null; then
+	echo outside_tmp_unexpectedly_writable
+	exit 1
+fi
+echo outside_tmp_denied`,
+				"cwd":     "/home/dify",
+				"env":     map[string]string{"HOME": "/home/dify", "TMPDIR": "/tmp", "TMP": "/tmp", "TEMP": "/tmp"},
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
 			output := result["output"].(string)
-			if !strings.Contains(output, "tmpdir_ok") {
-				t.Errorf("expected write to $TMPDIR to succeed, got %q", output)
-			}
-			if !strings.Contains(output, "tmp_exit=1") && !strings.Contains(output, "Permission denied") {
-				t.Errorf("expected write to /tmp to be denied, got %q", output)
+			for _, marker := range []string{
+				"CWD=/home/dify TMPDIR=/home/dify TMP=/home/dify TEMP=/home/dify",
+				"marker=/home/dify/landlock-tmp-test",
+				"outside_tmp_denied",
+			} {
+				if !strings.Contains(output, marker) {
+					t.Errorf("expected output marker %q, got %q", marker, output)
+				}
 			}
 		})
 	}
@@ -592,28 +633,168 @@ func TestLandlockCannotWriteOutsideHome(t *testing.T) {
 	}
 }
 
-func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
+func TestLandlockCannotReadOrWriteOtherAgentHome(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			// First, create a file in one agent's home.
+			// First, create a file with a control layout whose HOME and cwd are
+			// the same participant directory.
 			setup := runJob(t, tgt, map[string]any{
-				"script":  "mkdir -p /home/agent-a && touch /home/agent-a/secret",
-				"env":     map[string]string{"HOME": "/home/agent-a"},
+				"script":  "mkdir -p /home/dify/agent-a /home/dify/agent-b && printf secret > /home/dify/agent-a/secret",
+				"cwd":     "/home/dify",
+				"env":     map[string]string{"HOME": "/home/dify"},
 				"timeout": 10,
 			})
 			assertJobDone(t, setup)
 			assertExitCode(t, setup, 0)
 
-			// Now run as a different agent and try to read the other's file.
+			// A sibling control layout can use its own Home, but content reads
+			// and Landlock-controlled writes to the first participant must fail.
 			result := runJob(t, tgt, map[string]any{
-				"script":  "cat /home/agent-a/secret 2>&1; echo exit=$?",
-				"env":     map[string]string{"HOME": "/home/agent-b"},
+				"script":  "touch \"$HOME/own\"; cat /home/dify/agent-a/secret >/dev/null 2>&1; echo read_exit=$?; touch /home/dify/agent-a/sibling-write >/dev/null 2>&1; echo write_exit=$?; python -c 'import os; os.truncate(\"/home/dify/agent-a/secret\", 0)' >/dev/null 2>&1; echo truncate_exit=$?",
+				"cwd":     "/home/dify/agent-b",
+				"env":     map[string]string{"HOME": "/home/dify/agent-b"},
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
 			output := result["output"].(string)
-			if strings.Contains(output, "exit=0") {
-				t.Errorf("expected read of other agent's file to be denied, but it succeeded: %q", output)
+			for _, forbidden := range []string{"read_exit=0", "write_exit=0", "truncate_exit=0"} {
+				if strings.Contains(output, forbidden) {
+					t.Errorf("expected sibling Home access to be denied, got %q", output)
+				}
+			}
+		})
+	}
+}
+
+func TestLandlockNormalLayoutWritesHomeAndWorkspaceButLifecycleLayoutRejectsWorkspace(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			const (
+				home      = "/home/dify/layout-home"
+				workspace = "/home/dify/layout-workspace"
+			)
+			setup := runJob(t, tgt, map[string]any{
+				"script":  fmt.Sprintf("rm -rf %s %s && mkdir -p %s %s", home, workspace, home, workspace),
+				"cwd":     "/home/dify",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			normal := runJob(t, tgt, map[string]any{
+				"script":  "printf home > \"$HOME/private\"; printf workspace > \"$PWD/shared\"; cat \"$HOME/private\" \"$PWD/shared\"",
+				"cwd":     workspace,
+				"env":     map[string]string{"HOME": home},
+				"timeout": 10,
+			})
+			assertJobDone(t, normal)
+			assertExitCode(t, normal, 0)
+			if output := normal["output"].(string); !strings.Contains(output, "homeworkspace") {
+				t.Fatalf("normal layout could not use Home and Workspace: %q", output)
+			}
+
+			lifecycle := runJob(t, tgt, map[string]any{
+				"script":  fmt.Sprintf("touch %s/lifecycle-denied >/dev/null 2>&1; echo workspace_exit=$?", workspace),
+				"cwd":     home,
+				"env":     map[string]string{"HOME": home},
+				"timeout": 10,
+			})
+			assertJobDone(t, lifecycle)
+			assertExitCode(t, lifecycle, 0)
+			if output := lifecycle["output"].(string); strings.Contains(output, "workspace_exit=0") {
+				t.Fatalf("lifecycle layout wrote shared Workspace: %q", output)
+			}
+		})
+	}
+}
+
+func TestLifecycleLayoutRejectsArchiveSymlinkWriteOutsideHome(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			const (
+				home        = "/home/dify/archive-home"
+				workspace   = "/home/dify/archive-workspace"
+				outsideFile = workspace + "/symlink-escape"
+			)
+			setup := runJob(t, tgt, map[string]any{
+				"script":  fmt.Sprintf("rm -rf %s %s && mkdir -p %s %s", home, workspace, home, workspace),
+				"cwd":     "/home/dify",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			archive := base64.StdEncoding.EncodeToString(workspaceSymlinkArchive(t, workspace))
+			script := fmt.Sprintf(`
+printf '%%s' '%s' | base64 -d > "$HOME/archive.tar.zst"
+python - "$HOME/archive.tar.zst" "$HOME/server-ready" <<'PY' &
+import http.server
+from pathlib import Path
+import sys
+
+archive = Path(sys.argv[1]).read_bytes()
+ready = Path(sys.argv[2])
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/zstd")
+        self.send_header("Content-Length", str(len(archive)))
+        self.end_headers()
+        self.wfile.write(archive)
+
+    def log_message(self, *_args):
+        pass
+
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 18081), Handler)
+ready.touch()
+server.serve_forever()
+PY
+server_pid=$!
+for _ in $(seq 1 100); do
+    [ -e "$HOME/server-ready" ] && break
+    sleep 0.01
+done
+if [ ! -e "$HOME/server-ready" ]; then
+    kill "$server_pid" >/dev/null 2>&1 || true
+    exit 1
+fi
+rm -f "$HOME/archive.tar.zst" "$HOME/server-ready"
+dify-agent home-snapshot download >/dev/null 2>&1
+download_status=$?
+kill "$server_pid" >/dev/null 2>&1 || true
+wait "$server_pid" >/dev/null 2>&1 || true
+echo download_exit=$download_status
+`, archive)
+			result := runJob(t, tgt, map[string]any{
+				"script": script,
+				"cwd":    home,
+				"env": map[string]string{
+					"HOME":                         home,
+					"DIFY_AGENT_STUB_API_BASE_URL": "http://127.0.0.1:18081/agent-stub",
+					"DIFY_AGENT_STUB_AUTH_JWE":     "purpose-token",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			if output := result["output"].(string); strings.Contains(output, "download_exit=0") {
+				t.Fatalf("malicious archive unexpectedly restored outside Home: %q", output)
+			}
+
+			verify := runJob(t, tgt, map[string]any{
+				"script":  fmt.Sprintf("test ! -e %s && echo outside_clean", outsideFile),
+				"cwd":     "/home/dify",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, verify)
+			assertExitCode(t, verify, 0)
+			if output := verify["output"].(string); !strings.Contains(output, "outside_clean") {
+				t.Fatalf("archive wrote outside Home: %q", output)
 			}
 		})
 	}
@@ -668,6 +849,56 @@ func TestLandlockEnvBypassBlocked(t *testing.T) {
 	}
 }
 
+func TestLandlockAllowListEnvBypassBlocked(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			result := runJob(t, tgt, map[string]any{
+				"script": "touch /tmp/landlock-allow-list-bypass 2>&1; echo exit=$?",
+				"env": map[string]string{
+					"HOME":                       "/home/dify",
+					"SHELLCTL_LANDLOCK_RW_PATHS": "/tmp",
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			output := result["output"].(string)
+			if strings.Contains(output, "exit=0") {
+				t.Errorf("expected command env to be unable to widen the Landlock allow-list, got %q", output)
+			}
+		})
+	}
+}
+
+func TestLandlockInitializationFailureIsFailClosed(t *testing.T) {
+	tgt, ok := brokenIsolationTarget()
+	if !ok || authTokenBrokenIsolation == "" || containerBrokenIsolation == "" {
+		t.Skip("broken-isolation acceptance container is not available")
+	}
+	marker := fmt.Sprintf("/home/dify/landlock-user-script-marker-%d", time.Now().UnixNano())
+	result := runJobWithToken(t, tgt, authTokenBrokenIsolation, map[string]any{
+		"script":  fmt.Sprintf("touch %s", marker),
+		"env":     map[string]string{"HOME": "/home/dify"},
+		"timeout": 10,
+	})
+
+	assertJobDone(t, result)
+	assertExitCode(t, result, 126)
+	if output, ok := result["output"].(string); !ok || !strings.Contains(output, "apply Landlock filesystem isolation") {
+		t.Fatalf("expected Landlock initialization failure, got output %q", output)
+	}
+	if output, err := exec.Command(
+		"docker",
+		"exec",
+		containerBrokenIsolation,
+		"test",
+		"!",
+		"-e",
+		marker,
+	).CombinedOutput(); err != nil {
+		t.Fatalf("user script marker was created or could not be checked: %v: %s", err, output)
+	}
+}
+
 // --- Helpers ---
 
 func runJob(t *testing.T, tgt target, payload map[string]any) map[string]any {
@@ -680,6 +911,43 @@ func runJob(t *testing.T, tgt target, payload map[string]any) map[string]any {
 		t.Fatalf("[%s] failed to parse run response: %v\nbody: %s", tgt.name, err, string(body))
 	}
 	return result
+}
+
+func workspaceSymlinkArchive(t *testing.T, workspace string) []byte {
+	t.Helper()
+	var output bytes.Buffer
+	encoder, err := zstd.NewWriter(&output, zstd.WithEncoderLevel(zstd.EncoderLevelFromZstd(1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := tar.NewWriter(encoder)
+	if err := writer.WriteHeader(&tar.Header{
+		Name:     "escape",
+		Typeflag: tar.TypeSymlink,
+		Linkname: workspace,
+		Mode:     0o777,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	content := []byte("must stay inside Home")
+	if err := writer.WriteHeader(&tar.Header{
+		Name:     "escape/symlink-escape",
+		Typeflag: tar.TypeReg,
+		Mode:     0o600,
+		Size:     int64(len(content)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := encoder.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return output.Bytes()
 }
 
 func waitJob(t *testing.T, tgt target, jobID string, payload map[string]any) map[string]any {

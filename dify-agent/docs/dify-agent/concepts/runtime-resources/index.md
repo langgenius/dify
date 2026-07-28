@@ -15,9 +15,9 @@ Agent can therefore have multiple active Bindings in one Workspace:
 each has an independent Home and session, while all may share Workspace files.
 
 Home and Workspace are logically independent. A backend may still couple their
-physical representation. For example, current E2B maps one Binding and its
-Workspace to one E2B resource, while Local can attach multiple materialized
-Homes to one shared Workspace.
+physical representation. For example, native `e2b` maps one Binding and its
+Workspace to one E2B resource, while Local and `e2b_s3` can attach multiple
+materialized Homes to one shared Workspace.
 
 ## Runtime layer graph
 
@@ -103,11 +103,13 @@ composition contains:
 ```
 
 Each Agent request acquires that ref for the duration of the run and releases it
-afterward. Local release closes the operation's shellctl connection. E2B release
-also pauses the underlying E2B resource with memory preserved. A later request
-or Workspace file operation acquires a new lease for the same Binding ref. If a
-backend confirms the resource is gone, acquisition fails; it does not create an
-empty replacement Workspace.
+afterward. Local release closes the operation's shellctl connection. Native
+`e2b` release also pauses the underlying E2B resource with memory preserved;
+`e2b_s3` release closes only operation-local clients because other Bindings may
+still use the shared Sandbox. A later request or Workspace file operation
+acquires a new lease for the same Binding ref. If a backend confirms the
+resource is gone, acquisition fails; it does not create an empty replacement
+Workspace.
 
 ## Retirement and collection
 
@@ -175,7 +177,9 @@ inside the backend execution namespace. They are not host paths, product ids,
 or request configuration. Shell commands start in `workspace_dir`, and `HOME`
 is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
 same shellctl namespace, while path isolation restricts the active lease to its
-own Home plus the shared Workspace.
+own Home plus the shared Workspace for content access. Linux Landlock does not
+currently restrict `stat(2)`, so sibling path metadata can remain visible even
+though sibling Home content cannot be read or written.
 
 ## Backend support
 
@@ -183,6 +187,7 @@ own Home plus the shared Workspace.
 | --- | --- | --- | --- |
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
+| E2B + S3 (`e2b_s3`) | Supported as immutable OpenDAL/S3 tar.zst streams | Multiple private Binding Homes attach to one shared E2B Workspace Sandbox | Workspace ref is the Sandbox id, Binding ref is `sandbox-id:binding-id`, and Home Snapshot ref is an OpenDAL path relative to `DIFY_AGENT_E2B_S3_ROOT`; the physical S3 key combines the root and ref. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
@@ -190,6 +195,16 @@ the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
 rejects `existing_workspace_ref` with `shared_workspace_unsupported`, because
 its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
 Neither path creates a fallback Workspace or switches backends.
+
+`e2b_s3` keeps `/home/dify/workspace` shared while placing each private Home
+under `/home/dify/.dify-agent-materialized-homes/<binding-id>`. Runtime leases
+force `$HOME` to that participant directory and cwd to the shared Workspace.
+Home save/restore is streamed by the hidden Sandbox CLI through a 10-minute,
+method-scoped JWE HTTP gateway to an immutable S3 object; credentials and object
+selection never enter the Sandbox. Releasing one Binding lease closes only its
+operation-local clients and does not pause the shared Sandbox. Binding-only
+collection removes one Home, Workspace collection kills the Sandbox, and Home
+Snapshot collection deletes only the object.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource. Runtime resources pause on timeout. It is not a retention TTL and

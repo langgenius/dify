@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 )
 
 // httpStubClient implements StubClient using pure HTTP transport.
@@ -207,6 +208,14 @@ func (c *httpStubClient) PutConfigNote(_ context.Context, note string) ([]byte, 
 		return nil, err
 	}
 	return body, nil
+}
+
+func (c *httpStubClient) UploadHomeSnapshot(ctx context.Context, archive io.Reader) error {
+	return c.http.uploadHomeSnapshot(ctx, archive)
+}
+
+func (c *httpStubClient) DownloadHomeSnapshot(ctx context.Context) (io.ReadCloser, error) {
+	return c.http.downloadHomeSnapshot(ctx)
 }
 
 func (c *httpStubClient) UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error) {

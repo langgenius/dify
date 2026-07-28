@@ -38,6 +38,7 @@ def test_create_agent_stub_router_mounts_all_agent_stub_routes() -> None:
     assert "/agent-stub/connections" in paths
     assert "/agent-stub/files/upload-request" in paths
     assert "/agent-stub/files/download-request" in paths
+    assert "/agent-stub/home-snapshots/archive" in paths
 
 
 def test_create_agent_stub_router_returns_503_for_unconfigured_services() -> None:

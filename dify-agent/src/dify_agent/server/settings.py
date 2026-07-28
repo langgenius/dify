@@ -13,6 +13,7 @@ live here under the ``DIFY_AGENT_...`` environment-variable namespace.
 import httpx
 
 from typing import ClassVar, Literal, cast
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,8 +24,11 @@ from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveR
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.agent_stub.server.home_snapshots import HomeSnapshotGatewayService
+from dify_agent.agent_stub.server.tokens.home_snapshot import HomeSnapshotTransferTokenCodec
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.e2b_s3 import OpenDALHomeArchiveStore
 from dify_agent.runtime_backend.profile import RuntimeBackendSettings, create_runtime_backend_profile
 
 DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
@@ -41,7 +45,7 @@ class ServerSettings(BaseSettings):
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
-    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    runtime_backend: Literal["local", "enterprise", "e2b", "e2b_s3"] = "local"
     local_sandbox_endpoint: str | None = Field(
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT", "DIFY_AGENT_SHELLCTL_ENTRYPOINT"),
@@ -63,6 +67,13 @@ class ServerSettings(BaseSettings):
     )
     e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    e2b_s3_bucket: str | None = None
+    e2b_s3_root: str = "dify-agent"
+    e2b_s3_region: str | None = None
+    e2b_s3_endpoint: str | None = None
+    e2b_s3_access_key_id: str | None = None
+    e2b_s3_secret_access_key: str | None = None
+    e2b_s3_session_token: str | None = None
     sandbox_file_upload_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
@@ -83,6 +94,22 @@ class ServerSettings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
+
+    @field_validator(
+        "e2b_api_key",
+        "e2b_s3_bucket",
+        "e2b_s3_region",
+        "e2b_s3_endpoint",
+        "e2b_s3_access_key_id",
+        "e2b_s3_secret_access_key",
+        "e2b_s3_session_token",
+        mode="before",
+    )
+    @classmethod
+    def normalize_optional_e2b_s3_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
     @field_validator("agent_stub_api_base_url")
     @classmethod
@@ -167,6 +194,34 @@ class ServerSettings(BaseSettings):
                 )
             if not parse_agent_stub_endpoint(self.agent_stub_api_base_url).is_grpc:
                 raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_API_BASE_URL.")
+        if self.runtime_backend == "e2b_s3":
+            if not self.e2b_api_key or not self.e2b_api_key.strip():
+                raise ValueError("DIFY_AGENT_E2B_API_KEY is required for the e2b_s3 runtime backend.")
+            if not self.e2b_template.strip():
+                raise ValueError("DIFY_AGENT_E2B_TEMPLATE must not be blank.")
+            if not self.e2b_s3_bucket or not self.e2b_s3_bucket.strip():
+                raise ValueError("DIFY_AGENT_E2B_S3_BUCKET is required for the e2b_s3 runtime backend.")
+            if not self.e2b_s3_root.strip():
+                raise ValueError("DIFY_AGENT_E2B_S3_ROOT must not be blank.")
+            if self.e2b_s3_endpoint is not None:
+                parsed_s3_endpoint = urlparse(self.e2b_s3_endpoint.strip())
+                if parsed_s3_endpoint.scheme not in {"http", "https"} or not parsed_s3_endpoint.netloc:
+                    raise ValueError("DIFY_AGENT_E2B_S3_ENDPOINT must be a valid HTTP(S) URL.")
+            has_access_key = bool(self.e2b_s3_access_key_id and self.e2b_s3_access_key_id.strip())
+            has_secret_key = bool(self.e2b_s3_secret_access_key and self.e2b_s3_secret_access_key.strip())
+            if has_access_key != has_secret_key:
+                raise ValueError(
+                    "DIFY_AGENT_E2B_S3_ACCESS_KEY_ID and DIFY_AGENT_E2B_S3_SECRET_ACCESS_KEY "
+                    + "must be configured together."
+                )
+            if self.e2b_s3_session_token and self.e2b_s3_session_token.strip() and not has_access_key:
+                raise ValueError("DIFY_AGENT_E2B_S3_SESSION_TOKEN requires explicit S3 credentials.")
+            if self.agent_stub_api_base_url is None:
+                raise ValueError("DIFY_AGENT_STUB_API_BASE_URL is required for the e2b_s3 runtime backend.")
+            if parse_agent_stub_endpoint(self.agent_stub_api_base_url).is_grpc:
+                raise ValueError("e2b_s3 requires an HTTP(S) DIFY_AGENT_STUB_API_BASE_URL.")
+            if self.server_secret_key is None:
+                raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY is required for the e2b_s3 runtime backend.")
         return self
 
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:
@@ -187,8 +242,33 @@ class ServerSettings(BaseSettings):
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
                 e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
                 e2b_shellctl_port=self.e2b_shellctl_port,
+                e2b_s3_bucket=self.e2b_s3_bucket,
+                e2b_s3_root=self.e2b_s3_root,
+                e2b_s3_region=self.e2b_s3_region,
+                e2b_s3_endpoint=self.e2b_s3_endpoint,
+                e2b_s3_access_key_id=self.e2b_s3_access_key_id,
+                e2b_s3_secret_access_key=self.e2b_s3_secret_access_key,
+                e2b_s3_session_token=self.e2b_s3_session_token,
+                agent_stub_api_base_url=self.agent_stub_api_base_url,
+                server_secret_key=self.server_secret_key,
             )
         )
+
+    def build_home_snapshot_gateway(self) -> HomeSnapshotGatewayService | None:
+        """Build the e2b_s3 HTTP byte-stream gateway from independent resources."""
+        if self.runtime_backend != "e2b_s3":
+            return None
+        store = OpenDALHomeArchiveStore.create_s3(
+            bucket=self.e2b_s3_bucket or "",
+            root=self.e2b_s3_root,
+            region=self.e2b_s3_region,
+            endpoint=self.e2b_s3_endpoint,
+            access_key_id=self.e2b_s3_access_key_id,
+            secret_access_key=self.e2b_s3_secret_access_key,
+            session_token=self.e2b_s3_session_token,
+        )
+        codec = HomeSnapshotTransferTokenCodec.from_server_secret(self.server_secret_key or "")
+        return HomeSnapshotGatewayService(token_codec=codec, archive_store=store)
 
     def create_agent_stub_token_codec(self) -> AgentStubTokenCodec | None:
         """Return the Agent Stub token codec when the server secret is configured."""

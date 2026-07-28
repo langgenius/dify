@@ -1,6 +1,7 @@
 import asyncio
 import json
 from types import SimpleNamespace
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -824,9 +825,11 @@ def test_dify_plugin_tools_layer_rejects_path_without_shell() -> None:
 def test_plugin_tool_file_context_uploads_sandbox_path_and_resolves_signed_url() -> None:
     class FakeShell:
         script: str | None = None
+        kwargs: dict[str, object] | None = None
 
-        async def run_remote_script_complete(self, script: str, **_kwargs: object) -> object:
+        async def run_remote_script_complete(self, script: str, **kwargs: object) -> object:
             self.script = script
+            self.kwargs = kwargs
             return SimpleNamespace(
                 exit_code=0,
                 status="done",
@@ -851,9 +854,9 @@ def test_plugin_tool_file_context_uploads_sandbox_path_and_resolves_signed_url()
     async def scenario() -> None:
         shell = FakeShell()
         context = _PluginToolFileContext(
-            file_client=FakeFileClient(),  # type: ignore[arg-type]
+            file_client=cast(Any, FakeFileClient()),
             execution_context=_execution_context_config(),
-            shell=shell,  # type: ignore[arg-type]
+            shell=cast(Any, shell),
         )
         result = await context.to_plugin_file_parameter("outputs/report.pdf")
 
@@ -868,6 +871,7 @@ def test_plugin_tool_file_context_uploads_sandbox_path_and_resolves_signed_url()
         }
         assert shell.script is not None
         assert "outputs/report.pdf" in shell.script
+        assert shell.kwargs == {"timeout": 60.0, "inject_agent_stub_env": True}
 
     asyncio.run(scenario())
 

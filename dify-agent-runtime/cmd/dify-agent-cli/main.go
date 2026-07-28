@@ -4,21 +4,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/agentcli"
 	"github.com/spf13/cobra"
 )
 
-// knownRootCommands mirrors the Python CLI's _KNOWN_ROOT_COMMANDS. Anything else
-// on the command line is treated as argv forwarded to an implicit connect.
+// knownRootCommands identifies names dispatched through the Cobra command tree.
+// Any other bare first argument is treated as argv for an implicit connect.
 var knownRootCommands = map[string]struct{}{
-	"config":  {},
-	"connect": {},
-	"drive":   {},
-	"file":    {},
+	"config":        {},
+	"connect":       {},
+	"drive":         {},
+	"file":          {},
+	"home-snapshot": {},
 }
 
 func main() {
@@ -31,6 +35,9 @@ func main() {
 //go:generate sh -c "go run . __dump-cli-help > ../../../dify-agent/src/dify_agent/layers/_agent_cli_help.json"
 
 func runCLI(args []string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// Hidden developer intercept: emit the JSON help snapshot from the cobra
 	// tree. Not registered as a cobra command, so the visible command surface
 	// stays identical to the Python CLI. See dumphelp.go.
@@ -56,6 +63,7 @@ func runCLI(args []string) error {
 	}
 
 	root := newRootCommand()
+	root.SetContext(ctx)
 	root.SetArgs(args)
 	return root.Execute()
 }
@@ -78,8 +86,44 @@ func newRootCommand() *cobra.Command {
 		newFileCommand(),
 		newDriveCommand(),
 		newConfigCommand(),
+		newHomeSnapshotCommand(),
 	)
 	return root
+}
+
+func newHomeSnapshotCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:    "home-snapshot",
+		Short:  "Transfer a backend-controlled Home Snapshot archive.",
+		Hidden: true,
+	}
+
+	var excludes []string
+	upload := &cobra.Command{
+		Use:    "upload",
+		Short:  "Stream the current HOME to the Home Snapshot gateway.",
+		Hidden: true,
+		Args:   cobra.NoArgs,
+		RunE: withEnv(func(env *agentcli.Environment, _ []string, command *cobra.Command) error {
+			return agentcli.RunHomeSnapshotUpload(command.Context(), env, excludes)
+		}),
+	}
+	upload.Flags().StringArrayVar(&excludes, "exclude", nil, "Exclude one normalized path relative to HOME.")
+	if err := upload.Flags().MarkHidden("exclude"); err != nil {
+		panic(fmt.Sprintf("hide home-snapshot upload --exclude flag: %v", err))
+	}
+
+	download := &cobra.Command{
+		Use:    "download",
+		Short:  "Restore the Home Snapshot gateway archive into the current HOME.",
+		Hidden: true,
+		Args:   cobra.NoArgs,
+		RunE: withEnv(func(env *agentcli.Environment, _ []string, command *cobra.Command) error {
+			return agentcli.RunHomeSnapshotDownload(command.Context(), env)
+		}),
+	}
+	command.AddCommand(upload, download)
+	return command
 }
 
 func newConnectCommand() *cobra.Command {

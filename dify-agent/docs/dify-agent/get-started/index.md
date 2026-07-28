@@ -86,6 +86,9 @@ DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 E2B requires `DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
 `difys-default-team/dify-agent-local-sandbox` template. The E2B active timeout
 pauses the physical resource behind a Binding; it is not a retention TTL.
+The `e2b_s3` profile additionally stores immutable Home Snapshots in an
+S3-compatible bucket and lets multiple Binding Homes share one E2B Workspace
+Sandbox; see the Operations Guide for its gateway and credential settings.
 Enterprise supports Bindings created from its deployment-default Home.
 Immutable Home Snapshot creation and materialization remain unsupported there.
 

@@ -5,8 +5,10 @@ import importlib
 import time
 
 import httpx
+from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
+import dify_agent.agent_stub.server.app as app_module
 from dify_agent.agent_stub.server.app import create_agent_stub_app
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.server.settings import ServerSettings
@@ -56,6 +58,32 @@ def test_create_agent_stub_app_can_serve_requests() -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Agent Stub is not configured"
+
+
+def test_create_agent_stub_app_injects_e2b_s3_home_snapshot_gateway(monkeypatch) -> None:
+    gateway = object()
+    captured: list[object] = []
+
+    def build_gateway(_self: ServerSettings) -> object:
+        return gateway
+
+    def capture_router(**kwargs: object) -> APIRouter:
+        captured.append(kwargs["home_snapshot_gateway"])
+        return APIRouter()
+
+    monkeypatch.setattr(ServerSettings, "build_home_snapshot_gateway", build_gateway)
+    monkeypatch.setattr(app_module, "create_agent_stub_router", capture_router)
+    settings = ServerSettings(
+        runtime_backend="e2b_s3",
+        e2b_api_key="e2b-secret",
+        e2b_s3_bucket="snapshots",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
+        server_secret_key=_base64url_secret(b"1" * 32),
+    )
+
+    _ = create_agent_stub_app(settings)
+
+    assert captured == [gateway]
 
 
 def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests(monkeypatch) -> None:

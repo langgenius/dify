@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import logging
-from typing import Protocol
+import time
+from typing import Literal, Protocol
 
-from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol
+from dify_agent.adapters.shell.protocols import (
+    CompleteShellCommandResult,
+    ShellCommandProtocol,
+    ShellCommandResult,
+)
 from dify_agent.adapters.shell.shellctl import (
     ShellctlClientFactory,
     ShellctlClientProtocol,
@@ -16,7 +21,9 @@ from dify_agent.adapters.shell.shellctl import (
 )
 from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
 
-_CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
+_COMPLETE_POLL_TIMEOUT_SECONDS = 30.0
+_COMPLETE_TERMINATE_GRACE_SECONDS = 10.0
+CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
 
 
@@ -113,44 +120,113 @@ async def create_owned_shellctl_lease(
         raise
 
 
-async def run_shellctl_control_command(
+async def execute_complete_with_commands(
     commands: ShellCommandProtocol,
     script: str,
     *,
-    timeout: float = 30.0,
+    cwd: str | None,
+    env: dict[str, str] | None,
+    timeout: float | None,
+    max_output_bytes: int,
 ) -> CompleteShellCommandResult:
-    """Run one bounded driver control command and always delete its transient job."""
-    result = await commands.run(script, cwd=None, env=None, timeout=timeout)
-    job_id = result.job_id
-    output_parts = [result.output]
+    """Run one command to completion and always delete its transient shellctl job.
+
+    ``timeout=None`` deliberately imposes no total execution deadline. Each
+    shellctl call still long-polls for at most 30 seconds so cancellation and
+    terminal state are observed without turning a poll timeout into a job
+    timeout.
+    """
+    deadline = None if timeout is None else time.monotonic() + timeout
+    job_id: str | None = None
+    result: ShellCommandResult | None = None
+    output_parts: list[str] = []
+    captured_bytes = 0
+    incomplete_reason: Literal["output_limit", "timeout"] | None = None
     try:
-        while result.truncated or not result.done:
-            result = await commands.wait(result.job_id, offset=result.offset, timeout=timeout)
-            output_parts.append(result.output)
-            if sum(len(part.encode("utf-8")) for part in output_parts) > _CONTROL_COMMAND_OUTPUT_LIMIT:
-                raise RuntimeError("shellctl control command exceeded its output limit")
+        result = await commands.run(
+            script,
+            cwd=cwd,
+            env=env,
+            timeout=_poll_timeout(deadline),
+        )
+        job_id = result.job_id
+        while True:
+            remaining_bytes = max(max_output_bytes - captured_bytes, 0)
+            limited_output = _utf8_prefix(result.output, remaining_bytes)
+            output_parts.append(limited_output)
+            captured_bytes += len(limited_output.encode("utf-8"))
+            if limited_output != result.output:
+                incomplete_reason = "output_limit"
+                break
+            if captured_bytes >= max_output_bytes and (result.truncated or not result.done):
+                incomplete_reason = "output_limit"
+                break
+            if result.truncated:
+                result = await commands.read_output(result.job_id, offset=result.offset)
+                continue
+            if result.done:
+                break
+            if deadline is not None and time.monotonic() >= deadline:
+                incomplete_reason = "timeout"
+                break
+            result = await commands.wait(
+                result.job_id,
+                offset=result.offset,
+                timeout=_poll_timeout(deadline),
+            )
+
+        final_status = result.status
+        final_done = result.done
+        final_exit_code = result.exit_code
+        final_offset = result.offset
+        if incomplete_reason is not None and not result.done:
+            terminal = await commands.interrupt(
+                result.job_id,
+                grace_seconds=_COMPLETE_TERMINATE_GRACE_SECONDS,
+            )
+            final_status = terminal.status
+            final_done = terminal.done
+            final_exit_code = terminal.exit_code
+            final_offset = terminal.offset
         return CompleteShellCommandResult(
             job_id=result.job_id,
-            status=result.status,
-            done=result.done,
-            exit_code=result.exit_code,
+            status=final_status,
+            done=final_done,
+            exit_code=final_exit_code,
             output="".join(output_parts),
-            output_complete=True,
-            incomplete_reason=None,
-            offset=result.offset,
+            output_complete=incomplete_reason is None,
+            incomplete_reason=incomplete_reason,
+            offset=final_offset,
             output_path=result.output_path,
         )
     finally:
-        try:
-            await commands.delete(job_id, force=True)
-        except Exception as exc:
-            logger.warning("Failed to delete transient shellctl control job %s: %s", job_id, exc)
+        if job_id is not None:
+            try:
+                await commands.delete(job_id, force=True)
+            except Exception as exc:
+                logger.warning("Failed to delete transient shellctl job %s: %s", job_id, exc)
+
+
+def _poll_timeout(deadline: float | None) -> float:
+    if deadline is None:
+        return _COMPLETE_POLL_TIMEOUT_SECONDS
+    return max(deadline - time.monotonic(), 0.0)
+
+
+def _utf8_prefix(value: str, max_bytes: int) -> str:
+    if max_bytes <= 0:
+        return ""
+    encoded = value.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return value
+    return encoded[:max_bytes].decode("utf-8", errors="ignore")
 
 
 __all__ = [
     "AsyncCloseable",
+    "CONTROL_COMMAND_OUTPUT_LIMIT",
     "ShellctlRuntimeLease",
     "create_owned_shellctl_lease",
     "create_shellctl_lease",
-    "run_shellctl_control_command",
+    "execute_complete_with_commands",
 ]

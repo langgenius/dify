@@ -40,11 +40,11 @@ the opaque Binding ref belongs to `DifyRuntimeLayerConfig`.
 
 ## Runtime requirements
 
-The server constructs one coherent runtime backend profile. Local and E2B
-implement Home Snapshot and Execution Binding operations. Enterprise implements
-default-Home Binding creation, acquisition, and coupled destruction, while
-immutable Home Snapshot operations fail fast; there is no compatibility
-fallback to the retired Sandbox protocol.
+The server constructs one coherent runtime backend profile. Local, native E2B,
+and `e2b_s3` implement Home Snapshot and Execution Binding operations.
+Enterprise implements default-Home Binding creation, acquisition, and coupled
+destruction, while immutable Home Snapshot operations fail fast; there is no
+compatibility fallback to the retired Sandbox protocol.
 
 ```python
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
@@ -73,8 +73,11 @@ DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
 DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 ```
 
-The auth token may be empty when shellctl authentication is disabled. E2B uses
-`DIFY_AGENT_E2B_API_KEY`, the prepared template, and its shellctl settings.
+The auth token may be empty when shellctl authentication is disabled. Both E2B
+profiles use `DIFY_AGENT_E2B_API_KEY`, the prepared template, and its shellctl
+settings. `e2b_s3` additionally requires its S3 bucket settings, an HTTP(S)
+Agent Stub URL reachable from the Sandbox, and a server secret; its template
+must enable fail-closed path isolation.
 
 To let shell jobs call the Agent Stub with `dify-agent ...`, configure a public
 Agent Stub URL and a unique production secret:
@@ -205,12 +208,15 @@ browse the current Workspace through Dify Agent's private
 `/workspace/files/list`, `/workspace/files/read`, and
 `/workspace/files/upload` routes, each of which acquires a fresh lease.
 
-On Local, multiple Bindings may share a Workspace while each receives a
-separate materialized Home. Those directories may be siblings in one shellctl
-namespace; path isolation restricts a lease to its Home and Workspace. On E2B,
-one physical E2B resource currently represents both Binding and Workspace, so
-shared Workspace attachment is unsupported.
+On Local and `e2b_s3`, multiple Bindings may share a Workspace while each
+receives a separate materialized Home. Those directories may be siblings in one
+shellctl namespace; path isolation restricts content access to the lease's Home
+and Workspace. Linux Landlock does not currently restrict `stat(2)`, so sibling
+path metadata can remain visible even though sibling Home content cannot be
+read or written.
+On native `e2b`, one physical E2B resource represents both Binding and
+Workspace, so shared Workspace attachment is unsupported.
 
 See [Runtime resources](../../concepts/runtime-resources/index.md) for the
 ledger and lifecycle contract. The [Operations Guide](../../guide/index.md)
-covers Local and E2B validation.
+covers Local and both E2B profiles.

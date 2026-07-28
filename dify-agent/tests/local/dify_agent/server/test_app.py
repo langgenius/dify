@@ -6,6 +6,7 @@ from typing import ClassVar
 
 import httpx
 import pytest
+from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
 import dify_agent.server.app as app_module
@@ -230,7 +231,9 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert execution_context_layer.daemon_api_key == "daemon-secret"
         assert shell_layer.agent_stub_token_factory is not None
         token = shell_layer.agent_stub_token_factory(_execution_context(), session_id="abc12ff")
-        decoded = settings.create_agent_stub_token_codec().decode_token(token)
+        token_codec = settings.create_agent_stub_token_codec()
+        assert token_codec is not None
+        decoded = token_codec.decode_token(token)
         assert decoded.execution_context == _execution_context()
         assert decoded.session_id == "abc12ff"
         knowledge_provider = next(provider for provider in layer_providers if provider.type_id == "dify.knowledge_base")
@@ -308,6 +311,33 @@ def test_create_app_wires_authenticated_agent_stub_connection_route(monkeypatch:
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert fake_http_client.is_closed is True
     assert fake_redis.closed is True
+
+
+def test_create_app_injects_e2b_s3_home_snapshot_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = object()
+    captured: list[object] = []
+
+    def build_gateway(_self: ServerSettings) -> object:
+        return gateway
+
+    def capture_router(**kwargs: object) -> APIRouter:
+        captured.append(kwargs["home_snapshot_gateway"])
+        return APIRouter()
+
+    monkeypatch.setattr(ServerSettings, "build_home_snapshot_gateway", build_gateway)
+    monkeypatch.setattr(ServerSettings, "build_runtime_backend_profile", lambda _self: None)
+    monkeypatch.setattr(app_module, "create_agent_stub_router", capture_router)
+    settings = ServerSettings(
+        runtime_backend="e2b_s3",
+        e2b_api_key="e2b-secret",
+        e2b_s3_bucket="snapshots",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
+        server_secret_key=_base64url_secret(b"1" * 32),
+    )
+
+    _ = create_app(settings)
+
+    assert captured == [gateway]
 
 
 def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch: pytest.MonkeyPatch) -> None:

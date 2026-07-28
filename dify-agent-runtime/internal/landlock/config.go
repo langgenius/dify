@@ -62,7 +62,9 @@ func DefaultConfig(home, cwd, jobDir string) *Config {
 // falling back to defaults for any unset variable.
 //
 // If a variable is set (even to empty string), its value replaces the default.
-// Set to empty to grant no additional paths beyond $HOME.
+// An empty value removes only that category's additional configured paths;
+// buildRules still grants mandatory read-write access to HOME and Cwd and
+// read-only access to JobDir.
 func ConfigFromEnv(home, cwd, jobDir string) *Config {
 	cfg := DefaultConfig(home, cwd, jobDir)
 

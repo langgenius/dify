@@ -149,9 +149,10 @@ class ExecutionBindingBackend(Protocol):
         """End operation-local access without destroying persistent resources.
 
         Implementations must close clients and owned transports and may suspend
-        the physical runtime. They must not delete or retire the Binding,
-        materialized Home, or Workspace, and must reject leases created by a
-        different backend implementation.
+        a physical runtime only when it is not shared by other Bindings. They
+        must not suspend a physical runtime still serving another Binding,
+        delete or retire the Binding, materialized Home, or Workspace, and must
+        reject leases created by a different backend implementation.
         """
         ...
 

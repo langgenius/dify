@@ -37,9 +37,10 @@ from dify_agent.runtime_backend.protocols import (
     RuntimeLease,
 )
 from dify_agent.runtime_backend.shellctl import (
+    CONTROL_COMMAND_OUTPUT_LIMIT,
     ShellctlRuntimeLease,
     create_owned_shellctl_lease,
-    run_shellctl_control_command,
+    execute_complete_with_commands,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,9 +78,7 @@ class EnterpriseExecutionBindingBackend:
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
         if spec.existing_workspace_ref is not None:
-            raise SharedWorkspaceUnsupportedError(
-                "current Enterprise backend cannot attach to an existing Workspace"
-            )
+            raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
         if spec.home_snapshot_ref is not None:
             raise BindingCreateError("current Enterprise backend cannot materialize an immutable Home Snapshot")
 
@@ -101,7 +100,7 @@ class EnterpriseExecutionBindingBackend:
             sandbox_id = sandbox_id_value
 
             data_plane = await self._create_data_plane(sandbox_id)
-            result = await run_shellctl_control_command(
+            result = await execute_complete_with_commands(
                 ShellctlCommands(client=data_plane.client),
                 "\n".join(
                     [
@@ -112,8 +111,12 @@ class EnterpriseExecutionBindingBackend:
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
                     ]
                 ),
+                cwd=None,
+                env=None,
+                timeout=30.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
             )
-            if result.exit_code != 0:
+            if result.exit_code != 0 or not result.output_complete:
                 raise BindingCreateError(result.output)
             await data_plane.close()
             data_plane = None
@@ -134,7 +137,7 @@ class EnterpriseExecutionBindingBackend:
         try:
             data_plane = await self._create_data_plane(binding_ref)
             validation_commands = ShellctlCommands(client=data_plane.client)
-            result = await run_shellctl_control_command(
+            result = await execute_complete_with_commands(
                 validation_commands,
                 "\n".join(
                     [
@@ -143,8 +146,15 @@ class EnterpriseExecutionBindingBackend:
                         f"test -d {shlex.quote(self.layout.workspace_dir)}",
                     ]
                 ),
+                cwd=None,
+                env=None,
                 timeout=5.0,
+                max_output_bytes=CONTROL_COMMAND_OUTPUT_LIMIT,
             )
+            if not result.output_complete:
+                raise BindingAcquireError(
+                    f"Enterprise Binding {binding_ref!r} validation did not complete: {result.incomplete_reason}"
+                )
             if result.exit_code != 0:
                 raise BindingLostError(f"Enterprise Binding {binding_ref!r} no longer contains its Home or Workspace")
             return EnterpriseRuntimeLease(data_plane=data_plane)

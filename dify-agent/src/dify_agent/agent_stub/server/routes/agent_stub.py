@@ -8,7 +8,8 @@ delegation with the gRPC transport.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi import APIRouter, Header, HTTPException, Request, Response, status
+from fastapi.responses import StreamingResponse
 
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectRequest,
@@ -30,6 +31,7 @@ from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigReques
 from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneError, AgentStubControlPlaneService
+from dify_agent.agent_stub.server.home_snapshots import HomeSnapshotGatewayError, HomeSnapshotGatewayService
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 
 
@@ -38,12 +40,42 @@ def create_agent_stub_http_router(
     file_request_handler: AgentStubFileRequestHandler | None = None,
     drive_request_handler: AgentStubDriveRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    home_snapshot_gateway: HomeSnapshotGatewayService | None = None,
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])
     service = AgentStubControlPlaneService(
         token_codec, file_request_handler, config_request_handler, drive_request_handler
     )
+
+    def require_home_snapshot_gateway() -> HomeSnapshotGatewayService:
+        if home_snapshot_gateway is None:
+            raise HTTPException(status_code=503, detail="Home Snapshot gateway is not configured")
+        return home_snapshot_gateway
+
+    @router.put("/home-snapshots/archive", status_code=status.HTTP_204_NO_CONTENT)
+    async def upload_home_snapshot_archive(
+        request: Request,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+    ) -> Response:
+        try:
+            await require_home_snapshot_gateway().upload(
+                authorization=authorization,
+                chunks=request.stream(),
+            )
+        except HomeSnapshotGatewayError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @router.get("/home-snapshots/archive")
+    async def download_home_snapshot_archive(
+        authorization: str | None = Header(default=None, alias="Authorization"),
+    ) -> StreamingResponse:
+        try:
+            stream = await require_home_snapshot_gateway().download(authorization=authorization)
+        except HomeSnapshotGatewayError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        return StreamingResponse(stream, media_type="application/zstd")
 
     @router.post("/connections", response_model=AgentStubConnectResponse)
     async def create_connection(

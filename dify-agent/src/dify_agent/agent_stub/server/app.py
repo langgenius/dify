@@ -25,6 +25,7 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
             file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
             config_request_handler=resolved_settings.create_agent_stub_config_request_handler(),
             drive_request_handler=resolved_settings.create_agent_stub_drive_request_handler(),
+            home_snapshot_gateway=resolved_settings.build_home_snapshot_gateway(),
         )
     )
     return app

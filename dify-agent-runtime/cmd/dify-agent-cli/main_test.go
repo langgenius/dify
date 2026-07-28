@@ -226,3 +226,26 @@ func TestHiddenAliasesRemainHidden(t *testing.T) {
 		}
 	}
 }
+
+func TestHomeSnapshotControlCommandIsHiddenButDispatched(t *testing.T) {
+	root := newRootCommand()
+	command := findCommand(root, "home-snapshot")
+	if command == nil || !command.Hidden {
+		t.Fatal("home-snapshot must be registered as a hidden root command")
+	}
+	for _, name := range []string{"upload", "download"} {
+		child := findCommand(command, name)
+		if child == nil || !child.Hidden {
+			t.Fatalf("home-snapshot %s must be registered and hidden", name)
+		}
+	}
+	if strings.Contains(executeHelp(t, "--help"), "home-snapshot") {
+		t.Fatal("root help must not expose home-snapshot")
+	}
+	if uploadHelp := executeHelp(t, "home-snapshot", "upload", "--help"); strings.Contains(uploadHelp, "--exclude") {
+		t.Fatalf("home-snapshot upload help must not expose --exclude\n--- help output ---\n%s", uploadHelp)
+	}
+	if isUnknownBareCommand([]string{"home-snapshot"}) {
+		t.Fatal("home-snapshot must not fall through to implicit connect")
+	}
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import cast
 
 import pytest
@@ -21,9 +22,21 @@ from dify_agent.runtime_backend.e2b import (
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
 
 
+class _FileType(Enum):
+    FILE = "file"
+    DIR = "dir"
+
+
+@dataclass(frozen=True, slots=True)
+class _FileInfo:
+    type: _FileType | None
+    symlink_target: str | None = None
+
+
 @dataclass(slots=True)
 class _Files:
     paths: set[str] = field(default_factory=set)
+    contents: dict[str, str | bytes] = field(default_factory=dict)
 
     async def make_dir(self, path: str) -> bool:
         self.paths.add(path)
@@ -32,8 +45,23 @@ class _Files:
     async def exists(self, path: str) -> bool:
         return path in self.paths
 
+    async def get_info(self, path: str) -> _FileInfo:
+        if path not in self.paths:
+            raise FileNotFoundError(path)
+        return _FileInfo(type=_FileType.DIR)
+
     async def remove(self, path: str) -> None:
         self.paths.discard(path)
+        self.contents.pop(path, None)
+
+    async def read(self, path: str) -> str:
+        value = self.contents[path]
+        return value.decode() if isinstance(value, bytes) else value
+
+    async def write(self, path: str, data: str | bytes) -> object:
+        self.paths.add(path)
+        self.contents[path] = data
+        return object()
 
 
 @dataclass(slots=True)
@@ -208,9 +236,7 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
 @pytest.mark.anyio
 async def test_e2b_missing_explicit_snapshot_does_not_fall_back_to_template() -> None:
     class _FailingControlPlane(_ControlPlane):
-        async def create(
-            self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str
-        ) -> _Sandbox:
+        async def create(self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str) -> _Sandbox:
             del timeout, metadata
             self.created.append((template, on_timeout))
             raise RuntimeError("snapshot unavailable")

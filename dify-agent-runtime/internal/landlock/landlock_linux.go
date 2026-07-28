@@ -8,11 +8,11 @@ import (
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
 )
 
-// Restrict applies Landlock V1 filesystem restrictions for the current process.
+// Restrict applies Landlock V3 filesystem restrictions for the current process.
 func Restrict(cfg *Config) error {
 	rules := buildRules(cfg)
 
-	if err := golandlock.V1.RestrictPaths(rules...); err != nil {
+	if err := golandlock.V3.RestrictPaths(rules...); err != nil {
 		return err
 	}
 	return nil
