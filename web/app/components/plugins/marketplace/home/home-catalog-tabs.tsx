@@ -1,5 +1,3 @@
-'use client'
-
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'

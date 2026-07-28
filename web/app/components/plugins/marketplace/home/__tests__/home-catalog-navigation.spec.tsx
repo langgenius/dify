@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import HomeCatalogNavigation from '../home-catalog-navigation'
+import HomeCatalogTabs from '../home-catalog-tabs'
+import { HomeStickyCatalogTabs, HomeStickyStateProvider } from '../home-sticky-state-provider'
 import styles from '../home-sticky.module.css'
 
 vi.mock('#i18n', async () => {
@@ -25,8 +27,21 @@ vi.mock('@/utils/var', () => ({
 }))
 
 describe('HomeCatalogNavigation', () => {
+  const renderNavigation = (isMarketplacePlatform: boolean) => {
+    return render(
+      <HomeStickyStateProvider>
+        <HomeStickyCatalogTabs>
+          <div data-testid="header-catalog-tabs" />
+        </HomeStickyCatalogTabs>
+        <HomeCatalogNavigation
+          catalogTabs={<HomeCatalogTabs isMarketplacePlatform={isMarketplacePlatform} />}
+        />
+      </HomeStickyStateProvider>,
+    )
+  }
+
   it('keeps template navigation inside the Marketplace platform', () => {
-    render(<HomeCatalogNavigation isMarketplacePlatform />)
+    renderNavigation(true)
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
 
@@ -48,46 +63,45 @@ describe('HomeCatalogNavigation', () => {
   })
 
   it('links Dify users to the hosted Marketplace templates page', () => {
-    render(<HomeCatalogNavigation isMarketplacePlatform={false} />)
+    renderNavigation(false)
 
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
     ).toHaveAttribute('href', 'https://marketplace.dify.ai/templates?source=console')
   })
 
-  it('uses the compact category layout while pinned', () => {
-    render(<HomeCatalogNavigation isMarketplacePlatform isPinned />)
-
-    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
-    const catalogTabs = screen.getByRole('navigation', { name: 'common.mainNav.marketplace' })
-
-    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
-    expect(catalogTabs).toHaveClass(styles.catalogTabsPinned)
-    expect(screen.getByTestId('plugin-type-switch')).toHaveClass(styles.categoriesPinned)
-  })
-
-  it('reports when the category navigation reaches the sticky header', () => {
+  it('shows the compact navigation and header tabs after reaching the sticky header', () => {
     const scrollContainer = document.createElement('div')
     scrollContainer.id = 'marketplace-container'
     document.body.appendChild(scrollContainer)
-    const onPinnedChange = vi.fn()
 
-    render(<HomeCatalogNavigation isMarketplacePlatform onPinnedChange={onPinnedChange} />)
+    renderNavigation(true)
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
     const pinTrigger = navigationSection.previousElementSibling as HTMLElement
     vi.spyOn(scrollContainer, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 100, 100))
     const triggerRect = vi
       .spyOn(pinTrigger, 'getBoundingClientRect')
-      .mockReturnValue(new DOMRect(0, 48, 100, 100))
+      .mockReturnValue(new DOMRect(0, 49, 100, 100))
 
-    onPinnedChange.mockClear()
     fireEvent.scroll(scrollContainer)
-    expect(onPinnedChange).toHaveBeenLastCalledWith(true)
+    expect(screen.queryByTestId('header-catalog-tabs')).not.toBeInTheDocument()
+
+    triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
+    fireEvent.scroll(scrollContainer)
+
+    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
+    expect(
+      screen.getByRole('navigation', { name: 'common.mainNav.marketplace' }).parentElement,
+    ).toHaveClass(styles.catalogTabsPinned)
+    expect(screen.getByTestId('plugin-type-switch')).toHaveClass(styles.categoriesPinned)
+    expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
 
     triggerRect.mockReturnValue(new DOMRect(0, 49, 100, 100))
     fireEvent.scroll(scrollContainer)
-    expect(onPinnedChange).toHaveBeenLastCalledWith(false)
+
+    expect(navigationSection).not.toHaveClass(styles.catalogNavigationPinned)
+    expect(screen.queryByTestId('header-catalog-tabs')).not.toBeInTheDocument()
 
     scrollContainer.remove()
   })
@@ -96,9 +110,8 @@ describe('HomeCatalogNavigation', () => {
     const scrollContainer = document.createElement('div')
     scrollContainer.id = 'marketplace-container'
     document.body.appendChild(scrollContainer)
-    const onPinnedChange = vi.fn()
 
-    render(<HomeCatalogNavigation isMarketplacePlatform isPinned onPinnedChange={onPinnedChange} />)
+    renderNavigation(true)
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
     const pinTrigger = navigationSection.previousElementSibling as HTMLElement
@@ -108,10 +121,10 @@ describe('HomeCatalogNavigation', () => {
       new DOMRect(0, 49, 100, 60),
     )
 
-    onPinnedChange.mockClear()
     fireEvent.scroll(scrollContainer)
 
-    expect(onPinnedChange).toHaveBeenLastCalledWith(true)
+    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
+    expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
 
     scrollContainer.remove()
   })

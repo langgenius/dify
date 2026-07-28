@@ -1,39 +1,33 @@
-'use client'
-
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import HomeCatalogTabs from './home-catalog-tabs'
+import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 
 type HomeHeaderProps = {
   actions?: React.ReactNode
   brandName?: React.ReactNode
   isMarketplacePlatform: boolean
-  showCatalogTabs?: boolean
 }
 
-const CreatorCenter = () => (
-  <Link href="https://creators.dify.ai/" target="_blank" rel="noopener noreferrer">
-    <Button
-      variant="ghost"
-      className="flex w-[133px] items-center justify-start gap-0.5 p-0 text-components-button-secondary-accent-text hover:bg-state-base-hover"
-    >
-      <span aria-hidden className="i-ri-tools-fill size-4" />
-      <span className="hidden px-0.5 system-sm-medium lg:inline">Creator Center</span>
-      <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary" />
-    </Button>
-  </Link>
-)
+function Guide() {
+  const docLink = useDocLink()
 
-const HomeHeader = ({
-  actions,
-  brandName,
-  isMarketplacePlatform,
-  showCatalogTabs = false,
-}: HomeHeaderProps) => {
+  return (
+    <Link href={docLink()} target="_blank" rel="noopener noreferrer">
+      <Button variant="ghost" size="large" className="w-[94px] gap-0.5 px-3 text-text-primary">
+        <span aria-hidden className="i-ri-map-2-line size-5" />
+        <span className="px-1 system-md-medium">Guide</span>
+      </Button>
+    </Link>
+  )
+}
+
+const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderProps) => {
   const { t } = useTranslation('common')
 
   return (
@@ -53,16 +47,16 @@ const HomeHeader = ({
             {brandName ?? t(($) => $['mainNav.marketplace'])}
           </span>
         </Link>
-        {showCatalogTabs && (
+        <HomeStickyCatalogTabs>
           <HomeCatalogTabs
             className={styles.headerCatalogTabs}
             isMarketplacePlatform={isMarketplacePlatform}
           />
-        )}
+        </HomeStickyCatalogTabs>
       </div>
 
       <div className="flex h-full min-w-0 flex-1 items-center justify-end gap-2.5">
-        <CreatorCenter />
+        <Guide />
         {actions}
       </div>
     </header>
