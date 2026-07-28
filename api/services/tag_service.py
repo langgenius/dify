@@ -285,9 +285,7 @@ class TagService:
                 raise NotFound("Snippet not found")
         elif type == "skill":
             skill = session.scalar(
-                select(Skill)
-                .where(Skill.tenant_id == current_user.current_tenant_id, Skill.id == target_id)
-                .limit(1)
+                select(Skill).where(Skill.tenant_id == current_user.current_tenant_id, Skill.id == target_id).limit(1)
             )
             if not skill:
                 raise NotFound("Skill not found")
