@@ -1,5 +1,4 @@
-import type { BannerRecommend } from './banners'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { PluginBanner } from './banners'
 import ListWrapper from '../list/list-wrapper'
 import HomeCatalogNavigation from './home-catalog-navigation'
 import HomeCatalogTabs from './home-catalog-tabs'
@@ -11,7 +10,7 @@ import HomeTrending from './home-trending'
 
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
-  banners: BannerRecommend[]
+  banners: PluginBanner[]
   brandName?: React.ReactNode
   isMarketplacePlatform: boolean
   linkToMarketplaceDetail: boolean
@@ -37,11 +36,12 @@ const MarketplaceHome = ({
         <div className="relative flex w-full flex-col">
           <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
           <HomeSearch />
-          <div
-            aria-hidden="true"
-            className={cn('shrink-0', isMarketplacePlatform ? 'h-6' : 'h-12')}
-          />
-          <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
+          {banners.length > 0 && (
+            <>
+              <div aria-hidden="true" className="h-12 shrink-0" />
+              <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
+            </>
+          )}
           <HomeCatalogNavigation
             catalogTabs={<HomeCatalogTabs isMarketplacePlatform={isMarketplacePlatform} />}
           />
