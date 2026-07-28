@@ -51,27 +51,21 @@ describe('HomeCatalogNavigation', () => {
     const activeTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
     expect(activeTab).toHaveAttribute('aria-current', 'page')
     expect(activeTab).toHaveAttribute('href', '/plugins')
-    expect(activeTab.querySelector('[aria-hidden="true"]')).toHaveClass(
-      'absolute',
-      'h-0.5',
-      'w-[21px]',
-      'bg-text-accent',
-    )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
     ).toHaveAttribute('href', '/templates')
+    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
     expect(screen.getByTestId('plugin-type-switch')).toHaveAttribute('data-variant', 'home')
   })
 
-  it('keeps compact tabs clickable and hides the active indicator', () => {
-    render(<HomeCatalogTabs compact isMarketplacePlatform />)
+  it('keeps header tabs clickable', () => {
+    render(<HomeCatalogTabs isMarketplacePlatform />)
 
     const pluginsTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
     const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
 
     expect(pluginsTab).toHaveAttribute('href', '/plugins')
     expect(pluginsTab).toHaveClass('cursor-pointer')
-    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('href', '/templates')
     expect(templatesTab).toHaveClass('cursor-pointer')
   })
@@ -83,9 +77,8 @@ describe('HomeCatalogNavigation', () => {
     const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
 
     expect(pluginsTab).not.toHaveAttribute('aria-current')
-    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('aria-current', 'page')
-    expect(templatesTab.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
   })
 
   it('renders a supplied catalog category navigation', () => {
