@@ -235,7 +235,9 @@ class TestAccountService:
         assert persisted_account is result
         assert persisted_account.timezone == "Asia/Shanghai"
 
-    def test_create_account_registration_disabled(self, unbound_session: Session, mock_external_service_dependencies) -> None:
+    def test_create_account_registration_disabled(
+        self, unbound_session: Session, mock_external_service_dependencies
+    ) -> None:
         """Test account creation when registration is disabled."""
         from controllers.console.error import AccountNotFound
 
@@ -352,7 +354,9 @@ class TestAccountService:
             "wrong_password", "hashed_password", "salt"
         )
 
-    def test_update_account_password_invalid_new_password(self, unbound_session: Session, mock_password_dependencies) -> None:
+    def test_update_account_password_invalid_new_password(
+        self, unbound_session: Session, mock_password_dependencies
+    ) -> None:
         """Test password update with invalid new password."""
         # Setup test data
         mock_account = Account(
@@ -1663,9 +1667,8 @@ class TestRegisterService:
 
     # ==================== Member Invitation Tests ====================
 
-    def test_invite_new_member_new_account(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
-    ) -> None:
+    @pytest.mark.usefixtures("mock_task_dependencies")
+    def test_invite_new_member_new_account(self, sqlite_session: Session) -> None:
         """Test inviting a new member who doesn't have an account."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -1717,7 +1720,7 @@ class TestRegisterService:
                     mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
 
     def test_invite_new_member_normalizes_new_account_email(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
+        self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Ensure inviting with mixed-case email normalizes before registering."""
         mock_tenant = MagicMock()
@@ -1776,7 +1779,7 @@ class TestRegisterService:
                     mock_task_dependencies.delay.assert_called_once()
 
     def test_invite_new_member_existing_account(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
+        self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Test inviting a pending account that is not in the tenant yet."""
         # Setup test data
@@ -1821,7 +1824,7 @@ class TestRegisterService:
                 mock_lookup.assert_called_once_with("existing@example.com", session=sqlite_session)
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
+        self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Existing active accounts outside the tenant receive an invite without immediate membership."""
         mock_tenant = MagicMock()
@@ -1865,7 +1868,7 @@ class TestRegisterService:
                 )
                 mock_task_dependencies.delay.assert_called_once()
 
-    def test_invite_new_member_already_in_tenant(self, sqlite_session: Session, mock_redis_dependencies) -> None:
+    def test_invite_new_member_already_in_tenant(self, sqlite_session: Session) -> None:
         """Test inviting a member who is already in the tenant."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -1920,9 +1923,8 @@ class TestRegisterService:
 
     # ==================== RBAC Member Invitation Tests ====================
 
-    def test_invite_new_member_rbac_enabled_new_account(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
-    ) -> None:
+    @pytest.mark.usefixtures("mock_task_dependencies")
+    def test_invite_new_member_rbac_enabled_new_account(self, sqlite_session: Session) -> None:
         """When RBAC is enabled, create the member join and replace RBAC member roles."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-789"
@@ -1969,9 +1971,8 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
 
-    def test_invite_new_member_rbac_enabled_existing_account(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
-    ) -> None:
+    @pytest.mark.usefixtures("mock_task_dependencies")
+    def test_invite_new_member_rbac_enabled_existing_account(self, sqlite_session: Session) -> None:
         """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-789"
@@ -2018,7 +2019,7 @@ class TestRegisterService:
                 )
 
     def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
+        self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
         mock_tenant = MagicMock()
@@ -2065,9 +2066,8 @@ class TestRegisterService:
                 )
                 mock_task_dependencies.delay.assert_not_called()
 
-    def test_invite_new_member_rbac_disabled_uses_legacy_role(
-        self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
-    ) -> None:
+    @pytest.mark.usefixtures("mock_task_dependencies")
+    def test_invite_new_member_rbac_disabled_uses_legacy_role(self, sqlite_session: Session) -> None:
         """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-legacy"
@@ -2184,7 +2184,7 @@ class TestRegisterService:
 
     # ==================== Invitation Validation Tests ====================
 
-    def test_get_invitation_if_token_valid_success(self, sqlite_session: Session, mock_redis_dependencies) -> None:
+    def test_get_invitation_if_token_valid_success(self, sqlite_session: Session) -> None:
         """Test successful invitation validation."""
         tenant = Tenant(name="Test Workspace")
         account = Account(name="Test User", email="test@example.com")
@@ -2208,7 +2208,9 @@ class TestRegisterService:
             assert result["tenant"] is tenant
             assert result["data"] == invitation_data
 
-    def test_get_invitation_if_token_valid_no_token_data(self, unbound_session: Session, mock_redis_dependencies) -> None:
+    def test_get_invitation_if_token_valid_no_token_data(
+        self, unbound_session: Session, mock_redis_dependencies
+    ) -> None:
         """Test invitation validation with no token data."""
         # Setup mock
         mock_redis_dependencies.get.return_value = None
@@ -2221,7 +2223,9 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
-    def test_get_invitation_if_token_valid_tenant_not_found(self, sqlite_session: Session, mock_redis_dependencies) -> None:
+    def test_get_invitation_if_token_valid_tenant_not_found(
+        self, sqlite_session: Session, mock_redis_dependencies
+    ) -> None:
         """Test invitation validation when tenant is not found."""
         # Setup mock Redis data
         invitation_data = {
@@ -2238,7 +2242,9 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
-    def test_get_invitation_if_token_valid_account_not_found(self, sqlite_session: Session, mock_redis_dependencies) -> None:
+    def test_get_invitation_if_token_valid_account_not_found(
+        self, sqlite_session: Session, mock_redis_dependencies
+    ) -> None:
         """Test invitation validation when account is not found."""
         tenant = Tenant(name="Test Workspace")
         sqlite_session.add(tenant)
@@ -2259,7 +2265,9 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
-    def test_get_invitation_if_token_valid_account_id_mismatch(self, sqlite_session: Session, mock_redis_dependencies) -> None:
+    def test_get_invitation_if_token_valid_account_id_mismatch(
+        self, sqlite_session: Session, mock_redis_dependencies
+    ) -> None:
         """Test invitation validation when account ID doesn't match."""
         tenant = Tenant(name="Test Workspace")
         account = Account(name="Test User", email="test@example.com")
