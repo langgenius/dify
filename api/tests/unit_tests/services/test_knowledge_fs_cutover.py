@@ -464,6 +464,19 @@ def test_empty_workspace_uses_a_stable_greenfield_anchor_for_remote_freeze_and_a
     assert UUID(remote.freeze_requests[0].control_space_id)
     assert ledger.phase is KnowledgeFSWorkspaceCutoverPhase.CUTOVER
     assert ledger.product_routes_enabled is True
+    with session_maker() as session:
+        audit_anchor = session.scalar(
+            sa.select(KnowledgeFSControlSpace).where(
+                KnowledgeFSControlSpace.tenant_id == tenant_id,
+                KnowledgeFSControlSpace.id == remote.freeze_requests[0].control_space_id,
+            )
+        )
+        assert audit_anchor is not None
+        assert audit_anchor.state is KnowledgeFSControlSpaceState.DELETED
+        assert audit_anchor.knowledge_space_id is None
+        assert audit_anchor.owner_account_id == str(
+            service.status(tenant_id=tenant_id)["shadow_completed_by_account_id"]
+        )
 
 
 def test_empty_workspace_freeze_rejects_a_nonempty_remote_namespace(
@@ -506,6 +519,12 @@ def test_empty_workspace_freeze_rejects_a_nonempty_remote_namespace(
             freeze_at=_BASE_TIME + timedelta(minutes=1),
         )
     assert remote.freeze_requests == []
+    with session_maker() as session:
+        audit_anchor = session.scalar(
+            sa.select(KnowledgeFSControlSpace).where(KnowledgeFSControlSpace.tenant_id == tenant_id)
+        )
+        assert audit_anchor is not None
+        assert audit_anchor.state is KnowledgeFSControlSpaceState.DELETED
 
 
 def _quarantine_resolution(

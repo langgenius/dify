@@ -2236,17 +2236,48 @@ class KnowledgeFSWorkspaceCutoverService:
             return _ActivationAnchor(control_space.id, False)
 
         greenfield_anchor = _greenfield_activation_anchor_id(tenant_id)
-        has_local_control_space = session.scalar(
-            sa.select(sa.literal(True))
+        greenfield_provisioning_key = _greenfield_activation_provisioning_key(tenant_id)
+        local_control_space_count = session.scalar(
+            sa.select(sa.func.count())
             .select_from(KnowledgeFSControlSpace)
             .where(KnowledgeFSControlSpace.tenant_id == tenant_id)
-            .limit(1)
         )
-        if (
-            not has_local_control_space
-            and _is_zero_space_cutover_ledger(ledger)
-            and control_space_id in {None, greenfield_anchor}
-        ):
+        if not _is_zero_space_cutover_ledger(ledger) or control_space_id not in {None, greenfield_anchor}:
+            raise KnowledgeFSCutoverGateBlockedError(
+                "A tenant-owned active control-space is required for activation audit"
+            )
+
+        persisted_anchor = session.scalar(
+            sa.select(KnowledgeFSControlSpace).where(
+                KnowledgeFSControlSpace.tenant_id == tenant_id,
+                KnowledgeFSControlSpace.id == greenfield_anchor,
+            )
+        )
+        if persisted_anchor is not None:
+            if (
+                local_control_space_count == 1
+                and persisted_anchor.state is KnowledgeFSControlSpaceState.DELETED
+                and persisted_anchor.knowledge_space_id is None
+                and persisted_anchor.provisioning_key == greenfield_provisioning_key
+                and persisted_anchor.owner_account_id == ledger.shadow_completed_by_account_id
+                and persisted_anchor.lifecycle_operation_id == greenfield_anchor
+            ):
+                return _ActivationAnchor(greenfield_anchor, True)
+            raise KnowledgeFSCutoverGateBlockedError(
+                "KnowledgeFS greenfield activation audit anchor conflicts with local control-space state"
+            )
+
+        if local_control_space_count == 0 and ledger.shadow_completed_by_account_id is not None:
+            persisted_anchor = KnowledgeFSControlSpace(
+                tenant_id=tenant_id,
+                owner_account_id=ledger.shadow_completed_by_account_id,
+                provisioning_key=greenfield_provisioning_key,
+                state=KnowledgeFSControlSpaceState.DELETED,
+                lifecycle_operation_id=greenfield_anchor,
+            )
+            persisted_anchor.id = greenfield_anchor
+            session.add(persisted_anchor)
+            session.flush()
             return _ActivationAnchor(greenfield_anchor, True)
         raise KnowledgeFSCutoverGateBlockedError("A tenant-owned active control-space is required for activation audit")
 
@@ -2362,6 +2393,10 @@ def _shadow_traffic_zero_digest(payload: ShadowCompletionInput) -> str:
 
 def _greenfield_activation_anchor_id(tenant_id: str) -> str:
     return str(uuid5(NAMESPACE_URL, f"dify-kfs-greenfield-activation:{tenant_id}"))
+
+
+def _greenfield_activation_provisioning_key(tenant_id: str) -> str:
+    return f"dify-kfs-greenfield-activation:{tenant_id}"
 
 
 def _is_zero_space_cutover_ledger(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:
