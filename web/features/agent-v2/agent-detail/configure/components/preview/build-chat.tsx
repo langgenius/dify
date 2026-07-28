@@ -1,10 +1,11 @@
 'use client'
 
-import type { AgentChatRuntimeProps } from './chat-runtime'
+import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
 import { useTranslation } from 'react-i18next'
 import { CommunityEditionTip } from '../community-edition-tip'
 import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
+import { AgentUnconfiguredNotice } from './unconfigured-notice'
 
 const buildIconGridCellOpacities = [
   '0 0 0.093 0.166 0 0 0.155 0',
@@ -27,7 +28,9 @@ type AgentBuildChatProps = Omit<
   'draftType' | 'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel' | 'sendMessage'
 >
 
-function AgentBuildChatEmptyState() {
+function AgentBuildChatEmptyState({
+  showUnconfiguredNotice,
+}: Pick<AgentChatRuntimeEmptyStateProps, 'showUnconfiguredNotice'>) {
   const { t } = useTranslation('agentV2')
   const communityEditionBuildModeTip = t(
     ($) => $['agentDetail.configure.build.empty.communityEditionTip'],
@@ -63,6 +66,7 @@ function AgentBuildChatEmptyState() {
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.build.empty.description'])}
       </p>
+      <AgentUnconfiguredNotice visible={showUnconfiguredNotice} />
     </>
   )
 }
@@ -78,7 +82,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
       inputAutoFocus={false}
       sendButtonLabel={t(($) => $['agentDetail.configure.build.startBuild'])}
       sendMessage={sendBuildChatMessage}
-      renderEmptyState={() => <AgentBuildChatEmptyState />}
+      renderEmptyState={(emptyStateProps) => <AgentBuildChatEmptyState {...emptyStateProps} />}
     />
   )
 }
