@@ -21,7 +21,7 @@
   "archives.empty.title": "لا توجد سجلات مؤرشفة",
   "archives.error.description": "حدّث الصفحة أو حاول مرة أخرى لاحقًا.",
   "archives.error.title": "تعذّر تحميل السجلات المؤرشفة",
-  "archives.notice.action": "عرض السجلات المؤرشفة",
+  "archives.notice.action": "فتح السجلات المؤرشفة",
   "archives.notice.description": "قد تكون بعض السجلات ضمن هذا النطاق الزمني قد أُرشفت.",
   "archives.summary.latest": "أحدث أرشيف",
   "archives.summary.months": "الأشهر المؤرشفة",

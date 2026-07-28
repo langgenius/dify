@@ -218,7 +218,7 @@ class _DatasetQueryResponseSource:
         return self.query.get_queries(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.query, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.query, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 class DatasetQueryListResponse(ResponseModel):
@@ -257,7 +257,7 @@ class _RelatedAppResponseSource:
         return self.app.mode_compatible_with_agent_with_session(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.app, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.app, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 class RelatedAppListResponse(ResponseModel):

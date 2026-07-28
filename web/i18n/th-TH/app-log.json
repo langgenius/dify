@@ -21,7 +21,7 @@
   "archives.empty.title": "ไม่มีบันทึกที่เก็บถาวร",
   "archives.error.description": "รีเฟรชหน้า หรือลองอีกครั้งในภายหลัง",
   "archives.error.title": "ไม่สามารถโหลดบันทึกที่เก็บถาวรได้",
-  "archives.notice.action": "ดูบันทึกที่เก็บถาวร",
+  "archives.notice.action": "เปิดบันทึกที่เก็บถาวร",
   "archives.notice.description": "บันทึกบางส่วนในช่วงเวลานี้อาจถูกเก็บถาวรแล้ว",
   "archives.summary.latest": "ไฟล์เก็บถาวรล่าสุด",
   "archives.summary.months": "เดือนที่เก็บถาวร",

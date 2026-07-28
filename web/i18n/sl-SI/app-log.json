@@ -21,7 +21,7 @@
   "archives.empty.title": "Ni arhiviranih dnevnikov",
   "archives.error.description": "Osvežite stran ali poskusite znova pozneje.",
   "archives.error.title": "Arhiviranih dnevnikov ni bilo mogoče naložiti",
-  "archives.notice.action": "Prikaži arhivirane dnevnike",
+  "archives.notice.action": "Odpri arhivirane dnevnike",
   "archives.notice.description": "Nekateri dnevniki v tem časovnem obdobju so bili morda arhivirani.",
   "archives.summary.latest": "Najnovejši arhiv",
   "archives.summary.months": "Arhivirani meseci",

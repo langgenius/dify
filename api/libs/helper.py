@@ -289,7 +289,11 @@ UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
 
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
-    if re.match(r"^[a-zA-Z0-9_]+$", value):
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "tool_name\n". re.fullmatch requires the entire
+    # string to match. Regression for #39666 (sibling of #39234 / #39548).
+    if re.fullmatch(r"^[a-zA-Z0-9_]+$", value):
         return value
 
     raise ValueError(f"{value} is not a valid alphanumeric value")

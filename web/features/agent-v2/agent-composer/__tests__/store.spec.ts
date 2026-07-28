@@ -381,6 +381,40 @@ describe('agent composer store conversions', () => {
     })
   })
 
+  it('should preserve a plugin tool identity when hydrating and publishing imported config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            plugin_id: 'langgenius/google',
+            provider_id: 'langgenius/google/google',
+            provider_type: 'plugin',
+            tool_name: 'search',
+            credential_type: 'unauthorized',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'langgenius/google/google',
+        name: 'google',
+        pluginId: 'langgenius/google',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        plugin_id: 'langgenius/google',
+        provider: 'google',
+        provider_id: 'langgenius/google/google',
+      }),
+    ])
+  })
+
   it('should hydrate legacy secret refs from ref when value is absent', () => {
     const formState = agentSoulConfigToFormState({
       env: {

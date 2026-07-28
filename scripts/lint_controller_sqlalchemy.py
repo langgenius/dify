@@ -44,7 +44,7 @@ def parse_args() -> argparse.Namespace:
         help="Files or directories to scan. Defaults to api/controllers.",
     )
     parser.add_argument("--include-allowed", action="store_true", help="Print allowed flush()/commit() findings.")
-    parser.add_argument("--include-suppressed", action="store_true", help="Print reasoned noqa suppressions.")
+    parser.add_argument("--include-suppressed", action="store_true", help="Print reasoned guard suppressions.")
     parser.add_argument("--summary-only", action="store_true", help="Print counts without per-finding details.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument(
