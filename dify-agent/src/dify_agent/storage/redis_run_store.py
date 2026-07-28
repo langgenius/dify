@@ -6,10 +6,14 @@ beginning for polling and SSE. Records and streams share one retention window
 that is refreshed when status or event data is written. Execution is scheduled
 in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
 create-run payloads are never persisted because layer config may include
-sensitive runtime configuration.
+sensitive runtime configuration. Create-run idempotency claims only persist the
+key digest, the request fingerprint digest, and the claimed run id.
 """
 
+import hashlib
+import json
 from collections.abc import AsyncIterator, Awaitable
+
 from typing import cast
 
 from redis.asyncio import Redis
@@ -24,7 +28,7 @@ from dify_agent.runtime.event_sink import (
 )
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
-from dify_agent.storage.redis_keys import run_events_key, run_record_key
+from dify_agent.storage.redis_keys import run_events_key, run_idempotency_key, run_record_key
 
 _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
@@ -66,6 +70,10 @@ return {1, ARGV[1], event_id}
 """
 
 
+class IdempotencyConflictError(RuntimeError):
+    """Raised when an idempotency key is reused with a different create-run request."""
+
+
 class RedisRunStore(RunEventSink):
     """Async Redis implementation for run records and event logs.
 
@@ -104,6 +112,46 @@ class RedisRunStore(RunEventSink):
             ex=self.run_retention_seconds,
         )
         return record
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Persist a run record unless ``idempotency_key`` already claims one.
+
+        Returns ``(record, created)``. The claim is an atomic ``SET NX`` keyed by
+        the digest of ``idempotency_key`` so concurrent create requests reaching
+        different server processes with the same Redis prefix deduplicate onto
+        one run. When the key was already claimed with the same
+        ``request_fingerprint``, the freshly created duplicate record is removed
+        and the original run record is returned with ``created`` false. Reusing
+        the key with a different fingerprint raises ``IdempotencyConflictError``.
+        Only digests and the run id are persisted, never the create-run payload.
+        """
+        record = await self.create_run()
+        claim_key = run_idempotency_key(self.prefix, _idempotency_digest(idempotency_key))
+        claim_value = json.dumps({"run_id": record.run_id, "fingerprint": request_fingerprint}, separators=(",", ":"))
+        claimed = await self.redis.set(claim_key, claim_value, ex=self.run_retention_seconds, nx=True)
+        if claimed:
+            return record, True
+
+        raw_claim = await self.redis.get(claim_key)
+        if isinstance(raw_claim, bytes):
+            raw_claim = raw_claim.decode()
+        existing_claim = cast(dict[str, str] | None, json.loads(raw_claim)) if raw_claim else None
+        if existing_claim is not None and existing_claim.get("fingerprint") == request_fingerprint:
+            try:
+                original = await self.get_run(existing_claim["run_id"])
+            except RunNotFoundError:
+                original = None
+            if original is not None:
+                await self.redis.delete(run_record_key(self.prefix, record.run_id))
+                return original, False
+        elif existing_claim is not None:
+            await self.redis.delete(run_record_key(self.prefix, record.run_id))
+            raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+
+        # The claim expired between SET NX and GET, or the original run record is
+        # already gone: take over the key for the freshly created record.
+        await self.redis.set(claim_key, claim_value, ex=self.run_retention_seconds)
+        return record, True
 
     async def get_run(self, run_id: str) -> RunRecord:
         """Return one run record or raise ``RunNotFoundError``."""
@@ -240,4 +288,9 @@ def _decode_redis_text(value: object) -> str:
     return value.decode() if isinstance(value, bytes) else str(value)
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "RedisRunStore", "RunNotFoundError"]
+def _idempotency_digest(idempotency_key: str) -> str:
+    """Hash the caller-supplied key so arbitrary values stay valid Redis keys."""
+    return hashlib.sha256(idempotency_key.encode()).hexdigest()
+
+
+__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "IdempotencyConflictError", "RedisRunStore", "RunNotFoundError"]

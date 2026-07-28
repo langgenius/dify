@@ -7,13 +7,18 @@ status and event streams, but there is no Redis job queue or cross-process
 handoff. If the process crashes, currently active runs are lost until an external
 operator marks or retries them.
 Create-run requests are accepted once the scheduler is not stopping and storage
-can persist the run record. Request-shaped execution failures are left to
+can persist the run record. Requests carrying an ``idempotency_key`` are
+deduplicated during admission so an exact replay within the storage retention
+window returns the original run instead of scheduling duplicate work.
+Request-shaped execution failures are left to
 ``AgentRunRunner`` so bad compositions, ``on_exit`` policies, prompts,
 structured-output schemas, or session snapshots become asynchronous
 ``run_failed`` outcomes instead of synchronous HTTP rejections.
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 from collections.abc import Callable
 from typing import Protocol
@@ -43,6 +48,14 @@ class RunStore(RunEventSink, Protocol):
 
     async def create_run(self) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
+        ...
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        """Persist a run record unless the idempotency key already claims one."""
+        ...
+
+    async def get_run(self, run_id: str) -> RunRecord:
+        """Return the latest persisted run record."""
         ...
 
     async def wait_for_cancellation(self, run_id: str) -> bool:
@@ -112,12 +125,23 @@ class RunScheduler:
         The returned record is already ``running``. The background task is removed
         from ``active_tasks`` when it finishes, regardless of success or failure.
         Request-shaped runtime failures are intentionally deferred to the runner so
-        callers can observe them through the normal event/status stream.
+        callers can observe them through the normal event/status stream. When the
+        request carries an ``idempotency_key``, admission is deduplicated by the
+        store: an exact replay returns the original run record without starting a
+        second background task.
         """
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run()
+            if request.idempotency_key is None:
+                record = await self.store.create_run()
+            else:
+                record, created = await self.store.create_run_idempotent(
+                    idempotency_key=request.idempotency_key,
+                    request_fingerprint=_create_run_fingerprint(request),
+                )
+                if not created:
+                    return record
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self._discard_active_run(run_id))
@@ -253,6 +277,13 @@ class RunScheduler:
             _ = await emit_run_failed(self.store, run_id=run_id, error=message, reason="shutdown")
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
+
+
+def _create_run_fingerprint(request: CreateRunRequest) -> str:
+    """Stable digest of the normalized create-run payload, excluding the key itself."""
+    payload = request.model_dump(mode="json", exclude={"idempotency_key"})
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

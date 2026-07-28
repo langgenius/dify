@@ -1,6 +1,7 @@
 import asyncio
-from collections.abc import Mapping
+import hashlib
 import json
+from collections.abc import Mapping
 from typing import cast
 
 import pytest
@@ -20,7 +21,12 @@ from dify_agent.protocol.schemas import (
     RunSucceededEventData,
 )
 from dify_agent.runtime.event_sink import RunFinalizationResult
-from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import (
+    DEFAULT_RUN_RETENTION_SECONDS,
+    IdempotencyConflictError,
+    RedisRunStore,
+    RunNotFoundError,
+)
 
 
 class FakeRedis:
@@ -34,13 +40,20 @@ class FakeRedis:
         self.streams = {}
         self.stream_changed = asyncio.Event()
 
-    async def set(self, key: str, value: object, *, ex: int | None = None) -> None:
-        self.commands.append(("set", key, value, ex))
+    async def set(self, key: str, value: object, *, ex: int | None = None, nx: bool = False) -> bool | None:
+        self.commands.append(("set", key, value, ex, nx))
+        if nx and key in self.values:
+            return None
         self.values[key] = value
+        return True
 
     async def get(self, key: str) -> object | None:
         self.commands.append(("get", key))
         return self.values.get(key)
+
+    async def delete(self, key: str) -> int:
+        self.commands.append(("delete", key))
+        return 1 if self.values.pop(key, None) is not None else 0
 
     async def xadd(self, key: str, fields: Mapping[str, object]) -> str:
         self.commands.append(("xadd", key, dict(fields)))
@@ -593,3 +606,57 @@ def test_iter_events_ends_after_live_terminal_event(terminal_type: str) -> None:
         return event.type
 
     assert asyncio.run(scenario()) == terminal_type
+
+
+def test_create_run_idempotent_claims_key_and_returns_new_record() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+
+    record, created = asyncio.run(store.create_run_idempotent(idempotency_key="key-1", request_fingerprint="fp-1"))
+
+    assert created is True
+    assert record.status == "running"
+    claim_entries = [(key, value) for key, value in redis.values.items() if key.startswith("test:idempotency:")]
+    assert claim_entries == [
+        (
+            f"test:idempotency:{hashlib.sha256(b'key-1').hexdigest()}",
+            json.dumps({"run_id": record.run_id, "fingerprint": "fp-1"}, separators=(",", ":")),
+        )
+    ]
+    set_commands = [
+        command for command in redis.commands if command[0] == "set" and str(command[1]).startswith("test:idempotency:")
+    ]
+    assert set_commands[0][3] == 60
+    assert set_commands[0][4] is True
+
+
+def test_create_run_idempotent_replay_returns_original_record_without_duplicate() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> tuple[str, str, bool]:
+        first, first_created = await store.create_run_idempotent(idempotency_key="key-1", request_fingerprint="fp-1")
+        replay, replay_created = await store.create_run_idempotent(idempotency_key="key-1", request_fingerprint="fp-1")
+        assert first_created is True
+        return first.run_id, replay.run_id, replay_created
+
+    first_run_id, replay_run_id, replay_created = asyncio.run(scenario())
+
+    assert replay_created is False
+    assert replay_run_id == first_run_id
+    assert [key for key in redis.values if key.startswith("test:runs:")] == [f"test:runs:{first_run_id}:record"]
+
+
+def test_create_run_idempotent_conflict_raises_and_removes_duplicate_record() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> str:
+        first, _ = await store.create_run_idempotent(idempotency_key="key-1", request_fingerprint="fp-1")
+        with pytest.raises(IdempotencyConflictError):
+            _ = await store.create_run_idempotent(idempotency_key="key-1", request_fingerprint="fp-2")
+        return first.run_id
+
+    run_id = asyncio.run(scenario())
+
+    assert [key for key in redis.values if key.startswith("test:runs:")] == [f"test:runs:{run_id}:record"]
