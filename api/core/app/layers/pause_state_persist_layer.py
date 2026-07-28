@@ -1,7 +1,7 @@
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self, override
+from typing import Annotated, Literal, Protocol, Self, override, runtime_checkable
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
@@ -26,10 +26,20 @@ from repositories.factory import DifyAPIRepositoryFactory
 WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY = "workflow_handoff_active_execution_seconds"
 
 
+@runtime_checkable
+class _GenerateEntityExtras(Protocol):
+    @property
+    def extras(self) -> object: ...
+
+
 def get_workflow_handoff_active_execution_seconds(
     generate_entity: WorkflowAppGenerateEntity | AdvancedChatAppGenerateEntity | RagPipelineGenerateEntity,
 ) -> float:
+    if not isinstance(generate_entity, _GenerateEntityExtras):
+        return 0.0
     extras = generate_entity.extras
+    if extras is None:
+        return 0.0
     if not isinstance(extras, dict):
         raise ValueError("Workflow generate entity extras are invalid")
     value = extras.get(WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY, 0.0)
