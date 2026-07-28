@@ -517,41 +517,10 @@ export const zSkillResponse = z.object({
  */
 export const zSkillListResponse = z.object({
   data: z.array(zSkillResponse).optional(),
-  has_more: z.boolean().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
-  total: z.number().optional(),
-})
-
-/**
- * SkillAssistModelPayload
- */
-export const zSkillAssistModelPayload = z.object({
-  model: z.string().min(1).max(255),
-  model_settings: z.record(z.string(), z.unknown()).nullable().optional(),
-  plugin_id: z.string().min(1).max(255).nullable().optional(),
-  provider: z.string().min(1).max(255),
-})
-
-/**
- * SkillAssistAttachmentPayload
- */
-export const zSkillAssistAttachmentPayload = z.object({
-  mime_type: z.string().min(1).max(255).nullable().optional(),
-  name: z.string().min(1).max(255),
-  size: z.number().gte(0).nullable().optional(),
-  tool_file_id: z.string().min(1),
-})
-
-/**
- * SkillAssistMessagePayload
- *
- * One user message and optional uploaded context for the read-only Skill Authoring assistant.
- */
-export const zSkillAssistMessagePayload = z.object({
-  attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
-  message: z.string().min(1).max(8000),
-  model: zSkillAssistModelPayload.nullable().optional(),
+  has_more: z.boolean().optional().default(false),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
+  total: z.int().optional().default(0),
 })
 
 /**
@@ -1530,6 +1499,37 @@ export const zSkillTagListResponse = z.object({
 })
 
 /**
+ * SkillAssistAttachmentPayload
+ */
+export const zSkillAssistAttachmentPayload = z.object({
+  mime_type: z.string().min(1).max(255).nullish(),
+  name: z.string().min(1).max(255),
+  size: z.int().gte(0).nullish(),
+  tool_file_id: z.string().min(1),
+})
+
+/**
+ * SkillAssistModelPayload
+ */
+export const zSkillAssistModelPayload = z.object({
+  model: z.string().min(1).max(255),
+  model_settings: z.record(z.string(), z.unknown()).nullish(),
+  plugin_id: z.string().min(1).max(255).nullish(),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * SkillAssistMessagePayload
+ *
+ * One user message and optional uploaded context for the read-only Skill Authoring assistant.
+ */
+export const zSkillAssistMessagePayload = z.object({
+  attachments: z.array(zSkillAssistAttachmentPayload).max(10).optional(),
+  message: z.string().min(1).max(8000),
+  model: zSkillAssistModelPayload.nullish(),
+})
+
+/**
  * SkillDraftFileOperation
  */
 export const zSkillDraftFileOperation = z.enum([
@@ -1559,10 +1559,10 @@ export const zSkillDraftFileOperationPayload = z.object({
  * SkillReferenceResponse
  */
 export const zSkillReferenceResponse = z.object({
-  agent_id: z.string(),
   agent_icon: z.string().nullish(),
   agent_icon_background: z.string().nullish(),
   agent_icon_type: z.string().nullish(),
+  agent_id: z.string(),
   app_id: z.string().nullish(),
   display_name: z.string(),
   name: z.string(),
@@ -5092,8 +5092,8 @@ export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = zW
 
 export const zGetWorkspacesCurrentSkillsQuery = z.object({
   keyword: z.string().optional(),
-  limit: z.number().optional(),
-  page: z.number().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
   tag: z.array(z.string()).optional(),
 })
 
@@ -5110,7 +5110,7 @@ export const zPostWorkspacesCurrentSkillsBody = zSkillCreatePayload
 export const zPostWorkspacesCurrentSkillsResponse = zSkillDetailResponse
 
 export const zPostWorkspacesCurrentSkillsFilesUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**
