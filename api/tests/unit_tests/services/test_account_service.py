@@ -950,11 +950,8 @@ class TestTenantService:
             assert other_tenant_join.current is False
 
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
-        """Test tenant switching without providing tenant ID."""
-        # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
-        # Execute test and verify exception
         self._assert_exception_raised(
             ValueError, TenantService.switch_tenant, mock_account, None, session=sqlite_session
         )
