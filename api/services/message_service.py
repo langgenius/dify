@@ -301,6 +301,18 @@ class MessageService:
                 suggested_questions_after_answer_config = cast(
                     SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
                 )
+        elif app_model.mode == AppMode.AGENT:
+            # Agent Apps store presentation features on the App's own
+            # app_model_config (written by AgentAppFeatureConfigService), not on
+            # the conversation — Agent conversations carry neither
+            # override_model_configs nor app_model_config_id.
+            app_model_config = app_model.app_model_config_with_session(session=session)
+            if not app_model_config:
+                raise ValueError("did not find app model config")
+
+            suggested_questions_after_answer_config = app_model_config.suggested_questions_after_answer_dict
+            if suggested_questions_after_answer_config.get("enabled", False) is False:
+                raise SuggestedQuestionsAfterAnswerDisabledError()
         else:
             if not conversation.override_model_configs:
                 app_model_config = session.scalar(
