@@ -78,6 +78,33 @@ describe('EmbeddedMarketplace', () => {
     expect(mockFetchPluginBanners).toHaveBeenCalledWith('zh-Hans')
   })
 
+  it('uses server-rendered homepage banners without requesting them again on hydration', async () => {
+    const initialBanners = [
+      {
+        id: 'banner-1',
+        title: 'Trending',
+        sort: 1,
+        language: 'zh-Hans',
+        style_type: 'blog',
+        content: {
+          blog_title: 'Dify update',
+          link: 'https://dify.ai/blog',
+          link_target_type: 'blog',
+        },
+      },
+    ] satisfies PluginBanner[]
+
+    const { EmbeddedMarketplace } = await import('../embedded')
+
+    render(
+      <EmbeddedMarketplace initialBanners={initialBanners} showInstallButton variant="home" />,
+      { wrapper: Wrapper },
+    )
+
+    expect(screen.getByText('Trending banners: 1')).toBeInTheDocument()
+    expect(mockFetchPluginBanners).not.toHaveBeenCalled()
+  })
+
   it('does not request homepage banners for the default catalog variant', async () => {
     const { EmbeddedMarketplace } = await import('../embedded')
 
