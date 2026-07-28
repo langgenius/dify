@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import mimetypes
 import posixpath
 import re
@@ -45,6 +46,9 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentKind,
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
@@ -75,6 +79,8 @@ from models.skill import (
 from models.tools import ToolFile
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
+
+logger = logging.getLogger(__name__)
 
 _SKILL_MD = "SKILL.md"
 _MAX_FILE_BYTES = 512 * 1024
@@ -766,18 +772,27 @@ class SkillManagementService:
         assistant: Agent,
         model_config: AgentSoulModelConfig,
     ) -> None:
-        if not assistant.active_config_snapshot_id:
-            return
+        model_changed = False
+        cleaned_runtime_session_count = 0
+        if assistant.active_config_snapshot_id:
+            snapshot = session.get(AgentConfigSnapshot, assistant.active_config_snapshot_id)
+            if snapshot is not None:
+                config = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+                model_changed = config.model != model_config
+                if config.model != model_config:
+                    config.model = model_config
+                    snapshot.config_snapshot = config
+                assistant.active_config_has_model = agent_soul_has_model(config)
+            else:
+                logger.warning(
+                    "skill_assistant_active_snapshot_missing assistant_id=%s active_snapshot_id=%s",
+                    assistant.id,
+                    assistant.active_config_snapshot_id,
+                )
+        else:
+            logger.warning("skill_assistant_active_snapshot_unset assistant_id=%s", assistant.id)
+            assistant.active_config_has_model = True
 
-        snapshot = session.get(AgentConfigSnapshot, assistant.active_config_snapshot_id)
-        if snapshot is None:
-            return
-
-        config = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-        if config.model != model_config:
-            config.model = model_config
-            snapshot.config_snapshot = config
-        assistant.active_config_has_model = agent_soul_has_model(config)
         for draft in session.scalars(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == assistant.tenant_id,
@@ -785,8 +800,30 @@ class SkillManagementService:
             )
         ):
             draft_config = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            if draft_config.model != model_config:
+                model_changed = True
             draft_config.model = model_config
             draft.config_snapshot = draft_config
+        if model_changed:
+            for runtime_session in session.scalars(
+                select(AgentRuntimeSession).where(
+                    AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                    AgentRuntimeSession.tenant_id == assistant.tenant_id,
+                    AgentRuntimeSession.app_id == assistant.backing_app_id,
+                    AgentRuntimeSession.agent_id == assistant.id,
+                    AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+                )
+            ):
+                runtime_session.status = AgentRuntimeSessionStatus.CLEANED
+                runtime_session.cleaned_at = naive_utc_now()
+                cleaned_runtime_session_count += 1
+            logger.info(
+                "skill_assistant_model_synced assistant_id=%s provider=%s model=%s cleaned_runtime_sessions=%s",
+                assistant.id,
+                model_config.model_provider,
+                model_config.model,
+                cleaned_runtime_session_count,
+            )
 
     def update_metadata(
         self,
