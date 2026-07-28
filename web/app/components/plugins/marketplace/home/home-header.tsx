@@ -1,6 +1,7 @@
 import type { HomeCatalogTab } from './home-catalog-tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
@@ -17,12 +18,13 @@ type HomeHeaderProps = {
 
 function Guide() {
   const docLink = useDocLink()
+  const { t } = useTranslation('plugin')
 
   return (
     <Link href={docLink()} target="_blank" rel="noopener noreferrer" className={styles.guide}>
-      <Button variant="ghost" size="large" className="w-[94px] gap-0.5 px-3 text-text-primary">
+      <Button variant="ghost" size="large" className="min-w-[94px] gap-0.5 px-3 text-text-primary">
         <span aria-hidden className="i-ri-map-2-line size-5" />
-        <span className="px-1 system-md-medium">Guide</span>
+        <span className="px-1 system-md-medium">{t(($) => $['marketplace.home.guide'])}</span>
       </Button>
     </Link>
   )
