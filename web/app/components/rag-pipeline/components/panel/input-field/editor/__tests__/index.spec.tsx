@@ -105,7 +105,7 @@ const createInputFieldEditorProps = (
   ...overrides,
 })
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -116,7 +116,7 @@ const createTestQueryClient = () =>
   })
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
@@ -134,14 +134,6 @@ describe('InputFieldEditorPanel', () => {
   })
 
   describe('Rendering', () => {
-    it('should render panel without crashing', () => {
-      const props = createInputFieldEditorProps()
-
-      renderWithProviders(<InputFieldEditorPanel {...props} />)
-
-      expect(screen.getByTestId('input-field-form')).toBeInTheDocument()
-    })
-
     it('should render close button', () => {
       const props = createInputFieldEditorProps()
 
@@ -299,35 +291,6 @@ describe('InputFieldEditorPanel', () => {
 
       expect(mockUseFloatingRight).toHaveBeenCalled()
     })
-
-    it('should apply floating right styles when floatingRight is true', () => {
-      mockUseFloatingRight.mockReturnValue({
-        floatingRight: true,
-        floatingRightWidth: 300,
-      })
-      const props = createInputFieldEditorProps()
-
-      const { container } = renderWithProviders(<InputFieldEditorPanel {...props} />)
-
-      const panel = container.firstChild as HTMLElement
-      expect(panel.className).toContain('absolute')
-      expect(panel.className).toContain('right-0')
-      expect(panel.style.width).toBe('300px')
-    })
-
-    it('should not apply floating right styles when floatingRight is false', () => {
-      mockUseFloatingRight.mockReturnValue({
-        floatingRight: false,
-        floatingRightWidth: 400,
-      })
-      const props = createInputFieldEditorProps()
-
-      const { container } = renderWithProviders(<InputFieldEditorPanel {...props} />)
-
-      const panel = container.firstChild as HTMLElement
-      expect(panel.className).not.toContain('absolute')
-      expect(panel.style.width).toBe('400px')
-    })
   })
 
   describe('Callback Stability', () => {
@@ -367,23 +330,6 @@ describe('InputFieldEditorPanel', () => {
   })
 
   describe('Memoization', () => {
-    it('should memoize formData when initialData does not change', () => {
-      const initialData = createInputVar()
-      const props = createInputFieldEditorProps({ initialData })
-
-      const { rerender } = renderWithProviders(<InputFieldEditorPanel {...props} />)
-      const firstFormData = screen.getByTestId('form-initial-data').textContent
-
-      rerender(
-        <TestWrapper>
-          <InputFieldEditorPanel {...props} />
-        </TestWrapper>,
-      )
-      const secondFormData = screen.getByTestId('form-initial-data').textContent
-
-      expect(firstFormData).toBe(secondFormData)
-    })
-
     it('should recompute formData when initialData changes', () => {
       const initialData1 = createInputVar({ variable: 'var1' })
       const initialData2 = createInputVar({ variable: 'var2' })

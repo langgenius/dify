@@ -1,29 +1,39 @@
 'use client'
-import type { OffsetOptions } from '@floating-ui/react'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { FC } from 'react'
+import type { ReactElement, Ref } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
-import {
-  ToolAuthorizationSection,
-  ToolBaseForm,
-  ToolItem,
-  ToolSettingsPanel,
-  ToolTrigger,
-} from './components'
-import { useToolSelectorState } from './hooks/use-tool-selector-state'
+import { ToolAuthorizationSection } from './components/tool-authorization-section'
+import { ToolBaseForm } from './components/tool-base-form'
+import { ToolItem } from './components/tool-item'
+import { ToolSettingsPanel } from './components/tool-settings-panel'
+import { ToolTrigger } from './components/tool-trigger'
+import { useToolSelector } from './hooks/use-tool-selector'
+
+type TriggerProps =
+  | {
+      trigger: ReactElement
+      triggerRef?: never
+      controlledState: boolean
+      onControlledStateChange: (state: boolean) => void
+    }
+  | {
+      trigger?: never
+      triggerRef?: Ref<HTMLButtonElement>
+      controlledState?: never
+      onControlledStateChange?: never
+    }
 
 type Props = Readonly<{
   disabled?: boolean
   placement?: Placement
-  offset?: OffsetOptions
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
@@ -32,24 +42,20 @@ type Props = Readonly<{
   isEdit?: boolean
   onDelete?: () => void
   supportEnableSwitch?: boolean
-  supportAddCustomTool?: boolean
-  trigger?: React.ReactNode
-  controlledState?: boolean
-  onControlledStateChange?: (state: boolean) => void
   panelShowState?: boolean
   onPanelShowStateChange?: (state: boolean) => void
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-}>
+}> &
+  TriggerProps
 
-const ToolSelector: FC<Props> = ({
+function ToolSelector({
   value,
   selectedTools,
   isEdit,
   disabled,
   placement = 'left',
-  offset = 4,
   onSelect,
   onSelectMultiple,
   onDelete,
@@ -63,15 +69,9 @@ const ToolSelector: FC<Props> = ({
   nodeOutputVars,
   availableNodes,
   nodeId = '',
-}) => {
+  triggerRef,
+}: Props) {
   const { t } = useTranslation()
-  const sideOffset =
-    typeof offset === 'number' ? offset : typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0)
-  const alignOffset =
-    typeof offset === 'number' ? 0 : typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0)
-
-  // Use custom hook for state management
-  const state = useToolSelectorState({ value, onSelect, onSelectMultiple })
   const {
     isShow,
     setIsShow,
@@ -97,18 +97,17 @@ const ToolSelector: FC<Props> = ({
     handleEnabledChange,
     handleAuthorizationItemClick,
     handleInstall,
-    getSettingsValue,
-  } = state
+    settingsValue,
+  } = useToolSelector({ value, onSelect, onSelectMultiple })
 
-  // Determine portal open state based on controlled vs uncontrolled mode
   const portalOpen = trigger ? controlledState : isShow
   const onPortalOpenChange = trigger ? onControlledStateChange : setIsShow
   const handlePortalOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && (disabled || !currentProvider || !currentTool)) return
+    const isConfiguredToolUnavailable = !!value?.provider_name && (!currentProvider || !currentTool)
+    if (nextOpen && (disabled || isConfiguredToolUnavailable)) return
     onPortalOpenChange?.(nextOpen)
   }
 
-  // Build error tooltip content
   const renderErrorTip = () => (
     <div className="max-w-[240px] space-y-1 text-xs">
       <h3 className="font-semibold text-text-primary">
@@ -131,63 +130,67 @@ const ToolSelector: FC<Props> = ({
 
   return (
     <Popover open={portalOpen} onOpenChange={handlePortalOpenChange}>
-      <PopoverTrigger nativeButton={false} render={<div className="w-full" />}>
-        {trigger}
+      {trigger ? <PopoverTrigger render={trigger} /> : null}
 
-        {/* Default trigger - no value */}
-        {!trigger && !value?.provider_name && (
-          <ToolTrigger isConfigure open={isShow} value={value} provider={currentProvider} />
-        )}
+      {!trigger && !value?.provider_name ? (
+        <PopoverTrigger
+          render={
+            <ToolTrigger
+              ref={triggerRef}
+              isConfigure
+              open={isShow}
+              value={value}
+              provider={currentProvider}
+            />
+          }
+        />
+      ) : null}
 
-        {/* Default trigger - with value */}
-        {!trigger && value?.provider_name && (
-          <ToolItem
-            open={isShow}
-            icon={currentProvider?.icon || manifestIcon}
-            isMCPTool={currentProvider?.type === CollectionType.mcp}
-            providerName={value.provider_name}
-            providerShowName={value.provider_show_name}
-            toolLabel={value.tool_label || value.tool_name}
-            showSwitch={supportEnableSwitch}
-            switchValue={value.enabled}
-            onSwitchChange={handleEnabledChange}
-            onDelete={onDelete}
-            noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
-            uninstalled={!currentProvider && inMarketPlace}
-            versionMismatch={currentProvider && inMarketPlace && !currentTool}
-            installInfo={manifest?.latest_package_identifier}
-            onInstall={handleInstall}
-            isError={(!currentProvider || !currentTool) && !inMarketPlace}
-            errorTip={renderErrorTip()}
-          />
-        )}
-      </PopoverTrigger>
+      {!trigger && value?.provider_name ? (
+        <ToolItem
+          triggerRef={triggerRef}
+          triggerLabel={value.tool_label || value.tool_name}
+          open={isShow}
+          icon={currentProvider?.icon || manifestIcon}
+          isMCPTool={currentProvider?.type === CollectionType.mcp}
+          providerName={value.provider_name}
+          providerShowName={value.provider_show_name}
+          toolLabel={value.tool_label || value.tool_name}
+          showSwitch={supportEnableSwitch}
+          switchValue={value.enabled}
+          onSwitchChange={handleEnabledChange}
+          onDelete={onDelete}
+          noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
+          uninstalled={!currentProvider && inMarketPlace}
+          versionMismatch={currentProvider && inMarketPlace && !currentTool}
+          installInfo={manifest?.latest_package_identifier}
+          onInstall={handleInstall}
+          isError={(!currentProvider || !currentTool) && !inMarketPlace}
+          errorTip={renderErrorTip()}
+        />
+      ) : null}
 
       <PopoverContent
         placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
+        sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
         <div
           className={cn(
             'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
             'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
-            'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-xs',
+            'overflow-y-auto pb-4 shadow-lg backdrop-blur-xs',
           )}
         >
-          {/* Header */}
           <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">
             {t(($) => $[`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`], {
               ns: 'plugin',
             })}
           </div>
 
-          {/* Base form: tool picker + description */}
           <ToolBaseForm
             value={value}
             currentProvider={currentProvider}
-            offset={offset}
             scope={scope}
             selectedTools={selectedTools}
             isShowChooseTool={isShowChooseTool}
@@ -200,14 +203,12 @@ const ToolSelector: FC<Props> = ({
             onDescriptionChange={handleDescriptionChange}
           />
 
-          {/* Authorization section */}
           <ToolAuthorizationSection
             currentProvider={currentProvider}
             credentialId={value?.credential_id}
             onAuthorizationItemClick={handleAuthorizationItemClick}
           />
 
-          {/* Settings panel */}
           <ToolSettingsPanel
             value={value}
             currentProvider={currentProvider}
@@ -215,7 +216,7 @@ const ToolSelector: FC<Props> = ({
             currType={currType}
             settingsFormSchemas={settingsFormSchemas}
             paramsFormSchemas={paramsFormSchemas}
-            settingsValue={getSettingsValue()}
+            settingsValue={settingsValue}
             showTabSlider={showTabSlider}
             userSettingsOnly={userSettingsOnly}
             reasoningConfigOnly={reasoningConfigOnly}
@@ -231,4 +232,4 @@ const ToolSelector: FC<Props> = ({
   )
 }
 
-export default React.memo(ToolSelector)
+export default memo(ToolSelector)

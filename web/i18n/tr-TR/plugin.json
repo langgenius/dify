@@ -97,6 +97,7 @@
   "categorySingle.model": "Model",
   "categorySingle.tool": "Araç",
   "categorySingle.trigger": "Tetikleyici",
+  "clearSearch": "{{label}} temizle",
   "debugInfo.title": "Hata ayıklama",
   "debugInfo.viewDocs": "Belgeleri Görüntüle",
   "deprecated": "Kaldırılmış",

@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { ValueType } from '@/app/components/workflow/types'
-import { useIsNodeInLoop, useWorkflow } from '../../hooks'
+import { useIsNodeInLoop, useWorkflow } from '../../hooks/use-workflow'
 import {
   buildUsedOutVars,
   createInputVarValues,

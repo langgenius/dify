@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Unstyled Base UI Collapsible primitive. The examples mirror the official Root, Trigger, and Panel anatomy, with presentation supplied at the call site using Dify UI tokens.',
+          'Styled Dify disclosure wrapper over Base UI Collapsible. It preserves the official Root, Trigger, and Panel anatomy while providing Dify layout, focus, disabled, and motion styles.',
       },
     },
   },

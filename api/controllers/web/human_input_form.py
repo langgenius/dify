@@ -24,7 +24,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
-from models.model import App, Site
+from models.model import App, AppMode, Site
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
 from services.human_input_file_upload_service import HumanInputFileUploadService
@@ -207,6 +207,7 @@ class HumanInputFormApi(Resource):
                 site=WebAppSiteResponse.from_app_site(
                     tenant=tenant,
                     app_model=app_model,
+                    mode=AppMode.value_of(app_model.mode),
                     site=site,
                     end_user_id=None,
                     features=features,

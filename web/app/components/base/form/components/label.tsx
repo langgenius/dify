@@ -16,11 +16,7 @@ const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }:
 
   return (
     <div className="flex h-6 items-center">
-      <label
-        data-testid="label"
-        htmlFor={htmlFor}
-        className={cn('system-sm-medium text-text-secondary', className)}
-      >
+      <label htmlFor={htmlFor} className={cn('system-sm-medium text-text-secondary', className)}>
         {label}
       </label>
       {!isRequired && showOptional && (

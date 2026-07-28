@@ -10,7 +10,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: (...args: unknown[]) => mockCopy(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
+vi.mock('../../hooks/use-tool-icon', () => ({
   useGetToolIcon: () => () => 'tool-icon',
 }))
 

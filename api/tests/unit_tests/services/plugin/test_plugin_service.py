@@ -246,6 +246,26 @@ class TestPluginModelProviderCache:
             call([cache_key]),
         ]
 
+    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self) -> None:
+        """With the cache disabled the daemon is the only source, and Redis is never touched."""
+        with patch(f"{MODULE}.redis_client") as redis_client, patch(f"{MODULE}.dify_config") as config:
+            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
+            client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
+
+            from core.plugin.plugin_service import PluginService
+
+            first = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+            second = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert [provider.provider for provider in first] == ["langgenius/openai/openai"]
+        assert [provider.provider for provider in second] == ["langgenius/openai/openai"]
+        assert client.fetch_model_providers.call_count == 2
+        redis_client.get.assert_not_called()
+        redis_client.mget.assert_not_called()
+        redis_client.setex.assert_not_called()
+        redis_client.lock.assert_not_called()
+
     def test_fetch_plugin_model_providers_refetches_when_cache_read_fails(self) -> None:
         """Redis read failures do not block provider discovery for the tenant."""
         with patch(f"{MODULE}.redis_client") as redis_client:

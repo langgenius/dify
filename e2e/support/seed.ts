@@ -1,3 +1,4 @@
+import type { ConsoleClient } from './api/console-client'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { e2eDir } from '../scripts/common'
@@ -18,6 +19,7 @@ export type SeedResult = {
 }
 
 export type SeedContext = {
+  consoleClient: ConsoleClient
   dryRun: boolean
   resources: Map<string, SeedResource>
 }

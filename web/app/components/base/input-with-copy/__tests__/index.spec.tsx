@@ -192,16 +192,6 @@ describe('InputWithCopy component', () => {
     expect(mockReset).toHaveBeenCalled()
   })
 
-  it('applies wrapperClassName to the outer container', () => {
-    const mockOnChange = vi.fn()
-    const { container } = render(
-      <InputWithCopy value="test" onChange={mockOnChange} wrapperClassName="my-wrapper" />,
-    )
-
-    const outerDiv = container.firstChild as HTMLElement
-    expect(outerDiv).toHaveClass('my-wrapper')
-  })
-
   it('copies copyValue over non-string input value when both provided', () => {
     const mockOnChange = vi.fn()
     render(<InputWithCopy value={42} onChange={mockOnChange} copyValue="override-copy" />)

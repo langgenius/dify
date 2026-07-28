@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Cari grup dan anggota",
   "accessControlDialog.title": "Kontrol Akses Aplikasi Web",
   "accessControlDialog.updateSuccess": "Update berhasil",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Akses publik telah dinonaktifkan oleh administrator Anda.",
   "accessControlDialog.webAppSSONotEnabledTip": "Hubungi administrator organisasi Anda untuk mengonfigurasi autentikasi eksternal untuk aplikasi web.",
   "accessItemsDescription.anyone": "Siapa pun dapat mengakses aplikasi web (tidak perlu login)",
   "accessItemsDescription.external": "Hanya pengguna eksternal yang diautentikasi yang dapat mengakses aplikasi web",

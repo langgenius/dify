@@ -61,7 +61,7 @@ type Props = Readonly<{
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, unknown>
-  providerType?: string
+  providerType?: 'tool' | 'trigger'
   disableVariableInsertion?: boolean
 }>
 
