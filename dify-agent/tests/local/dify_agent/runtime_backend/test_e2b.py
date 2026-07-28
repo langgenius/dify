@@ -208,9 +208,7 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
 @pytest.mark.anyio
 async def test_e2b_missing_explicit_snapshot_does_not_fall_back_to_template() -> None:
     class _FailingControlPlane(_ControlPlane):
-        async def create(
-            self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str
-        ) -> _Sandbox:
+        async def create(self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str) -> _Sandbox:
             del timeout, metadata
             self.created.append((template, on_timeout))
             raise RuntimeError("snapshot unavailable")

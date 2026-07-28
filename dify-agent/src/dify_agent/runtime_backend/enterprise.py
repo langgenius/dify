@@ -77,9 +77,7 @@ class EnterpriseExecutionBindingBackend:
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
         if spec.existing_workspace_ref is not None:
-            raise SharedWorkspaceUnsupportedError(
-                "current Enterprise backend cannot attach to an existing Workspace"
-            )
+            raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
         if spec.home_snapshot_ref is not None:
             raise BindingCreateError("current Enterprise backend cannot materialize an immutable Home Snapshot")
 

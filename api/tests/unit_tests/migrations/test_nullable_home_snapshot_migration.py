@@ -177,6 +177,5 @@ def test_old_f6_schema_converges_to_nullable_without_changing_data() -> None:
         assert connection.scalar(sa.text("SELECT home_snapshot_id FROM agent_config_drafts")) == "home-draft"
         assert connection.scalar(sa.text("SELECT home_snapshot_id FROM agent_config_snapshots")) == "home-snapshot"
         assert (
-            connection.scalar(sa.text("SELECT base_home_snapshot_id FROM agent_workspace_bindings"))
-            == "home-binding"
+            connection.scalar(sa.text("SELECT base_home_snapshot_id FROM agent_workspace_bindings")) == "home-binding"
         )
