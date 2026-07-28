@@ -48,8 +48,9 @@ describe('HomeCatalogNavigation', () => {
     expect(navigationSection).toHaveClass(styles.catalogNavigation)
     expect(navigationSection.firstElementChild).toHaveClass('w-full')
     expect(navigationSection.firstElementChild).not.toHaveClass('mx-auto', 'max-w-[1200px]')
-    const activeTab = screen.getByText('plugin.marketplace.home.plugins')
+    const activeTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
     expect(activeTab).toHaveAttribute('aria-current', 'page')
+    expect(activeTab).toHaveAttribute('href', '/plugins')
     expect(activeTab.querySelector('[aria-hidden="true"]')).toHaveClass(
       'absolute',
       'h-0.5',
@@ -62,9 +63,26 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.getByTestId('plugin-type-switch')).toHaveAttribute('data-variant', 'home')
   })
 
+  it('keeps compact tabs clickable and hides the active indicator', () => {
+    render(<HomeCatalogTabs compact isMarketplacePlatform />)
+
+    const pluginsTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
+    const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
+
+    expect(pluginsTab).toHaveAttribute('href', '/plugins')
+    expect(pluginsTab).toHaveClass('cursor-pointer')
+    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
+    expect(templatesTab).toHaveAttribute('href', '/templates')
+    expect(templatesTab).toHaveClass('cursor-pointer')
+  })
+
   it('links Dify users to the hosted Marketplace templates page', () => {
     renderNavigation(false)
 
+    expect(screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })).toHaveAttribute(
+      'href',
+      'https://marketplace.dify.ai/plugins?source=console',
+    )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
     ).toHaveAttribute('href', 'https://marketplace.dify.ai/templates?source=console')
@@ -125,6 +143,21 @@ describe('HomeCatalogNavigation', () => {
 
     expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
     expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
+
+    scrollContainer.remove()
+  })
+
+  it('prevents scroll anchoring from reversing the sticky threshold', () => {
+    const scrollContainer = document.createElement('div')
+    scrollContainer.id = 'marketplace-container'
+    document.body.appendChild(scrollContainer)
+
+    const { unmount } = renderNavigation(true)
+
+    expect(scrollContainer.style.overflowAnchor).toBe('none')
+
+    unmount()
+    expect(scrollContainer.style.overflowAnchor).toBe('')
 
     scrollContainer.remove()
   })
