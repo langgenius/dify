@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, override
 
 from opentelemetry.trace import SpanKind
@@ -49,21 +49,20 @@ from dify_trace_aliyun.entities.semconv import (
     OPERATION_NAME_REACT,
     RETRIEVAL_DOCUMENT,
     RETRIEVAL_QUERY,
-    TOOL_DESCRIPTION,
-    TOOL_NAME,
-    TOOL_PARAMETERS,
     GenAISpanKind,
 )
 from dify_trace_aliyun.utils import (
     AgentLogEntry,
     convert_seconds_to_nanoseconds,
     create_common_span_attributes,
+    create_gen_ai_tool_attributes,
     create_links_from_trace_id,
     create_status_from_agent_log_entry,
     create_status_from_error,
     extract_model_name_from_thought_label,
     extract_react_round_number,
     extract_retrieval_documents,
+    extract_tool_description,
     extract_tool_name_from_call_label,
     format_input_messages,
     format_output_messages,
@@ -72,6 +71,7 @@ from dify_trace_aliyun.utils import (
     get_workflow_node_status,
     is_llm_thought_entry,
     is_tool_call_entry,
+    map_gen_ai_tool_type,
     parse_agent_log_entries,
     serialize_json_data,
 )
@@ -285,9 +285,11 @@ class AliyunDataTrace(BaseTraceInstance):
             links=create_links_from_trace_id(trace_info.trace_id),
         )
 
-        tool_config_json = serialize_json_data(trace_info.tool_config)
+        tool_config = trace_info.tool_config if isinstance(trace_info.tool_config, Mapping) else {}
         tool_inputs_json = serialize_json_data(trace_info.tool_inputs)
+        tool_result = str(trace_info.tool_outputs)
         inputs_json = serialize_json_data(trace_info.inputs)
+        provider_type = tool_config.get("tool_provider_type") or tool_config.get("provider_type")
 
         tool_span = SpanData(
             trace_id=trace_metadata.trace_id,
@@ -302,11 +304,16 @@ class AliyunDataTrace(BaseTraceInstance):
                     user_id=trace_metadata.user_id,
                     span_kind=GenAISpanKind.TOOL,
                     inputs=inputs_json,
-                    outputs=str(trace_info.tool_outputs),
+                    outputs=tool_result,
                 ),
-                TOOL_NAME: trace_info.tool_name,
-                TOOL_DESCRIPTION: tool_config_json,
-                TOOL_PARAMETERS: tool_inputs_json,
+                **create_gen_ai_tool_attributes(
+                    tool_name=trace_info.tool_name,
+                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
+                    tool_description=extract_tool_description(tool_config),
+                    tool_call_id=str(trace_info.metadata.get("node_execution_id") or ""),
+                    tool_call_arguments=tool_inputs_json,
+                    tool_call_result=tool_result,
+                ),
             },
             status=status,
             links=trace_metadata.links,
@@ -378,12 +385,15 @@ class AliyunDataTrace(BaseTraceInstance):
     def build_workflow_tool_span(
         self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
     ) -> SpanData:
-        tool_des = {}
-        if node_execution.metadata:
-            tool_des = node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {})
+        tool_info: Mapping[str, Any] = {}
+        if isinstance(node_execution.metadata, Mapping):
+            raw_tool_info = node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {})
+            if isinstance(raw_tool_info, Mapping):
+                tool_info = raw_tool_info
 
         inputs_json = serialize_json_data(node_execution.inputs or {})
         outputs_json = serialize_json_data(node_execution.outputs)
+        provider_type = tool_info.get("provider_type")
 
         return SpanData(
             trace_id=trace_metadata.trace_id,
@@ -400,9 +410,14 @@ class AliyunDataTrace(BaseTraceInstance):
                     inputs=inputs_json,
                     outputs=outputs_json,
                 ),
-                TOOL_NAME: node_execution.title,
-                TOOL_DESCRIPTION: serialize_json_data(tool_des),
-                TOOL_PARAMETERS: inputs_json,
+                **create_gen_ai_tool_attributes(
+                    tool_name=node_execution.title,
+                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
+                    tool_description=extract_tool_description(tool_info),
+                    tool_call_id=str(node_execution.id or ""),
+                    tool_call_arguments=inputs_json,
+                    tool_call_result=outputs_json,
+                ),
             },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
@@ -443,12 +458,30 @@ class AliyunDataTrace(BaseTraceInstance):
     def build_workflow_llm_span(
         self, trace_info: WorkflowTraceInfo, node_execution: WorkflowNodeExecution, trace_metadata: TraceMetadata
     ) -> SpanData:
-        process_data = node_execution.process_data or {}
-        outputs = node_execution.outputs or {}
+        process_data = node_execution.process_data if isinstance(node_execution.process_data, Mapping) else {}
+        inputs = node_execution.inputs if isinstance(node_execution.inputs, Mapping) else {}
+        outputs = node_execution.outputs if isinstance(node_execution.outputs, Mapping) else {}
         usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+        if not isinstance(usage_data, Mapping):
+            usage_data = {}
 
-        prompts_json = serialize_json_data(process_data.get("prompts", []))
-        text_output = str(outputs.get("text", ""))
+        # On invoke failure graphon leaves process_data empty, but prep already wrote
+        # model identity (and template variables / context) into node inputs.
+        prompts = process_data.get("prompts") or []
+        if prompts:
+            prompts_json = serialize_json_data(prompts)
+        elif inputs:
+            prompts_json = serialize_json_data(inputs)
+        else:
+            prompts_json = serialize_json_data([])
+
+        text_output = str(outputs.get("text") or "")
+        if not text_output:
+            text_output = str(outputs.get("error_message") or node_execution.error or "")
+
+        finish_reason = outputs.get("finish_reason") or outputs.get("error_type") or ""
+        model_name = process_data.get("model_name") or inputs.get("model_name") or ""
+        model_provider = process_data.get("model_provider") or inputs.get("model_provider") or ""
 
         gen_ai_input_message = format_input_messages(process_data)
         gen_ai_output_message = format_output_messages(outputs)
@@ -462,14 +495,14 @@ class AliyunDataTrace(BaseTraceInstance):
                 outputs=text_output,
             ),
             GEN_AI_OPERATION_NAME: OPERATION_NAME_CHAT,
-            GEN_AI_REQUEST_MODEL: process_data.get("model_name") or "",
-            GEN_AI_PROVIDER_NAME: process_data.get("model_provider") or "",
+            GEN_AI_REQUEST_MODEL: str(model_name),
+            GEN_AI_PROVIDER_NAME: str(model_provider),
             GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
             GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
             GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
             GEN_AI_PROMPT: prompts_json,
             GEN_AI_COMPLETION: text_output,
-            GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason") or "",
+            GEN_AI_RESPONSE_FINISH_REASON: str(finish_reason),
             GEN_AI_INPUT_MESSAGE: gen_ai_input_message,
             GEN_AI_OUTPUT_MESSAGE: gen_ai_output_message,
         }
@@ -672,6 +705,10 @@ class AliyunDataTrace(BaseTraceInstance):
             tool_parameters = entry.data.get("tool_call_input")
         if tool_parameters is None:
             tool_parameters = entry.data
+        tool_arguments_json = serialize_json_data(tool_parameters)
+        tool_result = entry.data.get("output", entry.data)
+        tool_result_json = tool_result if isinstance(tool_result, str) else serialize_json_data(tool_result)
+        provider_type = entry.metadata.get("provider_type") or entry.data.get("provider_type")
         return SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=step_span_id,
@@ -684,12 +721,17 @@ class AliyunDataTrace(BaseTraceInstance):
                     session_id=trace_metadata.session_id,
                     user_id=trace_metadata.user_id,
                     span_kind=GenAISpanKind.TOOL,
-                    inputs=serialize_json_data(tool_parameters),
-                    outputs=serialize_json_data(entry.data.get("output", entry.data)),
+                    inputs=tool_arguments_json,
+                    outputs=tool_result_json,
                 ),
-                TOOL_NAME: tool_name,
-                TOOL_DESCRIPTION: str(entry.metadata.get("provider") or ""),
-                TOOL_PARAMETERS: serialize_json_data(tool_parameters),
+                **create_gen_ai_tool_attributes(
+                    tool_name=tool_name,
+                    tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
+                    tool_description=extract_tool_description(entry.data) or extract_tool_description(entry.metadata),
+                    tool_call_id=entry.id,
+                    tool_call_arguments=tool_arguments_json,
+                    tool_call_result=tool_result_json,
+                ),
             },
             status=create_status_from_agent_log_entry(entry),
             links=trace_metadata.links,

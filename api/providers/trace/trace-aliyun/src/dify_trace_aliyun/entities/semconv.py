@@ -37,10 +37,19 @@ GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN: Final[str] = "gen_ai.response.time_to_first
 GEN_AI_INPUT_MESSAGE: Final[str] = "gen_ai.input.messages"
 GEN_AI_OUTPUT_MESSAGE: Final[str] = "gen_ai.output.messages"
 
-# Tool attributes
-TOOL_NAME: Final[str] = "tool.name"
-TOOL_DESCRIPTION: Final[str] = "tool.description"
-TOOL_PARAMETERS: Final[str] = "tool.parameters"
+# Tool attributes (GenAI semantic conventions)
+GEN_AI_TOOL_CALL_ID: Final[str] = "gen_ai.tool.call.id"
+GEN_AI_TOOL_DESCRIPTION: Final[str] = "gen_ai.tool.description"
+GEN_AI_TOOL_NAME: Final[str] = "gen_ai.tool.name"
+GEN_AI_TOOL_TYPE: Final[str] = "gen_ai.tool.type"
+GEN_AI_TOOL_CALL_ARGUMENTS: Final[str] = "gen_ai.tool.call.arguments"
+GEN_AI_TOOL_CALL_RESULT: Final[str] = "gen_ai.tool.call.result"
+
+# Skill attributes (conditionally required when loading a Skill)
+GEN_AI_SKILL_ID: Final[str] = "gen_ai.skill.id"
+GEN_AI_SKILL_NAME: Final[str] = "gen_ai.skill.name"
+GEN_AI_SKILL_DESCRIPTION: Final[str] = "gen_ai.skill.description"
+GEN_AI_SKILL_VERSION: Final[str] = "gen_ai.skill.version"
 
 # Agent attributes
 GEN_AI_AGENT_NAME: Final[str] = "gen_ai.agent.name"
@@ -51,8 +60,14 @@ GEN_AI_REACT_FINISH_REASON: Final[str] = "gen_ai.react.finish_reason"
 
 # gen_ai.operation.name values (see Aliyun LLM Trace field definitions)
 OPERATION_NAME_CHAT: Final[str] = "chat"
+OPERATION_NAME_EXECUTE_TOOL: Final[str] = "execute_tool"
 OPERATION_NAME_INVOKE_AGENT: Final[str] = "invoke_agent"
 OPERATION_NAME_REACT: Final[str] = "react"
+
+# gen_ai.tool.type values
+TOOL_TYPE_FUNCTION: Final[str] = "function"
+TOOL_TYPE_EXTENSION: Final[str] = "extension"
+TOOL_TYPE_DATASTORE: Final[str] = "datastore"
 
 
 class GenAISpanKind(StrEnum):

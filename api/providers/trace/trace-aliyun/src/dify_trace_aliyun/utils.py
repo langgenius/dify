@@ -9,11 +9,22 @@ from opentelemetry.trace import Link, Status, StatusCode
 from core.rag.models.document import Document
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
+    GEN_AI_OPERATION_NAME,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
+    GEN_AI_TOOL_CALL_ARGUMENTS,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_CALL_RESULT,
+    GEN_AI_TOOL_DESCRIPTION,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GEN_AI_USER_ID,
     INPUT_VALUE,
+    OPERATION_NAME_EXECUTE_TOOL,
     OUTPUT_VALUE,
+    TOOL_TYPE_DATASTORE,
+    TOOL_TYPE_EXTENSION,
+    TOOL_TYPE_FUNCTION,
     GenAISpanKind,
 )
 from extensions.ext_database import db
@@ -105,6 +116,47 @@ def create_common_span_attributes(
         GEN_AI_FRAMEWORK: framework,
         INPUT_VALUE: inputs,
         OUTPUT_VALUE: outputs,
+    }
+
+
+def map_gen_ai_tool_type(provider_type: str | None) -> str:
+    """Map Dify tool provider type to GenAI ``gen_ai.tool.type`` values."""
+    normalized = (provider_type or "").strip().lower()
+    if normalized in {"dataset-retrieval", "datastore"}:
+        return TOOL_TYPE_DATASTORE
+    if normalized == "extension":
+        return TOOL_TYPE_EXTENSION
+    return TOOL_TYPE_FUNCTION
+
+
+def extract_tool_description(tool_meta: Mapping[str, Any] | None) -> str:
+    if not isinstance(tool_meta, Mapping):
+        return ""
+    for key in ("description", "tool_description"):
+        value = tool_meta.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def create_gen_ai_tool_attributes(
+    *,
+    tool_name: str,
+    tool_type: str = TOOL_TYPE_FUNCTION,
+    tool_description: str = "",
+    tool_call_id: str = "",
+    tool_call_arguments: str = "",
+    tool_call_result: str = "",
+) -> dict[str, str]:
+    """Build GenAI-compliant attributes for a TOOL span."""
+    return {
+        GEN_AI_OPERATION_NAME: OPERATION_NAME_EXECUTE_TOOL,
+        GEN_AI_TOOL_NAME: tool_name,
+        GEN_AI_TOOL_TYPE: tool_type or TOOL_TYPE_FUNCTION,
+        GEN_AI_TOOL_DESCRIPTION: tool_description,
+        GEN_AI_TOOL_CALL_ID: tool_call_id,
+        GEN_AI_TOOL_CALL_ARGUMENTS: tool_call_arguments,
+        GEN_AI_TOOL_CALL_RESULT: tool_call_result,
     }
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -23,15 +24,23 @@ from dify_trace_aliyun.entities.semconv import (
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,
     GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN,
+    GEN_AI_TOOL_CALL_ARGUMENTS,
+    GEN_AI_TOOL_CALL_ID,
+    GEN_AI_TOOL_CALL_RESULT,
+    GEN_AI_TOOL_DESCRIPTION,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GEN_AI_USAGE_TOTAL_TOKENS,
+    INPUT_VALUE,
     OPERATION_NAME_CHAT,
+    OPERATION_NAME_EXECUTE_TOOL,
     OPERATION_NAME_INVOKE_AGENT,
     OPERATION_NAME_REACT,
+    OUTPUT_VALUE,
     RETRIEVAL_DOCUMENT,
     RETRIEVAL_QUERY,
-    TOOL_DESCRIPTION,
-    TOOL_NAME,
-    TOOL_PARAMETERS,
+    TOOL_TYPE_DATASTORE,
+    TOOL_TYPE_FUNCTION,
     GenAISpanKind,
 )
 from opentelemetry.trace import Link, SpanContext, SpanKind, Status, StatusCode, TraceFlags
@@ -405,8 +414,10 @@ def test_tool_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: p
         _make_tool_trace_info(
             tool_name="my-tool",
             tool_inputs={"a": 1},
-            tool_config={"description": "x"},
+            tool_outputs="tool-out",
+            tool_config={"description": "x", "tool_provider_type": "builtin"},
             inputs={"i": 1},
+            metadata={"conversation_id": "conv", "user_id": "u", "node_execution_id": "exec-1"},
         )
     )
 
@@ -415,8 +426,13 @@ def test_tool_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: p
     span = spans[0]
     assert span.name == "my-tool"
     assert span.status == status
-    assert span.attributes[TOOL_NAME] == "my-tool"
-    assert span.attributes[TOOL_DESCRIPTION] == '{"description": "x"}'
+    assert span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_EXECUTE_TOOL
+    assert span.attributes[GEN_AI_TOOL_NAME] == "my-tool"
+    assert span.attributes[GEN_AI_TOOL_DESCRIPTION] == "x"
+    assert span.attributes[GEN_AI_TOOL_TYPE] == TOOL_TYPE_FUNCTION
+    assert span.attributes[GEN_AI_TOOL_CALL_ID] == "exec-1"
+    assert span.attributes[GEN_AI_TOOL_CALL_ARGUMENTS] == '{"a": 1}'
+    assert span.attributes[GEN_AI_TOOL_CALL_RESULT] == "tool-out"
 
 
 def test_get_workflow_node_executions_requires_app_id(trace_instance: AliyunDataTrace):
@@ -542,20 +558,30 @@ def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: 
     node_execution.outputs = {"b": 2}
     node_execution.created_at = _dt()
     node_execution.finished_at = _dt()
-    node_execution.metadata = {WorkflowNodeExecutionMetadataKey.TOOL_INFO: {"k": "v"}}
+    node_execution.metadata = {
+        WorkflowNodeExecutionMetadataKey.TOOL_INFO: {
+            "provider_type": "dataset-retrieval",
+            "description": "search docs",
+        }
+    }
 
     span = trace_instance.build_workflow_tool_span(_make_workflow_trace_info(), node_execution, trace_metadata)
-    assert span.attributes[TOOL_NAME] == "my-tool"
-    assert span.attributes[TOOL_DESCRIPTION] == '{"k": "v"}'
-    assert span.attributes[TOOL_PARAMETERS] == '{"a": 1}'
+    assert span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_EXECUTE_TOOL
+    assert span.attributes[GEN_AI_TOOL_NAME] == "my-tool"
+    assert span.attributes[GEN_AI_TOOL_DESCRIPTION] == "search docs"
+    assert span.attributes[GEN_AI_TOOL_TYPE] == TOOL_TYPE_DATASTORE
+    assert span.attributes[GEN_AI_TOOL_CALL_ID] == "node-id"
+    assert span.attributes[GEN_AI_TOOL_CALL_ARGUMENTS] == '{"a": 1}'
+    assert span.attributes[GEN_AI_TOOL_CALL_RESULT] == '{"b": 2}'
     assert span.status.status_code == StatusCode.OK
 
     # Cover metadata is None and inputs is None
     node_execution.metadata = None
     node_execution.inputs = None
     span2 = trace_instance.build_workflow_tool_span(_make_workflow_trace_info(), node_execution, trace_metadata)
-    assert span2.attributes[TOOL_DESCRIPTION] == "{}"
-    assert span2.attributes[TOOL_PARAMETERS] == "{}"
+    assert span2.attributes[GEN_AI_TOOL_DESCRIPTION] == ""
+    assert span2.attributes[GEN_AI_TOOL_TYPE] == TOOL_TYPE_FUNCTION
+    assert span2.attributes[GEN_AI_TOOL_CALL_ARGUMENTS] == "{}"
 
 
 def test_build_workflow_retrieval_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
@@ -600,6 +626,8 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "llm"
+    node_execution.inputs = {}
+    node_execution.error = None
     node_execution.process_data = {
         "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
         "prompts": ["p"],
@@ -624,6 +652,44 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     node_execution.outputs = {"usage": {"total_tokens": 10}, "text": ""}
     span2 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span2.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "10"
+
+
+def test_build_workflow_llm_span_falls_back_to_inputs_on_invoke_failure(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch
+):
+    """Model invoke failures leave process_data empty; prep still populates inputs."""
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
+    monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: 123)
+    monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: Status(StatusCode.ERROR, "boom"))
+
+    trace_metadata = _make_trace_metadata()
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "node-id"
+    node_execution.title = "llm"
+    node_execution.process_data = {}
+    node_execution.inputs = {
+        "model_name": "qwen-plus",
+        "model_provider": "langgenius/tongyi/tongyi",
+        "#context#": "ctx",
+        "query": "hello",
+    }
+    node_execution.outputs = {"error_message": "API rate limit", "error_type": "InvokeError"}
+    node_execution.error = "API rate limit"
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    span = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+
+    expected_prompt = json.dumps(node_execution.inputs, ensure_ascii=False)
+    assert span.attributes[GEN_AI_REQUEST_MODEL] == "qwen-plus"
+    assert span.attributes[GEN_AI_PROVIDER_NAME] == "langgenius/tongyi/tongyi"
+    assert span.attributes[GEN_AI_PROMPT] == expected_prompt
+    assert span.attributes[INPUT_VALUE] == expected_prompt
+    assert span.attributes[GEN_AI_COMPLETION] == "API rate limit"
+    assert span.attributes[OUTPUT_VALUE] == "API rate limit"
+    assert span.attributes[GEN_AI_RESPONSE_FINISH_REASON] == "InvokeError"
+    # prompts were never persisted, so structured input.messages stays empty
+    assert span.attributes[GEN_AI_INPUT_MESSAGE] == "[]"
 
 
 def _make_agent_outputs() -> dict:
@@ -770,9 +836,12 @@ def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: p
     assert tool_span.span_id == 300
     assert tool_span.name == "CALL current_time"
     assert tool_span.attributes["gen_ai.span.kind"] == GenAISpanKind.TOOL
-    assert tool_span.attributes[TOOL_NAME] == "current_time"
-    assert tool_span.attributes[TOOL_DESCRIPTION] == "langgenius/time/time"
-    assert tool_span.attributes[TOOL_PARAMETERS] == '{"timezone": "Asia/Shanghai"}'
+    assert tool_span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_EXECUTE_TOOL
+    assert tool_span.attributes[GEN_AI_TOOL_NAME] == "current_time"
+    assert tool_span.attributes[GEN_AI_TOOL_TYPE] == TOOL_TYPE_FUNCTION
+    assert tool_span.attributes[GEN_AI_TOOL_CALL_ID] == "tool-1"
+    assert tool_span.attributes[GEN_AI_TOOL_CALL_ARGUMENTS] == '{"timezone": "Asia/Shanghai"}'
+    assert tool_span.attributes[GEN_AI_TOOL_CALL_RESULT] == "2026-07-28 18:00:00"
     assert tool_span.start_time == node_start_ns + int((6056.990500000 - 6055.211092814) * 1e9)
 
 
@@ -826,6 +895,8 @@ def test_build_workflow_llm_span_records_time_to_first_token(
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "llm"
+    node_execution.inputs = {}
+    node_execution.error = None
     node_execution.process_data = {"prompts": []}
     node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": 0.123}}
     node_execution.created_at = _dt()
