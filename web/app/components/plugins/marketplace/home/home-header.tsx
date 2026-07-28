@@ -1,10 +1,10 @@
 import type { HomeCatalogTab } from './home-catalog-tabs'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from '#i18n'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
+import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
+import MarketplaceLogo from '@/public/marketplace/dify-marketplace-logo.svg'
 import HomeCatalogTabs from './home-catalog-tabs'
 import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
@@ -12,7 +12,6 @@ import styles from './home-sticky.module.css'
 type HomeHeaderProps = {
   activeTab?: HomeCatalogTab
   actions?: React.ReactNode
-  brandName?: React.ReactNode
   isMarketplacePlatform: boolean
 }
 
@@ -29,14 +28,7 @@ function Guide() {
   )
 }
 
-const HomeHeader = ({
-  activeTab = 'plugins',
-  actions,
-  brandName,
-  isMarketplacePlatform,
-}: HomeHeaderProps) => {
-  const { t } = useTranslation('common')
-
+const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: HomeHeaderProps) => {
   return (
     <header
       className={cn(
@@ -45,17 +37,33 @@ const HomeHeader = ({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        <Link href="/" className={cn('flex h-full w-[142px] shrink-0 items-center', styles.brand)}>
-          <DifyLogo size="small" className="h-[18px] w-[39px] shrink-0" />
-          <span
+        <Link
+          href="/"
+          aria-label="Dify Marketplace"
+          className="flex h-full w-[141.933px] shrink-0 items-center"
+        >
+          <img
+            alt=""
+            aria-hidden
             className={cn(
-              'ml-1 text-[12.94px] leading-[14.786px] font-medium whitespace-nowrap text-dify-logo-black not-italic [text-box-edge:cap] [text-box-trim:trim-both]',
-              styles.brandName,
+              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
+              styles.marketplaceLogoLight,
             )}
-            style={{ fontFamily: "var(--font-family-brand, 'Söhne', var(--font-sans))" }}
-          >
-            {brandName ?? t(($) => $['mainNav.marketplace'])}
-          </span>
+            height="16.386"
+            src={MarketplaceLogo.src}
+            width="141.761"
+          />
+          <img
+            alt=""
+            aria-hidden
+            className={cn(
+              'h-[16.386px] w-[141.761px] max-w-none shrink-0',
+              styles.marketplaceLogoDark,
+            )}
+            height="16.386"
+            src={MarketplaceLogoDark.src}
+            width="141.761"
+          />
         </Link>
         <HomeStickyCatalogTabs>
           <HomeCatalogTabs

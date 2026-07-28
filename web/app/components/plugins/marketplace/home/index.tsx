@@ -12,7 +12,6 @@ import HomeTrending from './home-trending'
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
   banners: PluginBanner[]
-  brandName?: React.ReactNode
   isMarketplacePlatform: boolean
   linkToMarketplaceDetail: boolean
   showInstallButton: boolean
@@ -21,7 +20,6 @@ type MarketplaceHomeProps = {
 const MarketplaceHome = ({
   actions,
   banners,
-  brandName,
   isMarketplacePlatform,
   linkToMarketplaceDetail,
   showInstallButton,
@@ -29,11 +27,7 @@ const MarketplaceHome = ({
   return (
     <HomeStickyStateProvider>
       <div className="flex min-h-full w-full flex-col bg-background-default">
-        <HomeHeader
-          actions={actions}
-          brandName={brandName}
-          isMarketplacePlatform={isMarketplacePlatform}
-        />
+        <HomeHeader actions={actions} isMarketplacePlatform={isMarketplacePlatform} />
         <div className="relative flex w-full flex-col">
           <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
           <HomeSearch />
