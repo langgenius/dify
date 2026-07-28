@@ -127,9 +127,7 @@ def test_timezone_conversion_tool(sqlite_session: Session):
 def test_weekday_tool(sqlite_session: Session):
     weekday_tool = _build_builtin_tool(WeekdayTool)
     valid = list(
-        weekday_tool.invoke(
-            session=sqlite_session, user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1}
-        )
+        weekday_tool.invoke(session=sqlite_session, user_id="u", tool_parameters={"year": 2024, "month": 1, "day": 1})
     )[0].message.text
     expected_date = date(2024, 1, 1)
     expected_message = (
@@ -139,9 +137,7 @@ def test_weekday_tool(sqlite_session: Session):
     )
     assert valid == expected_message
     invalid = list(
-        weekday_tool.invoke(
-            session=sqlite_session, user_id="u", tool_parameters={"year": 2024, "month": 2, "day": 31}
-        )
+        weekday_tool.invoke(session=sqlite_session, user_id="u", tool_parameters={"year": 2024, "month": 2, "day": 31})
     )[0].message.text
     assert "Invalid date" in invalid
     with pytest.raises(ValueError, match="Month is required"):
@@ -255,9 +251,7 @@ def test_asr_valid_file_invocation(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     audio_file = SimpleNamespace(type=FileType.AUDIO)
     ok = list(
         asr.invoke(session=sqlite_session, user_id="u", tool_parameters={"audio_file": audio_file, "model": "p#m"})
-    )[
-        0
-    ].message.text
+    )[0].message.text
     assert ok == "transcript"
     assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
