@@ -1,5 +1,6 @@
 {
   "allTags": "Semua Tag",
+  "clearSelectedTags": "Hapus tag yang dipilih: {{tags}}",
   "searchTags": "Tag Pencarian",
   "tags.agent": "Agen",
   "tags.business": "Bisnis",

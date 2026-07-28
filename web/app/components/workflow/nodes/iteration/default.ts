@@ -1,14 +1,14 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { IterationNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum, ErrorHandleMode } from '../../types'
 
 const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Logic,
+  classification: BlockClassification.Logic,
   sort: 2,
   type: BlockEnum.Iteration,
   isTypeFixed: true,

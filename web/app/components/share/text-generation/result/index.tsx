@@ -7,18 +7,14 @@ import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { t } from 'i18next'
 import { useCallback } from 'react'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import Loading from '@/app/components/base/loading'
 import NoData from '@/app/components/share/text-generation/no-data'
 import { useResultRunState } from './hooks/use-result-run-state'
 import { useResultSender } from './hooks/use-result-sender'
-
-const translateResultKey: TextGenerationTranslate = (selector, options) => {
-  return t(selector, options)
-}
 
 type IResultProps = {
   isWorkflow: boolean
@@ -77,6 +73,11 @@ const Result: FC<IResultProps> = ({
   onRunControlChange,
   hideInlineStopButton = false,
 }) => {
+  const { t } = useTranslation()
+  const translateResultKey = useCallback<TextGenerationTranslate>(
+    (selector, options) => t(selector, options),
+    [t],
+  )
   const notify = useCallback(
     ({ type, message }: { type: 'error' | 'info' | 'success' | 'warning'; message: string }) => {
       toast(message, { type })

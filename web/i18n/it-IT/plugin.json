@@ -97,6 +97,7 @@
   "categorySingle.model": "Modello",
   "categorySingle.tool": "Strumento",
   "categorySingle.trigger": "Innescare",
+  "clearSearch": "Cancella {{label}}",
   "debugInfo.title": "Debug",
   "debugInfo.viewDocs": "Visualizza documenti",
   "deprecated": "Deprecato",

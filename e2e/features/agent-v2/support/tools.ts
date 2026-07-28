@@ -1,11 +1,11 @@
 import type { DifyWorld } from '../../support/world'
-import { splitToolDisplayName, splitToolResourceId } from './preflight/tools'
+import { splitToolDisplayName, splitToolResourceId } from './fixtures/tools'
 
 export const getPreseededToolContract = (world: DifyWorld, resourceName: string) => {
-  const resource = world.agentBuilder.preflight.preseededResources[resourceName]
+  const resource = world.agentBuilder.fixtures.preseededResources[resourceName]
   if (!resource || resource.kind !== 'tool') {
     throw new Error(
-      `Preseeded tool "${resourceName}" is not available. Run the matching preflight step first.`,
+      `Preseeded tool "${resourceName}" is not available. Run the matching fixture setup step first.`,
     )
   }
 

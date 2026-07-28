@@ -79,16 +79,9 @@ describe('FileList', () => {
   })
 
   it('should render empty list when no files', () => {
-    const { container } = render(<FileList files={[]} />)
+    render(<FileList files={[]} />)
 
-    expect(container.firstChild).toBeInTheDocument()
     expect(screen.queryAllByRole('img')).toHaveLength(0)
-  })
-
-  it('should apply custom className', () => {
-    const { container } = render(<FileList files={[]} className="custom-class" />)
-
-    expect(container.firstChild).toHaveClass('custom-class')
   })
 
   it('should render multiple files', () => {

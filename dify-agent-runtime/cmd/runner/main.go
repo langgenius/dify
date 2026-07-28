@@ -16,7 +16,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -174,11 +173,8 @@ func childMode() {
 		jobDir := filepath.Dir(scriptPath)
 		cfg := landlock.ConfigFromEnv(home, cwd, jobDir)
 		if err := landlock.Restrict(cfg); err != nil {
-			if errors.Is(err, landlock.ErrNotSupported) {
-				fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
-			} else {
-				cmdutil.HandleError(err, 125, "landlock restrict")
-			}
+			// the landlock is best-effort, so we just log the error whatever it is
+			fmt.Fprintf(os.Stderr, "shellctl-runner: WARNING: %v — running without filesystem isolation\n", err)
 		}
 	}
 

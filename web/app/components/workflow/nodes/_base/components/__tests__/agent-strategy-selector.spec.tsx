@@ -19,10 +19,6 @@ vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: mocks.useSuspenseQuery,
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
-}))
-
 vi.mock('@/service/use-strategy', () => ({
   useStrategyProviders: mocks.useStrategyProviders,
 }))
@@ -123,7 +119,7 @@ vi.mock('@/app/components/workflow/block-selector/tools', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/list', () => ({
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/list', () => ({
   default: ({ list, searchText }: { list: Array<{ plugin_id: string }>; searchText: string }) => (
     <div data-testid="plugin-list">
       {`${searchText}:${list.map((item) => item.plugin_id).join(',')}`}

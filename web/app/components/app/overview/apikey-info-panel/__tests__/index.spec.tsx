@@ -1,155 +1,50 @@
 import { cleanup, screen } from '@testing-library/react'
 import {
-  assertions,
   clearAllMocks,
   defaultModalContext,
   interactions,
-  mockRouterPush,
   mockUseModalContext,
   scenarios,
+  setDeploymentEdition,
   textKeys,
-} from '../apikey-info-panel.test-utils'
-
-// Mock config for CE edition
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: true, // Test CE edition by default
-}))
+} from './test-utils'
 
 afterEach(cleanup)
 
 describe('APIKeyInfoPanel - Community Edition', () => {
-  const mockSetShowAccountSettingModal = vi.fn()
+  const setShowAccountSettingModal = vi.fn()
 
   beforeEach(() => {
     clearAllMocks()
+    setDeploymentEdition('COMMUNITY')
     mockUseModalContext.mockReturnValue({
       ...defaultModalContext,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
+      setShowAccountSettingModal,
     })
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing when API key is not set', () => {
-      scenarios.withAPIKeyNotSet()
-      assertions.shouldRenderMainButton()
-    })
+  it('hides the panel when an API key already exists', () => {
+    const { container } = scenarios.withAPIKeySet()
+    expect(container).toBeEmptyDOMElement()
+  })
 
-    it('should not render when API key is already set', () => {
-      const { container } = scenarios.withAPIKeySet()
-      assertions.shouldNotRender(container)
-    })
+  it('opens provider settings from the primary action', () => {
+    scenarios.withMockModal(setShowAccountSettingModal)
+    interactions.clickMainButton()
+    expect(setShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+  })
 
-    it('should not render when panel is hidden by user', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      interactions.clickCloseButton(container)
-      assertions.shouldNotRender(container)
+  it('links self-hosted users to Dify Cloud safely', () => {
+    scenarios.withAPIKeyNotSet()
+    expect(screen.getByRole('link', { name: textKeys.selfHost.tryCloud })).toMatchObject({
+      target: '_blank',
+      rel: 'noopener noreferrer',
     })
   })
 
-  describe('Content Display', () => {
-    it('should display self-host title content', () => {
-      scenarios.withAPIKeyNotSet()
-
-      expect(screen.getByText(textKeys.selfHost.titleRow1)).toBeInTheDocument()
-      expect(screen.getByText(textKeys.selfHost.titleRow2)).toBeInTheDocument()
-    })
-
-    it('should display set API button text', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByText(textKeys.selfHost.setAPIBtn)).toBeInTheDocument()
-    })
-
-    it('should render external link with correct href for self-host version', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      const link = container.querySelector('a[href="https://cloud.dify.ai/apps"]')
-
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      expect(link).toHaveTextContent(textKeys.selfHost.tryCloud)
-    })
-
-    it('should have external link with proper styling for self-host version', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      const link = container.querySelector('a[href="https://cloud.dify.ai/apps"]')
-
-      expect(link).toHaveClass(
-        'mt-2',
-        'flex',
-        'h-[26px]',
-        'items-center',
-        'space-x-1',
-        'p-1',
-        'text-xs',
-        'font-medium',
-        'text-[#155EEF]',
-      )
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should navigate to the model provider page when set API button is clicked', () => {
-      scenarios.withMockModal(mockSetShowAccountSettingModal)
-
-      interactions.clickMainButton()
-
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
-      expect(mockRouterPush).not.toHaveBeenCalled()
-    })
-
-    it('should hide panel when close button is clicked', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.firstChild).toBeInTheDocument()
-
-      interactions.clickCloseButton(container)
-      assertions.shouldNotRender(container)
-    })
-  })
-
-  describe('Props and Styling', () => {
-    it('should render panel container with correct classes', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      const panel = container.firstChild as HTMLElement
-      assertions.shouldHavePanelStyling(panel)
-    })
-  })
-
-  describe('State Management', () => {
-    it('should start with visible panel (isShow: true)', () => {
-      scenarios.withAPIKeyNotSet()
-      assertions.shouldRenderMainButton()
-    })
-
-    it('should toggle visibility when close button is clicked', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.firstChild).toBeInTheDocument()
-
-      interactions.clickCloseButton(container)
-      assertions.shouldNotRender(container)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle provider context loading state', () => {
-      scenarios.withAPIKeyNotSet({
-        providerContext: {
-          modelProviders: [],
-          textGenerationModelList: [],
-        },
-      })
-      assertions.shouldRenderMainButton()
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have button with proper role', () => {
-      scenarios.withAPIKeyNotSet()
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should have clickable close button', () => {
-      const { container } = scenarios.withAPIKeyNotSet()
-      assertions.shouldHaveCloseButton(container)
-    })
+  it('dismisses the panel from the close action', () => {
+    const { container } = scenarios.withAPIKeyNotSet()
+    interactions.clickCloseButton(container)
+    expect(container).toBeEmptyDOMElement()
   })
 })

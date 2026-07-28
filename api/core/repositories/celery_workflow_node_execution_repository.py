@@ -17,7 +17,6 @@ from core.repositories.factory import (
     WorkflowNodeExecutionRepository,
 )
 from graphon.entities import WorkflowNodeExecution
-from libs.helper import extract_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
@@ -54,6 +53,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
@@ -63,7 +63,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for fallback operations
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
@@ -78,10 +79,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                     f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
                 )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context

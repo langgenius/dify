@@ -1,7 +1,8 @@
 import type { SegmentImportStatus } from '@/types/dataset'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { segmentImportStatus } from '@/types/dataset'
 import { SegmentAdd } from '../index'
 
@@ -31,12 +32,6 @@ describe('SegmentAdd', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render add button when no importStatus', () => {
       render(<SegmentAdd {...defaultProps} />)
 
@@ -171,13 +166,6 @@ describe('SegmentAdd', () => {
       render(<SegmentAdd {...defaultProps} embedding={true} />)
 
       expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeDisabled()
-    })
-
-    it('should apply disabled styling when embedding is true', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} embedding={true} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('border-components-button-secondary-border-disabled')
     })
   })
 

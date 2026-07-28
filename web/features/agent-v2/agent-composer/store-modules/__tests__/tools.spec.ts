@@ -151,6 +151,7 @@ describe('agent composer tools store', () => {
             kind: 'provider',
             name: 'DuckDuckGo',
             iconClassName: 'i-simple-icons-duckduckgo',
+            providerType: 'builtin',
             credentialVariant: 'none',
             actions: [
               {

@@ -317,9 +317,6 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "credential.use",
     "credential.create",
     "credential.manage",
-    "billing.view",
-    "billing.subscription.manage",
-    "billing.manage",
     "app.acl.preview",
     "app_library.access",
     "app.create_and_management",
@@ -333,6 +330,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -349,9 +347,6 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "credential.use",
     "credential.create",
     "credential.manage",
-    "billing.view",
-    "billing.subscription.manage",
-    "billing.manage",
     "app_library.access",
     "app.create_and_management",
     "app.tag.manage",
@@ -363,6 +358,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -377,9 +373,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
-    "billing.view",
-    "billing.subscription.manage",
-    "billing.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -387,9 +381,6 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
-    "billing.view",
-    "billing.subscription.manage",
-    "billing.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -805,7 +796,6 @@ class RBACService:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
-                params={"billing_enabled": dify_config.BILLING_ENABLED},
                 tenant_id=tenant_id,
                 account_id=account_id,
             )

@@ -1,4 +1,9 @@
-"""Tests for openapi workflow events reconnect endpoint."""
+"""Tests for the OpenAPI workflow-events reconnect endpoint.
+
+The controller constructs a repository session factory, so every case binds
+that real SQLAlchemy factory to an isolated SQLite engine. Repository behavior
+remains mocked because these tests focus on authorization and SSE responses.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,8 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.auth.data import AuthData
@@ -47,6 +54,11 @@ def _make_workflow_run(
 
 
 class TestOpenApiWorkflowEventsApi:
+    @pytest.fixture(autouse=True)
+    def _bind_sqlite_engine(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+        module = sys.modules["controllers.openapi.workflow_events"]
+        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
+
     def _get_api(self):
         from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
 
@@ -59,8 +71,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = self._get_api()
         from models.model import AppMode
@@ -77,6 +87,10 @@ class TestOpenApiWorkflowEventsApi:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
+        session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
+        assert isinstance(session_maker, sessionmaker)
+        assert session_maker.kw["bind"] is module.db.engine
+
     def test_not_found_when_run_belongs_to_different_app(
         self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
     ):
@@ -87,8 +101,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = self._get_api()
         from models.model import AppMode
@@ -116,8 +128,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         snapshot_builder = Mock(return_value=iter([]))
         monkeypatch.setattr(module, "build_workflow_event_stream", snapshot_builder)
@@ -156,8 +166,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         from models.model import AppMode
 
@@ -185,8 +193,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         msg_gen_mock = Mock()
         msg_gen_mock.retrieve_events.return_value = iter([])
@@ -227,8 +233,6 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = Mock()
         factory_mock.create_api_workflow_run_repository.return_value = repo_mock
         monkeypatch.setattr(module, "DifyAPIRepositoryFactory", factory_mock)
-        monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         finish_response = SimpleNamespace(
             event=SimpleNamespace(value="workflow_finished"),

@@ -177,6 +177,7 @@ const mockContextValue: ChatContextValue = {
   config: makeChatConfig({ supportFeedback: true }),
   onFeedback: vi.fn().mockResolvedValue(undefined),
   onRegenerate: vi.fn(),
+  showRegenerate: false,
   onAnnotationAdded: vi.fn(),
   onAnnotationEdited: vi.fn(),
   onAnnotationRemoved: vi.fn(),
@@ -197,6 +198,7 @@ vi.mock('react-i18next', async () => {
 })
 
 type OperationProps = {
+  answerActionPosition?: 'auto' | 'below'
   item: ChatItem
   question: string
   index: number
@@ -263,6 +265,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationEdited = vi.fn()
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
+    mockContextValue.showRegenerate = false
     mockProviderContext.plan.usage.annotatedResponse = 0
     mockProviderContext.enableBilling = false
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
@@ -284,6 +287,12 @@ describe('Operation', () => {
     it('should hide regenerate button when noChatInput is true', () => {
       renderOperation({ ...baseProps, noChatInput: true })
       expect(screen.queryByRole('button', { name: 'operation.regenerate' })).not.toBeInTheDocument()
+    })
+
+    it('should show regenerate button when explicitly enabled without a chat input', () => {
+      mockContextValue.showRegenerate = true
+      renderOperation({ ...baseProps, noChatInput: true })
+      expect(screen.getByRole('button', { name: 'operation.regenerate' })).toBeInTheDocument()
     })
 
     it('should show TTS button when text_to_speech is enabled', () => {
@@ -846,10 +855,10 @@ describe('Operation', () => {
       expect(bar.style.left).toBeFalsy()
     })
 
-    it('should apply workflow process class when hasWorkflowProcess is true', () => {
-      renderOperation({ ...baseProps, hasWorkflowProcess: true })
+    it('should position below when requested even if there is room on the right', () => {
+      renderOperation({ ...baseProps, answerActionPosition: 'below', maxSize: 500 })
       const bar = screen.getByTestId('operation-bar')
-      expect(bar.className).toContain('-bottom-4')
+      expect(bar.style.left).toBeFalsy()
     })
 
     it('should calculate width correctly for all features combined', () => {

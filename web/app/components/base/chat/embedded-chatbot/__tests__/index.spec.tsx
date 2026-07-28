@@ -3,14 +3,14 @@ import type { ChatConfig } from '../../types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
 
 let mockBrandingWorkspaceLogo = ''
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: {
       branding: { enabled: true, workspace_logo: mockBrandingWorkspaceLogo },
     },

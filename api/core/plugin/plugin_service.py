@@ -435,13 +435,17 @@ class PluginService:
                 )
 
     @classmethod
+    def _fetch_plugin_model_providers_uncached(
+        cls, tenant_id: str, client: PluginModelClient | None
+    ) -> tuple[ProviderEntity, ...]:
+        model_client = client or PluginModelClient()
+        return tuple(cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id))
+
+    @classmethod
     def _fetch_and_cache_plugin_model_providers(
         cls, tenant_id: str, client: PluginModelClient | None, *, refresh_generation: int | None
     ) -> tuple[ProviderEntity, ...]:
-        model_client = client or PluginModelClient()
-        providers = tuple(
-            cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id)
-        )
+        providers = cls._fetch_plugin_model_providers_uncached(tenant_id, client)
         generation = cls._load_plugin_model_providers_generation(tenant_id)
         if generation is not None and generation == refresh_generation:
             cls._store_cached_plugin_model_providers(tenant_id, generation, providers)
@@ -471,6 +475,9 @@ class PluginService:
         are intentionally owned by this service so tenant isolation and cache
         expiry are handled in one place.
         """
+        if not dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED:
+            return cls._fetch_plugin_model_providers_uncached(tenant_id, client)
+
         deadline = time.monotonic() + cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT
 
         while True:
