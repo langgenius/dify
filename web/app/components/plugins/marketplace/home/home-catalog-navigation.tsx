@@ -25,6 +25,11 @@ function HomeCatalogNavigation({ catalogTabs }: HomeCatalogNavigationProps) {
     const scrollContainer = document.getElementById('marketplace-container')
     if (!scrollContainer) return
 
+    const previousOverflowAnchor = scrollContainer.style.overflowAnchor
+    // The sticky section becomes shorter when its tabs move into the header.
+    // Prevent browser scroll anchoring from moving it back across the pin threshold.
+    scrollContainer.style.overflowAnchor = 'none'
+
     const updatePinnedState = () => {
       const pinTrigger = pinTriggerRef.current
       if (!pinTrigger) return
@@ -41,6 +46,7 @@ function HomeCatalogNavigation({ catalogTabs }: HomeCatalogNavigationProps) {
     return () => {
       scrollContainer.removeEventListener('scroll', updatePinnedState)
       window.removeEventListener('resize', updatePinnedState)
+      scrollContainer.style.overflowAnchor = previousOverflowAnchor
     }
   }, [setIsPinned])
 

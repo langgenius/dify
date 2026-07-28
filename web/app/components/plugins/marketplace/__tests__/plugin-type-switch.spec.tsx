@@ -77,6 +77,8 @@ describe('PluginTypeSwitch', () => {
     await user.click(screen.getByRole('button', { name: 'category.models' }))
 
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe('model')
+    const update = onUrlUpdate.mock.calls.at(-1)?.[0]
+    expect(update?.searchParams.get('category')).toBe('model')
+    expect(update?.options.scroll).toBe(false)
   })
 })

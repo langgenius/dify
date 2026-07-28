@@ -8,7 +8,7 @@ export const marketplaceSearchParamsParsers = {
     Object.values(PLUGIN_TYPE_SEARCH_MAP) as ActivePluginType[],
   )
     .withDefault('all')
-    .withOptions({ history: 'replace', clearOnDefault: false }),
+    .withOptions({ history: 'replace', clearOnDefault: false, scroll: false }),
   q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
   tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
 }

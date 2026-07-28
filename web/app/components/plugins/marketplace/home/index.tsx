@@ -6,6 +6,7 @@ import HomeHeader from './home-header'
 import HomeHero from './home-hero'
 import HomeSearch from './home-search'
 import { HomeStickyStateProvider } from './home-sticky-state-provider'
+import styles from './home-sticky.module.css'
 import HomeTrending from './home-trending'
 
 type MarketplaceHomeProps = {
@@ -47,6 +48,7 @@ const MarketplaceHome = ({
           />
           <div className="contents [&>div]:bg-background-default!">
             <ListWrapper
+              className={styles.catalogContent}
               showInstallButton={showInstallButton}
               linkToMarketplaceDetail={linkToMarketplaceDetail}
             />
