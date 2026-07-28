@@ -14,11 +14,9 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
-    TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
-from models.dataset import Dataset
-from models.model import App, DifySetup
+from models.model import DifySetup
 from services.account_service import AccountService, RegisterService, TenantService
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
@@ -673,7 +671,6 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session):
         tenant_id = "00000000-0000-0000-0000-000000000001"
         account_ids = [
@@ -715,7 +712,6 @@ class TestTenantService:
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
     # (pipeline maps to 404), otherwise the caller's role (out-of-set role => 403).
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_get_account_role_in_tenant_returns_role_for_member(self, sqlite_session: Session):
         """A row in TenantAccountJoin yields the caller's role."""
         sqlite_session.add(
@@ -727,14 +723,12 @@ class TestTenantService:
 
         assert role == TenantAccountRole.ADMIN
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_get_account_role_in_tenant_returns_none_for_non_member(self, sqlite_session: Session):
         """No join row => None, so the gate cannot leak the workspace's existence."""
         role = TenantService.get_account_role_in_tenant("account-1", "tenant-1", session=sqlite_session)
 
         assert role is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_role_in_tenant_short_circuits_empty_account_id(self, sqlite_session: Session):
         """None/empty account_id (SSO bearer, missing identity) returns None
         without ever touching the session."""
@@ -752,7 +746,6 @@ class TestTenantService:
 
         assert statements == []
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_get_account_role_in_tenant_query_is_scoped(self, sqlite_session: Session):
         """The lookup must filter on BOTH tenant_id and account_id."""
         account_id = "11111111-1111-1111-1111-111111111111"
@@ -775,11 +768,6 @@ class TestTenantService:
 
     # ==================== Tenant Creation Tests ====================
 
-    @pytest.mark.parametrize(
-        "sqlite_session",
-        [(Tenant, TenantAccountJoin, TenantPluginAutoUpgradeStrategy)],
-        indirect=True,
-    )
     def test_create_owner_tenant_if_not_exist_new_user(
         self, sqlite_session: Session, mock_rsa_dependencies, mock_external_service_dependencies
     ):
@@ -816,7 +804,6 @@ class TestTenantService:
 
     # ==================== Member Management Tests ====================
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
     def test_create_tenant_member_success(self, sqlite_session: Session):
         """Creating a member persists and returns the tenant/account join row."""
         tenant = Tenant(name="Test Workspace")
@@ -840,7 +827,6 @@ class TestTenantService:
 
     # ==================== Member Removal Tests ====================
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin, App, Dataset)], indirect=True)
     def test_remove_pending_member_deletes_orphaned_account(self, sqlite_session: Session):
         """Test that removing a pending member with no other workspaces deletes the account."""
         tenant = Tenant(name="Test Workspace")
@@ -869,7 +855,6 @@ class TestTenantService:
         assert sqlite_session.get(TenantAccountJoin, member_join.id) is None
         assert sqlite_session.get(Account, pending_member.id) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin, App, Dataset)], indirect=True)
     def test_remove_pending_member_keeps_account_with_other_workspaces(self, sqlite_session: Session):
         """Test that removing a pending member who belongs to other workspaces preserves the account."""
         tenant = Tenant(name="Test Workspace")
@@ -900,7 +885,6 @@ class TestTenantService:
         assert sqlite_session.get(TenantAccountJoin, member_join.id) is None
         assert sqlite_session.get(Account, pending_member.id) is pending_member
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin, App, Dataset)], indirect=True)
     def test_remove_active_member_preserves_account(self, sqlite_session: Session):
         """Test that removing an active member never deletes the account, even with no other workspaces."""
         tenant = Tenant(name="Test Workspace")
@@ -931,7 +915,6 @@ class TestTenantService:
 
     # ==================== Tenant Switching Tests ====================
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_switch_tenant_success(self, sqlite_session: Session):
         """Test successful tenant switching."""
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
@@ -970,7 +953,6 @@ class TestTenantService:
 
         session.commit.assert_called_once_with()
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
         """Test tenant switching without providing tenant ID."""
         # Setup test data
@@ -983,7 +965,6 @@ class TestTenantService:
 
     # ==================== Role Management Tests ====================
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_update_member_role_success(self, sqlite_session: Session):
         """Test successful member role update."""
         tenant = Tenant(name="Test Workspace")
@@ -999,7 +980,6 @@ class TestTenantService:
 
         assert target_join.role == TenantAccountRole.ADMIN
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
         self, sqlite_session: Session, mock_external_service_dependencies
     ):
@@ -1034,7 +1014,6 @@ class TestTenantService:
             session=sqlite_session,
         )
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_admin_can_update_admin_member_role(self, sqlite_session: Session):
         """Test admin can update another non-owner member, including an admin."""
         tenant = Tenant(name="Test Workspace")
@@ -1050,7 +1029,6 @@ class TestTenantService:
 
         assert target_join.role == TenantAccountRole.EDITOR
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_admin_cannot_update_owner_member_role(self, sqlite_session: Session):
         """Test admin cannot update an owner member."""
         tenant = Tenant(name="Test Workspace")
@@ -1065,7 +1043,6 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.update_member_role(tenant, mock_member, "editor", mock_operator, session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_admin_cannot_promote_member_to_owner(self, sqlite_session: Session):
         """Test admin cannot promote a non-owner member to owner."""
         tenant = Tenant(name="Test Workspace")
@@ -1082,7 +1059,6 @@ class TestTenantService:
 
     # ==================== Permission Check Tests ====================
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_check_member_permission_success(self, sqlite_session: Session):
         """Test successful member permission check."""
         tenant = Tenant(name="Test Workspace")
@@ -1095,7 +1071,6 @@ class TestTenantService:
 
         TenantService.check_member_permission(tenant, mock_operator, mock_member, "add", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_check_member_permission_operate_self(self, sqlite_session: Session):
         """Test member permission check when operator tries to operate self."""
         # Setup test data
@@ -1116,7 +1091,6 @@ class TestTenantService:
             session=sqlite_session,
         )
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_admin_can_remove_non_owner_member(self, sqlite_session: Session):
         """Test admin can remove a non-owner member."""
         tenant = Tenant(name="Test Workspace")
@@ -1130,7 +1104,6 @@ class TestTenantService:
 
         TenantService.check_member_permission(tenant, mock_operator, mock_member, "remove", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_admin_cannot_remove_owner_member(self, sqlite_session: Session):
         """Test admin cannot remove an owner member."""
         tenant = Tenant(name="Test Workspace")
@@ -1145,7 +1118,6 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(tenant, mock_operator, mock_member, "remove", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_rbac_member_can_remove_non_owner_member(self, sqlite_session: Session):
         """Test RBAC workspace.member.manage allows removing a non-owner member."""
         mock_tenant = MagicMock()
@@ -1165,7 +1137,6 @@ class TestTenantService:
                 mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
             )
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_rbac_member_cannot_remove_without_permission(self, sqlite_session: Session):
         """Test RBAC permission check rejects removal without workspace.member.manage."""
         mock_tenant = MagicMock()
@@ -1185,7 +1156,6 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_rbac_member_cannot_remove_owner_member(self, sqlite_session: Session):
         """Test RBAC permission check rejects removing an owner member."""
         mock_tenant = MagicMock()
@@ -1206,7 +1176,6 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_get_rbac_workspace_owner_account_id(self, sqlite_session: Session):
         mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
         mock_rbac_roles = MagicMock()
@@ -2514,7 +2483,6 @@ class TestSessionInjectedGetters:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_by_id_uses_passed_session_no_side_effects(self, sqlite_session: Session):
         """``get_account_by_id`` must be a plain delegation to
         ``session.get(Account, ...)`` — no banned-status raise, no
@@ -2530,11 +2498,9 @@ class TestSessionInjectedGetters:
         assert result is account
         assert account.status == AccountStatus.BANNED
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_by_id_returns_none_for_unknown_account(self, sqlite_session: Session):
         assert AccountService.get_account_by_id("missing", session=sqlite_session) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session):
         """Plain getter — case-sensitive equality (callers needing the
         case-insensitive existence check use
@@ -2548,7 +2514,6 @@ class TestSessionInjectedGetters:
         assert AccountService.get_account_by_email("ALICE@example.com", session=sqlite_session) is None
         assert AccountService.get_account_by_email("ghost@example.com", session=sqlite_session) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self, sqlite_session: Session):
         """SSO bearers with no ``account_id`` (and any other falsy id)
         must collapse to ``False`` before touching membership storage.
@@ -2556,7 +2521,6 @@ class TestSessionInjectedGetters:
         assert TenantService.account_belongs_to_tenant(None, "tenant-1", session=sqlite_session) is False
         assert TenantService.account_belongs_to_tenant("", "tenant-1", session=sqlite_session) is False
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_account_belongs_to_tenant_true_when_join_row_exists(self, sqlite_session: Session):
         sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="user-1", role=TenantAccountRole.NORMAL))
         sqlite_session.commit()
@@ -2564,11 +2528,9 @@ class TestSessionInjectedGetters:
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is True
         assert TenantService.account_belongs_to_tenant("user-1", "other-tenant", session=sqlite_session) is False
 
-    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_account_belongs_to_tenant_false_when_no_join(self, sqlite_session: Session):
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is False
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_get_account_memberships_returns_join_tenant_pairs(self, sqlite_session: Session):
         """Returns every ``(TenantAccountJoin, Tenant)`` pair for an account."""
         tenant = Tenant(name="Joined Workspace")
@@ -2585,7 +2547,6 @@ class TestSessionInjectedGetters:
         assert out[0][0] is join
         assert out[0][1] is tenant
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_get_workspaces_for_account_uses_session_execute(self, sqlite_session: Session):
         """The list endpoint orders by ``Tenant.created_at``; the helper
         returns ``(Tenant, TenantAccountJoin)`` rows in that order.
@@ -2604,7 +2565,6 @@ class TestSessionInjectedGetters:
 
         assert [(row[0], row[1]) for row in out] == [(older_tenant, older_join), (newer_tenant, newer_join)]
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_get_tenant_by_id_is_plain_session_get(self, sqlite_session: Session):
         """``get_tenant_by_id`` must NOT apply a status filter — the
         openapi auth pipeline needs to map ``status == ARCHIVE`` to a
@@ -2616,16 +2576,13 @@ class TestSessionInjectedGetters:
 
         assert TenantService.get_tenant_by_id(tenant.id, session=sqlite_session) is tenant
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_get_tenant_by_id_returns_none_when_missing(self, sqlite_session: Session):
         assert TenantService.get_tenant_by_id("missing", session=sqlite_session) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_tenants_by_ids_short_circuits_on_empty_input(self, sqlite_session: Session):
         """Empty id list must return before touching tenant storage."""
         assert TenantService.get_tenants_by_ids([], session=sqlite_session) == []
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_get_tenants_by_ids_returns_scalars(self, sqlite_session: Session):
         tenant_1 = Tenant(name="Workspace 1")
         tenant_2 = Tenant(name="Workspace 2")
@@ -2637,7 +2594,6 @@ class TestSessionInjectedGetters:
 
         assert {tenant.id for tenant in tenants} == {tenant_1.id, tenant_3.id}
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_get_tenant_name_returns_scalar_or_none(self, sqlite_session: Session):
         """Single-column lookup: ``session.execute(...).scalar_one_or_none()``
         — used by openapi list endpoints to denormalise
@@ -2650,7 +2606,6 @@ class TestSessionInjectedGetters:
         assert TenantService.get_tenant_name(tenant.id, session=sqlite_session) == "Acme Inc."
         assert TenantService.get_tenant_name("missing", session=sqlite_session) is None
 
-    @pytest.mark.parametrize("sqlite_session", [(Tenant, TenantAccountJoin)], indirect=True)
     def test_find_workspace_for_account_returns_first_row_or_none(self, sqlite_session: Session):
         """Per-id read returns ``session.execute(...).first()`` directly;
         callers map ``None`` → 404 to avoid leaking workspace IDs across
@@ -2672,7 +2627,6 @@ class TestSessionInjectedGetters:
         assert TenantService.find_workspace_for_account("user-123", other_tenant.id, session=sqlite_session) is None
 
 
-@pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
 def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
     account = Account(name="Case User", email="case@test.com")
     sqlite_session.add(account)
