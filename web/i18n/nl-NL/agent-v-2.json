@@ -157,7 +157,7 @@
   "agentDetail.configure.preview.empty.title": "Voorbeeld van {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Authenticatie eindgebruiker",
   "agentDetail.configure.preview.inputPlaceholder": "Bericht sturen naar {{name}}",
-  "agentDetail.configure.preview.restart": "Voorbeeld opnieuw starten",
+  "agentDetail.configure.preview.restart": "Opnieuw beginnen",
   "agentDetail.configure.preview.sandboxNotice": "De agent wordt uitgevoerd in een Linux-sandbox.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "In Dify Community Edition draait elk van je agents in een Linux 7.0.0-10060-aws-sandboxomgeving binnen je Docker. Je wijzigingen aan de omgeving via Build Chats blijven behouden.",
   "agentDetail.configure.preview.title": "Voorbeeld",
