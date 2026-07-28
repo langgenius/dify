@@ -1,4 +1,3 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -184,13 +183,11 @@ function createInitialDraft(
 
 function renderAgentFiles({
   initialDraft = createInitialDraft(),
-  initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
   viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
-  initialOriginalConfig?: AgentSoulConfig
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
   viewingVersion?: boolean
@@ -209,10 +206,7 @@ function renderAgentFiles({
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider
-          initialDraft={initialDraft}
-          initialOriginalConfig={initialOriginalConfig}
-        >
+        <AgentComposerProvider initialDraft={initialDraft}>
           <AgentOrchestrateViewingVersionContext value={viewingVersion}>
             <AgentOrchestrateReadOnlyContext value={readOnly}>
               <AgentFiles />
