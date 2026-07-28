@@ -33,7 +33,7 @@ const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderPro
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 backdrop-blur-sm md:px-9',
+        'sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 py-1.5 backdrop-blur-sm md:px-9',
         styles.header,
       )}
     >

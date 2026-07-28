@@ -1,11 +1,11 @@
 import type { SearchParams } from 'nuqs'
-import type { BannerRecommend } from './home/banners'
+import type { PluginBanner } from './home/banners'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import { TanStackQueryProvider } from '@/app/query-provider'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import Description from './description'
 import MarketplaceHome from './home'
-import { fetchPluginRecommendBanners } from './home/banners'
+import { fetchPluginBanners } from './home/banners'
 import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
@@ -40,15 +40,14 @@ const Marketplace = async ({
   homeHeaderBrandName,
   searchParams,
 }: MarketplaceProps) => {
-  let trendingBanners: BannerRecommend[] = []
+  let trendingBanners: PluginBanner[] = []
 
   if (variant === 'home') {
-    const locale = language ?? await getLocaleOnServer()
+    const locale = language ?? (await getLocaleOnServer())
 
     try {
-      trendingBanners = await fetchPluginRecommendBanners(locale)
-    }
-    catch {
+      trendingBanners = await fetchPluginBanners(locale)
+    } catch {
       // Keep the homepage available if Marketplace banner delivery is unavailable.
     }
   }
@@ -57,32 +56,32 @@ const Marketplace = async ({
     <TanStackQueryProvider>
       <HydrateQueryClient searchParams={searchParams}>
         <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
-          {variant === 'home'
-            ? (
-                <MarketplaceHome
-                  actions={homeHeaderActions}
-                  banners={trendingBanners}
-                  brandName={homeHeaderBrandName}
-                  isMarketplacePlatform={isMarketplacePlatform}
-                  linkToMarketplaceDetail={linkToMarketplaceDetail}
-                  showInstallButton={showInstallButton}
+          {variant === 'home' ? (
+            <MarketplaceHome
+              actions={homeHeaderActions}
+              banners={trendingBanners}
+              brandName={homeHeaderBrandName}
+              isMarketplacePlatform={isMarketplacePlatform}
+              linkToMarketplaceDetail={linkToMarketplaceDetail}
+              showInstallButton={showInstallButton}
+            />
+          ) : (
+            <>
+              <Description
+                isMarketplacePlatform={isMarketplacePlatform}
+                marketplaceNav={marketplaceNav}
+              />
+              {!isMarketplacePlatform && (
+                <StickySearchAndSwitchWrapper
+                  pluginTypeSwitchClassName={pluginTypeSwitchClassName}
                 />
-              )
-            : (
-                <>
-                  <Description
-                    isMarketplacePlatform={isMarketplacePlatform}
-                    marketplaceNav={marketplaceNav}
-                  />
-                  {!isMarketplacePlatform && (
-                    <StickySearchAndSwitchWrapper pluginTypeSwitchClassName={pluginTypeSwitchClassName} />
-                  )}
-                  <ListWrapper
-                    showInstallButton={showInstallButton}
-                    linkToMarketplaceDetail={linkToMarketplaceDetail}
-                  />
-                </>
               )}
+              <ListWrapper
+                showInstallButton={showInstallButton}
+                linkToMarketplaceDetail={linkToMarketplaceDetail}
+              />
+            </>
+          )}
         </PluginInstallPermissionProviderGuard>
       </HydrateQueryClient>
     </TanStackQueryProvider>
