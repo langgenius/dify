@@ -21,7 +21,7 @@
   "archives.empty.title": "Brak zarchiwizowanych logów",
   "archives.error.description": "Odśwież stronę lub spróbuj ponownie później.",
   "archives.error.title": "Nie można załadować zarchiwizowanych logów",
-  "archives.notice.action": "Wyświetl zarchiwizowane logi",
+  "archives.notice.action": "Otwórz zarchiwizowane logi",
   "archives.notice.description": "Niektóre logi z tego zakresu czasu mogły zostać zarchiwizowane.",
   "archives.summary.latest": "Najnowsze archiwum",
   "archives.summary.months": "Zarchiwizowane miesiące",

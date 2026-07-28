@@ -21,7 +21,7 @@
   "archives.empty.title": "Không có log đã lưu trữ",
   "archives.error.description": "Làm mới trang hoặc thử lại sau.",
   "archives.error.title": "Không thể tải log đã lưu trữ",
-  "archives.notice.action": "Xem log đã lưu trữ",
+  "archives.notice.action": "Mở log đã lưu trữ",
   "archives.notice.description": "Một số log trong khoảng thời gian này có thể đã được lưu trữ.",
   "archives.summary.latest": "Bản lưu trữ mới nhất",
   "archives.summary.months": "Tháng đã lưu trữ",

@@ -21,7 +21,7 @@
   "archives.empty.title": "アーカイブされたログはありません",
   "archives.error.description": "ページを更新するか、後でもう一度お試しください。",
   "archives.error.title": "アーカイブされたログを読み込めませんでした",
-  "archives.notice.action": "アーカイブされたログを表示",
+  "archives.notice.action": "アーカイブされたログを開く",
   "archives.notice.description": "この期間の一部のログはアーカイブされている可能性があります。",
   "archives.summary.latest": "最新のアーカイブ",
   "archives.summary.months": "アーカイブ済みの月",

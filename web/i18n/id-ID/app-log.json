@@ -21,7 +21,7 @@
   "archives.empty.title": "Tidak ada log yang diarsipkan",
   "archives.error.description": "Muat ulang halaman atau coba lagi nanti.",
   "archives.error.title": "Tidak dapat memuat log yang diarsipkan",
-  "archives.notice.action": "Lihat log yang diarsipkan",
+  "archives.notice.action": "Buka log yang diarsipkan",
   "archives.notice.description": "Beberapa log dalam rentang waktu ini mungkin telah diarsipkan.",
   "archives.summary.latest": "Arsip terbaru",
   "archives.summary.months": "Bulan yang diarsipkan",
