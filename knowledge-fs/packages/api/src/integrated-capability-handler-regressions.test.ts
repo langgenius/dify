@@ -1,6 +1,7 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import { describe, expect, it, vi } from "vitest";
 
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import type {
   DifyCapabilityV2GatewayAuthenticator,
   DifyCapabilityV2SanitizedGrant,
@@ -69,6 +70,87 @@ describe("integrated Capability handler regressions", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ error: "Forbidden" });
+  });
+
+  it("updates an integrated Space without requiring legacy member or policy rows", async () => {
+    const spaces = createInMemoryKnowledgeSpaceRepository({ maxListLimit: 10, maxSpaces: 10 });
+    const integrated = await spaces.create({
+      description: "Before",
+      name: "Integrated",
+      slug: "integrated",
+      tenantId: "tenant-1",
+    });
+    const grant = capabilityGrant({
+      action: "knowledge_spaces.update",
+      callerKind: "interactive",
+      resource: { id: integrated.id, parent_id: null, type: "knowledge_space" },
+    });
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: {
+        authenticate: async () => capabilityPrincipal(grant),
+      },
+      knowledgeSpaces: spaces,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${integrated.id}`, {
+      body: JSON.stringify({ description: "After", expectedRevision: integrated.revision }),
+      headers: {
+        authorization: "Bearer capability",
+        "content-type": "application/json",
+      },
+      method: "PATCH",
+    });
+
+    expect(response.status, await response.clone().text()).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      description: "After",
+      revision: 2,
+    });
+    await expect(
+      spaces.get({ id: integrated.id, tenantId: integrated.tenantId }),
+    ).resolves.toMatchObject({ description: "After", revision: 2 });
+  });
+
+  it("denies an integrated update when its admitted Capability grant is revoked", async () => {
+    const spaces = createInMemoryKnowledgeSpaceRepository({ maxListLimit: 10, maxSpaces: 10 });
+    const integrated = await spaces.create({
+      name: "Integrated",
+      slug: "integrated",
+      tenantId: "tenant-1",
+    });
+    const grant = capabilityGrant({
+      action: "knowledge_spaces.update",
+      callerKind: "interactive",
+      resource: { id: integrated.id, parent_id: null, type: "knowledge_space" },
+    });
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: {
+        authenticate: async () => capabilityPrincipal(grant),
+      },
+      knowledgeSpaces: {
+        ...spaces,
+        update: async () => {
+          throw new CapabilityPublicationFencedError();
+        },
+      },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${integrated.id}`, {
+      body: JSON.stringify({ description: "After", expectedRevision: integrated.revision }),
+      headers: {
+        authorization: "Bearer capability",
+        "content-type": "application/json",
+      },
+      method: "PATCH",
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      code: "KNOWLEDGE_SPACE_ACCESS_DENIED",
+      error: "Knowledge space access denied",
+    });
   });
 
   it("plans Research for an integrated Space without falling back to legacy ACL", async () => {

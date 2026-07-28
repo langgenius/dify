@@ -39,6 +39,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewHealthResponse,
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskCreatePayload,
@@ -47,8 +48,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskPlanPayload,
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskResponse,
+    KnowledgeFSRetrievalProfileUpdatePayload,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
+    KnowledgeFSSettingsUpdateResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceConnectionListResponse,
@@ -182,7 +185,48 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         payload: KnowledgeFSSettingsPayload,
-    ) -> KnowledgeFSSettingsResponse:
+    ) -> KnowledgeFSSettingsUpdateResponse:
+        current = self.get_settings(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+        )
+        if current.configuration_state == "active":
+            if current.revision != payload.expected_revision:
+                raise KnowledgeFSProductRequestRejectedError(status_code=409)
+            if payload.embedding is not None and payload.retrieval is not None:
+                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if payload.embedding is not None:
+                migration_raw = self._interactive(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                    operation_id="updateEmbeddingProfile",
+                    payload=payload.embedding,
+                )
+            elif payload.retrieval is not None:
+                retrieval_revision = current.retrieval.revision if current.retrieval is not None else None
+                if retrieval_revision is None:
+                    raise KnowledgeFSOperationUnavailableError(
+                        "KnowledgeFS active retrieval profile revision is unavailable"
+                    )
+                migration_raw = self._interactive(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                    operation_id="updateRetrievalProfile",
+                    payload=KnowledgeFSRetrievalProfileUpdatePayload(
+                        expected_revision=retrieval_revision,
+                        profile=payload.retrieval,
+                    ),
+                )
+            else:
+                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            return KnowledgeFSSettingsUpdateResponse(
+                migration=KnowledgeFSProfileMigrationResponse.model_validate(migration_raw),
+                settings=current,
+            )
+
         raw = self._interactive(
             tenant_id=tenant_id,
             account_id=account_id,
@@ -190,7 +234,24 @@ class KnowledgeFSDataFacade:
             operation_id="updateSettings",
             payload=payload,
         )
-        return KnowledgeFSSettingsResponse.model_validate(raw)
+        return KnowledgeFSSettingsUpdateResponse(settings=KnowledgeFSSettingsResponse.model_validate(raw))
+
+    def get_profile_migration(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        migration_id: str,
+    ) -> KnowledgeFSProfileMigrationResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getProfileMigration",
+            path_parameters=(("migrationId", migration_id),),
+        )
+        return KnowledgeFSProfileMigrationResponse.model_validate(raw)
 
     def list_documents(
         self,

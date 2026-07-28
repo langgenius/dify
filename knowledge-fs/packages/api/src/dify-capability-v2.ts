@@ -119,7 +119,9 @@ export interface DifyCapabilityV2PublicJwks {
 }
 
 export interface DifyCapabilityV2JwksProvider {
-  getJwks(options: { readonly refresh: boolean }): Promise<{ readonly keys: readonly JWK[] }>;
+  getJwks(options: { readonly refresh: boolean }): Promise<{
+    readonly keys: readonly JWK[];
+  }>;
 }
 
 export interface DifyCapabilityV2VerifiedPrincipal {
@@ -279,7 +281,15 @@ function validatePublicJwks(jwks: {
     ) {
       throw new TypeError("Capability JWKS must contain only RS256 public keys");
     }
-    return { ...key, alg: "RS256", e: key.e, kid: key.kid, kty: "RSA", n: key.n, use: "sig" };
+    return {
+      ...key,
+      alg: "RS256",
+      e: key.e,
+      kid: key.kid,
+      kty: "RSA",
+      n: key.n,
+      use: "sig",
+    };
   });
   if (new Set(keys.map((key) => key.kid)).size !== keys.length) {
     throw new TypeError("Capability JWKS key ids must be unique");
@@ -509,6 +519,33 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     method: "PATCH",
     operationId: "updateKnowledgeSpaceProductSettings",
     pathTemplate: "/knowledge-spaces/{id}/product-settings",
+    resource: { pathParameter: "id" },
+    resourceType: "knowledge_space",
+  },
+  {
+    action: "knowledge_spaces.settings.read",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "GET",
+    operationId: "getKnowledgeSpaceProfileMigration",
+    pathTemplate: "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+    resource: { pathParameter: "id" },
+    resourceType: "knowledge_space",
+  },
+  {
+    action: "knowledge_spaces.settings.update",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "PUT",
+    operationId: "updateKnowledgeSpaceEmbeddingProfile",
+    pathTemplate: "/knowledge-spaces/{id}/embedding-profile",
+    resource: { pathParameter: "id" },
+    resourceType: "knowledge_space",
+  },
+  {
+    action: "knowledge_spaces.settings.update",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "PUT",
+    operationId: "updateKnowledgeSpaceRetrievalProfile",
+    pathTemplate: "/knowledge-spaces/{id}/retrieval-profile",
     resource: { pathParameter: "id" },
     resourceType: "knowledge_space",
   },

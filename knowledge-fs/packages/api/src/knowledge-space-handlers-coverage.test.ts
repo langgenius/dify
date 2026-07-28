@@ -379,6 +379,28 @@ describe("knowledge space operator handlers coverage", () => {
       revision: 1,
     });
 
+    const invalidRetrievalUpdate = await app.request(
+      `/knowledge-spaces/${spaceId}/product-settings`,
+      {
+        body: JSON.stringify({
+          expectedRevision: 1,
+          retrieval: {
+            ...retrieval,
+            defaultMode: "fast",
+          },
+        }),
+        headers: json(writeToken),
+        method: "PATCH",
+      },
+    );
+    expect(invalidRetrievalUpdate.status).toBe(400);
+    await expect(invalidRetrievalUpdate.json()).resolves.toEqual({
+      code: "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK",
+      error:
+        "Fast/Deep mode-final score threshold requires the knowledge-space reranker to be enabled",
+      mode: "fast",
+    });
+
     const retrievalUpdate = await app.request(`/knowledge-spaces/${spaceId}/product-settings`, {
       body: JSON.stringify({ expectedRevision: 1, retrieval }),
       headers: json(writeToken),

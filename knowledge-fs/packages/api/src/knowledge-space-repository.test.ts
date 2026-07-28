@@ -653,6 +653,78 @@ describe("KnowledgeSpace repositories", () => {
     },
   );
 
+  it.each(["postgres", "tidb"] as const)(
+    "transactionally revalidates an admitted Capability grant for %s integrated updates",
+    async (dialect) => {
+      const row: KnowledgeSpaceRow = {
+        created_at: MUTATION_NOW,
+        description: "Before",
+        id: SPACE_ID_A,
+        name: "Integrated",
+        revision: 1,
+        slug: "integrated",
+        tenant_id: TENANT_ID,
+        updated_at: MUTATION_NOW,
+      };
+      const fake = createFakeKnowledgeSpaceExecutor([row]);
+      const capabilityReads: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "capability_grants") {
+          capabilityReads.push(input);
+          return {
+            rows: [
+              {
+                action: "knowledge_spaces.update",
+                resource_id: SPACE_ID_A,
+                resource_parent_id: null,
+                resource_type: "knowledge_space",
+                space_tombstoned: null,
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        return fake.executor(input);
+      };
+      const repository = createDatabaseKnowledgeSpaceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: execute,
+          kind: dialect,
+          transaction: async (callback) => callback({ execute }),
+        }),
+        maxListLimit: 10,
+        now: () => MUTATION_NOW,
+      });
+
+      await expect(
+        repository.update({
+          description: "After",
+          expectedRevision: 1,
+          id: SPACE_ID_A,
+          permission: {
+            fence: {
+              capabilityGrantId: "capability-grant-1",
+              expectedBinding: {
+                action: "knowledge_spaces.update",
+                resource: { id: SPACE_ID_A, parentId: null, type: "knowledge_space" },
+              },
+              knowledgeSpaceId: SPACE_ID_A,
+              tenantId: TENANT_ID,
+            },
+            now: MUTATION_NOW,
+            requiredAccess: "write",
+          },
+          tenantId: TENANT_ID,
+        }),
+      ).resolves.toMatchObject({ description: "After", revision: 2 });
+      expect(capabilityReads).toHaveLength(1);
+      expect(capabilityReads[0]?.params).toEqual([TENANT_ID, SPACE_ID_A, "capability-grant-1"]);
+      expect(
+        fake.calls.some((call) => call.tableName === "knowledge_space_permission_snapshots"),
+      ).toBe(false);
+    },
+  );
+
   it("returns the TiDB CAS result without a race-prone post-update read", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const row: KnowledgeSpaceRow = {

@@ -20,7 +20,52 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 79);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 82);
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "getKnowledgeSpaceProfileMigration",
+      ),
+      {
+        action: "knowledge_spaces.settings.read",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "GET",
+        operationId: "getKnowledgeSpaceProfileMigration",
+        parentResourceBinding: null,
+        path: "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+        resourceBinding: { pathParameter: "id" },
+        resourceType: "knowledge_space",
+      },
+    );
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "updateKnowledgeSpaceEmbeddingProfile",
+      ),
+      {
+        action: "knowledge_spaces.settings.update",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "PUT",
+        operationId: "updateKnowledgeSpaceEmbeddingProfile",
+        parentResourceBinding: null,
+        path: "/knowledge-spaces/{id}/embedding-profile",
+        resourceBinding: { pathParameter: "id" },
+        resourceType: "knowledge_space",
+      },
+    );
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "updateKnowledgeSpaceRetrievalProfile",
+      ),
+      {
+        action: "knowledge_spaces.settings.update",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "PUT",
+        operationId: "updateKnowledgeSpaceRetrievalProfile",
+        parentResourceBinding: null,
+        path: "/knowledge-spaces/{id}/retrieval-profile",
+        resourceBinding: { pathParameter: "id" },
+        resourceType: "knowledge_space",
+      },
+    );
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "createSourceImportWorkflow",

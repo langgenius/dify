@@ -10,6 +10,9 @@ from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapa
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSProductRerankProfile,
+    KnowledgeFSProductRetrievalProfile,
+    KnowledgeFSProductScoreThreshold,
     KnowledgeFSProfileModelSelection,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSResearchTaskCreatePayload,
@@ -266,6 +269,62 @@ class RecordingRemote:
             "logicalDocumentId": "document-1",
             "statusUrl": "/knowledge-spaces/space-1/logical-documents/document-1/tasks/job-1",
         }
+
+
+class ActiveSettingsRemote(RecordingRemote):
+    def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+        self.requests.append(request)
+        if request.operation_id == "getSettings":
+            return {
+                "configurationState": "active",
+                "embedding": {
+                    "model": "embed-v1",
+                    "pluginId": "plugin-1",
+                    "provider": "provider-1",
+                    "revision": 3,
+                },
+                "retrieval": {
+                    "defaultMode": "fast",
+                    "reasoningModel": {
+                        "model": "reason-v1",
+                        "pluginId": "plugin-1",
+                        "provider": "provider-1",
+                    },
+                    "rerank": {"enabled": False, "model": None},
+                    "revision": 4,
+                    "scoreThreshold": {
+                        "enabled": False,
+                        "stage": "mode-final",
+                        "value": 0.5,
+                    },
+                    "topK": 3,
+                },
+                "revision": 9,
+            }
+        if request.operation_id in {"updateEmbeddingProfile", "updateRetrievalProfile"}:
+            return {
+                "changedKind": "embedding" if request.operation_id == "updateEmbeddingProfile" else "retrieval",
+                "checkpoint": "queued",
+                "createdAt": "2026-07-28T00:00:00Z",
+                "id": "migration-1",
+                "knowledgeSpaceId": "space-1",
+                "rebuildScope": "full-vector-space",
+                "runState": "queued",
+                "updatedAt": "2026-07-28T00:00:00Z",
+            }
+        if request.operation_id == "getProfileMigration":
+            return {
+                "changedKind": "embedding",
+                "checkpoint": "activated",
+                "completedAt": "2026-07-28T00:01:00Z",
+                "createdAt": "2026-07-28T00:00:00Z",
+                "id": "migration-1",
+                "knowledgeSpaceId": "space-1",
+                "rebuildScope": "full-vector-space",
+                "runState": "succeeded",
+                "updatedAt": "2026-07-28T00:01:00Z",
+            }
+        return super().execute_json(request)
 
 
 def test_facade_reserves_before_capability_and_commits_or_refunds_after_remote_io() -> None:
@@ -553,13 +612,14 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     )
 
     assert settings.revision == 2
-    assert updated.embedding is not None
-    assert updated.embedding.plugin_id == "plugin-1"
+    assert updated.settings.embedding is not None
+    assert updated.settings.embedding.plugin_id == "plugin-1"
     assert sources.data == []
     assert source.knowledge_space_id == "space-1"
     assert tasks.data == []
     assert traces.data == []
     assert [request.operation_id for request in remote.requests] == [
+        "getSettings",
         "getSettings",
         "updateSettings",
         "listSources",
@@ -570,26 +630,200 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     assert [request.path for request in remote.requests] == [
         "/knowledge-spaces/space-1/product-settings",
         "/knowledge-spaces/space-1/product-settings",
+        "/knowledge-spaces/space-1/product-settings",
         "/knowledge-spaces/space-1/sources",
         "/knowledge-spaces/space-1/sources",
         "/knowledge-spaces/space-1/research-tasks",
         "/knowledge-spaces/space-1/quality/traces",
     ]
-    assert remote.requests[1].payload == {
+    assert remote.requests[2].payload == {
         "embedding": {"model": "embed-v1", "pluginId": "plugin-1", "provider": "provider-1"},
         "expectedRevision": 1,
     }
-    assert remote.requests[2].query == (("cursor", "source-cursor"), ("limit", "25"))
-    assert remote.requests[3].payload == {
+    assert remote.requests[3].query == (("cursor", "source-cursor"), ("limit", "25"))
+    assert remote.requests[4].payload == {
         "metadata": {"team": "search"},
         "name": "Docs",
         "permissionScope": [],
         "type": "web",
         "uri": "https://example.test/docs",
     }
-    assert remote.requests[4].query == (("cursor", "task-cursor"),)
-    assert remote.requests[5].query == (("cursor", "trace-cursor"),)
+    assert remote.requests[5].query == (("cursor", "task-cursor"),)
+    assert remote.requests[6].query == (("cursor", "trace-cursor"),)
     assert {call["control_space_id"] for call in broker.calls} == {"control-1"}
+
+
+def test_active_settings_use_durable_profile_migration_routes() -> None:
+    embedding_remote = ActiveSettingsRemote()
+    embedding_facade = KnowledgeFSDataFacade(
+        admission=NoopAdmission(),
+        broker=RecordingBroker(),
+        remote=embedding_remote,
+    )  # type: ignore[arg-type]
+
+    embedding_result = embedding_facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            embedding=KnowledgeFSProfileModelSelection(
+                model="embed-v2",
+                plugin_id="plugin-2",
+                provider="provider-2",
+            ),
+            expected_revision=9,
+        ),
+    )
+
+    assert embedding_result.settings.configuration_state == "active"
+    assert embedding_result.migration is not None
+    assert embedding_result.migration.run_state == "queued"
+    assert [request.operation_id for request in embedding_remote.requests] == [
+        "getSettings",
+        "updateEmbeddingProfile",
+    ]
+    assert embedding_remote.requests[1].path == "/knowledge-spaces/space-1/embedding-profile"
+    assert embedding_remote.requests[1].payload == {
+        "model": "embed-v2",
+        "pluginId": "plugin-2",
+        "provider": "provider-2",
+    }
+
+    retrieval_remote = ActiveSettingsRemote()
+    retrieval_facade = KnowledgeFSDataFacade(
+        admission=NoopAdmission(),
+        broker=RecordingBroker(),
+        remote=retrieval_remote,
+    )  # type: ignore[arg-type]
+    retrieval_profile = KnowledgeFSProductRetrievalProfile(
+        default_mode="research",
+        reasoning_model=KnowledgeFSProfileModelSelection(
+            model="reason-v2",
+            plugin_id="plugin-2",
+            provider="provider-2",
+        ),
+        rerank=KnowledgeFSProductRerankProfile(enabled=False),
+        score_threshold=KnowledgeFSProductScoreThreshold(
+            enabled=True,
+            stage="mode-final",
+            value=0.6,
+        ),
+        top_k=6,
+    )
+
+    retrieval_facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            expected_revision=9,
+            retrieval=retrieval_profile,
+        ),
+    )
+
+    assert [request.operation_id for request in retrieval_remote.requests] == [
+        "getSettings",
+        "updateRetrievalProfile",
+    ]
+    assert retrieval_remote.requests[1].path == "/knowledge-spaces/space-1/retrieval-profile"
+    assert retrieval_remote.requests[1].payload == {
+        "expectedRevision": 4,
+        "profile": {
+            "defaultMode": "research",
+            "reasoningModel": {
+                "model": "reason-v2",
+                "pluginId": "plugin-2",
+                "provider": "provider-2",
+            },
+            "rerank": {"enabled": False},
+            "scoreThreshold": {
+                "enabled": True,
+                "stage": "mode-final",
+                "value": 0.6,
+            },
+            "topK": 6,
+        },
+    }
+
+
+def test_get_profile_migration_uses_the_durable_migration_route() -> None:
+    remote = ActiveSettingsRemote()
+    facade = KnowledgeFSDataFacade(
+        admission=NoopAdmission(),
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    result = facade.get_profile_migration(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        migration_id="migration-1",
+    )
+
+    assert result.run_state == "succeeded"
+    assert remote.requests[0].path == ("/knowledge-spaces/space-1/profile-migrations/migration-1")
+
+
+def test_active_settings_reject_concurrent_profile_migrations() -> None:
+    remote = ActiveSettingsRemote()
+    facade = KnowledgeFSDataFacade(
+        admission=NoopAdmission(),
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        facade.update_settings(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSSettingsPayload(
+                embedding=KnowledgeFSProfileModelSelection(
+                    model="embed-v2",
+                    plugin_id="plugin-2",
+                    provider="provider-2",
+                ),
+                expected_revision=9,
+                retrieval=KnowledgeFSProductRetrievalProfile(
+                    default_mode="fast",
+                    reasoning_model=KnowledgeFSProfileModelSelection(
+                        model="reason-v2",
+                        plugin_id="plugin-2",
+                        provider="provider-2",
+                    ),
+                    rerank=KnowledgeFSProductRerankProfile(enabled=False),
+                    score_threshold=KnowledgeFSProductScoreThreshold(
+                        enabled=False,
+                        stage="mode-final",
+                        value=0.5,
+                    ),
+                    top_k=3,
+                ),
+            ),
+        )
+
+    assert error.value.status_code == 422
+    assert [request.operation_id for request in remote.requests] == ["getSettings"]
+
+
+def test_settings_dto_rejects_fast_threshold_without_rerank() -> None:
+    with pytest.raises(ValueError, match="requires rerank"):
+        KnowledgeFSProductRetrievalProfile(
+            default_mode="fast",
+            reasoning_model=KnowledgeFSProfileModelSelection(
+                model="reason-v1",
+                plugin_id="plugin-1",
+                provider="provider-1",
+            ),
+            rerank=KnowledgeFSProductRerankProfile(enabled=False),
+            score_threshold=KnowledgeFSProductScoreThreshold(
+                enabled=True,
+                stage="mode-final",
+                value=0.5,
+            ),
+            top_k=3,
+        )
 
 
 def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() -> None:

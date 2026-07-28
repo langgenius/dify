@@ -481,6 +481,28 @@ export type KnowledgeFsSettingsPayload = {
   retrieval?: KnowledgeFsProductRetrievalProfile | null
 }
 
+export type KnowledgeFsSettingsUpdateResponse = {
+  migration?: KnowledgeFsProfileMigrationResponse | null
+  settings: KnowledgeFsSettingsResponse
+}
+
+export type KnowledgeFsProfileMigrationResponse = {
+  candidate_publication_fingerprint?: string | null
+  changed_kind: 'embedding' | 'retrieval'
+  checkpoint: 'activated' | 'candidate-built' | 'evaluated' | 'queued'
+  completed_at?: string | null
+  created_at: string
+  error_code?: string | null
+  evaluation_summary?: {
+    [key: string]: boolean | number | number | string
+  } | null
+  id: string
+  knowledge_space_id: string
+  rebuild_scope: 'clone-publication' | 'full-page-index-summary-outline' | 'full-vector-space'
+  run_state: 'canceled' | 'failed' | 'queued' | 'running' | 'succeeded'
+  updated_at: string
+}
+
 export type KnowledgeFsSourceConnectionListResponse = {
   data: Array<KnowledgeFsSourceConnectionResponse>
   next_cursor?: string | null
@@ -2153,11 +2175,28 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsData = {
 }
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses = {
-  200: KnowledgeFsSettingsResponse
+  200: KnowledgeFsSettingsUpdateResponse
 }
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdSettingsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    migration_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses = {
+  200: KnowledgeFsProfileMigrationResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
   body?: never

@@ -50,7 +50,9 @@ The scripts resolve paths relative to their location, so you can run them from a
    ./dev/start-worker
    ```
 
-1. Optional: start Celery Beat (scheduled tasks).
+1. Start Celery Beat when scheduled tasks are needed. This is required when
+   `KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED=true` so provisioning and deletion
+   outbox commands are dispatched to the lifecycle worker.
 
    ```bash
    ./dev/start-beat

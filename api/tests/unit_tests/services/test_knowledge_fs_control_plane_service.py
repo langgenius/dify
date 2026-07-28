@@ -57,6 +57,49 @@ class FakeMembers:
         return frozenset(account_ids).issubset(self.account_ids)
 
 
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace,)],
+    indirect=True,
+)
+def test_remote_revision_advance_is_monotonic_and_bumps_resource_version(sqlite_session: Session) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-1",
+        knowledge_space_id="space-1",
+        knowledge_space_revision=1,
+        resource_version=3,
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add(space)
+    sqlite_session.commit()
+    service = KnowledgeFSControlPlaneService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        product=FakeProduct(space),  # type: ignore[arg-type]
+        members=FakeMembers([]),
+    )
+
+    service.advance_knowledge_space_revision(
+        tenant_id="tenant-1",
+        control_space_id=space.id,
+        knowledge_space_id="space-1",
+        revision=2,
+    )
+    service.advance_knowledge_space_revision(
+        tenant_id="tenant-1",
+        control_space_id=space.id,
+        knowledge_space_id="space-1",
+        revision=2,
+    )
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(KnowledgeFSControlSpace, space.id)
+    assert persisted is not None
+    assert persisted.knowledge_space_revision == 2
+    assert persisted.resource_version == 4
+
+
 def _issuance_audit(
     *,
     control_space_id: str,

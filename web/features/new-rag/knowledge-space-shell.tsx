@@ -17,7 +17,12 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
-import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
+import {
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+  newKnowledgeListPath,
+  newKnowledgeSettingsPath,
+} from './routes'
 
 function responseStatus(error: unknown) {
   if (error instanceof Response) return error.status
@@ -52,6 +57,18 @@ export function KnowledgeSpaceShell({
       return failureCount < 3
     },
   })
+  const canManageAccess = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
+    'knowledge_space_access_config',
+  )
+  const externalAccessQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+    }),
+    enabled: canManageAccess && knowledgeSpaceQuery.data?.state === 'active',
+  })
+  const apiAccessEnabled =
+    externalAccessQuery.data?.service_api_enabled === true &&
+    externalAccessQuery.data.agent_enabled === true
   const knowledgeSpaceName =
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   useDocumentTitle(knowledgeSpaceName)
@@ -97,8 +114,10 @@ export function KnowledgeSpaceShell({
 
   const sourcesPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
+  const settingsPath = newKnowledgeSettingsPath(knowledgeSpaceId)
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
+  const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
   const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
     'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -267,19 +286,21 @@ export function KnowledgeSpaceShell({
               {navIcon('i-ri-shield-check-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.quality'])}
             </Button>
-            <Button
+            <Link
+              href={settingsPath}
               aria-label={tCommon(($) => $['datasetMenus.settings'])}
-              variant="ghost"
+              aria-current={settingsActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
-                'text-text-secondary',
+                settingsActive
+                  ? 'bg-state-base-active font-semibold text-text-accent'
+                  : 'text-text-secondary',
               )}
-              onClick={showDeferredPage}
             >
               {navIcon('i-ri-equalizer-2-line')}
               {sidebarExpanded && tCommon(($) => $['datasetMenus.settings'])}
-            </Button>
+            </Link>
           </nav>
           <div className={cn('shrink-0 py-2', sidebarExpanded ? 'px-3' : 'px-2')}>
             <Button
@@ -293,7 +314,25 @@ export function KnowledgeSpaceShell({
               onClick={showDeferredPage}
             >
               {navIcon('i-custom-vender-knowledge-api-aggregate')}
-              {sidebarExpanded && t(($) => $['newKnowledge.apiAgentAccess'])}
+              {sidebarExpanded && (
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {t(($) => $['newKnowledge.apiAgentAccess'])}
+                </span>
+              )}
+              <span className="sr-only">
+                {t(($) =>
+                  apiAccessEnabled
+                    ? $['newKnowledge.apiAccessActive']
+                    : $['newKnowledge.apiAccessInactive'],
+                )}
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  'size-2 shrink-0 rounded-full',
+                  apiAccessEnabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
+                )}
+              />
             </Button>
           </div>
         </aside>

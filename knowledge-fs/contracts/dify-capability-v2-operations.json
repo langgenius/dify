@@ -582,6 +582,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_spaces.settings.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceProfileMigration",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "sources.read",
       "allowedCallerKinds": [
         "interactive",
@@ -1352,10 +1369,44 @@
         "agent",
         "workflow"
       ],
+      "method": "PUT",
+      "operationId": "updateKnowledgeSpaceEmbeddingProfile",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/embedding-profile",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
       "method": "PATCH",
       "operationId": "updateKnowledgeSpaceProductSettings",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/product-settings",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.settings.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PUT",
+      "operationId": "updateKnowledgeSpaceRetrievalProfile",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/retrieval-profile",
       "resourceBinding": {
         "pathParameter": "id"
       },

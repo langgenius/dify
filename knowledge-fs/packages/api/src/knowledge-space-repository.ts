@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 
+import {
+  type CapabilityJobScope,
+  assertCapabilityJobPublicationAllowed,
+} from "./capability-job-fence";
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import {
@@ -37,7 +41,7 @@ export interface UpdateKnowledgeSpaceInput {
   readonly name?: string | undefined;
   readonly permission?:
     | {
-        readonly fence: DatabaseKnowledgeSpacePermissionFence;
+        readonly fence: CapabilityJobScope | DatabaseKnowledgeSpacePermissionFence;
         readonly now: string;
         readonly requiredAccess: "admin" | "write";
       }
@@ -528,13 +532,17 @@ export function createDatabaseKnowledgeSpaceRepository({
             throw new KnowledgeSpaceRevisionConflictError(expectedRevision);
           }
           if (permission) {
-            await assertDatabaseKnowledgeSpacePermissionFence({
-              database,
-              executor: transaction,
-              fence: permission.fence,
-              now: permission.now,
-              requiredAccess: permission.requiredAccess,
-            });
+            if ("capabilityGrantId" in permission.fence) {
+              await assertCapabilityJobPublicationAllowed(database, transaction, permission.fence);
+            } else {
+              await assertDatabaseKnowledgeSpacePermissionFence({
+                database,
+                executor: transaction,
+                fence: permission.fence,
+                now: permission.now,
+                requiredAccess: permission.requiredAccess,
+              });
+            }
           }
           const result = await transaction.execute({
             maxRows: 1,

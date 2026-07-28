@@ -8,6 +8,10 @@ import {
 } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
+import type {
+  DifyCapabilityV2GatewayAuthenticator,
+  DifyCapabilityV2SanitizedGrant,
+} from "./dify-capability-v2";
 import {
   KnowledgeSpaceAccessError,
   type KnowledgeSpaceManifestRepository,
@@ -205,6 +209,52 @@ function profileApp(options: ProfileGatewayOptions = {}) {
     now: () => NOW,
     ...options,
   });
+}
+
+function settingsCapabilityAuth(): {
+  auth: { authenticate: DifyCapabilityV2GatewayAuthenticator["authenticate"] };
+  grant: DifyCapabilityV2SanitizedGrant;
+} {
+  const grant: DifyCapabilityV2SanitizedGrant = {
+    action: "knowledge_spaces.settings.update",
+    actor: "dify-account:account-1",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "dify-console",
+    callerKind: "interactive",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: [],
+    controlSpaceId: "control-space-1",
+    expiresAt: 2_000_000_060,
+    grantId: "settings-grant-1",
+    issuedAt: 2_000_000_000,
+    jtiHash: `sha256:${"a".repeat(64)}`,
+    namespaceId: "tenant-1",
+    notBefore: 2_000_000_000,
+    resource: { id: SPACE_ID, parent_id: null, type: "knowledge_space" },
+    subject: "dify-account:account-1",
+    traceId: "trace-1",
+  };
+  return {
+    auth: {
+      authenticate: async () => ({
+        callerKind: grant.callerKind,
+        claims: {} as never,
+        grant,
+        subject: {
+          scopes: ["knowledge-spaces:read"],
+          subjectId: grant.subject,
+          tenantId: grant.namespaceId,
+        },
+      }),
+    },
+    grant,
+  };
 }
 
 function bootstrapInput(
@@ -522,6 +572,88 @@ describe("knowledge-space profile handler behavior", () => {
         tenantId: "tenant-1",
       }),
     ).resolves.toMatchObject({ state: "candidate" });
+  });
+
+  it("carries an integrated settings Capability grant into the durable migration", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = createInMemoryKnowledgeSpaceProfileRepository({
+      maxListLimit: 10,
+      maxRevisions: 20,
+    });
+    const spaces = createInMemoryKnowledgeSpaceRepository({
+      generateId: () => SPACE_ID,
+      maxListLimit: 10,
+      maxSpaces: 10,
+    });
+    const setupApp = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: auth(),
+      knowledgeSpaceManifests: manifests,
+      knowledgeSpaces: spaces,
+      now: () => NOW,
+    });
+    await createSpace(setupApp);
+    await seedActiveManifest(manifests);
+
+    const request = vi.fn(
+      async () =>
+        ({
+          changedKind: "embedding",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: "migration-embedding",
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "full-vector-space",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const capability = settingsCapabilityAuth();
+    const { preflight } = modelPreflight();
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: capability.auth,
+      knowledgeSpaceManifests: manifests,
+      knowledgeSpaceProfileMigrations: {
+        cancel: async () => null,
+        get: async () => null,
+        request,
+        requiresMigration: async () => true,
+        retry: async () => null,
+      },
+      knowledgeSpaceProfilePublications: {
+        activateCandidate: async () => ({}) as never,
+        bindCandidate: async () => ({}) as never,
+        bindCurrentPublished: async () => ({}) as never,
+        bindExistingPublished: async () => ({}) as never,
+        requireActivatedBinding: async () => ({}) as never,
+      },
+      knowledgeSpaceProfiles: profiles,
+      knowledgeSpaces: spaces,
+      modelCapabilityPreflight: preflight,
+      now: () => NOW,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/embedding-profile`, {
+      body: JSON.stringify(EMBEDDING_V2),
+      headers: {
+        authorization: "Bearer capability",
+        "content-type": "application/json",
+      },
+      method: "PUT",
+    });
+
+    expect(response.status, await response.clone().text()).toBe(202);
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capabilityGrantId: capability.grant.grantId,
+        changedKind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+      }),
+    );
   });
 
   it("reuses an exact immutable settings candidate owned by the same subject", async () => {

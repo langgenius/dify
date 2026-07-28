@@ -28,6 +28,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceUpdatePayload,
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRequestRejectedError,
+)
 from services.knowledge_fs.product_service import KnowledgeFSProductService
 
 
@@ -116,7 +120,7 @@ class KnowledgeFSProductApplicationService:
         control_space_id: str,
         payload: KnowledgeFSSpaceUpdatePayload,
     ) -> KnowledgeFSSpaceDetailResponse:
-        self._product.authorize_control_space(
+        authorized = self._product.authorize_control_space(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
@@ -131,11 +135,45 @@ class KnowledgeFSProductApplicationService:
             )
         metadata = payload.model_copy(update={"visibility": None})
         if any(value is not None for value in (metadata.name, metadata.icon, metadata.description)):
-            self._facade.update_space(
+            knowledge_space_id = authorized.control_space.knowledge_space_id
+            if knowledge_space_id is None:
+                raise KnowledgeFSOperationUnavailableError("KnowledgeFS Space registration is not ready")
+            try:
+                remote_space = self._facade.update_space(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                    payload=metadata,
+                )
+            except KnowledgeFSProductRequestRejectedError as error:
+                if error.status_code != 409:
+                    raise
+                latest = self.get_space(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                )
+                summary = latest.technical_summary
+                if summary is None or summary.knowledge_space_id != knowledge_space_id or summary.revision < 1:
+                    raise error
+                self._control_plane.advance_knowledge_space_revision(
+                    tenant_id=tenant_id,
+                    control_space_id=control_space_id,
+                    knowledge_space_id=knowledge_space_id,
+                    revision=summary.revision,
+                )
+                remote_space = self._facade.update_space(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    control_space_id=control_space_id,
+                    payload=metadata,
+                )
+            revision = _updated_space_revision(remote_space, knowledge_space_id=knowledge_space_id)
+            self._control_plane.advance_knowledge_space_revision(
                 tenant_id=tenant_id,
-                account_id=account_id,
                 control_space_id=control_space_id,
-                payload=metadata,
+                knowledge_space_id=knowledge_space_id,
+                revision=revision,
             )
         return self.get_space(
             tenant_id=tenant_id,
@@ -165,6 +203,16 @@ def _model_intent(model: KnowledgeFSModelIntent) -> KnowledgeFSModelSelectionInt
         "provider": model.provider,
         "model": model.model,
     }
+
+
+def _updated_space_revision(remote_space: object, *, knowledge_space_id: str) -> int:
+    if not isinstance(remote_space, dict):
+        raise KnowledgeFSOperationUnavailableError("KnowledgeFS returned an invalid Space update response")
+    remote_id = remote_space.get("id")
+    revision = remote_space.get("revision")
+    if remote_id != knowledge_space_id or not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+        raise KnowledgeFSOperationUnavailableError("KnowledgeFS returned an invalid Space update response")
+    return revision
 
 
 def _retrieval_profile_intent(

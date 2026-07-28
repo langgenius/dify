@@ -253,6 +253,30 @@ export const zKnowledgeFsResearchTaskPlanPayload = z.object({
 })
 
 /**
+ * KnowledgeFSProfileMigrationResponse
+ */
+export const zKnowledgeFsProfileMigrationResponse = z.object({
+  candidate_publication_fingerprint: z.string().nullish(),
+  changed_kind: z.enum(['embedding', 'retrieval']),
+  checkpoint: z.enum(['activated', 'candidate-built', 'evaluated', 'queued']),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  error_code: z.string().nullish(),
+  evaluation_summary: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.int(), z.string()]))
+    .nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  rebuild_scope: z.enum([
+    'clone-publication',
+    'full-page-index-summary-outline',
+    'full-vector-space',
+  ]),
+  run_state: z.enum(['canceled', 'failed', 'queued', 'running', 'succeeded']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
  * KnowledgeFSSourceConnectionCreatePayload
  */
 export const zKnowledgeFsSourceConnectionCreatePayload = z.object({
@@ -518,7 +542,7 @@ export const zKnowledgeFsControlSpaceVisibility = z.enum([
 export const zKnowledgeFsSpaceUpdatePayload = z.object({
   description: z.string().max(2000).nullish(),
   icon: z.string().max(255).nullish(),
-  name: z.string().min(1).max(255).nullish(),
+  name: z.string().min(1).max(40).nullish(),
   visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
 })
 
@@ -1297,7 +1321,7 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
   embedding: zKnowledgeFsModelIntent,
   icon: z.string().max(255).nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
-  name: z.string().min(1).max(255),
+  name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent,
   slug: z
     .string()
@@ -1493,6 +1517,14 @@ export const zKnowledgeFsSettingsResponse = z.object({
   embedding: zKnowledgeFsEmbeddingSettingsResponse.nullable(),
   retrieval: zKnowledgeFsRetrievalSettingsResponse.nullable(),
   revision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSettingsUpdateResponse
+ */
+export const zKnowledgeFsSettingsUpdateResponse = z.object({
+  migration: zKnowledgeFsProfileMigrationResponse.nullish(),
+  settings: zKnowledgeFsSettingsResponse,
 })
 
 /**
@@ -2321,7 +2353,19 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
 /**
  * KnowledgeFS settings updated
  */
-export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse = zKnowledgeFsSettingsResponse
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
+  zKnowledgeFsSettingsUpdateResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdPath = z.object({
+  control_space_id: z.string(),
+  migration_id: z.string(),
+})
+
+/**
+ * KnowledgeFS settings migration
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse =
+  zKnowledgeFsProfileMigrationResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.object({
   control_space_id: z.string(),

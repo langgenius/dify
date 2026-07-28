@@ -16,6 +16,7 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpacePermission,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpacePermissionStatus,
+    KnowledgeFSControlSpaceState,
     KnowledgeFSControlSpaceVisibility,
     KnowledgeFSExternalAccessPolicy,
 )
@@ -59,7 +60,7 @@ class SQLKnowledgeFSWorkspaceMemberPort:
 
 
 class KnowledgeFSControlPlaneService:
-    """Mutate Dify authorization state after product authorization succeeds."""
+    """Mutate Dify-owned authorization and remote revision state."""
 
     def __init__(
         self,
@@ -271,6 +272,40 @@ class KnowledgeFSControlPlaneService:
                             reason_code="visibility_narrowed",
                             caller_kinds=("interactive",),
                         )
+
+    def advance_knowledge_space_revision(
+        self,
+        *,
+        tenant_id: str,
+        control_space_id: str,
+        knowledge_space_id: str,
+        revision: int,
+    ) -> None:
+        """Persist an authoritative KFS revision without allowing it to move backwards."""
+
+        if revision < 1:
+            raise KnowledgeFSControlPlaneInvariantError("KnowledgeFS Space revision must be positive")
+        with self._session_maker.begin() as session:
+            control_space = session.scalar(
+                sa.select(KnowledgeFSControlSpace)
+                .where(
+                    KnowledgeFSControlSpace.tenant_id == tenant_id,
+                    KnowledgeFSControlSpace.id == control_space_id,
+                )
+                .with_for_update()
+            )
+            if control_space is None:
+                raise KnowledgeFSControlPlaneInvariantError("Control-space disappeared during revision update")
+            if (
+                control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
+                or control_space.knowledge_space_id != knowledge_space_id
+            ):
+                raise KnowledgeFSControlPlaneInvariantError("Control-space registration changed during revision update")
+            if revision <= control_space.knowledge_space_revision:
+                return
+            control_space.knowledge_space_revision = revision
+            control_space.resource_version += 1
+            control_space.last_synced_at = naive_utc_now()
 
     def get_external_access(
         self,

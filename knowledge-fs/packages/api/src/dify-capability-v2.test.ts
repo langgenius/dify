@@ -100,7 +100,9 @@ describe("Dify Capability v2 verifier", () => {
     const provider: DifyCapabilityV2JwksProvider = {
       getJwks: async ({ refresh }) => {
         calls.push(refresh);
-        return { keys: refresh ? [rotated.publicJwk, initial.publicJwk] : [initial.publicJwk] };
+        return {
+          keys: refresh ? [rotated.publicJwk, initial.publicJwk] : [initial.publicJwk],
+        };
       },
     };
     const verifier = createDifyCapabilityV2Verifier({
@@ -213,6 +215,11 @@ describe("Dify Capability v2 request guard", () => {
         "/knowledge-spaces/{id}/product-settings",
         "knowledge_spaces.settings.read",
       ],
+      getKnowledgeSpaceProfileMigration: [
+        "GET",
+        "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+        "knowledge_spaces.settings.read",
+      ],
       listKnowledgeSpaceQualityTraces: [
         "GET",
         "/knowledge-spaces/{id}/quality/traces",
@@ -227,6 +234,16 @@ describe("Dify Capability v2 request guard", () => {
       updateKnowledgeSpaceProductSettings: [
         "PATCH",
         "/knowledge-spaces/{id}/product-settings",
+        "knowledge_spaces.settings.update",
+      ],
+      updateKnowledgeSpaceEmbeddingProfile: [
+        "PUT",
+        "/knowledge-spaces/{id}/embedding-profile",
+        "knowledge_spaces.settings.update",
+      ],
+      updateKnowledgeSpaceRetrievalProfile: [
+        "PUT",
+        "/knowledge-spaces/{id}/retrieval-profile",
         "knowledge_spaces.settings.update",
       ],
     } as const;
@@ -452,14 +469,20 @@ describe("Dify Capability v2 request guard", () => {
     for (const testCase of cases) {
       await expect(
         guard.authorize({
-          claims: claims({ action: testCase.action, resource: testCase.resource }),
+          claims: claims({
+            action: testCase.action,
+            resource: testCase.resource,
+          }),
           request: new Request(testCase.url, { method: testCase.method }),
         }),
       ).resolves.toBeUndefined();
       const wrongParentUrl = testCase.url.replaceAll("space-a", "space-b");
       await expect(
         guard.authorize({
-          claims: claims({ action: testCase.action, resource: testCase.resource }),
+          claims: claims({
+            action: testCase.action,
+            resource: testCase.resource,
+          }),
           request: new Request(wrongParentUrl, { method: testCase.method }),
         }),
       ).rejects.toMatchObject({ code: "PARENT_RESOURCE_MISMATCH" });
@@ -510,14 +533,20 @@ describe("Dify Capability v2 request guard", () => {
     await expect(
       guard.authorize({
         claims: claims({ action: "knowledge_spaces.read" }),
-        request: new Request("https://kfs.test/knowledge-spaces/space-1", { method: "PATCH" }),
+        request: new Request("https://kfs.test/knowledge-spaces/space-1", {
+          method: "PATCH",
+        }),
       }),
     ).rejects.toMatchObject({ code: "ACTION_MISMATCH" });
     await expect(
       guard.authorize({
         claims: claims({
           action: "knowledge_spaces.read",
-          resource: { id: "task-1", parent_id: "space-1", type: "research_task" },
+          resource: {
+            id: "task-1",
+            parent_id: "space-1",
+            type: "research_task",
+          },
         }),
         request: new Request("https://kfs.test/research-tasks/task-1?knowledgeSpaceId=space-1", {
           method: "DELETE",
@@ -528,7 +557,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "knowledge_spaces.list",
-          resource: { id: "other-workspace", parent_id: null, type: "namespace" },
+          resource: {
+            id: "other-workspace",
+            parent_id: null,
+            type: "namespace",
+          },
         }),
         request: new Request("https://kfs.test/knowledge-spaces"),
       }),
@@ -630,7 +663,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "research_tasks.cancel",
-          resource: { id: "task-1", parent_id: "space-a", type: "research_task" },
+          resource: {
+            id: "task-1",
+            parent_id: "space-a",
+            type: "research_task",
+          },
         }),
         request: new Request(
           "https://kfs.test/knowledge-spaces/space-b/research-tasks/task-1/cancel",
@@ -647,7 +684,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "research_tasks.cancel",
-          resource: { id: "task-1", parent_id: "space-a", type: "research_task" },
+          resource: {
+            id: "task-1",
+            parent_id: "space-a",
+            type: "research_task",
+          },
         }),
         request: new Request("https://kfs.test/research-tasks/task-1?knowledgeSpaceId=space-a", {
           method: "DELETE",
@@ -679,7 +720,11 @@ describe("Dify Capability v2 request guard", () => {
         guard.authorize({
           claims: claims({
             action,
-            resource: { id: "upload-1", parent_id: "space-a", type: "upload_session" },
+            resource: {
+              id: "upload-1",
+              parent_id: "space-a",
+              type: "upload_session",
+            },
           }),
           request: new Request(`https://kfs.test${path}`, {
             body: JSON.stringify({ knowledgeSpaceId: "space-a" }),
@@ -694,7 +739,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "upload_sessions.write",
-          resource: { id: "upload-1", parent_id: "space-a", type: "upload_session" },
+          resource: {
+            id: "upload-1",
+            parent_id: "space-a",
+            type: "upload_session",
+          },
         }),
         request: new Request(
           "https://kfs.test/upload-sessions/upload-1/small-file?knowledgeSpaceId=space-a",
@@ -711,7 +760,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "upload_sessions.write",
-          resource: { id: "upload-1", parent_id: "space-a", type: "upload_session" },
+          resource: {
+            id: "upload-1",
+            parent_id: "space-a",
+            type: "upload_session",
+          },
         }),
         request: new Request(
           "https://kfs.test/upload-sessions/upload-1/small-file?knowledgeSpaceId=space-b",
@@ -728,7 +781,11 @@ describe("Dify Capability v2 request guard", () => {
       guard.authorize({
         claims: claims({
           action: "upload_sessions.complete",
-          resource: { id: "upload-1", parent_id: "space-a", type: "upload_session" },
+          resource: {
+            id: "upload-1",
+            parent_id: "space-a",
+            type: "upload_session",
+          },
         }),
         request: new Request("https://kfs.test/upload-sessions/upload-1/complete", {
           body: JSON.stringify({ knowledgeSpaceId: "space-b" }),
@@ -778,7 +835,9 @@ describe("Dify Capability v2 request guard", () => {
     await expect(
       guard.authorize({
         claims: provisionClaims,
-        request: new Request("https://kfs.test/knowledge-spaces", { method: "POST" }),
+        request: new Request("https://kfs.test/knowledge-spaces", {
+          method: "POST",
+        }),
       }),
     ).rejects.toMatchObject({ code: "OPERATION_NOT_ALLOWED" });
     await expect(
@@ -975,7 +1034,9 @@ describe("Dify Capability v2 audit", () => {
     });
     await expect(
       authenticator.authenticate({
-        request: new Request("https://kfs.test/knowledge-spaces/space-1", { method: "PATCH" }),
+        request: new Request("https://kfs.test/knowledge-spaces/space-1", {
+          method: "PATCH",
+        }),
         token: validToken,
         traceId: "trace-1",
       }),
@@ -1051,7 +1112,9 @@ describe("Dify Capability v2 audit", () => {
     const exporterFailure = createDifyCapabilityV2GatewayAuthenticator({
       audit: { record: vi.fn() },
       guard: { authorize: vi.fn(async () => undefined) },
-      metrics: { record: vi.fn(() => Promise.reject(new Error("collector unavailable"))) },
+      metrics: {
+        record: vi.fn(() => Promise.reject(new Error("collector unavailable"))),
+      },
       verifier: { verify: vi.fn(async () => verified) },
     });
     await expect(

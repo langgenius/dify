@@ -1,0 +1,1160 @@
+'use client'
+
+import type {
+  KnowledgeFsExternalAccessResponse,
+  KnowledgeFsPermissionResponse,
+  KnowledgeFsProductRetrievalProfile,
+  KnowledgeFsProfileModelSelection,
+  KnowledgeFsSettingsPayload,
+  KnowledgeFsSettingsResponse,
+  KnowledgeFsSpaceDetailResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Member } from '@/models/common'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
+import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
+import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
+import { KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
+import { newKnowledgeListPath } from './routes'
+
+const TOP_K_MIN = 1
+const TOP_K_MAX = 10
+const SCORE_THRESHOLD_MIN = 0
+const SCORE_THRESHOLD_MAX = 1
+const NAME_ERROR_ID = 'knowledge-name-error'
+const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
+const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
+const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
+
+type SaveSlice = 'externalAccess' | 'members' | 'settings' | 'space'
+
+type KnowledgeSettingsFormProps = {
+  externalAccess: KnowledgeFsExternalAccessResponse
+  members: Member[]
+  permissions: KnowledgeFsPermissionResponse[]
+  settings: KnowledgeFsSettingsResponse
+  space: KnowledgeFsSpaceDetailResponse
+}
+
+function pluginIdForModel(model: DefaultModel) {
+  if (model.plugin_id) return model.plugin_id
+  const [organization, pluginName] = model.provider.split('/').filter(Boolean)
+  if (organization && pluginName) return `${organization}/${pluginName}`
+  return model.provider ? `langgenius/${model.provider}` : ''
+}
+
+function canonicalProvider(pluginId: string, provider: string) {
+  if (provider.includes('/')) return provider
+  return `${pluginId}/${provider}`
+}
+
+function providerSlugForModel(model: DefaultModel) {
+  const pluginId = pluginIdForModel(model)
+  const canonicalPrefix = `${pluginId}/`
+  if (model.provider.startsWith(canonicalPrefix))
+    return model.provider.slice(canonicalPrefix.length)
+  return model.provider.split('/').filter(Boolean).at(-1) ?? model.provider
+}
+
+function modelPayload(model: DefaultModel): KnowledgeFsProfileModelSelection {
+  return {
+    model: model.model,
+    pluginId: pluginIdForModel(model),
+    provider: providerSlugForModel(model),
+  }
+}
+
+function modelFingerprint(model: DefaultModel | undefined) {
+  return JSON.stringify(
+    model
+      ? {
+          model: model.model,
+          pluginId: pluginIdForModel(model),
+          provider: providerSlugForModel(model),
+        }
+      : null,
+  )
+}
+
+function retrievalFingerprint({
+  mode,
+  reasoningModel,
+  rerankEnabled,
+  rerankModel,
+  scoreThreshold,
+  scoreThresholdEnabled,
+  topK,
+}: {
+  mode: KnowledgeFsProductRetrievalProfile['defaultMode']
+  reasoningModel: DefaultModel | undefined
+  rerankEnabled: boolean
+  rerankModel: DefaultModel | undefined
+  scoreThreshold: number
+  scoreThresholdEnabled: boolean
+  topK: number
+}) {
+  return JSON.stringify({
+    mode,
+    reasoningModel: modelFingerprint(reasoningModel),
+    rerankEnabled,
+    rerankModel: modelFingerprint(rerankModel),
+    scoreThreshold,
+    scoreThresholdEnabled,
+    topK,
+  })
+}
+
+function sortedIds(ids: string[]) {
+  return [...ids].sort().join(':')
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function SettingsRow({ children, label }: { children: React.ReactNode; label: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:gap-1">
+      <div className="flex h-7 w-full shrink-0 items-center pt-1 system-sm-semibold text-text-secondary sm:w-45">
+        {label}
+      </div>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
+function toDefaultEmbeddingModel(
+  selection: KnowledgeFsSettingsResponse['embedding'],
+): DefaultModel | undefined {
+  if (!selection) return undefined
+  return {
+    model: selection.model,
+    plugin_id: selection.plugin_id,
+    provider: canonicalProvider(selection.plugin_id, selection.provider),
+  }
+}
+
+function toDefaultReasoningModel(
+  selection: KnowledgeFsSettingsResponse['retrieval'],
+): DefaultModel | undefined {
+  if (!selection) return undefined
+  return {
+    model: selection.reasoning_model.model,
+    plugin_id: selection.reasoning_model.plugin_id,
+    provider: canonicalProvider(
+      selection.reasoning_model.plugin_id,
+      selection.reasoning_model.provider,
+    ),
+  }
+}
+
+function toDefaultRerankModel(
+  selection: KnowledgeFsSettingsResponse['retrieval'],
+): DefaultModel | undefined {
+  if (!selection?.rerank.model) return undefined
+  return {
+    model: selection.rerank.model.model,
+    plugin_id: selection.rerank.model.pluginId,
+    provider: canonicalProvider(selection.rerank.model.pluginId, selection.rerank.model.provider),
+  }
+}
+
+export function KnowledgeSettingsForm({
+  externalAccess,
+  members,
+  permissions,
+  settings,
+  space,
+}: KnowledgeSettingsFormProps) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const { t: tSettings } = useTranslation('datasetSettings')
+  const { t: tAppDebug } = useTranslation('appDebug')
+  const queryClient = useQueryClient()
+  const router = useRouter()
+  const { data: reasoningModelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+
+  const initialName = space.technical_summary?.name ?? ''
+  const initialDescription = space.technical_summary?.description ?? ''
+  const initialIcon = space.technical_summary?.icon ?? '📙'
+  const initialSelectedMemberIds = permissions
+    .filter(
+      (permission) =>
+        permission.status === 'active' && permission.account_id !== space.owner_account_id,
+    )
+    .map((permission) => permission.account_id)
+  const initialApiEnabled = externalAccess.service_api_enabled && externalAccess.agent_enabled
+  const initialEmbeddingModel = toDefaultEmbeddingModel(settings.embedding)
+  const initialReasoningModel = toDefaultReasoningModel(settings.retrieval)
+  const initialRerankModel = toDefaultRerankModel(settings.retrieval)
+  const initialRetrievalMode = settings.retrieval?.default_mode ?? 'fast'
+  const initialRerankEnabled = settings.retrieval?.rerank.enabled ?? false
+  const initialTopK = clamp(settings.retrieval?.top_k ?? 3, TOP_K_MIN, TOP_K_MAX)
+  const initialScoreThresholdEnabled = settings.retrieval?.score_threshold.enabled ?? false
+  const initialScoreThreshold = clamp(
+    settings.retrieval?.score_threshold.value ?? 0.5,
+    SCORE_THRESHOLD_MIN,
+    SCORE_THRESHOLD_MAX,
+  )
+
+  const [name, setName] = useState(initialName)
+  const [description, setDescription] = useState(initialDescription)
+  const [icon, setIcon] = useState(initialIcon)
+  const [visibility, setVisibility] = useState(space.visibility)
+  const [selectedMemberIds, setSelectedMemberIds] = useState(initialSelectedMemberIds)
+  const [apiEnabled, setApiEnabled] = useState(initialApiEnabled)
+  const [embeddingModel, setEmbeddingModel] = useState(initialEmbeddingModel)
+  const [reasoningModel, setReasoningModel] = useState(initialReasoningModel)
+  const [rerankModel, setRerankModel] = useState(initialRerankModel)
+  const [retrievalMode, setRetrievalMode] = useState(initialRetrievalMode)
+  const [rerankEnabled, setRerankEnabled] = useState(initialRerankEnabled)
+  const [topK, setTopK] = useState(initialTopK)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)
+  const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
+  const [embeddingBaseline, setEmbeddingBaseline] = useState(() =>
+    modelFingerprint(initialEmbeddingModel),
+  )
+  const [retrievalBaseline, setRetrievalBaseline] = useState(() =>
+    retrievalFingerprint({
+      mode: initialRetrievalMode,
+      reasoningModel: initialReasoningModel,
+      rerankEnabled: initialRerankEnabled,
+      rerankModel: initialRerankModel,
+      scoreThreshold: initialScoreThreshold,
+      scoreThresholdEnabled: initialScoreThresholdEnabled,
+      topK: initialTopK,
+    }),
+  )
+  const [nameTouched, setNameTouched] = useState(false)
+  const [saveError, setSaveError] = useState(false)
+  const [pendingMigrationId, setPendingMigrationId] = useState<string>()
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
+  const [apiDisableDialogOpen, setApiDisableDialogOpen] = useState(false)
+  const [embeddingDialogOpen, setEmbeddingDialogOpen] = useState(false)
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const deleteCancelRef = useRef<HTMLButtonElement>(null)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const completedSaveFingerprintsRef = useRef<Partial<Record<SaveSlice, string>>>({})
+  const handledMigrationIdRef = useRef<string | undefined>(undefined)
+
+  const canEdit = space.permission_keys.includes('knowledge_space_edit')
+  const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
+  const canDelete = space.permission_keys.includes('knowledge_space_delete')
+
+  const spaceDirty =
+    name !== initialName ||
+    description !== initialDescription ||
+    icon !== initialIcon ||
+    visibility !== space.visibility
+  const membersDirty = sortedIds(selectedMemberIds) !== sortedIds(initialSelectedMemberIds)
+  const externalAccessDirty = apiEnabled !== initialApiEnabled
+  const currentEmbeddingFingerprint = modelFingerprint(embeddingModel)
+  const currentRetrievalFingerprint = retrievalFingerprint({
+    mode: retrievalMode,
+    reasoningModel,
+    rerankEnabled,
+    rerankModel,
+    scoreThreshold,
+    scoreThresholdEnabled,
+    topK,
+  })
+  const embeddingDirty = currentEmbeddingFingerprint !== embeddingBaseline
+  const retrievalDirty = currentRetrievalFingerprint !== retrievalBaseline
+  const settingsDirty = embeddingDirty || retrievalDirty
+  const isDirty = spaceDirty || membersDirty || externalAccessDirty || settingsDirty
+  const nameInvalid = !name.trim()
+  const membersInvalid =
+    canManageAccess && visibility === 'partial_members' && selectedMemberIds.length === 0
+  const settingsInvalid =
+    (embeddingDirty && !embeddingModel) ||
+    (retrievalDirty &&
+      (!reasoningModel ||
+        (rerankEnabled && !rerankModel) ||
+        (retrievalMode !== 'research' && scoreThresholdEnabled && !rerankEnabled))) ||
+    (embeddingDirty && retrievalDirty)
+
+  const spaceMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.patch.mutationOptions(),
+  )
+  const membersMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.members.put.mutationOptions(),
+  )
+  const externalAccessMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.put.mutationOptions(),
+  )
+  const settingsMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.patch.mutationOptions(),
+  )
+  const migrationQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.migrations.byMigrationId.get.queryOptions(
+      {
+        input: {
+          params: {
+            control_space_id: space.control_space_id,
+            migration_id: pendingMigrationId ?? 'pending',
+          },
+        },
+      },
+    ),
+    enabled: Boolean(pendingMigrationId),
+    refetchInterval: (query) =>
+      query.state.data?.run_state === 'queued' || query.state.data?.run_state === 'running'
+        ? 2000
+        : false,
+  })
+  const deleteMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
+  )
+  const isSaving =
+    spaceMutation.isPending ||
+    membersMutation.isPending ||
+    externalAccessMutation.isPending ||
+    settingsMutation.isPending ||
+    Boolean(pendingMigrationId)
+  const fieldsDisabled = !canEdit || isSaving
+  const retrievalFieldsDisabled = fieldsDisabled || embeddingDirty
+  const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
+  const saveDisabled = !isDirty || nameInvalid || membersInvalid || settingsInvalid || isSaving
+
+  const resetDraft = () => {
+    setName(initialName)
+    setDescription(initialDescription)
+    setIcon(initialIcon)
+    setVisibility(space.visibility)
+    setSelectedMemberIds(initialSelectedMemberIds)
+    setApiEnabled(initialApiEnabled)
+    setEmbeddingModel(initialEmbeddingModel)
+    setReasoningModel(initialReasoningModel)
+    setRerankModel(initialRerankModel)
+    setRetrievalMode(initialRetrievalMode)
+    setRerankEnabled(initialRerankEnabled)
+    setTopK(initialTopK)
+    setScoreThresholdEnabled(initialScoreThresholdEnabled)
+    setScoreThreshold(initialScoreThreshold)
+    setEmbeddingBaseline(modelFingerprint(initialEmbeddingModel))
+    setRetrievalBaseline(
+      retrievalFingerprint({
+        mode: initialRetrievalMode,
+        reasoningModel: initialReasoningModel,
+        rerankEnabled: initialRerankEnabled,
+        rerankModel: initialRerankModel,
+        scoreThreshold: initialScoreThreshold,
+        scoreThresholdEnabled: initialScoreThresholdEnabled,
+        topK: initialTopK,
+      }),
+    )
+    setNameTouched(false)
+    setSaveError(false)
+  }
+
+  const invalidateSettingsQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.permissions.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.key(),
+      }),
+    ])
+  }, [queryClient])
+
+  useEffect(() => {
+    if (!pendingMigrationId || handledMigrationIdRef.current === pendingMigrationId) return
+    const migration = migrationQuery.data
+    if (migration?.run_state === 'queued' || migration?.run_state === 'running') return
+
+    if (migration?.run_state === 'succeeded') {
+      handledMigrationIdRef.current = pendingMigrationId
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The durable remote migration result commits the editable settings baseline.
+      if (embeddingDirty) setEmbeddingBaseline(currentEmbeddingFingerprint)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The durable remote migration result commits the editable settings baseline.
+      if (retrievalDirty) setRetrievalBaseline(currentRetrievalFingerprint)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
+      setPendingMigrationId(undefined)
+      void invalidateSettingsQueries().then(() => {
+        toast.success(tCommon(($) => $['api.saved']))
+      })
+      return
+    }
+
+    if (
+      migrationQuery.isError ||
+      migration?.run_state === 'failed' ||
+      migration?.run_state === 'canceled'
+    ) {
+      handledMigrationIdRef.current = pendingMigrationId
+      delete completedSaveFingerprintsRef.current.settings
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
+      setPendingMigrationId(undefined)
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative failed migration transitions the save UI to its retry state.
+      setSaveError(true)
+    }
+  }, [
+    currentEmbeddingFingerprint,
+    currentRetrievalFingerprint,
+    embeddingDirty,
+    invalidateSettingsQueries,
+    migrationQuery.data,
+    migrationQuery.isError,
+    pendingMigrationId,
+    retrievalDirty,
+    tCommon,
+  ])
+
+  const performSave = async () => {
+    if (saveDisabled || !canEdit) return
+
+    setSaveError(false)
+
+    try {
+      const saveSlice = async (
+        slice: SaveSlice,
+        payload: unknown,
+        save: () => Promise<unknown>,
+      ) => {
+        const fingerprint = JSON.stringify(payload)
+        if (completedSaveFingerprintsRef.current[slice] === fingerprint) return
+
+        await save()
+        completedSaveFingerprintsRef.current[slice] = fingerprint
+      }
+
+      if (spaceDirty) {
+        const body = {
+          ...(description !== initialDescription ? { description } : {}),
+          ...(icon !== initialIcon ? { icon } : {}),
+          ...(name !== initialName ? { name: name.trim() } : {}),
+          ...(visibility !== space.visibility ? { visibility } : {}),
+        }
+        await saveSlice('space', body, () =>
+          spaceMutation.mutateAsync({
+            body,
+            params: { control_space_id: space.control_space_id },
+          }),
+        )
+      }
+      if (membersDirty && canManageAccess) {
+        const roleByAccountId = new Map(
+          permissions.map((permission) => [permission.account_id, permission.role]),
+        )
+        const body = {
+          members: selectedMemberIds.map((accountId) => ({
+            account_id: accountId,
+            role: roleByAccountId.get(accountId) ?? 'viewer',
+          })),
+        }
+        await saveSlice('members', body, () =>
+          membersMutation.mutateAsync({
+            body,
+            params: { control_space_id: space.control_space_id },
+          }),
+        )
+      }
+      if (externalAccessDirty && canManageAccess) {
+        const body = {
+          agent_enabled: apiEnabled,
+          mcp_enabled: externalAccess.mcp_enabled,
+          service_api_enabled: apiEnabled,
+          workflow_enabled: externalAccess.workflow_enabled,
+        }
+        await saveSlice('externalAccess', body, () =>
+          externalAccessMutation.mutateAsync({
+            body,
+            params: { control_space_id: space.control_space_id },
+          }),
+        )
+      }
+      if (settingsDirty) {
+        const body: KnowledgeFsSettingsPayload = {
+          expectedRevision: settings.revision,
+        }
+        if (embeddingDirty && embeddingModel) body.embedding = modelPayload(embeddingModel)
+        if (retrievalDirty && reasoningModel) {
+          const retrieval: KnowledgeFsProductRetrievalProfile = {
+            defaultMode: retrievalMode,
+            reasoningModel: modelPayload(reasoningModel),
+            rerank: {
+              enabled: rerankEnabled,
+              model: rerankModel ? modelPayload(rerankModel) : null,
+            },
+            scoreThreshold: {
+              enabled: scoreThresholdEnabled,
+              stage: rerankEnabled ? 'rerank' : 'mode-final',
+              value: scoreThreshold,
+            },
+            topK,
+          }
+          body.retrieval = retrieval
+        }
+        const fingerprint = JSON.stringify(body)
+        if (completedSaveFingerprintsRef.current.settings !== fingerprint) {
+          const result = await settingsMutation.mutateAsync({
+            body,
+            params: { control_space_id: space.control_space_id },
+          })
+          completedSaveFingerprintsRef.current.settings = fingerprint
+          if (result.migration) {
+            handledMigrationIdRef.current = undefined
+            setPendingMigrationId(result.migration.id)
+            return
+          }
+        }
+        if (embeddingDirty) setEmbeddingBaseline(currentEmbeddingFingerprint)
+        if (retrievalDirty) setRetrievalBaseline(currentRetrievalFingerprint)
+      }
+      if (pendingMigrationId) return
+      await invalidateSettingsQueries()
+      toast.success(tCommon(($) => $['api.saved']))
+    } catch {
+      setSaveError(true)
+    }
+  }
+
+  const requestSave = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    setNameTouched(true)
+    if (saveDisabled) return
+    if (embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0) {
+      setEmbeddingDialogOpen(true)
+      return
+    }
+    void performSave()
+  }
+
+  useEffect(() => {
+    if (!isDirty) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+      const anchor = event
+        .composedPath()
+        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
+      if (
+        !anchor ||
+        anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')
+      )
+        return
+
+      const destination = new URL(anchor.href, globalThis.location.href)
+      const current = new URL(globalThis.location.href)
+      if (
+        destination.origin !== current.origin ||
+        (destination.pathname === current.pathname &&
+          destination.search === current.search &&
+          destination.hash === current.hash)
+      )
+        return
+
+      event.preventDefault()
+      pendingNavigationRef.current = `${destination.pathname}${destination.search}${destination.hash}`
+      setDiscardDialogOpen(true)
+    }
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => {
+      globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('click', handleDocumentClick, true)
+    }
+  }, [isDirty])
+
+  const confirmDiscardAndNavigate = () => {
+    const destination = pendingNavigationRef.current
+    pendingNavigationRef.current = undefined
+    setDiscardDialogOpen(false)
+    if (destination) router.push(destination)
+  }
+
+  const deleteKnowledge = async () => {
+    if (deleteConfirmation !== initialName || deleteMutation.isPending) return
+    try {
+      await deleteMutation.mutateAsync({
+        params: { control_space_id: space.control_space_id },
+      })
+      setDeleteDialogOpen(false)
+      router.replace(newKnowledgeListPath)
+    } catch {
+      toast.error(tCommon(($) => $['api.actionFailed']))
+    }
+  }
+
+  return (
+    <>
+      {!canEdit && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
+          role="status"
+        >
+          <span aria-hidden className="i-ri-lock-2-line size-4 shrink-0" />
+          {t(($) => $['newKnowledge.settings.viewOnly'])}
+        </div>
+      )}
+
+      {saveError && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2"
+          role="alert"
+        >
+          <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
+          <span className="min-w-0 flex-1 system-xs-regular text-text-destructive">
+            {t(($) => $['newKnowledge.settings.saveFailed'])}
+          </span>
+          <Button type="button" size="small" variant="ghost" onClick={() => requestSave()}>
+            {tCommon(($) => $['operation.retry'])}
+          </Button>
+        </div>
+      )}
+
+      {pendingMigrationId && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
+          role="status"
+        >
+          <span aria-hidden className="i-ri-loader-4-line size-4 shrink-0 animate-spin" />
+          {tCommon(($) => $['operation.saving'])}
+        </div>
+      )}
+
+      <Form className="flex flex-col gap-4 overflow-hidden pt-2 pb-7" onSubmit={requestSave}>
+        <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
+          {t(($) => $['newKnowledge.settings.basicInfo'])}
+        </h2>
+
+        <SettingsRow label={tSettings(($) => $['form.nameAndIcon'])}>
+          <div className="flex items-start gap-2">
+            <button
+              type="button"
+              aria-label={tSettings(($) => $['form.nameAndIcon'])}
+              disabled={fieldsDisabled}
+              className="shrink-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
+              onClick={() => setIconPickerOpen(true)}
+            >
+              <KnowledgeSpaceIcon icon={icon} size="small" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <Input
+                aria-label={tSettings(($) => $['form.name'])}
+                aria-describedby={nameTouched && nameInvalid ? NAME_ERROR_ID : undefined}
+                aria-invalid={nameTouched && nameInvalid}
+                autoComplete="off"
+                name="knowledge-name"
+                value={name}
+                maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
+                disabled={fieldsDisabled}
+                className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
+                onBlur={() => setNameTouched(true)}
+                onChange={(event) =>
+                  setName(event.target.value.slice(0, KNOWLEDGE_NAME_MAX_LENGTH))
+                }
+              />
+              {nameTouched && nameInvalid && (
+                <p
+                  id={NAME_ERROR_ID}
+                  className="mt-1 system-xs-regular text-text-destructive"
+                  role="alert"
+                >
+                  {t(($) => $['newKnowledge.settings.nameRequired'])}
+                </p>
+              )}
+              {name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
+                <p
+                  className={cn(
+                    'mt-1 text-right system-xs-medium text-text-tertiary',
+                    name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && 'text-text-warning-secondary',
+                  )}
+                >
+                  {name.length} / {KNOWLEDGE_NAME_MAX_LENGTH}
+                </p>
+              )}
+            </div>
+          </div>
+        </SettingsRow>
+
+        <SettingsRow label={tSettings(($) => $['form.desc'])}>
+          <Textarea
+            aria-label={tSettings(($) => $['form.desc'])}
+            autoComplete="off"
+            name="knowledge-description"
+            value={description}
+            disabled={fieldsDisabled}
+            placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
+            className="min-h-20 resize-none"
+            onValueChange={setDescription}
+          />
+        </SettingsRow>
+
+        <SettingsRow label={tSettings(($) => $['form.permissions'])}>
+          <KnowledgeSettingsMembers
+            disabled={!canEdit || !canManageAccess || isSaving}
+            hasError={membersInvalid}
+            members={members}
+            ownerAccountId={space.owner_account_id}
+            selectedMemberIds={selectedMemberIds}
+            visibility={visibility}
+            onSelectedMemberIdsChange={setSelectedMemberIds}
+            onVisibilityChange={setVisibility}
+          />
+        </SettingsRow>
+
+        {canEdit && (
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" disabled={!isDirty || isSaving} onClick={resetDraft}>
+              {tCommon(($) => $['operation.cancel'])}
+            </Button>
+            <Button type="submit" variant="primary" disabled={saveDisabled} loading={isSaving}>
+              {isSaving
+                ? tCommon(($) => $['operation.saving'])
+                : t(($) => $['newKnowledge.settings.saveChanges'])}
+            </Button>
+          </div>
+        )}
+
+        <div className="my-1 h-px bg-divider-subtle" />
+
+        <SettingsRow label={t(($) => $['newKnowledge.apiAgentAccess'])}>
+          <div className="flex min-h-7 items-center gap-2">
+            <Switch
+              aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
+              checked={apiEnabled}
+              disabled={!canEdit || !canManageAccess || isSaving}
+              onCheckedChange={(checked) => {
+                if (checked) setApiEnabled(true)
+                else setApiDisableDialogOpen(true)
+              }}
+            />
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.settings.apiAccessDescription'])}
+            </p>
+          </div>
+        </SettingsRow>
+
+        <div className="my-1 h-px bg-divider-subtle" />
+
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:gap-1">
+          <div className="w-full shrink-0 sm:w-45">
+            <h2 className="flex h-8 items-center system-sm-semibold text-text-secondary">
+              {t(($) => $['newKnowledge.settings.retrievalTitle'])}
+            </h2>
+            <p className="body-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.settings.retrievalDescription'])}
+            </p>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+            <div>
+              <div
+                id={REASONING_MODEL_LABEL_ID}
+                className="flex h-7 items-center system-sm-medium text-text-secondary"
+              >
+                {tCommon(($) => $['modelProvider.systemReasoningModel.key'])}
+              </div>
+              <ModelSelector
+                ariaLabelledBy={REASONING_MODEL_LABEL_ID}
+                defaultModel={reasoningModel}
+                modelList={reasoningModelList}
+                readonly={retrievalFieldsDisabled}
+                triggerClassName="w-full"
+                onSelect={(model) => {
+                  setReasoningModel(model)
+                }}
+              />
+            </div>
+
+            <div>
+              <div
+                id={EMBEDDING_MODEL_LABEL_ID}
+                className="flex h-7 items-center system-sm-medium text-text-secondary"
+              >
+                {tSettings(($) => $['form.embeddingModel'])}
+              </div>
+              <ModelSelector
+                ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
+                defaultModel={embeddingModel}
+                modelList={embeddingModelList}
+                readonly={fieldsDisabled || retrievalDirty}
+                triggerClassName="w-full"
+                onSelect={setEmbeddingModel}
+              />
+              {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
+                <p className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary">
+                  <span aria-hidden className="mt-0.5 i-ri-alert-fill size-3.5 shrink-0" />
+                  {t(($) => $['newKnowledge.settings.embeddingChangeWarning'])}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <div className="flex h-7 items-center gap-2">
+                <Switch
+                  aria-label={tCommon(($) => $['modelProvider.rerankModel.key'])}
+                  checked={rerankEnabled}
+                  disabled={retrievalFieldsDisabled}
+                  onCheckedChange={(checked) => {
+                    setRerankEnabled(checked)
+                    if (!checked && retrievalMode !== 'research') setScoreThresholdEnabled(false)
+                  }}
+                />
+                <span id={RERANK_MODEL_LABEL_ID} className="system-sm-medium text-text-secondary">
+                  {tCommon(($) => $['modelProvider.rerankModel.key'])}
+                </span>
+              </div>
+              <ModelSelector
+                ariaLabelledBy={RERANK_MODEL_LABEL_ID}
+                defaultModel={rerankModel}
+                modelList={rerankModelList}
+                readonly={retrievalFieldsDisabled || !rerankEnabled}
+                triggerClassName="w-full"
+                onSelect={(model) => {
+                  setRerankModel(model)
+                }}
+              />
+              {rerankEnabled && !rerankModel && (
+                <p className="mt-1 system-xs-regular text-text-destructive" role="alert">
+                  {tAppDebug(($) => $['datasetConfig.rerankModelRequired'])}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                id="knowledge-retrieval-depth-label"
+                className="flex h-7 items-center system-sm-medium text-text-secondary"
+              >
+                {t(($) => $['newKnowledge.settings.retrievalDepth'])}
+              </label>
+              <SegmentedControl
+                aria-labelledby="knowledge-retrieval-depth-label"
+                value={[retrievalMode]}
+                onValueChange={(values) => {
+                  const mode = values[0]
+                  if (mode === 'fast' || mode === 'deep' || mode === 'research') {
+                    setRetrievalMode(mode)
+                    if (mode !== 'research' && !rerankEnabled) setScoreThresholdEnabled(false)
+                  }
+                }}
+              >
+                {(['fast', 'deep', 'research'] as const).map((mode) => (
+                  <SegmentedControlItem key={mode} value={mode} disabled={retrievalFieldsDisabled}>
+                    {t(($) => $[`newKnowledge.settings.retrievalMode.${mode}`])}
+                  </SegmentedControlItem>
+                ))}
+              </SegmentedControl>
+            </div>
+
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor="knowledge-top-k"
+                  className="flex h-7 items-center system-sm-medium text-text-secondary"
+                >
+                  {tAppDebug(($) => $['datasetConfig.top_k'])}
+                </label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="knowledge-top-k"
+                    autoComplete="off"
+                    name="knowledge-top-k"
+                    type="number"
+                    min={TOP_K_MIN}
+                    max={TOP_K_MAX}
+                    value={topK}
+                    disabled={retrievalFieldsDisabled}
+                    className="w-18 shrink-0"
+                    onBlur={() => setTopK(clamp(topK, TOP_K_MIN, TOP_K_MAX))}
+                    onChange={(event) => {
+                      setTopK(Number(event.target.value))
+                    }}
+                  />
+                  <Slider
+                    aria-label={tAppDebug(($) => $['datasetConfig.top_k'])}
+                    min={TOP_K_MIN}
+                    max={TOP_K_MAX}
+                    value={topK}
+                    disabled={retrievalFieldsDisabled}
+                    onValueChange={(value) => {
+                      setTopK(value)
+                    }}
+                  />
+                </div>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.settings.topKMinimum'])}
+                </p>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex h-7 items-center gap-2">
+                  <Switch
+                    aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
+                    checked={scoreThresholdEnabled}
+                    disabled={retrievalFieldsDisabled || !scoreThresholdAvailable}
+                    onCheckedChange={(checked) => {
+                      setScoreThresholdEnabled(checked)
+                    }}
+                  />
+                  <label
+                    htmlFor="knowledge-score-threshold"
+                    className="system-sm-medium text-text-secondary"
+                  >
+                    {tAppDebug(($) => $['datasetConfig.score_threshold'])}
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="knowledge-score-threshold"
+                    autoComplete="off"
+                    name="knowledge-score-threshold"
+                    type="number"
+                    min={SCORE_THRESHOLD_MIN}
+                    max={SCORE_THRESHOLD_MAX}
+                    step={0.01}
+                    value={scoreThreshold}
+                    disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
+                    className="w-18 shrink-0"
+                    onBlur={() =>
+                      setScoreThreshold(
+                        clamp(scoreThreshold, SCORE_THRESHOLD_MIN, SCORE_THRESHOLD_MAX),
+                      )
+                    }
+                    onChange={(event) => {
+                      setScoreThreshold(Number(event.target.value))
+                    }}
+                  />
+                  <Slider
+                    aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
+                    min={SCORE_THRESHOLD_MIN}
+                    max={SCORE_THRESHOLD_MAX}
+                    step={0.01}
+                    value={scoreThreshold}
+                    disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
+                    onValueChange={(value) => {
+                      setScoreThreshold(value)
+                    }}
+                  />
+                </div>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.settings.scoreRange'])}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Form>
+
+      {canDelete && canEdit && (
+        <>
+          <div className="h-px bg-divider-subtle" />
+          <div className="flex min-w-0 flex-col gap-4 pt-7 sm:flex-row sm:gap-1">
+            <h2 className="flex h-8 w-full shrink-0 items-center system-sm-semibold text-text-destructive sm:w-45">
+              {t(($) => $['newKnowledge.settings.dangerZone'])}
+            </h2>
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl border border-components-button-destructive-secondary-border px-4 py-3">
+              <div className="min-w-0">
+                <p className="system-sm-medium text-text-secondary">
+                  {t(($) => $['newKnowledge.settings.deleteTitle'])}
+                </p>
+                <p className="mt-0.5 body-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.settings.deleteDescription'])}
+                </p>
+              </div>
+              <Button
+                type="button"
+                tone="destructive"
+                disabled={isSaving}
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                {tCommon(($) => $['operation.delete'])}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <AppIconPicker
+        open={iconPickerOpen}
+        enableImageUpload={false}
+        initialEmoji={{ icon }}
+        onOpenChange={setIconPickerOpen}
+        onSelect={(selection) => {
+          if (selection.type === 'emoji') setIcon(selection.icon)
+        }}
+      />
+
+      <AlertDialog open={apiDisableDialogOpen} onOpenChange={setApiDisableDialogOpen}>
+        <AlertDialogContent>
+          <div className="px-6 pt-6">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {tCommon(($) => $['operation.confirmAction'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.settings.disableApiDescription'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              onClick={() => {
+                setApiEnabled(false)
+                setApiDisableDialogOpen(false)
+              }}
+            >
+              {tCommon(($) => $['operation.confirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={embeddingDialogOpen} onOpenChange={setEmbeddingDialogOpen}>
+        <AlertDialogContent>
+          <div className="px-6 pt-6">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {tSettings(($) => $['form.embeddingModel'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.settings.embeddingChangeWarning'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              tone="default"
+              onClick={() => {
+                setEmbeddingDialogOpen(false)
+                void performSave()
+              }}
+            >
+              {tCommon(($) => $['operation.confirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={discardDialogOpen}
+        onOpenChange={(open) => {
+          setDiscardDialogOpen(open)
+          if (!open) pendingNavigationRef.current = undefined
+        }}
+      >
+        <AlertDialogContent>
+          <div className="px-6 pt-6">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {tCommon(($) => $['operation.confirmAction'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.discardDraftDescription'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="destructive" onClick={confirmDiscardAndNavigate}>
+              {t(($) => $['newKnowledge.discardDraftConfirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open)
+          if (!open) setDeleteConfirmation('')
+        }}
+      >
+        <AlertDialogContent initialFocus={deleteCancelRef}>
+          <div className="px-6 pt-6">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {t(($) => $['newKnowledge.settings.deleteDialogTitle'], {
+                name: initialName,
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 body-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.settings.deleteDialogDescription'])}
+            </AlertDialogDescription>
+            <label
+              htmlFor="knowledge-delete-confirmation"
+              className="mt-5 block system-sm-medium text-text-secondary"
+            >
+              {t(($) => $['newKnowledge.settings.deleteConfirmPrompt'], {
+                name: initialName,
+              })}
+            </label>
+            <Input
+              id="knowledge-delete-confirmation"
+              autoComplete="off"
+              name="knowledge-delete-confirmation"
+              value={deleteConfirmation}
+              className="mt-2 w-full"
+              onChange={(event) => setDeleteConfirmation(event.target.value)}
+            />
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton ref={deleteCancelRef}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={deleteConfirmation !== initialName || deleteMutation.isPending}
+              loading={deleteMutation.isPending}
+              onClick={() => void deleteKnowledge()}
+            >
+              {tCommon(($) => $['operation.delete'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

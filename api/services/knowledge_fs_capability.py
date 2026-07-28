@@ -381,6 +381,27 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/product-settings",
             "knowledge_space",
         ),
+        "updateKnowledgeSpaceEmbeddingProfile": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.settings.update",
+            _STANDARD_CALLERS,
+            "PUT",
+            "/knowledge-spaces/{id}/embedding-profile",
+            "knowledge_space",
+        ),
+        "updateKnowledgeSpaceRetrievalProfile": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.settings.update",
+            _STANDARD_CALLERS,
+            "PUT",
+            "/knowledge-spaces/{id}/retrieval-profile",
+            "knowledge_space",
+        ),
+        "getKnowledgeSpaceProfileMigration": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.settings.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
+            "knowledge_space",
+        ),
         "listDocuments": KnowledgeFSCapabilityOperation(
             "documents.list",
             _STANDARD_CALLERS,

@@ -1,0 +1,761 @@
+import type {
+  KnowledgeFsSettingsResponse,
+  KnowledgeFsSpaceDetailResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ReactNode } from 'react'
+import type { Member } from '@/models/common'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
+import { KnowledgeSettingsForm } from '../knowledge-settings-form'
+
+const serviceMock = vi.hoisted(() => ({
+  deleteSpace: vi.fn(),
+  getMigration: vi.fn(),
+  patchExternalAccess: vi.fn(),
+  patchSettings: vi.fn(),
+  patchSpace: vi.fn(),
+  replaceMembers: vi.fn(),
+}))
+
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
+
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+}))
+
+const queryKeys = {
+  externalAccess: ['knowledge-fs', 'external-access'],
+  permissions: ['knowledge-fs', 'permissions'],
+  settings: ['knowledge-fs', 'settings'],
+  space: ['knowledge-fs', 'space'],
+}
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => routerMock,
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          delete: {
+            mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
+          },
+          externalAccess: {
+            get: { key: () => queryKeys.externalAccess },
+            put: {
+              mutationOptions: () => ({ mutationFn: serviceMock.patchExternalAccess }),
+            },
+          },
+          get: { key: () => queryKeys.space },
+          members: {
+            put: {
+              mutationOptions: () => ({ mutationFn: serviceMock.replaceMembers }),
+            },
+          },
+          patch: {
+            mutationOptions: () => ({ mutationFn: serviceMock.patchSpace }),
+          },
+          permissions: {
+            get: { key: () => queryKeys.permissions },
+          },
+          settings: {
+            get: { key: () => queryKeys.settings },
+            migrations: {
+              byMigrationId: {
+                get: {
+                  queryOptions: ({
+                    input,
+                  }: {
+                    input: {
+                      params: { control_space_id: string; migration_id: string }
+                    }
+                  }) => ({
+                    queryFn: () => serviceMock.getMigration(input),
+                    queryKey: ['knowledge-fs', 'settings-migration', input.params.migration_id],
+                  }),
+                },
+              },
+            },
+            patch: {
+              mutationOptions: () => ({ mutationFn: serviceMock.patchSettings }),
+            },
+          },
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelList: () => ({ data: [] }),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+  default: ({
+    ariaLabelledBy,
+    defaultModel,
+    onSelect,
+    readonly,
+  }: {
+    ariaLabelledBy?: string
+    defaultModel?: { model: string; provider: string }
+    onSelect?: (model: { model: string; plugin_id: string; provider: string }) => void
+    readonly?: boolean
+  }) => (
+    <button
+      type="button"
+      aria-labelledby={ariaLabelledBy}
+      disabled={readonly}
+      onClick={() =>
+        onSelect?.({
+          model: 'openrouter/auto',
+          plugin_id: 'langgenius/openrouter',
+          provider: 'langgenius/openrouter/openrouter',
+        })
+      }
+    >
+      {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'select-model'}
+    </button>
+  ),
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: () => null,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
+}))
+
+const space = {
+  control_space_id: 'space-1',
+  created_at: '2026-07-28T00:00:00Z',
+  knowledge_space_id: 'knowledge-1',
+  owner_account_id: 'owner-1',
+  permission_keys: [
+    'knowledge_space_access_config',
+    'knowledge_space_delete',
+    'knowledge_space_edit',
+    'knowledge_space_read',
+  ],
+  resource_version: 3,
+  state: 'active' as const,
+  technical_status: 'available' as const,
+  technical_summary: {
+    description: 'Product documentation',
+    document_count: 4,
+    icon: '📷',
+    knowledge_space_id: 'knowledge-1',
+    name: 'Camera Technical Spec',
+    revision: 3,
+    slug: 'camera-technical-spec',
+  },
+  updated_at: '2026-07-28T00:00:00Z',
+  visibility: 'only_me' as const,
+} satisfies KnowledgeFsSpaceDetailResponse
+
+const settings = {
+  configuration_state: 'active' as const,
+  embedding: {
+    model: 'text-embedding-3-large',
+    plugin_id: 'langgenius/openai',
+    provider: 'langgenius/openai/openai',
+  },
+  retrieval: {
+    default_mode: 'fast' as const,
+    reasoning_model: {
+      model: 'gpt-4o',
+      plugin_id: 'langgenius/openai',
+      provider: 'langgenius/openai/openai',
+    },
+    rerank: {
+      enabled: false,
+      model: null,
+    },
+    score_threshold: {
+      enabled: false,
+      stage: 'mode-final' as const,
+      value: 0.5,
+    },
+    top_k: 3,
+  },
+  revision: 5,
+}
+
+const externalAccess = {
+  agent_enabled: true,
+  mcp_enabled: true,
+  revision: 2,
+  service_api_enabled: true,
+  workflow_enabled: true,
+}
+
+function renderForm({
+  externalAccess: externalAccessOverride = externalAccess,
+  members = [],
+  settings: settingsOverride = settings,
+  space: spaceOverride = space,
+}: {
+  externalAccess?: typeof externalAccess
+  members?: Member[]
+  settings?: KnowledgeFsSettingsResponse
+  space?: KnowledgeFsSpaceDetailResponse
+} = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return render(
+    <KnowledgeSettingsForm
+      externalAccess={externalAccessOverride}
+      members={members}
+      permissions={[]}
+      settings={settingsOverride}
+      space={spaceOverride}
+    />,
+    { wrapper: Wrapper },
+  )
+}
+
+describe('KnowledgeSettingsForm', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    serviceMock.deleteSpace.mockResolvedValue(undefined)
+    serviceMock.patchExternalAccess.mockResolvedValue(externalAccess)
+    serviceMock.patchSettings.mockResolvedValue({ settings })
+    serviceMock.patchSpace.mockResolvedValue(space)
+    serviceMock.replaceMembers.mockResolvedValue({ data: [] })
+  })
+
+  it('keeps save disabled and shows an inline error when the name is empty', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.tab()
+
+    const nameError = screen.getByRole('alert')
+    expect(nameError).toHaveTextContent('dataset.newKnowledge.settings.nameRequired')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAttribute('aria-describedby', nameError.id)
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('saves a changed knowledge name through the generated space mutation', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Updated camera specs')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+        {
+          body: {
+            name: 'Updated camera specs',
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+    expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+  })
+
+  it('uses the 40-character knowledge name limit from the design contract', () => {
+    renderForm()
+
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveAttribute(
+      'maxlength',
+      '40',
+    )
+    expect(screen.queryByText('40 / 40')).not.toBeInTheDocument()
+  })
+
+  it('submits the settings form when Enter is pressed in the name field', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Updated by keyboard{Enter}')
+
+    await waitFor(() => {
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+        {
+          body: { name: 'Updated by keyboard' },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('does not submit an unchanged emoji icon when saving a description', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const descriptionInput = screen.getByRole('textbox', {
+      name: 'datasetSettings.form.desc',
+    })
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, 'Updated product documentation')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+        {
+          body: {
+            description: 'Updated product documentation',
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('requires confirmation before disabling API access and preserves unrelated channels', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
+        {
+          body: {
+            agent_enabled: false,
+            mcp_enabled: true,
+            service_api_enabled: false,
+            workflow_enabled: true,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('requires the exact knowledge name before deletion', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toHaveFocus()
+    const confirmButton = within(dialog).getByRole('button', {
+      name: 'common.operation.delete',
+    })
+    const confirmationInput = within(dialog).getByRole('textbox', {
+      name: /^dataset\.newKnowledge\.settings\.deleteConfirmPrompt/,
+    })
+
+    expect(confirmButton).toBeDisabled()
+    await user.type(confirmationInput, 'Camera')
+    expect(confirmButton).toBeDisabled()
+    await user.clear(confirmationInput)
+    await user.type(confirmationInput, 'Camera Technical Spec')
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(serviceMock.deleteSpace).toHaveBeenCalledWith(
+        {
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('keeps edits and offers retry after saving fails', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSpace.mockRejectedValueOnce(new Error('network error'))
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Camera specs draft')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    expect(nameInput).toHaveValue('Camera specs draft')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledTimes(2))
+  })
+
+  it('retries only the save slice that failed', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSettings.mockRejectedValueOnce(new Error('settings unavailable'))
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Camera specs draft')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchSpace).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the empty state when member search does not match the owner', async () => {
+    const user = userEvent.setup()
+    const owner = {
+      avatar: '',
+      avatar_url: null,
+      email: 'owner@example.com',
+      id: 'owner-1',
+      name: 'Workspace owner',
+      role: 'owner',
+      roles: [],
+      status: 'active',
+    } satisfies Member
+    renderForm({
+      members: [owner],
+      space: {
+        ...space,
+        visibility: 'partial_members',
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'common.operation.search' }),
+      'no-such-member',
+    )
+
+    expect(screen.getByText('dataset.newKnowledge.settings.noMembersFound')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Workspace owner/ })).not.toBeInTheDocument()
+  })
+
+  it('clamps retrieval values and shows their supported ranges', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const topKInput = screen.getByRole('spinbutton', {
+      name: 'appDebug.datasetConfig.top_k',
+    })
+    await user.clear(topKInput)
+    await user.type(topKInput, '99')
+    await user.tab()
+
+    expect(topKInput).toHaveValue(10)
+    expect(screen.getByText('dataset.newKnowledge.settings.topKMinimum')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.settings.scoreRange')).toBeInTheDocument()
+  })
+
+  it('only allows a score threshold without rerank in Research mode', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const thresholdSwitch = screen.getByRole('switch', {
+      name: 'appDebug.datasetConfig.score_threshold',
+    })
+    expect(thresholdSwitch).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.research'))
+    expect(thresholdSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(thresholdSwitch)
+    expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.fast'))
+    expect(thresholdSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(thresholdSwitch).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('prevents two profile migrations from being edited in one save', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: 'datasetSettings.form.embeddingModel',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('asks before following a link while the form has unsaved changes', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    const destination = document.createElement('a')
+    destination.href = '/datasets/new/space-1/sources'
+    destination.textContent = 'Go to sources'
+    document.body.append(destination)
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Unsaved camera specs')
+    await user.click(destination)
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(routerMock.push).not.toHaveBeenCalled()
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'dataset.newKnowledge.discardDraftConfirm',
+      }),
+    )
+
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+    destination.remove()
+  })
+
+  it('protects unsaved changes from browser unload', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Unsaved camera specs')
+    const event = new Event('beforeunload', { cancelable: true })
+    globalThis.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('normalizes split Knowledge FS provider identities for the model selector', () => {
+    renderForm({
+      settings: {
+        ...settings,
+        retrieval: {
+          ...settings.retrieval,
+          reasoning_model: {
+            model: 'openrouter/auto',
+            plugin_id: 'langgenius/openrouter',
+            provider: 'openrouter',
+          },
+        },
+      },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('splits a canonical model provider before saving Knowledge FS settings', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+        {
+          body: {
+            expectedRevision: 5,
+            retrieval: expect.objectContaining({
+              reasoningModel: {
+                model: 'openrouter/auto',
+                pluginId: 'langgenius/openrouter',
+                provider: 'openrouter',
+              },
+            }),
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('waits for an active profile migration before reporting the settings as saved', async () => {
+    const user = userEvent.setup()
+    let resolveMigration!: (value: {
+      changed_kind: 'retrieval'
+      checkpoint: 'activated'
+      created_at: string
+      id: string
+      knowledge_space_id: string
+      rebuild_scope: 'clone-publication'
+      run_state: 'succeeded'
+      updated_at: string
+    }) => void
+    const migrationPromise = new Promise<Parameters<typeof resolveMigration>[0]>((resolve) => {
+      resolveMigration = resolve
+    })
+    serviceMock.patchSettings.mockResolvedValueOnce({
+      migration: {
+        changed_kind: 'retrieval',
+        checkpoint: 'queued',
+        created_at: '2026-07-28T00:00:00Z',
+        id: 'migration-1',
+        knowledge_space_id: 'knowledge-1',
+        rebuild_scope: 'clone-publication',
+        run_state: 'queued',
+        updated_at: '2026-07-28T00:00:00Z',
+      },
+      settings,
+    })
+    serviceMock.getMigration.mockReturnValueOnce(migrationPromise)
+    renderForm()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
+    expect(toastMock.success).not.toHaveBeenCalled()
+
+    resolveMigration({
+      changed_kind: 'retrieval',
+      checkpoint: 'activated',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'succeeded',
+      updated_at: '2026-07-28T00:01:00Z',
+    })
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.saved'))
+  })
+
+  it('offers retry when a durable profile migration fails', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSettings.mockResolvedValueOnce({
+      migration: {
+        changed_kind: 'retrieval',
+        checkpoint: 'evaluated',
+        created_at: '2026-07-28T00:00:00Z',
+        id: 'migration-1',
+        knowledge_space_id: 'knowledge-1',
+        rebuild_scope: 'clone-publication',
+        run_state: 'running',
+        updated_at: '2026-07-28T00:00:30Z',
+      },
+      settings,
+    })
+    serviceMock.getMigration.mockResolvedValueOnce({
+      changed_kind: 'retrieval',
+      checkpoint: 'evaluated',
+      created_at: '2026-07-28T00:00:00Z',
+      error_code: 'PROFILE_MIGRATION_EVALUATION_FAILED',
+      id: 'migration-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'failed',
+      updated_at: '2026-07-28T00:01:00Z',
+    })
+    renderForm()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    expect(toastMock.success).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+  })
+
+  it('fully locks the page for a view-only user', () => {
+    renderForm({
+      space: {
+        ...space,
+        permission_keys: ['knowledge_space_read'],
+      },
+    })
+
+    expect(screen.getByText('dataset.newKnowledge.settings.viewOnly')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: 'datasetSettings.form.permissions' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.delete' }),
+    ).not.toBeInTheDocument()
+  })
+})

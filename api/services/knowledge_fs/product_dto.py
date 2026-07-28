@@ -89,7 +89,7 @@ class KnowledgeFSRetrievalProfileIntent(BaseModel):
 
 
 class KnowledgeFSSpaceCreatePayload(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=40)
     slug: str = Field(min_length=1, max_length=160, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     icon: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=2_000)
@@ -102,7 +102,7 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
 
 
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=255)
+    name: str | None = Field(default=None, min_length=1, max_length=40)
     icon: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility | None = None
@@ -519,6 +519,19 @@ class KnowledgeFSProductRetrievalProfile(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
+    @model_validator(mode="after")
+    def validate_mode_threshold(self) -> KnowledgeFSProductRetrievalProfile:
+        if self.default_mode != "research" and self.score_threshold.enabled and not self.rerank.enabled:
+            raise ValueError("Fast/Deep mode-final score threshold requires rerank")
+        return self
+
+
+class KnowledgeFSRetrievalProfileUpdatePayload(BaseModel):
+    expected_revision: int = Field(ge=0, alias="expectedRevision")
+    profile: KnowledgeFSProductRetrievalProfile
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
 
 class KnowledgeFSSettingsPayload(BaseModel):
     embedding: KnowledgeFSProfileModelSelection | None = None
@@ -565,6 +578,39 @@ class KnowledgeFSSettingsResponse(ResponseModel):
     )
     embedding: KnowledgeFSEmbeddingSettingsResponse | None
     retrieval: KnowledgeFSRetrievalSettingsResponse | None
+
+
+class KnowledgeFSProfileMigrationResponse(ResponseModel):
+    candidate_publication_fingerprint: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("candidate_publication_fingerprint", "candidatePublicationFingerprint"),
+    )
+    changed_kind: Literal["embedding", "retrieval"] = Field(
+        validation_alias=AliasChoices("changed_kind", "changedKind")
+    )
+    checkpoint: Literal["queued", "candidate-built", "evaluated", "activated"]
+    completed_at: datetime | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
+    evaluation_summary: dict[str, bool | float | int | str] | None = Field(
+        default=None, validation_alias=AliasChoices("evaluation_summary", "evaluationSummary")
+    )
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    rebuild_scope: Literal[
+        "clone-publication",
+        "full-page-index-summary-outline",
+        "full-vector-space",
+    ] = Field(validation_alias=AliasChoices("rebuild_scope", "rebuildScope"))
+    run_state: Literal["queued", "running", "succeeded", "failed", "canceled"] = Field(
+        validation_alias=AliasChoices("run_state", "runState")
+    )
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSSettingsUpdateResponse(ResponseModel):
+    migration: KnowledgeFSProfileMigrationResponse | None = None
+    settings: KnowledgeFSSettingsResponse
 
 
 class KnowledgeFSDocumentCreatePayload(BaseModel):

@@ -18,8 +18,15 @@ const QUESTION_ID = "00000000-0000-4000-8000-000000000002";
 
 describe("knowledge-space-golden-question-schemas", () => {
   it("validates knowledge-space params, create/update bodies, and list queries", () => {
-    expect(KnowledgeSpaceParamsSchema.parse({ id: SPACE_ID })).toEqual({ id: SPACE_ID });
-    expect(CreateKnowledgeSpaceSchema.parse({ name: "Engineering", slug: "engineering" })).toEqual({
+    expect(KnowledgeSpaceParamsSchema.parse({ id: SPACE_ID })).toEqual({
+      id: SPACE_ID,
+    });
+    expect(
+      CreateKnowledgeSpaceSchema.parse({
+        name: "Engineering",
+        slug: "engineering",
+      }),
+    ).toEqual({
       name: "Engineering",
       slug: "engineering",
     });
@@ -38,13 +45,19 @@ describe("knowledge-space-golden-question-schemas", () => {
       name: "Generated slug",
     });
     expect(
-      CreateKnowledgeSpaceSchema.parse({ idempotencyKey: "  create-request-1  ", name: "Replay" }),
+      CreateKnowledgeSpaceSchema.parse({
+        idempotencyKey: "  create-request-1  ",
+        name: "Replay",
+      }),
     ).toEqual({ idempotencyKey: "create-request-1", name: "Replay" });
     expect(CreateKnowledgeSpaceSchema.parse({ name: "  Trimmed space  " })).toEqual({
       name: "Trimmed space",
     });
     expect(
-      UpdateKnowledgeSpaceSchema.parse({ expectedRevision: 1, name: "\tRenamed space\n" }),
+      UpdateKnowledgeSpaceSchema.parse({
+        expectedRevision: 1,
+        name: "\tRenamed space\n",
+      }),
     ).toEqual({ expectedRevision: 1, name: "Renamed space" });
     expect(
       CreateKnowledgeSpaceSchema.parse({
@@ -72,7 +85,10 @@ describe("knowledge-space-golden-question-schemas", () => {
           topK: 3,
         },
       }),
-    ).toMatchObject({ expectedRevision: 0, profile: { defaultMode: "fast", topK: 3 } });
+    ).toMatchObject({
+      expectedRevision: 0,
+      profile: { defaultMode: "fast", topK: 3 },
+    });
     expect(
       UpdateKnowledgeSpaceSchema.parse({
         description: "Updated",
@@ -91,7 +107,12 @@ describe("knowledge-space-golden-question-schemas", () => {
   });
 
   it("validates golden-question params, create/update bodies, and bounded annotations", () => {
-    expect(GoldenQuestionParamsSchema.parse({ id: SPACE_ID, questionId: QUESTION_ID })).toEqual({
+    expect(
+      GoldenQuestionParamsSchema.parse({
+        id: SPACE_ID,
+        questionId: QUESTION_ID,
+      }),
+    ).toEqual({
       id: SPACE_ID,
       questionId: QUESTION_ID,
     });
@@ -106,7 +127,9 @@ describe("knowledge-space-golden-question-schemas", () => {
     expect(UpdateGoldenQuestionSchema.parse({ metadata: { reviewed: true } })).toEqual({
       metadata: { reviewed: true },
     });
-    expect(ListGoldenQuestionsQuerySchema.parse({ limit: "10" })).toEqual({ limit: 10 });
+    expect(ListGoldenQuestionsQuerySchema.parse({ limit: "10" })).toEqual({
+      limit: 10,
+    });
     expect(ListGoldenQuestionsQuerySchema.parse({})).toEqual({ limit: 100 });
 
     expect(
@@ -127,7 +150,10 @@ describe("knowledge-space-golden-question-schemas", () => {
   it("rejects invalid slugs and oversized annotation evidence", () => {
     expect(() => CreateKnowledgeSpaceSchema.parse({ name: " \t\n " })).toThrow();
     expect(() =>
-      UpdateKnowledgeSpaceSchema.parse({ expectedRevision: 1, name: "\u00a0\t" }),
+      UpdateKnowledgeSpaceSchema.parse({
+        expectedRevision: 1,
+        name: "\u00a0\t",
+      }),
     ).toThrow();
     expect(() => CreateKnowledgeSpaceSchema.parse({ name: "Bad", slug: "Bad Slug" })).toThrow();
     expect(() =>
@@ -137,13 +163,29 @@ describe("knowledge-space-golden-question-schemas", () => {
       }),
     ).toThrow();
     expect(() =>
-      UpdateKnowledgeSpaceSchema.parse({ expectedRevision: 1, iconRef: "builtin:Camera" }),
+      UpdateKnowledgeSpaceSchema.parse({
+        expectedRevision: 1,
+        iconRef: "builtin:Camera",
+      }),
+    ).toThrow();
+    expect(() => CreateKnowledgeSpaceSchema.parse({ name: "a".repeat(41) })).toThrow();
+    expect(() =>
+      UpdateKnowledgeSpaceSchema.parse({
+        expectedRevision: 1,
+        name: "a".repeat(41),
+      }),
     ).toThrow();
     expect(() =>
-      CreateKnowledgeSpaceSchema.parse({ name: "Too long", slug: "a".repeat(161) }),
+      CreateKnowledgeSpaceSchema.parse({
+        name: "Too long",
+        slug: "a".repeat(161),
+      }),
     ).toThrow();
     expect(() =>
-      CreateKnowledgeSpaceSchema.parse({ idempotencyKey: "a".repeat(256), name: "Too long" }),
+      CreateKnowledgeSpaceSchema.parse({
+        idempotencyKey: "a".repeat(256),
+        name: "Too long",
+      }),
     ).toThrow();
     expect(() =>
       CreateKnowledgeSpaceSchema.parse({

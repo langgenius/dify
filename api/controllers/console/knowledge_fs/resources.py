@@ -101,6 +101,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewStatsResponse,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPermissionListResponse,
+    KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQueryResponse,
@@ -114,6 +115,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskResponse,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
+    KnowledgeFSSettingsUpdateResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceConnectionListQuery,
@@ -244,6 +246,8 @@ register_response_schema_models(
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskListResponse,
     KnowledgeFSSettingsResponse,
+    KnowledgeFSSettingsUpdateResponse,
+    KnowledgeFSProfileMigrationResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSCrawlPreviewPageListResponse,
     KnowledgeFSSourceConnectionListResponse,
@@ -775,7 +779,7 @@ class KnowledgeFSSpaceSettingsApi(Resource):
     @console_ns.response(
         HTTPStatus.OK,
         "KnowledgeFS settings updated",
-        console_ns.models[KnowledgeFSSettingsResponse.__name__],
+        console_ns.models[KnowledgeFSSettingsUpdateResponse.__name__],
     )
     @setup_required
     @login_required
@@ -789,7 +793,29 @@ class KnowledgeFSSpaceSettingsApi(Resource):
             control_space_id=control_space_id,
             payload=_payload(KnowledgeFSSettingsPayload),
         )
-        return dump_response(KnowledgeFSSettingsResponse, result)
+        return dump_response(KnowledgeFSSettingsUpdateResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/settings/migrations/<string:migration_id>")
+class KnowledgeFSSpaceSettingsMigrationApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS settings migration",
+        console_ns.models[KnowledgeFSProfileMigrationResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, migration_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_profile_migration(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            migration_id=migration_id,
+        )
+        return dump_response(KnowledgeFSProfileMigrationResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/stats")

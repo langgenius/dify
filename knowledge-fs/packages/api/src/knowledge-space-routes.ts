@@ -201,6 +201,14 @@ export const updateKnowledgeSpaceProductSettingsRoute = createRoute({
       content: { "application/json": { schema: KnowledgeSpaceProductSettingsSchema } },
       description: "Pending model settings accepted for first-document asynchronous validation",
     },
+    400: {
+      content: {
+        "application/json": {
+          schema: RetrievalProfileModeErrorResponseSchema,
+        },
+      },
+      description: "Retrieval profile is incompatible with its default mode",
+    },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },
       description: "Knowledge space not found",

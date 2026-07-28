@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -13,7 +13,10 @@ from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_application_service import KnowledgeFSProductApplicationService
 from services.knowledge_fs.product_authorization import KnowledgeFSProductRBACPort
 from services.knowledge_fs.product_dto import KnowledgeFSSpaceCreatePayload, KnowledgeFSSpaceUpdatePayload
-from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRequestRejectedError,
+)
 from services.knowledge_fs.product_service import KnowledgeFSProductService
 
 
@@ -81,6 +84,16 @@ def _create_payload(**updates: object) -> KnowledgeFSSpaceCreatePayload:
     return KnowledgeFSSpaceCreatePayload.model_validate(payload)
 
 
+def test_space_payloads_share_the_40_character_name_limit() -> None:
+    assert len(_create_payload(name="n" * 40).name) == 40
+    assert len(KnowledgeFSSpaceUpdatePayload(name="n" * 40).name or "") == 40
+
+    with pytest.raises(ValueError):
+        _create_payload(name="n" * 41)
+    with pytest.raises(ValueError):
+        KnowledgeFSSpaceUpdatePayload(name="n" * 41)
+
+
 def _application(*, allowed: bool = True):
     product = MagicMock()
     control_plane = MagicMock()
@@ -90,6 +103,9 @@ def _application(*, allowed: bool = True):
     rbac.workspace_permission_allowed.return_value = allowed
     commands.create_provision_intent.return_value = SimpleNamespace(
         control_space=SimpleNamespace(id="control-1", state=KnowledgeFSControlSpaceState.PROVISIONING)
+    )
+    product.authorize_control_space.return_value = SimpleNamespace(
+        control_space=SimpleNamespace(knowledge_space_id="space-1")
     )
     application = KnowledgeFSProductApplicationService(
         product=product,
@@ -186,6 +202,7 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
     application, product, control_plane, _commands, facade, _rbac = _application()
     detail = object()
     product.get_space.return_value = detail
+    facade.update_space.return_value = {"id": "space-1", "revision": 4}
     payload = KnowledgeFSSpaceUpdatePayload(
         name="Renamed",
         visibility=KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
@@ -209,6 +226,70 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
     metadata = facade.update_space.call_args.kwargs["payload"]
     assert metadata.name == "Renamed"
     assert metadata.visibility is None
+    control_plane.advance_knowledge_space_revision.assert_called_once_with(
+        tenant_id="tenant-1",
+        control_space_id="control-1",
+        knowledge_space_id="space-1",
+        revision=4,
+    )
+
+
+def test_product_application_update_recovers_one_stale_revision_conflict_then_syncs() -> None:
+    application, product, control_plane, _commands, facade, _rbac = _application()
+    stale_detail = SimpleNamespace(
+        technical_summary=SimpleNamespace(
+            knowledge_space_id="space-1",
+            revision=4,
+        )
+    )
+    final_detail = object()
+    product.get_space.side_effect = [stale_detail, final_detail]
+    facade.update_space.side_effect = [
+        KnowledgeFSProductRequestRejectedError(status_code=409),
+        {"id": "space-1", "revision": 5},
+    ]
+
+    result = application.update_space(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSpaceUpdatePayload(description="Recovered"),
+    )
+
+    assert result is final_detail
+    assert facade.update_space.call_count == 2
+    assert control_plane.advance_knowledge_space_revision.call_args_list == [
+        call(
+            tenant_id="tenant-1",
+            control_space_id="control-1",
+            knowledge_space_id="space-1",
+            revision=4,
+        ),
+        call(
+            tenant_id="tenant-1",
+            control_space_id="control-1",
+            knowledge_space_id="space-1",
+            revision=5,
+        ),
+    ]
+
+
+def test_product_application_update_does_not_retry_non_conflict_rejection() -> None:
+    application, product, control_plane, _commands, facade, _rbac = _application()
+    facade.update_space.side_effect = KnowledgeFSProductRequestRejectedError(status_code=422)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as error:
+        application.update_space(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSSpaceUpdatePayload(description="Invalid"),
+        )
+
+    assert error.value.status_code == 422
+    facade.update_space.assert_called_once()
+    product.get_space.assert_not_called()
+    control_plane.advance_knowledge_space_revision.assert_not_called()
 
 
 def test_product_application_update_with_no_changes_only_refetches() -> None:

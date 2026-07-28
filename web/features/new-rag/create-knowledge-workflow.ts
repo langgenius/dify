@@ -5,9 +5,10 @@ import type {
   KnowledgeFsSpaceCreateResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { consoleClient } from '@/service/client'
+import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 
-export const NAME_MAX_LENGTH = 160
-export const DESCRIPTION_MAX_LENGTH = 2000
+export const NAME_MAX_LENGTH = KNOWLEDGE_NAME_MAX_LENGTH
+export const DESCRIPTION_MAX_LENGTH = KNOWLEDGE_DESCRIPTION_MAX_LENGTH
 
 export type KnowledgeVisibility = Extract<
   KnowledgeFsControlSpaceVisibility,

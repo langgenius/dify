@@ -19,7 +19,7 @@ export const CreateKnowledgeSpaceSchema = z
     embeddingProfile: KnowledgeSpaceEmbeddingSelectionSchema.optional(),
     iconRef: KnowledgeSpaceSchema.shape.iconRef,
     idempotencyKey: z.string().trim().min(1).max(255).optional(),
-    name: z.string().trim().min(1).max(160),
+    name: z.string().trim().min(1).max(40),
     retrievalProfile: KnowledgeSpaceRetrievalProfileInputSchema.optional(),
     slug: KnowledgeSpaceSchema.shape.slug.optional(),
   })
@@ -30,7 +30,7 @@ export const UpdateKnowledgeSpaceSchema = z
     description: z.string().max(2000).optional(),
     expectedRevision: z.number().int().positive(),
     iconRef: KnowledgeSpaceSchema.shape.iconRef.nullable().optional(),
-    name: z.string().trim().min(1).max(160).optional(),
+    name: z.string().trim().min(1).max(40).optional(),
     slug: KnowledgeSpaceSchema.shape.slug.optional(),
   })
   .strict();

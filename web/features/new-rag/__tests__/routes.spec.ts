@@ -1,11 +1,16 @@
 import {
   newKnowledgeAddSourcePath,
+  newKnowledgeSettingsPath,
   normalizeWebsiteSourceUrl,
   parseNewKnowledgeSourceDraft,
   singleSearchParam,
 } from '../routes'
 
 describe('New RAG routes', () => {
+  it('builds the settings path from the knowledge space id', () => {
+    expect(newKnowledgeSettingsPath('space-1')).toBe('/datasets/new/space-1/settings')
+  })
+
   it('keeps source details out of the add-source URL', () => {
     expect(newKnowledgeAddSourcePath('space-1', 'websiteCrawl', 'opaque-draft-key')).toBe(
       '/datasets/new/space-1/sources/new?type=websiteCrawl&draft=opaque-draft-key',

@@ -89,6 +89,17 @@ describe('ModelSelector', () => {
     vi.clearAllMocks()
   })
 
+  it('uses the visible field label as its accessible name', () => {
+    renderWithQueryClient(
+      <>
+        <span id="reasoning-model-label">System reasoning model</span>
+        <ModelSelector ariaLabelledBy="reasoning-model-label" modelList={[makeModel()]} />
+      </>,
+    )
+
+    expect(screen.getByRole('combobox', { name: 'System reasoning model' })).toBeInTheDocument()
+  })
+
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 

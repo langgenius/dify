@@ -19,6 +19,7 @@ import {
 import type { ParserAdapter } from "@knowledge/parsers";
 
 import type { ArtifactSegmentRepository } from "./artifact-segment-repository";
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import { issueKnowledgeSpaceDurablePermission } from "./derived-result-authorization";
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
@@ -471,6 +472,22 @@ export function registerKnowledgeSpaceHandlers({
     const current = manifest.pendingModelConfiguration;
     const embeddingSelection = body.embedding ?? current?.embeddingSelection;
     const retrievalProfile = body.retrieval ?? current?.retrievalProfile;
+    const profileValidationError = retrievalProfile
+      ? validateKnowledgeSpaceRetrievalProfileForMode(
+          retrievalProfile,
+          retrievalProfile.defaultMode,
+        )
+      : undefined;
+    if (profileValidationError) {
+      return context.json(
+        {
+          code: profileValidationError.code,
+          error: profileValidationError.message,
+          mode: profileValidationError.mode,
+        },
+        400,
+      );
+    }
     if (retrievalProfile?.defaultMode !== "research" && !embeddingSelection) {
       return context.json(
         {
@@ -808,8 +825,10 @@ export function registerKnowledgeSpaceHandlers({
           throw error;
         }
         const authenticatedApiKey = context.get("authenticatedApiKey");
+        const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
         const migration = await profileMigrations.request({
           ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+          ...(capabilityGrantId ? { capabilityGrantId } : {}),
           callerKind: context.get("callerKind") ?? "interactive",
           candidateRevision: candidate.revision,
           changedKind: "embedding",
@@ -1194,8 +1213,10 @@ export function registerKnowledgeSpaceHandlers({
         throw error;
       }
       const authenticatedApiKey = context.get("authenticatedApiKey");
+      const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
       const migration = await profileMigrations.request({
         ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+        ...(capabilityGrantId ? { capabilityGrantId } : {}),
         callerKind: context.get("callerKind") ?? "interactive",
         candidateRevision: candidate.revision,
         changedKind: "retrieval",
@@ -1741,38 +1762,72 @@ export function registerKnowledgeSpaceHandlers({
       const subject = context.get("subject");
       const mutationTimestamp = now();
       const authenticatedApiKey = context.get("authenticatedApiKey");
-      const permissionSnapshot = authorization
-        ? await issueKnowledgeSpaceDurablePermission({
-            access,
-            ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-            authorization,
-            callerKind: context.get("callerKind") ?? "interactive",
-            expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
-            knowledgeSpaceId: context.req.valid("param").id,
-            requiredAccess: "write",
-            subject,
-          })
-        : undefined;
+      const knowledgeSpaceId = context.req.valid("param").id;
+      const capabilityGrant = context.get("capabilityV2Grant");
+      if (
+        capabilityGrant &&
+        (capabilityGrant.action !== "knowledge_spaces.update" ||
+          capabilityGrant.namespaceId !== subject.tenantId ||
+          capabilityGrant.subject !== subject.subjectId ||
+          capabilityGrant.resource.id !== knowledgeSpaceId ||
+          capabilityGrant.resource.parent_id !== null ||
+          capabilityGrant.resource.type !== "knowledge_space")
+      ) {
+        return context.json({ error: "Forbidden" }, 403);
+      }
+      const permissionSnapshot =
+        !capabilityGrant && authorization
+          ? await issueKnowledgeSpaceDurablePermission({
+              access,
+              ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+              authorization,
+              callerKind: context.get("callerKind") ?? "interactive",
+              expiresAt: new Date(Date.parse(mutationTimestamp) + 10 * 60_000).toISOString(),
+              knowledgeSpaceId,
+              requiredAccess: "write",
+              subject,
+            })
+          : undefined;
       const space = await spaces.update({
         ...context.req.valid("json"),
         actorSubjectId: subject.subjectId,
-        id: context.req.valid("param").id,
-        ...(permissionSnapshot
+        id: knowledgeSpaceId,
+        ...(capabilityGrant
           ? {
               permission: {
                 fence: {
-                  accessChannel: permissionSnapshot.accessChannel,
-                  knowledgeSpaceId: context.req.valid("param").id,
-                  permissionSnapshotId: permissionSnapshot.id,
-                  permissionSnapshotRevision: permissionSnapshot.revision,
-                  requestedBySubjectId: subject.subjectId,
+                  capabilityGrantId: capabilityGrant.grantId,
+                  expectedBinding: {
+                    action: "knowledge_spaces.update",
+                    resource: {
+                      id: knowledgeSpaceId,
+                      parentId: null,
+                      type: "knowledge_space",
+                    },
+                  },
+                  knowledgeSpaceId,
                   tenantId: subject.tenantId,
                 },
                 now: mutationTimestamp,
                 requiredAccess: "write" as const,
               },
             }
-          : {}),
+          : permissionSnapshot
+            ? {
+                permission: {
+                  fence: {
+                    accessChannel: permissionSnapshot.accessChannel,
+                    knowledgeSpaceId,
+                    permissionSnapshotId: permissionSnapshot.id,
+                    permissionSnapshotRevision: permissionSnapshot.revision,
+                    requestedBySubjectId: subject.subjectId,
+                    tenantId: subject.tenantId,
+                  },
+                  now: mutationTimestamp,
+                  requiredAccess: "write" as const,
+                },
+              }
+            : {}),
         tenantId: subject.tenantId,
       });
 
@@ -1788,6 +1843,16 @@ export function registerKnowledgeSpaceHandlers({
 
       if (error instanceof KnowledgeSpaceRevisionConflictError) {
         return context.json({ code: error.code, error: error.message }, 409);
+      }
+
+      if (error instanceof CapabilityPublicationFencedError) {
+        return context.json(
+          {
+            code: "KNOWLEDGE_SPACE_ACCESS_DENIED",
+            error: "Knowledge space access denied",
+          },
+          403,
+        );
       }
 
       if (

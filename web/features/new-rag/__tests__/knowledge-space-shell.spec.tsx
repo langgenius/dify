@@ -7,6 +7,7 @@ const queryMock = vi.hoisted(() => ({
   data: undefined as
     | {
         control_space_id: string
+        permission_keys?: string[]
         state?: 'active' | 'provisioning'
         technical_summary: { name: string }
       }
@@ -17,8 +18,20 @@ const queryMock = vi.hoisted(() => ({
 }))
 
 const queryOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const externalAccessQueryOptionsMock = vi.hoisted(() =>
+  vi.fn(() => ({ queryKey: ['external-access'] })),
+)
 const useQueryOptionsMock = vi.hoisted(() => vi.fn())
 const pathnameMock = vi.hoisted(() => ({ value: '/datasets/new/space-1/sources' }))
+const externalAccessQueryMock = vi.hoisted(() => ({
+  data: {
+    agent_enabled: true,
+    mcp_enabled: false,
+    revision: 1,
+    service_api_enabled: true,
+    workflow_enabled: false,
+  },
+}))
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => pathnameMock.value,
@@ -28,8 +41,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useQuery: (options: unknown) => {
+    useQuery: (options: { queryKey?: string[] }) => {
       useQueryOptionsMock(options)
+      if (options.queryKey?.[0] === 'external-access') return externalAccessQueryMock
       return queryMock
     },
   }
@@ -40,6 +54,11 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          externalAccess: {
+            get: {
+              queryOptions: externalAccessQueryOptionsMock,
+            },
+          },
           get: {
             queryOptions: queryOptionsMock,
           },
@@ -58,6 +77,8 @@ describe('KnowledgeSpaceShell', () => {
     queryMock.error = null
     queryMock.isPending = false
     pathnameMock.value = '/datasets/new/space-1/sources'
+    externalAccessQueryMock.data.agent_enabled = true
+    externalAccessQueryMock.data.service_api_enabled = true
   })
 
   it('loads the real knowledge space contract by route id', () => {
@@ -92,10 +113,45 @@ describe('KnowledgeSpaceShell', () => {
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/documents')
+    expect(screen.getByRole('link', { name: 'common.datasetMenus.settings' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/settings',
+    )
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.evidence' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.apiAccessActive')).toBeInTheDocument()
     expect(screen.getByText('source content')).toBeInTheDocument()
+  })
+
+  it('shows API access as inactive when either public channel is disabled', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      permission_keys: ['knowledge_space_access_config'],
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+    externalAccessQueryMock.data.service_api_enabled = false
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
+  })
+
+  it('marks settings as the current navigation item', () => {
+    pathnameMock.value = '/datasets/new/space-1/settings'
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">settings content</KnowledgeSpaceShell>)
+
+    expect(screen.getByRole('link', { name: 'common.datasetMenus.settings' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('lets users collapse and restore the knowledge detail sidebar', async () => {
@@ -129,7 +185,7 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('source content')).not.toBeInTheDocument()
 
-    const options = useQueryOptionsMock.mock.lastCall?.[0] as {
+    const options = useQueryOptionsMock.mock.calls[0]?.[0] as {
       refetchInterval: (query: {
         state: { data?: { state?: 'active' | 'provisioning' } }
       }) => false | number
@@ -171,7 +227,7 @@ describe('KnowledgeSpaceShell', () => {
 
       render(<KnowledgeSpaceShell knowledgeSpaceId="private">source content</KnowledgeSpaceShell>)
 
-      const options = useQueryOptionsMock.mock.lastCall?.[0] as {
+      const options = useQueryOptionsMock.mock.calls[0]?.[0] as {
         retry: (failureCount: number, queryError: unknown) => boolean
       }
       expect(options.retry(0, error)).toBe(false)

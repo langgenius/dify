@@ -17,6 +17,7 @@ type AlertDialogContentProps = {
   className?: string
   backdropClassName?: string
   backdropProps?: Omit<BaseAlertDialog.Backdrop.Props, 'className'>
+  initialFocus?: BaseAlertDialog.Popup.Props['initialFocus']
 }
 
 export function AlertDialogContent({
@@ -24,6 +25,7 @@ export function AlertDialogContent({
   className,
   backdropClassName,
   backdropProps,
+  initialFocus,
 }: AlertDialogContentProps) {
   return (
     <BaseAlertDialog.Portal>
@@ -32,6 +34,7 @@ export function AlertDialogContent({
         className={cn(modalBackdropClassName, backdropClassName)}
       />
       <BaseAlertDialog.Popup
+        initialFocus={initialFocus}
         className={cn(
           'fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           modalPopupAnimationClassName,

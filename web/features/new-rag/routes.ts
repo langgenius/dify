@@ -190,6 +190,9 @@ export const newKnowledgeDetailPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeDocumentsPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/documents`
 
+export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
+  `/datasets/new/${knowledgeSpaceId}/settings`
+
 export const newKnowledgeDocumentDetailPath = (knowledgeSpaceId: string, documentId: string) =>
   `/datasets/new/${knowledgeSpaceId}/documents/${documentId}`
 
