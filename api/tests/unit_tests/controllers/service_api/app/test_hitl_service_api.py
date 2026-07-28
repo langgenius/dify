@@ -27,6 +27,7 @@ from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     HumanInputRequiredResponse,
+    StreamEvent,
     WorkflowAppPausedBlockingResponse,
     WorkflowPauseStreamResponse,
 )
@@ -319,7 +320,7 @@ class TestHitlServiceApi:
         msg_generator.retrieve_events.assert_called_once_with(
             AppMode.WORKFLOW,
             "run-1",
-            terminal_events=[],
+            terminal_events=[StreamEvent.WORKFLOW_FINISHED],
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
@@ -370,6 +371,7 @@ class TestHitlServiceApi:
             session_maker=ANY,
             human_input_surface=HumanInputSurface.SERVICE_API,
             close_on_pause=False,
+            cursor=None,
         )
         snapshot_session_maker = snapshot_builder.call_args.kwargs["session_maker"]
         assert isinstance(snapshot_session_maker, sessionmaker)
@@ -455,7 +457,10 @@ class TestHitlServiceApi:
 
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
-        from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+        from core.app.apps.advanced_chat.generate_task_pipeline import (
+            AdvancedChatAppGenerateTaskPipeline,
+            MessageSnapshot,
+        )
         from models.enums import MessageStatus
         from models.model import EndUser
 
@@ -485,10 +490,10 @@ class TestHitlServiceApi:
             workflow=SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={}),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             conversation=SimpleNamespace(id="conv-id", mode=AppMode.ADVANCED_CHAT),
-            message=SimpleNamespace(
+            message=MessageSnapshot(
                 id="message-id",
                 query="hello",
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
                 status=MessageStatus.NORMAL,
                 answer="",
             ),
