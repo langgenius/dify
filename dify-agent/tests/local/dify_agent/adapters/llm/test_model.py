@@ -149,12 +149,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(set(tools_by_name), {"weather", "incident_summary"})
             self.assertEqual(tools_by_name["incident_summary"]["parameters"]["required"], ["title"])
             self.assertEqual(data["prompt_messages"][0]["role"], "system")
-            self.assertEqual(data["prompt_messages"][0]["content"], "request system")
-            self.assertEqual(data["prompt_messages"][1]["content"], "be concise")
-            self.assertEqual(data["prompt_messages"][2]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][0]["content"], "request system\n\nbe concise")
+            self.assertEqual(data["prompt_messages"][1]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][2]["role"], "tool")
             self.assertEqual(data["prompt_messages"][3]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][4]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][5]["role"], "assistant")
+            self.assertEqual(data["prompt_messages"][4]["role"], "assistant")
             return build_stream_response(
                 LLMResultChunk(
                     model="demo-model",
@@ -186,6 +185,85 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_merges_all_system_messages_into_single_leading_message(self) -> None:
+        # Regression test for https://github.com/langgenius/dify/issues/39275:
+        # providers like vLLM serving Qwen chat templates reject any system
+        # message that is not exactly the first one, so all system content
+        # (including runtime instructions) must be merged into one leading
+        # system message.
+        messages = [
+            ModelRequest(parts=[UserPromptPart("previous user")]),
+            ModelResponse(parts=[TextPart(content="previous answer")]),
+            ModelRequest(parts=[SystemPromptPart("current system"), UserPromptPart("current user")]),
+        ]
+        request_parameters = ModelRequestParameters(instruction_parts=[InstructionPart(content="runtime instruction")])
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["data"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["system", "user", "assistant", "user"],
+            )
+            self.assertEqual(prompt_messages[0]["content"], "current system\n\nruntime instruction")
+            self.assertEqual(prompt_messages[1]["content"], "previous user")
+            self.assertEqual(prompt_messages[2]["content"], "previous answer")
+            self.assertEqual(prompt_messages[3]["content"], "current user")
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=request_parameters,
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_merges_scattered_system_messages_without_instructions(self) -> None:
+        messages = [
+            ModelRequest(parts=[SystemPromptPart("first system"), UserPromptPart("hello")]),
+            ModelResponse(parts=[TextPart(content="answer")]),
+            ModelRequest(parts=[SystemPromptPart("second system"), UserPromptPart("follow up")]),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["data"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["system", "user", "assistant", "user"],
+            )
+            self.assertEqual(prompt_messages[0]["content"], "first system\n\nsecond system")
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(response.model_name, "demo-model")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
     async def test_request_accumulates_complete_plugin_usage_across_model_rounds(self) -> None:
@@ -608,7 +686,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                             content="",
                             tool_calls=[
                                 AssistantPromptMessage.ToolCall(
-                                    id=None,
+                                    id=None,  # pyright: ignore[reportArgumentType]
                                     type="function",
                                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                         name="shell_run",
@@ -627,7 +705,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                             content="",
                             tool_calls=[
                                 AssistantPromptMessage.ToolCall(
-                                    id=None,
+                                    id=None,  # pyright: ignore[reportArgumentType]
                                     type="function",
                                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                         name="shell_run",
