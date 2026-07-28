@@ -39,8 +39,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
+import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom, rbacEnabledAtom } from '@/context/system-features-state'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -80,13 +80,13 @@ export function CreateKnowledgePage() {
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const canConfigureAccess = hasPermission(
-    workspacePermissionKeys,
-    DatasetACLPermission.AccessConfig,
-  )
-  const defaultVisibility: KnowledgeVisibility = canConfigureAccess ? 'all_team_members' : 'only_me'
+  const isRbacEnabled = useAtomValue(rbacEnabledAtom)
+  const canConfigureAccess =
+    !isRbacEnabled || hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.AccessConfig)
+  const defaultVisibility: KnowledgeVisibility =
+    isRbacEnabled && canConfigureAccess ? 'all_team_members' : 'only_me'
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)

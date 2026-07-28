@@ -21,3 +21,7 @@ export const brandingEnabledAtom = atom((get) => {
 export const knowledgeFsUploadEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).knowledge_fs_upload_enabled
 })
+
+export const rbacEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).rbac_enabled
+})

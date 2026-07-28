@@ -23,13 +23,15 @@ const navigationMock = vi.hoisted(() => ({
 }))
 
 const permissionStateMock = vi.hoisted(() => ({
-  atom: Symbol('workspacePermissionKeysAtom'),
-  keys: ['dataset.create_and_management', 'dataset.acl.access_config'],
+  atom: Symbol('datasetDefaultPermissionKeysAtom'),
+  keys: ['dataset.acl.access_config'],
 }))
 
 const systemFeaturesStateMock = vi.hoisted(() => ({
-  atom: Symbol('knowledgeFsUploadEnabledAtom'),
+  uploadAtom: Symbol('knowledgeFsUploadEnabledAtom'),
+  rbacAtom: Symbol('rbacEnabledAtom'),
   uploadEnabled: true,
+  rbacEnabled: true,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -40,11 +42,12 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: permissionStateMock.atom,
+  datasetDefaultPermissionKeysAtom: permissionStateMock.atom,
 }))
 
 vi.mock('@/context/system-features-state', () => ({
-  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.atom,
+  knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.uploadAtom,
+  rbacEnabledAtom: systemFeaturesStateMock.rbacAtom,
 }))
 
 vi.mock('jotai', async (importOriginal) => {
@@ -54,9 +57,11 @@ vi.mock('jotai', async (importOriginal) => {
     useAtomValue: (atom: unknown) =>
       atom === permissionStateMock.atom
         ? permissionStateMock.keys
-        : atom === systemFeaturesStateMock.atom
+        : atom === systemFeaturesStateMock.uploadAtom
           ? systemFeaturesStateMock.uploadEnabled
-          : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
+          : atom === systemFeaturesStateMock.rbacAtom
+            ? systemFeaturesStateMock.rbacEnabled
+            : original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0]),
   }
 })
 
@@ -162,8 +167,9 @@ describe('CreateKnowledgePage', () => {
       excluded: 0,
       items: [],
     })
-    permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
+    permissionStateMock.keys = ['dataset.acl.access_config']
     systemFeaturesStateMock.uploadEnabled = true
+    systemFeaturesStateMock.rbacEnabled = true
     navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
@@ -253,9 +259,32 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
-  it('forces users without access-config permission to create a private space', async () => {
+  it('keeps the legacy private default editable when RBAC is disabled', async () => {
     const user = userEvent.setup()
-    permissionStateMock.keys = ['dataset.create_and_management']
+    permissionStateMock.keys = []
+    systemFeaturesStateMock.rbacEnabled = false
+    renderPage()
+    await fillRequiredFields(user)
+
+    const permission = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.permission',
+    })
+    expect(permission).toBeEnabled()
+    expect(permission).toHaveTextContent('dataset.newKnowledge.permissionOnlyMe')
+    expect(screen.queryByText('dataset.newKnowledge.permissionRestricted')).not.toBeInTheDocument()
+
+    await choosePermission(user, 'dataset.newKnowledge.permissionAllMembers')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({ visibility: 'all_team_members' }),
+    })
+  })
+
+  it('forces RBAC users without access-config permission to create a private space', async () => {
+    const user = userEvent.setup()
+    permissionStateMock.keys = []
     renderPage()
     await fillRequiredFields(user)
 
