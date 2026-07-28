@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -27,6 +28,8 @@ from services.errors.account import (
     CurrentPasswordIncorrectError,
     NoPermissionError,
 )
+
+type _MockDependencies = dict[str, MagicMock]
 
 
 class TestAccountAssociatedDataFactory:
@@ -111,7 +114,7 @@ class TestAccountService:
     """
 
     @pytest.fixture
-    def mock_password_dependencies(self):
+    def mock_password_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for password-related functions."""
         with (
             patch("services.account_service.compare_password") as mock_compare_password,
@@ -125,7 +128,7 @@ class TestAccountService:
             }
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_feature_service,
@@ -606,13 +609,13 @@ class TestTenantService:
     """
 
     @pytest.fixture
-    def mock_rsa_dependencies(self):
+    def mock_rsa_dependencies(self) -> Iterator[MagicMock]:
         """Mock setup for RSA-related functions."""
         with patch("services.account_service.generate_key_pair") as mock_generate_key_pair:
             yield mock_generate_key_pair
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_feature_service,
@@ -1166,13 +1169,13 @@ class TestRegisterService:
     """
 
     @pytest.fixture
-    def mock_redis_dependencies(self):
+    def mock_redis_dependencies(self) -> Iterator[MagicMock]:
         """Mock setup for Redis-related functions."""
         with patch("services.account_service.redis_client") as mock_redis:
             yield mock_redis
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[_MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.account_service.FeatureService") as mock_feature_service,
@@ -1186,7 +1189,7 @@ class TestRegisterService:
             }
 
     @pytest.fixture
-    def mock_task_dependencies(self):
+    def mock_task_dependencies(self) -> Iterator[MagicMock]:
         """Mock setup for task dependencies."""
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
             yield mock_send_mail
