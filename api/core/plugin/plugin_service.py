@@ -66,7 +66,7 @@ from services.enterprise.plugin_manager_service import (
     PreUninstallPluginRequest,
 )
 from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService, PluginInstallationScope
+from services.feature_service import FeatureService, PluginInstallationPermissionModel, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
@@ -604,22 +604,30 @@ class PluginService:
             return result
 
     @staticmethod
-    def _check_marketplace_only_permission():
+    def _check_marketplace_only_permission() -> None:
         """
         Check if the marketplace only permission is enabled
         """
-        features = FeatureService.get_system_features()
-        if features.plugin_installation_permission.restrict_to_marketplace_only:
+        permission = PluginService._get_plugin_installation_permission()
+        if permission.restrict_to_marketplace_only:
             raise PluginInstallationForbiddenError("Plugin installation is restricted to marketplace only")
 
     @staticmethod
-    def _check_plugin_installation_scope(plugin_verification: PluginVerification | None):
+    def _get_plugin_installation_permission() -> PluginInstallationPermissionModel:
+        """Resolve the validated policy and reject deny-all before any installation side effect."""
+        permission = FeatureService.get_plugin_installation_permission()
+        if permission.plugin_installation_scope == PluginInstallationScope.NONE:
+            raise PluginInstallationForbiddenError("Installing plugins is not allowed")
+        return permission
+
+    @staticmethod
+    def _check_plugin_installation_scope(plugin_verification: PluginVerification | None) -> None:
         """
         Check the plugin installation scope
         """
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
-        match features.plugin_installation_permission.plugin_installation_scope:
+        match permission.plugin_installation_scope:
             case PluginInstallationScope.OFFICIAL_ONLY:
                 if (
                     plugin_verification is None
@@ -634,10 +642,10 @@ class PluginService:
                     raise PluginInstallationForbiddenError(
                         "Plugin installation is restricted to official and specific partners"
                     )
-            case PluginInstallationScope.NONE:
-                raise PluginInstallationForbiddenError("Installing plugins is not allowed")
             case PluginInstallationScope.ALL:
                 pass
+            case _:
+                raise PluginInstallationForbiddenError("Plugin installation policy is invalid")
 
     @staticmethod
     def get_debugging_key(tenant_id: str) -> str:
@@ -907,7 +915,7 @@ class PluginService:
         # check if plugin pkg is already downloaded
         manager = PluginInstaller()
 
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
@@ -919,7 +927,7 @@ class PluginService:
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
-                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                verify_signature=permission.restrict_to_marketplace_only,
             )
 
             # check if the plugin is available to install
@@ -974,11 +982,11 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            verify_signature=permission.restrict_to_marketplace_only,
         )
         PluginService._check_plugin_installation_scope(response.verification)
 
@@ -996,13 +1004,13 @@ class PluginService:
         pkg = download_with_size_limit(
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            verify_signature=permission.restrict_to_marketplace_only,
         )
         PluginService._check_plugin_installation_scope(response.verification)
 
@@ -1076,7 +1084,7 @@ class PluginService:
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
         try:
@@ -1086,7 +1094,7 @@ class PluginService:
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
-                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                verify_signature=permission.restrict_to_marketplace_only,
             )
             # check if the plugin is available to install
             PluginService._check_plugin_installation_scope(response.verification)
@@ -1108,7 +1116,7 @@ class PluginService:
         # collect actual plugin_unique_identifiers
         actual_plugin_unique_identifiers = []
         metas = []
-        features = FeatureService.get_system_features()
+        permission = PluginService._get_plugin_installation_permission()
 
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
@@ -1126,7 +1134,7 @@ class PluginService:
                 response = manager.upload_pkg(
                     tenant_id,
                     pkg,
-                    verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                    verify_signature=permission.restrict_to_marketplace_only,
                 )
                 # check if the plugin is available to install
                 PluginService._check_plugin_installation_scope(response.verification)
