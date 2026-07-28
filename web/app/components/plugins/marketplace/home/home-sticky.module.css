@@ -6,6 +6,22 @@
   display: flex;
 }
 
+.marketplaceLogoLight {
+  display: block;
+}
+
+.marketplaceLogoDark {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .marketplaceLogoLight {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .marketplaceLogoDark {
+  display: block;
+}
+
 .search {
   top: 6px;
 }
@@ -53,15 +69,5 @@
   .search {
     position: relative;
     top: auto;
-  }
-}
-
-@media (max-width: 559px) {
-  .brand {
-    width: 39px;
-  }
-
-  .brandName {
-    display: none;
   }
 }
