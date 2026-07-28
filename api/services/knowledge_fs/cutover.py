@@ -397,6 +397,17 @@ _CUTOVER_QUARANTINE_KINDS = (
 )
 _DEFAULT_TRUSTED_SHADOW_PRODUCERS = frozenset({"dify-shadow-authorizer"})
 _DEFAULT_TRUSTED_SHADOW_OPERATORS = frozenset({"knowledge-fs-cutover"})
+_ZERO_REVISION_WATERMARK: KnowledgeFSCutoverRevisionWatermark = {
+    "membership_epoch": 0,
+    "space_acl_epoch": 0,
+    "external_access_epoch": 0,
+    "content_policy_revision": 0,
+}
+
+
+class _ActivationAnchor(NamedTuple):
+    control_space_id: str
+    greenfield: bool
 
 
 class KnowledgeFSWorkspaceCutoverService:
@@ -1094,8 +1105,8 @@ class KnowledgeFSWorkspaceCutoverService:
             self._assert_no_unresolved_quarantine(repository, ledger)
             if not ledger.legacy_dependency_ready or ledger.legacy_dependency_checked_at is None:
                 raise KnowledgeFSCutoverGateBlockedError("Legacy snapshot/FK dependency dashboard is not ready")
-            control_space = self._require_activation_control_space(session, tenant_id=tenant_id)
-            freeze_request = _freeze_request(ledger, control_space_id=control_space.id)
+            anchor = self._require_activation_anchor(session, ledger=ledger)
+            freeze_request = _freeze_request(ledger, control_space_id=anchor.control_space_id)
 
         if self._remote_factory is None:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze is not configured")
@@ -1105,10 +1116,22 @@ class KnowledgeFSWorkspaceCutoverService:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze is not configured") from exc
         if remote is None:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze is not configured")
+        if anchor.greenfield:
+            self._assert_remote_greenfield_namespace_empty(
+                remote,
+                tenant_id=tenant_id,
+                control_space_id=anchor.control_space_id,
+            )
         try:
             raw_ack = remote.freeze_dify_workspace_integration(freeze_request)
         except KnowledgeFSLifecycleRemoteError as exc:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze was not acknowledged") from exc
+        if anchor.greenfield:
+            self._assert_remote_greenfield_namespace_empty(
+                remote,
+                tenant_id=tenant_id,
+                control_space_id=anchor.control_space_id,
+            )
         try:
             ack = (
                 raw_ack
@@ -1129,12 +1152,12 @@ class KnowledgeFSWorkspaceCutoverService:
             self._assert_no_unresolved_quarantine(repository, ledger)
             if not ledger.legacy_dependency_ready or ledger.legacy_dependency_checked_at is None:
                 raise KnowledgeFSCutoverGateBlockedError("Legacy snapshot/FK dependency dashboard is not ready")
-            control_space = self._require_activation_control_space(
+            anchor = self._require_activation_anchor(
                 session,
-                tenant_id=tenant_id,
+                ledger=ledger,
                 control_space_id=freeze_request.control_space_id,
             )
-            if _freeze_request(ledger, control_space_id=control_space.id) != freeze_request:
+            if _freeze_request(ledger, control_space_id=anchor.control_space_id) != freeze_request:
                 raise KnowledgeFSCutoverConflictError("Freeze evidence changed after remote acknowledgement")
             self._cas(
                 repository,
@@ -1148,7 +1171,7 @@ class KnowledgeFSWorkspaceCutoverService:
                     remote_freeze_revision=ack.freeze_revision,
                     remote_freeze_digest=ack.source_revision_digest,
                     remote_freeze_task_watermark=ack.source_task_watermark,
-                    remote_freeze_control_space_id=control_space.id,
+                    remote_freeze_control_space_id=anchor.control_space_id,
                     remote_freeze_frozen_at=_naive_utc(ack.frozen_at),
                     remote_freeze_updated_at=_naive_utc(ack.updated_at),
                     remote_freeze_acknowledged_at=acknowledged_at,
@@ -1204,8 +1227,8 @@ class KnowledgeFSWorkspaceCutoverService:
             repository = SQLAlchemyKnowledgeFSCutoverRepository(session)
             ledger = self._require_ledger(repository, tenant_id)
             self._assert_cutover_ready(repository, ledger, expected_cas_version)
-            control_space = self._require_activation_control_space(session, tenant_id=tenant_id)
-            activation_request = _activation_request(ledger, control_space_id=control_space.id)
+            anchor = self._require_activation_anchor(session, ledger=ledger)
+            activation_request = _activation_request(ledger, control_space_id=anchor.control_space_id)
 
         if self._remote_factory is None:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote activation is not configured")
@@ -1238,12 +1261,12 @@ class KnowledgeFSWorkspaceCutoverService:
             repository = SQLAlchemyKnowledgeFSCutoverRepository(session)
             ledger = self._require_ledger(repository, tenant_id)
             self._assert_cutover_ready(repository, ledger, expected_cas_version)
-            control_space = self._require_activation_control_space(
+            anchor = self._require_activation_anchor(
                 session,
-                tenant_id=tenant_id,
+                ledger=ledger,
                 control_space_id=activation_request.control_space_id,
             )
-            if _activation_request(ledger, control_space_id=control_space.id) != activation_request:
+            if _activation_request(ledger, control_space_id=anchor.control_space_id) != activation_request:
                 raise KnowledgeFSCutoverConflictError(
                     "Cutover activation evidence changed after remote acknowledgement"
                 )
@@ -1264,7 +1287,7 @@ class KnowledgeFSWorkspaceCutoverService:
                     remote_activation_id=ack.activation_id,
                     remote_activation_revision=ack.activation_revision,
                     remote_activation_digest=ack.source_revision_digest,
-                    remote_activation_control_space_id=control_space.id,
+                    remote_activation_control_space_id=anchor.control_space_id,
                     remote_activation_activated_at=_naive_utc(ack.activated_at),
                     remote_activation_updated_at=_naive_utc(ack.updated_at),
                     remote_activation_acknowledged_at=acknowledged_at,
@@ -2192,12 +2215,13 @@ class KnowledgeFSWorkspaceCutoverService:
             raise KnowledgeFSCutoverGateBlockedError("Final delta watermarks are not fully applied")
 
     @staticmethod
-    def _require_activation_control_space(
+    def _require_activation_anchor(
         session: Session,
         *,
-        tenant_id: str,
+        ledger: KnowledgeFSWorkspaceCutoverLedger,
         control_space_id: str | None = None,
-    ) -> KnowledgeFSControlSpace:
+    ) -> _ActivationAnchor:
+        tenant_id = ledger.tenant_id
         statement = sa.select(KnowledgeFSControlSpace).where(
             KnowledgeFSControlSpace.tenant_id == tenant_id,
             KnowledgeFSControlSpace.state == KnowledgeFSControlSpaceState.ACTIVE,
@@ -2208,11 +2232,42 @@ class KnowledgeFSWorkspaceCutoverService:
         control_space = session.scalar(
             statement.order_by(KnowledgeFSControlSpace.created_at, KnowledgeFSControlSpace.id).limit(1)
         )
-        if control_space is None:
-            raise KnowledgeFSCutoverGateBlockedError(
-                "A tenant-owned active control-space is required for activation audit"
+        if control_space is not None:
+            return _ActivationAnchor(control_space.id, False)
+
+        greenfield_anchor = _greenfield_activation_anchor_id(tenant_id)
+        has_local_control_space = session.scalar(
+            sa.select(sa.literal(True))
+            .select_from(KnowledgeFSControlSpace)
+            .where(KnowledgeFSControlSpace.tenant_id == tenant_id)
+            .limit(1)
+        )
+        if (
+            not has_local_control_space
+            and _is_zero_space_cutover_ledger(ledger)
+            and control_space_id in {None, greenfield_anchor}
+        ):
+            return _ActivationAnchor(greenfield_anchor, True)
+        raise KnowledgeFSCutoverGateBlockedError("A tenant-owned active control-space is required for activation audit")
+
+    @staticmethod
+    def _assert_remote_greenfield_namespace_empty(
+        remote: KnowledgeFSLifecycleRemotePort,
+        *,
+        tenant_id: str,
+        control_space_id: str,
+    ) -> None:
+        try:
+            spaces = remote.list_spaces(
+                namespace_id=tenant_id,
+                control_space_id=control_space_id,
             )
-        return control_space
+        except KnowledgeFSLifecycleRemoteError as exc:
+            raise KnowledgeFSCutoverGateBlockedError(
+                "KnowledgeFS greenfield remote namespace could not be verified"
+            ) from exc
+        if spaces:
+            raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS greenfield remote namespace is not empty")
 
     @staticmethod
     def _assert_no_unresolved_quarantine(
@@ -2303,6 +2358,21 @@ def _shadow_traffic_zero_digest(payload: ShadowCompletionInput) -> str:
         separators=(",", ":"),
     ).encode()
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+
+
+def _greenfield_activation_anchor_id(tenant_id: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"dify-kfs-greenfield-activation:{tenant_id}"))
+
+
+def _is_zero_space_cutover_ledger(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:
+    return bool(
+        ledger.source_revision_watermark == _ZERO_REVISION_WATERMARK
+        and ledger.applied_revision_watermark == _ZERO_REVISION_WATERMARK
+        and ledger.source_task_watermark == 0
+        and ledger.applied_task_watermark == 0
+        and (ledger.final_revision_watermark is None or ledger.final_revision_watermark == _ZERO_REVISION_WATERMARK)
+        and ledger.final_task_watermark in {None, 0}
+    )
 
 
 def _revision_digest(revision: KnowledgeFSCutoverRevisionWatermark) -> str:

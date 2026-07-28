@@ -55,6 +55,7 @@ from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSDifyIntegrationFreezeRequest,
     KnowledgeFSLifecycleRemoteError,
     KnowledgeFSLifecycleRemotePort,
+    KnowledgeFSRemoteSpace,
 )
 
 _MODELS = (
@@ -92,6 +93,8 @@ class FakeActivationRemote:
         self.states: dict[str, KnowledgeFSDifyIntegrationActivationRequest] = {}
         self.freeze_requests: list[KnowledgeFSDifyIntegrationFreezeRequest] = []
         self.freeze_states: dict[str, KnowledgeFSDifyIntegrationFreezeRequest] = {}
+        self.list_requests: list[tuple[str, str]] = []
+        self.spaces: tuple[KnowledgeFSRemoteSpace, ...] = ()
         self.freeze_fail_after_persist = False
         self.freeze_response_override: object | None = None
         self.freeze_mismatch_ack = False
@@ -163,6 +166,15 @@ class FakeActivationRemote:
             applied=not replayed,
             replayed=replayed,
         )
+
+    def list_spaces(
+        self,
+        *,
+        namespace_id: str,
+        control_space_id: str,
+    ) -> tuple[KnowledgeFSRemoteSpace, ...]:
+        self.list_requests.append((namespace_id, control_space_id))
+        return tuple(space for space in self.spaces if space.namespace_id == namespace_id)
 
 
 def _service_with_remote(
@@ -248,6 +260,22 @@ def _inventory(
                     "tasks": tasks,
                 }
             ],
+        }
+    )
+
+
+def _empty_inventory(*, tenant_id: str | None = None) -> WorkspaceInventoryInput:
+    return WorkspaceInventoryInput.model_validate(
+        {
+            "tenant_id": tenant_id or str(uuid4()),
+            "source_revision_watermark": {
+                "membership_epoch": 0,
+                "space_acl_epoch": 0,
+                "external_access_epoch": 0,
+                "content_policy_revision": 0,
+            },
+            "task_watermark": 0,
+            "spaces": [],
         }
     )
 
@@ -377,6 +405,107 @@ def _advance_to_cutover(service: KnowledgeFSWorkspaceCutoverService, payload: Wo
         rollback_cutoff_at=_BASE_TIME + timedelta(days=2),
     )
     return tenant_id
+
+
+def test_empty_workspace_uses_a_stable_greenfield_anchor_for_remote_freeze_and_activation(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    _, session_maker = cutover_context
+    remote = FakeActivationRemote()
+    service = _service_with_remote(session_maker, remote)
+    payload = _empty_inventory()
+    tenant_id = str(payload.tenant_id)
+
+    service.inventory(payload, apply=True)
+    service.backfill(payload, apply=True)
+    service.begin_shadow(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        started_at=_BASE_TIME,
+    )
+    service.complete_shadow(_shadow_completion(service, tenant_id, traffic_zero=True), apply=True)
+    service.legacy_dependency_dashboard(
+        tenant_id=tenant_id,
+        dependencies=(),
+        expected_cas_version=_cas(service, tenant_id),
+        checked_at=_BASE_TIME,
+        apply=True,
+    )
+    service.freeze(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        freeze_at=_BASE_TIME + timedelta(minutes=1),
+    )
+    service.apply_final_delta(
+        FinalDeltaInput.model_validate(
+            {
+                "tenant_id": tenant_id,
+                "expected_cas_version": _cas(service, tenant_id),
+                "final_revision_watermark": payload.source_revision_watermark,
+                "applied_revision_watermark": payload.source_revision_watermark,
+                "final_task_watermark": 0,
+                "applied_task_watermark": 0,
+            }
+        )
+    )
+    ledger = service.cutover(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        cutover_at=_BASE_TIME + timedelta(minutes=2),
+        rollback_cutoff_at=_BASE_TIME + timedelta(days=2),
+    )
+
+    assert len(remote.list_requests) == 2
+    assert remote.freeze_requests[0].control_space_id == remote.requests[0].control_space_id
+    assert remote.list_requests == [
+        (tenant_id, remote.freeze_requests[0].control_space_id),
+        (tenant_id, remote.freeze_requests[0].control_space_id),
+    ]
+    assert UUID(remote.freeze_requests[0].control_space_id)
+    assert ledger.phase is KnowledgeFSWorkspaceCutoverPhase.CUTOVER
+    assert ledger.product_routes_enabled is True
+
+
+def test_empty_workspace_freeze_rejects_a_nonempty_remote_namespace(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    _, session_maker = cutover_context
+    remote = FakeActivationRemote()
+    service = _service_with_remote(session_maker, remote)
+    payload = _empty_inventory()
+    tenant_id = str(payload.tenant_id)
+    remote.spaces = (
+        KnowledgeFSRemoteSpace(
+            namespace_id=tenant_id,
+            knowledge_space_id=str(uuid4()),
+            provisioning_key=f"legacy:{tenant_id}:space",
+            revision=1,
+        ),
+    )
+
+    service.inventory(payload, apply=True)
+    service.backfill(payload, apply=True)
+    service.begin_shadow(
+        tenant_id=tenant_id,
+        expected_cas_version=_cas(service, tenant_id),
+        started_at=_BASE_TIME,
+    )
+    service.complete_shadow(_shadow_completion(service, tenant_id, traffic_zero=True), apply=True)
+    service.legacy_dependency_dashboard(
+        tenant_id=tenant_id,
+        dependencies=(),
+        expected_cas_version=_cas(service, tenant_id),
+        checked_at=_BASE_TIME,
+        apply=True,
+    )
+
+    with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="remote namespace is not empty"):
+        service.freeze(
+            tenant_id=tenant_id,
+            expected_cas_version=_cas(service, tenant_id),
+            freeze_at=_BASE_TIME + timedelta(minutes=1),
+        )
+    assert remote.freeze_requests == []
 
 
 def _quarantine_resolution(
