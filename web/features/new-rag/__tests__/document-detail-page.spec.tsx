@@ -477,9 +477,7 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.reindexDocument' }),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
   })
 
   it('does not construct a chunks request while the document is loading', () => {

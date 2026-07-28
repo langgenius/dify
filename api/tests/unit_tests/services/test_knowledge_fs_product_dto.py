@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -14,7 +16,30 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSSourceListQuery,
     KnowledgeFSSourceWorkflowImportPayload,
+    KnowledgeFSSpaceListItemResponse,
 )
+
+
+def test_space_list_item_serializes_naive_database_timestamps_as_utc() -> None:
+    response = KnowledgeFSSpaceListItemResponse.model_validate(
+        {
+            "control_space_id": "control-space-1",
+            "created_at": datetime(2026, 7, 28, 6, 58, 18),
+            "knowledge_space_id": "knowledge-space-1",
+            "owner_account_id": "account-1",
+            "permission_keys": ["knowledge_space_read"],
+            "resource_version": 1,
+            "state": "active",
+            "technical_status": "available",
+            "updated_at": datetime(2026, 7, 28, 6, 59, 16),
+            "visibility": "only_me",
+        }
+    )
+
+    payload = response.model_dump(mode="json")
+
+    assert payload["created_at"] == "2026-07-28T06:58:18Z"
+    assert payload["updated_at"] == "2026-07-28T06:59:16Z"
 
 
 def test_background_task_dtos_accept_the_knowledge_fs_wire_shape() -> None:

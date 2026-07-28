@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
 from fields.base import ResponseModel
 from models.knowledge_fs import (
@@ -368,6 +368,13 @@ class KnowledgeFSSpaceListItemResponse(ResponseModel):
     technical_status: Literal["available", "not_ready", "unavailable"]
     technical_summary: KnowledgeFSTechnicalSummary | None = None
     updated_at: datetime
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def normalize_control_space_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
 
 class KnowledgeFSSpaceListResponse(ResponseModel):

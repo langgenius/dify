@@ -61,7 +61,7 @@ export function DocumentActionsDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" className="gap-2 px-3" onClick={unavailable}>
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          {t(($) => $['newKnowledge.removeSource'])}
+          {tCommon(($) => $['operation.delete'])}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

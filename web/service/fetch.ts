@@ -203,7 +203,7 @@ async function base<T>(
 
   let res: Response
   try {
-    res = await client(request || fetchPathname, {
+    res = await client(request ? request.clone() : fetchPathname, {
       ...init,
       headers,
       credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',

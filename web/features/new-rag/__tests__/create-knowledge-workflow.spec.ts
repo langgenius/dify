@@ -95,32 +95,45 @@ describe('createKnowledge', () => {
     })
   })
 
-  it('requires both default models before creating the control space', async () => {
-    serviceMock.getDefaultModel.mockImplementation(
-      ({ query }: { query: { model_type: 'llm' | 'text-embedding' } }) =>
-        Promise.resolve(
-          query.model_type === 'llm'
-            ? {
-                data: {
-                  model: 'reasoning-model',
-                  provider: { provider: 'langgenius/openai/openai' },
-                },
-              }
-            : { data: null },
-        ),
-    )
+  it.each(['text-embedding', 'llm'] as const)(
+    'requires the default %s model before creating the control space',
+    async (missingModelType) => {
+      serviceMock.getDefaultModel.mockImplementation(
+        ({ query }: { query: { model_type: 'llm' | 'text-embedding' } }) =>
+          Promise.resolve(
+            query.model_type !== missingModelType
+              ? {
+                  data:
+                    query.model_type === 'llm'
+                      ? {
+                          model: 'reasoning-model',
+                          provider: { provider: 'langgenius/openai/openai' },
+                        }
+                      : {
+                          model: 'embedding-model',
+                          provider: { provider: 'langgenius/cohere/cohere' },
+                        },
+                }
+              : { data: null },
+          ),
+      )
 
-    await expect(
-      createKnowledge({
-        description: '',
-        idempotencyKey: '22222222-2222-4222-8222-222222222222',
-        name: '知识库',
-        onCreated: vi.fn(),
-        visibility: 'only_me',
-      }),
-    ).rejects.toMatchObject({ name: 'KnowledgeCreationError', stage: 'preflight' })
-    expect(serviceMock.createSpace).not.toHaveBeenCalled()
-  })
+      await expect(
+        createKnowledge({
+          description: '',
+          idempotencyKey: '22222222-2222-4222-8222-222222222222',
+          name: '知识库',
+          onCreated: vi.fn(),
+          visibility: 'only_me',
+        }),
+      ).rejects.toMatchObject({
+        name: 'KnowledgeCreationError',
+        reason: 'defaultModelsRequired',
+        stage: 'preflight',
+      })
+      expect(serviceMock.createSpace).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('isDefinitiveCreationRejection', () => {

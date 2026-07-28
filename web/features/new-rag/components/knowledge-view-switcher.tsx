@@ -1,13 +1,13 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
-  PopoverClose,
   PopoverContent,
   PopoverDescription,
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { useIsClient } from 'foxact/use-is-client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -24,8 +24,9 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   const { t } = useTranslation('dataset')
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
+  const isClient = useIsClient()
   const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
-  const guideOpen = guideOpenOverride ?? !guideDismissed
+  const guideOpen = isClient && (guideOpenOverride ?? !guideDismissed)
 
   const dismissGuide = () => {
     setGuideDismissed(true)
@@ -96,12 +97,9 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
               >
                 {t(($) => $['newKnowledge.learnMore'])}
               </a>
-              <PopoverClose
-                render={<Button variant="primary" size="small" />}
-                onClick={dismissGuide}
-              >
+              <Button variant="primary" size="small" onClick={dismissGuide}>
                 {t(($) => $['newKnowledge.gotIt'])}
-              </PopoverClose>
+              </Button>
             </div>
           </div>
         </PopoverContent>

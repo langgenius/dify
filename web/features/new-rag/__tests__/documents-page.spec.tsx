@@ -699,7 +699,7 @@ describe('DocumentsPage', () => {
     expect(rowMenuItems[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
     expect(rowMenuItems[3]).toHaveAccessibleName('dataset.batchAction.archive')
     expect(rowMenuItems[4]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
-    expect(rowMenuItems[5]).toHaveAccessibleName('dataset.newKnowledge.removeSource')
+    expect(rowMenuItems[5]).toHaveAccessibleName('common.operation.delete')
     await user.click(
       screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
     )
@@ -3670,6 +3670,53 @@ describe('DocumentsPage', () => {
           name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
         }),
       ).toHaveTextContent('1'),
+    )
+  })
+
+  it('refreshes logical documents when task-list polling reports a terminal state', async () => {
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              active: null,
+              activeRevision: undefined,
+              status: 'pending',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [{ items: [task({ id: 'polled-terminal', state: 'queued' })] }],
+    }
+
+    const { rerender } = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByText('dataset.newKnowledge.documentStatus.queued')).toBeInTheDocument()
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
+
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'polled-terminal',
+              progressPercent: 100,
+              state: 'succeeded',
+              updatedAt: '2026-07-20T10:06:00Z',
+            }),
+          ],
+        },
+      ],
+    }
+    rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: ['knowledge-fs', 'documents'],
+        }),
+      ),
     )
   })
 

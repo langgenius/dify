@@ -335,7 +335,10 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'common.modelProvider.noneConfigured',
+    )
+    expect(screen.getByRole('alert')).not.toHaveTextContent('dataset.newKnowledge.createFailed')
     const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
     expect(nameInput).toBeEnabled()
     expect(serviceMock.create).not.toHaveBeenCalled()
@@ -364,6 +367,19 @@ describe('CreateKnowledgePage', () => {
         name: 'Updated handbook',
       }),
     })
+  })
+
+  it('keeps the generic error when loading default models fails', async () => {
+    const user = userEvent.setup()
+    serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
+    renderPage()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('common.modelProvider.noneConfigured')
+    expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
   it.each([400, 401, 403, 422])(

@@ -25,12 +25,18 @@ type CreateKnowledgeValues = {
 
 export class KnowledgeCreationError extends Error {
   readonly originalError: unknown
+  readonly reason?: 'defaultModelsRequired'
   readonly stage: 'preflight' | 'request'
 
-  constructor(originalError: unknown, stage: 'preflight' | 'request') {
+  constructor(
+    originalError: unknown,
+    stage: 'preflight' | 'request',
+    reason?: 'defaultModelsRequired',
+  ) {
     super('Knowledge creation failed')
     this.name = 'KnowledgeCreationError'
     this.originalError = originalError
+    this.reason = reason
     this.stage = stage
   }
 }
@@ -76,8 +82,13 @@ async function defaultModelConfiguration(): Promise<
     getDefaultModelSelection('text-embedding'),
     getDefaultModelSelection('llm'),
   ])
-  if (!embedding) throw new Error('A default embedding model is required')
-  if (!reasoningModel) throw new Error('A default reasoning model is required')
+  if (!embedding || !reasoningModel) {
+    throw new KnowledgeCreationError(
+      new Error('Default embedding and reasoning models are required'),
+      'preflight',
+      'defaultModelsRequired',
+    )
+  }
 
   return {
     embedding,
@@ -114,6 +125,7 @@ export async function createKnowledge(
     try {
       modelConfiguration = await defaultModelConfiguration()
     } catch (error) {
+      if (error instanceof KnowledgeCreationError) throw error
       throw new KnowledgeCreationError(error, 'preflight')
     }
     try {

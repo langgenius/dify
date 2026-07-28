@@ -238,6 +238,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const taskEventCursorsRef = useRef(new Map<string, string>())
+  const listedBackgroundTaskStatesRef = useRef<{
+    knowledgeSpaceId: string
+    states: Map<string, string>
+  }>({
+    knowledgeSpaceId,
+    states: new Map(),
+  })
   const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
   const trustedActiveOverrideVersionsRef = useRef(new Map<string, TrustedActiveOverride>())
   const trustedOverrideListGenerationsRef = useRef(new Map<string, number>())
@@ -994,6 +1001,32 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
     })
   }, [knowledgeSpaceId, queryClient])
+
+  useEffect(() => {
+    const previousStates =
+      listedBackgroundTaskStatesRef.current.knowledgeSpaceId === knowledgeSpaceId
+        ? listedBackgroundTaskStatesRef.current.states
+        : new Map<string, string>()
+    const states = new Map<string, string>()
+    let documentTaskReachedTerminal = false
+
+    for (const page of tasksQuery.data?.pages ?? []) {
+      for (const task of page.data) {
+        states.set(task.id, task.state)
+        const previousState = previousStates.get(task.id)
+        if (
+          (previousState === 'queued' || previousState === 'running') &&
+          task.state !== 'queued' &&
+          task.state !== 'running' &&
+          (task.task_kind === 'document' || task.task_kind === 'document_bulk')
+        )
+          documentTaskReachedTerminal = true
+      }
+    }
+
+    listedBackgroundTaskStatesRef.current = { knowledgeSpaceId, states }
+    if (documentTaskReachedTerminal) refreshDocuments()
+  }, [knowledgeSpaceId, refreshDocuments, tasksQuery.data])
 
   const refreshDocumentsAndTasks = useCallback(() => {
     void Promise.allSettled([

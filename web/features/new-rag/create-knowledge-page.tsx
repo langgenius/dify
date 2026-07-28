@@ -113,6 +113,11 @@ export function CreateKnowledgePage() {
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading
+  const createErrorMessage =
+    createMutation.error instanceof KnowledgeCreationError &&
+    createMutation.error.reason === 'defaultModelsRequired'
+      ? tCommon(($) => $['modelProvider.noneConfigured'])
+      : t(($) => $['newKnowledge.createFailed'])
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
@@ -529,7 +534,7 @@ export function CreateKnowledgePage() {
                     className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
                     role="alert"
                   >
-                    {t(($) => $['newKnowledge.createFailed'])}
+                    {createErrorMessage}
                   </div>
                 )}
                 {uploadError && (
