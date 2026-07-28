@@ -2648,20 +2648,26 @@ class TestSessionInjectedGetters:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    def test_get_account_by_id_uses_passed_session_no_side_effects(self, sqlite_session: Session) -> None:
+    def test_get_account_by_id_uses_passed_session_no_side_effects(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """``get_account_by_id`` must be a plain delegation to
         ``session.get(Account, ...)`` — no banned-status raise, no
         commit (those are the side-effects of ``load_user`` we
         explicitly want to skip).
         """
-        account = Account(name="Alice", email="alice@example.com", status=AccountStatus.BANNED)
-        sqlite_session.add(account)
-        sqlite_session.commit()
+        with sqlite_session_factory.begin() as arrange_session:
+            account = Account(name="Alice", email="alice@example.com", status=AccountStatus.BANNED)
+            arrange_session.add(account)
+            arrange_session.flush()
+            account_id = account.id
 
-        result = AccountService.get_account_by_id(account.id, session=sqlite_session)
+        with sqlite_session_factory() as service_session:
+            result = AccountService.get_account_by_id(account_id, session=service_session)
 
-        assert result is account
-        assert account.status == AccountStatus.BANNED
+            assert result is not None
+            assert result.id == account_id
+            assert result.status == AccountStatus.BANNED
 
     def test_get_account_by_id_returns_none_for_unknown_account(self, sqlite_session: Session) -> None:
         assert AccountService.get_account_by_id("missing", session=sqlite_session) is None
@@ -2730,16 +2736,22 @@ class TestSessionInjectedGetters:
 
         assert [(row[0], row[1]) for row in out] == [(older_tenant, older_join), (newer_tenant, newer_join)]
 
-    def test_get_tenant_by_id_is_plain_session_get(self, sqlite_session: Session) -> None:
+    def test_get_tenant_by_id_is_plain_session_get(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """``get_tenant_by_id`` must NOT apply a status filter — the
         openapi auth pipeline needs to map ``status == ARCHIVE`` to a
         403, distinct from a 404 for "missing".
         """
-        tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
-        sqlite_session.add(tenant)
-        sqlite_session.commit()
+        with sqlite_session_factory.begin() as arrange_session:
+            tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
+            arrange_session.add(tenant)
+            arrange_session.flush()
+            tenant_id = tenant.id
 
-        assert TenantService.get_tenant_by_id(tenant.id, session=sqlite_session) is tenant
+        with sqlite_session_factory() as service_session:
+            result = TenantService.get_tenant_by_id(tenant_id, session=service_session)
+            assert result is not None
+            assert result.id == tenant_id
+            assert result.status == TenantStatus.ARCHIVE
 
     def test_get_tenant_by_id_returns_none_when_missing(self, sqlite_session: Session) -> None:
         assert TenantService.get_tenant_by_id("missing", session=sqlite_session) is None
