@@ -20,6 +20,7 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.schemas import RunRecord
+from dify_agent.storage.redis_run_store import IdempotencyConflictError
 
 
 def _request(
@@ -60,12 +61,14 @@ class FakeStore:
     events: dict[str, list[RunEvent]]
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
+    claims: dict[str, tuple[str, str]]
 
     def __init__(self) -> None:
         self.records = {}
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
+        self.claims = {}
 
     async def create_run(self) -> RunRecord:
         run_id = f"run-{len(self.records) + 1}"
@@ -73,6 +76,17 @@ class FakeStore:
         self.records[run_id] = record
         self.statuses[run_id] = "running"
         return record
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        claim = self.claims.get(idempotency_key)
+        if claim is None:
+            record = await self.create_run()
+            self.claims[idempotency_key] = (record.run_id, request_fingerprint)
+            return record, True
+        run_id, fingerprint = claim
+        if fingerprint != request_fingerprint:
+            raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+        return await self.get_run(run_id), False
 
     async def append_event(self, event: RunEvent) -> str:
         event_id = str(len(self.events[event.run_id]) + 1)
@@ -417,5 +431,101 @@ def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> 
 
             with pytest.raises(SchedulerStoppingError):
                 await scheduler.create_run(_request())
+
+    asyncio.run(scenario())
+
+
+def test_create_run_replay_with_same_idempotency_key_returns_original_without_new_task() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+            )
+            request = _request().model_copy(update={"idempotency_key": "key-1"})
+
+            first = await scheduler.create_run(request)
+            await asyncio.wait_for(started.wait(), timeout=1)
+            replay = await scheduler.create_run(request)
+
+            assert replay.run_id == first.run_id
+            assert replay.status == "running"
+            assert list(scheduler.active_tasks) == [first.run_id]
+            assert len(store.records) == 1
+            _ = release.set()
+            await asyncio.wait_for(scheduler.active_tasks[first.run_id], timeout=1)
+
+    asyncio.run(scenario())
+
+
+def test_create_run_replay_normalizes_request_before_fingerprinting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=asyncio.Event(), release=release),
+            )
+            first = await scheduler.create_run(
+                _request().model_copy(update={"idempotency_key": "key-1", "metadata": {"a": 1, "b": 2}})
+            )
+            replay = await scheduler.create_run(
+                _request().model_copy(update={"idempotency_key": "key-1", "metadata": {"b": 2, "a": 1}})
+            )
+
+            assert replay.run_id == first.run_id
+            assert len(store.records) == 1
+            _ = release.set()
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_same_idempotency_key_with_different_request() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=asyncio.Event(), release=release),
+            )
+            _ = await scheduler.create_run(_request().model_copy(update={"idempotency_key": "key-1"}))
+
+            with pytest.raises(IdempotencyConflictError, match="different create-run request"):
+                _ = await scheduler.create_run(_request("other").model_copy(update={"idempotency_key": "key-1"}))
+
+            assert len(store.records) == 1
+            _ = release.set()
+
+    asyncio.run(scenario())
+
+
+def test_create_run_with_different_idempotency_keys_schedules_separate_runs() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=asyncio.Event(), release=release),
+            )
+            first = await scheduler.create_run(_request().model_copy(update={"idempotency_key": "key-1"}))
+            second = await scheduler.create_run(_request().model_copy(update={"idempotency_key": "key-2"}))
+
+            assert first.run_id != second.run_id
+            assert len(store.records) == 2
+            _ = release.set()
 
     asyncio.run(scenario())
