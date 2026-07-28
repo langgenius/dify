@@ -268,7 +268,7 @@ class TestAccountService:
         assert persisted_account is result
         assert persisted_account.timezone == "Asia/Shanghai"
 
-    def test_create_account_registration_disabled(self, sqlite_session: Session, mock_external_service_dependencies):
+    def test_create_account_registration_disabled(self, unbound_session: Session, mock_external_service_dependencies):
         """Test account creation when registration is disabled."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = False
@@ -279,10 +279,10 @@ class TestAccountService:
                 email="test@example.com",
                 name="Test User",
                 interface_language="en-US",
-                session=sqlite_session,
+                session=unbound_session,
             )
 
-    def test_create_account_email_frozen(self, sqlite_session: Session, mock_external_service_dependencies):
+    def test_create_account_email_frozen(self, unbound_session: Session, mock_external_service_dependencies):
         """Test account creation with frozen email address."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
@@ -293,7 +293,7 @@ class TestAccountService:
                     email="frozen@example.com",
                     name="Test User",
                     interface_language="en-US",
-                    session=sqlite_session,
+                    session=unbound_session,
                 )
 
     def test_create_account_without_password(self, sqlite_session: Session, mock_external_service_dependencies):
@@ -357,7 +357,7 @@ class TestAccountService:
         # Verify database operations
 
     def test_update_account_password_current_password_incorrect(
-        self, sqlite_session: Session, mock_password_dependencies
+        self, unbound_session: Session, mock_password_dependencies
     ):
         """Test password update with incorrect current password."""
         # Setup test data
@@ -375,7 +375,7 @@ class TestAccountService:
                 mock_account,
                 "wrong_password",
                 "new_password123",
-                session=sqlite_session,
+                session=unbound_session,
             )
 
         # Verify password comparison was called
@@ -383,7 +383,7 @@ class TestAccountService:
             "wrong_password", "hashed_password", "salt"
         )
 
-    def test_update_account_password_invalid_new_password(self, sqlite_session: Session, mock_password_dependencies):
+    def test_update_account_password_invalid_new_password(self, unbound_session: Session, mock_password_dependencies):
         """Test password update with invalid new password."""
         # Setup test data
         mock_account = Account(
@@ -401,7 +401,7 @@ class TestAccountService:
                 mock_account,
                 "old_password",
                 "short",
-                session=sqlite_session,
+                session=unbound_session,
             )
 
         # Verify password validation was called
@@ -696,22 +696,10 @@ class TestTenantService:
 
         assert role is None
 
-    def test_get_account_role_in_tenant_short_circuits_empty_account_id(self, sqlite_session: Session):
+    def test_get_account_role_in_tenant_short_circuits_empty_account_id(self, unbound_session: Session):
         """None/empty account_id (SSO bearer, missing identity) returns None
         without ever touching the session."""
-        statements: list[str] = []
-
-        def record_sql(conn, cursor, statement, parameters, context, executemany):
-            statements.append(statement)
-
-        bind = sqlite_session.get_bind()
-        event.listen(bind, "before_cursor_execute", record_sql)
-        try:
-            assert TenantService.get_account_role_in_tenant(None, "tenant-1", session=sqlite_session) is None
-        finally:
-            event.remove(bind, "before_cursor_execute", record_sql)
-
-        assert statements == []
+        assert TenantService.get_account_role_in_tenant(None, "tenant-1", session=unbound_session) is None
 
     def test_get_account_role_in_tenant_query_is_scoped(self, sqlite_session: Session):
         """The lookup must filter on BOTH tenant_id and account_id."""
@@ -916,11 +904,11 @@ class TestTenantService:
             assert other_tenant_join is not None
             assert other_tenant_join.current is False
 
-    def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
+    def test_switch_tenant_no_tenant_id(self, unbound_session: Session):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
         with pytest.raises(ValueError):
-            TenantService.switch_tenant(mock_account, None, session=sqlite_session)
+            TenantService.switch_tenant(mock_account, None, session=unbound_session)
 
     # ==================== Role Management Tests ====================
 
@@ -1030,7 +1018,7 @@ class TestTenantService:
 
         TenantService.check_member_permission(tenant, mock_operator, mock_member, "add", session=sqlite_session)
 
-    def test_check_member_permission_operate_self(self, sqlite_session: Session):
+    def test_check_member_permission_operate_self(self, unbound_session: Session):
         """Test member permission check when operator tries to operate self."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -1046,7 +1034,7 @@ class TestTenantService:
                 mock_operator,
                 mock_operator,  # Same as operator
                 "add",
-                session=sqlite_session,
+                session=unbound_session,
             )
 
     def test_admin_can_remove_non_owner_member(self, sqlite_session: Session):
@@ -1943,7 +1931,7 @@ class TestRegisterService:
                 )
             mock_lookup.assert_called_once()
 
-    def test_invite_new_member_no_inviter(self, sqlite_session: Session):
+    def test_invite_new_member_no_inviter(self, unbound_session: Session):
         """Test inviting a member without providing an inviter."""
         # Setup test data
         mock_tenant = MagicMock()
@@ -1956,7 +1944,7 @@ class TestRegisterService:
                 language="en-US",
                 role="normal",
                 inviter=None,
-                session=sqlite_session,
+                session=unbound_session,
             )
 
     # ==================== RBAC Member Invitation Tests ====================
@@ -2249,14 +2237,14 @@ class TestRegisterService:
             assert result["tenant"] is tenant
             assert result["data"] == invitation_data
 
-    def test_get_invitation_if_token_valid_no_token_data(self, sqlite_session: Session, mock_redis_dependencies):
+    def test_get_invitation_if_token_valid_no_token_data(self, unbound_session: Session, mock_redis_dependencies):
         """Test invitation validation with no token data."""
         # Setup mock
         mock_redis_dependencies.get.return_value = None
 
         # Execute test
         result = RegisterService.get_invitation_if_token_valid(
-            "tenant-456", "test@example.com", "token-123", session=sqlite_session
+            "tenant-456", "test@example.com", "token-123", session=unbound_session
         )
 
         # Verify results
@@ -2462,12 +2450,12 @@ class TestSessionInjectedGetters:
         assert AccountService.get_account_by_email("ALICE@example.com", session=sqlite_session) is None
         assert AccountService.get_account_by_email("ghost@example.com", session=sqlite_session) is None
 
-    def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self, sqlite_session: Session):
+    def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self, unbound_session: Session):
         """SSO bearers with no ``account_id`` (and any other falsy id)
         must collapse to ``False`` before touching membership storage.
         """
-        assert TenantService.account_belongs_to_tenant(None, "tenant-1", session=sqlite_session) is False
-        assert TenantService.account_belongs_to_tenant("", "tenant-1", session=sqlite_session) is False
+        assert TenantService.account_belongs_to_tenant(None, "tenant-1", session=unbound_session) is False
+        assert TenantService.account_belongs_to_tenant("", "tenant-1", session=unbound_session) is False
 
     def test_account_belongs_to_tenant_true_when_join_row_exists(self, sqlite_session: Session):
         sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="user-1", role=TenantAccountRole.NORMAL))
@@ -2527,9 +2515,9 @@ class TestSessionInjectedGetters:
     def test_get_tenant_by_id_returns_none_when_missing(self, sqlite_session: Session):
         assert TenantService.get_tenant_by_id("missing", session=sqlite_session) is None
 
-    def test_get_tenants_by_ids_short_circuits_on_empty_input(self, sqlite_session: Session):
+    def test_get_tenants_by_ids_short_circuits_on_empty_input(self, unbound_session: Session):
         """Empty id list must return before touching tenant storage."""
-        assert TenantService.get_tenants_by_ids([], session=sqlite_session) == []
+        assert TenantService.get_tenants_by_ids([], session=unbound_session) == []
 
     def test_get_tenants_by_ids_returns_scalars(self, sqlite_session: Session):
         tenant_1 = Tenant(name="Workspace 1")
