@@ -1,21 +1,15 @@
-import type { SearchParams } from 'nuqs'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import Marketplace from '@/app/components/plugins/marketplace'
+import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import MarketplaceInstallPermissionProvider from '@/app/components/plugins/marketplace/marketplace-install-permission-provider'
 
-type MarketplacePageProps = {
-  searchParams?: Promise<SearchParams>
-}
-
-const MarketplacePage = ({ searchParams }: MarketplacePageProps) => {
+const MarketplacePage = () => {
   return (
     <div
       id="marketplace-container"
       className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
       <MarketplaceInstallPermissionProvider>
-        <Marketplace
-          searchParams={searchParams}
+        <EmbeddedMarketplace
           showInstallButton
           variant="home"
           homeHeaderActions={(
