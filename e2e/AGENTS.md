@@ -8,9 +8,11 @@ Run commands from the repository root. Install dependencies and browsers once wi
 
 - Existing initialized instance: `pnpm -C e2e e2e`
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
+- Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
 - Headed debugging: `pnpm -C e2e e2e:headed -- --tags @smoke`
-- External runtime preparation and run: `pnpm -C e2e e2e:external:prepare`, then `pnpm -C e2e e2e:external`
+- Prepare and run external runtime scenarios: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:external`
+- Seed against existing middleware without running Cucumber: `pnpm -C e2e seed -- --profile <prepared|external-runtime|post-merge>`
 - Reset persisted E2E state: `pnpm -C e2e e2e:reset`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
@@ -20,7 +22,8 @@ The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1`
 ## Runtime Ownership
 
 - `scripts/setup.ts` owns reset, middleware, backend, and frontend startup.
-- `scripts/run-cucumber.ts` owns E2E orchestration and Cucumber invocation.
+- `scripts/run-cucumber.ts` is the only E2E runtime orchestrator. It owns service lifetime, optional seed execution, Cucumber invocation, and teardown.
+- `scripts/seed-runner.ts` owns fixture creation and verification against an already-running runtime; it never starts services.
 - `support/web-server.ts` owns frontend reuse, readiness, and shutdown.
 - `features/support/hooks.ts` owns shared auth bootstrap, scenario lifecycle, and diagnostics.
 - `features/support/world.ts` owns `DifyWorld`, the per-scenario behavior `BrowserContext`, and its authenticated setup and cleanup client. Browser and API identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership.
@@ -33,11 +36,13 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
-- `@prepared` requires the strict post-merge seed profile.
+- `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
 - `@browser-smoke` runs focused keyboard and navigation coverage in Chromium and WebKit CI lanes.
 - Feature-owned services use their own tags. Agent v2 runtime scenarios use `@agent-backend-runtime` and require the explicit runtime-availability step. Set `E2E_START_AGENT_BACKEND=1` to start it locally, or provide `E2E_AGENT_BACKEND_URL` / `AGENT_BACKEND_BASE_URL`.
+
+Seed and Cucumber must share one runtime lifecycle. Combined commands own reset, middleware, services, seed, Cucumber, and teardown; CI must not reproduce that lifecycle in workflow YAML. `E2E_START_AGENT_BACKEND=1` starts a managed local backend before the API; it is mutually exclusive with an explicit Agent backend URL.
 
 Do not overload runtime tags to imply unrelated services or silently skip behavior when a required fixture is missing.
 

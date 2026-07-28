@@ -1,7 +1,7 @@
 import { e2eDir, isMainModule, runForegroundProcess } from './common'
 import './env-register'
 
-const defaultExternalRuntimeTags = '@external-model or @external-tool'
+const preparedTags = '@prepared'
 
 const main = async () => {
   await runForegroundProcess({
@@ -11,10 +11,10 @@ const main = async () => {
       './scripts/run-cucumber.ts',
       '--full',
       '--profile',
-      'external-runtime',
+      'prepared',
       '--',
       '--tags',
-      defaultExternalRuntimeTags,
+      preparedTags,
     ],
     cwd: e2eDir,
   })
