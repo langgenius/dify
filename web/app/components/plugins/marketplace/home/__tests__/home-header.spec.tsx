@@ -36,7 +36,7 @@ describe('HomeHeader', () => {
     expect(darkLogo).toHaveAttribute('height', '16.386')
     expect(screen.queryByText('mainNav.marketplace')).not.toBeInTheDocument()
 
-    const guideLink = screen.getByRole('link', { name: 'Guide' })
+    const guideLink = screen.getByRole('link', { name: 'marketplace.home.guide' })
     expect(guideLink).toHaveAttribute('href', 'https://docs.dify.ai/en/home')
     expect(guideLink).toHaveAttribute('target', '_blank')
     expect(guideLink).toHaveAttribute('rel', 'noopener noreferrer')
