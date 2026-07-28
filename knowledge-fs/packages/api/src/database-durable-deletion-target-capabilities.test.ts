@@ -1086,9 +1086,7 @@ describe("database durable deletion target capabilities", () => {
         (call) => call.operation === "update" && call.tableName === "logical_documents",
       );
       expect(logicalDocumentUpdate?.sql).toContain(
-        dialect === "postgres"
-          ? `"provider_item_digest" = NULL`
-          : "`provider_item_digest` = NULL",
+        dialect === "postgres" ? `"provider_item_digest" = NULL` : "`provider_item_digest` = NULL",
       );
       const childResidue = calls.find(
         (call) => call.operation === "select" && call.tableName === "document_assets",
