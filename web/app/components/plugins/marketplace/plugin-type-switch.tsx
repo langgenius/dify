@@ -92,7 +92,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
         isHero
           ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
           : isHome
-            ? 'flex w-full shrink-0 items-center justify-start gap-1 overflow-x-auto'
+            ? 'flex w-full shrink-0 scrollbar-none items-center justify-start gap-1 overflow-x-auto'
             : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
         className,
       )}
@@ -112,7 +112,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
                 isHero
                   ? 'text-text-primary-on-surface'
                   : isHome
-                    ? cn('min-w-12 justify-center text-text-tertiary', styles.homeItem)
+                    ? cn('min-w-12 shrink-0 justify-center text-text-tertiary', styles.homeItem)
                     : 'text-text-tertiary',
                 !isActive &&
                   (isHero

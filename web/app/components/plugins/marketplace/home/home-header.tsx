@@ -18,7 +18,7 @@ function Guide() {
   const docLink = useDocLink()
 
   return (
-    <Link href={docLink()} target="_blank" rel="noopener noreferrer">
+    <Link href={docLink()} target="_blank" rel="noopener noreferrer" className={styles.guide}>
       <Button variant="ghost" size="large" className="w-[94px] gap-0.5 px-3 text-text-primary">
         <span aria-hidden className="i-ri-map-2-line size-5" />
         <span className="px-1 system-md-medium">Guide</span>
@@ -33,15 +33,18 @@ const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderPro
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 py-1.5 backdrop-blur-sm md:px-9',
+        'sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 border-b border-divider-regular bg-background-default px-4 py-1.5 md:px-9',
         styles.header,
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        <Link href="/" className="flex h-full w-[142px] shrink-0 items-center">
+        <Link href="/" className={cn('flex h-full w-[142px] shrink-0 items-center', styles.brand)}>
           <DifyLogo size="small" className="h-[18px] w-[39px] shrink-0" />
           <span
-            className="ml-1 text-[17.684px] leading-[20.21px] font-medium whitespace-nowrap text-dify-logo-black not-italic [text-box-edge:cap] [text-box-trim:trim-both]"
+            className={cn(
+              'ml-1 text-[12.94px] leading-[14.786px] font-medium whitespace-nowrap text-dify-logo-black not-italic [text-box-edge:cap] [text-box-trim:trim-both]',
+              styles.brandName,
+            )}
             style={{ fontFamily: "var(--font-family-brand, 'Söhne', var(--font-sans))" }}
           >
             {brandName ?? t(($) => $['mainNav.marketplace'])}
@@ -50,6 +53,7 @@ const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderPro
         <HomeStickyCatalogTabs>
           <HomeCatalogTabs
             className={styles.headerCatalogTabs}
+            compact
             isMarketplacePlatform={isMarketplacePlatform}
           />
         </HomeStickyCatalogTabs>
