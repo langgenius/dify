@@ -464,6 +464,7 @@
   "operation.downloading": "다운로드 중...",
   "operation.duplicate": "중복",
   "operation.edit": "편집",
+  "operation.export": "내보내기",
   "operation.exporting": "내보내는 중",
   "operation.fill": "자동 입력",
   "operation.format": "형식",

@@ -464,6 +464,7 @@
   "operation.downloading": "ダウンロード中...",
   "operation.duplicate": "複製",
   "operation.edit": "編集",
+  "operation.export": "エクスポート",
   "operation.exporting": "エクスポート中",
   "operation.fill": "自動入力",
   "operation.format": "フォーマット",

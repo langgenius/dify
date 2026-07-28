@@ -463,6 +463,7 @@
   "operation.downloading": "جارٍ التنزيل...",
   "operation.duplicate": "تكرار",
   "operation.edit": "تعديل",
+  "operation.export": "تصدير",
   "operation.exporting": "جارٍ التصدير",
   "operation.fill": "ملء تلقائي",
   "operation.format": "تنسيق",
