@@ -267,10 +267,7 @@ export function WorkspaceCard() {
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
-      <WorkspaceCardSkeleton
-        showCloudBilling={isCloudEdition}
-        showPlanAction={isCloudEdition}
-      />
+      <WorkspaceCardSkeleton showCloudBilling={isCloudEdition} showPlanAction={isCloudEdition} />
     )
   }
 
