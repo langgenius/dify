@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.agent import (
+    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigSnapshot,
@@ -42,7 +43,7 @@ def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_look
     session = MagicMock()
     validate_home_snapshot_binding(
         session=session,
-        agent=SimpleNamespace(id="agent-1"),
+        agent=Agent(id="agent-1"),
         home_snapshot_id=None,
     )
 
