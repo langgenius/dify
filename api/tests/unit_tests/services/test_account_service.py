@@ -787,7 +787,7 @@ class TestTenantService:
 
     def test_create_owner_tenant_if_not_exist_new_user(
         self,
-        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
         mock_rsa_dependencies: MagicMock,
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
@@ -804,134 +804,205 @@ class TestTenantService:
             patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
             patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created,
         ):
-            TenantService.create_owner_tenant_if_not_exist(mock_account, session=sqlite_session)
+            with sqlite_session_factory() as service_session:
+                TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
+                tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
+                assert tenant is not None
+                tenant_id = tenant.id
+                mock_account.set_current_tenant_with_session.assert_called_once_with(
+                    tenant,
+                    session=service_session,
+                )
+                mock_tenant_was_created.assert_called_once_with(tenant)
 
-        tenant = sqlite_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
-        assert tenant is not None
-        assert tenant.encrypt_public_key == "mock_public_key"
+        mock_rsa_dependencies.assert_called_once_with(tenant_id)
 
-        tenant_account_join = sqlite_session.scalar(
-            select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == tenant.id,
-                TenantAccountJoin.account_id == "user-123",
+        with sqlite_session_factory() as assertion_session:
+            tenant = assertion_session.get(Tenant, tenant_id)
+            assert tenant is not None
+            assert tenant.encrypt_public_key == "mock_public_key"
+
+            tenant_account_join = assertion_session.scalar(
+                select(TenantAccountJoin).where(
+                    TenantAccountJoin.tenant_id == tenant_id,
+                    TenantAccountJoin.account_id == "user-123",
+                )
             )
-        )
-        assert tenant_account_join is not None
-        assert tenant_account_join.role == TenantAccountRole.OWNER
-        mock_account.set_current_tenant_with_session.assert_called_once_with(tenant, session=sqlite_session)
-        mock_tenant_was_created.assert_called_once_with(tenant)
-        mock_rsa_dependencies.assert_called_once_with(tenant.id)
+            assert tenant_account_join is not None
+            assert tenant_account_join.role == TenantAccountRole.OWNER
 
     # ==================== Member Management Tests ====================
 
-    def test_create_tenant_member_success(self, sqlite_session: Session) -> None:
+    def test_create_tenant_member_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Creating a member persists and returns the tenant/account join row."""
-        tenant = Tenant(name="Test Workspace")
-        account = Account(name="Test User", email="test@example.com")
-        sqlite_session.add_all([tenant, account])
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            account = Account(name="Test User", email="test@example.com")
+            service_session.add_all([tenant, account])
+            service_session.flush()
+            tenant_id = tenant.id
+            account_id = account.id
+            service_session.commit()
 
-        result = TenantService.create_tenant_member(tenant, account, sqlite_session, "normal")
+            result = TenantService.create_tenant_member(tenant, account, service_session, "normal")
+            tenant_account_join_id = result.id
 
-        assert result.tenant_id == tenant.id
-        assert result.account_id == account.id
-        assert result.role == TenantAccountRole.NORMAL
-
-        persisted_tenant_account_join = sqlite_session.scalar(
-            select(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == tenant.id,
-                TenantAccountJoin.account_id == account.id,
+        with sqlite_session_factory() as assertion_session:
+            persisted_tenant_account_join = assertion_session.get(
+                TenantAccountJoin,
+                tenant_account_join_id,
             )
-        )
-        assert persisted_tenant_account_join is result
+            assert persisted_tenant_account_join is not None
+            assert persisted_tenant_account_join.tenant_id == tenant_id
+            assert persisted_tenant_account_join.account_id == account_id
+            assert persisted_tenant_account_join.role == TenantAccountRole.NORMAL
 
     # ==================== Member Removal Tests ====================
 
-    def test_remove_pending_member_deletes_orphaned_account(self, sqlite_session: Session) -> None:
+    def test_remove_pending_member_deletes_orphaned_account(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test that removing a pending member with no other workspaces deletes the account."""
-        tenant = Tenant(name="Test Workspace")
-        operator = Account(name="Operator", email="operator@example.com")
-        pending_member = Account(name="Pending Member", email="pending@example.com", status=AccountStatus.PENDING)
-        sqlite_session.add_all([tenant, operator, pending_member])
-        sqlite_session.flush()
-        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.OWNER)
-        member_join = self._add_tenant_account_join(sqlite_session, tenant, pending_member.id, TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        with (
-            patch("services.account_service.dify_config.BILLING_ENABLED", False),
-            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
-        ):
-            mock_sync.return_value = True
-
-            TenantService.remove_member_from_tenant(tenant, pending_member, operator, session=sqlite_session)
-
-            mock_sync.assert_called_once_with(
-                workspace_id=tenant.id,
-                member_id=pending_member.id,
-                source="workspace_member_removed",
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            operator = Account(name="Operator", email="operator@example.com")
+            pending_member = Account(name="Pending Member", email="pending@example.com", status=AccountStatus.PENDING)
+            service_session.add_all([tenant, operator, pending_member])
+            service_session.flush()
+            self._add_tenant_account_join(service_session, tenant, operator.id, TenantAccountRole.OWNER)
+            member_join = self._add_tenant_account_join(
+                service_session,
+                tenant,
+                pending_member.id,
+                TenantAccountRole.NORMAL,
             )
+            service_session.flush()
+            tenant_id = tenant.id
+            member_id = pending_member.id
+            member_join_id = member_join.id
+            service_session.commit()
 
-        assert sqlite_session.get(TenantAccountJoin, member_join.id) is None
-        assert sqlite_session.get(Account, pending_member.id) is None
+            with (
+                patch("services.account_service.dify_config.BILLING_ENABLED", False),
+                patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
+            ):
+                mock_sync.return_value = True
 
-    def test_remove_pending_member_keeps_account_with_other_workspaces(self, sqlite_session: Session) -> None:
+                TenantService.remove_member_from_tenant(
+                    tenant,
+                    pending_member,
+                    operator,
+                    session=service_session,
+                )
+
+                mock_sync.assert_called_once_with(
+                    workspace_id=tenant_id,
+                    member_id=member_id,
+                    source="workspace_member_removed",
+                )
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.get(TenantAccountJoin, member_join_id) is None
+            assert assertion_session.get(Account, member_id) is None
+
+    def test_remove_pending_member_keeps_account_with_other_workspaces(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test that removing a pending member who belongs to other workspaces preserves the account."""
-        tenant = Tenant(name="Test Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        operator = Account(name="Operator", email="operator@example.com")
-        pending_member = Account(name="Pending Member", email="pending@example.com", status=AccountStatus.PENDING)
-        sqlite_session.add_all([tenant, other_tenant, operator, pending_member])
-        sqlite_session.flush()
-        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.OWNER)
-        member_join = self._add_tenant_account_join(sqlite_session, tenant, pending_member.id, TenantAccountRole.NORMAL)
-        self._add_tenant_account_join(sqlite_session, other_tenant, pending_member.id, TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        with (
-            patch("services.account_service.dify_config.BILLING_ENABLED", False),
-            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
-        ):
-            mock_sync.return_value = True
-
-            TenantService.remove_member_from_tenant(tenant, pending_member, operator, session=sqlite_session)
-
-            mock_sync.assert_called_once_with(
-                workspace_id=tenant.id,
-                member_id=pending_member.id,
-                source="workspace_member_removed",
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            other_tenant = Tenant(name="Other Workspace")
+            operator = Account(name="Operator", email="operator@example.com")
+            pending_member = Account(name="Pending Member", email="pending@example.com", status=AccountStatus.PENDING)
+            service_session.add_all([tenant, other_tenant, operator, pending_member])
+            service_session.flush()
+            self._add_tenant_account_join(service_session, tenant, operator.id, TenantAccountRole.OWNER)
+            member_join = self._add_tenant_account_join(
+                service_session,
+                tenant,
+                pending_member.id,
+                TenantAccountRole.NORMAL,
             )
+            other_member_join = self._add_tenant_account_join(
+                service_session,
+                other_tenant,
+                pending_member.id,
+                TenantAccountRole.NORMAL,
+            )
+            service_session.flush()
+            tenant_id = tenant.id
+            member_id = pending_member.id
+            member_join_id = member_join.id
+            other_member_join_id = other_member_join.id
+            service_session.commit()
 
-        assert sqlite_session.get(TenantAccountJoin, member_join.id) is None
-        assert sqlite_session.get(Account, pending_member.id) is pending_member
+            with (
+                patch("services.account_service.dify_config.BILLING_ENABLED", False),
+                patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
+            ):
+                mock_sync.return_value = True
 
-    def test_remove_active_member_preserves_account(self, sqlite_session: Session) -> None:
+                TenantService.remove_member_from_tenant(
+                    tenant,
+                    pending_member,
+                    operator,
+                    session=service_session,
+                )
+
+                mock_sync.assert_called_once_with(
+                    workspace_id=tenant_id,
+                    member_id=member_id,
+                    source="workspace_member_removed",
+                )
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.get(TenantAccountJoin, member_join_id) is None
+            assert assertion_session.get(TenantAccountJoin, other_member_join_id) is not None
+            assert assertion_session.get(Account, member_id) is not None
+
+    def test_remove_active_member_preserves_account(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test that removing an active member never deletes the account, even with no other workspaces."""
-        tenant = Tenant(name="Test Workspace")
-        operator = Account(name="Operator", email="operator@example.com")
-        active_member = Account(name="Active Member", email="active@example.com", status=AccountStatus.ACTIVE)
-        sqlite_session.add_all([tenant, operator, active_member])
-        sqlite_session.flush()
-        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.OWNER)
-        member_join = self._add_tenant_account_join(sqlite_session, tenant, active_member.id, TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        with (
-            patch("services.account_service.dify_config.BILLING_ENABLED", False),
-            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
-        ):
-            mock_sync.return_value = True
-
-            TenantService.remove_member_from_tenant(tenant, active_member, operator, session=sqlite_session)
-
-            mock_sync.assert_called_once_with(
-                workspace_id=tenant.id,
-                member_id=active_member.id,
-                source="workspace_member_removed",
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            operator = Account(name="Operator", email="operator@example.com")
+            active_member = Account(name="Active Member", email="active@example.com", status=AccountStatus.ACTIVE)
+            service_session.add_all([tenant, operator, active_member])
+            service_session.flush()
+            self._add_tenant_account_join(service_session, tenant, operator.id, TenantAccountRole.OWNER)
+            member_join = self._add_tenant_account_join(
+                service_session,
+                tenant,
+                active_member.id,
+                TenantAccountRole.NORMAL,
             )
+            service_session.flush()
+            tenant_id = tenant.id
+            member_id = active_member.id
+            member_join_id = member_join.id
+            service_session.commit()
 
-        assert sqlite_session.get(TenantAccountJoin, member_join.id) is None
-        assert sqlite_session.get(Account, active_member.id) is active_member
+            with (
+                patch("services.account_service.dify_config.BILLING_ENABLED", False),
+                patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
+            ):
+                mock_sync.return_value = True
+
+                TenantService.remove_member_from_tenant(
+                    tenant,
+                    active_member,
+                    operator,
+                    session=service_session,
+                )
+
+                mock_sync.assert_called_once_with(
+                    workspace_id=tenant_id,
+                    member_id=member_id,
+                    source="workspace_member_removed",
+                )
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.get(TenantAccountJoin, member_join_id) is None
+            assert assertion_session.get(Account, member_id) is not None
 
     # ==================== Tenant Switching Tests ====================
 
@@ -977,20 +1048,43 @@ class TestTenantService:
 
     # ==================== Role Management Tests ====================
 
-    def test_update_member_role_success(self, sqlite_session: Session) -> None:
+    def test_update_member_role_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test successful member role update."""
-        tenant = Tenant(name="Test Workspace")
-        sqlite_session.add(tenant)
-        sqlite_session.flush()
-        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
-        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-        target_join = self._add_tenant_account_join(sqlite_session, tenant, mock_member.id, TenantAccountRole.NORMAL)
-        self._add_tenant_account_join(sqlite_session, tenant, mock_operator.id, TenantAccountRole.OWNER)
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            service_session.add(tenant)
+            service_session.flush()
+            target_join = self._add_tenant_account_join(
+                service_session,
+                tenant,
+                "member-789",
+                TenantAccountRole.NORMAL,
+            )
+            self._add_tenant_account_join(
+                service_session,
+                tenant,
+                "operator-123",
+                TenantAccountRole.OWNER,
+            )
+            service_session.flush()
+            target_join_id = target_join.id
+            service_session.commit()
 
-        TenantService.update_member_role(tenant, mock_member, "admin", mock_operator, session=sqlite_session)
+            mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+            mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
 
-        assert target_join.role == TenantAccountRole.ADMIN
+            TenantService.update_member_role(
+                tenant,
+                mock_member,
+                "admin",
+                mock_operator,
+                session=service_session,
+            )
+
+        with sqlite_session_factory() as assertion_session:
+            persisted_target_join = assertion_session.get(TenantAccountJoin, target_join_id)
+            assert persisted_target_join is not None
+            assert persisted_target_join.role == TenantAccountRole.ADMIN
 
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -1026,20 +1120,34 @@ class TestTenantService:
             session=sqlite_session,
         )
 
-    def test_admin_can_update_admin_member_role(self, sqlite_session: Session) -> None:
+    def test_admin_can_update_admin_member_role(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test admin can update another non-owner member, including an admin."""
-        tenant = Tenant(name="Test Workspace")
-        sqlite_session.add(tenant)
-        sqlite_session.flush()
-        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
-        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-        target_join = self._add_tenant_account_join(sqlite_session, tenant, mock_member.id, TenantAccountRole.ADMIN)
-        self._add_tenant_account_join(sqlite_session, tenant, mock_operator.id, TenantAccountRole.ADMIN)
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            service_session.add(tenant)
+            service_session.flush()
+            mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+            mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+            target_join = self._add_tenant_account_join(
+                service_session, tenant, mock_member.id, TenantAccountRole.ADMIN
+            )
+            self._add_tenant_account_join(service_session, tenant, mock_operator.id, TenantAccountRole.ADMIN)
+            service_session.flush()
+            target_join_id = target_join.id
+            service_session.commit()
 
-        TenantService.update_member_role(tenant, mock_member, "editor", mock_operator, session=sqlite_session)
+            TenantService.update_member_role(
+                tenant,
+                mock_member,
+                "editor",
+                mock_operator,
+                session=service_session,
+            )
 
-        assert target_join.role == TenantAccountRole.EDITOR
+        with sqlite_session_factory() as assertion_session:
+            persisted_target_join = assertion_session.get(TenantAccountJoin, target_join_id)
+            assert persisted_target_join is not None
+            assert persisted_target_join.role == TenantAccountRole.EDITOR
 
     def test_admin_cannot_update_owner_member_role(self, sqlite_session: Session) -> None:
         """Test admin cannot update an owner member."""
@@ -1255,7 +1363,9 @@ class TestRegisterService:
     # ==================== Setup Tests ====================
 
     def test_setup_success(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test successful system setup."""
         # Setup mocks
@@ -1271,34 +1381,43 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant,
                 patch("services.account_service.CommunityTelemetryService.report_install") as mock_report_install,
             ):
-                RegisterService.setup(
-                    "admin@example.com",
-                    "Admin User",
-                    "password123",
-                    "192.168.1.1",
-                    "en-US",
-                    session=sqlite_session,
-                )
+                with sqlite_session_factory() as service_session:
+                    RegisterService.setup(
+                        "admin@example.com",
+                        "Admin User",
+                        "password123",
+                        "192.168.1.1",
+                        "en-US",
+                        session=service_session,
+                    )
 
-                mock_create_account.assert_called_once_with(
-                    email="admin@example.com",
-                    name="Admin User",
-                    interface_language="en-US",
-                    password="password123",
-                    is_setup=True,
-                    session=sqlite_session,
-                )
-                mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
-                dify_setup = sqlite_session.scalar(select(DifySetup))
-                assert dify_setup is not None
-                assert dify_setup.instance_id is not None
-                assert str(UUID(dify_setup.instance_id)) == dify_setup.instance_id
-                assert dify_setup.install_reported_at is None
-                assert dify_setup.last_heartbeat_at is None
-                mock_report_install.assert_called_once_with(session=sqlite_session)
+                    mock_create_account.assert_called_once_with(
+                        email="admin@example.com",
+                        name="Admin User",
+                        interface_language="en-US",
+                        password="password123",
+                        is_setup=True,
+                        session=service_session,
+                    )
+                    mock_create_tenant.assert_called_once_with(
+                        account=mock_account,
+                        is_setup=True,
+                        session=service_session,
+                    )
+                    mock_report_install.assert_called_once_with(session=service_session)
+
+        with sqlite_session_factory() as assertion_session:
+            dify_setup = assertion_session.scalar(select(DifySetup))
+            assert dify_setup is not None
+            assert dify_setup.instance_id is not None
+            assert str(UUID(dify_setup.instance_id)) == dify_setup.instance_id
+            assert dify_setup.install_reported_at is None
+            assert dify_setup.last_heartbeat_at is None
 
     def test_setup_succeeds_when_telemetry_install_report_fails(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1312,19 +1431,23 @@ class TestRegisterService:
                 side_effect=RuntimeError("telemetry unavailable"),
             ),
         ):
-            RegisterService.setup(
-                "admin@example.com",
-                "Admin User",
-                "password123",
-                "192.168.1.1",
-                "en-US",
-                session=sqlite_session,
-            )
+            with sqlite_session_factory() as service_session:
+                RegisterService.setup(
+                    "admin@example.com",
+                    "Admin User",
+                    "password123",
+                    "192.168.1.1",
+                    "en-US",
+                    session=service_session,
+                )
 
-        assert sqlite_session.scalar(select(DifySetup)) is not None
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.scalar(select(DifySetup)) is not None
 
     def test_setup_failure_rollback(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test setup failure with proper rollback."""
         # Setup mocks to simulate failure
@@ -1336,17 +1459,19 @@ class TestRegisterService:
             mock_create_account.side_effect = Exception("Database error")
 
             # Execute test and verify exception
-            with pytest.raises(ValueError):
-                RegisterService.setup(
-                    "admin@example.com",
-                    "Admin User",
-                    "password123",
-                    "192.168.1.1",
-                    "en-US",
-                    session=sqlite_session,
-                )
+            with sqlite_session_factory() as service_session:
+                with pytest.raises(ValueError):
+                    RegisterService.setup(
+                        "admin@example.com",
+                        "Admin User",
+                        "password123",
+                        "192.168.1.1",
+                        "en-US",
+                        session=service_session,
+                    )
 
-            assert sqlite_session.scalar(select(DifySetup)) is None
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.scalar(select(DifySetup)) is None
 
     # ==================== Registration Tests ====================
 
