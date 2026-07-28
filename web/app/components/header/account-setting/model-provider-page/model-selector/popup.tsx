@@ -20,7 +20,6 @@ import { useIntegrationsSetting } from '@/app/components/header/account-setting/
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useSearchParams } from '@/next/navigation'
@@ -102,6 +101,10 @@ function Popup({
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.enable_marketplace,
   })
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { plugins: allPlugins, isLoading: isMarketplacePluginsLoading } = useMarketplaceAllPlugins(
     modelProviders,
     '',
@@ -116,7 +119,7 @@ function Popup({
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: IS_CLOUD_EDITION,
+      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.trial_models,
     }),
   )
@@ -129,18 +132,20 @@ function Popup({
 
     return new Set(
       modelProviders
-        .filter((provider) => providerSupportsCredits(provider, trialModels))
+        .filter((provider) => providerSupportsCredits(provider, trialModels, deploymentEdition))
         .map((provider) => provider.provider),
     )
-  }, [enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
+  }, [deploymentEdition, enableMarketplace, isCreditsExhausted, modelProviders, trialModels])
   const showCreditsExhaustedAlert =
     enableMarketplace &&
     isCreditsExhausted &&
-    modelProviders.some((provider) => providerSupportsCredits(provider, trialModels))
+    modelProviders.some((provider) =>
+      providerSupportsCredits(provider, trialModels, deploymentEdition),
+    )
   const hasApiKeyFallback = modelProviders.some((provider) => {
     const isApiKeyActive =
       provider.custom_configuration?.status === CustomConfigurationStatusEnum.active
-    return isApiKeyActive && providerSupportsCredits(provider, trialModels)
+    return isApiKeyActive && providerSupportsCredits(provider, trialModels, deploymentEdition)
   })
 
   const handleInstallPlugin = useCallback(

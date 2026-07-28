@@ -18,7 +18,7 @@ from core.ops.entities.trace_entity import (
 )
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes
-from models import Account, App, TenantAccountJoin
+from models import Account, App
 
 logger = logging.getLogger(__name__)
 
@@ -420,12 +420,10 @@ class TestTencentDataTrace:
         app = MagicMock(spec=App)
         app.id = "app-1"
         app.created_by = "user-1"
+        app.tenant_id = "tenant-1"
 
         account = MagicMock(spec=Account)
         account.id = "user-1"
-
-        tenant_join = MagicMock(spec=TenantAccountJoin)
-        tenant_join.tenant_id = "tenant-1"
 
         mock_executions = [MagicMock()]
 
@@ -433,7 +431,7 @@ class TestTencentDataTrace:
             mock_db.engine = "engine"
             with patch("dify_trace_tencent.tencent_trace.Session") as mock_session_ctx:
                 session = mock_session_ctx.return_value.__enter__.return_value
-                session.scalar.side_effect = [app, account, tenant_join]
+                session.scalar.side_effect = [app, account]
 
                 with patch("dify_trace_tencent.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository") as mock_repo:
                     mock_repo.return_value.get_by_workflow_execution.return_value = mock_executions
@@ -441,7 +439,7 @@ class TestTencentDataTrace:
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 
                     assert results == mock_executions
-                    account.set_tenant_id_with_session.assert_called_once_with("tenant-1", session=session)
+                    assert mock_repo.call_args.kwargs["tenant_id"] == "tenant-1"
 
     def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)

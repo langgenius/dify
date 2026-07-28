@@ -177,11 +177,12 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                   <Input
                     value={param.name}
                     onChange={(e) => handleParamChange('name')(e.target.value)}
-                    placeholder={
-                      t(($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`], {
+                    placeholder={t(
+                      ($) => $[`${i18nPrefix}.addExtractParameterContent.namePlaceholder`],
+                      {
                         ns: 'workflow',
-                      })!
-                    }
+                      },
+                    )!}
                   />
                 </Field>
                 <Field
@@ -224,12 +225,10 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                     )}
                     value={param.description}
                     onValueChange={(value) => handleParamChange('description')(value)}
-                    placeholder={
-                      t(
-                        ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
-                        { ns: 'workflow' },
-                      )!
-                    }
+                    placeholder={t(
+                      ($) => $[`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`],
+                      { ns: 'workflow' },
+                    )!}
                   />
                 </Field>
                 <Field

@@ -43,6 +43,8 @@ export const useCollaborativeWorkflow = () => {
     ) => {
       const { getNodes, setNodes: reactFlowSetNodes } = store.getState()
       if (shouldBroadcast) {
+        if (!collaborationManager.canApplyLocalGraphMutation()) return
+
         const oldNodes = getNodes()
         collabSetNodes(
           oldNodes.map(sanitizeNodeForBroadcast),
@@ -59,6 +61,8 @@ export const useCollaborativeWorkflow = () => {
     (newEdges: Edge[], shouldBroadcast: boolean = true) => {
       const { edges, setEdges: reactFlowSetEdges } = store.getState()
       if (shouldBroadcast) {
+        if (!collaborationManager.canApplyLocalGraphMutation()) return
+
         collabSetEdges(edges.map(sanitizeEdgeForBroadcast), newEdges.map(sanitizeEdgeForBroadcast))
       }
 

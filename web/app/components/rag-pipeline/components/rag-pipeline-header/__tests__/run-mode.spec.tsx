@@ -33,10 +33,13 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: mockHandleStopRun,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),

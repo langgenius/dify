@@ -174,13 +174,6 @@ describe('useMarketplaceMoreClick', () => {
     vi.clearAllMocks()
   })
 
-  it('should return a callback function', () => {
-    const { wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceMoreClick(), { wrapper })
-
-    expect(typeof result.current).toBe('function')
-  })
-
   it('should do nothing when called with no params', () => {
     const { wrapper } = createWrapper()
     const { result } = renderHook(

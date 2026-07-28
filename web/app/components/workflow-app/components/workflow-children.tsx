@@ -6,21 +6,19 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
 import { DSL_EXPORT_CHECK, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
-import {
-  useAutoGenerateWebhookUrl,
-  useDSL,
-  usePanelInteractions,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
+import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import dynamic from '@/next/dynamic'
-import PluginDependency from '../../workflow/plugin-dependency'
-import { useAvailableNodesMetaData } from '../hooks'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
+import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
 import WorkflowHeader from './workflow-header'
 import WorkflowPanel from './workflow-panel'
 

@@ -8,7 +8,6 @@
 
 ### Use Session context manager with explicit transaction control behavior
 - Category: best practices
-- Severity: critical
 - Description: Session and transaction lifecycle must be explicit and bounded on write paths. Missing commits can silently drop intended updates, while ad-hoc or long-lived transactions increase contention, lock duration, and deadlock risk.
 - Suggested fix:
   - Use **explicit `session.commit()`** after completing a related write unit.
@@ -47,7 +46,6 @@
 
 ### Enforce tenant_id scoping on shared-resource queries
 - Category: security
-- Severity: critical
 - Description: Reads and writes against shared tables must be scoped by `tenant_id` to prevent cross-tenant data leakage or corruption.
 - Suggested fix: Add `tenant_id` predicate to all tenant-owned entity queries and propagate tenant context through service/repository interfaces.
 - Example:
@@ -67,7 +65,6 @@
 
 ### Prefer SQLAlchemy expressions over raw SQL by default
 - Category: maintainability
-- Severity: suggestion
 - Description: Raw SQL should be exceptional. ORM/Core expressions are easier to evolve, safer to compose, and more consistent with the codebase.
 - Suggested fix: Rewrite straightforward raw SQL into SQLAlchemy `select/update/delete` expressions; keep raw SQL only when required by clear technical constraints.
 - Example:
@@ -89,7 +86,6 @@
 
 ### Protect write paths with concurrency safeguards
 - Category: quality
-- Severity: critical
 - Description: Multi-writer paths without explicit concurrency control can silently overwrite data. Choose the safeguard based on contention level, lock scope, and throughput cost instead of defaulting to one strategy.
 - Suggested fix:
   - **Optimistic locking**: Use when contention is usually low and retries are acceptable. Add a version (or updated_at) guard in `WHERE` and treat `rowcount == 0` as a conflict.

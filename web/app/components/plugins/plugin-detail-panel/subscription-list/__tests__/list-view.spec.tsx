@@ -1,7 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionListView } from '../list-view'
 
 let mockSubscriptions: TriggerSubscription[] = []
@@ -24,7 +24,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},

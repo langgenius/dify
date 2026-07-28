@@ -15,6 +15,7 @@ from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import ParentMode, Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -304,6 +305,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 doc.attachments = self._get_content_files(doc, current_user=account, session=session)
             documents.append(doc)
         if documents:
+            token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # update document parent mode
             dataset_process_rule = DatasetProcessRule(
                 dataset_id=dataset.id,
@@ -321,7 +323,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
-            doc_store.add_documents(docs=documents, save_child=True, session=session)
+            doc_store.add_documents(
+                session=session,
+                docs=documents,
+                token_counts=token_counts,
+                save_child=True,
+            )
             session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 all_child_documents = []

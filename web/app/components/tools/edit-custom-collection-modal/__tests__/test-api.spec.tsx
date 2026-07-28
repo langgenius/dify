@@ -66,14 +66,6 @@ describe('TestApi', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await act(async () => {
-        renderTestApi()
-      })
-
-      expect(screen.getByText('tools.test.testResult'))!.toBeInTheDocument()
-    })
-
     it('should display tool name in the title', async () => {
       await act(async () => {
         renderTestApi()

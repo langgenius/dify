@@ -1,20 +1,26 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import CustomWebAppBrand from '../custom-web-app-brand'
 
 const CustomPage = () => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { plan, enableBilling } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const showBillingTip = IS_CLOUD_EDITION && enableBilling && plan.type === Plan.sandbox
+  const showBillingTip =
+    deploymentEdition === 'CLOUD' && enableBilling && plan.type === Plan.sandbox
   const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col overflow-x-hidden">
       {showBillingTip && (
         <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">

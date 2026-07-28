@@ -1,15 +1,21 @@
 import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
-import { Given, Then, When } from '@cucumber/cucumber'
+import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
-import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers'
 
 const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
 
 const getWebAppMessageInput = (webAppPage: Page) => webAppPage.getByPlaceholder(/^Talk to /).last()
+
+const recordComposerDraftSnapshot = async (world: DifyWorld) => {
+  const agentId = getCurrentAgentId(world)
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+  world.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
+}
 
 Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
   const webAppCard = getWebAppCard(this)
@@ -20,13 +26,8 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
   await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })
 
-Then('I record the current Agent v2 orchestration draft', async function (this: DifyWorld) {
-  const draft = await getAgentComposerDraft(getCurrentAgentId(this))
-
-  this.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
-})
-
 When('I copy the Agent v2 Web app access URL', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByLabel('Copy access URL').click()
 })
 
@@ -35,6 +36,7 @@ Then('the Agent v2 Web app access URL should show it was copied', async function
 })
 
 When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   const launchLink = getWebAppCard(this).getByRole('link', { name: 'Launch' })
   const href = await launchLink.getAttribute('href')
   if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
@@ -125,6 +127,7 @@ When('I close the Agent v2 Web app', async function (this: DifyWorld) {
 })
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
 })
 
@@ -137,6 +140,7 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Custom Frontend' }).click()
 })
 
@@ -149,6 +153,7 @@ Then('I should see the Agent v2 Web app customization dialog', async function (t
 })
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
+  await recordComposerDraftSnapshot(this)
   await getWebAppCard(this).getByRole('button', { name: 'Branding' }).click()
 })
 
@@ -167,71 +172,11 @@ Then(
     const snapshot = this.agentBuilder.accessPoint.composerDraftSnapshot
     if (!snapshot) throw new Error('No Agent v2 orchestration draft snapshot was recorded.')
 
-    const draft = await getAgentComposerDraft(getCurrentAgentId(this))
+    const agentId = getCurrentAgentId(this)
+    const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+      params: { agent_id: agentId },
+    })
 
     expect(JSON.stringify(draft.agent_soul ?? {})).toBe(snapshot)
-  },
-)
-
-Given(
-  'Agent v2 disabled Web app public unavailable state is available',
-  async function (this: DifyWorld) {
-    return skipBlockedPrecondition(
-      this,
-      'Disabled Agent v2 Web app public URL does not expose a stable user-visible unavailable state; the current route redirects to Web app sign-in.',
-      {
-        owner: 'product',
-        remediation:
-          'Define and implement the disabled public Web app UX before enabling this scenario.',
-      },
-    )
-  },
-)
-
-When('I open the disabled Agent v2 Web app URL', async function (this: DifyWorld) {
-  const webAppURL = this.agentBuilder.accessPoint.webAppURL
-  if (!webAppURL) throw new Error('No Agent v2 Web app URL was recorded.')
-  if (!this.context) throw new Error('Playwright browser context has not been initialized.')
-
-  const webAppPage = await this.context.newPage()
-  await webAppPage.goto(webAppURL)
-
-  this.agentBuilder.accessPoint.webAppPage = webAppPage
-})
-
-Then(
-  'the disabled Agent v2 Web app should show an unavailable state',
-  async function (this: DifyWorld) {
-    const webAppPage = this.agentBuilder.accessPoint.webAppPage
-    if (!webAppPage) throw new Error('No Agent v2 Web app page was opened.')
-
-    await expect(webAppPage.getByText(/app is unavailable|site is disabled/i)).toBeVisible({
-      timeout: 30_000,
-    })
-    await webAppPage.close()
-    this.agentBuilder.accessPoint.webAppPage = undefined
-  },
-)
-
-When('I open the restored Agent v2 Web app URL', async function (this: DifyWorld) {
-  const webAppURL = this.agentBuilder.accessPoint.webAppURL
-  if (!webAppURL) throw new Error('No Agent v2 Web app URL was recorded.')
-  if (!this.context) throw new Error('Playwright browser context has not been initialized.')
-
-  const webAppPage = await this.context.newPage()
-  await webAppPage.goto(webAppURL)
-
-  this.agentBuilder.accessPoint.webAppPage = webAppPage
-})
-
-Then(
-  'the restored Agent v2 Web app should not show an unavailable state',
-  async function (this: DifyWorld) {
-    const webAppPage = this.agentBuilder.accessPoint.webAppPage
-    if (!webAppPage) throw new Error('No Agent v2 Web app page was opened.')
-
-    await expect(webAppPage.getByText(/app is unavailable|site is disabled/i)).not.toBeVisible()
-    await webAppPage.close()
-    this.agentBuilder.accessPoint.webAppPage = undefined
   },
 )

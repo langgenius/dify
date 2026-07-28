@@ -1,7 +1,7 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { memo, useCallback } from 'react'
-import { useWorkflowUpdate } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useWorkflowUpdate } from '../hooks/use-workflow-update'
 import Run from '../run'
 import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'

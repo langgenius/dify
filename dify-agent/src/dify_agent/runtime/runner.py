@@ -31,12 +31,14 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
+import asyncio
 from collections.abc import AsyncIterable, Callable, Mapping
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
@@ -90,17 +92,23 @@ class _HasUsage(Protocol):
 
 @runtime_checkable
 class _HasInputTokens(Protocol):
-    input_tokens: object
+    input_tokens: int | None
 
 
 @runtime_checkable
 class _HasOutputTokens(Protocol):
-    output_tokens: object
+    output_tokens: int | None
 
 
 @runtime_checkable
 class _HasTotalTokens(Protocol):
-    total_tokens: object
+    total_tokens: int | None
+
+
+@runtime_checkable
+class _HasAccumulatedUsage(Protocol):
+    @property
+    def accumulated_usage(self) -> LLMUsage | None: ...
 
 
 class AgentRunValidationError(ValueError):
@@ -170,6 +178,7 @@ class AgentRunRunner:
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
+    is_cancelled: Callable[[], bool]
 
     def __init__(
         self,
@@ -180,6 +189,7 @@ class AgentRunRunner:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> None:
         self.sink = sink
         self.request = request
@@ -187,20 +197,29 @@ class AgentRunRunner:
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.is_cancelled = is_cancelled or (lambda: False)
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
+        if self.is_cancelled():
+            return
         await self.sink.update_status(self.run_id, "running")
+        if self.is_cancelled():
+            return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
             outcome = await self._run_agent()
         except Exception as exc:
+            if self.is_cancelled():
+                return
             message, reason = _run_failed_error_payload(exc)
             _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 
+        if self.is_cancelled():
+            return
         _ = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
@@ -309,6 +328,8 @@ class AgentRunRunner:
 
                 async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
                     async for event in events:
+                        if self.is_cancelled():
+                            raise asyncio.CancelledError
                         text_delta = _extract_agent_message_delta(event)
                         _ = await emit_pydantic_ai_event(
                             self.sink,
@@ -351,7 +372,8 @@ class AgentRunRunner:
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
                 )
-                usage = _serialize_agent_usage(_result_usage(result))
+                complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
+                usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
                 append_successful_run_history(history_layer, result.new_messages())
                 if isinstance(result.output, DeferredToolRequests):
                     if ask_human_layer is None:
@@ -410,9 +432,11 @@ def _result_usage(result: object) -> object | None:
 
 
 def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
-    """Convert pydantic-ai request usage into the public Agent run usage shape."""
+    """Convert complete daemon or fallback pydantic-ai usage into the public shape."""
     if usage is None:
         return None
+    if isinstance(usage, LLMUsage):
+        return AgentRunUsage.model_validate(usage.model_dump(mode="python"))
     input_tokens = int(usage.input_tokens or 0) if isinstance(usage, _HasInputTokens) else 0
     output_tokens = int(usage.output_tokens or 0) if isinstance(usage, _HasOutputTokens) else 0
     total_tokens = int(usage.total_tokens or 0) if isinstance(usage, _HasTotalTokens) else 0

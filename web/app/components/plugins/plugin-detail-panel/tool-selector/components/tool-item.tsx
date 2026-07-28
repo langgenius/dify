@@ -7,7 +7,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -15,6 +14,8 @@ import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/comp
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 
 type Props = Readonly<{
+  triggerRef?: React.Ref<HTMLButtonElement>
+  triggerLabel?: string
   icon?: string | { content?: string; background?: string }
   providerName?: string
   isMCPTool?: boolean
@@ -35,7 +36,9 @@ type Props = Readonly<{
   authRemoved?: boolean
 }>
 
-const ToolItem = ({
+export function ToolItem({
+  triggerRef,
+  triggerLabel,
   open,
   icon,
   isMCPTool,
@@ -54,26 +57,40 @@ const ToolItem = ({
   errorTip,
   versionMismatch,
   authRemoved,
-}: Props) => {
+}: Props) {
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
   const isShowCanNotChooseMCPTip = isMCPTool && !isMCPToolAllowed
+  const accessibleTriggerLabel =
+    triggerLabel ||
+    toolLabel ||
+    t(($) => $['detailPanel.toolSelector.toolSetting'], { ns: 'plugin' })
 
   return (
     <div
       className={cn(
-        'group flex cursor-default items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        'group relative flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
         open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
         isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
       )}
     >
+      <PopoverTrigger
+        render={
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-label={accessibleTriggerLabel}
+            className="absolute inset-0 z-0 cursor-pointer rounded-lg border-0 bg-transparent outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+          />
+        }
+      />
       {icon && (
         <div
           className={cn(
-            'shrink-0',
+            'pointer-events-none relative z-1 shrink-0',
             isTransparent && 'opacity-50',
             isShowCanNotChooseMCPTip && 'opacity-30',
           )}
@@ -97,7 +114,7 @@ const ToolItem = ({
       {!icon && (
         <div
           className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+            'pointer-events-none relative z-1 flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
             isTransparent && 'opacity-50',
             isShowCanNotChooseMCPTip && 'opacity-30',
           )}
@@ -109,7 +126,7 @@ const ToolItem = ({
       )}
       <div
         className={cn(
-          'grow truncate pl-0.5',
+          'pointer-events-none relative z-1 grow truncate pl-0.5',
           isTransparent && 'opacity-50',
           isShowCanNotChooseMCPTip && 'opacity-30',
         )}
@@ -117,23 +134,28 @@ const ToolItem = ({
         <div className="system-2xs-medium-uppercase text-text-tertiary">{providerNameText}</div>
         <div className="system-xs-medium text-text-secondary">{toolLabel}</div>
       </div>
-      <div className="hidden items-center gap-1 group-hover:flex">
+      <div className="relative z-10 hidden items-center gap-1 group-focus-within:flex group-hover:flex">
         {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
-          <ActionButton>
+          <span
+            className="pointer-events-none flex size-6 items-center justify-center text-text-tertiary"
+            aria-hidden
+          >
             <span className="i-ri-equalizer-2-line size-4" />
-          </ActionButton>
+          </span>
         )}
-        <div
-          className="cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete?.()
-          }}
-          onMouseOver={() => setIsDeleting(true)}
-          onMouseLeave={() => setIsDeleting(false)}
-        >
-          <span className="i-ri-delete-bin-line size-4" />
-        </div>
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="small"
+            aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+            className="size-6 min-h-0 p-0 text-text-tertiary hover:text-text-destructive"
+            onClick={onDelete}
+            onMouseEnter={() => setIsDeleting(true)}
+            onMouseLeave={() => setIsDeleting(false)}
+          >
+            <span className="i-ri-delete-bin-line size-4" aria-hidden />
+          </Button>
+        )}
       </div>
       {!isError &&
         !uninstalled &&
@@ -141,25 +163,37 @@ const ToolItem = ({
         !versionMismatch &&
         !isShowCanNotChooseMCPTip &&
         showSwitch && (
-          <div className="mr-1" onClick={(e) => e.stopPropagation()}>
+          <div className="relative z-10 mr-1">
             <Switch size="md" checked={switchValue ?? false} onCheckedChange={onSwitchChange} />
           </div>
         )}
-      {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
+      {isShowCanNotChooseMCPTip && (
+        <div className="relative z-10">
+          <McpToolNotSupportTooltip />
+        </div>
+      )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
-        <Button variant="secondary" size="small">
-          {t(($) => $.notAuthorized, { ns: 'tools' })}
-          <StatusDot className="ml-2" status="warning" />
-        </Button>
+        <PopoverTrigger
+          render={
+            <Button className="relative z-10" variant="secondary" size="small">
+              {t(($) => $.notAuthorized, { ns: 'tools' })}
+              <StatusDot className="ml-2" status="warning" />
+            </Button>
+          }
+        />
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
-        <Button variant="secondary" size="small">
-          {t(($) => $['auth.authRemoved'], { ns: 'plugin' })}
-          <StatusDot className="ml-2" status="error" />
-        </Button>
+        <PopoverTrigger
+          render={
+            <Button className="relative z-10" variant="secondary" size="small">
+              {t(($) => $['auth.authRemoved'], { ns: 'plugin' })}
+              <StatusDot className="ml-2" status="error" />
+            </Button>
+          }
+        />
       )}
       {!isError && !uninstalled && versionMismatch && installInfo && (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div className="relative z-10">
           <SwitchPluginVersion
             className="-mt-1"
             uniqueIdentifier={installInfo}
@@ -183,35 +217,36 @@ const ToolItem = ({
         </div>
       )}
       {!isError && uninstalled && installInfo && (
-        <InstallPluginButton
-          onClick={(e) => e.stopPropagation()}
-          size="small"
-          uniqueIdentifier={installInfo}
-          onSuccess={() => {
-            onInstall?.()
-          }}
-        />
+        <div className="relative z-10">
+          <InstallPluginButton
+            size="small"
+            uniqueIdentifier={installInfo}
+            onSuccess={() => {
+              onInstall?.()
+            }}
+          />
+        </div>
       )}
       {isError && (
-        <Popover>
-          <PopoverTrigger
-            openOnHover
-            aria-label={
-              typeof errorTip === 'string'
-                ? errorTip
-                : t(($) => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })
-            }
-            className="inline-flex border-0 bg-transparent p-0"
-          >
-            <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
-          </PopoverTrigger>
-          <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
-            {errorTip}
-          </PopoverContent>
-        </Popover>
+        <div className="relative z-10">
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              aria-label={
+                typeof errorTip === 'string'
+                  ? errorTip
+                  : t(($) => $['detailPanel.toolSelector.unsupportedTitle'], { ns: 'plugin' })
+              }
+              className="inline-flex border-0 bg-transparent p-0"
+            >
+              <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
+            </PopoverTrigger>
+            <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+              {errorTip}
+            </PopoverContent>
+          </Popover>
+        </div>
       )}
     </div>
   )
 }
-
-export default ToolItem

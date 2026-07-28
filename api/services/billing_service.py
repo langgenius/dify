@@ -217,11 +217,17 @@ class BillingService:
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod
-    def get_vector_space(cls, tenant_id: str) -> _VectorSpaceQuota:
+    def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:
         params = {"tenant_id": tenant_id}
+        if bypass_cache:
+            params["bypass_cache"] = "true"
         return _vector_space_quota_adapter.validate_python(
             cls._send_request("GET", "/subscription/vector-space", params=params)
         )
+
+    @classmethod
+    def invalidate_vector_space_cache(cls, tenant_id: str) -> None:
+        cls.get_vector_space(tenant_id, bypass_cache=True)
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):

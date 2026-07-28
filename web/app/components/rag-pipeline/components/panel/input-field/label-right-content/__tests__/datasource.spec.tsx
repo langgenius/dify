@@ -2,7 +2,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import { render, screen } from '@testing-library/react'
 import Datasource from '../datasource'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
   useToolIcon: () => 'tool-icon',
 }))
 
