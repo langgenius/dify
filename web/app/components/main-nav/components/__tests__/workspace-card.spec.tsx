@@ -1,6 +1,7 @@
+import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
+import type { IWorkspace } from '@/models/common'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
@@ -95,14 +96,13 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
-const currentWorkspaceValue: ICurrentWorkspace = {
+const currentWorkspaceValue: PostWorkspacesCurrentResponse = {
   id: 'workspace-1',
   name: 'Solar Studio',
   plan: Plan.sandbox,
   status: 'normal',
   created_at: 0,
   role: 'owner',
-  providers: [],
   trial_credits: 10000,
   trial_credits_used: 2500,
   trial_credits_exhausted_at: 0,
@@ -111,11 +111,11 @@ const currentWorkspaceValue: ICurrentWorkspace = {
 
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-let mockCurrentWorkspace: ICurrentWorkspace | undefined = currentWorkspaceValue
+let mockCurrentWorkspace: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue
 let mockWorkspaces: IWorkspace[] = []
 
 const mockCurrentWorkspaceQuery = (
-  data: ICurrentWorkspace | undefined = currentWorkspaceValue,
+  data: PostWorkspacesCurrentResponse | undefined = currentWorkspaceValue,
   isPending = false,
 ) => {
   mockCurrentWorkspace = isPending ? undefined : data
@@ -284,13 +284,12 @@ describe('WorkspaceCard', () => {
       plan: Plan.team,
     })
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
+      enableBilling: false,
       isEducationAccount: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.team },
+      plan: { type: Plan.sandbox },
     } as ProviderContextState)
-
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
@@ -304,14 +303,6 @@ describe('WorkspaceCard', () => {
       ...currentWorkspaceValue,
       plan: Plan.team,
     })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: true,
-      plan: { type: Plan.team },
-    } as ProviderContextState)
-
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
@@ -322,14 +313,6 @@ describe('WorkspaceCard', () => {
       ...currentWorkspaceValue,
       plan: '',
     })
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: false,
-      plan: { type: Plan.sandbox },
-    } as ProviderContextState)
-
     renderWorkspaceCard({
       systemFeatures: {
         deployment_edition: 'ENTERPRISE',
@@ -471,13 +454,10 @@ describe('WorkspaceCard', () => {
   })
 
   it('opens members settings from workspace menu when billing is disabled', async () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: false,
-      plan: { type: Plan.sandbox },
-    } as ProviderContextState)
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: null,
+    })
 
     renderWorkspaceCard()
 

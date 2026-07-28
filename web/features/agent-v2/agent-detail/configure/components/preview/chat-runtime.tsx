@@ -16,7 +16,7 @@ export type AgentChatRuntimeEmptyStateProps = {
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
-  hasInstructions: boolean
+  showUnconfiguredNotice: boolean
 }
 
 export type AgentChatRuntimeProps = {

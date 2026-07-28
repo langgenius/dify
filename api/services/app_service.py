@@ -126,7 +126,7 @@ class AppModelConfigResponseView:
         self._session = session
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._app_model_config, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self._app_model_config, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
     @property
     def annotation_reply_dict(self) -> Any:
@@ -141,7 +141,7 @@ class AppResponseView:
         self._session = session
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._app, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self._app, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
     @property
     def desc_or_prompt(self) -> str:

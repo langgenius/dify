@@ -15,11 +15,13 @@ import type { UseQueryResult } from '@tanstack/react-query'
  * - trigger-by-display.spec.tsx
  */
 import type { MockedFunction } from 'vitest'
+import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
@@ -31,10 +33,35 @@ import Logs from '../index'
 // Mocks
 // ============================================================================
 
+const mockPlanState = vi.hoisted(() => ({
+  value: 'unrestricted' as CloudSandboxPlanState,
+}))
+const mockDebouncedPeriod = vi.hoisted(() => ({
+  value: null as string | null,
+}))
+
 vi.mock('@/service/use-log')
 
+vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../log/cloud-sandbox-retention')>()
+  return {
+    ...actual,
+    useCloudSandboxPlanStatus: () => mockPlanState.value,
+  }
+})
+
 vi.mock('ahooks', () => ({
-  useDebounce: <T,>(value: T) => value,
+  useDebounce: <T,>(value: T) => {
+    if (
+      mockDebouncedPeriod.value === null ||
+      typeof value !== 'object' ||
+      value === null ||
+      !('period' in value)
+    )
+      return value
+
+    return { ...value, period: mockDebouncedPeriod.value }
+  },
   useDebounceFn: (fn: (value: string) => void) => ({ run: fn }),
   useBoolean: (initial: boolean) => {
     const setters = {
@@ -56,6 +83,10 @@ vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   ),
+}))
+
+vi.mock('../../log/retention-upgrade-notice', () => ({
+  RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
 // Mock the Run component to avoid complex dependencies
@@ -237,6 +268,8 @@ describe('Logs Container', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPlanState.value = 'unrestricted'
+    mockDebouncedPeriod.value = null
   })
 
   // --------------------------------------------------------------------------
@@ -272,6 +305,7 @@ describe('Logs Container', () => {
 
       // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByText('retention-upgrade-notice')).toBeInTheDocument()
     })
   })
 
@@ -442,6 +476,76 @@ describe('Logs Container', () => {
         expect(lastCall?.params).not.toHaveProperty('created_at__after')
         expect(lastCall?.params).not.toHaveProperty('created_at__before')
       })
+    })
+
+    it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
+      const user = userEvent.setup()
+      mockPlanState.value = 'sandbox'
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+
+      renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByText('appLog.filter.period.last7days'))
+      await user.click(await screen.findByText('appLog.filter.period.last30days'))
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.last30days' }),
+      ).toBeInTheDocument()
+      const params = getMockCallParams()?.params
+      expect(
+        dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
+      ).toBe(30)
+    })
+
+    it('should use a valid period for the real Chip and request when plan state settles to Sandbox', async () => {
+      const user = userEvent.setup()
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
+      const rendered = renderWithQueryClient(<Logs {...defaultProps} />)
+
+      await user.click(screen.getByText('appLog.filter.period.last7days'))
+      await user.click(await screen.findByText('appLog.filter.period.allTime'))
+      expect(getMockCallParams()?.params).not.toHaveProperty('created_at__after')
+      expect(getMockCallParams()?.params).not.toHaveProperty('created_at__before')
+
+      mockPlanState.value = 'pending'
+      mockDebouncedPeriod.value = '9'
+      rendered.rerender(<Logs {...defaultProps} />)
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.today' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: /common\.operation\.clear appLog\.filter\.period\.today/,
+        }),
+      ).toBeInTheDocument()
+      expect(getMockCallParams()?.params).toEqual(
+        expect.objectContaining({
+          created_at__after: expect.any(String),
+          created_at__before: expect.any(String),
+        }),
+      )
+
+      mockPlanState.value = 'sandbox'
+      rendered.rerender(<Logs {...defaultProps} />)
+
+      expect(
+        screen.getByRole('combobox', { name: 'appLog.filter.period.today' }),
+      ).toBeInTheDocument()
+      expect(getMockCallParams()?.params).toEqual(
+        expect.objectContaining({
+          created_at__after: expect.any(String),
+          created_at__before: expect.any(String),
+        }),
+      )
     })
 
     it('should update query when typing keyword', async () => {

@@ -1,12 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
+import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
@@ -244,7 +247,16 @@ vi.mock('@/service/client', async () => {
   }
 })
 
-function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
+function renderUnconfiguredEmptyState({ showUnconfiguredNotice }: AgentChatRuntimeEmptyStateProps) {
+  return showUnconfiguredNotice ? (
+    <span>agentV2.agentDetail.configure.preview.unconfiguredNotice</span>
+  ) : null
+}
+
+function renderPreviewChat(
+  props?: Partial<ComponentProps<typeof AgentChatRuntime>>,
+  draftOverrides?: Partial<AgentSoulConfigFormState>,
+) {
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
@@ -259,6 +271,12 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
     model: 'gpt-4',
   })
   store.set(agentComposerPromptAtom, 'You are helpful.')
+  if (draftOverrides) {
+    store.set(agentComposerDraftAtom, {
+      ...store.get(agentComposerDraftAtom),
+      ...draftOverrides,
+    })
+  }
 
   return {
     queryClient,
@@ -1213,6 +1231,61 @@ describe('AgentPreviewChat', () => {
       screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'sandbox notice info' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['Preview', undefined],
+    ['Build', 'debug_build' as const],
+  ])('should show the unconfigured warning in %s mode', (_mode, draftType) => {
+    renderPreviewChat(
+      {
+        draftType,
+        renderEmptyState: renderUnconfiguredEmptyState,
+      },
+      {
+        prompt: '',
+      },
+    )
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['prompt', { prompt: 'You are helpful.' }],
+    ['build note (config_note)', { configNote: 'Use the latest build context.' }],
+    ['skill', { skills: [{ id: 'skill-1', name: 'Research' }] }],
+    ['knowledge base', { knowledgeRetrievals: [{ id: 'retrieval-1', name: 'Docs' }] }],
+    ['file', { files: [{ id: 'brief.md', icon: 'markdown' as const, name: 'brief.md' }] }],
+    ['tool', { tools: [{ id: 'cli-1', kind: 'cli' as const, name: 'CLI' }] }],
+    [
+      'environment variable',
+      {
+        envVariables: [
+          {
+            id: 'env-1',
+            key: 'API_KEY',
+            scope: 'secret' as const,
+            value: 'secret',
+          },
+        ],
+      },
+    ],
+  ])('should hide the unconfigured warning when the agent has a %s', (_config, draft) => {
+    renderPreviewChat(
+      {
+        renderEmptyState: renderUnconfiguredEmptyState,
+      },
+      {
+        prompt: '',
+        ...draft,
+      },
+    )
+
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).not.toBeInTheDocument()
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {

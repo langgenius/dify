@@ -17,6 +17,7 @@ import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'rea
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { deploymentEditionAtom } from '@/context/system-features-state'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -82,6 +83,7 @@ export function AgentPreviewChatSession({
   const { t } = useTranslation('agentV2')
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
+  const composerDraft = useAtomValue(agentComposerDraftAtom)
   const config = useMemo(
     () =>
       buildChatConfig({
@@ -132,12 +134,21 @@ export function AgentPreviewChatSession({
     [handleInputSend],
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
-  const hasInstructions = !!config.pre_prompt.trim()
+  const hasAgentConfiguration = !!(
+    composerDraft.prompt.trim() ||
+    composerDraft.skills.length ||
+    composerDraft.files.length ||
+    composerDraft.tools.length ||
+    composerDraft.knowledgeRetrievals.length ||
+    composerDraft.envVariables.length
+  )
+  const hasBuildNote = !!composerDraft.configNote.trim()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
+  const showUnconfiguredNotice = showSandboxNotice && !hasAgentConfiguration && !hasBuildNote
   const speechToTextTarget: SpeechToTextTarget = {
     type: 'agent',
     agentId,
@@ -219,7 +230,7 @@ export function AgentPreviewChatSession({
               agentIconBackground,
               agentIconType,
               agentName,
-              hasInstructions,
+              showUnconfiguredNotice,
             })}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
             {chatInputNode}
