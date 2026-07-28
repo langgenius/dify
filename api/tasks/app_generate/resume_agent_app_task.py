@@ -51,6 +51,7 @@ def resume_agent_app_execution(*, conversation_id: str, form_id: str) -> None:
             app_model=app_model,
             user=user,
             conversation_id=conversation_id,
+            form_id=form_id,
             invoke_from=_resolve_invoke_from(conversation),
             session=db.session(),
         )

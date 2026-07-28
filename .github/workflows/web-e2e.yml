@@ -63,6 +63,7 @@ jobs:
           E2E_ADMIN_PASSWORD: E2eAdmin12345
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
+          E2E_START_AGENT_BACKEND: "1"
         run: vp run e2e:full
 
       - name: Preserve Chromium E2E report and logs
