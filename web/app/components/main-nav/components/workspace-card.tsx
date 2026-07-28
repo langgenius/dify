@@ -16,7 +16,6 @@ import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -259,26 +258,24 @@ export function WorkspaceCard() {
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const currentWorkspace = currentWorkspaceQuery.data
   const workspaces = workspacesQuery.data?.workspaces
-  const { enableBilling } = useProviderContext()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const showCloudBilling = deploymentEdition === 'CLOUD' && enableBilling
+  const isCloudEdition = deploymentEdition === 'CLOUD'
   const prefetchWorkspaces = () => {
     void queryClient.prefetchQuery(workspacesQueryOptions)
   }
 
   if (currentWorkspaceQuery.isPending || !currentWorkspace?.name) {
     return (
-      <WorkspaceCardSkeleton
-        showCloudBilling={showCloudBilling}
-        showPlanAction={showCloudBilling}
-      />
+      <WorkspaceCardSkeleton showCloudBilling={isCloudEdition} showPlanAction={isCloudEdition} />
     )
   }
 
   const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
-  const isFreePlan = workspacePlan === Plan.sandbox
+  const hasBillingPlan = typeof currentWorkspace.plan === 'string'
+  const showCloudBilling = isCloudEdition && hasBillingPlan
   const showPlanAction = showCloudBilling && workspacePlan !== null
+  const isFreePlan = workspacePlan === Plan.sandbox
   const planActionLabel = t(
     ($) => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'],
     { ns: 'billing' },
@@ -286,7 +283,7 @@ export function WorkspaceCard() {
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const renderWorkspaceStatus = () => {
     if (deploymentEdition === 'CLOUD')
-      return enableBilling && workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+      return workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
     if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
     return null
   }
@@ -333,7 +330,7 @@ export function WorkspaceCard() {
             onOpenSettings={() => {
               setOpen(false)
               setShowAccountSettingModal({
-                payload: enableBilling ? ACCOUNT_SETTING_TAB.BILLING : ACCOUNT_SETTING_TAB.MEMBERS,
+                payload: hasBillingPlan ? ACCOUNT_SETTING_TAB.BILLING : ACCOUNT_SETTING_TAB.MEMBERS,
               })
             }}
             onInviteMembers={() => {
