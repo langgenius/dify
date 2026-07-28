@@ -6,7 +6,7 @@ import type {
 import type { ReactNode } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
@@ -620,6 +620,67 @@ describe('SkillDetailPage', () => {
         }),
       )
     })
+  })
+
+  it('does not send the Skill Builder prompt when Enter confirms IME composition', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.placeholder',
+    )
+    fireEvent.change(promptInput, { target: { value: 'ni' } })
+    fireEvent.compositionStart(promptInput)
+    fireEvent.keyDown(promptInput, { isComposing: true, key: 'Enter' })
+
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(promptInput).toHaveValue('ni')
+  })
+
+  it('keeps blocking Skill Builder Enter briefly after IME composition ends', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.placeholder',
+    )
+    vi.useFakeTimers()
+    try {
+      fireEvent.change(promptInput, { target: { value: '你好' } })
+      fireEvent.compositionStart(promptInput)
+      fireEvent.compositionEnd(promptInput)
+      fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+      expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+      expect(promptInput).toHaveValue('你好')
+
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+      expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '你好',
+        }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sends the Skill Builder prompt with Enter when IME composition is inactive', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.placeholder',
+    )
+    fireEvent.change(promptInput, { target: { value: 'Create a support triage skill' } })
+    fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Create a support triage skill',
+      }),
+    )
   })
 
   it('blocks Skill Builder sends when no model is selected or available', async () => {

@@ -5208,6 +5208,7 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
   const attachmentInputRef = useRef<HTMLInputElement>(null)
   const [isSending, setIsSending] = useState(false)
   const isSendingRef = useRef(false)
+  const isComposingRef = useRef(false)
   const assistAbortControllerRef = useRef<AbortController | null>(null)
   const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: textGenerationModelList, isLoading: isTextGenerationModelListLoading } =
@@ -5274,6 +5275,17 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
     isSendingRef.current = false
     setIsSending(false)
     onClose()
+  }
+
+  const handleCompositionStart = () => {
+    isComposingRef.current = true
+  }
+
+  const handleCompositionEnd = () => {
+    // Safari can fire compositionend before the Enter keydown that confirms the composition.
+    window.setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
   }
 
   const handleAttachmentChange = async (file: File | undefined) => {
@@ -5543,8 +5555,11 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
             placeholder={inputPlaceholder}
             disabled={isSending}
             onChange={(event) => setPrompt(event.target.value)}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
             onKeyDown={(event) => {
               if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return
+              if (event.nativeEvent.isComposing || isComposingRef.current) return
 
               event.preventDefault()
               handleSend()
