@@ -24,10 +24,6 @@ export type EnvironmentVariablePatch = {
   deletedEnvironmentVariableIds: string[]
 }
 
-export type SyncDraftOptions = {
-  environmentVariablePatch?: EnvironmentVariablePatch
-}
-
 type EnvironmentVariablePatchPayload = {
   environment_variables: EnvironmentVariable[]
   deleted_environment_variable_ids: string[]
