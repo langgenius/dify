@@ -257,12 +257,7 @@ class KnowledgeFSDataFacade:
             )
             operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
             upload = body_reader(operation.max_request_bytes)
-            if (
-                not upload.filename
-                or not upload.content_type
-                or not isinstance(upload.body, bytes)
-                or not upload.body
-            ):
+            if not upload.filename or not upload.content_type or not isinstance(upload.body, bytes) or not upload.body:
                 raise KnowledgeFSProductRequestRejectedError(status_code=422)
             if len(upload.body) > operation.max_request_bytes:
                 raise KnowledgeFSProductRequestRejectedError(status_code=413)
