@@ -270,11 +270,13 @@ class TestAccountService:
 
     def test_create_account_registration_disabled(self, unbound_session: Session, mock_external_service_dependencies):
         """Test account creation when registration is disabled."""
+        from controllers.console.error import AccountNotFound
+
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = False
 
         # Execute test and verify exception
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(AccountNotFound):
             AccountService.create_account(
                 email="test@example.com",
                 name="Test User",
@@ -442,11 +444,13 @@ class TestAccountService:
 
     def test_load_user_banned(self, sqlite_session: Session):
         """Test user loading when user is banned."""
+        from werkzeug.exceptions import Unauthorized
+
         account = Account(name="Banned User", email="banned@example.com", status=AccountStatus.BANNED)
         sqlite_session.add(account)
         sqlite_session.commit()
 
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(Unauthorized):
             AccountService.load_user(account.id, sqlite_session)
 
     def test_load_user_no_current_tenant(self, sqlite_session: Session):
