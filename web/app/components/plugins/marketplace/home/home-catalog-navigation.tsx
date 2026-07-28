@@ -1,31 +1,27 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import PluginTypeSwitch from '../plugin-type-switch'
-import HomeCatalogTabs from './home-catalog-tabs'
+import { homeCatalogPinnedAtom } from './home-sticky-state'
 import styles from './home-sticky.module.css'
 
 type HomeCatalogNavigationProps = {
-  isPinned?: boolean
-  isMarketplacePlatform: boolean
-  onPinnedChange?: (isPinned: boolean) => void
+  catalogTabs: ReactNode
 }
 
 const STICKY_TOP = 48
 
-function HomeCatalogNavigation({
-  isPinned = false,
-  isMarketplacePlatform,
-  onPinnedChange,
-}: HomeCatalogNavigationProps) {
+function HomeCatalogNavigation({ catalogTabs }: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
+  const isPinned = useAtomValue(homeCatalogPinnedAtom)
+  const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
   const pinTriggerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (!onPinnedChange) return
-
     const scrollContainer = document.getElementById('marketplace-container')
     if (!scrollContainer) return
 
@@ -35,7 +31,7 @@ function HomeCatalogNavigation({
 
       const containerTop = scrollContainer.getBoundingClientRect().top
       const triggerTop = pinTrigger.getBoundingClientRect().top
-      onPinnedChange(triggerTop <= containerTop + STICKY_TOP)
+      setIsPinned(triggerTop <= containerTop + STICKY_TOP)
     }
 
     updatePinnedState()
@@ -46,7 +42,7 @@ function HomeCatalogNavigation({
       scrollContainer.removeEventListener('scroll', updatePinnedState)
       window.removeEventListener('resize', updatePinnedState)
     }
-  }, [onPinnedChange])
+  }, [setIsPinned])
 
   return (
     <>
@@ -60,10 +56,7 @@ function HomeCatalogNavigation({
         )}
       >
         <div className="w-full">
-          <HomeCatalogTabs
-            className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}
-            isMarketplacePlatform={isMarketplacePlatform}
-          />
+          <div className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
           <PluginTypeSwitch
             className={cn('mt-4', isPinned && styles.categoriesPinned)}
             variant="home"
