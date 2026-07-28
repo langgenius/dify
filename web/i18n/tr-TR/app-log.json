@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Yıl Başlangıcından İtibaren",
   "filter.sortBy": "Sıralama ölçütü:",
   "monitoring.description": "İzleme, performans, kullanıcı etkinliği ve maliyetler dahil olmak üzere uygulamanın çalışma durumunu kaydeder.",
+  "retention.upgradeTip.description": "Yükseltme sonrasında oluşturulan tüm günlükleri süresiz olarak saklamak için planınızı yükseltin. Yükseltmeden önce süresi dolan günlükler kurtarılamaz.",
   "runDetail.fileListDetail": "Ayrıntı",
   "runDetail.fileListLabel": "Dosya Detayları",
   "runDetail.testWithParams": "Parametrelerle Test",

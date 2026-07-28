@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Year to date",
   "filter.sortBy": "Sort by:",
   "monitoring.description": "Monitoring registreert de actieve status van de applicatie, inclusief prestaties, gebruikersactiviteit en kosten.",
+  "retention.upgradeTip.description": "Upgrade uw abonnement om alle logs die daarna worden gegenereerd onbeperkt te bewaren. Logs waarvan de bewaartermijn vóór de upgrade was verstreken, kunnen niet worden hersteld.",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "File Details",
   "runDetail.testWithParams": "Test With Params",
