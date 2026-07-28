@@ -624,7 +624,7 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @with_session(write=False)
+    @with_session(write=True)
     @with_current_user_id
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
@@ -786,7 +786,7 @@ class StarredAppListApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @with_session(write=False)
+    @with_session(write=True)
     @with_current_user_id
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
@@ -866,7 +866,7 @@ class AppApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @with_session(write=False)
+    @with_session(write=True)
     @get_app_model(mode=None)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
         """Get app detail"""

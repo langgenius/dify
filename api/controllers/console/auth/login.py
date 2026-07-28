@@ -355,7 +355,7 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
-    @with_session(write=False)
+    @with_session(write=True)
     def post(self, session: Session):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)

@@ -331,7 +331,7 @@ class InstructionGenerateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def post(self, session: Session, current_tenant_id: str):
         args = InstructionGeneratePayload.model_validate(console_ns.payload)
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]

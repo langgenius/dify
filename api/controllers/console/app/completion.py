@@ -333,7 +333,7 @@ class AgentChatMessageStopApi(Resource):
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def post(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
         app_model = resolve_agent_runtime_app_model(
             session=session,

@@ -5,7 +5,7 @@ for a Resource handler and injects it as the first argument after `self`.
 Write handlers commit on success and roll back on failure. They use a regular
 Session context so existing services may commit an intermediate unit and keep
 using the same Session through SQLAlchemy's autobegin behavior. Pure read
-handlers may opt out with `write=False`.
+handlers opt into a guarded read-only session with `write=False`.
 """
 
 from collections.abc import Callable
@@ -55,7 +55,7 @@ def with_session[T, **P, R](
                         session.rollback()  # noqa: no-new-controller-sqlalchemy decorator owns transaction rollback
                         raise
 
-            with session_factory.create_session() as session:
+            with session_factory.create_readonly_session() as session:
                 return view(self, session, *args, **kwargs)
 
         return wrapper

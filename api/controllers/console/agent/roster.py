@@ -990,7 +990,7 @@ class AgentLogsApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
@@ -1029,7 +1029,7 @@ class AgentLogMessagesApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
@@ -1068,7 +1068,7 @@ class AgentLogSourcesApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         payload = _agent_observability_service(session).list_log_sources(app=app_model, agent_id=str(agent_id))
@@ -1089,7 +1089,7 @@ class AgentStatisticsSummaryApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         query = AgentStatisticsQuery.model_validate(request.args.to_dict(flat=True))
