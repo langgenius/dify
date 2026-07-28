@@ -39,18 +39,15 @@ def _workflow_run(**overrides: object) -> WorkflowRun:
 
 @pytest.fixture(autouse=True)
 def _patch_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=Mock(return_value=Mock())))
 
 
-def _patch_repository(monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
-    repository = Mock()
-    repository.get_workflow_run_by_id_and_tenant_id.return_value = workflow_run
-    monkeypatch.setattr(
-        module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        Mock(return_value=repository),
-    )
-    return repository
+def _patch_service(monkeypatch: pytest.MonkeyPatch, workflow_run: WorkflowRun | None) -> Mock:
+    service = Mock()
+    service.session_maker = sessionmaker()
+    service.get_rag_pipeline_workflow_run.return_value = workflow_run
+    monkeypatch.setattr(module, "RagPipelineService", Mock(return_value=service))
+    return service
 
 
 @pytest.mark.parametrize(
@@ -67,7 +64,7 @@ def test_rag_events_rejects_missing_or_cross_owner_run(
     monkeypatch: pytest.MonkeyPatch,
     workflow_run: WorkflowRun | None,
 ) -> None:
-    _patch_repository(monkeypatch, workflow_run)
+    _patch_service(monkeypatch, workflow_run)
     api = module.RagPipelineWorkflowRunEventsApi()
     handler = unwrap(api.get)
 
@@ -77,7 +74,7 @@ def test_rag_events_rejects_missing_or_cross_owner_run(
 
 
 def test_rag_events_replays_from_last_event_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    _patch_repository(monkeypatch, _workflow_run())
+    _patch_service(monkeypatch, _workflow_run())
     build_stream = Mock(return_value=iter([{"event": "workflow_finished"}]))
     monkeypatch.setattr(
         module,
@@ -102,7 +99,7 @@ def test_rag_events_uses_rag_snapshot_and_keeps_multi_pause_stream_open(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workflow_run = _workflow_run()
-    _patch_repository(monkeypatch, workflow_run)
+    _patch_service(monkeypatch, workflow_run)
     build_stream = Mock(return_value=iter([{"event": "workflow_started"}]))
     monkeypatch.setattr(module, "build_workflow_event_stream", build_stream)
     api = module.RagPipelineWorkflowRunEventsApi()
@@ -128,7 +125,7 @@ def test_rag_events_finished_shortcut_uses_persisted_task_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workflow_run = _workflow_run(finished_at=datetime(2026, 7, 28, 12, 0, 0))
-    _patch_repository(monkeypatch, workflow_run)
+    _patch_service(monkeypatch, workflow_run)
     finished = Mock()
     finished.event.value = "workflow_finished"
     finished.model_dump.return_value = {"event": "workflow_finished", "task_id": "task-1"}

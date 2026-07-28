@@ -7,7 +7,7 @@ from uuid import UUID
 from flask import Response, request
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -40,7 +40,6 @@ from models.dataset import Dataset, Pipeline
 from models.engine import db
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -318,21 +317,16 @@ class PipelineWorkflowRunEventsApi(DatasetApiResource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        dataset_id_str = str(dataset_id)
-        dataset = db.session.scalar(select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str))
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-
-        pipeline = RagPipelineService(db.session()).get_pipeline(
-            tenant_id=tenant_id,
-            dataset_id=dataset_id_str,
-        )
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-        workflow_run = repository.get_workflow_run_by_id_and_tenant_id(
-            tenant_id=tenant_id,
-            run_id=str(run_id),
-        )
+        rag_pipeline_service = RagPipelineService(db.session())
+        try:
+            pipeline = rag_pipeline_service.get_pipeline(
+                tenant_id=tenant_id,
+                dataset_id=str(dataset_id),
+            )
+        except ValueError as error:
+            raise NotFound(str(error)) from error
+        session_maker = rag_pipeline_service.session_maker
+        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=str(run_id))
         if (
             workflow_run is None
             or workflow_run.app_id != pipeline.id

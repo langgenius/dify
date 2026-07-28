@@ -640,7 +640,6 @@ class TestPipelineWorkflowRunEventsApi:
             created_by=account.id,
             finished_at=None,
         )
-        repository = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=Mock(return_value=workflow_run))
         build_stream = Mock(return_value=iter([{"event": "workflow_finished"}]))
         session_proxy = Mock(return_value=sqlite_session)
         session_proxy.scalar = sqlite_session.scalar
@@ -650,15 +649,15 @@ class TestPipelineWorkflowRunEventsApi:
             SimpleNamespace(session=session_proxy, engine=sqlite_session.bind),
         )
         monkeypatch.setattr(rag_pipeline_workflow_module, "current_user", account)
+        rag_pipeline_service = SimpleNamespace(
+            get_pipeline=Mock(return_value=pipeline),
+            get_rag_pipeline_workflow_run=Mock(return_value=workflow_run),
+            session_maker=Mock(),
+        )
         monkeypatch.setattr(
             rag_pipeline_workflow_module,
             "RagPipelineService",
-            Mock(return_value=SimpleNamespace(get_pipeline=Mock(return_value=pipeline))),
-        )
-        monkeypatch.setattr(
-            rag_pipeline_workflow_module.DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            Mock(return_value=repository),
+            Mock(return_value=rag_pipeline_service),
         )
         monkeypatch.setattr(
             rag_pipeline_workflow_module,
@@ -705,15 +704,15 @@ class TestPipelineWorkflowRunEventsApi:
             SimpleNamespace(session=session_proxy, engine=sqlite_session.bind),
         )
         monkeypatch.setattr(rag_pipeline_workflow_module, "current_user", account)
+        rag_pipeline_service = SimpleNamespace(
+            get_pipeline=Mock(return_value=pipeline),
+            get_rag_pipeline_workflow_run=Mock(return_value=workflow_run),
+            session_maker=Mock(),
+        )
         monkeypatch.setattr(
             rag_pipeline_workflow_module,
             "RagPipelineService",
-            Mock(return_value=SimpleNamespace(get_pipeline=Mock(return_value=pipeline))),
-        )
-        monkeypatch.setattr(
-            rag_pipeline_workflow_module.DifyAPIRepositoryFactory,
-            "create_api_workflow_run_repository",
-            Mock(return_value=SimpleNamespace(get_workflow_run_by_id_and_tenant_id=Mock(return_value=workflow_run))),
+            Mock(return_value=rag_pipeline_service),
         )
 
         api = PipelineWorkflowRunEventsApi()

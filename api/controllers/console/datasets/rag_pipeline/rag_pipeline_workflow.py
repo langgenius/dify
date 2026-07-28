@@ -67,7 +67,6 @@ from models.dataset import Pipeline
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from models.workflow import Workflow
-from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -980,12 +979,9 @@ class RagPipelineWorkflowRunEventsApi(Resource):
     @with_current_user
     @get_rag_pipeline
     def get(self, current_user: Account, pipeline: Pipeline, run_id: UUID):
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-        workflow_run = repository.get_workflow_run_by_id_and_tenant_id(
-            tenant_id=pipeline.tenant_id,
-            run_id=str(run_id),
-        )
+        rag_pipeline_service = RagPipelineService(db.session())
+        session_maker = rag_pipeline_service.session_maker
+        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=str(run_id))
         if (
             workflow_run is None
             or workflow_run.app_id != pipeline.id
