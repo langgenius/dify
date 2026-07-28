@@ -89,12 +89,25 @@ vi.mock('../app-operations', () => ({
     primaryOperations,
     secondaryOperations,
   }: {
-    primaryOperations?: Array<{ id: string; title: string; onClick: () => void }>
+    primaryOperations?: Array<{
+      id: string
+      title: string
+      onClick: () => void
+      disabled?: boolean
+      loading?: boolean
+    }>
     secondaryOperations?: Array<{ id: string; title: string; onClick: () => void; type?: string }>
   }) => (
     <div data-testid="app-operations">
       {primaryOperations?.map((op) => (
-        <button key={op.id} type="button" data-testid={`op-${op.id}`} onClick={op.onClick}>
+        <button
+          key={op.id}
+          type="button"
+          data-testid={`op-${op.id}`}
+          data-loading={op.loading || undefined}
+          disabled={op.disabled}
+          onClick={op.onClick}
+        >
           {op.title}
         </button>
       ))}
@@ -140,6 +153,7 @@ describe('AppInfoDetailPanel', () => {
     show: true,
     onClose: vi.fn(),
     openModal: vi.fn(),
+    isExporting: false,
     exportCheck: vi.fn(),
   }
 
@@ -245,6 +259,13 @@ describe('AppInfoDetailPanel', () => {
       await user.click(screen.getByTestId('op-export'))
 
       expect(defaultProps.exportCheck).toHaveBeenCalledTimes(1)
+    })
+
+    it('should show the export operation as loading while export is pending', () => {
+      render(<AppInfoDetailPanel {...defaultProps} isExporting />)
+
+      expect(screen.getByTestId('op-export')).toHaveAttribute('data-loading', 'true')
+      expect(screen.getByTestId('op-export')).not.toBeDisabled()
     })
 
     it('should render delete operation', () => {

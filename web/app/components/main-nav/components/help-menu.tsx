@@ -37,7 +37,6 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
@@ -199,7 +198,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && shouldShowStepByStepTourSwitch && (
+              {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={false}
@@ -217,7 +216,9 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   <MenuSwitchIndicator checked={stepByStepTourEnabled} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+              {systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceOwner && (
+                <Compliance />
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">

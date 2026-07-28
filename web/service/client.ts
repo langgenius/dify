@@ -1,7 +1,10 @@
-import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentAppComposerResponse,
+  AgentAppPagination,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { consoleRouterContract } from '@dify/contracts/console'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,
@@ -63,6 +66,7 @@ export function getBaseURL(path: string) {
 }
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
+  keepalive?: boolean
   silent?: boolean
 }
 
@@ -72,9 +76,14 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
-      return request(normalizeConsoleOpenAPIURL(input.url), init, {
+      const requestInit = options.context.keepalive ? { ...init, keepalive: true } : init
+      const normalizedURL = normalizeConsoleOpenAPIURL(input.url)
+      const normalizedRequest =
+        normalizedURL === input.url ? input : new Request(normalizedURL, input)
+
+      return request(normalizedURL, requestInit, {
         fetchCompat: true,
-        request: input,
+        request: normalizedRequest,
         silent: options.context.silent,
       })
     },
@@ -656,7 +665,17 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           composer: {
             put: {
               mutationOptions: {
-                onSuccess: (_composerState, variables, _onMutateResult, context) => {
+                onSuccess: (composerState, variables, _onMutateResult, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.agent.byAgentId.composer.get.queryKey({
+                      input: {
+                        params: {
+                          agent_id: variables.params.agent_id,
+                        },
+                      },
+                    }),
+                    composerState,
+                  )
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.agent.get.key(),
                   })
@@ -675,7 +694,33 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           publish: {
             post: {
               mutationOptions: {
-                onSuccess: (_publishResult, _variables, _onMutateResult, context) => {
+                onSuccess: (publishResult, variables, _onMutateResult, context) => {
+                  context.client.setQueryData<AgentAppComposerResponse>(
+                    consoleQuery.agent.byAgentId.composer.get.queryKey({
+                      input: {
+                        params: {
+                          agent_id: variables.params.agent_id,
+                        },
+                      },
+                    }),
+                    (composerState) => {
+                      if (!composerState) return composerState
+
+                      return {
+                        ...composerState,
+                        active_config_is_published: true,
+                        active_config_snapshot: publishResult.active_config_snapshot,
+                        agent: {
+                          ...composerState.agent,
+                          active_config_snapshot_id: publishResult.active_config_snapshot_id,
+                        },
+                        draft:
+                          publishResult.draft === undefined
+                            ? composerState.draft
+                            : publishResult.draft,
+                      }
+                    },
+                  )
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.agent.get.key(),
                   })

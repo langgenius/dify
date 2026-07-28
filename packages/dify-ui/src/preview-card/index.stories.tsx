@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Hover- and focus-activated rich link preview built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Keep popup content available on the link destination. A polymorphic action trigger is a Dify application-level extension and is only valid when its click result exposes the same information.',
+          "A visual enhancement for a link that previews its destination, built on Base UI PreviewCard. The popup is unavailable to touch and screen-reader users, so it must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use Popover when opening the popup is the trigger's purpose or when its content must be accessible across input modes.",
       },
     },
   },

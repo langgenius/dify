@@ -6,7 +6,6 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
-import * as workflowService from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -18,6 +17,19 @@ let mockRbacEnabled = true
 const mockUserCanAccessApp = vi.hoisted(() => ({
   result: true as boolean | undefined,
   isLoading: false,
+}))
+const mockAppDslExport = vi.hoisted(() => ({
+  exportAppDsl: vi.fn(),
+  isExporting: false,
+}))
+const mockWorkflowAppDslExport = vi.hoisted(() => ({
+  exportWorkflowAppDsl: vi.fn(),
+  isExporting: false,
+}))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => mockAppDslExport,
+  useExportWorkflowAppDsl: () => mockWorkflowAppDslExport,
 }))
 
 const render = (ui: React.ReactElement) =>
@@ -116,7 +128,6 @@ vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
   updateAppInfo: vi.fn(() => Promise.resolve()),
   copyApp: vi.fn(() => Promise.resolve({ id: 'new-app-id' })),
-  exportAppConfig: vi.fn(() => Promise.resolve({ data: 'yaml: content' })),
 }))
 
 const mockDeleteAppMutation = vi.fn(() => Promise.resolve())
@@ -132,10 +143,6 @@ vi.mock('@/service/use-apps', () => ({
     mutateAsync: mockToggleAppStarMutation,
     isPending: mockToggleStarMutationPending,
   }),
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: vi.fn(() => Promise.resolve({ environment_variables: [] })),
 }))
 
 vi.mock('@/service/explore', () => ({
@@ -438,11 +445,13 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
       className,
       onClick,
       destructive,
+      disabled,
     }: {
       children: React.ReactNode
       className?: string
       onClick?: React.MouseEventHandler<HTMLButtonElement>
       destructive?: boolean
+      disabled?: boolean
     }) => {
       const { setOpen } = useDropdownMenuContext()
       return (
@@ -452,6 +461,7 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
           type="button"
           className={className}
           data-destructive={destructive}
+          disabled={disabled}
           onClick={(e) => {
             onClick?.(e)
             setOpen(false)
@@ -533,6 +543,10 @@ describe('AppCard', () => {
     mockUserCanAccessApp.isLoading = false
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
+    mockAppDslExport.isExporting = false
+    mockAppDslExport.exportAppDsl.mockResolvedValue({ status: 'downloaded' })
+    mockWorkflowAppDslExport.isExporting = false
+    mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockConsoleState.isCurrentWorkspaceEditor = true
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
@@ -1310,7 +1324,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should call exportAppConfig API when exporting', async () => {
+    it('should export the app DSL when exporting', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
@@ -1318,28 +1332,18 @@ describe('AppCard', () => {
         fireEvent.click(screen.getByText('app.export'))
       })
 
-      await waitFor(() => {
-        expect(appsService.exportAppConfig).toHaveBeenCalled()
+      expect(mockAppDslExport.exportAppDsl).toHaveBeenCalledWith({
+        appId: mockApp.id,
+        appName: mockApp.name,
       })
     })
 
-    it('should handle export failure', async () => {
-      ;(appsService.exportAppConfig as Mock).mockRejectedValueOnce(new Error('Export failed'))
-
+    it('should prevent duplicate exports while an app DSL export is pending', () => {
+      mockAppDslExport.isExporting = true
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(appsService.exportAppConfig).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.exportFailed',
-        })
-      })
+      const trigger = screen.getByRole('button', { name: 'common.operation.exporting' })
+      expect(trigger).toBeDisabled()
     })
   })
 
@@ -1446,7 +1450,7 @@ describe('AppCard', () => {
   })
 
   describe('Workflow Export with Environment Variables', () => {
-    it('should check for secret environment variables in workflow apps', async () => {
+    it('should use the workflow export command for workflow apps', async () => {
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)
 
@@ -1456,13 +1460,18 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
+        expect(mockWorkflowAppDslExport.exportWorkflowAppDsl).toHaveBeenCalledWith({
+          appId: workflowApp.id,
+          appName: workflowApp.name,
+        })
       })
+      expect(mockAppDslExport.exportAppDsl).not.toHaveBeenCalled()
     })
 
     it('should show DSL export modal when workflow has secret variables', async () => {
-      ;(workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
-        environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
+      mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValueOnce({
+        status: 'confirmation-required',
+        secretEnvList: [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }],
       })
 
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
@@ -1478,9 +1487,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should export workflow directly when environment_variables is undefined', async () => {
-      ;(workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({})
-
+    it('should not open a modal when the workflow command downloads directly', async () => {
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)
 
@@ -1490,19 +1497,16 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalledWith(
-          `/apps/${workflowApp.id}/workflows/draft`,
-        )
-        expect(appsService.exportAppConfig).toHaveBeenCalledWith({
-          appID: workflowApp.id,
-          include: false,
+        expect(mockWorkflowAppDslExport.exportWorkflowAppDsl).toHaveBeenCalledWith({
+          appId: workflowApp.id,
+          appName: workflowApp.name,
         })
       })
 
       expect(screen.queryByTestId('dsl-export-modal')).not.toBeInTheDocument()
     })
 
-    it('should check for secret environment variables in advanced chat apps', async () => {
+    it('should use the workflow export command for advanced chat apps', async () => {
       const advancedChatApp = { ...mockApp, mode: AppModeEnum.ADVANCED_CHAT }
       render(<AppCard app={advancedChatApp} />)
 
@@ -1512,13 +1516,17 @@ describe('AppCard', () => {
       })
 
       await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
+        expect(mockWorkflowAppDslExport.exportWorkflowAppDsl).toHaveBeenCalledWith({
+          appId: advancedChatApp.id,
+          appName: advancedChatApp.name,
+        })
       })
     })
 
     it('should close DSL export modal when onClose is called', async () => {
-      ;(workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
-        environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
+      mockWorkflowAppDslExport.exportWorkflowAppDsl.mockResolvedValueOnce({
+        status: 'confirmation-required',
+        secretEnvList: [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }],
       })
 
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
@@ -1690,26 +1698,6 @@ describe('AppCard', () => {
         const { unmount } = render(<AppCard app={testApp} />)
         expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
         unmount()
-      })
-    })
-
-    it('should handle workflow draft fetch failure during export', async () => {
-      ;(workflowService.fetchWorkflowDraft as Mock).mockRejectedValueOnce(new Error('Fetch failed'))
-
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
-      render(<AppCard app={workflowApp} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.export'))
-      })
-
-      await waitFor(() => {
-        expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'app.exportFailed',
-        })
       })
     })
   })

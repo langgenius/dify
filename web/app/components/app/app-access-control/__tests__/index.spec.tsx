@@ -13,6 +13,7 @@ let mockWebappAuth = {
   allow_sso: true,
   allow_email_password_login: false,
   allow_email_code_login: false,
+  allow_public_access: true,
 }
 
 const render = (ui: ReactElement) =>
@@ -34,7 +35,15 @@ vi.mock('@/service/access-control', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    systemFeatures: { get: { queryKey: () => ['system-features'] } },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     enterprise: {
       webAppAuth: {
         updateWebAppWhitelistSubjects: {
@@ -53,6 +62,7 @@ describe('AccessControl', () => {
       allow_sso: true,
       allow_email_password_login: false,
       allow_email_code_login: false,
+      allow_public_access: true,
     }
     useAccessControlStore.setState({
       appId: '',
@@ -113,6 +123,7 @@ describe('AccessControl', () => {
       allow_sso: false,
       allow_email_password_login: false,
       allow_email_code_login: false,
+      allow_public_access: true,
     }
 
     render(
@@ -140,5 +151,49 @@ describe('AccessControl', () => {
     rerender(<AccessControl app={{ ...app }} onClose={vi.fn()} />)
 
     expect(organization).toBeChecked()
+  })
+
+  describe('public access control', () => {
+    it('should render the public option enabled without a tooltip when public access is allowed', () => {
+      render(
+        <AccessControl
+          app={{ id: 'app-id-4', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+          onClose={vi.fn()}
+        />,
+      )
+
+      const publicOption = screen.getByRole('radio', {
+        name: /app\.accessControlDialog\.accessItems\.anyone/,
+      })
+      expect(publicOption).not.toHaveAttribute('data-disabled')
+      expect(
+        screen.queryByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should render the public option disabled with a tooltip when public access is disabled', () => {
+      mockWebappAuth = {
+        enabled: true,
+        allow_sso: true,
+        allow_email_password_login: false,
+        allow_email_code_login: false,
+        allow_public_access: false,
+      }
+
+      render(
+        <AccessControl
+          app={{ id: 'app-id-5', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+          onClose={vi.fn()}
+        />,
+      )
+
+      const publicOption = screen.getByRole('radio', {
+        name: /app\.accessControlDialog\.accessItems\.anyone/,
+      })
+      expect(publicOption).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      ).toBeInTheDocument()
+    })
   })
 })

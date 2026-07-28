@@ -25,16 +25,7 @@ Use `@external-model` and `@external-tool` only for runtime calls. A scenario th
 
 ## Step organization
 
-Keep steps grouped by user capability:
-
-- `configure.steps.ts` — navigation, editing, autosave, and saved draft behavior.
-- `build-draft.steps.ts` — checkout, apply, discard, and isolation.
-- `files.steps.ts`, `knowledge.steps.ts`, `tools.steps.ts` — resource configuration behavior.
-- `advanced-settings.steps.ts`, `env-editor.steps.ts` — supported Advanced Settings behavior.
-- `agent-roster.steps.ts`, `agent-edit.steps.ts`, `publish.steps.ts` — Agent lifecycle surfaces.
-- `access-point*.steps.ts` — Web app, service API, and Workflow access.
-- `fixtures.steps.ts` — strict fixture resolution for behavior scenarios.
-- `speech-to-text.steps.ts` — voice input and transcription behavior.
+Keep steps grouped by Agent product capability, such as configuration, Build draft, resource configuration, lifecycle, Access Point, and runtime behavior. Group by the domain action that owns the wording instead of mechanically pairing a step file with each feature file. Fixture-resolution steps should remain separate from behavior steps because they validate environment readiness rather than perform a user journey.
 
 Cucumber step definitions are globally registered. Do not duplicate step text across files.
 
@@ -66,20 +57,11 @@ pnpm -C e2e e2e:post-merge:prepare
 pnpm -C e2e e2e:post-merge
 ```
 
-The strict seed must finish without blocked tasks. It prepares the stable and decision models, Speech-to-Text default, marketplace plugins, JSON Replace and Tavily tools, ready knowledge base, Full Config Agent, Tool States Agent, Dual Retrieval Agent, and Workflow reference.
+The strict seed must finish without blocked tasks. The concrete resource inventory and defaults belong to the seed profile and environment configuration rather than this guidance.
 
-Fixture helpers live under `features/agent-v2/support/fixtures/`:
+Organize fixture helpers by the product resource or infrastructure capability they own, not by the feature file that happens to consume them. Keep runtime readiness adapters separate from Console resource fixtures, and keep all fixture state in the current `SeedContext` or scenario `DifyWorld` rather than module globals.
 
-- `models.ts` — stable, decision, and Speech-to-Text models.
-- `agents.ts` — fixed Agent and configuration contracts.
-- `datasets.ts` — indexed knowledge contract.
-- `tools.ts` — installed built-in tool contract.
-- `access.ts` — Workflow reference contract.
-- `agent-backend.ts` — runtime server and shellctl readiness.
-
-The stable model selectors default to `openai` / `gpt-5-nano` / `llm`. The decision model defaults to `openai` / `gpt-5.5` / `llm`. The Speech-to-Text model defaults to `openai` / `gpt-4o-mini-transcribe`. Provider credentials belong to seed/admin setup through `E2E_MODEL_PROVIDER_CREDENTIALS_JSON`, never to Cucumber steps.
-
-The Full Config Agent contract includes the stable model, prompt marker, checked-in files, Summary Skill, JSON Replace tool, and indexed knowledge reference. Tool States includes Summary Skill, JSON Replace, Tavily, and its credential reference. Dual Retrieval includes generated-query and custom-query knowledge sets. Workflow reference verifies the same Console API used by the Access Point table.
+Provider credentials belong to seed/admin setup, never to Cucumber steps.
 
 ## Runtime contract
 
@@ -94,3 +76,5 @@ Build mode covers Configure and Build draft persistence. Preview/Test Run covers
 ## API contracts
 
 Import generated Console/Web/Service API types directly from `@dify/contracts/.../types.gen`. Keep local types only for E2E-owned state, fixture registry entries, helper inputs, and intentionally narrowed views. If the generated contract is incomplete, fix the backend schema and regenerate it instead of duplicating the response shape.
+
+Agent detail is the state owner for Agent scenarios. An Agent's backing app identifier may be used to route a shared app command, but it is not a substitute query model and must not become the final assertion source. Derive Agent Web app URLs and persisted Agent state from the generated Agent detail contract, then assert the user-visible Access Point or runtime result in the browser.

@@ -25,7 +25,7 @@ import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
-import { useWorkflowRefreshDraft } from '.'
+import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
@@ -129,14 +129,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
-    if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
-
-    const isFollower =
-      isCollaborationEnabled &&
-      collaborationManager.isConnected() &&
-      !collaborationManager.getIsLeader()
-
-    if (isFollower) return
+    const canPersistOnPageClose =
+      !isCollaborationEnabled ||
+      collaborationManager.canFlushGraphOnPageClose() ||
+      collaborationManager.canUseLocalDraftFallback()
+    if (!canPersistOnPageClose) return
 
     const postParams = getPostParams()
 
@@ -151,14 +148,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       if (getNodesReadOnly()) return null
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
-        callback?.onError?.()
         callback?.onSettled?.()
         return null
       }
 
       const baseParams = getPostParams()
       if (!baseParams) {
-        callback?.onError?.()
         callback?.onSettled?.()
         return null
       }

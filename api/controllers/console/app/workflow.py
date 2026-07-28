@@ -317,7 +317,7 @@ class _WorkflowResponseSource:
         self._session = session
 
     def __getattr__(self, name: str) -> object:
-        return getattr(self._workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self._workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
     @property
     def created_by_account(self) -> Account | None:
@@ -357,6 +357,12 @@ class WorkflowOnlineUsersResponse(ResponseModel):
 class WorkflowPublishResponse(ResponseModel):
     result: str
     created_at: int
+
+
+class SyncDraftWorkflowResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
 
 
 class WorkflowRestoreResponse(ResponseModel):
@@ -441,6 +447,7 @@ register_response_schema_models(
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
     WorkflowPublishResponse,
+    SyncDraftWorkflowResponse,
     WorkflowRestoreResponse,
     DefaultBlockConfigsResponse,
     DefaultBlockConfigResponse,
@@ -556,14 +563,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.model(
-            "SyncDraftWorkflowResponse",
-            {
-                "result": fields.String,
-                "hash": fields.String,
-                "updated_at": fields.String,
-            },
-        ),
+        console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Invalid workflow configuration")
     @console_ns.response(403, "Permission denied")
@@ -618,11 +618,14 @@ class DraftWorkflowApi(Resource):
         except VariableError as e:
             raise InvalidArgumentError(description=str(e))
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        return dump_response(
+            SyncDraftWorkflowResponse,
+            {
+                "result": "success",
+                "hash": workflow.unique_hash,
+                "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+            },
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")

@@ -8,8 +8,9 @@ can be validated explicitly against the pinned KnowledgeFS contract during devel
 Console auth and contract-specific dataset RBAC run before forwarding. Request
 bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
 SSE responses remain streaming with a bounded idle read timeout, and only safe
-response headers are exposed. Upstream 401 responses become 502 so they cannot
-trigger Dify browser-session recovery; resource-level 403 responses remain 403.
+response headers are exposed. Operation-specific upstream error mappings are
+applied before Console JSON error handling; the default maps 401 to 502 so it
+cannot trigger browser-session recovery and preserves resource-level 403.
 """
 
 from __future__ import annotations
@@ -27,9 +28,11 @@ from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
     GatewayTimeout,
+    HTTPException,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
+    default_exceptions,
 )
 
 from configs import dify_config
@@ -41,20 +44,27 @@ from controllers.console.wraps import (
 )
 from core.helper import ssrf_proxy
 from libs.login import current_account_with_tenant, login_required
+from services.knowledge_fs_operations import KnowledgeFSMethod
 from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
+    KnowledgeFSAuthorization,
     KnowledgeFSConfigurationError,
-    KnowledgeFSMethod,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
     KnowledgeFSUpstreamResponse,
     authorize_knowledge_fs_request,
     get_knowledge_fs_operation,
+    proxy_authorized_knowledge_fs_request,
     proxy_knowledge_fs_request,
 )
 
 logger = logging.getLogger(__name__)
+
+type _KnowledgeFSRequestForwarder = Callable[
+    [str | None, str | None, bytes | None, bytes | None],
+    KnowledgeFSUpstreamResponse,
+]
 
 _MAX_PROXY_BODY_BYTES = 64 * 1024 * 1024
 _RESPONSE_HEADER_ALLOWLIST = (
@@ -128,27 +138,25 @@ def _translate_proxy_error(exc: Exception, *, tenant_id: str) -> NoReturn:
 
 
 def _knowledge_fs_operation_access_required(
-    view: Callable[[KnowledgeFSMethod, str], ResponseReturnValue],
+    view: Callable[[KnowledgeFSAuthorization], ResponseReturnValue],
 ) -> Callable[[KnowledgeFSMethod, str], ResponseReturnValue]:
     """Authorize one declared operation before billing and request-body work."""
 
     @wraps(view)
     def decorated(method: KnowledgeFSMethod, upstream_path: str) -> ResponseReturnValue:
-        try:
-            operation = get_knowledge_fs_operation(method, upstream_path)
-        except KnowledgeFSRouteNotAllowedError as exc:
-            raise NotFound() from exc
-
         current_user, tenant_id = current_account_with_tenant()
         try:
-            authorize_knowledge_fs_request(
+            authorization = authorize_knowledge_fs_request(
                 account=current_user,
                 tenant_id=tenant_id,
-                operation=operation,
+                method=method,
+                path=upstream_path,
             )
+        except KnowledgeFSRouteNotAllowedError as exc:
+            raise NotFound() from exc
         except KnowledgeFSAccessDeniedError as exc:
             _translate_proxy_error(exc, tenant_id=tenant_id)
-        return view(method, upstream_path)
+        return view(authorization)
 
     return decorated
 
@@ -190,21 +198,26 @@ def _proxy_response(
     """Expose raw content, status, and allowlisted headers from KnowledgeFS.
 
     Raises:
-        BadGateway: KnowledgeFS rejects the configured server credential.
-        Forbidden: KnowledgeFS denies the account access to the requested resource.
+        HTTPException: KnowledgeFS returns a status normalized by the operation contract.
     """
     upstream = upstream_result.response
-    if upstream.status_code == HTTPStatus.UNAUTHORIZED:
+    mapped_status = dict(upstream_result.operation.error_status_map).get(upstream.status_code)
+    if mapped_status is not None:
         upstream.close()
-        logger.error(
-            "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
-            upstream.status_code,
-            tenant_id,
-        )
-        raise BadGateway("KnowledgeFS authentication failed")
-    if upstream.status_code == HTTPStatus.FORBIDDEN:
-        upstream.close()
-        raise Forbidden()
+        description = "KnowledgeFS upstream request failed"
+        if upstream.status_code == HTTPStatus.UNAUTHORIZED:
+            description = "KnowledgeFS authentication failed"
+            logger.error(
+                "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
+                upstream.status_code,
+                tenant_id,
+            )
+        exception_type = default_exceptions.get(mapped_status)
+        if exception_type is None:
+            exception = HTTPException(description)
+            exception.code = mapped_status
+            raise exception
+        raise exception_type(description)
 
     allowed_header_names = dict.fromkeys(
         name.lower() for name in (*_RESPONSE_HEADER_ALLOWLIST, *contract_response_headers)
@@ -237,26 +250,21 @@ def _proxy_response(
     return Response(content, status=upstream.status_code, headers=headers)
 
 
-def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
-    """Forward the current raw request and return its filtered upstream response.
-
-    The call performs one outbound KnowledgeFS request. Integration failures are
-    converted to Console HTTP exceptions for the outer JSON error adapter.
-    """
+def _proxy_current_request(
+    *,
+    method: KnowledgeFSMethod,
+    tenant_id: str,
+    forward: _KnowledgeFSRequestForwarder,
+) -> Response:
+    """Forward the current raw request through one preconfigured service entry."""
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
-    current_user, tenant_id = current_account_with_tenant()
     try:
-        proxy_result = proxy_knowledge_fs_request(
-            account=current_user,
-            method=method,
-            path=upstream_path,
-            tenant_id=tenant_id,
-            accept=request.headers.get("Accept"),
-            content_type=request.content_type,
-            query=request.query_string or None,
-            body=_request_body() if method != "GET" else None,
-            request_headers=request.headers,
+        proxy_result = forward(
+            request.headers.get("Accept"),
+            request.content_type,
+            request.query_string or None,
+            _request_body() if method != "GET" else None,
         )
     except (
         KnowledgeFSConfigurationError,
@@ -274,20 +282,99 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     )
 
 
+def _proxy_request(
+    method: KnowledgeFSMethod,
+    upstream_path: str,
+) -> Response:
+    """Authorize and forward the current request through the combined service use case."""
+    if not dify_config.KNOWLEDGE_FS_ENABLED:
+        raise NotFound()
+    current_user, tenant_id = current_account_with_tenant()
+
+    def forward(
+        accept: str | None,
+        content_type: str | None,
+        query: bytes | None,
+        body: bytes | None,
+    ) -> KnowledgeFSUpstreamResponse:
+        return proxy_knowledge_fs_request(
+            account=current_user,
+            method=method,
+            path=upstream_path,
+            tenant_id=tenant_id,
+            accept=accept,
+            content_type=content_type,
+            query=query,
+            body=body,
+            request_headers=request.headers,
+        )
+
+    return _proxy_current_request(method=method, tenant_id=tenant_id, forward=forward)
+
+
+def _proxy_authorized_request(authorization: KnowledgeFSAuthorization) -> Response:
+    """Forward the current request using one previously authorized operation capability.
+
+    Args:
+        authorization: Request-scoped capability produced before billing and body parsing.
+
+    Returns:
+        The filtered response returned by KnowledgeFS.
+
+    Raises:
+        HTTPException: The integration is disabled or forwarding fails.
+    """
+    operation = authorization.operation
+    tenant_id = authorization.tenant_id
+
+    def forward(
+        accept: str | None,
+        content_type: str | None,
+        query: bytes | None,
+        body: bytes | None,
+    ) -> KnowledgeFSUpstreamResponse:
+        return proxy_authorized_knowledge_fs_request(
+            authorization=authorization,
+            accept=accept,
+            content_type=content_type,
+            query=query,
+            body=body,
+            request_headers=request.headers,
+        )
+
+    return _proxy_current_request(method=operation.method, tenant_id=tenant_id, forward=forward)
+
+
 @_knowledge_fs_enabled
 @_knowledge_fs_operation_access_required
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_non_get(
-    method: KnowledgeFSMethod,
-    upstream_path: str,
+    authorization: KnowledgeFSAuthorization,
 ) -> ResponseReturnValue:
     """Apply knowledge billing checks to one allowlisted non-GET operation."""
-    return _proxy_request(method, upstream_path)
+    return _proxy_authorized_request(authorization)
 
 
 @bp.route(
     "/knowledge-fs/<path:upstream_path>",
-    methods=["GET", "OPTIONS"],
+    methods=["OPTIONS"],
+    provide_automatic_options=False,
+)
+@_console_api_errors
+@_knowledge_fs_enabled
+def proxy_knowledge_fs_options(upstream_path: str) -> ResponseReturnValue:
+    """Complete a CORS preflight only for an enabled Console operation."""
+    requested_method = cast(KnowledgeFSMethod, request.headers.get("Access-Control-Request-Method", "").upper())
+    try:
+        get_knowledge_fs_operation(requested_method, upstream_path)
+    except KnowledgeFSRouteNotAllowedError as exc:
+        raise NotFound() from exc
+    return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@bp.route(
+    "/knowledge-fs/<path:upstream_path>",
+    methods=["GET"],
     provide_automatic_options=False,
 )
 @_console_api_errors

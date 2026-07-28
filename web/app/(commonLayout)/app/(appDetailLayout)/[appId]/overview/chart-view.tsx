@@ -1,6 +1,8 @@
 'use client'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import { useAtomValue } from 'jotai'
@@ -23,10 +25,10 @@ import {
   WorkflowMessagesChart,
 } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
@@ -51,7 +53,28 @@ type IChartViewProps = {
 }
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+
+  return (
+    <ChartViewContent
+      appId={appId}
+      headerRight={headerRight}
+      deploymentEdition={deploymentEdition}
+    />
+  )
+}
+
+function ChartViewContent({
+  appId,
+  headerRight,
+  deploymentEdition,
+}: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
   const { t } = useTranslation()
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
   const appDetail = useAppStore((state) => state.appDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
@@ -67,8 +90,8 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   )
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(
-    IS_CLOUD_EDITION
+  const [period, setPeriod] = useState<PeriodParams>(() =>
+    isCloudEdition
       ? {
           name: t(($) => $['filter.period.today'], { ns: 'appLog' }),
           query: {
@@ -112,13 +135,14 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
           </div>
         </div>
         <div className="mt-1 flex h-10 items-center justify-between pr-10 pl-6">
-          {IS_CLOUD_EDITION ? (
+          {isCloudEdition && (
             <TimeRangePicker
               ranges={TIME_PERIOD_MAPPING}
               onSelect={setPeriod}
               queryDateFormat={queryDateFormat}
             />
-          ) : (
+          )}
+          {isNonCloudEdition && (
             <LongTimeRangePicker
               periodMapping={LONG_TIME_PERIOD_MAPPING}
               onSelect={setPeriod}

@@ -1,8 +1,9 @@
 import type { CreateExternalAPIReq } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocked service
 import { createExternalAPI } from '@/service/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AddExternalAPIModal from '../index'
 
 // Mock API service

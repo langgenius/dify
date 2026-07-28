@@ -1,5 +1,4 @@
 import { screen, waitFor } from '@testing-library/react'
-import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -7,6 +6,10 @@ import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
 let mockIsRbacEnabled = true
+const mockNavigation = vi.hoisted(() => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+}))
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
@@ -15,10 +18,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
     },
   })
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: vi.fn(),
-  useRouter: vi.fn(),
-}))
+vi.mock('@/next/navigation', () => mockNavigation)
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
@@ -43,14 +43,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: [],
   }))
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    datasetRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: undefined,
@@ -61,8 +53,8 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockUseRouter = vi.mocked(useRouter)
-const mockUsePathname = vi.mocked(usePathname)
+const mockUseRouter = mockNavigation.useRouter
+const mockUsePathname = mockNavigation.usePathname
 const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
 
 describe('DatasetDetailLayout', () => {
@@ -71,12 +63,7 @@ describe('DatasetDetailLayout', () => {
     mockIsRbacEnabled = true
     mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
     mockUseRouter.mockReturnValue({
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      push: vi.fn(),
       replace: mockReplace,
-      prefetch: vi.fn(),
     })
   })
 

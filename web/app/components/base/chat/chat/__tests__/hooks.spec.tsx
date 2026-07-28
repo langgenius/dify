@@ -320,6 +320,106 @@ describe('useChat', () => {
   })
 
   describe('handleSend', () => {
+    it('should complete with the conversation id from message_end', async () => {
+      let callbacks: HookCallbacks
+      const onGetConversationMessages = vi.fn().mockResolvedValue({ data: [] })
+      const onConversationComplete = vi.fn()
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          'test-url',
+          { query: 'preview message' },
+          {
+            onGetConversationMessages,
+            onConversationComplete,
+          },
+        )
+      })
+
+      await act(async () => {
+        callbacks.onMessageEnd({
+          id: 'preview-message',
+          conversation_id: 'preview-conversation',
+          metadata: {},
+        })
+        await callbacks.onCompleted()
+      })
+
+      expect(onGetConversationMessages).toHaveBeenCalledWith(
+        'preview-conversation',
+        expect.any(Function),
+      )
+      expect(onConversationComplete).toHaveBeenCalledWith('preview-conversation', undefined)
+    })
+
+    it('should send with the latest externally selected conversation', () => {
+      const { result, rerender } = renderHook(
+        ({ conversationId }) =>
+          useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
+        {
+          initialProps: {
+            conversationId: 'build-conversation' as string | undefined,
+          },
+        },
+      )
+
+      rerender({
+        conversationId: 'preview-conversation',
+      })
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'preview message' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            conversation_id: 'preview-conversation',
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('should not reuse a previous conversation when the selected session has no id', () => {
+      const { result, rerender } = renderHook(
+        ({ conversationId }: { conversationId?: string }) =>
+          useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
+        {
+          initialProps: {
+            conversationId: 'build-conversation' as string | undefined,
+          },
+        },
+      )
+
+      rerender({
+        conversationId: undefined,
+      })
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'new preview message' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            conversation_id: '',
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
     it('should block send if already responding', async () => {
       const { result } = renderHook(() => useChat())
 

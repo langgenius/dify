@@ -3,6 +3,7 @@ import type { ComponentProps, FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
@@ -74,11 +75,12 @@ const ToolItem: FC<Props> = ({
   }, [theme, normalizedIcon, normalizedIconDark])
 
   const row = (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="medium"
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
-      className="flex w-full cursor-pointer items-center justify-between rounded-lg border-none bg-transparent pr-1 pl-[21px] text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
+      className="w-full justify-between pr-1 pl-[21px] text-left focus-visible:ring-inset disabled:cursor-default"
       onClick={() => {
         if (disabled) return
         const params: Record<string, string> = {}
@@ -119,7 +121,7 @@ const ToolItem: FC<Props> = ({
           {t(($) => $['addToolModal.added'], { ns: 'tools' })}
         </div>
       )}
-    </button>
+    </Button>
   )
 
   return (

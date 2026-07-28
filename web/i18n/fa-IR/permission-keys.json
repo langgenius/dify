@@ -1,4 +1,5 @@
 {
+  "agent.manage": "مدیریت Agents",
   "api_extension.manage": "مدیریت پیکربندی افزونه API",
   "app.access_config": "پیکربندی مجوزهای دسترسی برنامه",
   "app.acl.access_config": "پیکربندی مجوزهای دسترسی برنامه",

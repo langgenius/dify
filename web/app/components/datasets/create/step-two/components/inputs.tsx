@@ -5,6 +5,7 @@ import type {
 } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   NumberField,
   NumberFieldControls,
@@ -30,7 +31,12 @@ const TextLabel: FC<PropsWithChildren> = (props) => {
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   return (
-    <div className="flex-1 space-y-2">
+    // Reflow on the container (a @container/chunkfields ancestor), not the
+    // viewport. Below 552px the fields stack one per row, each capped at
+    // max-w-[288px] so the input reads as a form field, not a full-bleed bar.
+    // At/above 552px this restores flex-1 with no cap, so three columns resolve
+    // to (container - gaps)/3 — pixel-identical to the stock flex-1 layout.
+    <div className="max-w-[288px] space-y-2 @min-[552px]/chunkfields:max-w-none @min-[552px]/chunkfields:flex-1">
       <TextLabel>{props.label}</TextLabel>
       {props.children}
     </div>
@@ -142,7 +148,10 @@ function CompoundNumberInput({
           {...inputProps}
           aria-label={label}
           size={size}
-          className={className}
+          // min-w-[64px] overrides the component's default min-w-0 so the input
+          // can never collapse to an unusable sliver, even in an unforeseen
+          // container; belt to the row's flex-wrap braces.
+          className={cn('min-w-[64px]', className)}
           onBlur={onBlur}
         />
         {Boolean(unit) && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}
