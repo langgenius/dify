@@ -67,7 +67,7 @@ def test_inline_binding_from_another_node_is_cloned(monkeypatch) -> None:
     assert binding.node_job_config.workflow_prompt == "Summarize the input"
 
 
-def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(monkeypatch) -> None:
+def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent() -> None:
     existing_inline = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -137,7 +137,6 @@ def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(monkey
     indirect=True,
 )
 def test_publish_binding_replacement_returns_only_previous_inline_agent(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
     draft_workflow = _workflow()

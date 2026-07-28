@@ -363,9 +363,7 @@ def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypat
     assert session.flush.call_count == 2
 
 
-def test_import_workflow_packages_materializes_every_package_binding_as_inline(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_import_workflow_packages_materializes_every_package_binding_as_inline() -> None:
     package = make_portable_agent_package(_agent(), AgentSoulConfig())
     graph = {
         "nodes": [
