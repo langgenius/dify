@@ -133,6 +133,7 @@ export function MainNav({ className }: MainNavProps) {
         )}
       </div>
       <div className="relative w-60 shrink-0">
+        <StepByStepTourMount className="absolute -top-7 left-2.5 h-8 w-[183px] overflow-visible" />
         <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
@@ -141,7 +142,6 @@ export function MainNav({ className }: MainNavProps) {
             <HelpMenu />
           </div>
         </div>
-        <StepByStepTourMount className="absolute -top-7 left-2.5 h-8 w-[183px] overflow-visible" />
       </div>
     </aside>
   )

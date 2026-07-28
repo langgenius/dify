@@ -26,7 +26,6 @@ class WorkspaceService:
         tenant_info: dict[str, object] = {
             "id": tenant.id,
             "name": tenant.name,
-            "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
             "trial_end_reason": None,
@@ -43,6 +42,7 @@ class WorkspaceService:
         tenant_info["role"] = tenant_account_join.role
 
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
+        tenant_info["plan"] = feature.billing.subscription.plan if feature.billing.enabled else None
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(

@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
-from services.app_service import AppService, CreateAppParams
+from services.app_service import AppListParams, AppService, CreateAppParams
 
 
 class TestCreateAppTransactionBoundary:
@@ -234,6 +238,92 @@ class TestOpenapiVisibilityHelpers:
         assert out == rows
         gate.assert_called_once()
         mock_session.execute.assert_called_once()
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account, App, AppModelConfig)], indirect=True)
+def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    other_tenant_id = str(uuid4())
+    account = Account(name="Recent Apps Author", email="recent-apps@example.com")
+    sqlite_session.add(account)
+    sqlite_session.flush()
+
+    def create_app(*, name: str, tenant_id: str, updated_at: datetime, mode: AppMode = AppMode.CHAT) -> App:
+        app = App()
+        app.id = str(uuid4())
+        app.tenant_id = tenant_id
+        app.name = name
+        app.description = ""
+        app.mode = mode
+        app.icon_type = IconType.EMOJI
+        app.icon = "🚀"
+        app.icon_background = "#FFFFFF"
+        app.enable_site = False
+        app.enable_api = False
+        app.created_by = account.id
+        app.maintainer = account.id
+        app.created_at = updated_at
+        app.updated_at = updated_at
+        app.use_icon_as_answer_icon = False
+        return app
+
+    newest = create_app(name="Newest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 3))
+    legacy_agent = AppModelConfig(app_id=newest.id)
+    legacy_agent.agent_mode = '{"enabled": true, "strategy": "react"}'
+    newest.app_model_config_id = legacy_agent.id
+    second = create_app(
+        name="Second",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 2),
+        mode=AppMode.WORKFLOW,
+    )
+    second.icon_type = None
+    second.icon = None
+    second.icon_background = None
+    second.created_by = None
+    second.maintainer = None
+    channel = create_app(
+        name="Channel",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 5),
+        mode=AppMode.CHANNEL,
+    )
+    rag_pipeline = create_app(
+        name="RAG Pipeline",
+        tenant_id=tenant_id,
+        updated_at=datetime(2026, 7, 4),
+        mode=AppMode.RAG_PIPELINE,
+    )
+    oldest = create_app(name="Oldest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 1))
+    foreign = create_app(name="Foreign", tenant_id=other_tenant_id, updated_at=datetime(2026, 7, 4))
+    sqlite_session.add_all([newest, legacy_agent, second, channel, rag_pipeline, oldest, foreign])
+    sqlite_session.commit()
+
+    statements: list[str] = []
+    bind = sqlite_session.get_bind()
+
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(bind, "before_cursor_execute", record_sql)
+    try:
+        recent_apps = AppService().get_recent_apps(
+            account.id,
+            tenant_id,
+            AppListParams(limit=2),
+            sqlite_session,
+        )
+    finally:
+        event.remove(bind, "before_cursor_execute", record_sql)
+
+    assert [(app.name, app.mode, app.icon_type, app.author_name, app.maintainer) for app in recent_apps] == [
+        ("Newest", AppMode.CHAT, IconType.EMOJI, "Recent Apps Author", account.id),
+        ("Second", AppMode.WORKFLOW, None, None, None),
+    ]
+    select_statements = [statement for statement in statements if statement.lstrip().upper().startswith("SELECT")]
+    assert len(select_statements) == 1
+    assert "count(" not in select_statements[0].lower()
+    assert "app_model_configs" not in select_statements[0].lower()
 
 
 class TestAppMeta:

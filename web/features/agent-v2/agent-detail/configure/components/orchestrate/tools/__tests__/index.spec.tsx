@@ -12,8 +12,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
@@ -325,8 +324,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerOriginalDraftAtom, initialDraft)
-  store.set(agentComposerPublishedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, initialDraft)
 
   const view = render(
     <QueryClientProvider client={queryClient}>

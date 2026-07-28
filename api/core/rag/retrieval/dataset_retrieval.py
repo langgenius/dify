@@ -1946,6 +1946,8 @@ class DatasetRetrieval:
             redis_client.zremrangebyscore(key, 0, current_time - 60000)
             request_count = redis_client.zcard(key)
             if request_count > knowledge_rate_limit.limit:
+                # The rate-limit exception is raised after this block, so commit the audit row
+                # explicitly instead of relying on the Session context, which only closes it.
                 with session_factory.create_session() as session:
                     rate_limit_log = RateLimitLog(
                         tenant_id=tenant_id,
@@ -1953,6 +1955,7 @@ class DatasetRetrieval:
                         operation="knowledge",
                     )
                     session.add(rate_limit_log)
+                    session.commit()
                 raise exc.RateLimitExceededError(
                     "you have reached the knowledge base request rate limit of your subscription."
                 )

@@ -1,11 +1,13 @@
 import os
+import shutil
 from collections.abc import Iterator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 # Getting the absolute path of the current file's directory
@@ -35,7 +37,7 @@ os.environ.setdefault("OPENDAL_SCHEME", "fs")
 os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
-from core.db.session_factory import configure_session_factory, session_factory
+import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
@@ -111,42 +113,70 @@ def reset_secret_key():
         dify_config.SECRET_KEY = original
 
 
-@pytest.fixture(scope="session")
-def _unit_test_engine():
-    engine = create_engine("sqlite:///:memory:")
-    yield engine
-    engine.dispose()
-
-
 @pytest.fixture
-def sqlite_engine() -> Iterator[Engine]:
-    """Create an isolated in-memory SQLite engine for tests that need a disposable database."""
+def _sqlite_engine(_sqlite_database_template: Path, tmp_path: Path) -> Iterator[Engine]:
+    """Create an engine over a pristine per-test copy of the SQLite schema."""
 
-    engine = create_engine("sqlite:///:memory:")
+    database_path = tmp_path / "unit-tests.sqlite3"
+    shutil.copyfile(_sqlite_database_template, database_path)
+    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+
     try:
         yield engine
     finally:
         engine.dispose()
+        database_path.unlink(missing_ok=True)
 
 
-@pytest.fixture
-def sqlite_session(request: pytest.FixtureRequest, sqlite_engine: Engine) -> Iterator[Session]:
-    """Yield a SQLite session after creating the model tables passed through ``request.param``."""
+@pytest.fixture(scope="session")
+def _sqlite_database_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create one empty full-schema SQLite database per pytest worker."""
 
-    models: tuple[type[TypeBase], ...] = request.param
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with session_factory() as session:
-        yield session
+    database_path = tmp_path_factory.mktemp("sqlite-template") / "unit-tests.sqlite3"
+    engine = create_engine(URL.create("sqlite", database=str(database_path)))
+    try:
+        TypeBase.metadata.create_all(engine)
+    finally:
+        engine.dispose()
+    return database_path
 
 
 @pytest.fixture(autouse=True)
-def _configure_session_factory(_unit_test_engine):
-    try:
-        session_factory.get_session_maker()
-    except RuntimeError:
-        configure_session_factory(_unit_test_engine, expire_on_commit=False)
+def _sqlite_session_factory(
+    _sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> sessionmaker[Session]:
+    """Bind all unit-test Sessions to the pristine full-schema SQLite database."""
+
+    factory = sessionmaker(bind=_sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    return factory
+
+
+@pytest.fixture
+def sqlite_engine(_sqlite_engine: Engine) -> Engine:
+    """Expose the pristine full-schema SQLite engine to tests."""
+
+    return _sqlite_engine
+
+
+@pytest.fixture
+def sqlite_session_factory(_sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    """Expose the shared SQLite session factory to tests."""
+
+    return _sqlite_session_factory
+
+
+@pytest.fixture
+def sqlite_session(_sqlite_session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """Yield a session over the pristine full-schema SQLite database.
+
+    Legacy indirect model parameters remain accepted by pytest but are ignored.
+    Remove those decorators as their test files receive individual review.
+    """
+
+    with _sqlite_session_factory() as session:
+        yield session
 
 
 def persist_service_api_tenant_owner(session: Session, tenant: Tenant, owner: Account) -> TenantAccountJoin:

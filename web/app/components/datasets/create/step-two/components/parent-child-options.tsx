@@ -143,9 +143,9 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 <div className="flex gap-3">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
-                    tooltip={
-                      t(($) => $['stepTwo.parentChildDelimiterTip'], { ns: 'datasetCreation' })!
-                    }
+                    tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
+                      ns: 'datasetCreation',
+                    })!}
                     onChange={(e) => onParentDelimiterChange(e.target.value)}
                   />
                   <MaxLengthInput
@@ -178,9 +178,9 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           <div className="mt-1 flex gap-3">
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
-              tooltip={
-                t(($) => $['stepTwo.parentChildChunkDelimiterTip'], { ns: 'datasetCreation' })!
-              }
+              tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
+                ns: 'datasetCreation',
+              })!}
               onChange={(e) => onChildDelimiterChange(e.target.value)}
             />
             <MaxLengthInput

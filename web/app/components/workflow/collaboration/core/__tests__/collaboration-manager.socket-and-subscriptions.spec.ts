@@ -13,6 +13,7 @@ import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
   getState: () => {
@@ -147,6 +148,7 @@ const createMockSocket = (id = 'socket-1'): MockSocket => {
 
 const setupManagerWithDoc = () => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
@@ -905,13 +907,17 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(secondConnectionId).toBeTruthy()
     expect(disconnectSpy).not.toHaveBeenCalled()
 
-    await manager.connect('app-2', reactFlowStore)
+    const thirdConnectionId = await manager.connect('app-2', reactFlowStore)
     expect(disconnectSpy).toHaveBeenCalledWith('app-1')
     expect(internals.currentAppId).toBe('app-2')
 
     internals.isLeader = true
     manager.disconnect(secondConnectionId)
     manager.disconnect(firstConnectionId)
+    expect(disconnectSpy).not.toHaveBeenCalledWith('app-2')
+    expect(internals.currentAppId).toBe('app-2')
+
+    manager.disconnect(thirdConnectionId)
     expect(disconnectSpy).toHaveBeenCalledWith('app-2')
     expect(eventEmitSpy).toHaveBeenCalledWith('leaderChange', false)
     expect(internals.currentAppId).toBeNull()
@@ -1371,6 +1377,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
   it('covers private guard branches for socket helpers and container migration', async () => {
     const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-private')
     const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)

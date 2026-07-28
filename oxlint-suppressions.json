@@ -4,23 +4,8 @@
       "count": 2
     }
   },
-  "cli/test/e2e/helpers/retry.ts": {
-    "no-throw-literal": {
-      "count": 1
-    }
-  },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
     "prefer-const": {
-      "count": 1
-    }
-  },
-  "e2e/support/web-server.ts": {
-    "no-throw-literal": {
-      "count": 1
-    }
-  },
-  "packages/dev-proxy/src/cli.spec.ts": {
-    "no-throw-literal": {
       "count": 1
     }
   },
@@ -2141,11 +2126,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/voice-input/recorder.ts": {
-    "no-throw-literal": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
@@ -3225,9 +3205,6 @@
     }
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -6349,9 +6326,6 @@
     }
   },
   "web/service/use-pipeline.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -6370,9 +6344,6 @@
     }
   },
   "web/service/use-workflow.ts": {
-    "@tanstack/query/exhaustive-deps": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },

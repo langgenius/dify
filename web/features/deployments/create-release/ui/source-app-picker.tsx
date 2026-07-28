@@ -193,7 +193,7 @@ export function SourceAppPicker({
       <ComboboxTrigger
         aria-label={t(($) => $['versions.sourceAppOption'])}
         icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-open:bg-transparent"
       >
         <SourceAppTrigger app={value} />
       </ComboboxTrigger>
