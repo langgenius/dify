@@ -91,6 +91,9 @@ class ParserList(BaseModel):
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
+type PluginCategoryListLanguage = Literal["en_US", "zh_Hans", "ja_JP", "pt_BR"]
+
+
 class PluginCategoryListQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
@@ -493,8 +496,8 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
     return content
 
 
-def _localized_builtin_tool_text(value: I18nObject, language: str) -> str:
-    return getattr(value, language, None) or value.en_US
+def _localized_builtin_tool_text(value: I18nObject, language: PluginCategoryListLanguage) -> str:
+    return value.to_dict()[language] or value.en_US
 
 
 def _builtin_tool_provider_matches_filters(
@@ -502,7 +505,7 @@ def _builtin_tool_provider_matches_filters(
     *,
     query: str,
     tags: Sequence[str],
-    language: str,
+    language: PluginCategoryListLanguage,
 ) -> bool:
     if tags and not any(tag in provider.labels for tag in tags):
         return False
@@ -523,7 +526,7 @@ def _list_hardcoded_builtin_tool_providers(
     *,
     query: str = "",
     tags: Sequence[str] = (),
-    language: str = "en_US",
+    language: PluginCategoryListLanguage = "en_US",
 ) -> list[dict[str, Any]]:
     """List builtin providers using the same search and tag semantics as category plugins."""
     db_builtin_providers = {

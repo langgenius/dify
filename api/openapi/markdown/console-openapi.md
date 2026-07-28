@@ -10572,6 +10572,13 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
+### [GET] /workspaces/current/model-providers/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
+
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
 
@@ -19328,6 +19335,16 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
+#### ModelProviderCustomConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| current_credential_usable | boolean |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+
 #### ModelProviderListResponse
 
 | Name | Type | Description | Required |
@@ -19339,6 +19356,49 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
+
+#### ModelProviderPluginSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| installation_id | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| version | string |  | Yes |
+
+#### ModelProviderSummaryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderSummaryResponse](#modelprovidersummaryresponse) ] |  | Yes |
+| plugins | object |  | Yes |
+
+#### ModelProviderSummaryResponse
+
+Fields required to render the collapsed model-provider list.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| custom_configuration | [ModelProviderCustomConfigurationSummaryResponse](#modelprovidercustomconfigurationsummaryresponse) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | No |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| is_configured | boolean |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| plugin_id | string |  | Yes |
+| preferred_provider_type | [ProviderType](#providertype) |  | Yes |
+| provider | string |  | Yes |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| system_configuration | [ModelProviderSystemConfigurationSummaryResponse](#modelprovidersystemconfigurationsummaryresponse) |  | Yes |
+
+#### ModelProviderSystemConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
 
 #### ModelSelectorScope
 
