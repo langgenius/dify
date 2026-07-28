@@ -6161,7 +6161,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/service/billing.ts": {

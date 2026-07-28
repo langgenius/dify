@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -61,7 +62,7 @@ def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixtur
 
     proxy._dispatch()
 
-    upload_mock.assert_called_once()
+    upload_mock.assert_called_once_with(tenant_isolated=True)
     send_mock.assert_called_once_with("file-1")
 
 
@@ -78,7 +79,7 @@ def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerF
 
     proxy._dispatch()
 
-    upload_mock.assert_called_once()
+    upload_mock.assert_called_once_with(tenant_isolated=True)
     send_mock.assert_called_once_with("file-1")
 
 
@@ -91,7 +92,7 @@ def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, p
 
     proxy._dispatch()
 
-    upload_mock.assert_called_once()
+    upload_mock.assert_called_once_with(tenant_isolated=False)
     send_mock.assert_called_once_with("file-1")
 
 
@@ -123,22 +124,22 @@ def test_send_to_direct_queue_calls_task_func_delay(mocker: MockerFixture, proxy
 
 
 def test_send_to_tenant_queue_pushes_when_task_key_exists(mocker: MockerFixture, proxy) -> None:
-    proxy._tenant_isolated_task_queue.get_task_key.return_value = "existing-key"
+    proxy._tenant_isolated_task_queue.enqueue_or_acquire.return_value = False
     task_func = Mock()
 
     proxy._send_to_tenant_queue("file-1", task_func)
 
-    proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with(["file-1"])
+    proxy._tenant_isolated_task_queue.enqueue_or_acquire.assert_called_once_with("file-1")
     task_func.delay.assert_not_called()
 
 
 def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFixture, proxy) -> None:
-    proxy._tenant_isolated_task_queue.get_task_key.return_value = None
+    proxy._tenant_isolated_task_queue.enqueue_or_acquire.return_value = True
     task_func = Mock()
 
     proxy._send_to_tenant_queue("file-1", task_func)
 
-    proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+    proxy._tenant_isolated_task_queue.enqueue_or_acquire.assert_called_once_with("file-1")
     task_func.delay.assert_called_once_with(
         rag_pipeline_invoke_entities_file_id="file-1",
         tenant_id="tenant-1",
@@ -158,3 +159,15 @@ def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) ->
 
     assert result == "uploaded-file-1"
     file_service_cls.return_value.upload_text.assert_called_once()
+
+
+def test_upload_invoke_entities_embeds_rolling_safe_isolation_mode(mocker: MockerFixture, proxy) -> None:
+    upload_file = SimpleNamespace(id="uploaded-file-1")
+    file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
+    file_service_cls.return_value.upload_text.return_value = upload_file
+    mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
+
+    proxy._upload_invoke_entities(tenant_isolated=False)
+
+    json_text = file_service_cls.return_value.upload_text.call_args.args[0]
+    assert json.loads(json_text) == [{"doc": "data", "tenant_isolated": False}]

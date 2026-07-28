@@ -30,6 +30,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
 )
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
@@ -53,7 +54,12 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
+from services.workflow_handoff_runtime_service import (
+    build_workflow_handoff_persistence_layer,
+    infer_initial_handoff_resume_route,
+)
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -109,6 +115,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
@@ -127,6 +134,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -145,6 +153,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
@@ -162,6 +171,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         pause_state_config: PauseStateLayerConfig | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -269,6 +279,18 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 pause_state_config=pause_state_config,
+                handoff_resume_route=(
+                    handoff_resume_route
+                    or infer_initial_handoff_resume_route(
+                        application_generate_entity,
+                        triggered=workflow_triggered_from
+                        in {
+                            WorkflowRunTriggeredFrom.WEBHOOK,
+                            WorkflowRunTriggeredFrom.SCHEDULE,
+                            WorkflowRunTriggeredFrom.PLUGIN,
+                        },
+                    )
+                ),
             )
 
     def resume(
@@ -285,6 +307,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
+        root_node_id: str | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Resume a paused workflow execution using the persisted runtime state.
@@ -316,6 +342,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            handoff_resume_route=handoff_resume_route,
+            graph_config=graph_config,
+            workflow_version=workflow_version,
+            root_node_id=root_node_id,
         )
 
     def _generate(
@@ -335,6 +365,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_runtime_state: GraphRuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -364,6 +397,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             )
 
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            handoff_layer = build_workflow_handoff_persistence_layer(
+                generate_entity=application_generate_entity,
+                response_stream_filter=resolved_response_stream_filter,
+                resume_route=handoff_resume_route,
+            )
+            if handoff_layer is not None:
+                graph_layers.append(handoff_layer)
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
@@ -394,6 +434,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "graph_engine_layers": tuple(graph_layers),
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": resolved_response_stream_filter,
+                    "graph_config": graph_config,
+                    "workflow_version": workflow_version,
                 },
             )
 
@@ -438,6 +480,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
+        workflow_run_id: str | uuid.UUID | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -475,7 +519,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
-            workflow_execution_id=str(uuid.uuid4()),
+            workflow_execution_id=str(workflow_run_id or uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -520,6 +564,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             streaming=streaming,
             variable_loader=var_loader,
             pause_state_config=None,
+            handoff_resume_route=handoff_resume_route,
         )
 
     def single_loop_generate(
@@ -532,6 +577,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
+        workflow_run_id: str | uuid.UUID | None = None,
+        handoff_resume_route: WorkflowHandoffResumeRoute | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -567,7 +614,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **_extract_trace_session_id_from_debug_args(args),
             },
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args.inputs or {}),
-            workflow_execution_id=str(uuid.uuid4()),
+            workflow_execution_id=str(workflow_run_id or uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -611,6 +658,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             streaming=streaming,
             variable_loader=var_loader,
             pause_state_config=None,
+            handoff_resume_route=handoff_resume_route,
         )
 
     def _generate_worker(
@@ -626,6 +674,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        graph_config: Mapping[str, Any] | None = None,
+        workflow_version: str | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -675,10 +725,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
+                graph_config=graph_config,
+                workflow_version=workflow_version,
             )
 
             try:
-                with active_workflow_task(application_generate_entity.task_id):
+                with active_workflow_task(
+                    application_generate_entity.task_id,
+                    workflow_run_id=application_generate_entity.workflow_execution_id,
+                ):
                     runner.run()
             except GenerateTaskStoppedError as e:
                 logger.warning("Task stopped: %s", str(e))
@@ -709,6 +764,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ) -> (
         WorkflowAppBlockingResponse
         | WorkflowAppPausedBlockingResponse
+        | WorkflowMaintenancePausedBlockingResponse
         | Generator[WorkflowAppStreamResponse, None, None]
     ):
         """

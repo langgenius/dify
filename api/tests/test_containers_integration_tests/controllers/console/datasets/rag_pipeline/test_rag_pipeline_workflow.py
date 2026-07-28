@@ -37,6 +37,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineWorkflowRunNodeExecutionListApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
@@ -596,12 +597,82 @@ class TestMiscApis:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.AppQueueManager.set_stop_flag"
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.AppQueueManager.set_stop_flag",
+                return_value=True,
             ) as stop_mock,
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow."
+                "request_workflow_handoff_cancel_for_app",
+                return_value=1,
+            ) as cancel_handoff,
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.GraphEngineManager.send_stop_command"
+            ) as send_stop,
         ):
             result = method(api, user, pipeline, "task-1")
-            stop_mock.assert_called_once()
+            stop_mock.assert_called_once_with("task-1", InvokeFrom.DEBUGGER, "u1")
+            cancel_handoff.assert_called_once_with(
+                "task-1",
+                tenant_id="tenant-1",
+                app_id="pipeline-1",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="u1",
+            )
+            send_stop.assert_called_once_with("task-1")
             assert result["result"] == "success"
+
+    def test_task_stop_propagates_handoff_cancel_failure(self, app: Flask) -> None:
+        api = RagPipelineTaskStopApi()
+        method = unwrap(api.post)
+        pipeline = make_pipeline()
+        user = make_account(id="u1")
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.AppQueueManager.set_stop_flag",
+                return_value=True,
+            ) as stop_mock,
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow."
+                "request_workflow_handoff_cancel_for_app",
+                side_effect=RuntimeError("database unavailable"),
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.GraphEngineManager.send_stop_command"
+            ) as send_stop,
+        ):
+            with pytest.raises(RuntimeError, match="database unavailable"):
+                method(api, user, pipeline, "task-1")
+
+        stop_mock.assert_called_once_with("task-1", InvokeFrom.DEBUGGER, "u1")
+        send_stop.assert_not_called()
+
+    def test_task_stop_does_not_send_graph_command_for_unowned_task(self, app: Flask) -> None:
+        api = RagPipelineTaskStopApi()
+        method = unwrap(api.post)
+        pipeline = make_pipeline()
+        user = make_account(id="u1")
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.AppQueueManager.set_stop_flag",
+                return_value=False,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow."
+                "request_workflow_handoff_cancel_for_app",
+                return_value=0,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.GraphEngineManager.send_stop_command"
+            ) as send_stop,
+        ):
+            result = method(api, user, pipeline, "another-users-task")
+
+        assert result["result"] == "success"
+        send_stop.assert_not_called()
 
     def test_transform_forbidden(self, app: Flask) -> None:
         api = RagPipelineTransformApi()

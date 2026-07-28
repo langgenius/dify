@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueMessageEndEvent, QueuePingEvent, QueueStopEvent
+from core.app.entities.queue_entities import (
+    QueueMessageEndEvent,
+    QueuePingEvent,
+    QueueStopEvent,
+    QueueWorkflowMaintenancePausedEvent,
+    QueueWorkflowPausedEvent,
+)
 
 
 class TestWorkflowAppQueueManager:
@@ -99,3 +107,33 @@ class TestWorkflowAppQueueManager:
             _ = list(manager.listen())
 
             graph_engine_manager.return_value.send_stop_command.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "pause_event",
+        [QueueWorkflowPausedEvent(), QueueWorkflowMaintenancePausedEvent()],
+    )
+    def test_pause_is_local_execution_segment_terminal(self, pause_event):
+        with (
+            patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
+            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+        ):
+            redis_client.get.return_value = None
+            manager = WorkflowAppQueueManager(
+                task_id="task",
+                user_id="user",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_mode="workflow",
+            )
+
+            manager.publish(pause_event, PublishFrom.APPLICATION_MANAGER)
+            messages = list(manager.listen())
+
+            assert len(messages) == 1
+            assert messages[0].event is pause_event
+            if isinstance(pause_event, QueueWorkflowMaintenancePausedEvent):
+                graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+                    "task",
+                    reason="Client response stream closed before app execution completed",
+                )
+            else:
+                graph_engine_manager.return_value.send_stop_command.assert_not_called()

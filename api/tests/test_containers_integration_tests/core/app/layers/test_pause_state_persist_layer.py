@@ -336,6 +336,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         # Create pause event
         event = GraphRunPausedEvent(
@@ -400,6 +401,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
@@ -434,6 +436,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
@@ -468,6 +471,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
@@ -534,6 +538,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
@@ -561,6 +566,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         # Import other event types
         from graphon.graph_events import (

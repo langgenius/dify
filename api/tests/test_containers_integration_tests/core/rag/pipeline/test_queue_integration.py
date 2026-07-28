@@ -9,6 +9,7 @@ All tests use generic naming to avoid coupling to specific business implementati
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
@@ -17,7 +18,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from core.rag.pipeline.queue import TaskWrapper, TenantIsolatedTaskQueue
+from core.rag.pipeline.queue import TaskWrapper, TenantIsolatedTaskQueue, TenantTaskDispatchClaimOutcome
 from extensions.ext_redis import redis_client
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
@@ -180,6 +181,107 @@ class TestTenantIsolatedTaskQueueIntegration:
         remaining_tasks = test_queue.pull_tasks(5)
         assert len(remaining_tasks) == 2
         assert remaining_tasks == ["task4", "task5"]
+
+    def test_enqueue_or_acquire_atomically_assigns_one_owner(self, test_queue):
+        assert test_queue.enqueue_or_acquire("first-owner") is True
+        assert test_queue.get_task_key() in (b"1", "1")
+
+        assert test_queue.enqueue_or_acquire("queued-behind-owner") is False
+        assert test_queue.pull_tasks(1) == ["queued-behind-owner"]
+
+    def test_claim_task_once_is_retry_stable_and_consumes_only_one_slot(self, test_queue):
+        test_queue.set_task_waiting_time()
+        test_queue.push_tasks(["next-task", "later-task"])
+        claim_key = f"test-claim:{uuid4()}"
+
+        first = test_queue.claim_task_once(claim_key=claim_key, ttl=60)
+        replay = test_queue.claim_task_once(claim_key=claim_key, ttl=60)
+
+        assert first == (True, "next-task")
+        assert replay == first
+        assert test_queue.pull_tasks(10) == ["later-task"]
+        assert test_queue.get_task_key() in (b"1", "1")
+        redis_client.delete(claim_key)
+
+    def test_empty_claim_is_retry_stable_and_atomically_releases_owner(self, test_queue):
+        test_queue.set_task_waiting_time()
+        claim_key = f"test-empty-claim:{uuid4()}"
+
+        first = test_queue.claim_task_once(claim_key=claim_key, ttl=60)
+        replay = test_queue.claim_task_once(claim_key=claim_key, ttl=60)
+
+        assert first == (False, None)
+        assert replay == first
+        assert test_queue.get_task_key() is None
+        redis_client.delete(claim_key)
+
+    def test_dispatch_claim_fences_duplicate_receivers_and_persists_completion(self, test_queue):
+        dispatch_token = f"dispatch:{uuid4()}"
+        dispatch_key = test_queue._dispatch_key(dispatch_token)
+
+        assert (
+            test_queue.claim_dispatch(dispatch_token=dispatch_token, owner="worker-1", lease_ttl=60)
+            == TenantTaskDispatchClaimOutcome.ACQUIRED
+        )
+        assert (
+            test_queue.claim_dispatch(dispatch_token=dispatch_token, owner="worker-2", lease_ttl=60)
+            == TenantTaskDispatchClaimOutcome.BUSY
+        )
+        assert test_queue.renew_dispatch_claim(
+            dispatch_token=dispatch_token,
+            owner="worker-1",
+            lease_ttl=60,
+        )
+        assert test_queue.complete_dispatch_claim(
+            dispatch_token=dispatch_token,
+            owner="worker-1",
+            done_ttl=60,
+        )
+        assert (
+            test_queue.claim_dispatch(dispatch_token=dispatch_token, owner="worker-2", lease_ttl=60)
+            == TenantTaskDispatchClaimOutcome.DONE
+        )
+        redis_client.delete(dispatch_key)
+
+    def test_expired_dispatch_lease_can_be_recovered_by_redelivery(self, test_queue):
+        dispatch_token = f"dispatch:{uuid4()}"
+        dispatch_key = test_queue._dispatch_key(dispatch_token)
+
+        assert (
+            test_queue.claim_dispatch(dispatch_token=dispatch_token, owner="lost-worker", lease_ttl=1)
+            == TenantTaskDispatchClaimOutcome.ACQUIRED
+        )
+        time.sleep(1.1)
+        assert (
+            test_queue.claim_dispatch(dispatch_token=dispatch_token, owner="redelivery", lease_ttl=60)
+            == TenantTaskDispatchClaimOutcome.ACQUIRED
+        )
+        assert not test_queue.complete_dispatch_claim(
+            dispatch_token=dispatch_token,
+            owner="lost-worker",
+            done_ttl=60,
+        )
+        redis_client.delete(dispatch_key)
+
+    def test_concurrent_duplicate_dispatches_have_exactly_one_receiver(self, test_queue):
+        dispatch_token = f"dispatch:{uuid4()}"
+        dispatch_key = test_queue._dispatch_key(dispatch_token)
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            outcomes = list(
+                executor.map(
+                    lambda owner: test_queue.claim_dispatch(
+                        dispatch_token=dispatch_token,
+                        owner=owner,
+                        lease_ttl=60,
+                    ),
+                    [f"worker-{index}" for index in range(10)],
+                )
+            )
+
+        assert outcomes.count(TenantTaskDispatchClaimOutcome.ACQUIRED) == 1
+        assert outcomes.count(TenantTaskDispatchClaimOutcome.BUSY) == 9
+        redis_client.delete(dispatch_key)
 
     def test_push_and_pull_complex_objects(self, test_queue, fake: Faker):
         """Test pushing and pulling complex object tasks."""

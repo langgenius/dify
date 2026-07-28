@@ -99,6 +99,32 @@ function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: s
   }
 }
 
+function replaceAgentResponseMessageParts(responseItem: ChatItemInTree, message: string) {
+  const parts = responseItem.agent_response_parts ?? []
+  let lastMessageIndex = -1
+  parts.forEach((part, index) => {
+    if (part.type === 'message') lastMessageIndex = index
+  })
+
+  if (lastMessageIndex === -1) {
+    responseItem.agent_response_parts = [
+      ...parts,
+      {
+        type: 'message',
+        content: message,
+      },
+    ]
+    return
+  }
+
+  const nextParts: NonNullable<ChatItemInTree['agent_response_parts']> = []
+  parts.forEach((part, index) => {
+    if (part.type !== 'message') nextParts.push(part)
+    else if (index === lastMessageIndex) nextParts.push({ type: 'message', content: message })
+  })
+  responseItem.agent_response_parts = nextParts
+}
+
 function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
   if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
 
@@ -572,6 +598,8 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = messageReplace.answer
+            if (options.isNewAgent)
+              replaceAgentResponseMessageParts(responseItem, messageReplace.answer)
           })
         },
         onError() {
@@ -582,6 +610,8 @@ export const useChat = (
           handleResponding(true)
           hasStopRespondedRef.current = false
           updateChatTreeNode(messageId, (responseItem) => {
+            taskIdRef.current = task_id
+            responseItem.workflow_run_id = workflow_run_id
             if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
               responseItem.workflowProcess = {
                 ...responseItem.workflowProcess,
@@ -589,8 +619,6 @@ export const useChat = (
                 error: undefined,
               }
             } else {
-              taskIdRef.current = task_id
-              responseItem.workflow_run_id = workflow_run_id
               responseItem.workflowProcess = {
                 status: WorkflowRunningStatus.Running,
                 tracing: [],
@@ -787,6 +815,8 @@ export const useChat = (
         onWorkflowPaused: ({ data: workflowPausedData }) => {
           const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
           pausedStateRef.current = true
+          handleResponding(false)
+          settleSend()
           sseGet(resumeUrl, {}, otherOptions)
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
@@ -1234,6 +1264,14 @@ export const useChat = (
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
+          if (options.isNewAgent)
+            replaceAgentResponseMessageParts(responseItem, messageReplace.answer)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
         onError() {
           handleResponding(false)
@@ -1258,6 +1296,9 @@ export const useChat = (
             hasSetResponseId = true
           }
 
+          taskIdRef.current = task_id
+          responseItem.workflow_run_id = workflow_run_id
+
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             responseItem.workflowProcess = {
               ...responseItem.workflowProcess,
@@ -1265,8 +1306,6 @@ export const useChat = (
               error: undefined,
             }
           } else {
-            taskIdRef.current = task_id
-            responseItem.workflow_run_id = workflow_run_id
             responseItem.workflowProcess = {
               status: WorkflowRunningStatus.Running,
               tracing: [],
@@ -1497,6 +1536,8 @@ export const useChat = (
         onWorkflowPaused: ({ data: workflowPausedData }) => {
           const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
           pausedStateRef.current = true
+          handleResponding(false)
+          settleSend()
           sseGet(url, {}, otherOptions)
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({

@@ -6,6 +6,9 @@
 
 # Shared configuration using YAML anchors and env_file
 x-shared-api-worker-config: &shared-api-worker-config
+  # Gunicorn starts workflow handoff on SIGTERM. Keep an extra minute after
+  # the 600s drain deadline for the final checkpoint/outbox commit.
+  stop_grace_period: ${COMPOSE_API_STOP_GRACE_PERIOD:-660s}
   env_file:
     - path: ./envs/core-services/shared.env
       required: false
@@ -304,6 +307,9 @@ services:
   worker:
     <<: *shared-worker-config
     image: langgenius/dify-api:1.16.1
+    # Celery's warm-shutdown handoff drain defaults to 600s. Keep an extra
+    # minute for the final checkpoint/outbox commit before SIGKILL.
+    stop_grace_period: ${COMPOSE_WORKER_STOP_GRACE_PERIOD:-660s}
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -339,7 +345,9 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     healthcheck:
-      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping"]
+      # Target this worker only; a ping from another replica must not keep a
+      # draining container healthy during a rolling update.
+      test: ["CMD-SHELL", "celery -A celery_healthcheck.celery inspect ping --destination celery@$$HOSTNAME --timeout=5"]
       interval: ${COMPOSE_WORKER_HEALTHCHECK_INTERVAL:-30s}
       timeout: ${COMPOSE_WORKER_HEALTHCHECK_TIMEOUT:-30s}
       retries: 3

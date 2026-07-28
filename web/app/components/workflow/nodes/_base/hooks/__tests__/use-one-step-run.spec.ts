@@ -1,5 +1,8 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+// oxlint-disable-next-line no-restricted-imports
+import { ssePost } from '@/service/base'
+import { getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
 
@@ -180,14 +183,14 @@ vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
   default: {},
 }))
 
-const renderUseOneStepRun = () =>
+const renderUseOneStepRun = (type = BlockEnum.IfElse, flowType = FlowType.appFlow) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
       flowId: 'app-id',
-      flowType: FlowType.appFlow,
+      flowType,
       data: {
-        type: BlockEnum.IfElse,
+        type,
         title: 'IF/ELSE',
         desc: '',
       },
@@ -238,5 +241,88 @@ describe('useOneStepRun single-run input vars', () => {
         type: InputVarType.number,
       },
     ])
+  })
+
+  it.each([
+    {
+      type: BlockEnum.Iteration,
+      flowType: FlowType.appFlow,
+      getRunUrl: getIterationSingleNodeRunUrl,
+      runUrl: '/apps/app-id/workflows/draft/iteration/nodes/if-else-node/run',
+      reconnectUrl: '/workflow/single-run-id/events',
+    },
+    {
+      type: BlockEnum.Loop,
+      flowType: FlowType.appFlow,
+      getRunUrl: getLoopSingleNodeRunUrl,
+      runUrl: '/apps/app-id/workflows/draft/loop/nodes/if-else-node/run',
+      reconnectUrl: '/workflow/single-run-id/events',
+    },
+    {
+      type: BlockEnum.Iteration,
+      flowType: FlowType.ragPipeline,
+      getRunUrl: getIterationSingleNodeRunUrl,
+      runUrl: '/rag/pipelines/app-id/workflows/draft/iteration/nodes/if-else-node/run',
+      reconnectUrl: '/rag/pipelines/app-id/workflow-runs/single-run-id/events',
+    },
+    {
+      type: BlockEnum.Loop,
+      flowType: FlowType.ragPipeline,
+      getRunUrl: getLoopSingleNodeRunUrl,
+      runUrl: '/rag/pipelines/app-id/workflows/draft/loop/nodes/if-else-node/run',
+      reconnectUrl: '/rag/pipelines/app-id/workflow-runs/single-run-id/events',
+    },
+    {
+      type: BlockEnum.Iteration,
+      flowType: FlowType.snippet,
+      getRunUrl: getIterationSingleNodeRunUrl,
+      runUrl: '/snippets/app-id/workflows/draft/iteration/nodes/if-else-node/run',
+      reconnectUrl: '/snippets/app-id/workflow-runs/single-run-id/events',
+    },
+    {
+      type: BlockEnum.Loop,
+      flowType: FlowType.snippet,
+      getRunUrl: getLoopSingleNodeRunUrl,
+      runUrl: '/snippets/app-id/workflows/draft/loop/nodes/if-else-node/run',
+      reconnectUrl: '/snippets/app-id/workflow-runs/single-run-id/events',
+    },
+  ])('uses the resumable workflow stream contract for a single $type run', async (scenario) => {
+    vi.mocked(scenario.getRunUrl).mockReturnValue(scenario.runUrl)
+    const { result } = renderUseOneStepRun(scenario.type, scenario.flowType)
+
+    await act(async () => {
+      await result.current.handleRun({ input: 'value' })
+    })
+
+    expect(ssePost).toHaveBeenCalledWith(
+      scenario.runUrl,
+      { body: { inputs: { input: 'value' } } },
+      expect.objectContaining({
+        workflowStreamReconnect: expect.objectContaining({
+          resolveUrl: expect.any(Function),
+        }),
+      }),
+    )
+    const callbacks = vi.mocked(ssePost).mock.calls[0]![2]
+    expect(callbacks.workflowStreamReconnect).not.toBe(false)
+    if (callbacks.workflowStreamReconnect)
+      expect(callbacks.workflowStreamReconnect.resolveUrl?.('single-run-id')).toBe(
+        scenario.reconnectUrl,
+      )
+
+    expect(() => {
+      act(() => {
+        callbacks.onWorkflowFinished?.({
+          workflow_run_id: 'single-run-id',
+          task_id: 'single-task-id',
+          event: 'workflow_finished',
+          data: {
+            id: 'single-run-id',
+            status: 'succeeded',
+            created_by: { name: 'Dify' },
+          },
+        } as never)
+      })
+    }).not.toThrow()
   })
 })

@@ -156,6 +156,17 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert call_count == 2
 
+    def test_streams_mode_raises_if_eager_and_subscribe_dispatch_both_fail(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+
+        def _bad():
+            raise RuntimeError("broker unavailable")
+
+        cb = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+
+        with pytest.raises(RuntimeError, match="Failed to enqueue streaming workflow task"):
+            cb()
+
     def test_concurrent_subscribe_only_starts_once(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)

@@ -339,3 +339,142 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         saved_model = session.merge.call_args.args[0]
         assert saved_model.created_at == existing_created_at
         session.commit.assert_called_once()
+
+    def test_save_existing_finished_run_uses_logical_wall_clock_elapsed_time(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+
+        # The resumed execution segment itself ran for only ten seconds. The
+        # logical run also spent twenty minutes executing/waiting beforehand.
+        sample_workflow_execution.started_at = datetime(2026, 1, 1, 12, 20, 0, tzinfo=UTC)
+        sample_workflow_execution.finished_at = datetime(2026, 1, 1, 12, 20, 10, tzinfo=UTC)
+
+        repo.save(sample_workflow_execution)
+
+        saved_model = session.merge.call_args.args[0]
+        assert saved_model.created_at == existing_run.created_at
+        assert saved_model.elapsed_time == 1210.0
+
+    def test_save_existing_finished_run_clamps_negative_wall_clock_elapsed_time(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 1, tzinfo=UTC)
+
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+        sample_workflow_execution.finished_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+
+        repo.save(sample_workflow_execution)
+
+        saved_model = session.merge.call_args.args[0]
+        assert saved_model.elapsed_time == 0.0
+
+    def test_save_existing_paused_run_uses_logical_wall_clock_elapsed_time(
+        self,
+        mock_session_factory,
+        mock_account,
+        sample_workflow_execution,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        existing_run.elapsed_time = 5.0
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+        sample_workflow_execution.status = WorkflowExecutionStatus.PAUSED
+        sample_workflow_execution.finished_at = None
+        monkeypatch.setattr(
+            "core.repositories.sqlalchemy_workflow_execution_repository.naive_utc_now",
+            lambda: datetime(2026, 1, 1, 12, 30, 0, tzinfo=UTC),
+        )
+
+        repo.save(sample_workflow_execution)
+
+        saved_model = session.merge.call_args.args[0]
+        assert saved_model.elapsed_time == 1800.0
+
+    def test_save_resumed_running_segment_preserves_previous_elapsed_snapshot(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        existing_run.elapsed_time = 321.0
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        sample_workflow_execution.finished_at = None
+
+        repo.save(sample_workflow_execution)
+
+        saved_model = session.merge.call_args.args[0]
+        assert saved_model.elapsed_time == 321.0
+
+    def test_save_does_not_resurrect_stopped_run_when_resume_start_arrives_late(
+        self, mock_session_factory, mock_account, sample_workflow_execution
+    ):
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test_app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+        existing_run = WorkflowRun()
+        existing_run.id = sample_workflow_execution.id_
+        existing_run.tenant_id = repo._tenant_id
+        existing_run.status = WorkflowExecutionStatus.STOPPED
+        existing_run.created_at = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+        session = mock_session_factory.return_value.__enter__.return_value
+        session.get.return_value = existing_run
+        sample_workflow_execution.status = WorkflowExecutionStatus.RUNNING
+        sample_workflow_execution.finished_at = None
+
+        repo.save(sample_workflow_execution)
+
+        session.merge.assert_not_called()
+        session.commit.assert_not_called()
+        assert repo._execution_cache[existing_run.id] is existing_run

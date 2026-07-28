@@ -28,6 +28,7 @@ class RagPipelineTaskProxyTestDataFactory:
         """Create mock TenantIsolatedTaskQueue."""
         queue = Mock(spec=TenantIsolatedTaskQueue)
         queue.get_task_key.return_value = "task_key" if has_task_key else None
+        queue.enqueue_or_acquire.return_value = not has_task_key
         queue.push_tasks = Mock()
         queue.set_task_waiting_time = Mock()
         return queue
@@ -227,7 +228,8 @@ class TestRagPipelineTaskProxy:
 
         # Celery should be called directly
         mock_task.delay.assert_called_once_with(
-            rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
+            rag_pipeline_invoke_entities_file_id=upload_file_id,
+            tenant_id="tenant-123",
         )
 
     @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
@@ -244,8 +246,8 @@ class TestRagPipelineTaskProxy:
         # Act
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
-        # If task key exists, should push tasks to the queue
-        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with([upload_file_id])
+        # If task key exists, the atomic operation should enqueue behind it.
+        proxy._tenant_isolated_task_queue.enqueue_or_acquire.assert_called_once_with(upload_file_id)
         # Celery should not be called directly
         mock_task.delay.assert_not_called()
 
@@ -263,10 +265,11 @@ class TestRagPipelineTaskProxy:
         # Act
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
-        # If no task key, should set task waiting time key first
-        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        # If no task key, the atomic operation acquires the slot before dispatch.
+        proxy._tenant_isolated_task_queue.enqueue_or_acquire.assert_called_once_with(upload_file_id)
         mock_task.delay.assert_called_once_with(
-            rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
+            rag_pipeline_invoke_entities_file_id=upload_file_id,
+            tenant_id="tenant-123",
         )
 
         # The first task should be sent to celery directly, so push tasks should not be called

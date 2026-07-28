@@ -18,7 +18,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator, rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums.quota_type import QuotaType
@@ -72,7 +72,8 @@ class AppGenerateService:
 
             # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
             def _on_subscribe_streams() -> None:
-                _try_start()
+                if not _try_start():
+                    raise RuntimeError("Failed to enqueue streaming workflow task")
 
             return _on_subscribe_streams
 
@@ -84,6 +85,8 @@ class AppGenerateService:
         def _on_subscribe() -> None:
             if _try_start():
                 timer.cancel()
+                return
+            raise RuntimeError("Failed to enqueue streaming workflow task")
 
         return _on_subscribe
 
@@ -257,7 +260,7 @@ class AppGenerateService:
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     generator = AdvancedChatAppGenerator()
-                    return rate_limit.generate(
+                    stream_response = rate_limit.generate(
                         generator.convert_to_event_stream(
                             generator.retrieve_events(
                                 AppMode.ADVANCED_CHAT,
@@ -267,6 +270,14 @@ class AppGenerateService:
                         ),
                         request_id=request_id,
                     )
+                    # The API owns this stable run identifier before the Celery
+                    # worker has persisted WorkflowRun.  Expose it on the
+                    # streaming wrapper so the HTTP response can carry a
+                    # reconnect token even when the connection drops before
+                    # the first workflow_started event.
+                    if isinstance(stream_response, RateLimitGenerator):
+                        stream_response.workflow_run_id = payload.workflow_run_id
+                    return stream_response
 
                 # Blocking mode: run synchronously and return JSON instead of SSE
                 # Keep behaviour consistent with WORKFLOW blocking branch.
@@ -313,7 +324,7 @@ class AppGenerateService:
                         workflow_based_app_execution_task.delay(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                    return rate_limit.generate(
+                    stream_response = rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             MessageBasedAppGenerator.retrieve_events(
                                 AppMode.WORKFLOW,
@@ -323,6 +334,9 @@ class AppGenerateService:
                         ),
                         request_id,
                     )
+                    if isinstance(stream_response, RateLimitGenerator):
+                        stream_response.workflow_run_id = payload.workflow_run_id
+                    return stream_response
 
                 pause_config = PauseStateLayerConfig(
                     session_factory=session_factory.get_session_maker(),

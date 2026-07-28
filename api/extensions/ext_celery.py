@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, NotRequired
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -35,6 +35,26 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+    options: NotRequired[dict[str, Any]]
+
+
+def _register_workflow_handoff_schedule(
+    *,
+    imports: list[str],
+    beat_schedule: dict[str, CeleryBeatScheduleEntry],
+) -> None:
+    # Register recovery code even while creation is disabled. This is required
+    # for the first, dormant rollout and ensures toggling the flag off never
+    # strands durable rows created before the configuration change.
+    imports.append("tasks.workflow_handoff_tasks")
+    beat_schedule["workflow_handoff_scan"] = {
+        "task": "workflow_handoff.scan",
+        "schedule": timedelta(seconds=dify_config.WORKFLOW_HANDOFF_SCAN_INTERVAL_SECONDS),
+        # This capability queue is consumed only by upgraded workers during
+        # the dormant N -> N+1 rollout, so an older worker cannot discard the
+        # unknown scanner task from the shared schedule_poller queue.
+        "options": {"queue": dify_config.WORKFLOW_HANDOFF_QUEUE},
+    }
 
 
 def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
@@ -180,6 +200,7 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    _register_workflow_handoff_schedule(imports=imports, beat_schedule=beat_schedule)
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {

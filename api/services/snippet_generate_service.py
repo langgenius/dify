@@ -20,12 +20,14 @@ Supported execution modes:
 
 import json
 import logging
-from collections.abc import Generator, Mapping, Sequence
+import uuid
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from typing import Any, Union, cast
 
 from sqlalchemy.orm import Session, make_transient, sessionmaker
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.apps.streaming_utils import StreamEventWithCursor, WorkflowRunIdentifiedStream
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
@@ -36,10 +38,13 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+
+type SnippetGenerateResponse = Mapping[str, Any] | Iterator[str]
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -84,7 +89,7 @@ class SnippetGenerateService:
     _VIRTUAL_START_NODE_ID = SNIPPET_VIRTUAL_START_NODE_ID
 
     @classmethod
-    def _is_virtual_start_event(cls, message: Mapping[str, Any] | str) -> bool:
+    def _is_virtual_start_event(cls, message: Mapping[str, Any] | StreamEventWithCursor | str) -> bool:
         """
         Return True when *message* is a snippet-only virtual Start node event.
 
@@ -93,13 +98,14 @@ class SnippetGenerateService:
         out of the SSE stream so the frontend only receives nodes that exist on
         the canvas.
         """
-        if not isinstance(message, Mapping):
+        payload = message.event if isinstance(message, StreamEventWithCursor) else message
+        if not isinstance(payload, Mapping):
             return False
 
-        if message.get("event") not in {"node_started", "node_finished"}:
+        if payload.get("event") not in {"node_started", "node_finished"}:
             return False
 
-        data = message.get("data")
+        data = payload.get("data")
         if not isinstance(data, Mapping):
             return False
 
@@ -108,8 +114,8 @@ class SnippetGenerateService:
     @classmethod
     def _filter_virtual_start_events(
         cls,
-        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None],
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+        response: (Mapping[str, Any] | Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]),
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]:
         """
         Drop snippet virtual Start node lifecycle events from stream responses.
 
@@ -119,13 +125,33 @@ class SnippetGenerateService:
         if isinstance(response, Mapping):
             return response
 
-        def _stream() -> Generator[Mapping[str, Any] | str, None, None]:
-            for message in response:
-                if cls._is_virtual_start_event(message):
-                    continue
-                yield message
+        def _stream() -> Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]:
+            try:
+                for message in response:
+                    if cls._is_virtual_start_event(message):
+                        continue
+                    yield message
+            finally:
+                close = getattr(response, "close", None)
+                if callable(close):
+                    close()
 
         return _stream()
+
+    @classmethod
+    def filter_virtual_start_events(
+        cls,
+        response: Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None],
+    ) -> Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]:
+        """Apply the Snippet public-event filter to a worker or reconnect stream."""
+        filtered = cls._filter_virtual_start_events(response)
+        assert isinstance(filtered, Generator)
+        return filtered
+
+    @staticmethod
+    def build_app_model(snippet: CustomizedSnippet) -> App:
+        """Rebuild the App-shaped adapter used by both initial and resumed runs."""
+        return cast(App, _SnippetAsApp(snippet))
 
     @classmethod
     def generate(
@@ -136,7 +162,7 @@ class SnippetGenerateService:
         invoke_from: InvokeFrom,
         streaming: bool = True,
         session_maker: sessionmaker[Session] | None = None,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> SnippetGenerateResponse:
         """
         Run a snippet's draft workflow.
 
@@ -165,8 +191,9 @@ class SnippetGenerateService:
         workflow = cls._ensure_start_node(workflow, snippet)
 
         # Adapt snippet to App-like interface for WorkflowAppGenerator
-        app_proxy = cast(App, _SnippetAsApp(snippet))
+        app_proxy = cls.build_app_model(snippet)
 
+        workflow_run_id = str(uuid.uuid4())
         response = WorkflowAppGenerator().generate(
             app_model=app_proxy,
             workflow=workflow,
@@ -175,9 +202,14 @@ class SnippetGenerateService:
             invoke_from=invoke_from,
             streaming=streaming,
             call_depth=0,
+            workflow_run_id=workflow_run_id,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
-        return WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
+        converted = WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
+        if streaming and isinstance(converted, Generator):
+            return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+        return converted
 
     @classmethod
     def run_published(
@@ -210,7 +242,7 @@ class SnippetGenerateService:
         # Inject a virtual Start node when the graph doesn't have one.
         workflow = cls._ensure_start_node(workflow, snippet)
 
-        app_proxy = cast(App, _SnippetAsApp(snippet))
+        app_proxy = cls.build_app_model(snippet)
 
         response = WorkflowAppGenerator().generate(
             app_model=app_proxy,
@@ -220,6 +252,7 @@ class SnippetGenerateService:
             invoke_from=invoke_from,
             streaming=False,
             call_depth=0,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
         return response
 
@@ -355,7 +388,7 @@ class SnippetGenerateService:
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = cast(App, _SnippetAsApp(snippet))
+        app_proxy = cls.build_app_model(snippet)
 
         workflow_service = WorkflowService()
         return workflow_service.run_draft_workflow_node(
@@ -378,7 +411,7 @@ class SnippetGenerateService:
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> SnippetGenerateResponse:
         """
         Run a single iteration node in a snippet's draft workflow.
 
@@ -400,10 +433,11 @@ class SnippetGenerateService:
         if not workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = cast(App, _SnippetAsApp(snippet))
+        app_proxy = cls.build_app_model(snippet)
+        workflow_run_id = str(uuid.uuid4())
 
         with session_maker() as session:
-            return WorkflowAppGenerator.convert_to_event_stream(
+            converted = WorkflowAppGenerator.convert_to_event_stream(
                 WorkflowAppGenerator().single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
@@ -412,8 +446,13 @@ class SnippetGenerateService:
                     args=args,
                     streaming=streaming,
                     session=session,
+                    workflow_run_id=workflow_run_id,
+                    handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
                 )
             )
+        if streaming and isinstance(converted, Generator):
+            return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+        return converted
 
     @classmethod
     def generate_single_loop(
@@ -425,7 +464,7 @@ class SnippetGenerateService:
         streaming: bool = True,
         *,
         session_maker: sessionmaker[Session],
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> SnippetGenerateResponse:
         """
         Run a single loop node in a snippet's draft workflow.
 
@@ -447,10 +486,11 @@ class SnippetGenerateService:
         if not workflow:
             raise ValueError("Workflow not initialized")
 
-        app_proxy = cast(App, _SnippetAsApp(snippet))
+        app_proxy = cls.build_app_model(snippet)
+        workflow_run_id = str(uuid.uuid4())
 
         with session_maker() as session:
-            return WorkflowAppGenerator.convert_to_event_stream(
+            converted = WorkflowAppGenerator.convert_to_event_stream(
                 WorkflowAppGenerator().single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
@@ -459,8 +499,13 @@ class SnippetGenerateService:
                     args=args,  # type: ignore[arg-type]
                     streaming=streaming,
                     session=session,
+                    workflow_run_id=workflow_run_id,
+                    handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
                 )
             )
+        if streaming and isinstance(converted, Generator):
+            return WorkflowRunIdentifiedStream(converted, workflow_run_id=workflow_run_id)
+        return converted
 
     @staticmethod
     def parse_files(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:

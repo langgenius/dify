@@ -710,6 +710,7 @@ describe('useChat', () => {
         initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
+      expect(result.current.isResponding).toBe(false)
       await act(async () => {
         await initialCallbacks.onCompleted()
       })
@@ -1298,6 +1299,58 @@ describe('useChat', () => {
   })
 
   describe('handleResume', () => {
+    it('should replace new-agent response parts when a resume snapshot restores the full answer', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const prevChatTree = [
+        {
+          id: 'q-agent-resume',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-agent-resume',
+              content: '',
+              isAnswer: true,
+              agent_response_parts: [
+                { type: 'thought', thought: { id: 'th-1', thought: 'thinking' } },
+                { type: 'message', content: 'stale partial answer' },
+              ],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(
+          undefined,
+          undefined,
+          prevChatTree as ChatItemInTree[],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { isNewAgent: true },
+        ),
+      )
+
+      act(() => {
+        result.current.handleResume('m-agent-resume', 'wr-agent-resume', {})
+      })
+      act(() => {
+        callbacks.onMessageReplace({ answer: 'complete restored answer' })
+      })
+
+      const response = result.current.chatList[1]!
+      expect(response.content).toBe('complete restored answer')
+      expect(response.agent_response_parts).toEqual([
+        { type: 'thought', thought: { id: 'th-1', thought: 'thinking' } },
+        { type: 'message', content: 'complete restored answer' },
+      ])
+    })
+
     it('should call sseGet to resume a node and handle complex tracing', async () => {
       let callbacks: HookCallbacks
 
@@ -2684,6 +2737,46 @@ describe('useChat', () => {
           thought: expect.objectContaining({ id: 'th-2', thought: 'second thought' }),
         },
         { type: 'message', content: ' second answer' },
+      ])
+    })
+
+    it('should replace streamed new-agent message parts with the authoritative snapshot answer', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend('url', { query: 'agent snapshot' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onThought({ id: 'th-1', thought: 'initial thought' })
+        callbacks.onData('stale first chunk', false, {
+          event: 'agent_message',
+          messageId: 'm-thought',
+        })
+        callbacks.onThought({ id: 'th-2', thought: 'second thought' })
+        callbacks.onData(' stale second chunk', false, {
+          event: 'message',
+          messageId: 'm-thought',
+        })
+        callbacks.onMessageReplace({ answer: 'complete restored answer' })
+      })
+
+      const lastResponse = result.current.chatList[result.current.chatList.length - 1]!
+      expect(lastResponse.content).toBe('complete restored answer')
+      expect(
+        lastResponse.agent_response_parts?.filter((part) => part.type === 'thought'),
+      ).toHaveLength(2)
+      expect(lastResponse.agent_response_parts?.filter((part) => part.type === 'message')).toEqual([
+        { type: 'message', content: 'complete restored answer' },
       ])
     })
   })

@@ -42,3 +42,19 @@ class TestMessageGenerator:
             on_subscribe=None,
             terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
         )
+
+    def test_retrieve_events_passes_replay_cursor(self):
+        with (
+            patch("core.app.apps.message_generator.MessageGenerator.get_response_topic", return_value="topic"),
+            patch("core.app.apps.message_generator.stream_topic_events", return_value=iter([])) as mock_stream,
+        ):
+            list(MessageGenerator.retrieve_events(AppMode.WORKFLOW, "run-1", cursor="123-0"))
+
+        mock_stream.assert_called_once_with(
+            topic="topic",
+            idle_timeout=300,
+            ping_interval=10.0,
+            on_subscribe=None,
+            terminal_events=None,
+            cursor="123-0",
+        )

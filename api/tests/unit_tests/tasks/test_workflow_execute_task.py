@@ -6,6 +6,7 @@ import uuid
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
+from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -408,6 +409,51 @@ def test_publish_streaming_response_publishes_failed_terminal_without_duplicate_
     assert "publishing fallback terminal event" in caplog.text
 
 
+def test_publish_failure_stops_graph_producer_before_durable_terminal_reconciliation(
+    mock_topic: MagicMock,
+) -> None:
+    producer_stop = Event()
+    producer_joined = Event()
+
+    def producer() -> None:
+        producer_stop.wait(timeout=2)
+        producer_joined.set()
+
+    producer_thread = Thread(target=producer, daemon=True)
+    producer_thread.start()
+
+    def response_stream():
+        try:
+            yield {"event": "workflow_started", "task_id": "task-id"}
+            yield {"event": "node_started", "task_id": "task-id"}
+        finally:
+            producer_stop.set()
+            producer_thread.join(timeout=2)
+
+    def publish(payload: bytes) -> None:
+        decoded = _decode_published_payload(payload)
+        if isinstance(decoded, dict) and decoded.get("event") == "node_started":
+            raise RuntimeError("broker write failed")
+
+    mock_topic.publish.side_effect = publish
+
+    def reconcile(_failure) -> None:
+        assert producer_joined.is_set(), "graph producer must stop before the database becomes terminal"
+
+    with pytest.raises(RuntimeError, match="broker write failed"):
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.RESUMPTION,
+            terminal_failure_handler=reconcile,
+        )
+
+    assert not producer_thread.is_alive()
+
+
 def test_publish_streaming_response_recovers_when_workflow_finished_publish_fails_first(
     mock_topic: MagicMock,
     caplog: pytest.LogCaptureFixture,
@@ -486,6 +532,67 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert "ended without a terminal event" in caplog.text
 
 
+def test_resumed_stream_queue_error_reconciles_partial_answer_before_terminal_publication(
+    mock_topic: MagicMock,
+) -> None:
+    failures = []
+    response_stream = iter(
+        [
+            {"event": "workflow_started", "task_id": "task-id"},
+            {"event": "message", "task_id": "task-id", "answer": "discarded-before-replace"},
+            {"event": "message_replace", "task_id": "task-id", "answer": "full partial"},
+            {"event": "agent_message", "task_id": "task-id", "answer": " plus delta"},
+            {"event": "error", "task_id": "task-id", "err": "queue exploded"},
+        ]
+    )
+
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.RESUMPTION,
+        terminal_failure_handler=failures.append,
+    )
+
+    assert len(failures) == 1
+    assert failures[0].error == "queue exploded"
+    assert failures[0].message_answer_replacement == "full partial"
+    assert failures[0].message_answer_delta == " plus delta"
+    assert [payload["event"] for payload in _published_payloads(mock_topic)] == [
+        "workflow_started",
+        "message",
+        "message_replace",
+        "agent_message",
+        "error",
+    ]
+
+
+def test_resumed_stream_exception_does_not_publish_terminal_when_durable_reconciliation_fails(
+    mock_topic: MagicMock,
+) -> None:
+    def response_stream():
+        yield {"event": "workflow_started", "task_id": "task-id"}
+        raise RuntimeError("stream exploded")
+
+    def fail_reconciliation(_failure) -> None:
+        raise RuntimeError("database unavailable")
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        _publish_streaming_response(
+            response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.RESUMPTION,
+            terminal_failure_handler=fail_reconciliation,
+        )
+
+    assert [payload["event"] for payload in _published_payloads(mock_topic)] == ["workflow_started"]
+
+
 def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):
     response_stream = iter(
         [
@@ -529,6 +636,59 @@ def test_publish_streaming_response_does_not_publish_synthetic_failure_after_ter
 
     payloads = _published_payloads(mock_topic)
     assert [payload["event"] for payload in payloads] == ["workflow_started", "workflow_finished"]
+
+
+@pytest.mark.parametrize(
+    ("response_stream", "expected_events"),
+    [
+        (
+            iter(
+                [
+                    {
+                        "event": "workflow_started",
+                        "task_id": "task-id",
+                        "workflow_run_id": "workflow-run-id",
+                        "data": {"id": "workflow-run-id"},
+                    },
+                    {
+                        "event": "workflow_maintenance_paused",
+                        "task_id": "task-id",
+                        "workflow_run_id": "workflow-run-id",
+                    },
+                ]
+            ),
+            ["workflow_started"],
+        ),
+        (
+            iter(
+                [
+                    {
+                        "event": "workflow_maintenance_paused",
+                        "task_id": "task-id",
+                        "workflow_run_id": "workflow-run-id",
+                    }
+                ]
+            ),
+            [],
+        ),
+    ],
+)
+def test_publish_streaming_response_keeps_maintenance_handoff_internal(
+    mock_topic: MagicMock,
+    response_stream,
+    expected_events: list[str],
+):
+    _publish_streaming_response(
+        response_stream,
+        "workflow-run-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    assert [payload["event"] for payload in payloads] == expected_events
 
 
 def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_finished(
@@ -746,6 +906,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
     _resume_app_execution({"workflow_run_id": workflow_run_id})
 
     workflow_run_repo.resume_workflow_pause.assert_called_once_with(workflow_run_id, pause_entity)
+    resumption_context.apply_handoff_execution_timing.assert_called_once_with()
     resume_advanced_chat.assert_called_once()
     assert resume_advanced_chat.call_args.kwargs["conversation"].id == conversation_id
     assert resume_advanced_chat.call_args.kwargs["message"].id == "expected-message-id"
@@ -838,13 +999,19 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         session_factory=sqlite_session_factory,
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
-        workflow_run=SimpleNamespace(triggered_from="app_run"),
+        workflow_run=SimpleNamespace(
+            triggered_from="app_run",
+            graph_dict={"nodes": [{"id": "chat-root"}], "edges": []},
+            version="published-v1",
+        ),
+        root_node_id="chat-root",
         session=session,
     )
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
     assert generator_instance.resume.call_args.kwargs["session"] is session
+    assert generator_instance.resume.call_args.kwargs["root_node_id"] == "chat-root"
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
@@ -895,13 +1062,19 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(
         session_factory=sqlite_session_factory,
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
-        workflow_run=SimpleNamespace(triggered_from="app_run"),
+        workflow_run=SimpleNamespace(
+            triggered_from="app_run",
+            graph_dict={"nodes": [{"id": "workflow-root"}], "edges": []},
+            version="published-v1",
+        ),
         workflow_run_repo=workflow_run_repo,
         pause_entity=pause_entity,
+        root_node_id="workflow-root",
     )
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
+    assert generator_instance.resume.call_args.kwargs["root_node_id"] == "workflow-root"
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
@@ -954,9 +1127,14 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         session_factory=sqlite_session_factory,
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
-        workflow_run=SimpleNamespace(triggered_from="app_run"),
+        workflow_run=SimpleNamespace(
+            triggered_from="app_run",
+            graph_dict={"nodes": [{"id": "workflow-root"}], "edges": []},
+            version="published-v1",
+        ),
         workflow_run_repo=workflow_run_repo,
         pause_entity=pause_entity,
+        root_node_id="workflow-root",
     )
 
     publish_streaming_response.assert_called_once_with(

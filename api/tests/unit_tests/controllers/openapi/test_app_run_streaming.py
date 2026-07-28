@@ -10,12 +10,16 @@ import pytest
 from flask import Flask
 
 from controllers.openapi._models import AppRunRequest
-from models import Account
+from controllers.openapi.auth.data import CallerKind
+from core.app.entities.app_invoke_entities import InvokeFrom
+from models import Account, EndUser
+from models.enums import CreatorUserRole
 from models.model import App, AppMode
 
 _TEST_APP_ID = str(uuid.uuid4())
 _TEST_TENANT_ID = str(uuid.uuid4())
 _TEST_ACCOUNT_ID = str(uuid.uuid4())
+_TEST_END_USER_ID = str(uuid.uuid4())
 
 
 def _make_app() -> App:
@@ -89,31 +93,57 @@ def test_stop_task_endpoint_registered(openapi_app):
     assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>:stop" in rules
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize(
+    "app_mode",
+    [
+        pytest.param(AppMode.CHAT, id="chat"),
+        pytest.param(AppMode.ADVANCED_CHAT, id="advanced-chat"),
+        pytest.param(AppMode.WORKFLOW, id="workflow"),
+        pytest.param(AppMode.RAG_PIPELINE, id="rag-pipeline"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("caller_kind", "expected_creator_role"),
+    [
+        pytest.param(CallerKind.ACCOUNT, CreatorUserRole.ACCOUNT, id="account"),
+        pytest.param(CallerKind.END_USER, CreatorUserRole.END_USER, id="end-user"),
+    ],
+)
+def test_stop_task_passes_openapi_caller_scope_to_task_service(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+    app_mode: AppMode,
+    caller_kind: CallerKind,
+    expected_creator_role: CreatorUserRole,
+):
     import uuid
 
     from controllers.openapi.app_run import AppRunTaskStopApi
     from controllers.openapi.auth.data import AuthData
     from libs.oauth_bearer import Scope, TokenType
 
-    queue_mock = Mock()
-    graph_mock = Mock()
-    graph_instance = Mock()
-    graph_mock.return_value = graph_instance
-
     run_module = sys.modules["controllers.openapi.app_run"]
-    monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "GraphEngineManager", graph_mock)
-    monkeypatch.setattr(run_module, "redis_client", object())
+    stop_task = Mock()
+    monkeypatch.setattr(run_module.AppTaskService, "stop_task", stop_task)
+
+    app_model = _make_app()
+    app_model.mode = app_mode
+    caller: Account | EndUser
+    if caller_kind == CallerKind.ACCOUNT:
+        caller = _make_account()
+    else:
+        caller = EndUser()
+        caller.id = _TEST_END_USER_ID
 
     auth_data = AuthData.model_construct(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=uuid.UUID(_TEST_ACCOUNT_ID),
         token_hash="test",
         scopes=frozenset({Scope.FULL}),
-        app=_make_app(),
-        caller=_make_account(),
-        caller_kind="account",
+        app=app_model,
+        caller=caller,
+        caller_kind=caller_kind,
     )
 
     api = AppRunTaskStopApi()
@@ -125,6 +155,13 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipel
             auth_data=auth_data,
         )
 
-    queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    graph_instance.send_stop_command.assert_called_once_with("task-1")
+    stop_task.assert_called_once_with(
+        "task-1",
+        InvokeFrom.OPENAPI,
+        caller.id,
+        app_mode,
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        created_by_role=expected_creator_role,
+    )
     assert result == ({"result": "success"}, 200)

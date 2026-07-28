@@ -1,7 +1,8 @@
 import json
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from functools import cached_property
+from typing import Any, Protocol
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
@@ -13,6 +14,10 @@ from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipel
 from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
 logger = logging.getLogger(__name__)
+
+
+class _CeleryTask(Protocol):
+    def delay(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 class RagPipelineTaskProxy:
@@ -31,8 +36,13 @@ class RagPipelineTaskProxy:
     def features(self):
         return FeatureService.get_features(self._dataset_tenant_id, exclude_vector_space=True)
 
-    def _upload_invoke_entities(self) -> str:
-        text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
+    def _upload_invoke_entities(self, *, tenant_isolated: bool | None = None) -> str:
+        text = []
+        for item in self._rag_pipeline_invoke_entities:
+            payload = item.model_dump()
+            if tenant_isolated is not None:
+                payload["tenant_isolated"] = tenant_isolated
+            text.append(payload)
         # Convert list to proper JSON string
         json_text = json.dumps(text)
         upload_file = FileService(db.engine).upload_text(
@@ -43,23 +53,19 @@ class RagPipelineTaskProxy:
         )
         return upload_file.id
 
-    def _send_to_direct_queue(self, upload_file_id: str, task_func: Callable[[str, str], None]):
+    def _send_to_direct_queue(self, upload_file_id: str, task_func: _CeleryTask):
         logger.info("tenant %s send file %s to direct queue", self._dataset_tenant_id, upload_file_id)
-        task_func.delay(  # type: ignore
+        task_func.delay(
             rag_pipeline_invoke_entities_file_id=upload_file_id,
             tenant_id=self._dataset_tenant_id,
         )
 
-    def _send_to_tenant_queue(self, upload_file_id: str, task_func: Callable[[str, str], None]):
+    def _send_to_tenant_queue(self, upload_file_id: str, task_func: _CeleryTask):
         logger.info("tenant %s send file %s to tenant queue", self._dataset_tenant_id, upload_file_id)
-        if self._tenant_isolated_task_queue.get_task_key():
-            # Add to waiting queue using List operations (lpush)
-            self._tenant_isolated_task_queue.push_tasks([upload_file_id])
+        if not self._tenant_isolated_task_queue.enqueue_or_acquire(upload_file_id):
             logger.info("tenant %s push tasks: %s", self._dataset_tenant_id, upload_file_id)
         else:
-            # Set flag and execute task
-            self._tenant_isolated_task_queue.set_task_waiting_time()
-            task_func.delay(  # type: ignore
+            task_func.delay(
                 rag_pipeline_invoke_entities_file_id=upload_file_id,
                 tenant_id=self._dataset_tenant_id,
             )
@@ -75,7 +81,18 @@ class RagPipelineTaskProxy:
         self._send_to_direct_queue(upload_file_id, priority_rag_pipeline_run_task)
 
     def _dispatch(self):
-        upload_file_id = self._upload_invoke_entities()
+        if self.features.billing.enabled:
+            tenant_isolated = True
+            send = (
+                self._send_to_default_tenant_queue
+                if self.features.billing.subscription.plan == CloudPlan.SANDBOX
+                else self._send_to_priority_tenant_queue
+            )
+        else:
+            tenant_isolated = False
+            send = self._send_to_priority_direct_queue
+
+        upload_file_id = self._upload_invoke_entities(tenant_isolated=tenant_isolated)
         if not upload_file_id:
             raise ValueError("upload_file_id is empty")
 
@@ -86,17 +103,7 @@ class RagPipelineTaskProxy:
             self.features.billing.subscription.plan,
         )
 
-        # dispatch to different pipeline queue with tenant isolation when billing enabled
-        if self.features.billing.enabled:
-            if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
-                # dispatch to normal pipeline queue with tenant isolation for sandbox plan
-                self._send_to_default_tenant_queue(upload_file_id)
-            else:
-                # dispatch to priority pipeline queue with tenant isolation for other plans
-                self._send_to_priority_tenant_queue(upload_file_id)
-        else:
-            # dispatch to priority pipeline queue without tenant isolation for others, e.g.: self-hosted or enterprise
-            self._send_to_priority_direct_queue(upload_file_id)
+        send(upload_file_id)
 
     def delay(self):
         if not self._rag_pipeline_invoke_entities:

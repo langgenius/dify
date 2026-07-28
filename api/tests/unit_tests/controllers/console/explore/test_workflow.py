@@ -11,6 +11,7 @@ from controllers.console.explore.workflow import (
     InstalledAppWorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
 
@@ -30,6 +31,8 @@ def user():
 @pytest.fixture
 def workflow_app():
     app = MagicMock()
+    app.id = "app-1"
+    app.tenant_id = "tenant-1"
     app.mode = AppMode.WORKFLOW
     return app
 
@@ -116,18 +119,22 @@ class TestInstalledAppWorkflowTaskStopApi:
         method = unwrap(api.post)
 
         with pytest.raises(NotWorkflowAppError):
-            method(api, MagicMock(), non_workflow_installed_app, "task-1")
+            method(api, MagicMock(), MagicMock(id="account-1"), non_workflow_installed_app, "task-1")
 
     def test_success(self, installed_workflow_app):
         api = InstalledAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
-        with (
-            patch("controllers.console.explore.workflow.AppQueueManager.set_stop_flag_no_user_check") as stop_flag,
-            patch("controllers.console.explore.workflow.GraphEngineManager.send_stop_command") as send_stop,
-        ):
-            result = method(api, MagicMock(), installed_workflow_app, "task-1")
+        current_user = MagicMock(id="account-1")
+        with patch("controllers.console.explore.workflow.AppTaskService.stop_task") as stop_task:
+            result = method(api, MagicMock(), current_user, installed_workflow_app, "task-1")
 
-            stop_flag.assert_called_once_with("task-1")
-            send_stop.assert_called_once_with("task-1")
+            stop_task.assert_called_once_with(
+                "task-1",
+                InvokeFrom.EXPLORE,
+                "account-1",
+                AppMode.WORKFLOW,
+                tenant_id="tenant-1",
+                app_id="app-1",
+            )
             assert result == {"result": "success"}

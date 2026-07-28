@@ -1,8 +1,11 @@
+import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from functools import wraps
+from typing import Any
+from uuid import UUID
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
@@ -11,6 +14,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
@@ -40,27 +44,34 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.message_generator import MessageGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import StreamEvent
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
-from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
+from models.enums import CreatorUserRole
+from models.model import AppMode
 from models.snippet import CustomizedSnippet
+from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -532,6 +543,87 @@ class SnippetWorkflowRunDetailApi(Resource):
         return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
 
 
+@console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>/events")
+class SnippetWorkflowRunEventsApi(Resource):
+    """Reconnect to one durable Snippet workflow event stream."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @get_snippet
+    def get(self, current_user: Account, snippet: CustomizedSnippet, run_id: UUID):
+        session_maker = _snippet_session_maker()
+        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run = repository.get_workflow_run_by_id_and_tenant_id(
+            tenant_id=snippet.tenant_id,
+            run_id=str(run_id),
+        )
+        if (
+            workflow_run is None
+            or workflow_run.app_id != snippet.id
+            or workflow_run.created_by_role != CreatorUserRole.ACCOUNT
+            or workflow_run.created_by != current_user.id
+        ):
+            raise NotFound("Workflow run not found")
+
+        cursor = get_workflow_event_replay_cursor(request)
+        include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+        continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+
+        if workflow_run.finished_at is not None and cursor is None:
+            finished = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run,
+                    session_maker=session_maker,
+                ),
+                workflow_run=workflow_run,
+                creator_user=current_user,
+            )
+            payload = finished.model_dump(mode="json")
+            payload["event"] = finished.event.value
+
+            def event_generator() -> Generator[str, None, None]:
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        else:
+            message_generator = MessageGenerator()
+
+            def event_generator() -> Generator[str, None, None]:
+                if include_state_snapshot or cursor is not None:
+                    source = build_workflow_event_stream(
+                        app_mode=AppMode.WORKFLOW,
+                        workflow_run=workflow_run,
+                        tenant_id=snippet.tenant_id,
+                        app_id=snippet.id,
+                        session_maker=session_maker,
+                        human_input_surface=HumanInputSurface.CONSOLE,
+                        close_on_pause=not continue_on_pause,
+                        cursor=cursor,
+                    )
+                else:
+                    terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
+                    retrieve_kwargs: dict[str, Any] = {"terminal_events": terminal_events}
+                    if cursor is not None:
+                        retrieve_kwargs["cursor"] = cursor
+                    if workflow_run.finished_at is not None:
+                        retrieve_kwargs["idle_timeout"] = 0
+                    source = message_generator.retrieve_events(
+                        AppMode.WORKFLOW,
+                        workflow_run.id,
+                        **retrieve_kwargs,
+                    )
+                yield from WorkflowAppGenerator.convert_to_event_stream(
+                    SnippetGenerateService.filter_virtual_start_events(source)
+                )
+
+        return Response(
+            event_generator(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+
+
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>/node-executions")
 class SnippetWorkflowRunNodeExecutionsApi(Resource):
     @console_ns.doc("list_snippet_workflow_run_node_executions")
@@ -787,20 +879,23 @@ class SnippetWorkflowTaskStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, task_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, task_id: str):
         """
         Stop a running snippet workflow task.
 
         Uses both the legacy stop flag mechanism and the graph engine
         command channel for backward compatibility.
         """
-        # Stop using both mechanisms for backward compatibility
-        # Legacy stop flag mechanism (without user check)
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-
-        # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id,
+            InvokeFrom.DEBUGGER,
+            current_user.id,
+            AppMode.WORKFLOW,
+            tenant_id=snippet.tenant_id,
+            app_id=snippet.id,
+        )
 
         return {"result": "success"}

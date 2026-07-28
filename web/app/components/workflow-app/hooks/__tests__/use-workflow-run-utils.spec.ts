@@ -20,15 +20,15 @@ import {
   validateWorkflowRunRequest,
 } from '../use-workflow-run-utils'
 
-const { mockPost, mockHandleStream, mockToastError } = vi.hoisted(() => ({
+const { mockPost, mockHandleSseResponse, mockToastError } = vi.hoisted(() => ({
   mockPost: vi.fn(),
-  mockHandleStream: vi.fn(),
+  mockHandleSseResponse: vi.fn(),
   mockToastError: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
   post: mockPost,
-  handleStream: mockHandleStream,
+  handleSseResponse: mockHandleSseResponse,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -365,7 +365,7 @@ describe('useWorkflowRun utils', () => {
     })
 
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
-    expect(mockHandleStream).toHaveBeenCalledTimes(1)
+    expect(mockHandleSseResponse).toHaveBeenCalledTimes(1)
   })
 
   it('should retry waiting trigger debug responses until a stream is returned', async () => {
@@ -409,7 +409,7 @@ describe('useWorkflowRun utils', () => {
 
     expect(mockPost).toHaveBeenCalledTimes(2)
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
-    expect(mockHandleStream).toHaveBeenCalledTimes(1)
+    expect(mockHandleSseResponse).toHaveBeenCalledTimes(1)
 
     vi.useRealTimers()
   })
@@ -440,7 +440,7 @@ describe('useWorkflowRun utils', () => {
       setWorkflowRunningData,
     })
 
-    expect(mockHandleStream).not.toHaveBeenCalled()
+    expect(mockHandleSseResponse).not.toHaveBeenCalled()
     expect(mockToastError).not.toHaveBeenCalled()
     expect(clearAbortController).not.toHaveBeenCalled()
     expect(clearListeningStateSpy).not.toHaveBeenCalled()

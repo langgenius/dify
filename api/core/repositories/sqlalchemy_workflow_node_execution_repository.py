@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, override
 
 import psycopg2.errors
-from sqlalchemy import UnaryExpression, asc, desc, select
+from sqlalchemy import UnaryExpression, asc, desc, func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -570,6 +570,18 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)
 
         return list(domain_models)
+
+    @override
+    def get_max_index(self, workflow_execution_id: str) -> int:
+        """Seed a resumed segment after every node already persisted for the run."""
+        with self._session_factory() as session:
+            value = session.scalar(
+                select(func.max(WorkflowNodeExecutionModel.index)).where(
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_execution_id,
+                    WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                )
+            )
+        return int(value or 0)
 
 
 def _deterministic_json_dump(value: Mapping[str, Any]) -> str:

@@ -902,6 +902,7 @@ describe('useChat – handleResume', () => {
       expect(mockSseGet.mock.calls.length).toBeGreaterThan(sseGetCallsBefore)
       const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
+      expect(result.current.isResponding).toBe(false)
     })
   })
 })

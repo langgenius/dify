@@ -109,6 +109,7 @@ class WorkflowRunSummaryDict(TypedDict):
     status: str
     triggered_from: str
     elapsed_time: float
+    handoff_duration: float
     total_tokens: int
 
 
@@ -748,6 +749,7 @@ class WorkflowRunDict(TypedDict):
     outputs: Mapping[str, Any]
     error: str | None
     elapsed_time: float
+    handoff_duration: float
     total_tokens: int
     total_steps: int
     created_by_role: CreatorUserRole
@@ -782,6 +784,7 @@ class WorkflowRun(Base):
     - outputs (text) `optional` Output content
     - error (string) `optional` Error reason
     - elapsed_time (float) `optional` Time consumption (s)
+    - handoff_duration (float) Planned worker-handoff wait included in elapsed_time (s)
     - total_tokens (int) `optional` Total tokens used
     - total_steps (int) Total steps (redundant), default 0
     - created_by_role (string) Creator role
@@ -819,6 +822,7 @@ class WorkflowRun(Base):
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    handoff_duration: Mapped[float] = mapped_column(sa.Float, nullable=False, default=0.0, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255))  # account, end_user
@@ -891,6 +895,7 @@ class WorkflowRun(Base):
             outputs=self.outputs_dict,
             error=self.error,
             elapsed_time=self.elapsed_time,
+            handoff_duration=self.handoff_duration,
             total_tokens=self.total_tokens,
             total_steps=self.total_steps,
             created_by_role=self.created_by_role,
@@ -916,6 +921,7 @@ class WorkflowRun(Base):
             outputs=json.dumps(data.get("outputs")),
             error=data.get("error"),
             elapsed_time=data.get("elapsed_time"),
+            handoff_duration=data.get("handoff_duration", 0),
             total_tokens=data.get("total_tokens"),
             total_steps=data.get("total_steps"),
             created_by_role=data.get("created_by_role"),
@@ -1441,6 +1447,12 @@ class WorkflowArchiveLog(TypeBase):
     run_exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
     trigger_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    run_handoff_duration: Mapped[float] = mapped_column(
+        sa.Float,
+        nullable=False,
+        default=0.0,
+        server_default=sa.text("0"),
+    )
     archived_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1452,6 +1464,7 @@ class WorkflowArchiveLog(TypeBase):
             "status": self.run_status,
             "triggered_from": self.run_triggered_from,
             "elapsed_time": self.run_elapsed_time,
+            "handoff_duration": self.run_handoff_duration,
             "total_tokens": self.run_total_tokens,
         }
 

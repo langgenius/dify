@@ -14,15 +14,17 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
+from models.model import AppMode
 
 
 def _workflow_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="workflow")
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
 
 
 def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="chat")
 
 
 def _end_user() -> SimpleNamespace:
@@ -84,12 +86,21 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
-    @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
-    @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")
-    def test_stop_calls_both_mechanisms(self, mock_legacy: MagicMock, mock_graph: MagicMock, app: Flask) -> None:
+    @patch("controllers.web.workflow.AppTaskService.stop_task")
+    def test_stop_passes_end_user_scope_to_task_service(
+        self,
+        stop_task: MagicMock,
+        app: Flask,
+    ) -> None:
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             result = WorkflowTaskStopApi().post(_workflow_app(), _end_user(), "task-1")
 
         assert result == {"result": "success"}
-        mock_legacy.assert_called_once_with("task-1")
-        mock_graph.assert_called_once_with("task-1")
+        stop_task.assert_called_once_with(
+            "task-1",
+            InvokeFrom.WEB_APP,
+            "eu-1",
+            AppMode.WORKFLOW,
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )

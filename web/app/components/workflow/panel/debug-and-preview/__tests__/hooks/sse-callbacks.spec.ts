@@ -1075,6 +1075,7 @@ describe('useChat – handleSend SSE callbacks', () => {
         (item) => item.isAnswer && !item.isOpeningStatement,
       )
       expect(answer!.workflowProcess!.status).toBe('paused')
+      expect(result.current.isResponding).toBe(false)
     })
   })
 })

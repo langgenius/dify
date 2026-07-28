@@ -15,6 +15,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
+from core.app.entities.task_entities import StreamEvent
 from models.enums import CreatorUserRole
 from models.model import AppMode
 
@@ -81,12 +82,20 @@ class TestWorkflowEventsApi:
         )
         workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
         monkeypatch.setattr(
+            workflow_events_module,
+            "resolve_workflow_event_task_id",
+            lambda **_kwargs: "handoff-task",
+        )
+        finish_converter = Mock(
+            return_value=SimpleNamespace(
+                model_dump=lambda mode="json": {"task_id": "handoff-task", "status": "succeeded"},
+                event=SimpleNamespace(value="workflow_finished"),
+            )
+        )
+        monkeypatch.setattr(
             workflow_events_module.WorkflowResponseConverter,
             "workflow_run_result_to_finish_response",
-            lambda **_kwargs: SimpleNamespace(
-                model_dump=lambda mode="json": {"task_id": "run-1", "status": "succeeded"},
-                event=SimpleNamespace(value="workflow_finished"),
-            ),
+            finish_converter,
         )
 
         api = WorkflowEventsApi()
@@ -101,8 +110,9 @@ class TestWorkflowEventsApi:
         body = response.get_data(as_text=True).strip()
         assert body.startswith("data: ")
         payload = json.loads(body[len("data: ") :])
-        assert payload["task_id"] == "run-1"
+        assert payload["task_id"] == "handoff-task"
         assert payload["event"] == "workflow_finished"
+        assert finish_converter.call_args.kwargs["task_id"] == "handoff-task"
 
     def test_running_run_streams_events(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
@@ -165,3 +175,72 @@ class TestWorkflowEventsApi:
         msg_generator.retrieve_events.assert_not_called()
         snapshot_builder.assert_called_once()
         workflow_generator.convert_to_event_stream.assert_called_once_with(["snapshot-events"])
+
+    def test_last_event_id_replays_after_cursor_through_durable_stream_builder(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        workflow_run = SimpleNamespace(
+            id="run-1",
+            app_id="app-1",
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="end-user-1",
+            finished_at=None,
+        )
+        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
+        msg_generator = Mock()
+        msg_generator.retrieve_events.return_value = ["raw-event"]
+        workflow_generator = Mock()
+        workflow_generator.convert_to_event_stream.return_value = iter(["data: replayed\n\n"])
+        snapshot_builder = Mock(return_value=["raw-event"])
+        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+        monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
+
+        api = WorkflowEventsApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        end_user = SimpleNamespace(id="end-user-1")
+
+        with app.test_request_context(
+            "/workflow/run-1/events?user=u1&include_state_snapshot=true&cursor=10-0",
+            method="GET",
+            headers={"Last-Event-ID": "20-0"},
+        ):
+            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+
+        assert response.get_data(as_text=True) == "data: replayed\n\n"
+        snapshot_builder.assert_called_once()
+        assert snapshot_builder.call_args.kwargs["cursor"] == "20-0"
+        msg_generator.retrieve_events.assert_not_called()
+
+    def test_continue_on_pause_closes_only_on_workflow_finished(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        workflow_run = SimpleNamespace(
+            id="run-1",
+            app_id="app-1",
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="end-user-1",
+            finished_at=None,
+        )
+        workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run)
+        msg_generator = Mock()
+        msg_generator.retrieve_events.return_value = []
+        workflow_generator = Mock()
+        workflow_generator.convert_to_event_stream.return_value = iter([])
+        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
+
+        api = WorkflowEventsApi()
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        end_user = SimpleNamespace(id="end-user-1")
+        with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
+            response = handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
+            response.get_data()
+
+        msg_generator.retrieve_events.assert_called_once_with(
+            AppMode.WORKFLOW,
+            "run-1",
+            terminal_events=[StreamEvent.WORKFLOW_FINISHED],
+        )

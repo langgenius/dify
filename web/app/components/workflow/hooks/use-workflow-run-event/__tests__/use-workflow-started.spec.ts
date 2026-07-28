@@ -51,7 +51,34 @@ describe('useWorkflowStarted', () => {
       )
     })
 
-    expect(store.getState().workflowRunningData!.result.status).toBe(WorkflowRunningStatus.Running)
+    const state = store.getState().workflowRunningData!
+    expect(state.task_id).toBe('task-2')
+    expect(state.result).toEqual(
+      expect.objectContaining({ id: 'run-2', status: WorkflowRunningStatus.Running }),
+    )
+    expect(getNodeRuntimeState(result.current.nodes[0])._waitingRun).toBe(false)
+    expect(getEdgeRuntimeState(result.current.edges[0])._waitingRun).toBeUndefined()
+  })
+
+  it('preserves partial state when the same workflow_started event is replayed', () => {
+    const { result, store } = renderRunEventHook(() => useWorkflowStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          task_id: 'task-2',
+          result: { status: WorkflowRunningStatus.Running },
+          resultText: 'partial result',
+          tracing: [{ id: 'trace-1', node_id: 'n1' }],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowStarted(createStartedResponse())
+    })
+
+    const state = store.getState().workflowRunningData!
+    expect(state.resultText).toBe('partial result')
+    expect(state.tracing).toEqual([{ id: 'trace-1', node_id: 'n1' }])
     expect(getNodeRuntimeState(result.current.nodes[0])._waitingRun).toBe(false)
     expect(getEdgeRuntimeState(result.current.edges[0])._waitingRun).toBeUndefined()
   })

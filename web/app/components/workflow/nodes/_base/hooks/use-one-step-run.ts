@@ -6,7 +6,6 @@ import type {
   Var,
   Variable,
 } from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
@@ -63,6 +62,7 @@ import {
   getLoopSingleNodeRunUrl,
   singleNodeRun,
 } from '@/service/workflow'
+import { FlowType } from '@/types/common'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
@@ -101,6 +101,18 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
+}
+
+const resolveSingleStepWorkflowEventsUrl = (
+  flowType: FlowType,
+  flowId: string,
+  workflowRunId: string,
+) => {
+  if (flowType === FlowType.ragPipeline)
+    return `/rag/pipelines/${flowId}/workflow-runs/${workflowRunId}/events`
+  if (flowType === FlowType.snippet)
+    return `/snippets/${flowId}/workflow-runs/${workflowRunId}/events`
+  return `/workflow/${workflowRunId}/events`
 }
 
 type RequestError = {
@@ -798,6 +810,10 @@ const useOneStepRun = <T>({
           getIterationSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
+            workflowStreamReconnect: {
+              resolveUrl: (workflowRunId) =>
+                resolveSingleStepWorkflowEventsUrl(flowType, flowId!, workflowRunId),
+            },
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
               if (isPausedRef.current) return
@@ -810,7 +826,8 @@ const useOneStepRun = <T>({
                 },
               })
               const { data: iterationData } = params
-              _runResult.created_by = iterationData.created_by.name
+              _runResult = _runResult ?? iterationData
+              _runResult.created_by = iterationData.created_by?.name
               setRunResult(_runResult)
             },
             onIterationStart: (params) => {
@@ -900,6 +917,10 @@ const useOneStepRun = <T>({
           getLoopSingleNodeRunUrl(flowType, isChatMode, flowId!, id),
           { body: { inputs: submitData } },
           {
+            workflowStreamReconnect: {
+              resolveUrl: (workflowRunId) =>
+                resolveSingleStepWorkflowEventsUrl(flowType, flowId!, workflowRunId),
+            },
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
               if (isPausedRef.current) return
@@ -912,7 +933,8 @@ const useOneStepRun = <T>({
                 },
               })
               const { data: loopData } = params
-              _runResult.created_by = loopData.created_by.name
+              _runResult = _runResult ?? loopData
+              _runResult.created_by = loopData.created_by?.name
               setRunResult(_runResult)
             },
             onLoopStart: (params) => {

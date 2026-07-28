@@ -397,10 +397,15 @@ class TestBaseAppGeneratorExtras:
         base_app_generator = BaseAppGenerator()
         worker_thread = Mock()
         worker_thread.is_alive.return_value = False
+        response_stream_closed = False
 
         def response_stream():
-            yield {"event": "workflow_started"}
-            yield {"event": "workflow_finished"}
+            nonlocal response_stream_closed
+            try:
+                yield {"event": "workflow_started"}
+                yield {"event": "workflow_finished"}
+            finally:
+                response_stream_closed = True
 
         managed_stream = base_app_generator._wrap_stream_with_worker_thread_join(
             response_stream(),
@@ -410,6 +415,7 @@ class TestBaseAppGeneratorExtras:
         assert next(managed_stream) == {"event": "workflow_started"}
         managed_stream.close()
 
+        assert response_stream_closed
         worker_thread.join.assert_called_once_with(timeout=300)
 
     def test_join_worker_thread_warns_when_thread_remains_alive(self, caplog: pytest.LogCaptureFixture):
@@ -516,19 +522,41 @@ class TestBaseAppGeneratorExtras:
             )
 
     def test_convert_to_event_stream(self):
+        from core.app.apps.streaming_utils import StreamEventWithCursor
+
         base_app_generator = BaseAppGenerator()
 
         assert base_app_generator.convert_to_event_stream({"ok": True}) == {"ok": True}
 
         def _gen():
             yield {"delta": "hi"}
+            yield StreamEventWithCursor(event={"delta": "durable"}, cursor="123-0")
             yield "ping"
 
         converted = list(base_app_generator.convert_to_event_stream(_gen()))
 
         assert converted[0].startswith("data: ")
         assert "\n\n" in converted[0]
-        assert converted[1] == "event: ping\n\n"
+        assert converted[1] == 'id: 123-0\ndata: {"delta":"durable"}\n\n'
+        assert converted[2] == "event: ping\n\n"
+
+    def test_convert_to_event_stream_closes_source_after_partial_consumption(self):
+        source_closed = False
+
+        def source():
+            nonlocal source_closed
+            try:
+                while True:
+                    yield {"delta": "hi"}
+            finally:
+                source_closed = True
+
+        converted = BaseAppGenerator.convert_to_event_stream(source())
+        assert next(converted).startswith("data: ")
+
+        converted.close()
+
+        assert source_closed
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom

@@ -3,7 +3,7 @@ import logging
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from flask import abort, request
+from flask import Response, abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +13,7 @@ import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.workflow_event_cursor import get_workflow_event_replay_cursor
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
@@ -40,9 +41,14 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.task_entities import StreamEvent
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import variable_factory
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
@@ -51,20 +57,25 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
+from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
-from models.model import EndUser
+from models.enums import CreatorUserRole
+from models.model import AppMode, EndUser
 from models.workflow import Workflow
+from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_event_snapshot_service import build_workflow_event_stream, resolve_workflow_event_task_id
+from services.workflow_handoff_cancellation_service import request_workflow_handoff_cancel_for_app
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -517,7 +528,22 @@ class RagPipelineTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        # Preserve the legacy account ownership check.  The task id is
+        # caller-controlled, so an unscoped Redis flag or Graph command could
+        # otherwise stop a run owned by another account or tenant.
+        live_task_owned_by_user = AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        cancelled_handoffs = request_workflow_handoff_cancel_for_app(
+            task_id,
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=current_user.id,
+        )
+        # A live non-handoff run observes the scoped Redis flag and propagates
+        # its own graph abort.  Send directly only when the owner-scoped
+        # durable update proves this task belongs to the requested pipeline.
+        if live_task_owned_by_user or cancelled_handoffs > 0:
+            GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -942,6 +968,85 @@ class RagPipelineWorkflowRunDetailApi(Resource):
             raise NotFound("Workflow run not found")
 
         return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+
+
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/events")
+class RagPipelineWorkflowRunEventsApi(Resource):
+    """Reconnect to the durable event stream of a RAG pipeline run."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @get_rag_pipeline
+    def get(self, current_user: Account, pipeline: Pipeline, run_id: UUID):
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run = repository.get_workflow_run_by_id_and_tenant_id(
+            tenant_id=pipeline.tenant_id,
+            run_id=str(run_id),
+        )
+        if (
+            workflow_run is None
+            or workflow_run.app_id != pipeline.id
+            or workflow_run.created_by_role != CreatorUserRole.ACCOUNT
+            or workflow_run.created_by != current_user.id
+        ):
+            raise NotFound("Workflow run not found")
+
+        cursor = get_workflow_event_replay_cursor(request)
+        include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+        continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+
+        if workflow_run.finished_at is not None and cursor is None:
+            finished = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                task_id=resolve_workflow_event_task_id(
+                    workflow_run=workflow_run,
+                    session_maker=session_maker,
+                ),
+                workflow_run=workflow_run,
+                creator_user=current_user,
+            )
+            payload = finished.model_dump(mode="json")
+            payload["event"] = finished.event.value
+
+            def event_generator():
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        else:
+            message_generator = MessageGenerator()
+
+            def event_generator():
+                if include_state_snapshot or cursor is not None:
+                    source = build_workflow_event_stream(
+                        app_mode=AppMode.RAG_PIPELINE,
+                        workflow_run=workflow_run,
+                        tenant_id=pipeline.tenant_id,
+                        app_id=pipeline.id,
+                        session_maker=session_maker,
+                        human_input_surface=HumanInputSurface.CONSOLE,
+                        close_on_pause=not continue_on_pause,
+                        cursor=cursor,
+                    )
+                else:
+                    terminal_events = [StreamEvent.WORKFLOW_FINISHED] if continue_on_pause else None
+                    retrieve_kwargs: dict[str, Any] = {"terminal_events": terminal_events}
+                    if cursor is not None:
+                        retrieve_kwargs["cursor"] = cursor
+                    if workflow_run.finished_at is not None:
+                        retrieve_kwargs["idle_timeout"] = 0
+                    source = message_generator.retrieve_events(
+                        AppMode.RAG_PIPELINE,
+                        workflow_run.id,
+                        **retrieve_kwargs,
+                    )
+                yield from PipelineGenerator.convert_to_event_stream(source)
+
+        return Response(
+            event_generator(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions")

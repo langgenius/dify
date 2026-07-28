@@ -54,8 +54,8 @@ class RedisPubSubConfig(BaseSettings):
             " - sharded: sharded Pub/Sub (at-most-once)\n"
             " - streams: Redis Streams (at-least-once, recommended to avoid subscriber races)\n\n"
             "Note: Before enabling 'streams' in production, estimate your expected event volume and retention needs.\n"
-            "Configure Redis memory limits and stream trimming appropriately (e.g., MAXLEN and key expiry) to reduce\n"
-            "the risk of data loss from Redis auto-eviction under memory pressure.\n"
+            "Each per-run stream retains its complete cursor window until key expiry; size Redis to avoid eviction,\n"
+            "because trimming a live stream would invalidate replay guarantees.\n"
             "Also accepts ENV: EVENT_BUS_REDIS_CHANNEL_TYPE."
         ),
         default="pubsub",
@@ -65,9 +65,10 @@ class RedisPubSubConfig(BaseSettings):
         validation_alias=AliasChoices("EVENT_BUS_STREAMS_RETENTION_SECONDS", "PUBSUB_STREAMS_RETENTION_SECONDS"),
         description=(
             "When using 'streams', expire each stream key this many seconds after the last event is published. "
+            "Set this longer than the maximum client reconnect and rolling-update handoff window. "
             "Also accepts ENV: EVENT_BUS_STREAMS_RETENTION_SECONDS."
         ),
-        default=600,
+        default=900,
     )
 
     def _build_default_pubsub_url(self) -> str:

@@ -8,9 +8,16 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.apps.workflow.command_channels import WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    RagPipelineGenerateEntity,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers import pause_state_persist_layer as pause_layer_module
 from core.app.layers.pause_state_persist_layer import (
+    WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY,
     PauseStatePersistenceLayer,
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -274,6 +281,8 @@ class TestPauseStatePersistenceLayer:
         )
         command_channel = MockCommandChannel()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.set_execution_root_node_id("custom-root")
+        layer.on_graph_start()
 
         event = TestDataFactory.create_graph_run_paused_event(outputs={"intermediate": "result"})
         expected_state = graph_runtime_state.dumps()
@@ -289,6 +298,7 @@ class TestPauseStatePersistenceLayer:
         resumption_context = WorkflowResumptionContext.loads(serialized_state)
         assert resumption_context.serialized_graph_runtime_state == expected_state
         assert resumption_context.get_generate_entity().model_dump() == generate_entity.model_dump()
+        assert resumption_context.root_node_id == "custom-root"
         pause_reasons = call_kwargs["pause_reasons"]
 
         assert isinstance(pause_reasons, list)
@@ -335,6 +345,7 @@ class TestPauseStatePersistenceLayer:
         )
         command_channel = MockCommandChannel()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         raw_reason = HitlRequired(
             session_id="session-123",
@@ -414,6 +425,7 @@ class TestPauseStatePersistenceLayer:
         graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id=None)
         command_channel = MockCommandChannel()
         layer.initialize(graph_runtime_state, command_channel)
+        layer.on_graph_start()
 
         event = TestDataFactory.create_graph_run_paused_event()
 
@@ -506,6 +518,18 @@ def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResump
     assert restored_entity.extras["trace_session_id"] == "session-1"
 
 
+def test_adjacent_version_context_defaults_active_execution_time_and_applies_it() -> None:
+    state = _build_workflow_generate_entity_for_roundtrip()
+    legacy_payload = state.model_dump(mode="json")
+    legacy_payload.pop("active_execution_seconds")
+
+    loaded = WorkflowResumptionContext.model_validate(legacy_payload)
+    loaded.apply_handoff_execution_timing()
+
+    assert loaded.active_execution_seconds == 0.0
+    assert loaded.get_generate_entity().extras[WORKFLOW_HANDOFF_ACTIVE_EXECUTION_SECONDS_EXTRA_KEY] == 0.0
+
+
 def test_on_event_persists_response_stream_filter_dump(
     monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
@@ -524,6 +548,7 @@ def test_on_event_persists_response_stream_filter_dump(
 
     graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
     layer.initialize(graph_runtime_state, MockCommandChannel())
+    layer.on_graph_start()
 
     event = TestDataFactory.create_graph_run_paused_event()
     layer.on_event(event)
@@ -531,6 +556,111 @@ def test_on_event_persists_response_stream_filter_dump(
     serialized_state = mock_repo.create_workflow_pause.call_args.kwargs["state"]
     resumption_context = WorkflowResumptionContext.loads(serialized_state)
     assert resumption_context.serialized_response_stream_filter_state == response_stream_filter.dumps()
+
+
+def test_handoff_resume_then_hitl_pause_preserves_cumulative_active_time(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    generate_entity = TestPauseStatePersistenceLayer._create_generate_entity(workflow_execution_id="run-123")
+    handoff_context = WorkflowResumptionContext.from_runtime_snapshot(
+        generate_entity=generate_entity,
+        serialized_graph_runtime_state='{"maintenance": "snapshot"}',
+        serialized_response_stream_filter_state=None,
+        active_execution_seconds=12.5,
+        root_node_id="custom-root",
+    )
+    handoff_context.apply_handoff_execution_timing()
+
+    clock_values = iter((100.0, 107.25))
+    layer = PauseStatePersistenceLayer(
+        session_factory=sqlite_session_factory,
+        state_owner_user_id="owner-123",
+        generate_entity=generate_entity,
+        response_stream_filter=_create_initialized_response_stream_filter(),
+        monotonic_clock=lambda: next(clock_values),
+    )
+    repo = Mock()
+    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", Mock(return_value=repo))
+    layer.initialize(MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123"), MockCommandChannel())
+    layer.set_execution_root_node_id(handoff_context.root_node_id or "")
+    layer.on_graph_start()
+
+    layer.on_event(TestDataFactory.create_graph_run_paused_event())
+
+    hitl_context = WorkflowResumptionContext.loads(repo.create_workflow_pause.call_args.kwargs["state"])
+    assert hitl_context.active_execution_seconds == 19.75
+    assert hitl_context.root_node_id == "custom-root"
+
+
+def test_on_event_skips_worker_drain_pause(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    layer = PauseStatePersistenceLayer(
+        session_factory=sqlite_session_factory,
+        state_owner_user_id="owner-123",
+        generate_entity=TestPauseStatePersistenceLayer._create_generate_entity(workflow_execution_id="run-123"),
+        response_stream_filter=_create_initialized_response_stream_filter(),
+    )
+    repo_factory = Mock()
+    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", repo_factory)
+    layer.initialize(MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123"), MockCommandChannel())
+
+    layer.on_event(
+        GraphRunPausedEvent(
+            reasons=[SchedulingPause(message=WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON)],
+            outputs={},
+        )
+    )
+
+    repo_factory.assert_not_called()
+
+
+def test_on_event_preserves_rag_pipeline_resume_fields(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-pipeline",
+        app_id="pipeline-id",
+        app_mode=AppMode.RAG_PIPELINE,
+        workflow_id="workflow-pipeline",
+    )
+    generate_entity = RagPipelineGenerateEntity(
+        task_id="pipeline-task",
+        app_config=app_config,
+        pipeline_config=app_config,
+        datasource_type="local_file",
+        datasource_info={"name": "document.txt"},
+        dataset_id="dataset-id",
+        batch="batch-id",
+        document_id="document-id",
+        start_node_id="datasource-node",
+        inputs={},
+        files=[],
+        user_id="user-id",
+        stream=False,
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        workflow_execution_id="run-123",
+    )
+    layer = PauseStatePersistenceLayer(
+        session_factory=sqlite_session_factory,
+        state_owner_user_id="owner-123",
+        generate_entity=generate_entity,
+        response_stream_filter=_create_initialized_response_stream_filter(),
+    )
+    repo = Mock()
+    monkeypatch.setattr(DifyAPIRepositoryFactory, "create_api_workflow_run_repository", Mock(return_value=repo))
+    graph_runtime_state = MockReadOnlyGraphRuntimeState(workflow_execution_id="run-123")
+    layer.initialize(graph_runtime_state, MockCommandChannel())
+    layer.on_graph_start()
+
+    layer.on_event(TestDataFactory.create_graph_run_paused_event())
+
+    context = WorkflowResumptionContext.loads(repo.create_workflow_pause.call_args.kwargs["state"])
+    restored = context.get_generate_entity()
+    assert isinstance(restored, RagPipelineGenerateEntity)
+    assert restored.dataset_id == "dataset-id"
+    assert restored.document_id == "document-id"
+    assert restored.start_node_id == "datasource-node"
 
 
 def test_get_response_stream_filter_restores_dumped_state() -> None:

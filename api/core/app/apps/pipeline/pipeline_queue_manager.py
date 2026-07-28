@@ -9,7 +9,9 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
 )
@@ -40,9 +42,12 @@ class PipelineQueueManager(AppQueueManager):
             | QueueMessageEndEvent
             | QueueWorkflowSucceededEvent
             | QueueWorkflowFailedEvent
-            | QueueWorkflowPartialSuccessEvent,
+            | QueueWorkflowPartialSuccessEvent
+            | QueueWorkflowPausedEvent,
         ):
             self.stop_listen(execution_terminal=True)
+        elif isinstance(event, QueueWorkflowMaintenancePausedEvent):
+            self.stop_listen(execution_terminal=False)
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             raise GenerateTaskStoppedError()

@@ -13,22 +13,31 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
     StreamEvent,
+    WorkflowMaintenancePausedBlockingResponse,
 )
 
 
 class AdvancedChatAppGenerateResponseConverter(
-    AppGenerateResponseConverter[ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse]
+    AppGenerateResponseConverter[
+        ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | WorkflowMaintenancePausedBlockingResponse
+    ]
 ):
     @classmethod
     @override
     def convert_blocking_full_response(
-        cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
+        cls,
+        blocking_response: (
+            ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | WorkflowMaintenancePausedBlockingResponse
+        ),
     ) -> dict[str, Any]:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
+        if isinstance(blocking_response, WorkflowMaintenancePausedBlockingResponse):
+            return blocking_response.model_dump(mode="json")
+
         if isinstance(blocking_response, AdvancedChatPausedBlockingResponse):
             paused_data = blocking_response.data.model_dump(mode="json")
             return {
@@ -62,7 +71,10 @@ class AdvancedChatAppGenerateResponseConverter(
     @classmethod
     @override
     def convert_blocking_simple_response(
-        cls, blocking_response: ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse
+        cls,
+        blocking_response: (
+            ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | WorkflowMaintenancePausedBlockingResponse
+        ),
     ) -> dict[str, Any]:
         """
         Convert blocking simple response.
@@ -87,27 +99,32 @@ class AdvancedChatAppGenerateResponseConverter(
         :param stream_response: stream response
         :return:
         """
-        for chunk in stream_response:
-            chunk = cast(ChatbotAppStreamResponse, chunk)
-            sub_stream_response = chunk.stream_response
+        try:
+            for chunk in stream_response:
+                chunk = cast(ChatbotAppStreamResponse, chunk)
+                sub_stream_response = chunk.stream_response
 
-            if isinstance(sub_stream_response, PingStreamResponse):
-                yield "ping"
-                continue
+                if isinstance(sub_stream_response, PingStreamResponse):
+                    yield "ping"
+                    continue
 
-            response_chunk: dict[str, Any] = {
-                "event": sub_stream_response.event.value,
-                "conversation_id": chunk.conversation_id,
-                "message_id": chunk.message_id,
-                "created_at": chunk.created_at,
-            }
+                response_chunk: dict[str, Any] = {
+                    "event": sub_stream_response.event.value,
+                    "conversation_id": chunk.conversation_id,
+                    "message_id": chunk.message_id,
+                    "created_at": chunk.created_at,
+                }
 
-            if isinstance(sub_stream_response, ErrorStreamResponse):
-                data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
-            else:
-                response_chunk.update(sub_stream_response.model_dump(mode="json"))
-            yield response_chunk
+                if isinstance(sub_stream_response, ErrorStreamResponse):
+                    data = cls._error_to_stream_response(sub_stream_response.err)
+                    response_chunk.update(data)
+                else:
+                    response_chunk.update(sub_stream_response.model_dump(mode="json"))
+                yield response_chunk
+        finally:
+            close = getattr(stream_response, "close", None)
+            if callable(close):
+                close()
 
     @classmethod
     @override
@@ -119,33 +136,38 @@ class AdvancedChatAppGenerateResponseConverter(
         :param stream_response: stream response
         :return:
         """
-        for chunk in stream_response:
-            chunk = cast(ChatbotAppStreamResponse, chunk)
-            sub_stream_response = chunk.stream_response
+        try:
+            for chunk in stream_response:
+                chunk = cast(ChatbotAppStreamResponse, chunk)
+                sub_stream_response = chunk.stream_response
 
-            if isinstance(sub_stream_response, PingStreamResponse):
-                yield "ping"
-                continue
+                if isinstance(sub_stream_response, PingStreamResponse):
+                    yield "ping"
+                    continue
 
-            response_chunk: dict[str, Any] = {
-                "event": sub_stream_response.event.value,
-                "conversation_id": chunk.conversation_id,
-                "message_id": chunk.message_id,
-                "created_at": chunk.created_at,
-            }
+                response_chunk: dict[str, Any] = {
+                    "event": sub_stream_response.event.value,
+                    "conversation_id": chunk.conversation_id,
+                    "message_id": chunk.message_id,
+                    "created_at": chunk.created_at,
+                }
 
-            match sub_stream_response:
-                case MessageEndStreamResponse():
-                    sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
-                    metadata = sub_stream_response_dict.get("metadata", {})
-                    sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
-                    response_chunk.update(sub_stream_response_dict)
-                case ErrorStreamResponse():
-                    data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(data)
-                case NodeStartStreamResponse() | NodeFinishStreamResponse():
-                    response_chunk.update(sub_stream_response.to_ignore_detail_dict())
-                case _:
-                    response_chunk.update(sub_stream_response.model_dump(mode="json"))
+                match sub_stream_response:
+                    case MessageEndStreamResponse():
+                        sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
+                        metadata = sub_stream_response_dict.get("metadata", {})
+                        sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
+                        response_chunk.update(sub_stream_response_dict)
+                    case ErrorStreamResponse():
+                        data = cls._error_to_stream_response(sub_stream_response.err)
+                        response_chunk.update(data)
+                    case NodeStartStreamResponse() | NodeFinishStreamResponse():
+                        response_chunk.update(sub_stream_response.to_ignore_detail_dict())
+                    case _:
+                        response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
-            yield response_chunk
+                yield response_chunk
+        finally:
+            close = getattr(stream_response, "close", None)
+            if callable(close):
+                close()

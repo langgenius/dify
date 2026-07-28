@@ -109,3 +109,29 @@ def test_convert_stream_simple_response_node_ignore_details():
     assert result[0]["data"]["inputs"] is None
     assert result[1]["event"] == "node_finished"
     assert result[1]["data"]["inputs"] is None
+
+
+def test_stream_converters_close_source_after_partial_consumption():
+    for convert in (
+        WorkflowAppGenerateResponseConverter.convert_stream_full_response,
+        WorkflowAppGenerateResponseConverter.convert_stream_simple_response,
+    ):
+        source_closed = False
+
+        def source() -> Generator[AppStreamResponse, None, None]:
+            nonlocal source_closed
+            try:
+                while True:
+                    yield WorkflowAppStreamResponse(
+                        workflow_run_id="run",
+                        stream_response=PingStreamResponse(task_id="task"),
+                    )
+            finally:
+                source_closed = True
+
+        converted = convert(source())
+        assert next(converted) == "ping"
+
+        converted.close()
+
+        assert source_closed

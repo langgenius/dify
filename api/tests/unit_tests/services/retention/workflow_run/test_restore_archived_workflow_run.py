@@ -164,6 +164,7 @@ class WorkflowRunRestoreTestDataFactory:
             "run_finished_at": None,
             "run_exceptions_count": 0,
             "trigger_metadata": None,
+            "run_handoff_duration": 0.0,
         }
         attrs.update(kwargs)
         return WorkflowArchiveLog(**attrs)
@@ -765,7 +766,7 @@ class TestRestoreFromRun:
         mock_storage.get_object.return_value = archive_data
         mock_get_storage.return_value = mock_storage
 
-        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log()
+        archive_log = WorkflowRunRestoreTestDataFactory.create_workflow_archive_log(run_handoff_duration=12.5)
         database.session.add(archive_log)
         database.session.commit()
 
@@ -774,6 +775,7 @@ class TestRestoreFromRun:
         assert result.success is True
         assert result.run_id == archive_log.workflow_run_id
         assert result.tenant_id == archive_log.tenant_id
+        assert archive_log.workflow_run_summary["handoff_duration"] == 12.5
 
 
 # ---------------------------------------------------------------------------

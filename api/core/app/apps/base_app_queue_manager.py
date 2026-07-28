@@ -108,6 +108,10 @@ class AppQueueManager(ABC):
         self._clear_task_belong_cache()
         self._q.put(None)
 
+    def mark_execution_terminal(self) -> None:
+        """Confirm that the consumer durably finalized this local segment."""
+        self._execution_terminal.set()
+
     def _abort_execution(self, reason: str) -> None:
         """Propagate response timeout/disconnect to legacy and GraphEngine runners."""
         with self._lifecycle_lock:
@@ -117,9 +121,20 @@ class AppQueueManager(ABC):
 
         try:
             self.set_stop_flag_no_user_check(self._task_id)
+        except Exception:
+            logger.exception("Failed to set the stop flag for task %s", self._task_id)
+        try:
+            from services.workflow_handoff_cancellation_service import (
+                request_workflow_handoff_cancel_by_task_id,
+            )
+
+            request_workflow_handoff_cancel_by_task_id(self._task_id, reason=reason)
+        except Exception:
+            logger.exception("Failed to cancel a durable handoff for task %s", self._task_id)
+        try:
             GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
         except Exception:
-            logger.exception("Failed to abort app execution for task %s", self._task_id)
+            logger.exception("Failed to send the graph abort command for task %s", self._task_id)
 
     def _clear_task_belong_cache(self) -> None:
         """
@@ -176,21 +191,22 @@ class AppQueueManager(ABC):
         raise NotImplementedError
 
     @classmethod
-    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):
+    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> bool:
         """
         Set task stop flag
         :return:
         """
         result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
-            return
+            return False
 
         user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         if result.decode("utf-8") != f"{user_prefix}-{user_id}":
-            return
+            return False
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
+        return True
 
     @classmethod
     def set_stop_flag_no_user_check(cls, task_id: str) -> None:

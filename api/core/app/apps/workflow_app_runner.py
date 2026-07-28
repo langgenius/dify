@@ -6,6 +6,7 @@ from typing import Any, cast
 from pydantic import ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.workflow.command_channels import is_workflow_warm_shutdown_pause
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.entities.queue_entities import (
@@ -29,11 +30,18 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
+from core.app.layers.workflow_handoff_persist_layer import (
+    WorkflowHandoffPersistenceError,
+    WorkflowHandoffPersistenceLayer,
+)
+from core.app.layers.workflow_handoff_resume_layer import WorkflowHandoffResumeAcknowledgementLayer
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
@@ -45,16 +53,21 @@ from core.workflow.node_factory import (
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
+    SystemVariableKey,
     build_bootstrap_variables,
-    default_system_variables,
+    build_system_variables,
     get_node_creation_preload_selectors,
+    get_system_text,
     inject_default_system_variable_mappings,
     preload_node_creation_variables,
 )
 from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
+from extensions.workflow_warm_shutdown import mark_workflow_runs_stopped_if_running_without_active_handoff
+from graphon.entities import WorkflowStartReason
 from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import SchedulingPause
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -91,6 +104,9 @@ from models.workflow import Workflow
 from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
+WORKFLOW_HANDOFF_PERSISTENCE_FAILURE_STOP_REASON = (
+    "Workflow stopped because its worker-drain checkpoint could not be persisted."
+)
 
 
 class WorkflowBasedAppRunner:
@@ -124,6 +140,7 @@ class WorkflowBasedAppRunner:
         user_id: str = "",
         root_node_id: str | None = None,
         trace_session_id: str | None = None,
+        skip_validation: bool = False,
     ) -> Graph:
         """
         Init graph
@@ -164,7 +181,12 @@ class WorkflowBasedAppRunner:
             root_node_id = get_default_root_node_id(graph_config)
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
+        graph = Graph.init(
+            graph_config=graph_config,
+            node_factory=node_factory,
+            root_node_id=root_node_id,
+            skip_validation=skip_validation,
+        )
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -178,8 +200,9 @@ class WorkflowBasedAppRunner:
         single_loop_run: Any | None = None,
         *,
         user_id: str,
+        workflow_execution_id: str,
         trace_session_id: str | None = None,
-    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+    ) -> tuple[Graph, Mapping[str, Any], VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
         (either single iteration or single loop).
@@ -190,7 +213,7 @@ class WorkflowBasedAppRunner:
             single_loop_run: SingleLoopRunEntity if running single loop, None otherwise
 
         Returns:
-            A tuple containing (graph, variable_pool, graph_runtime_state)
+            A tuple containing (graph, effective graph config, variable pool, runtime state)
 
         Raises:
             ValueError: If neither single_iteration_run nor single_loop_run is specified
@@ -200,7 +223,7 @@ class WorkflowBasedAppRunner:
         add_variables_to_pool(
             variable_pool,
             build_bootstrap_variables(
-                system_variables=default_system_variables(),
+                system_variables=build_system_variables(workflow_execution_id=workflow_execution_id),
                 environment_variables=workflow.environment_variables,
             ),
         )
@@ -208,7 +231,7 @@ class WorkflowBasedAppRunner:
 
         # Determine which type of single node execution and get graph/variable_pool
         if single_iteration_run:
-            graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
+            graph, graph_config, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
                 workflow=workflow,
                 node_id=single_iteration_run.node_id,
                 user_inputs=dict(single_iteration_run.inputs),
@@ -219,7 +242,7 @@ class WorkflowBasedAppRunner:
                 trace_session_id=trace_session_id,
             )
         elif single_loop_run:
-            graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
+            graph, graph_config, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
                 workflow=workflow,
                 node_id=single_loop_run.node_id,
                 user_inputs=dict(single_loop_run.inputs),
@@ -234,7 +257,7 @@ class WorkflowBasedAppRunner:
 
         # Return the graph, variable_pool, and the same graph_runtime_state used during graph creation
         # This ensures all nodes in the graph reference the same GraphRuntimeState instance
-        return graph, variable_pool, graph_runtime_state
+        return graph, graph_config, variable_pool, graph_runtime_state
 
     def _get_graph_and_variable_pool_for_single_node_run(
         self,
@@ -247,7 +270,7 @@ class WorkflowBasedAppRunner:
         *,
         user_id: str = "",
         trace_session_id: str | None = None,
-    ) -> tuple[Graph, VariablePool]:
+    ) -> tuple[Graph, Mapping[str, Any], VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
 
@@ -260,7 +283,7 @@ class WorkflowBasedAppRunner:
             node_type_label: Label for error messages ('iteration' or 'loop')
 
         Returns:
-            A tuple containing (graph, variable_pool)
+            A tuple containing (graph, effective graph config, variable pool)
         """
         # fetch workflow graph
         graph_config = workflow.graph_dict
@@ -391,7 +414,13 @@ class WorkflowBasedAppRunner:
         if not graph:
             raise ValueError("graph not found in workflow")
 
-        return graph, variable_pool
+        return graph, graph_config, variable_pool
+
+    def _configure_execution_root(self, root_node_id: str) -> None:
+        """Give pause persistence layers the exact root used by Graph.init."""
+        for layer in self._graph_engine_layers:
+            if isinstance(layer, (WorkflowHandoffPersistenceLayer, PauseStatePersistenceLayer)):
+                layer.set_execution_root_node_id(root_node_id)
 
     @staticmethod
     def _build_agent_strategy_info(event: NodeRunStartedEvent) -> AgentStrategyInfo | None:
@@ -404,6 +433,68 @@ class WorkflowBasedAppRunner:
         except ValidationError:
             logger.warning("Invalid agent strategy payload for node %s", event.node_id, exc_info=True)
             return None
+
+    def _handle_event_with_handoff_contracts(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
+        """Enforce durable handoff contracts before publishing an event."""
+        self._require_handoff_layer_contracts(workflow_entry, event)
+        self._handle_event(workflow_entry, event)
+
+    def _require_handoff_layer_contracts(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
+        """Surface layer failures that Graphon intentionally logs and swallows."""
+        if isinstance(event, GraphRunStartedEvent) and event.reason == WorkflowStartReason.RESUMPTION:
+            acknowledgement_error: Exception | None = None
+            for layer in self._graph_engine_layers:
+                if isinstance(layer, WorkflowHandoffResumeAcknowledgementLayer):
+                    try:
+                        layer.require_acknowledged()
+                    except Exception as error:
+                        acknowledgement_error = acknowledgement_error or error
+            if acknowledgement_error is not None:
+                raise acknowledgement_error
+            return
+
+        if not isinstance(event, GraphRunPausedEvent) or not is_workflow_warm_shutdown_pause(event.reasons):
+            return
+
+        persistence_layers = [
+            layer for layer in self._graph_engine_layers if isinstance(layer, WorkflowHandoffPersistenceLayer)
+        ]
+        persistence_error: Exception | None = None
+        if not persistence_layers:
+            persistence_error = WorkflowHandoffPersistenceError(
+                "Worker-drain pause was emitted without a workflow handoff persistence layer"
+            )
+        for layer in persistence_layers:
+            try:
+                layer.require_persisted_handoff()
+            except Exception as error:
+                persistence_error = persistence_error or error
+        if persistence_error is not None:
+            self._fail_closed_after_handoff_persistence_error(workflow_entry)
+            raise persistence_error
+
+    @staticmethod
+    def _fail_closed_after_handoff_persistence_error(workflow_entry: WorkflowEntry) -> None:
+        """Best-effort terminal update without masking the layer contract error."""
+        try:
+            workflow_run_id = get_system_text(
+                workflow_entry.graph_engine.graph_runtime_state.variable_pool,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID,
+            )
+            if workflow_run_id is None:
+                logger.error("Cannot fail closed after handoff persistence error: workflow run id is missing")
+                return
+            updated_count = mark_workflow_runs_stopped_if_running_without_active_handoff(
+                (workflow_run_id,),
+                reason=WORKFLOW_HANDOFF_PERSISTENCE_FAILURE_STOP_REASON,
+            )
+            if updated_count == 0:
+                logger.warning(
+                    "Handoff persistence failed for workflow run %s, but its state was already terminal or recoverable",
+                    workflow_run_id,
+                )
+        except Exception:
+            logger.exception("Failed to mark workflow run STOPPED after handoff persistence error")
 
     def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent):
         """
@@ -434,6 +525,16 @@ class WorkflowBasedAppRunner:
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = runtime_state.get_paused_nodes()
+                if is_workflow_warm_shutdown_pause(event.reasons):
+                    self._publish_event(
+                        QueueWorkflowMaintenancePausedEvent(
+                            reasons=[reason for reason in event.reasons if isinstance(reason, SchedulingPause)],
+                            outputs=event.outputs,
+                            paused_nodes=paused_nodes,
+                        )
+                    )
+                    return
+
                 enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
                     form_repository=HumanInputFormSubmissionRepository(),

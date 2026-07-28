@@ -13,6 +13,14 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Pipeline
 from models.workflow import Workflow
+from models.workflow_handoff import (
+    RAG_PIPELINE_QUEUE_KIND_EXTRA_KEY,
+    RAG_PIPELINE_SOURCE_BATCH_ID_EXTRA_KEY,
+    RAG_PIPELINE_TENANT_ID_EXTRA_KEY,
+    RAG_PIPELINE_TENANT_ISOLATED_EXTRA_KEY,
+    RagPipelineHandoffGroupIdentity,
+    RagPipelineQueueKind,
+)
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
     priority_rag_pipeline_run_task,
     run_single_rag_pipeline_task,
@@ -131,7 +139,9 @@ class TestRagPipelineRunTasks:
 
         return account, tenant, pipeline, workflow
 
-    def _create_rag_pipeline_invoke_entities(self, account, tenant, pipeline, workflow, count=2):
+    def _create_rag_pipeline_invoke_entities(
+        self, account, tenant, pipeline, workflow, count=2, tenant_isolated: bool | None = None
+    ):
         """
         Helper method to create RAG pipeline invoke entities for testing.
 
@@ -191,6 +201,7 @@ class TestRagPipelineRunTasks:
                 streaming=False,
                 workflow_execution_id=str(uuid.uuid4()),
                 workflow_thread_pool_id=str(uuid.uuid4()),
+                tenant_isolated=tenant_isolated,
             )
             entities.append(entity)
 
@@ -252,7 +263,12 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
             assert call_kwargs["streaming"] == False
-            assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
+            entity = call_kwargs["application_generate_entity"]
+            assert isinstance(entity, RagPipelineGenerateEntity)
+            assert entity.extras[RAG_PIPELINE_SOURCE_BATCH_ID_EXTRA_KEY] == file_id
+            assert entity.extras[RAG_PIPELINE_TENANT_ID_EXTRA_KEY] == tenant.id
+            assert entity.extras[RAG_PIPELINE_QUEUE_KIND_EXTRA_KEY] == RagPipelineQueueKind.PRIORITY.value
+            assert entity.extras[RAG_PIPELINE_TENANT_ISOLATED_EXTRA_KEY] is True
 
     def test_rag_pipeline_run_task_success(
         self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
@@ -297,7 +313,155 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
             assert call_kwargs["streaming"] == False
-            assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
+            entity = call_kwargs["application_generate_entity"]
+            assert isinstance(entity, RagPipelineGenerateEntity)
+            assert entity.extras[RAG_PIPELINE_SOURCE_BATCH_ID_EXTRA_KEY] == file_id
+            assert entity.extras[RAG_PIPELINE_TENANT_ID_EXTRA_KEY] == tenant.id
+            assert entity.extras[RAG_PIPELINE_QUEUE_KIND_EXTRA_KEY] == RagPipelineQueueKind.REGULAR.value
+            assert entity.extras[RAG_PIPELINE_TENANT_ISOLATED_EXTRA_KEY] is True
+
+    @pytest.mark.parametrize(
+        ("task", "module_path", "queue_kind", "tenant_isolated"),
+        [
+            (
+                rag_pipeline_run_task,
+                "tasks.rag_pipeline.rag_pipeline_run_task",
+                RagPipelineQueueKind.REGULAR,
+                True,
+            ),
+            (
+                priority_rag_pipeline_run_task,
+                "tasks.rag_pipeline.priority_rag_pipeline_run_task",
+                RagPipelineQueueKind.PRIORITY,
+                True,
+            ),
+            (
+                priority_rag_pipeline_run_task,
+                "tasks.rag_pipeline.priority_rag_pipeline_run_task",
+                RagPipelineQueueKind.PRIORITY,
+                False,
+            ),
+        ],
+        ids=["regular-isolated", "priority-isolated", "priority-direct"],
+    )
+    def test_handoff_batch_seals_group_without_legacy_tenant_slot_release(
+        self,
+        db_session_with_containers: Session,
+        mock_pipeline_generator,
+        mock_file_service,
+        task,
+        module_path: str,
+        queue_kind: RagPipelineQueueKind,
+        tenant_isolated: bool,
+    ):
+        account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
+        entities = self._create_rag_pipeline_invoke_entities(
+            account,
+            tenant,
+            pipeline,
+            workflow,
+            count=1,
+            tenant_isolated=tenant_isolated,
+        )
+        file_id = str(uuid.uuid4())
+        mock_file_service["get_content"].return_value = self._create_file_content_for_entities(entities)
+        mock_pipeline_generator.return_value = {"event": "workflow_maintenance_paused"}
+
+        with (
+            patch(f"{module_path}._create_handoff_group_service") as create_group_service,
+            patch(f"{module_path}._release_legacy_tenant_slot") as release_legacy_tenant_slot,
+        ):
+            task(file_id, tenant.id)
+
+        expected_identity = RagPipelineHandoffGroupIdentity(
+            source_batch_id=file_id,
+            tenant_id=tenant.id,
+            queue_kind=queue_kind,
+        )
+        group_service = create_group_service.return_value
+        assert group_service.seal_group.call_args.kwargs["identity"] == expected_identity
+        assert group_service.reconcile_group.call_args.kwargs["identity"] == expected_identity
+        release_legacy_tenant_slot.assert_not_called()
+        mock_file_service["delete_file"].assert_called_once_with(file_id)
+
+        generated_entity = mock_pipeline_generator.call_args.kwargs["application_generate_entity"]
+        assert generated_entity.extras[RAG_PIPELINE_SOURCE_BATCH_ID_EXTRA_KEY] == file_id
+        assert generated_entity.extras[RAG_PIPELINE_TENANT_ID_EXTRA_KEY] == tenant.id
+        assert generated_entity.extras[RAG_PIPELINE_QUEUE_KIND_EXTRA_KEY] == queue_kind.value
+        assert generated_entity.extras[RAG_PIPELINE_TENANT_ISOLATED_EXTRA_KEY] is tenant_isolated
+
+    def test_durable_group_is_authoritative_when_response_conversion_loses_handoff_signal(
+        self,
+        db_session_with_containers: Session,
+        mock_pipeline_generator,
+        mock_file_service,
+    ):
+        account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
+        entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
+        file_id = str(uuid.uuid4())
+        mock_file_service["get_content"].return_value = self._create_file_content_for_entities(entities)
+        mock_pipeline_generator.return_value = {"event": "unexpected-response-after-checkpoint"}
+
+        with (
+            patch("tasks.rag_pipeline.rag_pipeline_run_task._create_handoff_group_service") as create_group_service,
+            patch("tasks.rag_pipeline.rag_pipeline_run_task._release_legacy_tenant_slot") as release_legacy_tenant_slot,
+        ):
+            create_group_service.return_value.seal_group.return_value = 1
+            rag_pipeline_run_task(file_id, tenant.id)
+
+        create_group_service.return_value.reconcile_group.assert_called_once()
+        release_legacy_tenant_slot.assert_not_called()
+        mock_file_service["delete_file"].assert_called_once_with(file_id)
+
+    @pytest.mark.parametrize(
+        ("task", "module_path"),
+        [
+            (rag_pipeline_run_task, "tasks.rag_pipeline.rag_pipeline_run_task"),
+            (
+                priority_rag_pipeline_run_task,
+                "tasks.rag_pipeline.priority_rag_pipeline_run_task",
+            ),
+        ],
+        ids=["regular", "priority"],
+    )
+    def test_dispatch_token_executes_source_batch_once_across_duplicate_messages(
+        self,
+        db_session_with_containers: Session,
+        mock_pipeline_generator,
+        mock_file_service,
+        task,
+        module_path: str,
+    ):
+        from extensions.ext_redis import redis_client
+
+        account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
+        entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
+        file_id = str(uuid.uuid4())
+        dispatch_token = f"dispatch:{uuid.uuid4()}"
+        mock_file_service["get_content"].return_value = self._create_file_content_for_entities(entities)
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
+        dispatch_key = queue._dispatch_key(dispatch_token)
+
+        try:
+            with (
+                patch(f"{module_path}._create_handoff_group_service") as create_group_service,
+                patch(f"{module_path}._release_legacy_tenant_slot") as release_legacy_tenant_slot,
+            ):
+                create_group_service.return_value.seal_group.return_value = 0
+
+                task(file_id, tenant.id, dispatch_token=dispatch_token)
+                duplicate_result = task(file_id, tenant.id, dispatch_token=dispatch_token)
+
+            assert duplicate_result == {
+                "status": "already_completed",
+                "dispatch_token": dispatch_token,
+            }
+            assert mock_pipeline_generator.call_count == 1
+            mock_file_service["get_content"].assert_called_once_with(file_id)
+            mock_file_service["delete_file"].assert_called_once_with(file_id)
+            release_legacy_tenant_slot.assert_called_once()
+        finally:
+            redis_client.delete(dispatch_key)
 
     def test_priority_rag_pipeline_run_task_with_waiting_tasks(
         self, db_session_with_containers: Session, mock_pipeline_generator, mock_file_service
@@ -744,7 +908,13 @@ class TestRagPipelineRunTasks:
 
         # Act: Execute the single task
         with flask_app_with_containers.app_context():
-            run_single_rag_pipeline_task(entity_data, flask_app_with_containers)
+            created_handoff = run_single_rag_pipeline_task(
+                entity_data,
+                flask_app_with_containers,
+                source_batch_id="source-batch-id",
+                queue_kind=RagPipelineQueueKind.PRIORITY,
+                tenant_isolated=False,
+            )
 
         # Assert: Verify expected outcomes
         # Verify PipelineGenerator._generate was called
@@ -758,7 +928,13 @@ class TestRagPipelineRunTasks:
         assert call_kwargs["user"].id == account.id
         assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
         assert call_kwargs["streaming"] == False
-        assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
+        entity = call_kwargs["application_generate_entity"]
+        assert isinstance(entity, RagPipelineGenerateEntity)
+        assert entity.extras[RAG_PIPELINE_SOURCE_BATCH_ID_EXTRA_KEY] == "source-batch-id"
+        assert entity.extras[RAG_PIPELINE_TENANT_ID_EXTRA_KEY] == tenant.id
+        assert entity.extras[RAG_PIPELINE_QUEUE_KIND_EXTRA_KEY] == RagPipelineQueueKind.PRIORITY.value
+        assert entity.extras[RAG_PIPELINE_TENANT_ISOLATED_EXTRA_KEY] is False
+        assert created_handoff is False
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
         self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
@@ -803,6 +979,27 @@ class TestRagPipelineRunTasks:
                 run_single_rag_pipeline_task(invalid_entity_data, flask_app_with_containers)
 
         # Assert: Pipeline generator should not be called
+        mock_pipeline_generator.assert_not_called()
+
+    def test_run_single_rag_pipeline_task_rejects_cross_tenant_batch_entity(
+        self,
+        db_session_with_containers: Session,
+        mock_pipeline_generator,
+        flask_app_with_containers: Flask,
+    ):
+        account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
+        entity_data = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)[
+            0
+        ].model_dump()
+        entity_data["tenant_id"] = str(uuid.uuid4())
+
+        with flask_app_with_containers.app_context(), pytest.raises(ValueError, match="does not own invoke entity"):
+            run_single_rag_pipeline_task(
+                entity_data,
+                flask_app_with_containers,
+                expected_tenant_id=tenant.id,
+            )
+
         mock_pipeline_generator.assert_not_called()
 
     def test_run_single_rag_pipeline_task_database_entity_not_found(

@@ -3,22 +3,29 @@ Integration tests for Redis Streams broadcast channel implementation using TestC
 
 This suite focuses on the semantics that differ from Redis Pub/Sub:
 - Every active subscription should receive each newly published message.
-- Each subscription should only observe messages published after its listener starts.
+- Late subscriptions replay retained messages and may resume after an explicit cursor.
 """
 
+import json
+import re
 import threading
 import time
 import uuid
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import cast
 
 import pytest
 import redis
 from testcontainers.redis import RedisContainer
 
-from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
+from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.streaming_utils import stream_topic_events
+from core.app.entities.task_entities import StreamEvent
+from libs.broadcast_channel.channel import BroadcastChannel, CursorSubscription, Subscription, Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
+from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel, StreamsTopic
+from libs.broadcast_channel.signals import SIG_CLOSE
 
 
 class TestRedisStreamsBroadcastChannelIntegration:
@@ -96,6 +103,14 @@ class TestRedisStreamsBroadcastChannelIntegration:
         finally:
             subscription.close()
 
+    def test_publish_sets_stream_retention_atomically(self, redis_client: redis.Redis) -> None:
+        topic = StreamsBroadcastChannel(redis_client, retention_seconds=60).topic(self._get_test_topic_name())
+
+        topic.publish(b"retained")
+
+        ttl = redis_client.ttl(topic._key)
+        assert 0 < ttl <= 60
+
     def test_multiple_subscriptions_each_receive_each_new_message(self, broadcast_channel: BroadcastChannel) -> None:
         """Each active subscription should receive the same newly published message."""
         topic = broadcast_channel.topic(self._get_test_topic_name())
@@ -115,11 +130,11 @@ class TestRedisStreamsBroadcastChannelIntegration:
             for subscription in subscriptions:
                 subscription.close()
 
-    def test_each_subscription_only_receives_messages_published_after_it_starts(
+    def test_each_subscription_replays_retained_messages_in_order(
         self,
         broadcast_channel: BroadcastChannel,
     ) -> None:
-        """A late subscription should not replay messages that existed before its listener started."""
+        """A late subscription should replay every retained message in stream order."""
         topic = broadcast_channel.topic(self._get_test_topic_name())
         first_subscription = topic.subscribe()
         second_subscription = topic.subscribe()
@@ -130,13 +145,14 @@ class TestRedisStreamsBroadcastChannelIntegration:
         try:
             topic.publish(message_before_any_subscription)
 
-            self._start_subscription(first_subscription)
+            assert self._receive_message(first_subscription) == message_before_any_subscription
             topic.publish(message_after_first_subscription)
 
             assert self._receive_message(first_subscription) == message_after_first_subscription
             assert first_subscription.receive(timeout=0.1) is None
 
-            self._start_subscription(second_subscription)
+            assert self._receive_message(second_subscription) == message_before_any_subscription
+            assert self._receive_message(second_subscription) == message_after_first_subscription
             topic.publish(message_after_second_subscription)
 
             assert self._receive_message(first_subscription) == message_after_second_subscription
@@ -146,6 +162,65 @@ class TestRedisStreamsBroadcastChannelIntegration:
         finally:
             first_subscription.close()
             second_subscription.close()
+
+    def test_reconnect_cursor_replays_strictly_after_last_event_id(self, broadcast_channel: BroadcastChannel) -> None:
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        topic.publish(b"one")
+        topic.publish(b"two")
+        topic.publish(b"three")
+
+        first = topic.subscribe()
+        try:
+            first_message = cast(CursorSubscription, first).receive_with_cursor(timeout=1)
+            assert first_message is not None
+            assert first_message.payload == b"one"
+        finally:
+            first.close()
+
+        resumed = topic.subscribe(cursor=first_message.cursor)
+        try:
+            assert self._receive_message(resumed) == b"two"
+            assert self._receive_message(resumed) == b"three"
+            assert resumed.receive(timeout=0.1) is None
+        finally:
+            resumed.close()
+
+    def test_real_stream_cursor_is_rendered_as_standard_sse_id(self, broadcast_channel: BroadcastChannel) -> None:
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
+
+        chunks = list(
+            BaseAppGenerator.convert_to_event_stream(
+                stream_topic_events(topic=topic, idle_timeout=1, cursor="0-0"),
+            )
+        )
+
+        assert chunks[0] == "event: ping\n\n"
+        assert re.fullmatch(r'id: [0-9]+-[0-9]+\ndata: \{"event":"workflow_finished"\}\n\n', chunks[1])
+
+    def test_closing_one_subscription_is_local_and_does_not_append_marker(
+        self,
+        broadcast_channel: BroadcastChannel,
+        redis_client: redis.Redis,
+    ) -> None:
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        assert isinstance(topic, StreamsTopic)
+        first = topic.subscribe()
+        second = topic.subscribe()
+
+        self._start_subscription(first)
+        self._start_subscription(second)
+        first.close()
+        topic.publish(b"still-live")
+
+        try:
+            assert self._receive_message(second) == b"still-live"
+            entries = redis_client.xrange(topic._key)
+            payloads = [fields[b"data"] for _, fields in entries]
+            assert payloads == [b"still-live"]
+            assert SIG_CLOSE not in payloads
+        finally:
+            second.close()
 
     def test_topic_isolation(self, broadcast_channel: BroadcastChannel) -> None:
         """Messages from different topics should remain isolated."""

@@ -29,6 +29,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTrig
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
@@ -48,6 +49,13 @@ class WorkflowGeneratorArgsDict(TypedDict):
     files: list[Any]
     _skip_prepare_user_inputs: bool
     workflow_id: NotRequired[str]
+
+
+def _resolve_handoff_resume_route(trigger_log: WorkflowTriggerLog | None) -> WorkflowHandoffResumeRoute:
+    """Keep a human-input resume on the route chosen by the original run."""
+    if trigger_log is not None:
+        return WorkflowHandoffResumeRoute.TRIGGERED_WORKFLOW
+    return WorkflowHandoffResumeRoute.WORKFLOW
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -222,6 +230,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         logger.exception("Failed to load resumption context for workflow run %s", task_data.workflow_run_id)
         raise exc
 
+    resumption_context.apply_handoff_execution_timing()
     generate_entity = resumption_context.get_generate_entity()
     if not isinstance(generate_entity, WorkflowAppGenerateEntity):
         logger.error(
@@ -298,6 +307,10 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
         response_stream_filter=response_stream_filter,
+        handoff_resume_route=_resolve_handoff_resume_route(trigger_log),
+        graph_config=workflow_run.graph_dict,
+        workflow_version=workflow_run.version,
+        root_node_id=resumption_context.root_node_id,
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 

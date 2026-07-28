@@ -183,6 +183,8 @@ class CompletionStopApi(WebApiResource):
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,
             app_mode=AppMode.value_of(app_model.mode),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
@@ -289,6 +291,8 @@ class ChatStopApi(WebApiResource):
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,
             app_mode=app_mode,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200

@@ -44,29 +44,34 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
         :param stream_response: stream response
         :return:
         """
-        for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
-            sub_stream_response = chunk.stream_response
+        try:
+            for chunk in stream_response:
+                chunk = cast(WorkflowAppStreamResponse, chunk)
+                sub_stream_response = chunk.stream_response
 
-            match sub_stream_response:
-                case PingStreamResponse():
-                    yield "ping"
-                    continue
-                case ErrorStreamResponse():
-                    response_chunk = {
-                        "event": sub_stream_response.event.value,
-                        "workflow_run_id": chunk.workflow_run_id,
-                    }
-                    data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(cast(dict, data))
-                case _:
-                    response_chunk = {
-                        "event": sub_stream_response.event.value,
-                        "workflow_run_id": chunk.workflow_run_id,
-                    }
-                    response_chunk.update(sub_stream_response.model_dump())
+                match sub_stream_response:
+                    case PingStreamResponse():
+                        yield "ping"
+                        continue
+                    case ErrorStreamResponse():
+                        response_chunk = {
+                            "event": sub_stream_response.event.value,
+                            "workflow_run_id": chunk.workflow_run_id,
+                        }
+                        data = cls._error_to_stream_response(sub_stream_response.err)
+                        response_chunk.update(cast(dict, data))
+                    case _:
+                        response_chunk = {
+                            "event": sub_stream_response.event.value,
+                            "workflow_run_id": chunk.workflow_run_id,
+                        }
+                        response_chunk.update(sub_stream_response.model_dump())
 
-            yield response_chunk
+                yield response_chunk
+        finally:
+            close = getattr(stream_response, "close", None)
+            if callable(close):
+                close()
 
     @classmethod
     @override
@@ -78,32 +83,37 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[Workflow
         :param stream_response: stream response
         :return:
         """
-        for chunk in stream_response:
-            chunk = cast(WorkflowAppStreamResponse, chunk)
-            sub_stream_response = chunk.stream_response
+        try:
+            for chunk in stream_response:
+                chunk = cast(WorkflowAppStreamResponse, chunk)
+                sub_stream_response = chunk.stream_response
 
-            match sub_stream_response:
-                case PingStreamResponse():
-                    yield "ping"
-                    continue
-                case ErrorStreamResponse():
-                    response_chunk = {
-                        "event": sub_stream_response.event.value,
-                        "workflow_run_id": chunk.workflow_run_id,
-                    }
-                    data = cls._error_to_stream_response(sub_stream_response.err)
-                    response_chunk.update(cast(dict, data))
-                case NodeStartStreamResponse() | NodeFinishStreamResponse():
-                    response_chunk = {
-                        "event": sub_stream_response.event.value,
-                        "workflow_run_id": chunk.workflow_run_id,
-                    }
-                    response_chunk.update(cast(dict, sub_stream_response.to_ignore_detail_dict()))
-                case _:
-                    response_chunk = {
-                        "event": sub_stream_response.event.value,
-                        "workflow_run_id": chunk.workflow_run_id,
-                    }
-                    response_chunk.update(sub_stream_response.model_dump())
+                match sub_stream_response:
+                    case PingStreamResponse():
+                        yield "ping"
+                        continue
+                    case ErrorStreamResponse():
+                        response_chunk = {
+                            "event": sub_stream_response.event.value,
+                            "workflow_run_id": chunk.workflow_run_id,
+                        }
+                        data = cls._error_to_stream_response(sub_stream_response.err)
+                        response_chunk.update(cast(dict, data))
+                    case NodeStartStreamResponse() | NodeFinishStreamResponse():
+                        response_chunk = {
+                            "event": sub_stream_response.event.value,
+                            "workflow_run_id": chunk.workflow_run_id,
+                        }
+                        response_chunk.update(cast(dict, sub_stream_response.to_ignore_detail_dict()))
+                    case _:
+                        response_chunk = {
+                            "event": sub_stream_response.event.value,
+                            "workflow_run_id": chunk.workflow_run_id,
+                        }
+                        response_chunk.update(sub_stream_response.model_dump())
 
-            yield response_chunk
+                yield response_chunk
+        finally:
+            close = getattr(stream_response, "close", None)
+            if callable(close):
+                close()

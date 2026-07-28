@@ -43,3 +43,38 @@ def post_patch(event):
 
 
 gevent_events.subscribers.append(post_patch)
+
+
+def post_worker_init(worker):
+    """Install workflow draining before Gunicorn's normal SIGTERM handling."""
+    # Import lazily: this hook runs after the gevent worker has applied stdlib
+    # monkey-patching, while this configuration module itself is imported much
+    # earlier in the worker lifecycle.
+    import signal
+
+    from configs import dify_config
+    from extensions.workflow_warm_shutdown import begin_workflow_warm_shutdown
+
+    # Keep a dormant rollout behaviorally identical to the previous release.
+    # Celery retains its historical warm-shutdown abort fallback, but Gunicorn
+    # already waits for in-flight requests and must not inject an AbortCommand
+    # unless durable handoff is explicitly enabled.
+    if not dify_config.WORKFLOW_HANDOFF_ENABLED:
+        return
+
+    original_sigterm_handler = signal.getsignal(signal.SIGTERM)
+    if not callable(original_sigterm_handler):
+        raise RuntimeError("Gunicorn SIGTERM handler is not installed before post_worker_init")
+
+    def handle_workflow_warm_shutdown(signum, frame):
+        try:
+            begin_workflow_warm_shutdown(source="Gunicorn API worker")
+        except Exception:
+            worker.log.exception("Failed to start workflow draining during Gunicorn SIGTERM")
+        finally:
+            original_sigterm_handler(signum, frame)
+
+    signal.signal(signal.SIGTERM, handle_workflow_warm_shutdown)
+    # ``signal.signal`` can restore interruptible syscalls. Preserve Gunicorn's
+    # behavior so SIGTERM does not interrupt an in-flight API request mid-I/O.
+    signal.siginterrupt(signal.SIGTERM, False)

@@ -2,7 +2,15 @@ from datetime import datetime
 
 import pytest
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from core.app.apps.streaming_utils import WorkflowRunIdentifiedStream
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    compact_generate_response,
+    email,
+    escape_like_pattern,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
 
@@ -197,3 +205,49 @@ class TestAlphanumericValidator:
             alphanumeric("tool.name")
         with pytest.raises(ValueError, match="not a valid alphanumeric value"):
             alphanumeric("tool/name")
+
+
+def test_compact_generate_response_exposes_stable_workflow_run_id(app):
+    stream = WorkflowRunIdentifiedStream(
+        iter(['data: {"event":"ping"}\n\n']),
+        workflow_run_id="run-1",
+    )
+
+    with app.test_request_context("/run"):
+        response = compact_generate_response(stream)
+        assert response.get_data(as_text=True) == 'data: {"event":"ping"}\n\n'
+
+    assert response.headers["X-Workflow-Run-ID"] == "run-1"
+    assert response.headers["Access-Control-Expose-Headers"] == "X-Workflow-Run-ID"
+
+
+def test_compact_generate_response_closes_source_after_partial_consumption(app):
+    source_closed = False
+
+    def source():
+        nonlocal source_closed
+        try:
+            while True:
+                yield 'data: {"event":"ping"}\n\n'
+        finally:
+            source_closed = True
+
+    with app.test_request_context("/run"):
+        response = compact_generate_response(source())
+        assert next(iter(response.response)) == 'data: {"event":"ping"}\n\n'
+        response.close()
+
+    assert source_closed
+
+
+def test_compact_generate_response_maps_blocking_handoff_to_accepted():
+    response = compact_generate_response(
+        {
+            "event": "workflow_maintenance_paused",
+            "workflow_run_id": "run-1",
+        }
+    )
+
+    assert response.status_code == 202
+    assert response.headers["Retry-After"] == "1"
+    assert response.headers["X-Workflow-Run-ID"] == "run-1"

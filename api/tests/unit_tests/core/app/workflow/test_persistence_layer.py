@@ -5,11 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from core.app.apps.workflow.command_channels import WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -50,6 +51,9 @@ class _RepoRecorder:
 
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
+
+    def get_max_index(self, workflow_execution_id: str) -> int:
+        return 0
 
 
 def _naive_utc_now() -> datetime:
@@ -122,6 +126,15 @@ class TestWorkflowPersistenceLayer:
         assert layer._node_execution_cache == {}
         assert layer._node_snapshots == {}
         assert layer._node_sequence == 0
+
+    def test_graph_start_continues_existing_node_sequence_after_handoff(self):
+        layer, _, node_repo, _ = _make_layer()
+        node_repo.get_max_index = lambda workflow_execution_id: 7
+        layer.on_graph_start()
+
+        layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+
+        assert layer._node_sequence == 7
 
     def test_get_execution_id_requires_system_variable(self):
         layer, _, _, _ = _make_layer(build_system_variables())
@@ -302,6 +315,20 @@ class TestWorkflowPersistenceLayer:
         assert saved.status == WorkflowExecutionStatus.PAUSED
         assert saved.outputs == {"pause": True}
         assert saved.finished_at is None
+
+    def test_handle_maintenance_pause_keeps_workflow_run_running(self):
+        layer, exec_repo, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer._handle_graph_run_paused(
+            GraphRunPausedEvent(
+                reasons=[SchedulingPause(message=WORKFLOW_WARM_SHUTDOWN_PAUSE_REASON)],
+                outputs={"checkpoint": True},
+            )
+        )
+
+        assert len(exec_repo.saved) == 1
+        assert exec_repo.saved[0].status == WorkflowExecutionStatus.RUNNING
 
     def test_handle_node_started_and_retry(self):
         layer, _, node_repo, _ = _make_layer()

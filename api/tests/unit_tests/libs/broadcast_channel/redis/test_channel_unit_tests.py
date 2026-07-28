@@ -158,6 +158,10 @@ class TestTopic:
 
         mock_redis_client.pubsub.return_value.subscribe.assert_called_once_with("enterprise-a:test-topic")
 
+    def test_pubsub_rejects_replay_cursor(self, topic: Topic) -> None:
+        with pytest.raises(ValueError, match="does not support replay cursors"):
+            topic.subscribe(cursor="1-0")
+
 
 class TestShardedTopic:
     """Test cases for the ShardedTopic class."""
@@ -225,6 +229,10 @@ class TestShardedTopic:
                 subscription.close()
 
         mock_redis_client.pubsub.return_value.ssubscribe.assert_called_once_with("enterprise-a:test-sharded-topic")
+
+    def test_sharded_pubsub_rejects_replay_cursor(self, sharded_topic: ShardedTopic) -> None:
+        with pytest.raises(ValueError, match="does not support replay cursors"):
+            sharded_topic.subscribe(cursor="1-0")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -367,6 +375,7 @@ class TestRedisSubscription:
         mock_pubsub.close.assert_called_once()
         assert subscription._pubsub is None
         assert subscription._listener_thread is None
+        subscription._client.publish.assert_not_called()
 
         # Wait for thread to finish (with timeout)
         if thread and thread.is_alive():
@@ -796,6 +805,7 @@ class TestRedisShardedSubscription:
         mock_pubsub.close.assert_called_once()
         assert sharded_subscription._pubsub is None
         assert sharded_subscription._listener_thread is None
+        sharded_subscription._client.spublish.assert_not_called()
 
         # Wait for thread to finish (with timeout)
         if thread and thread.is_alive():

@@ -12,6 +12,7 @@ from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, W
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
+from models.workflow_handoff import WorkflowHandoffResumeRoute
 
 
 class TestWorkflowAppGeneratorValidation:
@@ -202,9 +203,12 @@ class TestWorkflowAppGeneratorValidation:
             args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
             session=Mock(),
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+        assert captured["application_generate_entity"].workflow_execution_id
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
 
     def test_single_loop_generate_includes_trace_session_id_in_extras(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator()
@@ -250,9 +254,12 @@ class TestWorkflowAppGeneratorValidation:
             args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
             session=Mock(),
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
+        assert captured["application_generate_entity"].workflow_execution_id
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
 
         with pytest.raises(ValueError, match="inputs is required"):
             generator.single_loop_generate(
@@ -373,7 +380,8 @@ class TestWorkflowAppGeneratorGenerate:
         prepare_inputs = pytest.fail
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: prepare_inputs())
 
-        monkeypatch.setattr(generator, "_generate", lambda **kwargs: {"ok": True})
+        captured: dict[str, object] = {}
+        monkeypatch.setattr(generator, "_generate", lambda **kwargs: captured.update(kwargs) or {"ok": True})
 
         result = generator.generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
@@ -383,9 +391,11 @@ class TestWorkflowAppGeneratorGenerate:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
             call_depth=0,
+            handoff_resume_route=WorkflowHandoffResumeRoute.SNIPPET,
         )
 
         assert result == {"ok": True}
+        assert captured["handoff_resume_route"] == WorkflowHandoffResumeRoute.SNIPPET
 
 
 class TestWorkflowAppGeneratorResume:

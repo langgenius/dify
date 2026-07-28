@@ -651,6 +651,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
+            # Keep handoff rows after run retention. They fence snapshot GC
+            # until terminal compensation has completed, while the independent
+            # snapshot-GC outbox remains the final durable object reference.
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
             runs_deleted = cast(CursorResult, runs_result).rowcount or 0
 
@@ -701,6 +704,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
+            # Keep handoff rows until durable terminal compensation and guarded
+            # snapshot GC have both observed them.
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
             runs_deleted = cast(CursorResult, runs_result).rowcount or 0
 
@@ -755,6 +760,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 run_finished_at=run.finished_at,
                 run_exceptions_count=run.exceptions_count,
                 trigger_metadata=trigger_metadata,
+                run_handoff_duration=run.handoff_duration,
             )
             session.add(archive_log)
             return 1
@@ -781,6 +787,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 run_finished_at=run.finished_at,
                 run_exceptions_count=run.exceptions_count,
                 trigger_metadata=trigger_metadata,
+                run_handoff_duration=run.handoff_duration,
             )
             for app_log in app_logs
         ]

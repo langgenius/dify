@@ -150,6 +150,13 @@ from .workflow import (
     WorkflowType,
     resolve_workflow_kind,
 )
+from .workflow_handoff import (
+    WorkflowHandoffCancellation,
+    WorkflowHandoffResumeRoute,
+    WorkflowHandoffSnapshotGC,
+    WorkflowHandoffState,
+    WorkflowRunHandoff,
+)
 
 __all__ = [
     "APIBasedExtension",
@@ -281,6 +288,10 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
+    "WorkflowHandoffCancellation",
+    "WorkflowHandoffResumeRoute",
+    "WorkflowHandoffSnapshotGC",
+    "WorkflowHandoffState",
     "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
@@ -288,6 +299,7 @@ __all__ = [
     "WorkflowPause",
     "WorkflowRun",
     "WorkflowRunArchiveBundle",
+    "WorkflowRunHandoff",
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",

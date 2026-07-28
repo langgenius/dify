@@ -11,7 +11,9 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowSucceededEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMResult
@@ -41,6 +43,8 @@ def test_publish_stop_events_trigger_stop_listen(mocker: MockerFixture):
         QueueWorkflowSucceededEvent(),
         QueueWorkflowFailedEvent(error="failed", exceptions_count=1),
         QueueWorkflowPartialSuccessEvent(exceptions_count=1),
+        QueueWorkflowPausedEvent(),
+        QueueWorkflowMaintenancePausedEvent(),
     ]:
         manager.stop_listen.reset_mock()
         manager._publish(event, PublishFrom.TASK_PIPELINE)

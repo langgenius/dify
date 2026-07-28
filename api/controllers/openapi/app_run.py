@@ -27,7 +27,7 @@ from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -37,7 +37,6 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -45,13 +44,13 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.oauth_bearer import Scope
+from models.enums import CreatorUserRole
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import (
     IsDraftWorkflowError,
     WorkflowIdFormatError,
@@ -183,6 +182,15 @@ class AppRunTaskStopApi(Resource):
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id,
+            InvokeFrom.OPENAPI,
+            caller.id,
+            AppMode.value_of(app_model.mode),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            created_by_role=(
+                CreatorUserRole.ACCOUNT if caller_kind == CallerKind.ACCOUNT else CreatorUserRole.END_USER
+            ),
+        )
         return TaskStopResponse(result="success")

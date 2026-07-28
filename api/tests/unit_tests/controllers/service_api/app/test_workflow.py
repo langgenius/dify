@@ -29,8 +29,6 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError, WorkflowVersionExecutionNotAllowedError
 from controllers.service_api.app.workflow import (
-    AppQueueManager,
-    GraphEngineManager,
     WorkflowAppLogApi,
     WorkflowLogQuery,
     WorkflowRunApi,
@@ -84,6 +82,7 @@ def _make_workflow_run(
         status=WorkflowExecutionStatus.SUCCEEDED,
         error=None,
         elapsed_time=0.1,
+        handoff_duration=0.0,
         total_tokens=10,
         total_steps=1,
         created_by_role=CreatorUserRole.END_USER,
@@ -186,6 +185,7 @@ def _expected_workflow_log_pagination_payload() -> dict[str, object]:
                     "triggered_from": "app-run",
                     "error": None,
                     "elapsed_time": 0.1,
+                    "handoff_duration": 0.0,
                     "total_tokens": 10,
                     "total_steps": 1,
                     "created_at": int(datetime(2026, 1, 1, 1).timestamp()),
@@ -341,6 +341,7 @@ class TestWorkflowRunResponse:
             "created_at": 1767225600,
             "finished_at": 1767225600,
             "elapsed_time": 0.1,
+            "handoff_duration": 0.0,
         }
 
 
@@ -740,10 +741,9 @@ class TestWorkflowTaskStopApi:
                 handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        stop_mock = Mock()
-        send_mock = Mock()
-        monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
-        monkeypatch.setattr(GraphEngineManager, "send_stop_command", send_mock)
+        workflow_module = sys.modules["controllers.service_api.app.workflow"]
+        stop_task = Mock()
+        monkeypatch.setattr(workflow_module.AppTaskService, "stop_task", stop_task)
 
         api = WorkflowTaskStopApi()
         handler = unwrap(api.post)
@@ -754,8 +754,14 @@ class TestWorkflowTaskStopApi:
             response = handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
         assert response == {"result": "success"}
-        stop_mock.assert_called_once_with("t1")
-        send_mock.assert_called_once_with("t1")
+        stop_task.assert_called_once_with(
+            "t1",
+            InvokeFrom.SERVICE_API,
+            "u1",
+            AppMode.WORKFLOW,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+        )
 
 
 class TestWorkflowAppLogApi:
@@ -842,6 +848,7 @@ class TestWorkflowRunDetailApiGet:
             "created_at": int(datetime(2026, 1, 1).timestamp()),
             "finished_at": int(datetime(2026, 1, 1).timestamp()),
             "elapsed_time": 0.1,
+            "handoff_duration": 0.0,
         }
 
     def test_get_workflow_run_wrong_app_mode(self, app: Flask):
@@ -862,31 +869,66 @@ class TestWorkflowTaskStopApiPost:
     ``post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``.
     """
 
-    @patch("controllers.service_api.app.workflow.GraphEngineManager")
-    @patch("controllers.service_api.app.workflow.AppQueueManager")
+    @patch("controllers.service_api.app.workflow.AppTaskService.stop_task")
     def test_stop_workflow_task_success(
         self,
-        mock_queue_mgr,
-        mock_graph_mgr,
+        stop_task,
         app: Flask,
         workflow_app: App,
     ):
         """Test successful workflow task stop."""
         from controllers.service_api.app.workflow import WorkflowTaskStopApi
 
+        end_user = _make_end_user()
         with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
             api = WorkflowTaskStopApi()
             result = unwrap(api.post)(
                 api,
                 app_model=workflow_app,
-                end_user=_make_end_user(),
+                end_user=end_user,
                 task_id="task-1",
             )
 
         assert result == {"result": "success"}
-        mock_queue_mgr.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-        mock_graph_mgr.assert_called_once()
-        mock_graph_mgr.return_value.send_stop_command.assert_called_once_with("task-1")
+        stop_task.assert_called_once_with(
+            "task-1",
+            InvokeFrom.SERVICE_API,
+            end_user.id,
+            AppMode.WORKFLOW,
+            tenant_id=workflow_app.tenant_id,
+            app_id=workflow_app.id,
+        )
+
+    @patch(
+        "controllers.service_api.app.workflow.AppTaskService.stop_task",
+        side_effect=RuntimeError("database unavailable"),
+    )
+    def test_stop_workflow_task_propagates_handoff_cancel_failure(
+        self,
+        stop_task,
+        app: Flask,
+        workflow_app: App,
+    ):
+        from controllers.service_api.app.workflow import WorkflowTaskStopApi
+
+        end_user = _make_end_user()
+        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
+            with pytest.raises(RuntimeError, match="database unavailable"):
+                unwrap(WorkflowTaskStopApi.post)(
+                    WorkflowTaskStopApi(),
+                    app_model=workflow_app,
+                    end_user=end_user,
+                    task_id="task-1",
+                )
+
+        stop_task.assert_called_once_with(
+            "task-1",
+            InvokeFrom.SERVICE_API,
+            end_user.id,
+            AppMode.WORKFLOW,
+            tenant_id=workflow_app.tenant_id,
+            app_id=workflow_app.id,
+        )
 
     def test_stop_workflow_task_wrong_app_mode(self, app: Flask):
         """Test NotWorkflowAppError when app mode is not workflow."""

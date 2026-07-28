@@ -7,7 +7,7 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -21,6 +21,7 @@ from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
 from configs import dify_config
+from core.app.apps.streaming_utils import WorkflowRunIdentifiedStream
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
@@ -405,31 +406,89 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
+def _is_workflow_maintenance_sse_chunk(chunk: object) -> bool:
+    if not isinstance(chunk, str) or "workflow_maintenance_paused" not in chunk:
+        return False
+    for line in chunk.splitlines():
+        if not line.startswith("data: "):
+            continue
+        try:
+            payload = json.loads(line[6:])
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if isinstance(payload, dict) and payload.get("event") == "workflow_maintenance_paused":
+            return True
+    return False
+
+
 def compact_generate_response(
-    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | Iterator[str] | RateLimitGenerator | WorkflowRunIdentifiedStream,
 ) -> Response:
     if isinstance(response, Mapping):
+        event = response.get("event")
+        event_value = getattr(event, "value", event)
+        is_maintenance_handoff = event_value == "workflow_maintenance_paused"
+        workflow_run_id = response.get("workflow_run_id")
+        headers: dict[str, str] = {}
+        if is_maintenance_handoff:
+            headers["Retry-After"] = "1"
+            if isinstance(workflow_run_id, str) and workflow_run_id:
+                headers.update(
+                    {
+                        "X-Workflow-Run-ID": workflow_run_id,
+                        "Access-Control-Expose-Headers": "X-Workflow-Run-ID, Retry-After",
+                    }
+                )
         return Response(
             response=json.dumps(jsonable_encoder(response)),
-            status=200,
+            # A blocking request cannot remain attached to a worker that is
+            # intentionally exiting.  Keep the logical run alive and return an
+            # explicit continuation response instead of presenting an internal
+            # maintenance sentinel as a successful terminal result.
+            status=202 if is_maintenance_handoff else 200,
             content_type="application/json; charset=utf-8",
+            headers=headers,
         )
     else:
         stream_response = response
+        workflow_run_id = getattr(stream_response, "workflow_run_id", None)
 
         def generate() -> Generator[str, None, None]:
-            yield from stream_response
+            try:
+                for chunk in stream_response:
+                    # Maintenance handoff is an internal segment boundary.  Direct
+                    # console/debug generators do not pass through the Celery
+                    # publisher (which already consumes this sentinel), so filter
+                    # it at the final HTTP boundary and let the cursor-aware client
+                    # reconnect to the durable per-run stream.
+                    if _is_workflow_maintenance_sse_chunk(chunk):
+                        continue
+                    yield chunk
+            finally:
+                close = getattr(stream_response, "close", None)
+                if callable(close):
+                    close()
+
+        response_headers: dict[str, str] = {}
+        if isinstance(workflow_run_id, str) and workflow_run_id:
+            response_headers = {
+                "X-Workflow-Run-ID": workflow_run_id,
+                "Access-Control-Expose-Headers": "X-Workflow-Run-ID",
+            }
 
         return Response(
             _stream_with_request_context(generate()),
             status=200,
             mimetype="text/event-stream",
+            headers=response_headers,
         )
 
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: (
+        Mapping[str, Any] | BaseModel | Iterator[str | bytes] | RateLimitGenerator | WorkflowRunIdentifiedStream
+    ),
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -478,11 +537,16 @@ def length_prefixed_response(
     stream_response = response
 
     def generate() -> Generator[bytes, None, None]:
-        for chunk in stream_response:
-            if isinstance(chunk, str):
-                yield pack_response_with_length_prefix(chunk.encode("utf-8"))
-            else:
-                yield pack_response_with_length_prefix(chunk)
+        try:
+            for chunk in stream_response:
+                if isinstance(chunk, str):
+                    yield pack_response_with_length_prefix(chunk.encode("utf-8"))
+                else:
+                    yield pack_response_with_length_prefix(chunk)
+        finally:
+            close = getattr(stream_response, "close", None)
+            if callable(close):
+                close()
 
     return Response(
         _stream_with_request_context(generate()),

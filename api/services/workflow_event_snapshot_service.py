@@ -7,19 +7,23 @@ import threading
 import time
 from collections.abc import Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
+from core.app.apps.streaming_utils import StreamEventWithCursor, stream_topic_events
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
+    MessageEndStreamResponse,
     MessageReplaceStreamResponse,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     StreamEvent,
+    WorkflowFinishStreamResponse,
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
@@ -38,19 +42,36 @@ from core.workflow.nodes.human_input.pause_reason import (
     DifyHITLEventType,
     HumanInputRequired,
 )
+from extensions.ext_storage import storage
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.broadcast_channel.channel import CursorSubscription, Topic
+from libs.broadcast_channel.cursor import normalize_stream_cursor
+from libs.broadcast_channel.exc import SubscriptionClosedError
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow_handoff import WorkflowRunHandoff
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.sqlalchemy_workflow_handoff_repository import SQLAlchemyWorkflowRunHandoffRepository
+from services.workflow_handoff_service import WorkflowHandoffService
 
 logger = logging.getLogger(__name__)
+
+_TERMINAL_WORKFLOW_STATUSES = frozenset(
+    {
+        WorkflowExecutionStatus.SUCCEEDED,
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.STOPPED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -63,7 +84,7 @@ class MessageContext:
 
 @dataclass
 class BufferState:
-    queue: queue.Queue[Mapping[str, Any]]
+    queue: queue.Queue[Mapping[str, Any] | StreamEventWithCursor]
     stop_event: threading.Event
     done_event: threading.Event
     task_id_ready: threading.Event
@@ -81,8 +102,68 @@ def build_workflow_event_stream(
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
-) -> Generator[Mapping[str, Any] | str, None, None]:
+    cursor: str | None = None,
+    node_execution_triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
+) -> Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]:
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
+
+    terminal_events = None if close_on_pause else [StreamEvent.WORKFLOW_FINISHED]
+    has_retained_events = _topic_has_retained_events(topic)
+    force_cursor_snapshot = False
+    if cursor is not None:
+        normalized_cursor = normalize_stream_cursor(cursor)
+        retained_window = _topic_retained_cursor_window(topic)
+        cursor_key = _stream_cursor_key(normalized_cursor)
+
+        # A terminal database row is the authoritative full-state replacement.
+        # Replaying strictly after a tail cursor would otherwise wait for the
+        # normal 300-second idle timeout even though no future event can arrive.
+        if workflow_run.status in _TERMINAL_WORKFLOW_STATUSES:
+            force_cursor_snapshot = True
+        elif retained_window is not None:
+            earliest_cursor, latest_cursor = retained_window
+            earliest_key = _stream_cursor_key(earliest_cursor)
+            latest_key = _stream_cursor_key(latest_cursor)
+            cursor_is_replayable = normalized_cursor == "0-0" or earliest_key <= cursor_key <= latest_key
+
+            # A closed pause stream whose cursor already addresses the retained
+            # tail also needs a persisted pause event rather than a long wait.
+            cursor_is_closed_pause_tail = (
+                close_on_pause and workflow_run.status == WorkflowExecutionStatus.PAUSED and cursor_key == latest_key
+            )
+            if cursor_is_replayable and not cursor_is_closed_pause_tail:
+                return stream_topic_events(
+                    topic=topic,
+                    idle_timeout=idle_timeout,
+                    ping_interval=ping_interval,
+                    terminal_events=terminal_events,
+                    cursor=normalized_cursor,
+                )
+            force_cursor_snapshot = True
+        else:
+            # The key expired (or the transport cannot prove that this cursor
+            # is still retained). Reconstruct current state from the database
+            # and buffer live events so RUNNING runs do not lose the gap.
+            force_cursor_snapshot = True
+
+    # A paused or terminal run can outlive its Redis Streams retention window.
+    # In that case a Last-Event-ID no longer has a log to address; fall through
+    # to the persisted snapshot so reconnect emits a full-state pause/terminal
+    # event instead of a lone ping followed by EOF.
+
+    if has_retained_events and not force_cursor_snapshot:
+        # The durable event log is the primary source of continuation truth.
+        # Replaying it is both ordered and cursor-addressable; the DB snapshot
+        # remains a compatibility fallback for runs whose event log predates
+        # Streams or has expired.
+        return stream_topic_events(
+            topic=topic,
+            idle_timeout=idle_timeout,
+            ping_interval=ping_interval,
+            terminal_events=terminal_events,
+            cursor="0-0",
+        )
+
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
@@ -95,6 +176,18 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    latest_handoff = _get_latest_workflow_handoff(session_maker, workflow_run.id)
+    handoff_resumption_context = None
+    if resumption_context is None and latest_handoff is not None:
+        handoff_resumption_context = _load_handoff_resumption_context(
+            session_maker=session_maker,
+            handoff=latest_handoff,
+        )
+    resolved_node_triggered_from = _resolve_node_execution_triggered_from(
+        workflow_run=workflow_run,
+        resumption_context=resumption_context or handoff_resumption_context,
+        override=node_execution_triggered_from,
+    )
     message_context: MessageContext | None = None
     if app_mode == AppMode.ADVANCED_CHAT:
         if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -131,18 +224,28 @@ def build_workflow_event_stream(
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_run.workflow_id,
-        # NOTE(QuantumGhost): for events resumption, we only care about
-        # the execution records from `WORKFLOW_RUN`.
-        #
-        # Ideally filtering with `workflow_run_id` is enough. However,
-        # due to the index of `WorkflowNodeExecution` table, we have to
-        # add a filter condition of `triggered_from` to
-        # ensure that we can utilize the index.
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        # ``triggered_from`` is part of the node-execution lookup index. It must
+        # match the repository used by the original or resumed execution: one-
+        # step runs write SINGLE_STEP rows, full RAG runs write
+        # RAG_PIPELINE_RUN rows, and ordinary runs write WORKFLOW_RUN rows.
+        triggered_from=resolved_node_triggered_from,
         workflow_run_id=workflow_run.id,
     )
 
-    def _generate() -> Generator[Mapping[str, Any] | str, None, None]:
+    def _generate() -> Generator[Mapping[str, Any] | StreamEventWithCursor | str, None, None]:
+        # Close the small check/query race without combining a DB snapshot with
+        # an already-retained event log.  If events arrived while the fallback
+        # snapshot was being read, replay the log instead.
+        if not force_cursor_snapshot and _topic_has_retained_events(topic):
+            yield from stream_topic_events(
+                topic=topic,
+                idle_timeout=idle_timeout,
+                ping_interval=ping_interval,
+                terminal_events=terminal_events,
+                cursor="0-0",
+            )
+            return
+
         # send a PING event immediately to prevent the connection staying in pending state for a long time.
         #
         # This simplify the debugging process as the DevTools in Chrome does not
@@ -155,7 +258,12 @@ def build_workflow_event_stream(
         with topic.subscribe() as sub:
             buffer_state = _start_buffering(sub)
             try:
-                task_id = _resolve_task_id(resumption_context, buffer_state, workflow_run.id)
+                task_id = _resolve_task_id(
+                    resumption_context,
+                    buffer_state,
+                    workflow_run.id,
+                    latest_handoff_task_id=latest_handoff.task_id if latest_handoff is not None else None,
+                )
 
                 snapshot_events = _build_snapshot_events(
                     workflow_run=workflow_run,
@@ -168,11 +276,11 @@ def build_workflow_event_stream(
                     human_input_surface=human_input_surface,
                 )
 
-                for event in snapshot_events:
+                for snapshot_event in snapshot_events:
                     last_msg_time = time.time()
                     last_ping_time = last_msg_time
-                    yield event
-                    if _is_terminal_event(event, close_on_pause=close_on_pause):
+                    yield snapshot_event
+                    if _is_terminal_event(snapshot_event, close_on_pause=close_on_pause):
                         return
 
                 while True:
@@ -203,6 +311,38 @@ def build_workflow_event_stream(
                 buffer_state.stop_event.set()
 
     return _generate()
+
+
+def _topic_has_retained_events(topic: Topic) -> bool:
+    latest_cursor = getattr(type(topic), "latest_cursor", None)
+    if latest_cursor is None:
+        return False
+    try:
+        return latest_cursor(topic) is not None
+    except Exception:
+        logger.exception("Failed to inspect retained workflow events")
+        return False
+
+
+def _topic_retained_cursor_window(topic: Topic) -> tuple[str, str] | None:
+    earliest_cursor = getattr(type(topic), "earliest_cursor", None)
+    latest_cursor = getattr(type(topic), "latest_cursor", None)
+    if earliest_cursor is None or latest_cursor is None:
+        return None
+    try:
+        earliest = earliest_cursor(topic)
+        latest = latest_cursor(topic)
+    except Exception:
+        logger.exception("Failed to inspect retained workflow event cursor window")
+        return None
+    if earliest is None or latest is None:
+        return None
+    return normalize_stream_cursor(earliest), normalize_stream_cursor(latest)
+
+
+def _stream_cursor_key(cursor: str) -> tuple[int, int]:
+    milliseconds, sequence = normalize_stream_cursor(cursor).split("-", maxsplit=1)
+    return int(milliseconds), int(sequence)
 
 
 def _get_message_context_by_conversation(
@@ -280,12 +420,115 @@ def _load_resumption_context(pause_entity: WorkflowPauseEntity | None) -> Workfl
         return None
 
 
+def _get_latest_workflow_handoff(
+    session_maker: sessionmaker[Session],
+    workflow_run_id: str,
+) -> WorkflowRunHandoff | None:
+    """Return the newest durable execution segment, if the run was handed off."""
+    try:
+        handoff = SQLAlchemyWorkflowRunHandoffRepository(session_maker).get_latest_by_run(workflow_run_id)
+    except Exception:
+        # Snapshot reconnect must remain compatible with runs created before
+        # handoff support and with a rolling migration where this best-effort
+        # lookup is temporarily unavailable.
+        logger.warning(
+            "Failed to load latest workflow handoff for event snapshot, workflow_run_id=%s",
+            workflow_run_id,
+            exc_info=True,
+        )
+        return None
+    # Test doubles and compatibility session factories can return an untyped
+    # sentinel. Do not let it leak into the public event contract.
+    return handoff if isinstance(handoff, WorkflowRunHandoff) else None
+
+
+def _load_handoff_resumption_context(
+    *,
+    session_maker: sessionmaker[Session],
+    handoff: WorkflowRunHandoff,
+) -> WorkflowResumptionContext | None:
+    """Best-effort load of the generate entity that produced a handoff segment."""
+    try:
+        handoff_service = WorkflowHandoffService(
+            repository=SQLAlchemyWorkflowRunHandoffRepository(session_maker),
+            storage=storage,
+        )
+        serialized_state = handoff_service.load_and_verify_state(handoff)
+        return WorkflowResumptionContext.loads(serialized_state.decode())
+    except Exception:
+        # A terminal handoff snapshot may already have been garbage-collected.
+        # The run-level trigger remains a safe fallback for full executions.
+        logger.warning(
+            "Failed to load workflow handoff context for event snapshot, "
+            "workflow_run_id=%s, handoff_id=%s, generation=%s",
+            handoff.workflow_run_id,
+            handoff.id,
+            handoff.generation,
+            exc_info=True,
+        )
+        return None
+
+
+def _resolve_node_execution_triggered_from(
+    *,
+    workflow_run: WorkflowRun,
+    resumption_context: WorkflowResumptionContext | None,
+    override: WorkflowNodeExecutionTriggeredFrom | None = None,
+) -> WorkflowNodeExecutionTriggeredFrom:
+    """Resolve the indexed node-execution source used by this run segment."""
+    if override is not None:
+        return override
+
+    if resumption_context is not None:
+        try:
+            generate_entity = resumption_context.get_generate_entity()
+            if generate_entity.single_iteration_run is not None or generate_entity.single_loop_run is not None:
+                return WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+        except Exception:
+            logger.warning(
+                "Failed to inspect workflow resumption context for event snapshot, workflow_run_id=%s",
+                workflow_run.id,
+                exc_info=True,
+            )
+
+    try:
+        run_triggered_from = WorkflowRunTriggeredFrom(workflow_run.triggered_from)
+    except ValueError:
+        logger.warning(
+            "Unknown workflow run trigger source for event snapshot, workflow_run_id=%s, triggered_from=%s",
+            workflow_run.id,
+            workflow_run.triggered_from,
+        )
+        return WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+
+    if run_triggered_from in {
+        WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+        WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
+    }:
+        return WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN
+    return WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+
+
+def resolve_workflow_event_task_id(
+    *,
+    workflow_run: WorkflowRun,
+    session_maker: sessionmaker[Session],
+) -> str:
+    """Use the task identity of the newest execution segment when available."""
+    latest_handoff = _get_latest_workflow_handoff(session_maker, workflow_run.id)
+    return latest_handoff.task_id if latest_handoff is not None else workflow_run.id
+
+
 def _resolve_task_id(
     resumption_context: WorkflowResumptionContext | None,
     buffer_state: BufferState | None,
     workflow_run_id: str,
     wait_timeout: float = 0.2,
+    *,
+    latest_handoff_task_id: str | None = None,
 ) -> str:
+    if latest_handoff_task_id:
+        return latest_handoff_task_id
     if resumption_context is not None:
         generate_entity = resumption_context.get_generate_entity()
         if generate_entity.task_id:
@@ -368,6 +611,27 @@ def _build_snapshot_events(
             _apply_message_context(pause_event, message_context)
             events.append(pause_event)
 
+    if workflow_run.status in _TERMINAL_WORKFLOW_STATUSES:
+        # Advanced Chat live streams always emit ``message_end`` before the
+        # workflow terminal event. Preserve that contract when Redis history
+        # has expired and the stream is reconstructed from the database. A
+        # message context is only loaded for Advanced Chat, so workflow-only
+        # and RAG snapshots remain unchanged.
+        if message_context is not None:
+            message_end = _build_message_end_event(
+                task_id=task_id,
+                message_id=message_context.message_id,
+            )
+            _apply_message_context(message_end, message_context)
+            events.append(message_end)
+
+        workflow_finished = _build_workflow_finished_event(
+            workflow_run=workflow_run,
+            task_id=task_id,
+        )
+        _apply_message_context(workflow_finished, message_context)
+        events.append(workflow_finished)
+
     return events
 
 
@@ -392,11 +656,53 @@ def _build_workflow_started_event(
     return payload
 
 
+def _build_workflow_finished_event(
+    *,
+    workflow_run: WorkflowRun,
+    task_id: str,
+) -> dict[str, Any]:
+    outputs = workflow_run.outputs_dict
+    finished_at = workflow_run.finished_at
+    response = WorkflowFinishStreamResponse(
+        task_id=task_id,
+        workflow_run_id=workflow_run.id,
+        data=WorkflowFinishStreamResponse.Data(
+            id=workflow_run.id,
+            workflow_id=workflow_run.workflow_id,
+            status=workflow_run.status,
+            outputs=outputs,
+            error=workflow_run.error,
+            elapsed_time=float(workflow_run.elapsed_time or 0.0),
+            total_tokens=int(workflow_run.total_tokens or 0),
+            total_steps=int(workflow_run.total_steps or 0),
+            created_by={},
+            created_at=int(workflow_run.created_at.timestamp()),
+            finished_at=int(finished_at.timestamp()) if finished_at is not None else None,
+            files=WorkflowResponseConverter.fetch_files_from_node_outputs(outputs),
+            exceptions_count=int(workflow_run.exceptions_count or 0),
+            handoff_duration=float(workflow_run.handoff_duration or 0.0),
+        ),
+    )
+    payload = response.model_dump(mode="json")
+    payload["event"] = response.event.value
+    return payload
+
+
 def _build_message_replace_event(*, task_id: str, answer: str) -> dict[str, Any]:
     response = MessageReplaceStreamResponse(
         task_id=task_id,
         answer=answer,
         reason="",
+    )
+    payload = response.model_dump(mode="json")
+    payload["event"] = response.event.value
+    return payload
+
+
+def _build_message_end_event(*, task_id: str, message_id: str) -> dict[str, Any]:
+    response = MessageEndStreamResponse(
+        task_id=task_id,
+        id=message_id,
     )
     payload = response.model_dump(mode="json")
     payload["event"] = response.event.value
@@ -616,6 +922,7 @@ def _build_pause_event(
             elapsed_time=float(workflow_run.elapsed_time or 0.0),
             total_tokens=int(workflow_run.total_tokens or 0),
             total_steps=int(workflow_run.total_steps or 0),
+            handoff_duration=float(workflow_run.handoff_duration or 0.0),
         ),
     )
     payload = response.model_dump(mode="json")
@@ -640,10 +947,14 @@ def _start_buffering(subscription) -> BufferState:
     )
 
     def _worker() -> None:
-        dropped_count = 0
         try:
             while not buffer_state.stop_event.is_set():
-                msg = subscription.receive(timeout=1)
+                if getattr(type(subscription), "receive_with_cursor", None) is not None:
+                    cursor_message = cast(CursorSubscription, subscription).receive_with_cursor(timeout=1)
+                    msg = None if cursor_message is None else cursor_message.payload
+                else:
+                    cursor_message = None
+                    msg = subscription.receive(timeout=1)
                 if msg is None:
                     continue
                 event = _parse_event_message(msg)
@@ -653,19 +964,22 @@ def _start_buffering(subscription) -> BufferState:
                 if task_id and buffer_state.task_id_hint is None:
                     buffer_state.task_id_hint = str(task_id)
                     buffer_state.task_id_ready.set()
-                try:
-                    buffer_state.queue.put_nowait(event)
-                except queue.Full:
-                    dropped_count += 1
+                buffered_event: Mapping[str, Any] | StreamEventWithCursor = event
+                if cursor_message is not None:
+                    buffered_event = StreamEventWithCursor(event=event, cursor=cursor_message.cursor)
+                # Apply lossless backpressure while the database snapshot is
+                # being built. Advancing past a dropped Redis cursor would let
+                # the client acknowledge a gap that Last-Event-ID can never
+                # repair. The Streams subscription itself remains replayable
+                # while this bounded queue waits for the HTTP consumer.
+                while not buffer_state.stop_event.is_set():
                     try:
-                        buffer_state.queue.get_nowait()
-                    except queue.Empty:
-                        pass
-                    try:
-                        buffer_state.queue.put_nowait(event)
+                        buffer_state.queue.put(buffered_event, timeout=1)
+                        break
                     except queue.Full:
                         continue
-                    logger.warning("Dropped buffered workflow event, total_dropped=%s", dropped_count)
+        except SubscriptionClosedError:
+            pass
         except Exception:
             logger.exception("Failed while buffering workflow events")
         finally:
@@ -688,13 +1002,15 @@ def _parse_event_message(message: bytes) -> Mapping[str, Any] | None:
 
 
 def _is_terminal_event(
-    event: Mapping[str, Any] | str,
+    event: Mapping[str, Any] | StreamEventWithCursor | str,
     close_on_pause: bool = True,
     *,
     include_paused: bool | None = None,
 ) -> bool:
     if include_paused is not None:
         close_on_pause = include_paused
+    if isinstance(event, StreamEventWithCursor):
+        event = event.event
     if not isinstance(event, Mapping):
         return False
     event_type = event.get("event")

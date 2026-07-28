@@ -229,6 +229,10 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
             handleWorkflowTextReplace(params)
           },
           ...restCallback,
+          workflowStreamReconnect: {
+            resolveUrl: (workflowRunId) =>
+              `/rag/pipelines/${pipelineId}/workflow-runs/${workflowRunId}/events`,
+          },
         },
       )
     },

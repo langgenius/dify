@@ -447,6 +447,25 @@ describe('usePipelineRunByCanEdit', () => {
       )
     })
 
+    it('should reconnect RAG debug runs through the pipeline-owned event stream', async () => {
+      const { result } = renderHook(() => usePipelineRunByCanEdit(true))
+
+      await act(async () => {
+        await result.current.handleRun({ inputs: { query: 'test' } })
+      })
+
+      const options = mockSsePost.mock.calls[0]![2] as {
+        workflowStreamReconnect?:
+          | false
+          | { resolveUrl?: (workflowRunId: string) => string | undefined }
+      }
+      expect(options.workflowStreamReconnect).not.toBe(false)
+      if (options.workflowStreamReconnect)
+        expect(options.workflowStreamReconnect.resolveUrl?.('rag-run-id')).toBe(
+          '/rag/pipelines/test-pipeline-id/workflow-runs/rag-run-id/events',
+        )
+    })
+
     it('should call onWorkflowStarted callback when provided', async () => {
       const onWorkflowStarted = vi.fn()
       let capturedCallbacks: Record<string, (params: unknown) => void> = {}

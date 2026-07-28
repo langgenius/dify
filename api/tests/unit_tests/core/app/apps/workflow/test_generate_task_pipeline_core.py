@@ -8,6 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.streaming_utils import WorkflowRunIdentifiedStream
+from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -31,6 +34,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
@@ -45,13 +49,17 @@ from core.app.entities.task_entities import (
     ReasoningChunkStreamResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
+    WorkflowMaintenancePausedBlockingResponse,
+    WorkflowMaintenancePausedStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
+from libs.helper import compact_generate_response
 from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from models.workflow import WorkflowAppLog
@@ -86,7 +94,11 @@ def _make_pipeline():
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
         workflow=workflow,
-        queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
+        queue_manager=SimpleNamespace(
+            invoke_from=InvokeFrom.WEB_APP,
+            graph_runtime_state=None,
+            mark_execution_terminal=lambda: None,
+        ),
         user=user,
         stream=False,
         draft_var_saver_factory=lambda **kwargs: None,
@@ -96,6 +108,22 @@ def _make_pipeline():
 
 
 class TestWorkflowGenerateTaskPipeline:
+    def test_to_blocking_response_returns_internal_maintenance_sentinel(self):
+        pipeline = _make_pipeline()
+        source_closed = False
+
+        def _gen():
+            nonlocal source_closed
+            try:
+                yield WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")
+            finally:
+                source_closed = True
+
+        response = pipeline._to_blocking_response(_gen())
+
+        assert response == WorkflowMaintenancePausedBlockingResponse(task_id="task", workflow_run_id="run-id")
+        assert source_closed
+
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
@@ -212,6 +240,38 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert pipeline._workflow_execution_id == "run-id"
         assert responses == ["started"]
+
+    def test_resumption_start_uses_persisted_logical_timing(self, monkeypatch: pytest.MonkeyPatch, sqlite_engine):
+        pipeline = _make_pipeline()
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+        )
+        captured: dict = {}
+        pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: (
+            captured.update(kwargs) or "started"
+        )
+        logical_started_at = naive_utc_now()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.db",
+            SimpleNamespace(engine=sqlite_engine),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.get_workflow_run_public_timing",
+            lambda **kwargs: SimpleNamespace(started_at=logical_started_at, handoff_duration=17.5),
+        )
+
+        responses = list(
+            pipeline._handle_workflow_started_event(
+                QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION),
+            )
+        )
+
+        assert responses == ["started"]
+        assert captured["logical_started_at"] == logical_started_at
+        assert captured["handoff_duration"] == 17.5
+        assert captured["reason"] is WorkflowStartReason.RESUMPTION
 
     def test_handle_node_succeeded_event_saves_output(self):
         pipeline = _make_pipeline()
@@ -590,6 +650,51 @@ class TestWorkflowGenerateTaskPipeline:
         assert stream_responses[0].workflow_run_id == "run-id"
         assert stream_responses[1].workflow_run_id == "run-id"
 
+    def test_http_response_close_reaches_task_source_after_partial_consumption(self, app):
+        pipeline = _make_pipeline()
+        source_closed = False
+
+        def source():
+            nonlocal source_closed
+            try:
+                while True:
+                    yield PingStreamResponse(task_id="task")
+            finally:
+                source_closed = True
+
+        task_stream = pipeline._to_stream_response(source())
+        converted_stream = WorkflowAppGenerateResponseConverter.convert_stream_full_response(task_stream)
+        event_stream = BaseAppGenerator.convert_to_event_stream(converted_stream)
+        identified_stream = WorkflowRunIdentifiedStream(event_stream, workflow_run_id="run-id")
+
+        with app.test_request_context("/run"):
+            response = compact_generate_response(identified_stream)
+            assert next(iter(response.response)) == "event: ping\n\n"
+            response.close()
+
+        assert source_closed
+
+    def test_process_stream_response_close_closes_queue_listener(self):
+        pipeline = _make_pipeline()
+        queue_listener_closed = False
+
+        def queue_listener():
+            nonlocal queue_listener_closed
+            try:
+                while True:
+                    yield SimpleNamespace(event=QueuePingEvent())
+            finally:
+                queue_listener_closed = True
+
+        pipeline._base_task_pipeline.queue_manager.listen = queue_listener
+        pipeline._base_task_pipeline.ping_stream_response = lambda: PingStreamResponse(task_id="task")
+        responses = pipeline._process_stream_response()
+        assert next(responses) == PingStreamResponse(task_id="task")
+
+        responses.close()
+
+        assert queue_listener_closed
+
     def test_listen_audio_msg_returns_none_without_publisher(self):
         pipeline = _make_pipeline()
         assert pipeline._listen_audio_msg(publisher=None, task_id="task") is None
@@ -601,6 +706,27 @@ class TestWorkflowGenerateTaskPipeline:
 
         responses = list(pipeline._wrapper_process_stream_response())
         assert responses == [PingStreamResponse(task_id="task")]
+
+    def test_wrapper_process_stream_response_close_closes_processed_stream(self):
+        pipeline = _make_pipeline()
+        pipeline._workflow_features_dict = {}
+        processed_stream_closed = False
+
+        def processed_stream():
+            nonlocal processed_stream_closed
+            try:
+                while True:
+                    yield PingStreamResponse(task_id="task")
+            finally:
+                processed_stream_closed = True
+
+        pipeline._process_stream_response = lambda **kwargs: processed_stream()
+        responses = pipeline._wrapper_process_stream_response()
+        assert next(responses) == PingStreamResponse(task_id="task")
+
+        responses.close()
+
+        assert processed_stream_closed
 
     def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
@@ -755,8 +881,13 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses == ["failed"]
         assert saved_ids == ["exec-id"]
 
-    def test_success_partial_and_pause_handlers(self):
+    def test_success_partial_and_pause_handlers(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
+        activated_task_ids: list[str] = []
+        monkeypatch.setattr(
+            "core.app.apps.workflow.generate_task_pipeline.activate_workflow_handoff_by_task_id",
+            activated_task_ids.append,
+        )
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool.from_bootstrap(
@@ -779,6 +910,16 @@ class TestWorkflowGenerateTaskPipeline:
         ]
         pause_event = QueueWorkflowPausedEvent(reasons=[], outputs={}, paused_nodes=["node"])
         assert list(pipeline._handle_workflow_paused_event(pause_event)) == ["pause-a", "pause-b"]
+
+        maintenance_responses = list(
+            pipeline._handle_workflow_maintenance_paused_event(
+                QueueWorkflowMaintenancePausedEvent(outputs={}, paused_nodes=["node"])
+            )
+        )
+        assert maintenance_responses == [
+            WorkflowMaintenancePausedStreamResponse(task_id="task", workflow_run_id="run-id")
+        ]
+        assert activated_task_ids == ["task"]
 
     def test_text_chunk_handler_returns_empty_when_text_missing(self):
         pipeline = _make_pipeline()
@@ -848,6 +989,12 @@ class TestWorkflowGenerateTaskPipeline:
         )
         pipeline._handle_workflow_paused_event = lambda event, **kwargs: iter(["paused"])
         assert list(pipeline._process_stream_response()) == ["paused"]
+
+        pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
+            [SimpleNamespace(event=QueueWorkflowMaintenancePausedEvent())]
+        )
+        pipeline._handle_workflow_maintenance_paused_event = lambda event, **kwargs: iter(["maintenance"])
+        assert list(pipeline._process_stream_response()) == ["maintenance"]
 
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(
             [SimpleNamespace(event=QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))]

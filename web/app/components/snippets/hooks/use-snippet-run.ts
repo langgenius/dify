@@ -226,6 +226,10 @@ export const useSnippetRun = (snippetId: string) => {
             handleWorkflowTextReplace(params)
           },
           ...restCallback,
+          workflowStreamReconnect: {
+            resolveUrl: (workflowRunId) =>
+              `/snippets/${snippetId}/workflow-runs/${workflowRunId}/events`,
+          },
         },
       )
     },

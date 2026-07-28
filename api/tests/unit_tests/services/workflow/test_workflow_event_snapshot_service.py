@@ -183,14 +183,15 @@ def test_build_snapshot_events_applies_message_context() -> None:
 
 
 @pytest.mark.parametrize(
-    ("context_task_id", "buffered_task_id", "expected"),
+    ("latest_handoff_task_id", "context_task_id", "buffered_task_id", "expected"),
     [
-        ("task-ctx", "task-buffer", "task-ctx"),
-        (None, "task-buffer", "task-buffer"),
-        (None, None, "run-1"),
+        ("task-handoff", "task-ctx", "task-buffer", "task-handoff"),
+        (None, "task-ctx", "task-buffer", "task-ctx"),
+        (None, None, "task-buffer", "task-buffer"),
+        (None, None, None, "run-1"),
     ],
 )
-def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -> None:
+def test_resolve_task_id_priority(latest_handoff_task_id, context_task_id, buffered_task_id, expected) -> None:
     resumption_context = _build_resumption_context(context_task_id) if context_task_id else None
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -201,7 +202,13 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
     )
     if buffered_task_id:
         buffer_state.task_id_ready.set()
-    task_id = _resolve_task_id(resumption_context, buffer_state, "run-1", wait_timeout=0.0)
+    task_id = _resolve_task_id(
+        resumption_context,
+        buffer_state,
+        "run-1",
+        wait_timeout=0.0,
+        latest_handoff_task_id=latest_handoff_task_id,
+    )
     assert task_id == expected
 
 
@@ -575,7 +582,7 @@ def test_start_buffering_should_capture_task_id_and_enqueue_event() -> None:
     assert event["event"] == "node_started"
 
 
-def test_start_buffering_should_drop_old_event_when_queue_is_full(
+def test_start_buffering_should_apply_backpressure_without_dropping_old_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
@@ -583,17 +590,18 @@ def test_start_buffering_should_drop_old_event_when_queue_is_full(
         def __init__(self) -> None:
             self._first_put = True
             self.items: list[dict[str, Any]] = [{"event": "old"}]
+            self.stored = Event()
 
-        def put_nowait(self, item: dict[str, Any]) -> None:
+        def put(self, item: dict[str, Any], timeout: int) -> None:
+            assert timeout == 1
             if self._first_put:
                 self._first_put = False
                 raise queue.Full
             self.items.append(item)
+            self.stored.set()
 
         def get_nowait(self) -> dict[str, Any]:
-            if not self.items:
-                raise queue.Empty
-            return self.items.pop(0)
+            raise AssertionError("lossless buffering must not evict an older event")
 
         def empty(self) -> bool:
             return len(self.items) == 0
@@ -616,13 +624,15 @@ def test_start_buffering_should_drop_old_event_when_queue_is_full(
     # Act
     buffer_state = service_module._start_buffering(subscription)
     ready = buffer_state.task_id_ready.wait(timeout=1)
+    stored = fake_queue.stored.wait(timeout=1)
     buffer_state.stop_event.set()
     finished = buffer_state.done_event.wait(timeout=1)
 
     # Assert
     assert ready is True
+    assert stored is True
     assert finished is True
-    assert fake_queue.items[-1]["task_id"] == "task-2"
+    assert fake_queue.items == [{"event": "old"}, {"event": "node_started", "task_id": "task-2"}]
 
 
 def test_start_buffering_should_set_done_event_when_subscription_raises() -> None:
@@ -715,6 +725,216 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         workflow_run_id="run-1",
     )
     app_lookup.assert_not_called()
+
+
+@pytest.mark.parametrize("has_retained_events", [False, True])
+def test_terminal_cursor_always_converges_to_persisted_terminal_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    has_retained_events: bool,
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.SUCCEEDED)
+    workflow_run.finished_at = datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)
+    topic = _Topic(_StaticSubscription())
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        service_module,
+        "DifyAPIRepositoryFactory",
+        SimpleNamespace(
+            create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+            create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+        ),
+    )
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(
+        service_module,
+        "_topic_has_retained_events",
+        MagicMock(return_value=has_retained_events),
+    )
+    monkeypatch.setattr(service_module, "_get_latest_workflow_handoff", MagicMock(return_value=None))
+    monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint="task-1",
+    )
+    monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
+    monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=MagicMock(),
+            cursor="123-4",
+        )
+    )
+
+    assert [event if isinstance(event, str) else event["event"] for event in events] == [
+        StreamEvent.PING.value,
+        StreamEvent.WORKFLOW_STARTED.value,
+        StreamEvent.WORKFLOW_FINISHED.value,
+    ]
+    finished_event = cast(Mapping[str, Any], events[-1])
+    assert finished_event["task_id"] == "task-1"
+    assert finished_event["workflow_run_id"] == "run-1"
+    assert finished_event["data"]["status"] == WorkflowExecutionStatus.SUCCEEDED.value
+    assert finished_event["data"]["finished_at"] == 1704067205
+    node_repo.get_execution_snapshots_by_workflow_run.assert_called_once()
+
+
+@pytest.mark.parametrize("has_retained_events", [False, True])
+def test_paused_expired_or_tail_cursor_falls_back_to_persisted_pause_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    has_retained_events: bool,
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
+    topic = _Topic(_StaticSubscription())
+    pause_entity = _PauseEntity(state=b"state")
+    resumption_context = _build_resumption_context_additional(task_id="task-ctx")
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        service_module,
+        "DifyAPIRepositoryFactory",
+        SimpleNamespace(
+            create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+            create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+        ),
+    )
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(
+        service_module,
+        "_topic_has_retained_events",
+        MagicMock(return_value=has_retained_events),
+    )
+    if has_retained_events:
+        monkeypatch.setattr(
+            service_module,
+            "_topic_retained_cursor_window",
+            MagicMock(return_value=("100-0", "123-4")),
+        )
+    monkeypatch.setattr(service_module, "_get_latest_workflow_handoff", MagicMock(return_value=None))
+    monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint="task-buffer",
+    )
+    monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=MagicMock(),
+            cursor="123-4",
+        )
+    )
+
+    assert [event if isinstance(event, str) else event["event"] for event in events] == [
+        StreamEvent.PING.value,
+        StreamEvent.WORKFLOW_STARTED.value,
+        StreamEvent.WORKFLOW_PAUSED.value,
+    ]
+    pause_event = cast(Mapping[str, Any], events[-1])
+    assert pause_event["task_id"] == "task-ctx"
+    assert pause_event["workflow_run_id"] == "run-1"
+    assert buffer_state.stop_event.is_set() is True
+
+
+@pytest.mark.parametrize(
+    "terminal_status",
+    [
+        WorkflowExecutionStatus.SUCCEEDED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.STOPPED,
+    ],
+)
+def test_terminal_advanced_chat_snapshot_preserves_message_replacement_and_context(
+    monkeypatch: pytest.MonkeyPatch,
+    terminal_status: WorkflowExecutionStatus,
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=terminal_status)
+    workflow_run.finished_at = datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)
+    topic = _Topic(_StaticSubscription())
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    monkeypatch.setattr(
+        service_module,
+        "DifyAPIRepositoryFactory",
+        SimpleNamespace(
+            create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+            create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+        ),
+    )
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(service_module, "_topic_has_retained_events", MagicMock(return_value=False))
+    monkeypatch.setattr(service_module, "_get_latest_workflow_handoff", MagicMock(return_value=None))
+    monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
+    message_context = MessageContext(
+        conversation_id="conv-1",
+        message_id="msg-1",
+        created_at=1704067200,
+        answer="persisted answer",
+    )
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", MagicMock(return_value=message_context))
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint="task-1",
+    )
+    monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=MagicMock(),
+            cursor="123-4",
+        )
+    )
+
+    assert [event if isinstance(event, str) else event["event"] for event in events] == [
+        StreamEvent.PING.value,
+        StreamEvent.WORKFLOW_STARTED.value,
+        StreamEvent.MESSAGE_REPLACE.value,
+        StreamEvent.MESSAGE_END.value,
+        StreamEvent.WORKFLOW_FINISHED.value,
+    ]
+    assert cast(Mapping[str, Any], events[2])["answer"] == "persisted answer"
+    for event in events[1:]:
+        payload = cast(Mapping[str, Any], event)
+        assert payload["conversation_id"] == "conv-1"
+        assert payload["message_id"] == "msg-1"
+        assert payload["created_at"] == 1704067200
+    message_end_event = cast(Mapping[str, Any], events[3])
+    assert message_end_event == {
+        "event": StreamEvent.MESSAGE_END.value,
+        "task_id": "task-1",
+        "id": "msg-1",
+        "metadata": {},
+        "files": [],
+        "conversation_id": "conv-1",
+        "message_id": "msg-1",
+        "created_at": 1704067200,
+    }
+    workflow_finished_event = cast(Mapping[str, Any], events[4])
+    assert workflow_finished_event["data"]["status"] == terminal_status.value
+    assert buffer_state.stop_event.is_set() is True
 
 
 @pytest.mark.parametrize(

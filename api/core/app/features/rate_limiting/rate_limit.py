@@ -124,6 +124,7 @@ class RateLimitGenerator:
         self.generator = generator
         self.request_id = request_id
         self.closed = False
+        self.workflow_run_id: str | None = None
 
     def __iter__(self):
         return self

@@ -219,6 +219,8 @@ class CompletionMessageStopApi(Resource):
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user_id,
             app_mode=AppMode.value_of(app_model.mode),
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
@@ -582,6 +584,8 @@ def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
         invoke_from=InvokeFrom.DEBUGGER,
         user_id=current_user_id,
         app_mode=AppMode.value_of(app_model.mode),
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
     )
 
     return SimpleResultResponse(result="success").model_dump(mode="json"), 200

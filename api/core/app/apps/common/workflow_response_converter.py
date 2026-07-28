@@ -145,6 +145,7 @@ class WorkflowResponseConverter:
         self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None
+        self._workflow_handoff_duration = 0.0
 
     # ------------------------------------------------------------------
     # Workflow lifecycle helpers
@@ -241,10 +242,13 @@ class WorkflowResponseConverter:
         workflow_run_id: str,
         workflow_id: str,
         reason: WorkflowStartReason,
+        logical_started_at: datetime | None = None,
+        handoff_duration: float = 0.0,
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
-        started_at = naive_utc_now()
+        started_at = logical_started_at or naive_utc_now()
         self._workflow_started_at = started_at
+        self._workflow_handoff_duration = max(handoff_duration, 0.0)
 
         return WorkflowStartStreamResponse(
             task_id=task_id,
@@ -276,7 +280,7 @@ class WorkflowResponseConverter:
             )
 
         finished_at = naive_utc_now()
-        elapsed_time = (finished_at - started_at).total_seconds()
+        elapsed_time = max((finished_at - started_at).total_seconds(), 0.0)
 
         outputs_mapping = graph_runtime_state.outputs or {}
         encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
@@ -313,6 +317,7 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+                handoff_duration=self._workflow_handoff_duration,
             ),
         )
 
@@ -330,7 +335,7 @@ class WorkflowResponseConverter:
                 "workflow_pause_to_stream_response called before workflow_start_to_stream_response",
             )
         paused_at = naive_utc_now()
-        elapsed_time = (paused_at - started_at).total_seconds()
+        elapsed_time = max((paused_at - started_at).total_seconds(), 0.0)
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
@@ -418,6 +423,7 @@ class WorkflowResponseConverter:
                     elapsed_time=elapsed_time,
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
+                    handoff_duration=self._workflow_handoff_duration,
                 ),
             )
         )
@@ -503,6 +509,7 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=cls.fetch_files_from_node_outputs(encoded_outputs),
                 exceptions_count=workflow_run.exceptions_count,
+                handoff_duration=workflow_run.handoff_duration,
             ),
         )
 

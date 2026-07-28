@@ -1,9 +1,9 @@
 import json
 import logging
 import time
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Thread
 from typing import Any, Union
@@ -46,6 +46,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowMaintenancePausedEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
@@ -62,14 +63,19 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageReplaceStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamResponse,
+    TaskStateMetadata,
+    WorkflowMaintenancePausedBlockingResponse,
+    WorkflowMaintenancePausedStreamResponse,
     WorkflowPauseStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
+from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -77,17 +83,21 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
-from models import Account, Conversation, EndUser, Message, MessageFile
+from models import Account, Conversation, EndUser, Message, MessageFile, UploadFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode
 from models.workflow import Workflow
+from services.workflow_handoff_activation_service import activate_workflow_handoff_by_task_id
+from services.workflow_run_timing_service import get_workflow_run_public_timing
 
 logger = logging.getLogger(__name__)
 
@@ -127,15 +137,33 @@ class MessageSnapshot:
     created_at: datetime
     status: MessageStatus
     answer: str
+    message_metadata: Mapping[str, Any] = field(default_factory=dict)
+    recorded_files: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
+    provider_response_latency: float = 0.0
 
     @classmethod
-    def from_message(cls, message: Message) -> "MessageSnapshot":
+    def from_message(cls, message: Message, *, session: Session) -> "MessageSnapshot":
+        message_files = list(session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)))
+        upload_file_ids = list(
+            dict.fromkeys(
+                item.upload_file_id
+                for item in message_files
+                if item.transfer_method == FileTransferMethod.LOCAL_FILE and item.upload_file_id
+            )
+        )
+        upload_files_map: dict[str, UploadFile] = {}
+        if upload_file_ids:
+            upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
+            upload_files_map = {item.id: item for item in upload_files}
         return cls(
             id=message.id,
             query=message.query,
             created_at=message.created_at,
             status=message.status,
             answer=message.answer,
+            message_metadata=message.message_metadata_dict,
+            recorded_files=tuple(prepare_file_dict(item, upload_files_map) for item in message_files),
+            provider_response_latency=message.provider_response_latency or 0.0,
         )
 
 
@@ -191,6 +219,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         self._task_state = WorkflowTaskState()
+        self._recorded_files: list[Mapping[str, Any]] = list(message.recorded_files)
+        self._prior_provider_response_latency = message.provider_response_latency
         self._seed_task_state_from_message(message)
         self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
@@ -205,7 +235,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
         self._conversation_name_generate_thread: Thread | None = None
-        self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
         self._graph_runtime_state: GraphRuntimeState | None = None
@@ -213,14 +242,21 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._seed_graph_runtime_state_from_queue_manager()
 
     def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
-        if message.status == MessageStatus.PAUSED and message.answer:
+        # Resumed executions reuse the original Message. Human-input pauses mark
+        # it as PAUSED, while maintenance handoffs deliberately preserve its
+        # public status, so the persisted answer itself is the common resume
+        # checkpoint for both paths. Newly created messages always start empty.
+        if message.answer:
             self._task_state.answer = message.answer
+        if message.message_metadata:
+            self._task_state.metadata = TaskStateMetadata.model_validate(message.message_metadata)
 
     def process(
         self,
     ) -> Union[
         ChatbotAppBlockingResponse,
         AdvancedChatPausedBlockingResponse,
+        WorkflowMaintenancePausedBlockingResponse,
         Generator[ChatbotAppStreamResponse, None, None],
     ]:
         """
@@ -240,57 +276,72 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse, None, None]
-    ) -> Union[ChatbotAppBlockingResponse, AdvancedChatPausedBlockingResponse]:
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        AdvancedChatPausedBlockingResponse,
+        WorkflowMaintenancePausedBlockingResponse,
+    ]:
         """
         Process blocking response.
         :return:
         """
         human_input_responses: list[HumanInputRequiredResponse] = []
-        for stream_response in generator:
-            match stream_response:
-                case ErrorStreamResponse():
-                    raise stream_response.err
-                case HumanInputRequiredResponse():
-                    human_input_responses.append(stream_response)
-                case WorkflowPauseStreamResponse():
-                    return AdvancedChatPausedBlockingResponse(
-                        task_id=stream_response.task_id,
-                        data=AdvancedChatPausedBlockingResponse.Data(
-                            id=self._message_id,
-                            mode=self._conversation_mode,
-                            conversation_id=self._conversation_id,
-                            message_id=self._message_id,
-                            workflow_run_id=stream_response.data.workflow_run_id,
-                            answer=self._task_state.answer,
-                            metadata=self._message_end_to_stream_response().metadata,
-                            created_at=self._message_created_at,
-                            paused_nodes=stream_response.data.paused_nodes,
-                            reasons=stream_response.data.reasons,
-                            status=stream_response.data.status,
-                            elapsed_time=stream_response.data.elapsed_time,
-                            total_tokens=stream_response.data.total_tokens,
-                            total_steps=stream_response.data.total_steps,
-                        ),
-                    )
-                case MessageEndStreamResponse():
-                    extras = {}
-                    if stream_response.metadata:
-                        extras["metadata"] = stream_response.metadata
+        try:
+            for stream_response in generator:
+                match stream_response:
+                    case ErrorStreamResponse():
+                        raise stream_response.err
+                    case HumanInputRequiredResponse():
+                        human_input_responses.append(stream_response)
+                    case WorkflowPauseStreamResponse():
+                        return AdvancedChatPausedBlockingResponse(
+                            task_id=stream_response.task_id,
+                            data=AdvancedChatPausedBlockingResponse.Data(
+                                id=self._message_id,
+                                mode=self._conversation_mode,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                workflow_run_id=stream_response.data.workflow_run_id,
+                                answer=self._task_state.answer,
+                                metadata=self._message_end_to_stream_response().metadata,
+                                created_at=self._message_created_at,
+                                paused_nodes=stream_response.data.paused_nodes,
+                                reasons=stream_response.data.reasons,
+                                status=stream_response.data.status,
+                                elapsed_time=stream_response.data.elapsed_time,
+                                total_tokens=stream_response.data.total_tokens,
+                                total_steps=stream_response.data.total_steps,
+                                handoff_duration=stream_response.data.handoff_duration,
+                            ),
+                        )
+                    case WorkflowMaintenancePausedStreamResponse():
+                        return WorkflowMaintenancePausedBlockingResponse(
+                            task_id=stream_response.task_id,
+                            workflow_run_id=stream_response.workflow_run_id,
+                        )
+                    case MessageEndStreamResponse():
+                        extras = {}
+                        if stream_response.metadata:
+                            extras["metadata"] = stream_response.metadata
 
-                    return ChatbotAppBlockingResponse(
-                        task_id=stream_response.task_id,
-                        data=ChatbotAppBlockingResponse.Data(
-                            id=self._message_id,
-                            mode=self._conversation_mode,
-                            conversation_id=self._conversation_id,
-                            message_id=self._message_id,
-                            answer=self._task_state.answer,
-                            created_at=self._message_created_at,
-                            **extras,
-                        ),
-                    )
-                case _:
-                    continue
+                        return ChatbotAppBlockingResponse(
+                            task_id=stream_response.task_id,
+                            data=ChatbotAppBlockingResponse.Data(
+                                id=self._message_id,
+                                mode=self._conversation_mode,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                answer=self._task_state.answer,
+                                created_at=self._message_created_at,
+                                **extras,
+                            ),
+                        )
+                    case _:
+                        continue
+        finally:
+            close = getattr(generator, "close", None)
+            if callable(close):
+                close()
 
         if human_input_responses:
             return self._build_paused_blocking_response_from_human_input(human_input_responses)
@@ -334,13 +385,18 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         To stream response.
         :return:
         """
-        for stream_response in generator:
-            yield ChatbotAppStreamResponse(
-                conversation_id=self._conversation_id,
-                message_id=self._message_id,
-                created_at=self._message_created_at,
-                stream_response=stream_response,
-            )
+        try:
+            for stream_response in generator:
+                yield ChatbotAppStreamResponse(
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    created_at=self._message_created_at,
+                    stream_response=stream_response,
+                )
+        finally:
+            close = getattr(generator, "close", None)
+            if callable(close):
+                close()
 
     def _listen_audio_msg(self, publisher: AppGeneratorTTSPublisher | None, task_id: str):
         if not publisher:
@@ -367,14 +423,20 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
             )
 
-        for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
-                if audio_response:
-                    yield audio_response
-                else:
-                    break
-            yield response
+        response_stream = self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager)
+        try:
+            for response in response_stream:
+                while True:
+                    audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
+                    if audio_response:
+                        yield audio_response
+                    else:
+                        break
+                yield response
+        finally:
+            close = getattr(response_stream, "close", None)
+            if callable(close):
+                close()
 
         start_listener_time = time.time()
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
@@ -435,11 +497,24 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         with self._database_session() as session:
             session.execute(update(Message).where(Message.id == self._message_id).values(workflow_run_id=run_id))
 
+        logical_timing = None
+        if event.reason == WorkflowStartReason.RESUMPTION:
+            with self._database_session() as session:
+                logical_timing = get_workflow_run_public_timing(
+                    session=session,
+                    workflow_run_id=run_id,
+                    tenant_id=self._workflow_tenant_id,
+                    app_id=self._application_generate_entity.app_config.app_id,
+                    workflow_id=self._workflow_id,
+                )
+
         workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
             workflow_id=self._workflow_id,
             reason=event.reason,
+            logical_started_at=logical_timing.started_at if logical_timing is not None else None,
+            handoff_duration=logical_timing.handoff_duration if logical_timing is not None else 0.0,
         )
 
         yield workflow_start_resp
@@ -710,7 +785,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
-        yield from responses
         resolved_state: GraphRuntimeState | None = None
         try:
             resolved_state = self._ensure_graph_runtime_initialized()
@@ -723,7 +797,32 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             if message is not None:
                 message.status = MessageStatus.PAUSED
             self._message_saved_on_pause = True
-        self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+        # Publish a user-visible pause only after both the graph checkpoint and
+        # accumulated chat state are committed.  A reconnect can therefore
+        # always reconstruct the exact state advertised by this event.
+        yield from responses
+
+    def _handle_workflow_maintenance_paused_event(
+        self,
+        event: QueueWorkflowMaintenancePausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """End this worker's segment without pausing the public chat message."""
+        _ = event, kwargs
+        self._ensure_workflow_initialized()
+        validated_state = self._ensure_graph_runtime_initialized()
+        with self._database_session() as session:
+            self._save_message(
+                session=session,
+                graph_runtime_state=validated_state,
+                preserve_status=True,
+            )
+        activate_workflow_handoff_by_task_id(self._application_generate_entity.task_id)
+        self._base_task_pipeline.queue_manager.mark_execution_terminal()
+        yield WorkflowMaintenancePausedStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            workflow_run_id=self._workflow_run_id,
+        )
 
     def _handle_workflow_failed_event(
         self,
@@ -747,11 +846,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         with self._database_session() as session:
+            self._save_message(session=session, graph_runtime_state=validated_state)
             err_event = QueueErrorEvent(error=ValueError(f"Run failed: {event.error}"))
-            err = self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
+            self._base_task_pipeline.handle_error(event=err_event, session=session, message_id=self._message_id)
 
+        yield MessageReplaceStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            answer=self._task_state.answer,
+            reason="workflow_resumption_terminal",
+        )
+        yield self._message_end_to_stream_response()
         yield workflow_finish_resp
-        yield self._base_task_pipeline.error_to_stream_response(err)
 
     def _handle_stop_event(
         self,
@@ -780,6 +885,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 # Save message
                 self._save_message(session=session, graph_runtime_state=resolved_state)
 
+            yield self._message_end_to_stream_response()
             yield workflow_finish_resp
         elif event.stopped_by in (
             QueueStopEvent.StopBy.INPUT_MODERATION,
@@ -789,8 +895,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             with self._database_session() as session:
                 # Save message
                 self._save_message(session=session)
-
-        yield self._message_end_to_stream_response()
+            yield self._message_end_to_stream_response()
 
     def _handle_advanced_chat_message_end_event(
         self,
@@ -918,6 +1023,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
             QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
+            QueueWorkflowMaintenancePausedEvent: self._handle_workflow_maintenance_paused_event,
             QueueWorkflowFailedEvent: self._handle_workflow_failed_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
@@ -993,48 +1099,57 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 57-if-statement version.
         """
-        for queue_message in self._base_task_pipeline.queue_manager.listen():
-            event = queue_message.event
+        queue_stream = self._base_task_pipeline.queue_manager.listen()
+        try:
+            for queue_message in queue_stream:
+                event = queue_message.event
 
-            match event:
-                case QueueWorkflowStartedEvent():
-                    self._resolve_graph_runtime_state()
-                    yield from self._handle_workflow_started_event(event)
+                match event:
+                    case QueueWorkflowStartedEvent():
+                        self._resolve_graph_runtime_state()
+                        yield from self._handle_workflow_started_event(event)
 
-                case QueueErrorEvent():
-                    yield from self._handle_error_event(event)
-                    break
+                    case QueueErrorEvent():
+                        yield from self._handle_error_event(event)
+                        break
 
-                case QueueWorkflowFailedEvent():
-                    yield from self._handle_workflow_failed_event(event, trace_manager=trace_manager)
-                    break
-                case QueueWorkflowPausedEvent():
-                    yield from self._handle_workflow_paused_event(event)
-                    break
+                    case QueueWorkflowFailedEvent():
+                        yield from self._handle_workflow_failed_event(event, trace_manager=trace_manager)
+                        break
+                    case QueueWorkflowPausedEvent():
+                        yield from self._handle_workflow_paused_event(event)
+                        break
+                    case QueueWorkflowMaintenancePausedEvent():
+                        yield from self._handle_workflow_maintenance_paused_event(event)
+                        break
 
-                case QueueWorkflowSucceededEvent():
-                    yield from self._handle_workflow_succeeded_event(event, trace_manager=trace_manager)
-                    break
+                    case QueueWorkflowSucceededEvent():
+                        yield from self._handle_workflow_succeeded_event(event, trace_manager=trace_manager)
+                        break
 
-                case QueueWorkflowPartialSuccessEvent():
-                    yield from self._handle_workflow_partial_success_event(event, trace_manager=trace_manager)
-                    break
+                    case QueueWorkflowPartialSuccessEvent():
+                        yield from self._handle_workflow_partial_success_event(event, trace_manager=trace_manager)
+                        break
 
-                case QueueStopEvent():
-                    yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
-                    break
+                    case QueueStopEvent():
+                        yield from self._handle_stop_event(event, graph_runtime_state=None, trace_manager=trace_manager)
+                        break
 
-                # Handle all other events through elegant dispatch
-                case _:
-                    if responses := list(
-                        self._dispatch_event(
-                            event,
-                            tts_publisher=tts_publisher,
-                            trace_manager=trace_manager,
-                            queue_message=queue_message,
-                        )
-                    ):
-                        yield from responses
+                    # Handle all other events through elegant dispatch
+                    case _:
+                        if responses := list(
+                            self._dispatch_event(
+                                event,
+                                tts_publisher=tts_publisher,
+                                trace_manager=trace_manager,
+                                queue_message=queue_message,
+                            )
+                        ):
+                            yield from responses
+        finally:
+            close = getattr(queue_stream, "close", None)
+            if callable(close):
+                close()
 
         if tts_publisher:
             tts_publisher.publish(None)
@@ -1042,19 +1157,29 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
+    def _save_message(
+        self,
+        *,
+        session: Session,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        preserve_status: bool = False,
+    ):
         message = self._get_message(session=session)
         if message is None:
             return
 
-        if message.status == MessageStatus.PAUSED:
+        if not preserve_status and message.status == MessageStatus.PAUSED:
             message.status = MessageStatus.NORMAL
 
         answer_text = self._task_state.answer
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()
-        message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
+        segment_latency = max(time.perf_counter() - self._base_task_pipeline.start_at, 0.0)
+        message.provider_response_latency = max(
+            message.provider_response_latency or 0.0,
+            self._prior_provider_response_latency + segment_latency,
+        )
 
         # Set usage first before dumping metadata
         if graph_runtime_state and graph_runtime_state.llm_usage:
@@ -1069,8 +1194,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             message.currency = usage.currency
             self._task_state.metadata.usage = usage
         else:
-            usage = LLMUsage.empty_usage()
-            self._task_state.metadata.usage = usage
+            # A resumed segment may not invoke an LLM.  Keep the metadata and
+            # accounting persisted by the previous segment instead of
+            # replacing it with an empty usage object.
+            usage = self._task_state.metadata.usage or LLMUsage.empty_usage()
 
         # Add streaming metrics to usage if available
         if self._task_state.is_streaming_response and self._task_state.first_token_time:
@@ -1082,23 +1209,48 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         metadata = self._task_state.metadata.model_dump()
         message.message_metadata = json.dumps(jsonable_encoder(metadata))
+        existing_message_files = list(session.scalars(select(MessageFile).where(MessageFile.message_id == message.id)))
+        existing_related_ids = {item.id for item in existing_message_files}
+        existing_file_keys = {
+            (
+                str(item.type),
+                str(item.transfer_method),
+                item.url or "",
+                item.upload_file_id or "",
+            )
+            for item in existing_message_files
+        }
         message_files: list[MessageFile] = []
         for file in self._recorded_files:
             reference = file.get("reference") or file.get("related_id")
+            if isinstance(reference, str) and reference in existing_related_ids:
+                continue
+            upload_file_id = resolve_file_record_id(reference if isinstance(reference, str) else None)
+            remote_url = file.get("remote_url")
+            normalized_url = remote_url if isinstance(remote_url, str) else ""
+            file_key = (
+                str(file["type"]),
+                str(file["transfer_method"]),
+                normalized_url,
+                upload_file_id or "",
+            )
+            if file_key in existing_file_keys:
+                continue
             message_files.append(
                 MessageFile(
                     message_id=message.id,
                     type=file["type"],
                     transfer_method=file["transfer_method"],
-                    url=file["remote_url"],
+                    url=normalized_url,
                     belongs_to=MessageFileBelongsTo.ASSISTANT,
-                    upload_file_id=resolve_file_record_id(reference if isinstance(reference, str) else None),
+                    upload_file_id=upload_file_id,
                     created_by_role=CreatorUserRole.ACCOUNT
                     if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                     else CreatorUserRole.END_USER,
                     created_by=message.from_account_id or message.from_end_user_id or "",
                 )
             )
+            existing_file_keys.add(file_key)
         session.add_all(message_files)
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:

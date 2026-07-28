@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -109,6 +110,73 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
         GraphRuntimeState=MagicMock(),
     )
+
+
+@pytest.mark.parametrize("single_kind", ["iteration", "loop"])
+def test_single_node_run_uses_entity_workflow_id_and_effective_graph(build_runner, single_kind: str) -> None:
+    runner = build_runner
+    entity = runner.application_generate_entity
+    single_run = MagicMock()
+    entity.single_iteration_run = single_run if single_kind == "iteration" else None
+    entity.single_loop_run = single_run if single_kind == "loop" else None
+    entity.workflow_run_id = "chat-run-id"
+    effective_graph = {"nodes": [{"id": f"{single_kind}-node"}], "edges": []}
+    graph = SimpleNamespace(root_node=SimpleNamespace(id=f"{single_kind}-node"))
+    variable_pool = MagicMock()
+    runtime_state = SimpleNamespace(variable_pool=variable_pool)
+
+    with (
+        _patch_common_run_deps(runner),
+        patch.object(
+            runner,
+            "_prepare_single_node_execution",
+            return_value=(graph, effective_graph, variable_pool, runtime_state),
+        ) as prepare_single,
+        patch.object(runner, "_init_graph") as init_graph,
+    ):
+        runner.run()
+        entry_kwargs = module.WorkflowEntry.call_args.kwargs
+
+    assert prepare_single.call_args.kwargs["workflow_execution_id"] == "chat-run-id"
+    assert entry_kwargs["graph_config"] is effective_graph
+    assert entry_kwargs["graph_runtime_state"] is runtime_state
+    init_graph.assert_not_called()
+
+
+@pytest.mark.parametrize("single_kind", ["iteration", "loop"])
+def test_single_node_resume_uses_frozen_graph_state_and_root(build_runner, single_kind: str) -> None:
+    runner = build_runner
+    entity = runner.application_generate_entity
+    single_run = MagicMock()
+    entity.single_iteration_run = single_run if single_kind == "iteration" else None
+    entity.single_loop_run = single_run if single_kind == "loop" else None
+    resume_state = SimpleNamespace(variable_pool=MagicMock())
+    frozen_graph = {"nodes": [{"id": f"{single_kind}-node"}], "edges": []}
+    runner._resume_graph_runtime_state = resume_state
+    runner._execution_graph_config = frozen_graph
+    runner._workflow_version = "published-v1"
+    runner._root_node_id = f"{single_kind}-node"
+    graph = SimpleNamespace(root_node=SimpleNamespace(id=f"{single_kind}-node"))
+
+    with (
+        _patch_common_run_deps(runner),
+        patch.object(module, "WorkflowPersistenceLayer") as persistence_class,
+        patch.object(runner, "_init_graph", return_value=graph) as init_graph,
+        patch.object(runner, "_prepare_single_node_execution") as prepare_single,
+    ):
+        runner.run()
+        entry_kwargs = module.WorkflowEntry.call_args.kwargs
+
+    init_graph.assert_called_once()
+    assert init_graph.call_args.kwargs["graph_config"] is frozen_graph
+    assert init_graph.call_args.kwargs["graph_runtime_state"] is resume_state
+    assert init_graph.call_args.kwargs["root_node_id"] == f"{single_kind}-node"
+    assert init_graph.call_args.kwargs["skip_validation"] is True
+    assert entry_kwargs["graph_config"] is frozen_graph
+    workflow_info = persistence_class.call_args.kwargs["workflow_info"]
+    assert workflow_info.version == "published-v1"
+    assert workflow_info.graph_data is frozen_graph
+    prepare_single.assert_not_called()
 
 
 def test_handle_input_moderation_stops_on_moderation_error(build_runner):

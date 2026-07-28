@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -75,6 +76,7 @@ def test_run_uses_single_node_execution_branch(
     )
 
     graph, variable_pool, graph_runtime_state = _make_graph_state()
+    effective_graph_config = {"nodes": [{"id": "iter" if single_iteration_run else "loop"}], "edges": []}
     mock_workflow_entry = MagicMock()
     mock_workflow_entry.graph_engine = MagicMock()
     mock_workflow_entry.graph_engine.layer = MagicMock()
@@ -89,6 +91,7 @@ def test_run_uses_single_node_execution_branch(
             "_prepare_single_node_execution",
             return_value=(
                 graph,
+                effective_graph_config,
                 variable_pool,
                 graph_runtime_state,
             ),
@@ -102,6 +105,7 @@ def test_run_uses_single_node_execution_branch(
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
+        workflow_execution_id="execution-id",
         trace_session_id="session-1",
     )
     init_graph.assert_not_called()
@@ -110,6 +114,83 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["invoke_from"] == InvokeFrom.DEBUGGER
     assert entry_kwargs["variable_pool"] is variable_pool
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
+    assert entry_kwargs["graph_config"] is effective_graph_config
+
+
+@pytest.mark.parametrize(
+    ("single_iteration_run", "single_loop_run", "root_node_id"),
+    [
+        (WorkflowAppGenerateEntity.SingleIterationRunEntity(node_id="iter", inputs={}), None, "iter"),
+        (None, WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id="loop", inputs={}), "loop"),
+    ],
+)
+def test_single_node_resume_uses_frozen_graph_state_without_reloading_inputs(
+    single_iteration_run: Any,
+    single_loop_run: Any,
+    root_node_id: str,
+) -> None:
+    app_config = MagicMock(app_id="app", tenant_id="tenant", workflow_id="workflow")
+    entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    entity.app_config = app_config
+    entity.inputs = {}
+    entity.files = []
+    entity.user_id = "user"
+    entity.invoke_from = InvokeFrom.DEBUGGER
+    entity.workflow_execution_id = "execution-id"
+    entity.task_id = "task-id"
+    entity.call_depth = 0
+    entity.trace_manager = None
+    entity.extras = {}
+    entity.single_iteration_run = single_iteration_run
+    entity.single_loop_run = single_loop_run
+
+    workflow = MagicMock(spec=Workflow)
+    workflow.tenant_id = "tenant"
+    workflow.app_id = "app"
+    workflow.id = "workflow"
+    workflow.type = "workflow"
+    workflow.version = "edited-draft"
+    workflow.graph_dict = {"nodes": [{"id": "edited-node"}], "edges": []}
+    frozen_graph = {"nodes": [{"id": root_node_id}], "edges": []}
+    variable_pool = MagicMock()
+    resume_state = SimpleNamespace(variable_pool=variable_pool)
+    graph = SimpleNamespace(root_node=SimpleNamespace(id=root_node_id))
+    runner = WorkflowAppRunner(
+        application_generate_entity=entity,
+        queue_manager=MagicMock(spec=AppQueueManager),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="system-user",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+        root_node_id=root_node_id,
+        graph_runtime_state=resume_state,
+        graph_config=frozen_graph,
+        workflow_version="published-v1",
+    )
+    workflow_entry = MagicMock()
+    workflow_entry.run.return_value = iter([])
+
+    with (
+        patch("core.app.apps.workflow.app_runner.RedisChannel"),
+        patch("core.app.apps.workflow.app_runner.redis_client"),
+        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=workflow_entry) as entry_class,
+        patch("core.app.apps.workflow.app_runner.WorkflowPersistenceLayer") as persistence_class,
+        patch.object(runner, "_init_graph", return_value=graph) as init_graph,
+        patch.object(runner, "_prepare_single_node_execution") as prepare_single,
+    ):
+        runner.run()
+
+    init_graph.assert_called_once()
+    assert init_graph.call_args.kwargs["graph_config"] is frozen_graph
+    assert init_graph.call_args.kwargs["graph_runtime_state"] is resume_state
+    assert init_graph.call_args.kwargs["root_node_id"] == root_node_id
+    assert init_graph.call_args.kwargs["skip_validation"] is True
+    assert entry_class.call_args.kwargs["graph_config"] is frozen_graph
+    workflow_info = persistence_class.call_args.kwargs["workflow_info"]
+    assert workflow_info.version == "published-v1"
+    assert workflow_info.graph_data is frozen_graph
+    prepare_single.assert_not_called()
 
 
 def test_single_node_run_validates_target_node_config(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -25,6 +25,7 @@ workflow_run_for_log_fields = {
     "triggered_from": fields.String,
     "error": fields.String,
     "elapsed_time": fields.Float,
+    "handoff_duration": fields.Float,
     "total_tokens": fields.Integer,
     "total_steps": fields.Integer,
     "created_at": TimestampField,
@@ -42,6 +43,7 @@ workflow_run_for_archived_log_fields = {
     "status": fields.String,
     "triggered_from": fields.String,
     "elapsed_time": fields.Float,
+    "handoff_duration": fields.Float,
     "total_tokens": fields.Integer,
 }
 
@@ -57,6 +59,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     triggered_from: str | None = None
     error: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
     total_steps: int | None = None
     created_at: int | None = None
@@ -81,6 +84,7 @@ class WorkflowRunForArchivedLogResponse(ResponseModel):
     status: str | None = None
     triggered_from: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
 
     @field_validator("status", mode="before")
@@ -96,6 +100,7 @@ class WorkflowRunForListResponse(ResponseModel):
     version: str | None = None
     status: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
     total_steps: int | None = None
     created_by_account: SimpleAccount | None = None
@@ -155,6 +160,7 @@ class WorkflowRunDetailResponse(ResponseModel):
     outputs: Any = Field(validation_alias="outputs_dict")
     error: str | None = None
     elapsed_time: float | None = None
+    handoff_duration: float = 0.0
     total_tokens: int | None = None
     total_steps: int | None = None
     created_by_role: str | None = None

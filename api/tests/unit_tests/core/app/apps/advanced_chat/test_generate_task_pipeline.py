@@ -147,7 +147,8 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
     assert message.status == MessageStatus.PAUSED
 
 
-def test_resume_appends_chunks_to_paused_answer() -> None:
+@pytest.mark.parametrize("message_status", [MessageStatus.PAUSED, MessageStatus.NORMAL])
+def test_resume_appends_chunks_to_persisted_answer(message_status: MessageStatus) -> None:
     app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
     application_generate_entity = SimpleNamespace(
         app_config=app_config,
@@ -165,7 +166,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         created_at=datetime(2024, 1, 1),
         query="hello",
         answer="before",
-        status=MessageStatus.PAUSED,
+        status=message_status,
     )
     user = EndUser()
     user.id = "user-1"
@@ -187,7 +188,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
     stored_message = SimpleNamespace(
         id="message-1",
         answer="before",
-        status=MessageStatus.PAUSED,
+        status=message_status,
         updated_at=None,
         provider_response_latency=0,
         message_tokens=0,
@@ -207,7 +208,9 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
     pipeline._recorded_files = []
 
     list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="after")))
-    pipeline._save_message(session=mock.Mock())
+    session = mock.Mock()
+    session.scalars.return_value = []
+    pipeline._save_message(session=session)
 
     assert stored_message.answer == "beforeafter"
     assert stored_message.status == MessageStatus.NORMAL

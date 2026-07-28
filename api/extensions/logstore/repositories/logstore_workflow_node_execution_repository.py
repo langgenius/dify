@@ -415,3 +415,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 workflow_execution_id,
             )
             raise
+
+    @override
+    def get_max_index(self, workflow_execution_id: str) -> int:
+        executions = self.get_by_workflow_execution(workflow_execution_id)
+        return max((int(execution.index or 0) for execution in executions), default=0)
