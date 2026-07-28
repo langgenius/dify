@@ -41,12 +41,6 @@ from services.human_input_service import (
 )
 
 
-@pytest.fixture
-def unbound_session_factory() -> sessionmaker[Session]:
-    """Supply the required constructor dependency without enabling database access."""
-    return sessionmaker()
-
-
 def _make_app(mode: AppMode) -> App:
     return App(
         id="app-id",
