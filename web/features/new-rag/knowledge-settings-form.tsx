@@ -270,6 +270,7 @@ export function KnowledgeSettingsForm({
   const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
   const canDelete = space.permission_keys.includes('knowledge_space_delete')
+  const initialModelSetup = settings.configuration_state !== 'active'
 
   const spaceDirty =
     name !== initialName ||
@@ -301,7 +302,8 @@ export function KnowledgeSettingsForm({
       (!reasoningModel ||
         (rerankEnabled && !rerankModel) ||
         (retrievalMode !== 'research' && scoreThresholdEnabled && !rerankEnabled))) ||
-    (embeddingDirty && retrievalDirty)
+    (initialModelSetup && retrievalDirty && retrievalMode !== 'research' && !embeddingModel) ||
+    (!initialModelSetup && embeddingDirty && retrievalDirty)
 
   const spaceMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.patch.mutationOptions(),
@@ -342,7 +344,7 @@ export function KnowledgeSettingsForm({
     settingsMutation.isPending ||
     Boolean(pendingMigrationId)
   const fieldsDisabled = !canEdit || isSaving
-  const retrievalFieldsDisabled = fieldsDisabled || embeddingDirty
+  const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
   const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
   const saveDisabled = !isDirty || nameInvalid || membersInvalid || settingsInvalid || isSaving
 
@@ -639,6 +641,30 @@ export function KnowledgeSettingsForm({
         </div>
       )}
 
+      {settings.configuration_state === 'setup-required' && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
+          role="status"
+        >
+          <span aria-hidden className="i-ri-information-line size-4 shrink-0" />
+          {tCommon(($) => $['modelProvider.toBeConfigured'])}
+        </div>
+      )}
+
+      {settings.configuration_state === 'validation-failed' && (
+        <div
+          className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2 system-xs-regular text-text-destructive"
+          role="alert"
+        >
+          <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
+          <span className="min-w-0 flex-1">
+            {tCommon(($) => $['api.actionFailed'])}
+            {' · '}
+            {tCommon(($) => $['modelProvider.toBeConfigured'])}
+          </span>
+        </div>
+      )}
+
       {saveError && (
         <div
           className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2"
@@ -765,7 +791,12 @@ export function KnowledgeSettingsForm({
             <Switch
               aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
               checked={apiEnabled}
-              disabled={!canEdit || !canManageAccess || isSaving}
+              disabled={
+                !canEdit ||
+                !canManageAccess ||
+                isSaving ||
+                settings.configuration_state !== 'active'
+              }
               onCheckedChange={(checked) => {
                 if (checked) setApiEnabled(true)
                 else setApiDisableDialogOpen(true)
@@ -819,7 +850,7 @@ export function KnowledgeSettingsForm({
                 ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
                 defaultModel={embeddingModel}
                 modelList={embeddingModelList}
-                readonly={fieldsDisabled || retrievalDirty}
+                readonly={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
                 triggerClassName="w-full"
                 onSelect={setEmbeddingModel}
               />

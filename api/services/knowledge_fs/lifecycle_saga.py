@@ -577,8 +577,8 @@ def _provision_request(command: _ClaimedCommand) -> KnowledgeFSIntegratedProvisi
         slug=payload["slug"],
         icon=payload["icon"],
         description=payload["description"],
-        model_intent=payload["model_intent"],
-        profile_intent=payload["profile_intent"],
+        model_intent=payload.get("model_intent"),
+        profile_intent=payload.get("profile_intent"),
     )
 
 

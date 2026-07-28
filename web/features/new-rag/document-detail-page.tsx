@@ -10,6 +10,7 @@ import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
 import { DocumentDetailStatus } from './document-detail-status'
@@ -17,6 +18,7 @@ import { documentRevisionListFromApi, logicalDocumentFromApi } from './document-
 import { DocumentRevisionContent } from './document-revision-content'
 import { newKnowledgeDocumentsPath } from './routes'
 import { useDocumentReindex } from './use-document-reindex'
+import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
 const documentRevisionParser = createParser<number>({
@@ -63,6 +65,12 @@ export function DocumentDetailPage({
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const {
+    configureModelSetup,
+    ensureModelSetupReady,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
 
   const documentQueryOptions = useMemo(
     () =>
@@ -146,6 +154,7 @@ export function DocumentDetailPage({
     tasksError,
     writePermissionRevoked,
   } = useDocumentReindex({
+    beforeReindex: ensureModelSetupReady,
     documentActiveRevision,
     chunksQueryKey,
     documentId,
@@ -261,6 +270,11 @@ export function DocumentDetailPage({
         revisionHistoryError={Boolean(revisionsQuery.error)}
         revisionHistoryPending={revisionsQuery.isPending}
         retryRevisionHistory={() => void revisionsQuery.refetch()}
+      />
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={configureModelSetup}
       />
     </section>
   )

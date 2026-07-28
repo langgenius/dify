@@ -24,20 +24,19 @@ type CreateKnowledgeValues = {
   visibility: KnowledgeVisibility
 }
 
+export type KnowledgeCreationResult = {
+  knowledgeSpace: KnowledgeFsSpaceCreateResponse
+  modelSetupRequired: boolean
+}
+
 export class KnowledgeCreationError extends Error {
   readonly originalError: unknown
-  readonly reason?: 'defaultModelsRequired'
   readonly stage: 'preflight' | 'request'
 
-  constructor(
-    originalError: unknown,
-    stage: 'preflight' | 'request',
-    reason?: 'defaultModelsRequired',
-  ) {
+  constructor(originalError: unknown, stage: 'preflight' | 'request') {
     super('Knowledge creation failed')
     this.name = 'KnowledgeCreationError'
     this.originalError = originalError
-    this.reason = reason
     this.stage = stage
   }
 }
@@ -76,20 +75,17 @@ async function getDefaultModelSelection(
   return modelSelection(response.data.model, response.data.provider.provider)
 }
 
-async function defaultModelConfiguration(): Promise<
-  Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>
+async function initialModelConfiguration(): Promise<
+  Partial<Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>>
 > {
-  const [embedding, reasoningModel] = await Promise.all([
+  const [embeddingResult, reasoningModelResult] = await Promise.allSettled([
     getDefaultModelSelection('text-embedding'),
     getDefaultModelSelection('llm'),
   ])
-  if (!embedding || !reasoningModel) {
-    throw new KnowledgeCreationError(
-      new Error('Default embedding and reasoning models are required'),
-      'preflight',
-      'defaultModelsRequired',
-    )
-  }
+  const embedding = embeddingResult.status === 'fulfilled' ? embeddingResult.value : undefined
+  const reasoningModel =
+    reasoningModelResult.status === 'fulfilled' ? reasoningModelResult.value : undefined
+  if (!embedding || !reasoningModel) return {}
 
   return {
     embedding,
@@ -119,14 +115,13 @@ function knowledgeSlug(name: string, idempotencyKey: string) {
 
 export async function createKnowledge(
   values: CreateKnowledgeValues,
-): Promise<KnowledgeFsSpaceCreateResponse> {
+): Promise<KnowledgeCreationResult> {
   let created = values.existingKnowledge
   if (!created) {
-    let modelConfiguration: Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>
+    let modelConfiguration: Partial<Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>>
     try {
-      modelConfiguration = await defaultModelConfiguration()
+      modelConfiguration = await initialModelConfiguration()
     } catch (error) {
-      if (error instanceof KnowledgeCreationError) throw error
       throw new KnowledgeCreationError(error, 'preflight')
     }
     try {
@@ -145,5 +140,8 @@ export async function createKnowledge(
     }
   }
   values.onCreated(created)
-  return created
+  return {
+    knowledgeSpace: created,
+    modelSetupRequired: created.model_setup_required,
+  }
 }

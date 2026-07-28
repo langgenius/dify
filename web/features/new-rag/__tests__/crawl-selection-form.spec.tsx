@@ -58,6 +58,9 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const queryClientMock = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
+const settingsState = vi.hoisted(() => ({
+  configurationState: 'active' as 'active' | 'setup-required',
+}))
 const policyQueryOptionsMock = vi.hoisted(() =>
   vi.fn(({ input, select }) => ({
     queryFn: async () => select(policyApiResponse(await clientMock.getPolicy(input))),
@@ -122,6 +125,19 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          settings: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryFn: async () => ({
+                  configuration_state: settingsState.configurationState,
+                  embedding: null,
+                  retrieval: null,
+                  revision: 1,
+                }),
+                queryKey: ['knowledge-fs', 'settings', input],
+              }),
+            },
+          },
           sources: {
             bySourceId: {
               syncPolicy: {
@@ -266,6 +282,7 @@ describe('CrawlSelectionForm', () => {
     clientMock.getWorkflow.mockResolvedValue({ ...run, checkpoint: 'complete', state: 'completed' })
     clientMock.updatePolicy.mockResolvedValue(policy({ mode: 'manual', revision: 3 }))
     clientMock.selectPages.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
+    settingsState.configurationState = 'active'
   })
 
   it('uses singular and plural copy for the crawl summary', async () => {
@@ -284,6 +301,28 @@ describe('CrawlSelectionForm', () => {
     expect(tDataset(($) => $['newKnowledge.pagesCrawled'], { count: 2, host: 'example.com' })).toBe(
       '2 pages crawled at example.com',
     )
+  })
+
+  it('prompts for model setup before importing selected pages', async () => {
+    const user = userEvent.setup()
+    settingsState.configurationState = 'setup-required'
+    renderSelectionForm()
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    expect(clientMock.selectPages).not.toHaveBeenCalled()
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'common.modelProvider.toBeConfigured',
+    })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.selector.configure',
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+    expect(clientMock.selectPages).not.toHaveBeenCalled()
+    expect(dialog).not.toBeInTheDocument()
   })
 
   it('loads a missing initial sync policy without a global error notification', async () => {

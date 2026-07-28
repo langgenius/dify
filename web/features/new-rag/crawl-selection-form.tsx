@@ -33,9 +33,11 @@ import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 import { sourceSyncPolicyFromApi, sourceWorkflowFromApi } from './source-models'
+import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SyncMode = SyncPolicy['mode']
 
@@ -215,6 +217,12 @@ function ReadyCrawlSelectionForm({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const {
+    configureModelSetup,
+    ensureModelSetupReady,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
   const customIntervalErrorId = 'crawl-custom-interval-error'
   const pageDescriptionPrefixId = useId()
   const pageSkipReasons = useMemo(
@@ -331,6 +339,11 @@ function ReadyCrawlSelectionForm({
     submissionPendingRef.current = true
     setSubmitting(true)
     setSubmitError(false)
+    if (!(await ensureModelSetupReady())) {
+      submissionPendingRef.current = false
+      setSubmitting(false)
+      return
+    }
     const desiredPolicy = policyConfiguration(
       syncMode,
       typeof customIntervalHours === 'number' ? customIntervalHours : 0,
@@ -642,6 +655,11 @@ function ReadyCrawlSelectionForm({
           </span>
         )}
       </div>
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={configureModelSetup}
+      />
     </Form>
   )
 }

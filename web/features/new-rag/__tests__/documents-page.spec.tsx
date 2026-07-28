@@ -120,6 +120,11 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
 }))
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+const settingsState = vi.hoisted(() => ({
+  configurationState: 'active' as 'active' | 'setup-required',
+  refetch: vi.fn(),
+}))
 const revisionApiResponse = vi.hoisted(
   () => (revision: NonNullable<LogicalDocument['active']>) => ({
     activated_at: revision.activatedAt ?? null,
@@ -224,6 +229,7 @@ vi.mock('jotai', async (importOriginal) => {
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
@@ -336,6 +342,15 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (options.mutationKind === 'bulk-upload') return bulkUploadMutation
       return uploadMutation
     },
+    useQuery: () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      refetch: settingsState.refetch,
+    }),
     useQueryClient: () => queryClient,
   }
 })
@@ -405,6 +420,19 @@ vi.mock('@/service/client', () => ({
             get: {
               infiniteOptions: documentsInfiniteOptions,
               key: () => ['knowledge-fs', 'documents'],
+            },
+          },
+          settings: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryFn: async () => ({
+                  configuration_state: 'active',
+                  embedding: null,
+                  retrieval: null,
+                  revision: 1,
+                }),
+                queryKey: ['knowledge-fs', 'settings', input],
+              }),
             },
           },
           sources: {
@@ -526,6 +554,16 @@ describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     systemFeaturesStateMock.uploadEnabled = true
+    settingsState.configurationState = 'active'
+    settingsState.refetch.mockImplementation(async () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      isError: false,
+    }))
     queryCacheListeners.clear()
     taskSnapshotRequestState.index = 0
     queryClient.cancelQueries.mockResolvedValue(undefined)
@@ -1051,6 +1089,88 @@ describe('DocumentsPage', () => {
         ],
       }),
     ).toBe(false)
+  })
+
+  it('prompts for model setup before uploading staged documents', async () => {
+    const user = userEvent.setup()
+    settingsState.configurationState = 'setup-required'
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('alertdialog', {
+      name: 'common.modelProvider.toBeConfigured',
+    })
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'common.modelProvider.selector.configure',
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+  })
+
+  it('waits for an authoritative model setup check before uploading', async () => {
+    const user = userEvent.setup()
+    let resolveSettingsCheck!: (result: {
+      data: {
+        configuration_state: 'active'
+        embedding: null
+        retrieval: null
+        revision: number
+      }
+      isError: false
+    }) => void
+    settingsState.refetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSettingsCheck = resolve
+      }),
+    )
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+
+    expect(settingsState.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+
+    await act(async () =>
+      resolveSettingsCheck({
+        data: {
+          configuration_state: 'active',
+          embedding: null,
+          retrieval: null,
+          revision: 1,
+        },
+        isError: false,
+      }),
+    )
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())
+  })
+
+  it('fails closed when the model setup check cannot be refreshed', async () => {
+    const user = userEvent.setup()
+    settingsState.refetch.mockResolvedValueOnce({ data: undefined, isError: true })
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
   it('cancels a staged upload without sending a request', async () => {
@@ -1967,6 +2087,25 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
     )
+  })
+
+  it('prompts for model setup before re-indexing selected documents', async () => {
+    const user = userEvent.setup()
+    settingsState.configurationState = 'setup-required'
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+
+    expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'common.modelProvider.toBeConfigured',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('explains why re-indexing becomes unavailable while results refresh', async () => {
@@ -5939,7 +6078,7 @@ describe('DocumentsPage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
-    expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce()
+    await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())
 
     await act(async () => rejectUpload?.(new Response(null, { status: 403 })))
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())

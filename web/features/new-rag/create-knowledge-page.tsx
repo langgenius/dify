@@ -46,6 +46,7 @@ import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
 import { CreateKnowledgeExitDialog } from './components/create-knowledge-exit-dialog'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import {
   createKnowledge,
   DESCRIPTION_MAX_LENGTH,
@@ -64,6 +65,7 @@ import {
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
+  newKnowledgeSettingsPath,
   newKnowledgeSourceDraftStorageKey,
 } from './routes'
 
@@ -102,6 +104,7 @@ export function CreateKnowledgePage() {
   >({})
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
+  const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(false)
@@ -113,11 +116,7 @@ export function CreateKnowledgePage() {
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading
-  const createErrorMessage =
-    createMutation.error instanceof KnowledgeCreationError &&
-    createMutation.error.reason === 'defaultModelsRequired'
-      ? tCommon(($) => $['modelProvider.noneConfigured'])
-      : t(($) => $['newKnowledge.createFailed'])
+  const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
@@ -257,7 +256,7 @@ export function CreateKnowledgePage() {
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
-      const created = await createMutation.mutateAsync({
+      const result = await createMutation.mutateAsync({
         existingKnowledge: createdKnowledge,
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
@@ -270,7 +269,12 @@ export function CreateKnowledgePage() {
         },
         visibility,
       })
+      const created = result.knowledgeSpace
       if (startMode === 'upload') {
+        if (result.modelSetupRequired) {
+          setModelSetupDialogOpen(true)
+          return
+        }
         setUploading(true)
         setUploadError(false)
         try {
@@ -575,6 +579,15 @@ export function CreateKnowledgePage() {
         reason={exitReason}
         onCancel={cancelExit}
         onConfirm={confirmExit}
+      />
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={() => {
+          setModelSetupDialogOpen(false)
+          if (createdKnowledge)
+            replaceAfterHistoryGuard(newKnowledgeSettingsPath(createdKnowledge.control_space_id))
+        }}
       />
     </Dialog>
   )

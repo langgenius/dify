@@ -88,6 +88,11 @@ const permissionState = vi.hoisted(() => ({
   refresh: vi.fn(),
 }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+const settingsState = vi.hoisted(() => ({
+  configurationState: 'active' as 'active' | 'setup-required',
+  refetch: vi.fn(),
+}))
 const queryClient = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   removeQueries: vi.fn(),
@@ -153,6 +158,12 @@ const documentOptions = vi.hoisted(() =>
     queryKind: 'document',
   })),
 )
+const settingsOptions = vi.hoisted(() =>
+  vi.fn(({ input }: { input: unknown }) => ({
+    queryKey: ['knowledge-fs', 'settings', input],
+    queryKind: 'settings',
+  })),
+)
 const revisionsOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
     ...options,
@@ -193,6 +204,7 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastState }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   defaultRangeExtractor: ({ endIndex, startIndex }: { endIndex: number; startIndex: number }) =>
@@ -267,7 +279,18 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       }
     },
     useMutation: () => reindexMutation,
-    useQuery: () => documentQuery,
+    useQuery: (options: { queryKind?: string }) =>
+      options.queryKind === 'settings'
+        ? {
+            data: {
+              configuration_state: settingsState.configurationState,
+              embedding: null,
+              retrieval: null,
+              revision: 1,
+            },
+            refetch: settingsState.refetch,
+          }
+        : documentQuery,
     useQueryClient: () => queryClient,
   }
 })
@@ -312,6 +335,11 @@ vi.mock('@/service/client', () => ({
                 queryOptions: documentOptions,
                 key: () => ['knowledge-fs', 'document'],
               },
+            },
+          },
+          settings: {
+            get: {
+              queryOptions: settingsOptions,
             },
           },
         },
@@ -435,6 +463,16 @@ describe('DocumentDetailPage', () => {
       data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
       error: null,
     })
+    settingsState.configurationState = 'active'
+    settingsState.refetch.mockImplementation(async () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      isError: false,
+    }))
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
     queryClient.invalidateQueries.mockResolvedValue(undefined)
   })
@@ -981,6 +1019,25 @@ describe('DocumentDetailPage', () => {
       'dataset.newKnowledge.documentPermissionRestricted',
     )
     expect(screen.getByText('dataset.newKnowledge.documentPermissionRestricted')).toBeVisible()
+  })
+
+  it('prompts for model setup before re-indexing a document', async () => {
+    const user = userEvent.setup()
+    settingsState.configurationState = 'setup-required'
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }))
+
+    expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('alertdialog', {
+      name: 'common.modelProvider.toBeConfigured',
+    })
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'common.modelProvider.selector.configure',
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
   })
 
   it('guards re-index against rapid repeats and handles a concurrently removed document', async () => {

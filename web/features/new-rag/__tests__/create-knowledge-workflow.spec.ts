@@ -41,6 +41,7 @@ describe('createKnowledge', () => {
     )
     serviceMock.createSpace.mockResolvedValue({
       control_space_id: 'control-space-1',
+      model_setup_required: false,
       operation_id: 'operation-1',
       state: 'provisioning',
     })
@@ -58,9 +59,13 @@ describe('createKnowledge', () => {
         visibility: 'all_team_members',
       }),
     ).resolves.toEqual({
-      control_space_id: 'control-space-1',
-      operation_id: 'operation-1',
-      state: 'provisioning',
+      knowledgeSpace: {
+        control_space_id: 'control-space-1',
+        model_setup_required: false,
+        operation_id: 'operation-1',
+        state: 'provisioning',
+      },
+      modelSetupRequired: false,
     })
 
     expect(serviceMock.createSpace).toHaveBeenCalledWith({
@@ -90,14 +95,21 @@ describe('createKnowledge', () => {
     })
     expect(onCreated).toHaveBeenCalledWith({
       control_space_id: 'control-space-1',
+      model_setup_required: false,
       operation_id: 'operation-1',
       state: 'provisioning',
     })
   })
 
   it.each(['text-embedding', 'llm'] as const)(
-    'requires the default %s model before creating the control space',
+    'creates a setup-required control space when the default %s model is missing',
     async (missingModelType) => {
+      serviceMock.createSpace.mockResolvedValueOnce({
+        control_space_id: 'control-space-1',
+        model_setup_required: true,
+        operation_id: 'operation-1',
+        state: 'provisioning',
+      })
       serviceMock.getDefaultModel.mockImplementation(
         ({ query }: { query: { model_type: 'llm' | 'text-embedding' } }) =>
           Promise.resolve(
@@ -126,14 +138,77 @@ describe('createKnowledge', () => {
           onCreated: vi.fn(),
           visibility: 'only_me',
         }),
-      ).rejects.toMatchObject({
-        name: 'KnowledgeCreationError',
-        reason: 'defaultModelsRequired',
-        stage: 'preflight',
+      ).resolves.toEqual({
+        knowledgeSpace: {
+          control_space_id: 'control-space-1',
+          model_setup_required: true,
+          operation_id: 'operation-1',
+          state: 'provisioning',
+        },
+        modelSetupRequired: true,
       })
-      expect(serviceMock.createSpace).not.toHaveBeenCalled()
+      expect(serviceMock.createSpace).toHaveBeenCalledWith({
+        body: {
+          description: undefined,
+          idempotency_key: '22222222-2222-4222-8222-222222222222',
+          name: '知识库',
+          slug: expect.stringMatching(/^knowledge-[a-z0-9]+$/),
+          visibility: 'only_me',
+        },
+      })
     },
   )
+
+  it('creates without model presets when loading workspace defaults fails', async () => {
+    serviceMock.createSpace.mockResolvedValueOnce({
+      control_space_id: 'control-space-1',
+      model_setup_required: true,
+      operation_id: 'operation-1',
+      state: 'provisioning',
+    })
+    serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
+
+    await expect(
+      createKnowledge({
+        description: '',
+        idempotencyKey: '33333333-3333-4333-8333-333333333333',
+        name: 'Fallback',
+        onCreated: vi.fn(),
+        visibility: 'only_me',
+      }),
+    ).resolves.toMatchObject({ modelSetupRequired: true })
+
+    expect(serviceMock.createSpace).toHaveBeenCalledWith({
+      body: expect.not.objectContaining({
+        embedding: expect.anything(),
+        retrieval: expect.anything(),
+      }),
+    })
+  })
+
+  it('uses the persisted setup state returned by an idempotent replay', async () => {
+    serviceMock.createSpace
+      .mockRejectedValueOnce(new Error('response lost after creation'))
+      .mockResolvedValueOnce({
+        control_space_id: 'control-space-1',
+        model_setup_required: true,
+        operation_id: 'operation-1',
+        state: 'provisioning',
+      })
+
+    const values = {
+      description: '',
+      idempotencyKey: '44444444-4444-4444-8444-444444444444',
+      name: 'Recovered',
+      onCreated: vi.fn(),
+      visibility: 'only_me' as const,
+    }
+
+    await expect(createKnowledge(values)).rejects.toMatchObject({ stage: 'request' })
+    await expect(createKnowledge(values)).resolves.toMatchObject({
+      modelSetupRequired: true,
+    })
+  })
 })
 
 describe('isDefinitiveCreationRejection', () => {

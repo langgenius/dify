@@ -562,6 +562,7 @@ export const zKnowledgeFsControlSpaceState = z.enum([
  */
 export const zKnowledgeFsSpaceCreateResponse = z.object({
   control_space_id: z.string(),
+  model_setup_required: z.boolean(),
   operation_id: z.string(),
   state: zKnowledgeFsControlSpaceState,
 })
@@ -1318,11 +1319,11 @@ export const zKnowledgeFsRetrievalProfileIntent = z.object({
  */
 export const zKnowledgeFsSpaceCreatePayload = z.object({
   description: z.string().max(2000).nullish(),
-  embedding: zKnowledgeFsModelIntent,
+  embedding: zKnowledgeFsModelIntent.nullish(),
   icon: z.string().max(255).nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
   name: z.string().min(1).max(40),
-  retrieval: zKnowledgeFsRetrievalProfileIntent,
+  retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
   slug: z
     .string()
     .min(1)

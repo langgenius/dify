@@ -132,12 +132,14 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
             resource=CapabilityResource(type="namespace", id=request.namespace_id),
         )
         payload: dict[str, JsonValue] = {
-            "embeddingProfile": _json_object(request.model_intent, "embedding profile"),
             "idempotencyKey": request.provisioning_key,
             "name": request.name,
-            "retrievalProfile": _json_object(request.profile_intent, "retrieval profile"),
             "slug": request.slug,
         }
+        if request.model_intent is not None:
+            payload["embeddingProfile"] = _json_object(request.model_intent, "embedding profile")
+        if request.profile_intent is not None:
+            payload["retrievalProfile"] = _json_object(request.profile_intent, "retrieval profile")
         if request.icon is not None:
             payload["iconRef"] = request.icon
         if request.description is not None:

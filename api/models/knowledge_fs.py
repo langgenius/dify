@@ -58,8 +58,8 @@ class KnowledgeFSProvisionCommandPayload(KnowledgeFSCommandEnvelope):
     icon: str | None
     description: str | None
     slug: str
-    model_intent: KnowledgeFSModelSelectionIntentPayload
-    profile_intent: KnowledgeFSRetrievalProfileIntentPayload
+    model_intent: NotRequired[KnowledgeFSModelSelectionIntentPayload]
+    profile_intent: NotRequired[KnowledgeFSRetrievalProfileIntentPayload]
 
 
 class KnowledgeFSMetadataUpdateCommandPayload(KnowledgeFSCommandEnvelope):

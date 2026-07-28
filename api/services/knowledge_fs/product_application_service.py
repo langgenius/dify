@@ -88,8 +88,10 @@ class KnowledgeFSProductApplicationService:
                 slug=payload.slug,
                 icon=payload.icon,
                 description=payload.description,
-                model_intent=_model_intent(payload.embedding),
-                profile_intent=_retrieval_profile_intent(payload.retrieval),
+                model_intent=_model_intent(payload.embedding) if payload.embedding is not None else None,
+                profile_intent=(
+                    _retrieval_profile_intent(payload.retrieval) if payload.retrieval is not None else None
+                ),
             )
         )
         if payload.visibility is not KnowledgeFSControlSpaceVisibility.ONLY_ME:
@@ -103,6 +105,7 @@ class KnowledgeFSProductApplicationService:
             control_space_id=result.control_space.id,
             state=result.control_space.state,
             operation_id=operation_id,
+            model_setup_required=result.model_setup_required,
         )
 
     def get_space(self, *, tenant_id: str, account_id: str, control_space_id: str) -> KnowledgeFSSpaceDetailResponse:

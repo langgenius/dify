@@ -442,6 +442,37 @@ def test_space_create_profile_intent_matches_the_exact_kfs_pending_configuration
         )
 
 
+def test_space_create_allows_deferred_model_setup_but_rejects_incomplete_fast_profile() -> None:
+    payload = KnowledgeFSSpaceCreatePayload.model_validate(
+        {
+            "name": "Setup later",
+            "slug": "setup-later",
+        }
+    )
+
+    assert payload.embedding is None
+    assert payload.retrieval is None
+
+    with pytest.raises(ValueError, match="requires an embedding model"):
+        KnowledgeFSSpaceCreatePayload.model_validate(
+            {
+                "name": "Incomplete fast profile",
+                "slug": "incomplete-fast-profile",
+                "retrieval": {
+                    "defaultMode": "fast",
+                    "reasoningModel": {
+                        "pluginId": "plugin",
+                        "provider": "provider",
+                        "model": "reasoning",
+                    },
+                    "rerank": {"enabled": False},
+                    "scoreThreshold": {"enabled": False, "stage": "mode-final"},
+                    "topK": 10,
+                },
+            }
+        )
+
+
 def test_jwks_http_resource_returns_only_public_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     public_jwks = {
         "keys": [

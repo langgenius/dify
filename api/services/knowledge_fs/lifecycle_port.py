@@ -28,8 +28,8 @@ class KnowledgeFSIntegratedProvisionRequest(NamedTuple):
     slug: str
     icon: str | None
     description: str | None
-    model_intent: KnowledgeFSModelSelectionIntentPayload
-    profile_intent: KnowledgeFSRetrievalProfileIntentPayload
+    model_intent: KnowledgeFSModelSelectionIntentPayload | None
+    profile_intent: KnowledgeFSRetrievalProfileIntentPayload | None
 
 
 class KnowledgeFSIntegratedDeletionRequest(NamedTuple):

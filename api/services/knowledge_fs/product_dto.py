@@ -94,11 +94,17 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
     icon: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility = KnowledgeFSControlSpaceVisibility.ONLY_ME
-    embedding: KnowledgeFSModelIntent
-    retrieval: KnowledgeFSRetrievalProfileIntent
+    embedding: KnowledgeFSModelIntent | None = None
+    retrieval: KnowledgeFSRetrievalProfileIntent | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_initial_model_configuration(self) -> KnowledgeFSSpaceCreatePayload:
+        if self.retrieval is not None and self.retrieval.default_mode != "research" and self.embedding is None:
+            raise ValueError("Fast/Deep retrieval requires an embedding model")
+        return self
 
 
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
@@ -392,6 +398,7 @@ class KnowledgeFSSpaceCreateResponse(ResponseModel):
     control_space_id: str
     state: KnowledgeFSControlSpaceState
     operation_id: str
+    model_setup_required: bool
 
 
 class KnowledgeFSPermissionResponse(ResponseModel):

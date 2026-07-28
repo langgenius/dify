@@ -14,6 +14,7 @@ import { useDocumentTaskStatus } from './use-document-task-status'
 const REINDEX_CONFIRMATION_TIMEOUT = 30000
 
 export function useDocumentReindex({
+  beforeReindex,
   chunksQueryKey,
   documentActiveRevision,
   documentId,
@@ -22,6 +23,7 @@ export function useDocumentReindex({
   knowledgeSpaceId,
   revisionsQueryKey,
 }: {
+  beforeReindex: () => Promise<boolean>
   chunksQueryKey: readonly unknown[]
   documentActiveRevision: number
   documentId: string
@@ -169,6 +171,7 @@ export function useDocumentReindex({
     reindexPendingRef.current = true
     setReindexBusy(true)
     try {
+      if (!(await beforeReindex())) return
       const result = await reindexDocument({
         body: { documentIds: [documentId] },
         params: { control_space_id: knowledgeSpaceId },

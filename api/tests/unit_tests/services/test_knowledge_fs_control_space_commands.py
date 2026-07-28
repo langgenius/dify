@@ -83,12 +83,39 @@ def test_create_provision_intent_persists_control_revision_and_outbox_atomically
     assert commands[0].operation is KnowledgeFSLifecycleOperation.PROVISION
     assert commands[0].expected_control_space_version == 0
     assert commands[0].command_payload["idempotency_key"] == "provision-idempotency-1"
+    assert result.model_setup_required is False
     assert commands[0].command_payload["model_intent"] == {
         "pluginId": "langgenius/openai",
         "provider": "openai",
         "model": "text-embedding-3-small",
     }
     assert commands[0].command_payload["profile_intent"]["defaultMode"] == "fast"
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSControlSpacePermission,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSLifecycleOutbox,
+        )
+    ],
+    indirect=True,
+)
+def test_create_provision_intent_omits_unconfigured_models(sqlite_session: Session) -> None:
+    service = _service(sqlite_session)
+    intent = _provision_intent()._replace(model_intent=None, profile_intent=None)
+
+    result = service.create_provision_intent(intent)
+    replay = service.create_provision_intent(_provision_intent())
+
+    assert "model_intent" not in result.outbox.command_payload
+    assert "profile_intent" not in result.outbox.command_payload
+    assert result.model_setup_required is True
+    assert replay.model_setup_required is True
+    assert replay.outbox.id == result.outbox.id
 
 
 @pytest.mark.parametrize(

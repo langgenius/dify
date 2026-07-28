@@ -17,17 +17,18 @@ export type KnowledgeFsSpaceListResponse = {
 
 export type KnowledgeFsSpaceCreatePayload = {
   description?: string | null
-  embedding: KnowledgeFsModelIntent
+  embedding?: KnowledgeFsModelIntent | null
   icon?: string | null
   idempotency_key?: string | null
   name: string
-  retrieval: KnowledgeFsRetrievalProfileIntent
+  retrieval?: KnowledgeFsRetrievalProfileIntent | null
   slug: string
   visibility?: KnowledgeFsControlSpaceVisibility
 }
 
 export type KnowledgeFsSpaceCreateResponse = {
   control_space_id: string
+  model_setup_required: boolean
   operation_id: string
   state: KnowledgeFsControlSpaceState
 }

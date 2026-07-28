@@ -102,7 +102,8 @@ def _application(*, allowed: bool = True):
     rbac = MagicMock()
     rbac.workspace_permission_allowed.return_value = allowed
     commands.create_provision_intent.return_value = SimpleNamespace(
-        control_space=SimpleNamespace(id="control-1", state=KnowledgeFSControlSpaceState.PROVISIONING)
+        control_space=SimpleNamespace(id="control-1", state=KnowledgeFSControlSpaceState.PROVISIONING),
+        model_setup_required=False,
     )
     product.authorize_control_space.return_value = SimpleNamespace(
         control_space=SimpleNamespace(knowledge_space_id="space-1")
@@ -158,6 +159,7 @@ def test_product_application_create_preserves_model_profile_and_updates_non_priv
 
     assert response.control_space_id == "control-1"
     assert response.operation_id == "operation-1"
+    assert response.model_setup_required is False
     product.require_product_routes.assert_called_once_with(tenant_id="tenant-1")
     intent = commands.create_provision_intent.call_args.args[0]
     assert intent.idempotency_key == "create-once"
@@ -177,6 +179,26 @@ def test_product_application_create_preserves_model_profile_and_updates_non_priv
         control_space_id="control-1",
         visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
     )
+
+
+def test_product_application_create_allows_model_setup_after_creation() -> None:
+    application, _product, _control_plane, commands, _facade, _rbac = _application()
+    commands.create_provision_intent.return_value.model_setup_required = True
+
+    with patch(
+        "services.knowledge_fs.product_application_service.uuid.uuid5",
+        return_value="operation-1",
+    ):
+        response = application.create_space(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            payload=_create_payload(embedding=None, retrieval=None),
+        )
+
+    intent = commands.create_provision_intent.call_args.args[0]
+    assert intent.model_intent is None
+    assert intent.profile_intent is None
+    assert response.model_setup_required is True
 
 
 def test_product_application_create_generates_idempotency_and_skips_default_visibility_update() -> None:

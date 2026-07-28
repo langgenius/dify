@@ -533,6 +533,73 @@ describe('KnowledgeSettingsForm', () => {
     ).toBeDisabled()
   })
 
+  it('allows embedding and retrieval to be configured together during initial setup', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      settings: {
+        configuration_state: 'setup-required',
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      space: {
+        ...space,
+        technical_summary: {
+          ...space.technical_summary,
+          document_count: 0,
+        },
+      },
+    })
+
+    expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'common.modelProvider.systemReasoningModel.key',
+      }),
+    )
+    const embeddingSelector = screen.getByRole('button', {
+      name: 'datasetSettings.form.embeddingModel',
+    })
+    expect(embeddingSelector).toBeEnabled()
+    await user.click(embeddingSelector)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+        {
+          body: {
+            embedding: expect.any(Object),
+            expectedRevision: 1,
+            retrieval: expect.any(Object),
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('shows a recovery alert when initial model validation fails', () => {
+    renderForm({
+      settings: {
+        ...settings,
+        configuration_state: 'validation-failed',
+      },
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'common.api.actionFailed · common.modelProvider.toBeConfigured',
+    )
+  })
+
   it('asks before following a link while the form has unsaved changes', async () => {
     const user = userEvent.setup()
     renderForm()

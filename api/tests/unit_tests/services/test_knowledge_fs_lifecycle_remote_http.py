@@ -376,6 +376,44 @@ def test_provision_issues_internal_worker_capability_and_maps_exact_pending_prof
     assert not any(name.lower() == "cookie" for name in headers)
 
 
+def test_provision_omits_unconfigured_model_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
+    issuer = MagicMock()
+    issuer.issue.return_value = SimpleNamespace(token="provision-capability")
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        201,
+        json={
+            "id": "10000000-0000-4000-8000-000000000001",
+            "revision": 1,
+            "slug": "space",
+            "tenantId": "tenant-1",
+        },
+        headers={"Content-Type": "application/json"},
+    )
+
+    def fake_make_request(**kwargs: object) -> httpx.Response:
+        captured.update(kwargs)
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    remote = HTTPKnowledgeFSLifecycleRemoteClient(
+        base_url="https://knowledge-fs.test",
+        issuer=issuer,
+        timeout_seconds=3,
+    )
+
+    remote.provision_integrated_space(_provision_request()._replace(model_intent=None, profile_intent=None))
+
+    assert captured["json"] == {
+        "description": "Description",
+        "iconRef": "builtin:book",
+        "idempotencyKey": "dify:tenant-1:space",
+        "name": "Space",
+        "slug": "space",
+    }
+
+
 def test_delete_maps_durable_progress_and_sends_all_lifecycle_identities(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

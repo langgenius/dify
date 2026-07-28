@@ -93,6 +93,7 @@ vi.mock('@/service/client', () => ({
 
 const createdKnowledge = {
   control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
+  model_setup_required: false,
   operation_id: 'operation-1',
   state: 'provisioning' as const,
 }
@@ -342,11 +343,15 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('unlocks editable fields and rotates the idempotency key after model preflight fails', async () => {
+  it('creates an empty knowledge base when a default model is missing', async () => {
     const user = userEvent.setup()
-    vi.mocked(globalThis.crypto.randomUUID)
-      .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
-      .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
+    serviceMock.create.mockResolvedValueOnce({
+      ...createdKnowledge,
+      model_setup_required: true,
+    })
+    vi.mocked(globalThis.crypto.randomUUID).mockReturnValueOnce(
+      '11111111-1111-4111-8111-111111111111',
+    )
     serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
       Promise.resolve(
         query.model_type === 'llm'
@@ -364,51 +369,70 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'common.modelProvider.noneConfigured',
-    )
-    expect(screen.getByRole('alert')).not.toHaveTextContent('dataset.newKnowledge.createFailed')
-    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
-    expect(nameInput).toBeEnabled()
-    expect(serviceMock.create).not.toHaveBeenCalled()
-
-    serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
-      Promise.resolve({
-        data: {
-          model: query.model_type === 'llm' ? 'echo' : 'embed',
-          provider: {
-            provider:
-              query.model_type === 'llm'
-                ? 'kurokobo/fake_models/fake_models'
-                : 'langgenius/cohere/cohere',
-          },
-        },
-      }),
-    )
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Updated handbook')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
     expect(serviceMock.create).toHaveBeenCalledWith({
-      body: expect.objectContaining({
-        idempotency_key: '22222222-2222-4222-8222-222222222222',
-        name: 'Updated handbook',
+      body: expect.not.objectContaining({
+        embedding: expect.anything(),
+        retrieval: expect.anything(),
       }),
     })
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      `/datasets/new/${createdKnowledge.control_space_id}/sources`,
+    )
   })
 
-  it('keeps the generic error when loading default models fails', async () => {
+  it('creates without model presets when loading default models fails', async () => {
     const user = userEvent.setup()
+    serviceMock.create.mockResolvedValueOnce({
+      ...createdKnowledge,
+      model_setup_required: true,
+    })
     serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
     renderPage()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
-    expect(screen.getByRole('alert')).not.toHaveTextContent('common.modelProvider.noneConfigured')
-    expect(serviceMock.create).not.toHaveBeenCalled()
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.not.objectContaining({
+        embedding: expect.anything(),
+        retrieval: expect.anything(),
+      }),
+    })
+  })
+
+  it('creates the space but prompts for model setup before uploading', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.create.mockResolvedValueOnce({
+      ...createdKnowledge,
+      model_setup_required: true,
+    })
+    serviceMock.getDefaultModel.mockResolvedValue({ data: null })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'guide.txt', { type: 'text/plain' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+      'common.modelProvider.toBeConfigured',
+    )
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: 'common.modelProvider.selector.configure' }),
+    )
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      `/datasets/new/${createdKnowledge.control_space_id}/settings`,
+    )
   })
 
   it.each([400, 401, 403, 422])(

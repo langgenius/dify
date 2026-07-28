@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
@@ -52,13 +52,14 @@ class KnowledgeFSProvisionIntent(NamedTuple):
     slug: str
     icon: str | None
     description: str | None
-    model_intent: KnowledgeFSModelSelectionIntentPayload
-    profile_intent: KnowledgeFSRetrievalProfileIntentPayload
+    model_intent: KnowledgeFSModelSelectionIntentPayload | None
+    profile_intent: KnowledgeFSRetrievalProfileIntentPayload | None
 
 
 class KnowledgeFSProvisionIntentResult(NamedTuple):
     control_space: KnowledgeFSControlSpace
     outbox: KnowledgeFSLifecycleOutbox
+    model_setup_required: bool
 
 
 class KnowledgeFSDeletionIntentResult(NamedTuple):
@@ -68,6 +69,13 @@ class KnowledgeFSDeletionIntentResult(NamedTuple):
 
 class KnowledgeFSControlSpaceIntentConflictError(RuntimeError):
     """An idempotency identity was reused for a different lifecycle intent."""
+
+
+def _provision_payload_requires_model_setup(payload: KnowledgeFSProvisionCommandPayload) -> bool:
+    profile_intent = payload.get("profile_intent")
+    if profile_intent is None:
+        return True
+    return profile_intent["defaultMode"] != "research" and payload.get("model_intent") is None
 
 
 class KnowledgeFSControlSpaceCommandService:
@@ -96,7 +104,13 @@ class KnowledgeFSControlSpaceCommandService:
                     raise KnowledgeFSControlSpaceIntentConflictError(
                         "KnowledgeFS provisioning key was reused for a different intent"
                     )
-                return KnowledgeFSProvisionIntentResult(existing, command)
+                return KnowledgeFSProvisionIntentResult(
+                    existing,
+                    command,
+                    _provision_payload_requires_model_setup(
+                        cast(KnowledgeFSProvisionCommandPayload, command.command_payload)
+                    ),
+                )
 
             control_space = control_repository.add(
                 KnowledgeFSControlSpace(
@@ -130,9 +144,11 @@ class KnowledgeFSControlSpaceCommandService:
                 icon=intent.icon,
                 description=intent.description,
                 slug=intent.slug,
-                model_intent=KnowledgeFSModelSelectionIntentPayload(**intent.model_intent),
-                profile_intent=KnowledgeFSRetrievalProfileIntentPayload(**intent.profile_intent),
             )
+            if intent.model_intent is not None:
+                payload["model_intent"] = KnowledgeFSModelSelectionIntentPayload(**intent.model_intent)
+            if intent.profile_intent is not None:
+                payload["profile_intent"] = KnowledgeFSRetrievalProfileIntentPayload(**intent.profile_intent)
             command = outbox_repository.add(
                 KnowledgeFSLifecycleOutbox(
                     tenant_id=intent.tenant_id,
@@ -145,7 +161,11 @@ class KnowledgeFSControlSpaceCommandService:
                     expected_knowledge_space_revision=0,
                 )
             )
-            return KnowledgeFSProvisionIntentResult(control_space, command)
+            return KnowledgeFSProvisionIntentResult(
+                control_space,
+                command,
+                _provision_payload_requires_model_setup(payload),
+            )
 
     def request_deletion(
         self,

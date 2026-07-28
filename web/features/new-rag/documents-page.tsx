@@ -27,6 +27,7 @@ import { knowledgeFsUploadEnabledAtom } from '@/context/system-features-state'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import {
   DocumentBulkActions,
   DocumentDropOverlay,
@@ -56,6 +57,7 @@ import { newKnowledgeDocumentDetailPath } from './routes'
 import { sourceFromApi } from './source-models'
 import { TaskEventObserver } from './task-event-observer'
 import { createTaskProgressStore } from './task-progress-store'
+import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const TASK_PAGE_SIZE = 100
@@ -256,6 +258,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
+  const {
+    configureModelSetup,
+    ensureModelSetupReady,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
 
   const documentsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
@@ -1460,6 +1468,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       uploadPendingRef.current = true
       setUploading(true)
       try {
+        if (!(await ensureModelSetupReady())) return false
         let acceptedCount = 0
         const exclusions = [...localExclusions]
         const uploads = uploadableFiles.map((file) => {
@@ -1509,7 +1518,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         setUploading(false)
       }
     },
-    [canUpload, handleWritePermissionDenied, knowledgeSpaceId, refreshDocumentsAndTasks, t],
+    [
+      canUpload,
+      ensureModelSetupReady,
+      handleWritePermissionDenied,
+      knowledgeSpaceId,
+      refreshDocumentsAndTasks,
+      t,
+    ],
   )
 
   const handleReindexDocuments = useCallback(async () => {
@@ -1523,6 +1539,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     reindexPendingRef.current = true
     setReindexing(true)
     try {
+      if (!(await ensureModelSetupReady())) return
       const selectedIds = [...validSelectedDocumentIds].sort()
       const result = await reindexDocuments({
         body: { documentIds: selectedIds },
@@ -1562,6 +1579,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
   }, [
     canWrite,
+    ensureModelSetupReady,
     handleWritePermissionDenied,
     knowledgeSpaceId,
     refreshDocumentsAndTasks,
@@ -2327,6 +2345,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         taskQueryFetching={tasksQuery.isFetching}
         taskProgressStore={taskProgressStore}
         tasks={tasks}
+      />
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={configureModelSetup}
       />
     </>
   )

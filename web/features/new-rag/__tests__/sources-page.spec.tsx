@@ -65,6 +65,11 @@ const clientMock = vi.hoisted(() => ({
   syncSource: vi.fn(),
 }))
 const invalidateQueriesMock = vi.hoisted(() => vi.fn())
+const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+const settingsState = vi.hoisted(() => ({
+  configurationState: 'active' as 'active' | 'setup-required',
+  refetch: vi.fn(),
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -81,9 +86,19 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
+    useQuery: () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      refetch: settingsState.refetch,
+    }),
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
+vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -110,6 +125,13 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          settings: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryKey: ['knowledge-fs', 'settings', input],
+              }),
+            },
+          },
           sources: {
             get: {
               infiniteOptions: infiniteOptionsMock,
@@ -149,6 +171,16 @@ describe('SourcesPage', () => {
     clientMock.patchSource.mockResolvedValue(source({}))
     clientMock.syncSource.mockResolvedValue({ state: 'queued' })
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
+    settingsState.configurationState = 'active'
+    settingsState.refetch.mockImplementation(async () => ({
+      data: {
+        configuration_state: settingsState.configurationState,
+        embedding: null,
+        retrieval: null,
+        revision: 1,
+      },
+      isError: false,
+    }))
   })
 
   it('loads sources through the KnowledgeFS contract', () => {
@@ -523,6 +555,31 @@ describe('SourcesPage', () => {
       }),
     ).toBe(false)
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
+  })
+
+  it('prompts for model setup before syncing a source', async () => {
+    const user = userEvent.setup()
+    settingsState.configurationState = 'setup-required'
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
+
+    expect(clientMock.syncSource).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('alertdialog', {
+      name: 'common.modelProvider.toBeConfigured',
+    })
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'common.modelProvider.selector.configure',
+      }),
+    )
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
   })
 
   it('disables and re-enables a source through the real patch endpoint', async () => {

@@ -43,8 +43,10 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { newKnowledgeAddSourcePath } from './routes'
 import { sourceFromApi } from './source-models'
+import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SourceStatus = Source['status']
 type SourceFilter = SourceStatus | 'all'
@@ -229,6 +231,7 @@ function SourceRow({
   canEdit,
   canSync,
   checked,
+  ensureModelSetupReady,
   knowledgeSpaceId,
   onCheckedChange,
   onSourceReconciled,
@@ -239,6 +242,7 @@ function SourceRow({
   canEdit: boolean
   canSync: boolean
   checked: boolean
+  ensureModelSetupReady: () => Promise<boolean>
   knowledgeSpaceId: string
   onCheckedChange: (checked: boolean) => void
   onSourceReconciled: () => void
@@ -270,10 +274,12 @@ function SourceRow({
     mutation: () => Promise<Result>,
     onAccepted?: (result: Result) => void,
     onRefreshed?: () => void,
+    beforeAction?: () => Promise<boolean>,
   ) => {
     if (pendingAction) return false
     setPendingAction(action)
     try {
+      if (beforeAction && !(await beforeAction())) return false
       let result: Result
       try {
         result = await mutation()
@@ -314,6 +320,7 @@ function SourceRow({
         }),
       () => onSourceChange({ ...source, status: 'syncing' }),
       onSourceReconciled,
+      ensureModelSetupReady,
     )
 
   const toggleSource = () =>
@@ -472,6 +479,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const {
+    configureModelSetup,
+    ensureModelSetupReady,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
   const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
@@ -728,9 +741,10 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     key={source.id}
                     canEdit={canManageSources}
                     canSync={canManageSources}
-                    source={source}
-                    knowledgeSpaceId={knowledgeSpaceId}
                     checked={selectedSourceIds.has(source.id)}
+                    ensureModelSetupReady={ensureModelSetupReady}
+                    knowledgeSpaceId={knowledgeSpaceId}
+                    source={source}
                     onRemoved={() => {
                       setRemovedSourceIds((current) => new Set(current).add(source.id))
                       setSelectedSourceIds((current) => {
@@ -800,6 +814,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           ) : null}
         </>
       )}
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={configureModelSetup}
+      />
     </main>
   )
 }
