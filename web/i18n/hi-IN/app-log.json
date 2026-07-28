@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "वर्ष तक तिथि",
   "filter.sortBy": "इसके अनुसार क्रमबद्ध करें:",
   "monitoring.description": "मॉनिटरिंग एप्लिकेशन की रनिंग स्थिति रिकॉर्ड करती है, जिसमें प्रदर्शन, उपयोगकर्ता गतिविधि और लागतें शामिल हैं।",
+  "retention.upgradeTip.description": "अपग्रेड करें और उसके बाद जनरेट किए गए सभी लॉग बिना किसी समय सीमा के सुरक्षित रखें; अपग्रेड से पहले समाप्त हो चुके लॉग पुनर्प्राप्त नहीं किए जा सकते।",
   "runDetail.fileListDetail": "विस्तार",
   "runDetail.fileListLabel": "फ़ाइल विवरण",
   "runDetail.testWithParams": "पैरामीटर्स के साथ परीक्षण",

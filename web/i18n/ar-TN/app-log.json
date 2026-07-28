@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "السنة حتى الآن",
   "filter.sortBy": "رتب حسب:",
   "monitoring.description": "يسجل الرصد حالة تشغيل التطبيق، بما في ذلك الأداء ونشاط المستخدمين والتكاليف.",
+  "retention.upgradeTip.description": "قم بالترقية للاحتفاظ بجميع السجلات التي يتم إنشاؤها بعد الترقية دون حد زمني؛ لا يمكن استعادة السجلات التي انتهت مدة الاحتفاظ بها قبل الترقية.",
   "runDetail.fileListDetail": "تفاصيل",
   "runDetail.fileListLabel": "تفاصيل الملف",
   "runDetail.testWithParams": "اختبار مع المعلمات",
