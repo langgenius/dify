@@ -5,7 +5,7 @@ import type {
   DatabaseRow,
 } from "@knowledge/core";
 
-import { numberColumn, stringColumn } from "./database-row-utils";
+import { nonnegativeSafeIntegerColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import {
   DifyIntegrationFreezeConflictError,
@@ -154,11 +154,11 @@ async function updateState(
 function stateFromRow(row: DatabaseRow): DifyIntegrationFreezeState {
   const state = {
     freezeId: stringColumn(row, "freeze_id"),
-    freezeRevision: numberColumn(row, "freeze_revision"),
+    freezeRevision: nonnegativeSafeIntegerColumn(row, "freeze_revision"),
     frozenAt: stringColumn(row, "frozen_at"),
     namespaceId: stringColumn(row, "tenant_id"),
     sourceRevisionDigest: stringColumn(row, "source_revision_digest"),
-    sourceTaskWatermark: numberColumn(row, "source_task_watermark"),
+    sourceTaskWatermark: nonnegativeSafeIntegerColumn(row, "source_task_watermark"),
     updatedAt: stringColumn(row, "updated_at"),
   };
   assertDifyIntegrationFreezeState(state);

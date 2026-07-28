@@ -64,6 +64,34 @@ describe.each(["postgres", "tidb"] as const)("database Dify integration freeze (
     ).resolves.toMatchObject({ applied: false, replayed: true });
     script.expectDone();
   });
+
+  it("accepts safe bigint freeze values returned as decimal strings", async () => {
+    const script = scriptedDatabase(dialect, [
+      {
+        operation: "select",
+        rows: [{ ...stateRow(), freeze_revision: "7", source_task_watermark: "12" }],
+      },
+    ]);
+
+    await expect(
+      createDatabaseDifyIntegrationFreezeRepository({ database: script.database }).get("tenant-a"),
+    ).resolves.toMatchObject({ freezeRevision: 7, sourceTaskWatermark: 12 });
+    script.expectDone();
+  });
+
+  it("rejects bigint freeze values outside JavaScript's safe integer range", async () => {
+    const script = scriptedDatabase(dialect, [
+      {
+        operation: "select",
+        rows: [{ ...stateRow(), freeze_revision: "9007199254740992" }],
+      },
+    ]);
+
+    await expect(
+      createDatabaseDifyIntegrationFreezeRepository({ database: script.database }).get("tenant-a"),
+    ).rejects.toThrow("nonnegative safe integer");
+    script.expectDone();
+  });
 });
 
 interface ScriptStep {
