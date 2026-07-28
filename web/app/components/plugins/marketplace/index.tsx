@@ -21,7 +21,6 @@ type MarketplaceProps = {
   variant?: MarketplaceVariant
   language?: string
   homeHeaderActions?: React.ReactNode
-  homeHeaderBrandName?: React.ReactNode
   /**
    * Pass the search params from the request to prefetch data on the server.
    */
@@ -37,7 +36,6 @@ const Marketplace = async ({
   variant = 'default',
   language,
   homeHeaderActions,
-  homeHeaderBrandName,
   searchParams,
 }: MarketplaceProps) => {
   let trendingBanners: PluginBanner[] = []
@@ -60,7 +58,6 @@ const Marketplace = async ({
             <MarketplaceHome
               actions={homeHeaderActions}
               banners={trendingBanners}
-              brandName={homeHeaderBrandName}
               isMarketplacePlatform={isMarketplacePlatform}
               linkToMarketplaceDetail={linkToMarketplaceDetail}
               showInstallButton={showInstallButton}
