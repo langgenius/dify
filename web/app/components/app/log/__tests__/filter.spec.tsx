@@ -8,6 +8,7 @@ const mockRuntime = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD',
   enableBilling: true,
   isFetchedPlan: true,
+  isFetchedPlanInfo: true,
   planType: 'professional',
 }))
 
@@ -26,6 +27,7 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
     useProviderContext: () => ({
       enableBilling: mockRuntime.enableBilling,
       isFetchedPlan: mockRuntime.isFetchedPlan,
+      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
       plan: { type: mockRuntime.planType },
     }),
   }
@@ -103,6 +105,7 @@ describe('Filter', () => {
     mockRuntime.deploymentEdition = 'CLOUD'
     mockRuntime.enableBilling = true
     mockRuntime.isFetchedPlan = true
+    mockRuntime.isFetchedPlanInfo = true
     mockRuntime.planType = 'professional'
   })
 
@@ -183,6 +186,31 @@ describe('Filter', () => {
         expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
         expect.stringMatching(/(?:^|\.)filter\.period\.last4weeks(?=$|:)/),
       ])
+    })
+
+    it('should only show supported periods while the Cloud plan is pending', () => {
+      mockRuntime.isFetchedPlan = false
+      mockRuntime.isFetchedPlanInfo = false
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem')).toHaveLength(3)
+    })
+
+    it('should keep all periods when Cloud billing is known to be disabled', () => {
+      mockRuntime.enableBilling = false
+      mockRuntime.isFetchedPlan = false
+      mockRuntime.isFetchedPlanInfo = true
+
+      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+
+      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+      expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
     })
 
     it('should keep all periods for sandbox workspaces outside Cloud', () => {

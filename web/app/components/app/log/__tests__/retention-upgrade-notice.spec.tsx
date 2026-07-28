@@ -35,16 +35,19 @@ describe('RetentionUpgradeNotice', () => {
   function mockProvider({
     enableBilling = true,
     isFetchedPlan = true,
+    isFetchedPlanInfo = true,
     planType = Plan.sandbox,
   }: {
     enableBilling?: boolean
     isFetchedPlan?: boolean
+    isFetchedPlanInfo?: boolean
     planType?: Plan
   } = {}) {
     mockUseProviderContext.mockReturnValue(
       createMockProviderContextValue({
         enableBilling,
         isFetchedPlan,
+        isFetchedPlanInfo,
         plan: {
           ...defaultPlan,
           type: planType,
@@ -101,7 +104,7 @@ describe('RetentionUpgradeNotice', () => {
     },
     {
       name: 'workspaces before plan loading completes',
-      provider: { isFetchedPlan: false },
+      provider: { isFetchedPlan: false, isFetchedPlanInfo: false },
       deploymentEdition: 'CLOUD',
     },
   ] as const)('should not show guidance for $name', ({ provider, deploymentEdition }) => {

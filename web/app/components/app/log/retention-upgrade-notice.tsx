@@ -2,13 +2,13 @@
 
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useIsCloudSandboxPlan } from './cloud-sandbox-retention'
+import { useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
 
 export function RetentionUpgradeNotice() {
   const { t } = useTranslation()
-  const isCloudSandboxPlan = useIsCloudSandboxPlan()
+  const planState = useCloudSandboxPlanStatus()
 
-  if (!isCloudSandboxPlan) return null
+  if (planState !== 'sandbox') return null
 
   return (
     <div

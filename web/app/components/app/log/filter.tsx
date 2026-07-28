@@ -14,7 +14,8 @@ import { useAnnotationsCount } from '@/service/use-log'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
-  useIsCloudSandboxPlan,
+  isLogTimePeriodRestricted,
+  useCloudSandboxPlanStatus,
 } from './cloud-sandbox-retention'
 
 dayjs.extend(quarterOfYear)
@@ -50,9 +51,10 @@ const Filter: FC<IFilterProps> = ({
 }: IFilterProps) => {
   const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
-  const isCloudSandbox = useIsCloudSandboxPlan()
+  const planState = useCloudSandboxPlanStatus()
+  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING).filter(
-    ([key]) => !isCloudSandbox || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
+    ([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
   )
 
   if (isLoading || !data) return null
@@ -69,7 +71,7 @@ const Filter: FC<IFilterProps> = ({
         onClear={() =>
           setQueryParams({
             ...queryParams,
-            period: isCloudSandbox ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
+            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
           })
         }
         items={timePeriodEntries.map(([k, v]) => ({

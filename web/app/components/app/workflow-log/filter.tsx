@@ -13,7 +13,8 @@ import Input from '@/app/components/base/input'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
-  useIsCloudSandboxPlan,
+  isLogTimePeriodRestricted,
+  useCloudSandboxPlanStatus,
 } from '../log/cloud-sandbox-retention'
 
 dayjs.extend(quarterOfYear)
@@ -41,9 +42,10 @@ type IFilterProps = {
 
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
-  const isCloudSandbox = useIsCloudSandboxPlan()
+  const planState = useCloudSandboxPlanStatus()
+  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
   const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING).filter(
-    ([key]) => !isCloudSandbox || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
+    ([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key),
   )
 
   return (
@@ -76,7 +78,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         onClear={() =>
           setQueryParams({
             ...queryParams,
-            period: isCloudSandbox ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
+            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
           })
         }
         items={timePeriodEntries.map(([k, v]) => ({

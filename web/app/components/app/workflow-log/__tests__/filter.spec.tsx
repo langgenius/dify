@@ -21,6 +21,7 @@ const mockRuntime = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD',
   enableBilling: true,
   isFetchedPlan: true,
+  isFetchedPlanInfo: true,
   planType: 'professional',
 }))
 
@@ -39,6 +40,7 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
     useProviderContext: () => ({
       enableBilling: mockRuntime.enableBilling,
       isFetchedPlan: mockRuntime.isFetchedPlan,
+      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
       plan: { type: mockRuntime.planType },
     }),
   }
@@ -71,6 +73,7 @@ describe('Filter', () => {
     mockRuntime.deploymentEdition = 'CLOUD'
     mockRuntime.enableBilling = true
     mockRuntime.isFetchedPlan = true
+    mockRuntime.isFetchedPlanInfo = true
     mockRuntime.planType = 'professional'
   })
 
