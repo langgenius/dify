@@ -1,0 +1,108 @@
+.wrapper {
+  padding-bottom: 30px;
+}
+
+.copy {
+  flex: none;
+  width: 36.9167%;
+  height: 200px;
+}
+
+.recommendVisual {
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.recommendCards {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  overflow: hidden;
+  padding: 42px 36px;
+}
+
+.navigation {
+  top: 208px;
+  width: 100%;
+}
+
+.contentTrack {
+  transition: transform 400ms ease-out;
+}
+
+.card {
+  flex: 1 1 161px;
+  width: auto;
+  min-width: 161px;
+  max-width: 210px;
+  box-shadow: 0 8px 7.2px -6px rgb(0 0 0 / 19%);
+  scroll-snap-align: start;
+}
+
+@container (max-width: 751px) {
+  .recommendCards > .card:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (max-width: 578px) {
+  .recommendCards > .card:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@container (max-width: 405px) {
+  .recommendCards {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recommendCards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .recommendCards > .card:nth-child(n) {
+    display: flex;
+    flex: 0 0 161px;
+  }
+}
+
+.updatesArt {
+  width: 33.3333%;
+  max-width: 400px;
+}
+
+.updatesDescription {
+  display: -webkit-box;
+  max-height: 40px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentTrack {
+    transition-duration: 0ms;
+  }
+}
+
+@media (min-width: 1232px) {
+  .marketplaceCopy {
+    width: 443px;
+  }
+
+  .updatesArt {
+    width: 400px;
+  }
+}
+
+@media (min-width: 1260px) {
+  .embeddedCopy {
+    width: 431px;
+  }
+}
