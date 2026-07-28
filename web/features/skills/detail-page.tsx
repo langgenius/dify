@@ -3873,8 +3873,11 @@ function FileEditor({
       updateSkillMetadata,
     ],
   )
+  const canEditRef = useRef(canEdit)
+  const saveDraftContentRef = useRef(saveDraftContent)
 
   fileRef.current = file
+  canEditRef.current = canEdit
 
   useEffect(() => {
     const currentFile = fileRef.current
@@ -3912,13 +3915,17 @@ function FileEditor({
   }, [canEdit, draftContent, saveDraftContent, saveStatus])
 
   useEffect(() => {
+    saveDraftContentRef.current = saveDraftContent
+  }, [saveDraftContent])
+
+  useEffect(() => {
     return () => {
-      if (!canEdit) return
+      if (!canEditRef.current) return
       if (draftContentRef.current === lastSavedContentRef.current) return
 
-      void saveDraftContent(draftContentRef.current)
+      void saveDraftContentRef.current(draftContentRef.current)
     }
-  }, [canEdit, saveDraftContent])
+  }, [])
 
   useEffect(() => {
     return () => {
