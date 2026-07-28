@@ -501,8 +501,6 @@ project-excludes = [
   "core/rag/retrieval/test_multi_dataset_function_call_router.py",
   "core/rag/retrieval/test_multi_dataset_react_route.py",
   "core/rag/splitter/test_text_splitter.py",
-  "core/repositories/test_celery_workflow_execution_repository.py",
-  "core/repositories/test_celery_workflow_node_execution_repository.py",
   "core/repositories/test_factory.py",
   "core/repositories/test_human_input_form_repository_impl.py",
   "core/repositories/test_human_input_repository.py",
