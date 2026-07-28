@@ -31,6 +31,7 @@ const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string)
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
   return {
+    activeConfigIsPublished: draft.active_config_is_published,
     fileNames: files
       .map((file) => asString(asRecord(file).name))
       .filter(Boolean)
@@ -189,8 +190,7 @@ Then(
       )
 
     const client = this.getConsoleClient()
-    const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
-      client.agent.byAgentId.get({ params: { agent_id: sourceAgent.id } }),
+    const [duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
       client.agent.byAgentId.get({ params: { agent_id: duplicatedAgentId } }),
       getComposerInheritanceSnapshot(this, sourceAgent.id),
       getComposerInheritanceSnapshot(this, duplicatedAgentId),
@@ -198,9 +198,7 @@ Then(
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedDetail.active_config_is_published).toBe(
-      sourceDetail.active_config_is_published,
-    )
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(sourceSnapshot.activeConfigIsPublished)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,

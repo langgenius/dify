@@ -1,6 +1,6 @@
 'use client'
 
-import type { Value } from 'loro-crdt'
+import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
@@ -17,12 +17,13 @@ import type {
   WorkflowSyncRequest,
   WorkflowSyncResult,
 } from '../types/collaboration'
+import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
-import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
 import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
+
+type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
 type NodePanelPresenceEventData = {
   nodeId: string
@@ -154,6 +155,10 @@ const toUint8Array = (value: unknown): Uint8Array | null => {
 }
 
 export class CollaborationManager {
+  private crdtRuntime: CrdtRuntime | null = null
+  private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
+  private targetAppId: string | null = null
+  private connectGeneration = 0
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
@@ -259,6 +264,8 @@ export class CollaborationManager {
   private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
     if (!this.nodesMap) throw new Error('Nodes map not initialized')
 
+    const { LoroMap } = this.getCrdtRuntime()
+
     let container = this.nodesMap.get(nodeId) as unknown
 
     const isMapContainer = (
@@ -292,6 +299,7 @@ export class CollaborationManager {
   private ensureDataContainer(
     nodeContainer: LoroMap<Record<string, Value>>,
   ): LoroMap<Record<string, Value>> {
+    const { LoroMap } = this.getCrdtRuntime()
     let dataContainer = nodeContainer.get('data') as unknown
 
     if (
@@ -309,6 +317,7 @@ export class CollaborationManager {
     nodeContainer: LoroMap<Record<string, Value>>,
     key: string,
   ): LoroList<unknown> {
+    const { LoroList } = this.getCrdtRuntime()
     const dataContainer = this.ensureDataContainer(nodeContainer)
     let list = dataContainer.get(key) as unknown
 
@@ -527,7 +536,32 @@ export class CollaborationManager {
     this.disconnect()
   }
 
+  private async loadCrdtRuntime(): Promise<CrdtRuntime> {
+    const { crdtRuntime } = await import('./crdt-runtime')
+    return crdtRuntime
+  }
+
+  private async ensureCrdtRuntime(): Promise<void> {
+    if (this.crdtRuntime) return
+
+    const runtimePromise = this.crdtRuntimePromise ?? this.loadCrdtRuntime()
+    this.crdtRuntimePromise = runtimePromise
+
+    try {
+      this.crdtRuntime = await runtimePromise
+    } catch (error) {
+      if (this.crdtRuntimePromise === runtimePromise) this.crdtRuntimePromise = null
+      throw error
+    }
+  }
+
+  private getCrdtRuntime(): CrdtRuntime {
+    if (!this.crdtRuntime) throw new Error('CRDT runtime not initialized')
+    return this.crdtRuntime
+  }
+
   private initializeCrdt(socket: Socket): void {
+    const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
     this.provider?.destroy()
     this.undoManager = null
     this.doc = new LoroDoc()
@@ -623,18 +657,30 @@ export class CollaborationManager {
 
   async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
     const connectionId = Math.random().toString(36).substring(2, 11)
+    if (this.targetAppId !== appId) {
+      this.targetAppId = appId
+      this.connectGeneration += 1
+    }
+    const connectGeneration = this.connectGeneration
 
-    this.activeConnections.add(connectionId)
+    if (!this.crdtRuntime) await this.ensureCrdtRuntime()
+
+    if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
+      return connectionId
 
     if (this.currentAppId === appId && this.doc) {
       // Already connected to the same app, only update store if provided and we don't have one
       if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
+      this.activeConnections.add(connectionId)
 
       return connectionId
     }
 
     // Only disconnect if switching to a different app
-    if (this.currentAppId && this.currentAppId !== appId) this.forceDisconnect()
+    if (this.currentAppId && this.currentAppId !== appId)
+      this.forceDisconnect({ preserveConnectIntent: true })
+
+    this.activeConnections.add(connectionId)
 
     this.hasEstablishedConnection = false
     this.currentAppId = appId
@@ -666,7 +712,7 @@ export class CollaborationManager {
   }
 
   disconnect = (connectionId?: string): void => {
-    if (connectionId) this.activeConnections.delete(connectionId)
+    if (connectionId && !this.activeConnections.delete(connectionId)) return
 
     // Only disconnect when no more connections
     if (this.activeConnections.size === 0) this.forceDisconnect()
@@ -680,7 +726,9 @@ export class CollaborationManager {
     this.pendingWorkflowSyncRequests.clear()
   }
 
-  private forceDisconnect = (): void => {
+  private forceDisconnect = ({
+    preserveConnectIntent = false,
+  }: { preserveConnectIntent?: boolean } = {}): void => {
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -721,6 +769,10 @@ export class CollaborationManager {
     if (wasLeader) this.eventEmitter.emit('leaderChange', false)
 
     this.activeConnections.clear()
+    if (!preserveConnectIntent) {
+      this.targetAppId = null
+      this.connectGeneration += 1
+    }
     this.eventEmitter.removeAllListeners()
   }
 

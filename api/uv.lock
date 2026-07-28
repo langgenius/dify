@@ -475,7 +475,7 @@ wheels = [
 
 [[package]]
 name = "bce-python-sdk"
-version = "0.9.72"
+version = "0.9.76"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "crc32c" },
@@ -483,9 +483,9 @@ dependencies = [
     { name = "pycryptodome" },
     { name = "six" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/32/bb/1ccb8b28bfa0802356f8588e479adb61cfd2268b37fabc6c8a805d645cd5/bce_python_sdk-0.9.72.tar.gz", hash = "sha256:d9db568698792d74db4245252d98776eae8c9c5225fc0ba86548dfc52d478fcc", size = 302207, upload-time = "2026-06-08T12:10:32.326Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/ed/b41906366c0e1e3a1a883e0f1bcfc927403d9697d74b1eb7e89502870218/bce_python_sdk-0.9.76.tar.gz", hash = "sha256:01c630ce8dcbf8be0563d65f18b5201eaac6bd954b3dc776040aec268f81b6ff", size = 317399, upload-time = "2026-07-24T05:12:57.005Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/3a/f84b025ff6c8ec8fe222430cf9201b513dd11ada744417649a64ad295b6d/bce_python_sdk-0.9.72-py3-none-any.whl", hash = "sha256:54a0c121134d6f183f6013d9b33dbf5b6678b0815b6d09616bbceed0202dd797", size = 417800, upload-time = "2026-06-08T12:10:30.556Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/06/4d4a26c3dfcdb29599f563329b87eefe55b02b3c2b9d8f8c3aeaa38a33a6/bce_python_sdk-0.9.76-py3-none-any.whl", hash = "sha256:e629181d060f4ed8f29749f47139bf08f1f9b0d8b15daedc956900785587e8d8", size = 435179, upload-time = "2026-07-24T05:12:55.064Z" },
 ]
 
 [[package]]
@@ -598,16 +598,16 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.46"
+version = "1.43.56"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/e7/976bf3dfe0aa5d7f31bec2f2cf57c79641620c910a39bc843a237aa9592d/boto3-1.43.46.tar.gz", hash = "sha256:66c0d943b049a46a492ec4ec2ebe73c930b1842c7137bee83aad6d93e95d4d96", size = 112654, upload-time = "2026-07-10T19:32:12.498Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/05/23e1aa8c9e4b0399a61e7fd65c4f9cc0625121f24760e37471f776404abb/boto3-1.43.56.tar.gz", hash = "sha256:57c90df9fb026f2e6ae22530861198130203733c5c9ec4e5cca3a4037f5a8db4", size = 112673, upload-time = "2026-07-24T19:31:48.606Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/1d/c52e66ff32ba7911664e6c4c2ac62e1c6d2d1e7550c7ac185d3f4b70a8a4/boto3-1.43.46-py3-none-any.whl", hash = "sha256:69453e2c1bcb9fd9806527ab99950cacfc2826cb0dce9a3a0414d19270c06c3c", size = 140031, upload-time = "2026-07-10T19:32:11.129Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/57/3a960c9f581c00f2a591901b46e035ff79ab3956d16607f12306b3b8d483/boto3-1.43.56-py3-none-any.whl", hash = "sha256:feb699d4ab241ef5c1b80bb58277be2aaad365cd4b672d7817e0bc59ee45131b", size = 140026, upload-time = "2026-07-24T19:31:47.155Z" },
 ]
 
 [[package]]
@@ -630,16 +630,16 @@ bedrock-runtime = [
 
 [[package]]
 name = "botocore"
-version = "1.43.46"
+version = "1.43.56"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/f1/1917891851ac5ac09bb9f4862b8fc9252a009d7c24e8688bb67e4383d9e7/botocore-1.43.46.tar.gz", hash = "sha256:59f2e1ac3cdc66d191cae91c0804bc41847ce817dc8147cf43eaada8f76a5533", size = 15694635, upload-time = "2026-07-10T19:32:00.437Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/cc/7f84a5d3071fe878380e9f610ab36ca87b8cbbc4aa81ba2727f90e1f3ea3/botocore-1.43.56.tar.gz", hash = "sha256:6c01f85f0ff9863076f4c761e74ee3aa96c5ccc1ad09fc1efd62ef8f2d22bf57", size = 15733117, upload-time = "2026-07-24T19:31:38.125Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/f2/4bd8f2f419088feb3ce55f0ca91040ff902f402edfd197450b20a2e1d533/botocore-1.43.46-py3-none-any.whl", hash = "sha256:cb673891e623ae6e6a1bf24d94ef169504f3eb02584adb5d5bee2f6aae819b60", size = 15380350, upload-time = "2026-07-10T19:31:57.616Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/cd/86fe9e659e9699f62f8dd5ecd8c6725474334b23cab8aa71d82b5f56f1a4/botocore-1.43.56-py3-none-any.whl", hash = "sha256:aafc741f1b10f6fd63253eaf6ea029680c1ff436d87e1b8969d62aefa0c76976", size = 15418773, upload-time = "2026-07-24T19:31:34.758Z" },
 ]
 
 [[package]]
@@ -1281,7 +1281,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "1.16.0"
+version = "1.16.1"
 source = { editable = "../dify-agent" }
 dependencies = [
     { name = "httpx" },
@@ -1331,7 +1331,7 @@ docs = [
 
 [[package]]
 name = "dify-api"
-version = "1.16.0"
+version = "1.16.1"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
@@ -1621,7 +1621,7 @@ requires-dist = [
     { name = "aliyun-log-python-sdk", specifier = "==0.9.44" },
     { name = "azure-identity", specifier = ">=1.25.3,<2.0.0" },
     { name = "bleach", specifier = ">=6.4.0,<7.0.0" },
-    { name = "boto3", specifier = ">=1.43.46,<2.0.0" },
+    { name = "boto3", specifier = ">=1.43.56,<2.0.0" },
     { name = "celery", specifier = ">=5.6.3,<6.0.0" },
     { name = "croniter", specifier = ">=6.2.2,<7.0.0" },
     { name = "dify-agent", editable = "../dify-agent" },
@@ -1727,10 +1727,10 @@ dev = [
 ]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.30.0,<13.0.0" },
-    { name = "bce-python-sdk", specifier = "==0.9.72" },
+    { name = "bce-python-sdk", specifier = "==0.9.76" },
     { name = "cos-python-sdk-v5", specifier = ">=1.9.44,<2.0.0" },
     { name = "esdk-obs-python", specifier = ">=3.26.6,<4.0.0" },
-    { name = "google-cloud-storage", specifier = ">=3.12.1,<4.0.0" },
+    { name = "google-cloud-storage", specifier = ">=3.13.0,<4.0.0" },
     { name = "opendal", specifier = "==0.46.0" },
     { name = "oss2", specifier = ">=2.19.1,<3.0.0" },
     { name = "supabase", specifier = ">=2.31.0,<3.0.0" },
@@ -1738,7 +1738,7 @@ storage = [
 ]
 tools = [
     { name = "cloudscraper", specifier = ">=1.2.71,<2.0.0" },
-    { name = "nltk", specifier = ">=3.9.1,<4.0.0" },
+    { name = "nltk", specifier = ">=3.10.0,<4.0.0" },
 ]
 trace-aliyun = [{ name = "dify-trace-aliyun", editable = "providers/trace/trace-aliyun" }]
 trace-all = [
@@ -2710,14 +2710,14 @@ wheels = [
 
 [[package]]
 name = "gitpython"
-version = "3.1.52"
+version = "3.1.54"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gitdb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/fd/df0bafa4eb5ea2f51e1adee9f7a94c8e62c5d180e65117045dfca3439c8a/gitpython-3.1.52.tar.gz", hash = "sha256:de0a8ad86274c6e75ae8b37dd055ba68f19818c813108642263227b20775b48e", size = 223726, upload-time = "2026-07-16T03:15:59.599Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/d5/3da0b92033887033f4c27f2dd109a303c4ca62813c7b3bb2511edb4777de/gitpython-3.1.54.tar.gz", hash = "sha256:53f2085e24a2cda300eed7c3fc5f1559ae289634b725e98acaf4791940247aa0", size = 225076, upload-time = "2026-07-22T04:08:51.403Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/90/04dff7c1e176bb1c3011ef1647393d368790da710d8dde1cdcfad301f45a/gitpython-3.1.52-py3-none-any.whl", hash = "sha256:79a36ee1f83523214a3f72d56cf1c4e490d577dc61af77e43dfe5862bd9da01a", size = 215366, upload-time = "2026-07-16T03:15:58.239Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/b9/876f442a28df5c068ca69b0122d5c35e65fd2d2fa9992ea5cb5944ea00a6/gitpython-3.1.54-py3-none-any.whl", hash = "sha256:b90d7b3d9bc0238681d24369130826f0dcdb0ceaa45db67cf1d4ffa4c302dedf", size = 216575, upload-time = "2026-07-22T04:08:50.05Z" },
 ]
 
 [[package]]
@@ -2891,7 +2891,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-storage"
-version = "3.12.1"
+version = "3.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -2901,9 +2901,9 @@ dependencies = [
     { name = "google-resumable-media" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/ac/60b4cb0a6c8c6bb7cedb8971ba5e34a94096acf76e2cc242bcf1e6fc5c49/google_cloud_storage-3.12.1.tar.gz", hash = "sha256:1d81491c7663bc26c5056d00b834356f2253b910ef467f9cf9928a87fca1e04b", size = 17339353, upload-time = "2026-07-08T17:03:59.142Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/25/355ed97c1723c787dfaa888808d55db18371f82c38ff862357b1e902cd19/google_cloud_storage-3.13.0.tar.gz", hash = "sha256:d11d8706ea1520fba0f21043bcb7897caf7015d76ce1ad9a4f60237e4d7a9f6c", size = 17340960, upload-time = "2026-07-13T19:10:07.524Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/80/6e/ca176e95bafac0fe7befeee7e0420e686de147571cd2908e308c5fe71bda/google_cloud_storage-3.12.1-py3-none-any.whl", hash = "sha256:9297ae0c2ce3f5400b1f2bb3a3e6d2cd256614366e03cd30600871df8e903afb", size = 340845, upload-time = "2026-07-08T17:03:31.418Z" },
+    { url = "https://files.pythonhosted.org/packages/81/e8/b3678a0931ee7d4b3fdaf0813e6206d66e0922b2c26d912f308728b5b95a/google_cloud_storage-3.13.0-py3-none-any.whl", hash = "sha256:648af3ef8a6acc674e1359d3c920c67eb89a7a5ab66b336bd3ac43fed6b5ab84", size = 341428, upload-time = "2026-07-13T19:09:52.39Z" },
 ]
 
 [[package]]
@@ -4113,17 +4113,18 @@ wheels = [
 
 [[package]]
 name = "nltk"
-version = "3.9.4"
+version = "3.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
+    { name = "defusedxml" },
     { name = "joblib" },
     { name = "regex" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/a1/b3b4adf15585a5bc4c357adde150c01ebeeb642173ded4d871e89468767c/nltk-3.9.4.tar.gz", hash = "sha256:ed03bc098a40481310320808b2db712d95d13ca65b27372f8a403949c8b523d0", size = 2946864, upload-time = "2026-03-24T06:13:40.641Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/02/df4f105b28a7c16b0e41423bc09cf0f1b8a305df4ef0b10ca74a2e4c648c/nltk-3.10.0.tar.gz", hash = "sha256:4fbac1d98203cbcd1b5d94a2877fb822300072d80604a5e7fae49d2c5f84e8c1", size = 3089244, upload-time = "2026-07-08T02:39:13.562Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/91/04e965f8e717ba0ab4bdca5c112deeab11c9e750d94c4d4602f050295d39/nltk-3.9.4-py3-none-any.whl", hash = "sha256:f2fa301c3a12718ce4a0e9305c5675299da5ad9e26068218b69d692fda84828f", size = 1552087, upload-time = "2026-03-24T06:13:38.47Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/89/a0b0f35e2820d6a99d75ea1c11977ee6d5c9e6658eceb45b0c7620881faa/nltk-3.10.0-py3-none-any.whl", hash = "sha256:54ff84d4916d3ef127e8953bee0023f6a6b320b75d634a19e06ef056d3d244bf", size = 1716144, upload-time = "2026-07-08T02:39:09.753Z" },
 ]
 
 [[package]]

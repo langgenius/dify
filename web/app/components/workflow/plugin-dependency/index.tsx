@@ -1,3 +1,5 @@
+'use client'
+
 import { useCallback } from 'react'
 import InstallBundle from '@/app/components/plugins/install-plugin/install-bundle'
 import { useStore } from './store'

@@ -80,6 +80,10 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type RecentAppListResponse = {
+  data: Array<RecentAppResponse>
+}
+
 export type WorkflowOnlineUsersPayload = {
   app_ids?: Array<string>
 }
@@ -1406,6 +1410,20 @@ export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
   value: Github | Marketplace | Package
+}
+
+export type RecentAppResponse = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  readonly icon_url: string | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowOnlineUsersByApp = {
@@ -3114,6 +3132,10 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
+export type RecentAppListResponseWritable = {
+  data: Array<RecentAppResponseWritable>
+}
+
 export type GeneratedAppResponseWritable = JsonValue
 
 export type WorkflowCommentBasicListWritable = {
@@ -3194,6 +3216,19 @@ export type AppDetailSiteResponseWritable = {
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type RecentAppResponseWritable = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowCommentBasicWritable = {
@@ -3355,6 +3390,21 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 
 export type PostAppsImportsByImportIdConfirmResponse =
   PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+
+export type GetAppsRecentData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+  }
+  url: '/apps/recent'
+}
+
+export type GetAppsRecentResponses = {
+  200: RecentAppListResponse
+}
+
+export type GetAppsRecentResponse = GetAppsRecentResponses[keyof GetAppsRecentResponses]
 
 export type GetAppsStarredData = {
   body?: never

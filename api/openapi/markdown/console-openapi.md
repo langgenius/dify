@@ -1672,6 +1672,23 @@ Create a new application
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
 
+### [GET] /apps/recent
+**Return the lightweight app cards needed by the Explore home page**
+
+Get recently modified apps for the home Continue Work section
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query | Number of recently modified apps to return (1-8) | No | integer, <br>**Default:** 8 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RecentAppListResponse](#recentapplistresponse)<br> |
+
 ### [GET] /apps/starred
 Get applications starred by the current account
 
@@ -13243,6 +13260,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | Yes |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
@@ -13282,7 +13300,6 @@ Model class for AI model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
@@ -21016,6 +21033,28 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | hash | string |  | Yes |
 | result | string |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### RecentAppListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RecentAppResponse](#recentappresponse) ] |  | Yes |
+
+#### RecentAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [IconType](#icontype) |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| maintainer | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | *Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
 #### RecommendedAppDetailNullableResponse

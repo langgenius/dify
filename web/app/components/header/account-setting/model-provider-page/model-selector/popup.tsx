@@ -272,8 +272,10 @@ function Popup({
   return (
     <ModelSelectorPopupFrame>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
-      {showCreditsExhaustedAlert && <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />}
       <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+        {showCreditsExhaustedAlert && (
+          <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+        )}
         <ComboboxList className="max-h-none overflow-visible p-0">
           <div className="pb-1">
             {filteredModelList.map((model) => (

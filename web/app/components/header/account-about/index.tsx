@@ -6,7 +6,7 @@ import { RiCloseLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 
@@ -48,7 +48,7 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
                 alt="logo"
               />
             ) : (
-              <DifyLogo size="large" className="mx-auto" />
+              <DifyLogo alt="Dify" size="large" className="mx-auto" />
             )}
 
             <div className="text-center text-xs font-normal text-text-tertiary">
