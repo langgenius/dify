@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -30,6 +31,37 @@ def test_runtime_gate_fails_closed_without_a_cutover_ledger(sqlite_session: Sess
 
     with pytest.raises(KnowledgeFSOperationUnavailableError, match="not cut over"):
         gate.require_capability_v2(tenant_id="tenant-1")
+
+
+@pytest.mark.parametrize("sqlite_session", [(KnowledgeFSWorkspaceCutoverLedger,)], indirect=True)
+def test_runtime_gate_initializes_a_missing_greenfield_workspace_once(sqlite_session: Session) -> None:
+    session_maker = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+    initializer = MagicMock()
+
+    def initialize(*, tenant_id: str) -> None:
+        with session_maker.begin() as session:
+            session.add(
+                KnowledgeFSWorkspaceCutoverLedger(
+                    tenant_id=tenant_id,
+                    source_revision_watermark=_WATERMARK,
+                    applied_revision_watermark=_WATERMARK,
+                    phase=KnowledgeFSWorkspaceCutoverPhase.CUTOVER,
+                    freeze_at=datetime(2026, 7, 21, 11, 59, tzinfo=UTC),
+                    cutover_at=datetime(2026, 7, 21, 12, 0, tzinfo=UTC),
+                    product_routes_enabled=True,
+                    capability_v2_enabled=True,
+                    integrated_mode_enabled=True,
+                    legacy_acl_read_only=True,
+                )
+            )
+
+    initializer.ensure_initialized.side_effect = initialize
+    gate = SQLKnowledgeFSWorkspaceRuntimeGate(session_maker, initializer=initializer)
+
+    gate.require_product_routes(tenant_id="tenant-1")
+    gate.require_capability_v2(tenant_id="tenant-1")
+
+    initializer.ensure_initialized.assert_called_once_with(tenant_id="tenant-1")
 
 
 @pytest.mark.parametrize("sqlite_session", [(KnowledgeFSWorkspaceCutoverLedger,)], indirect=True)

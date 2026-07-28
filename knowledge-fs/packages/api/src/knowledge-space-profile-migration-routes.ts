@@ -54,6 +54,7 @@ export const requestKnowledgeSpaceProfileMigrationRoute = createRoute({
 
 export const getKnowledgeSpaceProfileMigrationRoute = createRoute({
   method: "get",
+  operationId: "getKnowledgeSpaceProfileMigration",
   path: "/knowledge-spaces/{id}/profile-migrations/{migrationId}",
   request: { params: KnowledgeSpaceProfileMigrationParamsSchema },
   responses: {

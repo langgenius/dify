@@ -11,12 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal, NamedTuple, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
@@ -397,6 +398,8 @@ _CUTOVER_QUARANTINE_KINDS = (
 )
 _DEFAULT_TRUSTED_SHADOW_PRODUCERS = frozenset({"dify-shadow-authorizer"})
 _DEFAULT_TRUSTED_SHADOW_OPERATORS = frozenset({"knowledge-fs-cutover"})
+_GREENFIELD_INITIALIZATION_MAX_ATTEMPTS = 32
+_GREENFIELD_ROLLBACK_WINDOW = timedelta(days=30)
 _ZERO_REVISION_WATERMARK: KnowledgeFSCutoverRevisionWatermark = {
     "membership_epoch": 0,
     "space_acl_epoch": 0,
@@ -433,6 +436,114 @@ class KnowledgeFSWorkspaceCutoverService:
         self._trusted_shadow_producers = trusted_shadow_producers
         self._trusted_shadow_operators = trusted_shadow_operators
         self._remote_factory = remote_factory
+
+    def initialize_greenfield(
+        self,
+        *,
+        tenant_id: str,
+        owner_account_id: str,
+    ) -> KnowledgeFSWorkspaceCutoverLedger:
+        """Idempotently cut over a Workspace that has never owned KnowledgeFS state."""
+
+        try:
+            tenant_uuid = UUID(tenant_id)
+            owner_uuid = UUID(owner_account_id)
+        except ValueError as exc:
+            raise KnowledgeFSCutoverConflictError("Greenfield Workspace and owner identifiers must be UUIDs") from exc
+        if not self._trusted_shadow_producers or not self._trusted_shadow_operators:
+            raise KnowledgeFSCutoverGateBlockedError("Greenfield shadow attestation is not configured")
+
+        inventory = WorkspaceInventoryInput.model_validate(
+            {
+                "tenant_id": str(tenant_uuid),
+                "source_revision_watermark": _ZERO_REVISION_WATERMARK,
+                "task_watermark": 0,
+                "spaces": [],
+            }
+        )
+        for _ in range(_GREENFIELD_INITIALIZATION_MAX_ATTEMPTS):
+            ledger = self._greenfield_initialization_ledger(
+                tenant_id=tenant_id,
+                owner_account_id=owner_account_id,
+            )
+            if ledger is not None and _has_complete_product_cutover(ledger):
+                return ledger
+            try:
+                if ledger is None:
+                    self.inventory(inventory, apply=True)
+                elif ledger.phase is KnowledgeFSWorkspaceCutoverPhase.INVENTORY:
+                    self.backfill(inventory, apply=True)
+                elif ledger.phase is KnowledgeFSWorkspaceCutoverPhase.BACKFILL:
+                    self.begin_shadow(
+                        tenant_id=tenant_id,
+                        expected_cas_version=ledger.cas_version,
+                        started_at=self._clock(),
+                    )
+                elif ledger.phase is KnowledgeFSWorkspaceCutoverPhase.SHADOW:
+                    if ledger.shadow_completed_at is None:
+                        completed_at = _naive_utc(self._clock()).replace(tzinfo=UTC)
+                        self.complete_shadow(
+                            ShadowCompletionInput.model_validate(
+                                {
+                                    "schema_version": "knowledge-fs-p8-shadow-completion/v1",
+                                    "tenant_id": tenant_id,
+                                    "expected_cas_version": ledger.cas_version,
+                                    "producer": min(self._trusted_shadow_producers),
+                                    "completed_by_operator": min(self._trusted_shadow_operators),
+                                    "completed_by_account_id": str(owner_uuid),
+                                    "completed_at": completed_at,
+                                    "traffic_zero": True,
+                                    "traffic_zero_evidence": {
+                                        "schema_version": "knowledge-fs-greenfield-traffic-zero/v1",
+                                        "basis": "no-local-control-spaces",
+                                    },
+                                }
+                            ),
+                            apply=True,
+                        )
+                    elif not ledger.legacy_dependency_ready:
+                        self.legacy_dependency_dashboard(
+                            tenant_id=tenant_id,
+                            dependencies=(),
+                            expected_cas_version=ledger.cas_version,
+                            checked_at=self._clock(),
+                            apply=True,
+                        )
+                    else:
+                        self.freeze(
+                            tenant_id=tenant_id,
+                            expected_cas_version=ledger.cas_version,
+                            freeze_at=self._clock(),
+                        )
+                elif ledger.phase is KnowledgeFSWorkspaceCutoverPhase.FROZEN:
+                    if not _has_complete_greenfield_final_delta(ledger):
+                        self.apply_final_delta(
+                            FinalDeltaInput.model_validate(
+                                {
+                                    "tenant_id": tenant_id,
+                                    "expected_cas_version": ledger.cas_version,
+                                    "final_revision_watermark": _ZERO_REVISION_WATERMARK,
+                                    "applied_revision_watermark": _ZERO_REVISION_WATERMARK,
+                                    "final_task_watermark": 0,
+                                    "applied_task_watermark": 0,
+                                }
+                            )
+                        )
+                    else:
+                        cutover_at = _naive_utc(self._clock())
+                        self.cutover(
+                            tenant_id=tenant_id,
+                            expected_cas_version=ledger.cas_version,
+                            cutover_at=cutover_at,
+                            rollback_cutoff_at=cutover_at + _GREENFIELD_ROLLBACK_WINDOW,
+                        )
+                else:
+                    raise KnowledgeFSCutoverGateBlockedError(
+                        "Workspace is not eligible for automatic greenfield initialization"
+                    )
+            except (IntegrityError, KnowledgeFSCutoverConflictError):
+                continue
+        raise KnowledgeFSCutoverConflictError("Greenfield Workspace initialization did not converge")
 
     def inventory(self, payload: WorkspaceInventoryInput, *, apply: bool) -> CutoverInventoryReport:
         """Validate a read-only inventory and optionally create the initial CAS ledger."""
@@ -527,6 +638,58 @@ class KnowledgeFSWorkspaceCutoverService:
             else:
                 phase = ledger.phase.value
         return CutoverBackfillReport(tenant_id, registered, granted, quarantined, open_issues, phase, True)
+
+    def _greenfield_initialization_ledger(
+        self,
+        *,
+        tenant_id: str,
+        owner_account_id: str,
+    ) -> KnowledgeFSWorkspaceCutoverLedger | None:
+        with self._session_maker() as session:
+            repository = SQLAlchemyKnowledgeFSCutoverRepository(session)
+            ledger = repository.get_ledger(tenant_id=tenant_id)
+            control_spaces = tuple(
+                session.scalars(
+                    sa.select(KnowledgeFSControlSpace)
+                    .where(KnowledgeFSControlSpace.tenant_id == tenant_id)
+                    .order_by(KnowledgeFSControlSpace.created_at, KnowledgeFSControlSpace.id)
+                ).all()
+            )
+            if ledger is None:
+                if control_spaces:
+                    raise KnowledgeFSCutoverGateBlockedError(
+                        "Workspace with existing KnowledgeFS control state is not greenfield"
+                    )
+                return None
+            if not _is_zero_space_cutover_ledger(ledger) or ledger.rolled_back_at is not None:
+                raise KnowledgeFSCutoverGateBlockedError(
+                    "Workspace migration state is not eligible for automatic greenfield initialization"
+                )
+            if ledger.legacy_dependency_report not in (None, []):
+                raise KnowledgeFSCutoverGateBlockedError(
+                    "Workspace with legacy dependencies is not eligible for automatic greenfield initialization"
+                )
+            if control_spaces:
+                anchor_id = _greenfield_activation_anchor_id(tenant_id)
+                provisioning_key = _greenfield_activation_provisioning_key(tenant_id)
+                if len(control_spaces) != 1:
+                    raise KnowledgeFSCutoverGateBlockedError(
+                        "Workspace with existing KnowledgeFS control state is not greenfield"
+                    )
+                anchor = control_spaces[0]
+                if (
+                    anchor.id != anchor_id
+                    or anchor.state is not KnowledgeFSControlSpaceState.DELETED
+                    or anchor.knowledge_space_id is not None
+                    or anchor.provisioning_key != provisioning_key
+                    or anchor.owner_account_id != owner_account_id
+                    or anchor.lifecycle_operation_id != anchor_id
+                ):
+                    raise KnowledgeFSCutoverGateBlockedError(
+                        "Workspace greenfield activation audit anchor is inconsistent"
+                    )
+            session.expunge(ledger)
+            return ledger
 
     def begin_shadow(
         self,
@@ -2407,6 +2570,32 @@ def _is_zero_space_cutover_ledger(ledger: KnowledgeFSWorkspaceCutoverLedger) -> 
         and ledger.applied_task_watermark == 0
         and (ledger.final_revision_watermark is None or ledger.final_revision_watermark == _ZERO_REVISION_WATERMARK)
         and ledger.final_task_watermark in {None, 0}
+    )
+
+
+def _has_complete_greenfield_final_delta(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:
+    return (
+        ledger.final_revision_watermark == _ZERO_REVISION_WATERMARK
+        and ledger.applied_revision_watermark == _ZERO_REVISION_WATERMARK
+        and ledger.final_task_watermark == 0
+        and ledger.applied_task_watermark == 0
+    )
+
+
+def _has_complete_product_cutover(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:
+    return bool(
+        ledger.phase
+        in {
+            KnowledgeFSWorkspaceCutoverPhase.CUTOVER,
+            KnowledgeFSWorkspaceCutoverPhase.OBSERVING,
+            KnowledgeFSWorkspaceCutoverPhase.READY_FOR_CLEANUP,
+        }
+        and ledger.cutover_at is not None
+        and ledger.rolled_back_at is None
+        and ledger.product_routes_enabled
+        and ledger.capability_v2_enabled
+        and ledger.integrated_mode_enabled
+        and ledger.legacy_acl_read_only
     )
 
 

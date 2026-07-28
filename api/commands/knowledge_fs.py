@@ -37,6 +37,7 @@ from services.knowledge_fs.cutover import (
     ShadowCompletionInput,
     WorkspaceInventoryInput,
 )
+from services.knowledge_fs.greenfield_initializer import KnowledgeFSWorkspaceGreenfieldInitializer
 from services.knowledge_fs.orphan_reconciler import KnowledgeFSOrphanReconciler
 from services.knowledge_fs.remote_registry import get_knowledge_fs_lifecycle_remote
 
@@ -381,6 +382,15 @@ def status(tenant_id: str) -> None:
     _echo_json(_operator_call(lambda: _cutover_service().status(tenant_id=tenant_id)))
 
 
+@knowledge_fs_control_space.command("greenfield-initialize")
+@click.option("--tenant-id", required=True)
+def greenfield_initialize(tenant_id: str) -> None:
+    """Idempotently initialize one Workspace that has no KnowledgeFS state."""
+
+    _operator_call(lambda: _greenfield_initializer().ensure_initialized(tenant_id=tenant_id))
+    _echo_json(_operator_call(lambda: _cutover_service().status(tenant_id=tenant_id)))
+
+
 @knowledge_fs_control_space.command("cleanup-request")
 @click.option("--input", "input_path", type=click.Path(path_type=Path, exists=True, dir_okay=False), required=True)
 @click.option("--apply", is_flag=True, default=False, help="Persist readiness evidence; omitted means dry-run.")
@@ -590,6 +600,13 @@ def _cutover_service() -> KnowledgeFSWorkspaceCutoverService:
     return KnowledgeFSWorkspaceCutoverService(
         session_factory.get_session_maker(),
         remote_factory=get_knowledge_fs_lifecycle_remote,
+    )
+
+
+def _greenfield_initializer() -> KnowledgeFSWorkspaceGreenfieldInitializer:
+    return KnowledgeFSWorkspaceGreenfieldInitializer(
+        session_factory.get_session_maker(),
+        cutover=_cutover_service(),
     )
 
 

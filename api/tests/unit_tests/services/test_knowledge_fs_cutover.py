@@ -479,6 +479,82 @@ def test_empty_workspace_uses_a_stable_greenfield_anchor_for_remote_freeze_and_a
         )
 
 
+def test_greenfield_initialization_advances_an_empty_workspace_idempotently(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    _, session_maker = cutover_context
+    remote = FakeActivationRemote()
+    service = _service_with_remote(session_maker, remote)
+    tenant_id = str(uuid4())
+    owner_account_id = str(uuid4())
+
+    ledger = service.initialize_greenfield(
+        tenant_id=tenant_id,
+        owner_account_id=owner_account_id,
+    )
+    replay = service.initialize_greenfield(
+        tenant_id=tenant_id,
+        owner_account_id=owner_account_id,
+    )
+
+    assert ledger.phase is KnowledgeFSWorkspaceCutoverPhase.CUTOVER
+    assert ledger.product_routes_enabled is True
+    assert ledger.capability_v2_enabled is True
+    assert ledger.integrated_mode_enabled is True
+    assert ledger.legacy_acl_read_only is True
+    assert replay.cas_version == ledger.cas_version
+    assert len(remote.freeze_requests) == 1
+    assert len(remote.requests) == 1
+    with session_maker() as session:
+        audit_anchor = session.scalar(
+            sa.select(KnowledgeFSControlSpace).where(KnowledgeFSControlSpace.tenant_id == tenant_id)
+        )
+        assert audit_anchor is not None
+        assert audit_anchor.owner_account_id == owner_account_id
+        assert audit_anchor.state is KnowledgeFSControlSpaceState.DELETED
+
+
+def test_greenfield_initialization_resumes_after_a_lost_remote_freeze_ack(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    _, session_maker = cutover_context
+    remote = FakeActivationRemote()
+    remote.freeze_fail_after_persist = True
+    service = _service_with_remote(session_maker, remote)
+    tenant_id = str(uuid4())
+    owner_account_id = str(uuid4())
+
+    with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="freeze was not acknowledged"):
+        service.initialize_greenfield(
+            tenant_id=tenant_id,
+            owner_account_id=owner_account_id,
+        )
+
+    ledger = service.initialize_greenfield(
+        tenant_id=tenant_id,
+        owner_account_id=owner_account_id,
+    )
+
+    assert ledger.phase is KnowledgeFSWorkspaceCutoverPhase.CUTOVER
+    assert len(remote.freeze_requests) == 2
+    assert remote.freeze_requests[0] == remote.freeze_requests[1]
+
+
+def test_greenfield_initialization_rejects_existing_migration_state(
+    cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
+) -> None:
+    service, _ = cutover_context
+    payload = _inventory()
+    tenant_id = str(payload.tenant_id)
+    service.inventory(payload, apply=True)
+
+    with pytest.raises(KnowledgeFSCutoverGateBlockedError, match="not eligible"):
+        service.initialize_greenfield(
+            tenant_id=tenant_id,
+            owner_account_id=str(uuid4()),
+        )
+
+
 def test_empty_workspace_freeze_rejects_a_nonempty_remote_namespace(
     cutover_context: tuple[KnowledgeFSWorkspaceCutoverService, sessionmaker[Session]],
 ) -> None:

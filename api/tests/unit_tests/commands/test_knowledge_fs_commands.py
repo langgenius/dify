@@ -106,6 +106,7 @@ def test_control_space_command_exposes_p8_migration_and_cutover_operations() -> 
         "legacy-check",
         "freeze",
         "final-delta",
+        "greenfield-initialize",
         "cutover",
         "smoke",
         "observe",
@@ -118,6 +119,31 @@ def test_control_space_command_exposes_p8_migration_and_cutover_operations() -> 
         "cleanup-complete",
         "cleanup-status",
     } <= set(knowledge_fs_control_space.commands)
+
+
+def test_greenfield_initialize_cli_runs_the_automatic_initializer() -> None:
+    with (
+        patch("commands.knowledge_fs._greenfield_initializer") as initializer_factory,
+        patch("commands.knowledge_fs._cutover_service") as cutover_factory,
+    ):
+        cutover_factory.return_value.status.return_value = {
+            "tenant_id": "00000000-0000-0000-0000-000000000001",
+            "phase": "cutover",
+        }
+        result = CliRunner().invoke(
+            knowledge_fs_control_space,
+            [
+                "greenfield-initialize",
+                "--tenant-id",
+                "00000000-0000-0000-0000-000000000001",
+            ],
+        )
+
+    assert result.exit_code == 0
+    initializer_factory.return_value.ensure_initialized.assert_called_once_with(
+        tenant_id="00000000-0000-0000-0000-000000000001"
+    )
+    assert '"phase": "cutover"' in result.output
 
 
 def test_operator_cutover_service_installs_remote_registry_lazily() -> None:

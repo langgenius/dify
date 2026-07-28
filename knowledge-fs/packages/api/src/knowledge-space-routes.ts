@@ -373,6 +373,7 @@ export const getKnowledgeSpaceManifestRoute = createRoute({
 
 export const updateKnowledgeSpaceEmbeddingProfileRoute = createRoute({
   method: "put",
+  operationId: "updateKnowledgeSpaceEmbeddingProfile",
   path: "/knowledge-spaces/{id}/embedding-profile",
   request: {
     body: {
@@ -436,6 +437,7 @@ export const updateKnowledgeSpaceEmbeddingProfileRoute = createRoute({
 
 export const updateKnowledgeSpaceRetrievalProfileRoute = createRoute({
   method: "put",
+  operationId: "updateKnowledgeSpaceRetrievalProfile",
   path: "/knowledge-spaces/{id}/retrieval-profile",
   request: {
     body: {

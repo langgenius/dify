@@ -7734,10 +7734,7 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
 
-### ~~[POST] /knowledge-fs/spaces/{control_space_id}/documents~~
-
-***DEPRECATED***
-
+### [POST] /knowledge-fs/spaces/{control_space_id}/documents
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7748,13 +7745,13 @@ Get instruction generation template
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSDocumentCreatePayload](#knowledgefsdocumentcreatepayload)<br> |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | KnowledgeFS document created | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+| 202 | KnowledgeFS document accepted for processing | **application/json**: [KnowledgeFSDocumentUploadAcceptedResponse](#knowledgefsdocumentuploadacceptedresponse)<br> |
 
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
 #### Parameters
@@ -8443,6 +8440,7 @@ Get instruction generation template
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
 | control_space_id | path |  | Yes | string |
 
 #### Responses
@@ -8677,6 +8675,27 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowImportPayload](#knowledgefssourceworkflowimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS durable provider import accepted | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/traces
 #### Parameters
@@ -20412,14 +20431,6 @@ Input field definition for snippet parameters.
 | updated_at | number |  | Yes |
 | version | integer |  | Yes |
 
-#### KnowledgeFSDocumentCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| idempotency_key | string |  | Yes |
-| name | string |  | Yes |
-| text | string |  | Yes |
-
 #### KnowledgeFSDocumentDeletePayload
 
 | Name | Type | Description | Required |
@@ -20542,6 +20553,33 @@ Input field definition for snippet parameters.
 | revision | integer |  | Yes |
 | size_bytes | integer |  | Yes |
 | state | string, <br>**Available values:** "active", "candidate", "failed", "superseded" | *Enum:* `"active"`, `"candidate"`, `"failed"`, `"superseded"` | Yes |
+
+#### KnowledgeFSDocumentUploadAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | Yes |
+| asset_status_url | string |  | No |
+| compilation_job | [KnowledgeFSDocumentUploadCompilationJobResponse](#knowledgefsdocumentuploadcompilationjobresponse) |  | Yes |
+| document_revision | integer |  | Yes |
+| logical_document | [KnowledgeFSDocumentUploadLogicalDocumentResponse](#knowledgefsdocumentuploadlogicaldocumentresponse) |  | Yes |
+| logical_document_id | string |  | Yes |
+| status | string |  | No |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSDocumentUploadCompilationJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| stage | string |  | Yes |
+
+#### KnowledgeFSDocumentUploadLogicalDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| revision | integer |  | Yes |
 
 #### KnowledgeFSDurableDeletionAcceptedResponse
 
@@ -20675,6 +20713,43 @@ Input field definition for snippet parameters.
 | model | string |  | Yes |
 | plugin_id | string |  | Yes |
 | provider | string |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| etag | string |  | No |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| providerItemId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+
+#### KnowledgeFSOnlineDriveWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| etag | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+| providerItemId | string |  | Yes |
+
+#### KnowledgeFSOnlineDriveWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
 
 #### KnowledgeFSOverviewCountComparisonResponse
 
@@ -21373,6 +21448,12 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | reason | string |  | No |
+
+#### KnowledgeFSSourceWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSSourceWorkflowImportPayload | [KnowledgeFSOnlineDocumentWorkflowImportPayload](#knowledgefsonlinedocumentworkflowimportpayload)<br>[KnowledgeFSOnlineDriveWorkflowImportPayload](#knowledgefsonlinedriveworkflowimportpayload) |  |  |
 
 #### KnowledgeFSSourceWorkflowResponse
 

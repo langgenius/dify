@@ -15,20 +15,53 @@ the live spec and this companion document differ.
   streaming answers/progress are `text/event-stream`; raw multimodal assets are
   `application/octet-stream`.
 
+### Dify-integrated request path
+
+In a Dify deployment, browser clients call the Dify Console API under
+`/console/api/knowledge-fs/...`; service clients use the narrower Service API under
+`/v1/knowledge-fs/...`. They do not call this gateway directly or manage model, datasource, or
+object-storage credentials. Dify performs Workspace/account authorization, resolves the local
+control-space to a KnowledgeFS space, and issues a short-lived Capability v2 grant for each upstream
+operation.
+
+The generated Dify contracts are:
+
+- [Console KnowledgeFS API](../../api/openapi/markdown/console-openapi.md), including Space,
+  Overview, Document, Source, Background Task, Evidence, and Quality routes.
+- [Service KnowledgeFS API](../../api/openapi/markdown/service-openapi.md), which intentionally
+  exposes a smaller application-facing surface.
+
+On first product access, Dify automatically performs the auditable greenfield cutover only when the
+Workspace has one owner, no local KnowledgeFS control state, and an empty remote namespace.
+`503 knowledge_fs_operation_unavailable` means the integration is not configured, that strict
+greenfield initialization could not complete, or the Workspace has migration state that still
+requires operator-controlled cutover. It is not a signal for the client to bypass Dify and invoke
+the gateway directly.
+
 ## Authentication & scopes
 
-- **Bearer token** (JWT) on every guarded route: `Authorization: Bearer <token>`. The tenant is taken
-  from the JWT; a knowledge space is always resolved as `spaces.get({ id, tenantId })`, so one tenant
-  can never read another tenant's space (returns `404`).
-- **Scopes** (`getRequiredScope`): every `GET` needs `knowledge-spaces:read`; every `POST/PATCH/DELETE`
-  needs `knowledge-spaces:write` — **except** `POST /queries`, `POST /research-tasks/plan`, and
-  `POST /agent-workspace-snapshots/{id}/replay`, which need only `read`. The wildcard scope
-  `knowledge-spaces:*` satisfies both.
+- **Production auth profile**: guarded routes accept a short-lived, Dify-issued RS256 Capability v2
+  JWT as `Authorization: Bearer <token>`. KnowledgeFS has no independently managed production
+  caller credentials and does not accept the removed legacy tenant JWT/API-key authorization
+  profile.
+- **Exact binding**: each capability binds the caller kind, Dify Workspace namespace, control-space,
+  action, resource type/id, optional parent, authorization/content-policy revisions, candidate
+  content scopes, and trace/grant identity. The maximum token lifetime is 60 seconds. A valid token
+  for one operation or resource cannot authorize another.
+- **Route policy labels** (`getRequiredScope`): OpenAPI retains the coarse
+  `knowledge-spaces:read|write` labels for route classification. In production, Dify converts the
+  requested product operation into an exact Capability v2 action/resource grant; clients cannot
+  broaden access by supplying those labels themselves. Most `GET` operations classify as `read` and
+  mutations as `write`, with explicitly read-only POST exceptions such as query planning/replay.
+- **Tenant isolation**: the Workspace namespace comes from the signed capability. A knowledge space
+  is always resolved with that namespace, so cross-Workspace resource IDs fail closed (normally
+  `404`).
 - **Auth is path-prefix middleware**, not per-route: it guards `/knowledge-spaces*`, `/queries*`,
   `/jobs*`, `/research-tasks*`, `/agent-workspace-snapshots*`, `/bulk-jobs*`, `/retention-policy`.
-  **Public (no auth)**: `GET /health` and `GET /openapi.json`.
-- **Auth failures**: `401` (missing/invalid token), `403` (token lacks the required scope), both
-  `{ error: string }`.
+  Internal lifecycle routes additionally require the exact `internal_worker` capability action.
+  **Public (no auth)**: `GET /health`, `GET /ready`, and `GET /openapi.json`.
+- **Auth failures**: `401` (missing/invalid token) or `403` (wrong action, caller kind, resource,
+  revision, or lifecycle state), both `{ error: string, code?: string }`.
 
 ## Conventions
 
@@ -247,6 +280,119 @@ the live spec and this companion document differ.
 **Auth**: Bearer; scope `knowledge-spaces:write`.
 **Path params**: `id` (string, min 1).
 **Responses**: `200` `DocumentCompilationJob` (canceled); `404`; `409` terminal (cannot cancel); `503`; `401`/`403`.
+
+---
+
+## Overview & background tasks
+
+The Overview endpoints are bounded, read-only product projections. They never expose model
+credentials, datasource secrets, internal leases, or worker fencing data. In the Dify Console API,
+the corresponding routes use a local `control_space_id`; Dify resolves it to the upstream
+KnowledgeFS `id`.
+
+### `GET /knowledge-spaces/{id}/overview/stats`
+**Description**: Return current inventory counters plus query/answer totals for the fixed `24h`,
+`7d`, and `30d` windows.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid).
+**Responses**:
+- `200`: `{ knowledgeSpaceId, generatedAt, current, windows }`. `current` contains
+  `knowledgeCount`, `linkedAppCount`, source totals/freshness, and `latestSourceSyncAt?`; each window
+  contains `{ since, queryCount, answeredQueryCount, answerRate }`.
+- `404`; `503` Overview backend unavailable; `401`/`403`.
+
+### `GET /knowledge-spaces/{id}/overview/query-outcomes`
+**Description**: Return requester-scoped current/previous outcome totals and a bounded time series.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid). **Query**: `window` (`24h|7d|30d`, optional, default `24h`).
+**Responses**:
+- `200`: `{ knowledgeSpaceId, window, since, previousSince, generatedAt, current, previous, buckets }`.
+  Totals contain `queryCount`, `answered`, `lowConfidence`, `noEvidence`, and `answerRate`; buckets
+  additionally contain `startAt` and `endAt`.
+- `400`; `404`; `503`; `401`/`403`.
+
+### `GET /knowledge-spaces/{id}/overview/inventory`
+**Description**: Return source-category, graph, and active-index inventory.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid).
+**Responses**:
+- `200`: `{ knowledgeSpaceId, generatedAt, sourceCategories, graphEntities, graphRelations,
+  indexCoverage }`; index coverage contains `{ indexed, total, percentage }`.
+- `404`; `503`; `401`/`403`.
+
+### `GET /knowledge-spaces/{id}/overview/activity`
+**Description**: Cursor-paginated append-only product activity.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid).
+**Query**: `cursor`; `limit` (1–100); `from`/`to` (date-time); optional `action`,
+`resourceType`, and `result` filters.
+**Responses**:
+- `200`: `{ items: [{ id, action, actor, resource, result, details, occurredAt }], nextCursor? }`.
+- `400`; `404`; `503`; `401`/`403`.
+
+This upstream route is not currently exposed by the Dify Console controller; the Console Overview
+uses its existing activity integration until that product contract is migrated.
+
+### `GET /knowledge-spaces/{id}/overview/attention`
+**Description**: List rule-backed Needs Attention findings.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid). **Query**: `limit` (1–100); `includeDismissed` (boolean, default
+`false`).
+**Responses**:
+- `200`: `{ items }`; each item includes `issueKey`, `ruleId`, `severity`, `status`, `title`,
+  `resource`, `action`, `evidence`, `revision`, `updatedAt`, and optional `dismissedUntil`.
+- `400`; `404`; `503`; `401`/`403`.
+
+### `PATCH /knowledge-spaces/{id}/overview/attention/{issueKey}`
+**Description**: Dismiss, resolve, or reactivate one finding with revision CAS.
+**Auth**: Bearer; scope `knowledge-spaces:write`.
+**Path params**: `id` (uuid); `issueKey` (string).
+**Body** (`application/json`, strict): `{ expectedRevision, status:
+"active"|"dismissed"|"resolved", dismissedUntil? }`.
+**Responses**: `200` updated finding; `404`; `409` revision conflict; `503`; `401`/`403`.
+
+The attention list/transition routes are upstream contracts and are not currently proxied by the
+Dify Console API.
+
+### `GET /knowledge-spaces/{id}/overview/health`
+**Description**: Return the stable aggregate product-health state.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid).
+**Responses**:
+- `200`: `{ knowledgeSpaceId, generatedAt, state, components }`, where `state` and each component
+  state are `healthy|degraded|unavailable|unknown`. Components cover index, ingestion, profile
+  publication, query availability, source freshness, and worker readiness.
+- `404`; `503`; `401`/`403`.
+
+### `GET /knowledge-spaces/{id}/background-tasks`
+**Description**: List newest durable document, bulk-document, and source tasks across their native
+job stores.
+**Auth**: Bearer; scope `knowledge-spaces:read`.
+**Path params**: `id` (uuid). **Query**: `cursor` (opaque, optional); `limit` (1–100, default 50).
+**Responses**:
+- `200`: `{ items: BackgroundTask[], nextCursor? }`.
+- `BackgroundTask`: `{ id, knowledgeSpaceId, taskKind, operation, state, canCancel, canRetry,
+  progressCompleted, progressFailed, progressTotal, progressPercent, createdAt, updatedAt,
+  completedAt?, documentId?, documentRevision?, sourceId?, errorCode?, errorMessage? }`.
+- `taskKind`: `document|document_bulk|source`; `state`:
+  `queued|running|completed|failed|canceled`.
+- `400`; `404`; `409`; `401`/`403`.
+
+### `POST /knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel`
+**Description**: Request cancellation through the task's native durable state machine.
+**Auth**: Bearer; scope `knowledge-spaces:write`.
+**Path params**: `id` (uuid); `taskKind` (`document|document_bulk|source`); `taskId` (uuid).
+**Body**: None.
+**Responses**: `200` updated `BackgroundTask`; `400`; `404`; `409` transition not allowed;
+`401`/`403`.
+
+### `POST /knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/retry`
+**Description**: Retry a failed or canceled task through the task's native durable state machine.
+**Auth**: Bearer; scope `knowledge-spaces:write`.
+**Path params**: `id` (uuid); `taskKind` (`document|document_bulk|source`); `taskId` (uuid).
+**Body**: None.
+**Responses**: `200` updated `BackgroundTask`; `400`; `404`; `409` transition not allowed;
+`401`/`403`.
 
 ---
 
@@ -743,10 +889,48 @@ compatibility path does not admit Auto.
 **Auth**: **None (public)**.
 **Responses**: `200` `{ ok: boolean, runtime: enum(cloudflare-workers|node-docker), components: Record<string, boolean> }`.
 
+### `GET /ready`
+**Description**: Deployment readiness gate. Unlike `/health`, this fails closed until every required
+runtime dependency and Dify-integrated configuration is ready to receive traffic.
+**Auth**: **None (public)**.
+**Responses**:
+- `200`: `{ ok: true, runtime, components }`.
+- `503`: `{ ok: false, runtime, components }`.
+
 ### `GET /openapi.json`
 **Description**: The machine-readable OpenAPI 3 document for the whole API (served via `app.doc`).
 **Auth**: **None (public)**.
 **Responses**: `200` OpenAPI JSON document.
+
+### `POST /internal/dify-integration/freeze`
+**Description**: Persist or idempotently replay a Dify Workspace maintenance freeze before product
+traffic activation.
+**Auth**: Dify-issued Capability v2 token with the exact internal freeze operation and namespace;
+not callable by browser or Service API clients.
+**Body** (`application/json`, strict): `{ freezeId, freezeRevision, sourceRevisionDigest,
+sourceTaskWatermark }`. IDs/digests use `sha256:<64 lowercase hex>` and numeric evidence must be a
+JavaScript-safe integer.
+**Responses**:
+- `200`: freeze evidence plus `{ namespaceId, frozen: true, frozenAt, updatedAt, applied, replayed }`.
+- `401`; `403` wrong capability; `409` conflicting revision/evidence.
+
+The namespace/tenant is taken from the signed capability, not from request JSON. Reusing an
+operation grant is rejected; an exact durable evidence replay uses a newly issued grant.
+
+### `POST /internal/dify-integration/activate`
+**Description**: Persist or idempotently replay monotonic Dify Workspace integration activation.
+**Auth**: Dify-issued Capability v2 token with the exact internal activation operation and
+namespace; not callable by browser or Service API clients.
+**Body** (`application/json`, strict): `{ activationId, activationRevision,
+sourceRevisionDigest }`.
+**Responses**:
+- `200`: activation evidence plus `{ namespaceId, active: true, activatedAt, updatedAt, applied,
+  replayed }`.
+- `401`; `403` wrong capability; `409` non-monotonic or conflicting activation evidence.
+
+Activation is an acknowledgement to Dify's Workspace cutover coordinator. Dify publishes its local
+product-route, Capability v2, integrated-mode, and legacy-ACL-read-only switches only after this
+exact durable acknowledgement is validated.
 
 ### `GET /bulk-jobs/{id}`
 **Description**: Progress for a bulk document operation job.

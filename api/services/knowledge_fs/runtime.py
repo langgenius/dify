@@ -24,8 +24,10 @@ from services.knowledge_fs.control_plane_service import (
 )
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from services.knowledge_fs.credential_service import KnowledgeFSCredentialService
+from services.knowledge_fs.cutover import KnowledgeFSWorkspaceCutoverService
 from services.knowledge_fs.cutover_runtime_gate import SQLKnowledgeFSWorkspaceRuntimeGate
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
+from services.knowledge_fs.greenfield_initializer import KnowledgeFSWorkspaceGreenfieldInitializer
 from services.knowledge_fs.operation_admission import (
     DifyKnowledgeFSBillingPort,
     DifyKnowledgeFSWeightedRateLimitPort,
@@ -38,6 +40,7 @@ from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRB
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemoteClient
 from services.knowledge_fs.product_service import KnowledgeFSProductService
+from services.knowledge_fs.remote_registry import get_knowledge_fs_lifecycle_remote
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
 from services.knowledge_fs_capability import create_configured_knowledge_fs_capability_issuer
 
@@ -68,7 +71,18 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
     issuer = create_configured_knowledge_fs_capability_issuer(
         audit=SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
     )
-    cutover_gate = SQLKnowledgeFSWorkspaceRuntimeGate(session_maker)
+    greenfield_cutover = KnowledgeFSWorkspaceCutoverService(
+        session_maker,
+        remote_factory=get_knowledge_fs_lifecycle_remote,
+    )
+    greenfield_initializer = KnowledgeFSWorkspaceGreenfieldInitializer(
+        session_maker,
+        cutover=greenfield_cutover,
+    )
+    cutover_gate = SQLKnowledgeFSWorkspaceRuntimeGate(
+        session_maker,
+        initializer=greenfield_initializer,
+    )
     batch_capabilities = KnowledgeFSBatchCapabilityBroker(
         session_maker,
         cutover_gate=cutover_gate,

@@ -40,12 +40,15 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
         "KnowledgeFSProductApplicationService",
         "KnowledgeFSProductService",
         "KnowledgeFSRevocationCommandProducer",
+        "KnowledgeFSWorkspaceCutoverService",
+        "KnowledgeFSWorkspaceGreenfieldInitializer",
         "LoggingKnowledgeFSRateLimitAudit",
         "SQLKnowledgeFSAppCatalog",
         "SQLKnowledgeFSWorkspaceMemberPort",
         "SQLKnowledgeFSWorkspaceRuntimeGate",
         "SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor",
         "create_configured_knowledge_fs_capability_issuer",
+        "get_knowledge_fs_lifecycle_remote",
     )
     factories: dict[str, MagicMock] = {}
     for name in factory_names:
@@ -79,6 +82,18 @@ def test_runtime_wires_one_shared_authorization_and_remote_graph(monkeypatch: py
     assert (
         factories["KnowledgeFSProductService"].call_args.kwargs["cutover_gate"]
         is factories["SQLKnowledgeFSWorkspaceRuntimeGate"].return_value
+    )
+    factories["KnowledgeFSWorkspaceCutoverService"].assert_called_once_with(
+        session_maker,
+        remote_factory=factories["get_knowledge_fs_lifecycle_remote"],
+    )
+    factories["KnowledgeFSWorkspaceGreenfieldInitializer"].assert_called_once_with(
+        session_maker,
+        cutover=factories["KnowledgeFSWorkspaceCutoverService"].return_value,
+    )
+    factories["SQLKnowledgeFSWorkspaceRuntimeGate"].assert_called_once_with(
+        session_maker,
+        initializer=factories["KnowledgeFSWorkspaceGreenfieldInitializer"].return_value,
     )
     assert (
         factories["KnowledgeFSProductApplicationService"].call_args.kwargs["rbac"]
