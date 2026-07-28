@@ -359,6 +359,7 @@ def test_persist_to_database_rejects_existing_execution_from_other_tenant(monkey
     session.get.return_value = SimpleNamespace(tenant_id="other-tenant")
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -712,6 +713,7 @@ def test_save_execution_data_updates_terminal_metadata_without_merging_whole_row
     session.execute.return_value.scalars.return_value.first.return_value = existing
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -743,6 +745,7 @@ def test_save_execution_data_ignores_stale_nonterminal_snapshot(monkeypatch: pyt
     session.scalar.return_value = existing
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=_session_factory(session),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -791,6 +794,7 @@ def test_save_queues_celery_task_when_async_persistence_enabled(mock_task, monke
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -827,6 +831,7 @@ def test_save_execution_data_queues_celery_task_when_async_persistence_enabled(
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -852,6 +857,7 @@ def test_queue_async_save_requires_context(monkeypatch: pytest.MonkeyPatch) -> N
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -880,6 +886,7 @@ def test_queue_async_save_execution_data_requires_context(monkeypatch: pytest.Mo
     )
     repo = SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=Mock(spec=sessionmaker),
+        tenant_id=RESOURCE_TENANT_ID,
         user=_mock_account(),
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

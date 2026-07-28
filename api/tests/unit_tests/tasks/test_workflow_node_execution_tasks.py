@@ -251,6 +251,7 @@ def test_create_sqlalchemy_repository_builds_account_context(monkeypatch) -> Non
     account.set_tenant_id.assert_called_once_with("tenant-id")
     repository_class.assert_called_once_with(
         session_factory=session_maker,
+        tenant_id="tenant-id",
         user=account,
         app_id=None,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -283,6 +284,7 @@ def test_create_sqlalchemy_repository_builds_end_user_context(monkeypatch) -> No
     assert repository == repository_class.return_value
     repository_class.assert_called_once_with(
         session_factory=session_maker,
+        tenant_id="tenant-id",
         user=end_user,
         app_id="app-id",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
