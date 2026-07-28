@@ -874,7 +874,7 @@ export type SandboxReadResponse = {
 }
 
 export type WorkflowAgentSandboxUploadPayload = {
-  node_execution_id?: string | null
+  node_execution_id: string
   path: string
 }
 
@@ -5658,8 +5658,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     node_id: string
     workflow_run_id: string
   }
-  query?: {
-    node_execution_id?: string
+  query: {
+    node_execution_id: string
     path?: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
@@ -5680,7 +5680,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     workflow_run_id: string
   }
   query: {
-    node_execution_id?: string
+    node_execution_id: string
     path: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'

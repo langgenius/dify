@@ -303,18 +303,18 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
     null,
   )
-  const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
   const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
   const appId = flowType === FlowType.appFlow ? flowId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
   const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
+    type: 'agent',
     agentId,
-    appId,
-    conversationId: conversationIds[rightPanelMode],
-    nodeId,
-    workflowRunId,
+    caller: {
+      type: 'build_draft',
+      id: buildDraft.id,
+    },
   })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
@@ -446,9 +446,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     await refreshDebugConversationAsync().catch(() => undefined)
     setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
-    setWorkflowRunId(null)
     setClearPreviewChat(true)
-  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId, setWorkflowRunId])
+  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
@@ -655,7 +654,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     (conversationIds.build === completedBuildConversationId ||
       (conversationIds.build === inlineComposerState?.debug_conversation_id &&
         (inlineComposerState?.debug_conversation_has_messages ?? false)))
-  const showWorkingDirectoryAction = rightPanelMode === 'build' && buildConversationHasAgentResponse
+  const showWorkingDirectoryAction =
+    rightPanelMode === 'build' && !!buildDraft.id && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled) return
 
@@ -760,18 +760,13 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               conversationIds={conversationIds}
               mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
+              onConversationComplete={(mode, completedConversationId) => {
                 if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
 
                 setCompletedBuildConversationId(completedConversationId)
-                setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
                 invalidateAgentWorkingDirectoryFiles({
-                  agentId,
-                  appId,
                   conversationId: completedConversationId,
-                  nodeId,
                   queryClient,
-                  workflowRunId: completedWorkflowRunId ?? completedConversationId,
                 })
                 buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
                   finishBuildAction(buildCallbackGeneration),
@@ -781,14 +776,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                 if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
                 setConversationId({ mode, conversationId })
               }}
-              onWorkflowRunIdChange={(nextWorkflowRunId) => {
-                if (!isBuildCallbackCurrent(buildCallbackGeneration)) return
-                if (nextWorkflowRunId) setWorkflowRunId(nextWorkflowRunId)
-              }}
               onSaveDraftBeforeRun={
                 rightPanelMode === 'build'
                   ? () => {
-                      setWorkflowRunId(null)
                       return runBuildPreparation({
                         generation: buildCallbackGeneration,
                         markBuildChatStarted: true,

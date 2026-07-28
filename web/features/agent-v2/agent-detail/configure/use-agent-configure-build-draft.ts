@@ -252,6 +252,7 @@ export function useAgentConfigureBuildDraftData({
       : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
     buildDraftAgentSoulConfig,
+    id: buildDraftData?.draft.id,
     changedKeys: buildDraftChangeSummary.changedKeys,
     changeSummary: buildDraftChangeSummary,
     changesCount: buildDraftChangeSummary.changesCount,

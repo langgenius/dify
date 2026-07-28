@@ -39,10 +39,14 @@ from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper,
 class _RepoRecorder:
     def __init__(self) -> None:
         self.saved: list[object] = []
+        self.synchronously_saved: list[object] = []
         self.saved_exec_data: list[object] = []
 
     def save(self, entity):
         self.saved.append(entity)
+
+    def save_synchronously(self, entity):
+        self.synchronously_saved.append(entity)
 
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
@@ -331,6 +335,24 @@ class TestWorkflowPersistenceLayer:
         layer._handle_node_retry(retry_event)
         assert node_repo.saved_exec_data
 
+    def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="agent-exec",
+                node_id="agent-node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_version="2",
+                node_title="Agent",
+                start_at=_naive_utc_now(),
+            )
+        )
+
+        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert node_repo.saved == []
+
     def test_retry_history_is_preserved_after_node_succeeds(self):
         layer, _, node_repo, _ = _make_layer()
         layer._handle_graph_run_started()
@@ -501,7 +523,12 @@ class TestWorkflowPersistenceLayer:
         domain_execution = layer._node_execution_cache["exec"]
         domain_execution.inputs = {"old": True}
 
-        result = NodeRunResult(inputs={"new": True}, outputs={"out": 1}, process_data={"p": 1}, metadata={})
+        result = NodeRunResult(
+            inputs={"new": True},
+            outputs={"out": 1},
+            process_data={"p": 1, "workflow_agent_binding_id": "workflow-binding-1"},
+            metadata={},
+        )
         pause_event = NodeRunPauseRequestedEvent(
             id="exec",
             node_id="node",
@@ -513,6 +540,38 @@ class TestWorkflowPersistenceLayer:
 
         assert domain_execution.status == WorkflowNodeExecutionStatus.PAUSED
         assert domain_execution.inputs == {"old": True}
+        assert domain_execution.process_data == {"workflow_agent_binding_id": "workflow-binding-1"}
+
+    def test_handle_node_retry_preserves_workflow_agent_binding_identity(self):
+        layer, _, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+        started_at = _naive_utc_now()
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_title="Agent",
+                start_at=started_at,
+            )
+        )
+
+        layer._handle_node_retry(
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_title="Agent",
+                start_at=started_at,
+                error="retry",
+                retry_index=1,
+                node_run_result=NodeRunResult(
+                    process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+                ),
+            )
+        )
+
+        assert layer._node_execution_cache["exec"].process_data["workflow_agent_binding_id"] == "workflow-binding-1"
 
     def test_get_node_execution_raises_for_missing(self):
         layer, _, _, _ = _make_layer()
