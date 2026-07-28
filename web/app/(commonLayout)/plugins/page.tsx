@@ -1,6 +1,6 @@
 import type { LegacyPluginsSearchParams } from '@/app/components/plugins/plugin-routes'
 import AccountDropdown from '@/app/components/header/account-dropdown'
-import Marketplace from '@/app/components/plugins/marketplace'
+import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import PluginPage from '@/app/components/plugins/plugin-page'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 import {
@@ -67,7 +67,7 @@ const PluginList = async ({ searchParams }: PluginListProps) => {
     <PluginPage
       plugins={<PluginsPanel />}
       marketplace={(
-        <Marketplace
+        <EmbeddedMarketplace
           showInstallButton
           variant="home"
           homeHeaderActions={(
