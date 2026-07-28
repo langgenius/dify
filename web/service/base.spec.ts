@@ -127,9 +127,7 @@ describe('ssePost and sseGet', () => {
       read: vi.fn().mockResolvedValueOnce({
         done: false,
         value: new TextEncoder().encode(
-          ['data: {"event":"error","message":"run failed","code":"run_failed"}', '', ''].join(
-            '\n',
-          ),
+          ['data: {"event":"error","message":"run failed","code":"run_failed"}', '', ''].join('\n'),
         ),
       }),
       cancel: vi.fn().mockResolvedValue(undefined),
