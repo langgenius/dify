@@ -438,6 +438,45 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('sends only one autosave request while the first save is pending', async () => {
+    const user = userEvent.setup()
+    mocks.saveDraftFileMutationFn.mockImplementation(() => new Promise(() => undefined))
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nNew instructions')
+
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalled()
+      },
+      { timeout: 2500 },
+    )
+
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves dirty content once when the editor unmounts before autosave', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nNew instructions')
+    unmount()
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('saves the live display name into SKILL.md before publishing', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
