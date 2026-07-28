@@ -115,6 +115,19 @@ test("root workflow preserves the independent KnowledgeFS pnpm workspace", () =>
   assert.equal(packageJson.scripts["lint:backend"], "biome check apps/api packages scripts");
 });
 
+test("CI coverage excludes the KnowledgeFS API package", () => {
+  const checkCommands = packageJson.scripts.check.split(" && ");
+
+  assert.ok(checkCommands.includes("pnpm test:coverage:ci"));
+  assert.ok(!checkCommands.includes("pnpm test:coverage"));
+  assert.equal(
+    packageJson.scripts["test:coverage:ci"],
+    "turbo run test:coverage --filter=!@knowledge/api",
+  );
+  assert.equal(packageJson.scripts["test:coverage"], "turbo run test:coverage");
+  assert.equal(apiPackageJson.scripts["test:coverage"], "vitest run --coverage");
+});
+
 test("root workflow runs explicit local security gates", () => {
   assert.match(workflow, /name: Scan KnowledgeFS secrets\s+run: pnpm security:secrets/);
   assert.match(

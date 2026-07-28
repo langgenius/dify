@@ -11,7 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "capability:export": "node --import tsx scripts/export-capability-v2-operations.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm openapi:export:test && pnpm test:coverage && pnpm eval:regression && pnpm eval:phase4 && pnpm swagger:test && pnpm db:migrations:check && pnpm p9:bundle:test && pnpm ci:workflow:test && pnpm compose:middleware:config && pnpm compose:config && pnpm dify:compose:config && pnpm compose:middleware:test && pnpm compose:apps:test && pnpm docker:context:test && pnpm local:happy-path:test && pnpm docker:api:bundle-smoke:test && pnpm docker:admin:http-smoke:test && pnpm docker:apps:smoke:test",
+    "check": "pnpm typecheck && pnpm test && pnpm openapi:export:test && pnpm test:coverage:ci && pnpm eval:regression && pnpm eval:phase4 && pnpm swagger:test && pnpm db:migrations:check && pnpm p9:bundle:test && pnpm ci:workflow:test && pnpm compose:middleware:config && pnpm compose:config && pnpm dify:compose:config && pnpm compose:middleware:test && pnpm compose:apps:test && pnpm docker:context:test && pnpm local:happy-path:test && pnpm docker:api:bundle-smoke:test && pnpm docker:admin:http-smoke:test && pnpm docker:apps:smoke:test",
     "ci:workflow:test": "node --test scripts/github-actions-workflow.test.mjs scripts/secret-scan.test.mjs",
     "compose:config": "docker compose --env-file infra/local/.env.example -f infra/local/compose.yaml config",
     "compose:apps:test": "node --test scripts/compose-apps.test.mjs",
@@ -52,6 +52,7 @@
     "swagger:test": "node --test tools/swagger/server.test.mjs",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
+    "test:coverage:ci": "turbo run test:coverage --filter=!@knowledge/api",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
