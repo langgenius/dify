@@ -463,6 +463,7 @@
   "operation.downloading": "Downloaden...",
   "operation.duplicate": "Duplicate",
   "operation.edit": "Edit",
+  "operation.export": "Exporteren",
   "operation.exporting": "Exporteren",
   "operation.fill": "Automatisch invullen",
   "operation.format": "Format",

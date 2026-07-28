@@ -463,6 +463,7 @@
   "operation.downloading": "İndiriliyor...",
   "operation.duplicate": "Çoğalt",
   "operation.edit": "Düzenle",
+  "operation.export": "Dışa aktar",
   "operation.exporting": "Dışa aktarılıyor",
   "operation.fill": "Otomatik doldur",
   "operation.format": "Format",

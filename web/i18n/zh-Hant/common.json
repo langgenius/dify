@@ -464,6 +464,7 @@
   "operation.downloading": "下載中",
   "operation.duplicate": "複製",
   "operation.edit": "編輯",
+  "operation.export": "匯出",
   "operation.exporting": "匯出中",
   "operation.fill": "一鍵填入",
   "operation.format": "格式",

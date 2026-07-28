@@ -18,15 +18,11 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs import helper
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
-from models.model import App
-from services.app_generate_service import AppGenerateService
 from services.skill_management_service import (
     SkillAssistMessagePayload,
     SkillCreatePayload,
@@ -508,29 +504,19 @@ class WorkspaceSkillAssistMessageApi(Resource):
     def post(self, current_tenant_id: str, current_user: Account, skill_id: str):
         try:
             payload = SkillAssistMessagePayload.model_validate(console_ns.payload or {})
-            assistant_app, query = SkillManagementService().get_or_create_assistant_app(
+            response = SkillManagementService().create_assistant_action_stream(
                 tenant_id=current_tenant_id,
                 skill_id=skill_id,
                 user_id=current_user.id,
                 message=payload.message,
                 attachments=payload.attachments,
                 model_payload=payload.model,
+                target_path=payload.target_path,
             )
         except ValidationError as exc:
             return {"code": "invalid_request", "message": str(exc)}, 400
         except SkillManagementServiceError as exc:
             return _error_response(exc)
-        app_model = db.session().get(App, assistant_app.id)
-        if app_model is None:
-            return {"code": "skill_assistant_unavailable", "message": "Skill Authoring Agent is unavailable"}, 503
-        response = AppGenerateService.generate(
-            session=db.session(),
-            app_model=app_model,
-            user=current_user,
-            args={"inputs": {}, "query": query, "auto_generate_name": False},
-            invoke_from=InvokeFrom.DEBUGGER,
-            streaming=True,
-        )
         return helper.compact_generate_response(response)
 
 
