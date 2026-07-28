@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from core.app.apps.message_generator import MessageGenerator
+from core.app.apps.streaming_utils import StreamEventWithCursor
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -71,6 +72,14 @@ class _FakeStreams:
     def expire(self, key: str, seconds: int) -> None:
         # no-op for tests
         return None
+
+    def eval(self, script: str, numkeys: int, key: str, payload: bytes, retention_seconds: int) -> str:
+        assert "XADD" in script
+        assert "EXPIRE" in script
+        assert numkeys == 1
+        entry_id = self.xadd(key, {b"data": payload})
+        self.expire(key, retention_seconds)
+        return entry_id
 
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         assert len(streams) == 1
@@ -151,15 +160,19 @@ def test_streams_full_flow_prepublish_and_replay():
     gen = MessageGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
 
     received = []
+    cursors = []
     for msg in gen:
         if isinstance(msg, str):
             # skip ping events
             continue
-        received.append(msg)
-        if msg.get("event") == "workflow_finished":
+        assert isinstance(msg, StreamEventWithCursor)
+        received.append(msg.event)
+        cursors.append(msg.cursor)
+        if msg.event.get("event") == "workflow_finished":
             break
 
     assert [m.get("event") for m in received] == ["workflow_started", "workflow_finished"]
+    assert cursors == ["1-0", "2-0"]
 
 
 @pytest.mark.usefixtures("_patch_get_channel_pubsub")
