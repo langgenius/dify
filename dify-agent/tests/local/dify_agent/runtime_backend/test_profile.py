@@ -40,8 +40,8 @@ def test_local_backend_requires_shellctl_endpoint() -> None:
         _ = RuntimeBackendSettings(runtime_backend="local")
 
 
-def test_e2b_s3_requires_bucket_http_gateway_and_server_secret() -> None:
-    with pytest.raises(ValidationError, match="e2b_s3_bucket"):
+def test_e2b_s3_requires_uri_http_gateway_and_server_secret() -> None:
+    with pytest.raises(ValidationError, match="e2b_s3_uri"):
         _ = RuntimeBackendSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="secret",
@@ -52,14 +52,14 @@ def test_e2b_s3_requires_bucket_http_gateway_and_server_secret() -> None:
         _ = RuntimeBackendSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="secret",
-            e2b_s3_bucket="bucket",
+            e2b_s3_uri="s3://bucket/dify-agent",
             server_secret_key=_secret(),
         )
     with pytest.raises(ValidationError, match="http\\(s\\)"):
         _ = RuntimeBackendSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="secret",
-            e2b_s3_bucket="bucket",
+            e2b_s3_uri="s3://bucket/dify-agent",
             agent_stub_api_base_url="grpc://agent.example:9091",
             server_secret_key=_secret(),
         )
@@ -67,34 +67,18 @@ def test_e2b_s3_requires_bucket_http_gateway_and_server_secret() -> None:
         _ = RuntimeBackendSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="secret",
-            e2b_s3_bucket="bucket",
+            e2b_s3_uri="s3://bucket/dify-agent",
             agent_stub_api_base_url="https://agent.example/agent-stub",
         )
 
 
-def test_e2b_s3_validates_explicit_credentials_and_session_token() -> None:
-    common: dict[str, object] = {
-        "runtime_backend": "e2b_s3",
-        "e2b_api_key": "secret",
-        "e2b_s3_bucket": "bucket",
-        "agent_stub_api_base_url": "https://agent.example/agent-stub",
-        "server_secret_key": _secret(),
-    }
-    with pytest.raises(ValidationError, match="configured together"):
-        _ = RuntimeBackendSettings.model_validate({**common, "e2b_s3_access_key_id": "access"})
-    with pytest.raises(ValidationError, match="requires explicit"):
-        _ = RuntimeBackendSettings.model_validate({**common, "e2b_s3_session_token": "session"})
-
-    settings = RuntimeBackendSettings.model_validate(
-        {
-            **common,
-            "e2b_s3_region": " ",
-            "e2b_s3_endpoint": "",
-            "e2b_s3_access_key_id": "access",
-            "e2b_s3_secret_access_key": "secret",
-            "e2b_s3_session_token": "session",
-        }
+def test_e2b_s3_normalizes_uri() -> None:
+    settings = RuntimeBackendSettings(
+        runtime_backend="e2b_s3",
+        e2b_api_key="secret",
+        e2b_s3_uri="  s3://bucket/dify-agent?region=us-east-1  ",
+        agent_stub_api_base_url="https://agent.example/agent-stub",
+        server_secret_key=_secret(),
     )
-    assert settings.e2b_s3_root == "dify-agent"
-    assert settings.e2b_s3_region is None
-    assert settings.e2b_s3_endpoint is None
+
+    assert settings.e2b_s3_uri == "s3://bucket/dify-agent?region=us-east-1"

@@ -76,7 +76,7 @@ def test_create_agent_stub_app_injects_e2b_s3_home_snapshot_gateway(monkeypatch)
     settings = ServerSettings(
         runtime_backend="e2b_s3",
         e2b_api_key="e2b-secret",
-        e2b_s3_bucket="snapshots",
+        e2b_s3_uri="s3://snapshots/dify-agent",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
     )

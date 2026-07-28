@@ -62,13 +62,7 @@ class RuntimeBackendSettings(BaseSettings):
     )
     e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
-    e2b_s3_bucket: str | None = None
-    e2b_s3_root: str = "dify-agent"
-    e2b_s3_region: str | None = None
-    e2b_s3_endpoint: str | None = None
-    e2b_s3_access_key_id: str | None = None
-    e2b_s3_secret_access_key: str | None = None
-    e2b_s3_session_token: str | None = None
+    e2b_s3_uri: str | None = None
     agent_stub_api_base_url: str | None = None
     server_secret_key: str | None = None
 
@@ -81,12 +75,7 @@ class RuntimeBackendSettings(BaseSettings):
 
     @field_validator(
         "e2b_api_key",
-        "e2b_s3_bucket",
-        "e2b_s3_region",
-        "e2b_s3_endpoint",
-        "e2b_s3_access_key_id",
-        "e2b_s3_secret_access_key",
-        "e2b_s3_session_token",
+        "e2b_s3_uri",
         "agent_stub_api_base_url",
         "server_secret_key",
         mode="before",
@@ -121,18 +110,8 @@ class RuntimeBackendSettings(BaseSettings):
         return self
 
     def _validate_e2b_s3(self) -> None:
-        if not self.e2b_s3_bucket or not self.e2b_s3_bucket.strip():
-            raise ValueError("e2b_s3_bucket is required for the e2b_s3 runtime backend")
-        if not self.e2b_s3_root.strip():
-            raise ValueError("e2b_s3_root must not be blank")
-        if self.e2b_s3_endpoint is not None:
-            _validate_http_url(self.e2b_s3_endpoint, field_name="e2b_s3_endpoint")
-        has_access_key = bool(self.e2b_s3_access_key_id and self.e2b_s3_access_key_id.strip())
-        has_secret_key = bool(self.e2b_s3_secret_access_key and self.e2b_s3_secret_access_key.strip())
-        if has_access_key != has_secret_key:
-            raise ValueError("e2b_s3_access_key_id and e2b_s3_secret_access_key must be configured together")
-        if self.e2b_s3_session_token and self.e2b_s3_session_token.strip() and not has_access_key:
-            raise ValueError("e2b_s3_session_token requires explicit S3 credentials")
+        if not self.e2b_s3_uri:
+            raise ValueError("e2b_s3_uri is required for the e2b_s3 runtime backend")
         if not self.agent_stub_api_base_url:
             raise ValueError("agent_stub_api_base_url is required for the e2b_s3 runtime backend")
         _validate_http_url(self.agent_stub_api_base_url, field_name="agent_stub_api_base_url")
@@ -179,15 +158,7 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             )
         case "e2b_s3":
             control_plane = E2BSDKControlPlane(api_key=settings.e2b_api_key or "")
-            archive_store = OpenDALHomeArchiveStore.create_s3(
-                bucket=settings.e2b_s3_bucket or "",
-                root=settings.e2b_s3_root,
-                region=settings.e2b_s3_region,
-                endpoint=settings.e2b_s3_endpoint,
-                access_key_id=settings.e2b_s3_access_key_id,
-                secret_access_key=settings.e2b_s3_secret_access_key,
-                session_token=settings.e2b_s3_session_token,
-            )
+            archive_store = OpenDALHomeArchiveStore.create_from_uri(settings.e2b_s3_uri or "")
             token_codec = HomeSnapshotTransferTokenCodec.from_server_secret(settings.server_secret_key or "")
             lifecycle_cli = E2BHomeSnapshotCLI(
                 token_codec=token_codec,

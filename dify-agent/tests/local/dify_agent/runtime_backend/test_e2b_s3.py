@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import cast
 
 import opendal
@@ -948,6 +949,23 @@ async def test_home_snapshot_cli_failure_always_closes_control_lease(
             )
 
     assert fake_e2b_lease[0].close_calls == 1
+
+
+def test_opendal_store_constructs_from_uri_when_required_capabilities_are_supported(tmp_path: Path) -> None:
+    store = OpenDALHomeArchiveStore.create_from_uri(f"fs://{tmp_path}")
+
+    assert isinstance(store.operator, opendal.AsyncOperator)
+
+
+def test_opendal_store_rejects_uri_with_missing_required_capabilities() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "OpenDAL Home Snapshot storage is missing required capabilities: "
+            "write, write_can_multi, write_with_if_not_exists, delete"
+        ),
+    ):
+        _ = OpenDALHomeArchiveStore.create_from_uri("http://example.com/root")
 
 
 @pytest.mark.anyio

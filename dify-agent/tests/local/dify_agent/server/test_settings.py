@@ -310,30 +310,25 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
 
 
 def test_build_runtime_backend_profile_and_gateway_for_e2b_s3(monkeypatch: pytest.MonkeyPatch) -> None:
-    store_calls: list[dict[str, object]] = []
+    store_calls: list[str] = []
     stores: list[OpenDALHomeArchiveStore] = []
 
-    def create_s3_store(
+    def create_store_from_uri(
         cls: type[OpenDALHomeArchiveStore],
-        **kwargs: object,
+        uri: str,
     ) -> OpenDALHomeArchiveStore:
         del cls
-        store_calls.append(kwargs)
+        store_calls.append(uri)
         store = cast(OpenDALHomeArchiveStore, object())
         stores.append(store)
         return store
 
-    monkeypatch.setattr(OpenDALHomeArchiveStore, "create_s3", classmethod(create_s3_store))
+    monkeypatch.setattr(OpenDALHomeArchiveStore, "create_from_uri", classmethod(create_store_from_uri))
+    storage_uri = "s3://snapshots/tenant-root?region=us-east-1"
     settings = ServerSettings(
         runtime_backend="e2b_s3",
         e2b_api_key="e2b-secret",
-        e2b_s3_bucket="snapshots",
-        e2b_s3_root="tenant-root",
-        e2b_s3_region="us-east-1",
-        e2b_s3_endpoint="https://s3.example.test",
-        e2b_s3_access_key_id="access-key",
-        e2b_s3_secret_access_key="secret-key",
-        e2b_s3_session_token="session-token",
+        e2b_s3_uri=storage_uri,
         agent_stub_api_base_url="https://agent.example/agent-stub",
         server_secret_key=_base64url_secret(b"s" * 32),
     )
@@ -347,16 +342,7 @@ def test_build_runtime_backend_profile_and_gateway_for_e2b_s3(monkeypatch: pytes
     assert profile.home_snapshots.control_plane is profile.execution_bindings.control_plane
     assert profile.home_snapshots.lifecycle_cli is profile.execution_bindings.lifecycle_cli
     assert gateway is not None
-    expected_store_settings = {
-        "bucket": "snapshots",
-        "root": "tenant-root",
-        "region": "us-east-1",
-        "endpoint": "https://s3.example.test",
-        "access_key_id": "access-key",
-        "secret_access_key": "secret-key",
-        "session_token": "session-token",
-    }
-    assert store_calls == [expected_store_settings, expected_store_settings]
+    assert store_calls == [storage_uri, storage_uri]
     assert profile.home_snapshots.archive_store is stores[0]
     assert gateway.archive_store is stores[1]
     assert gateway.token_codec is not profile.home_snapshots.lifecycle_cli.token_codec
@@ -366,8 +352,8 @@ def test_home_snapshot_gateway_is_not_built_for_other_profiles() -> None:
     assert ServerSettings().build_home_snapshot_gateway() is None
 
 
-def test_server_settings_rejects_e2b_s3_without_required_s3_or_http_settings() -> None:
-    with pytest.raises(ValidationError, match="DIFY_AGENT_E2B_S3_BUCKET"):
+def test_server_settings_rejects_e2b_s3_without_required_storage_or_http_settings() -> None:
+    with pytest.raises(ValidationError, match="DIFY_AGENT_E2B_S3_URI"):
         _ = ServerSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="e2b-secret",
@@ -378,7 +364,7 @@ def test_server_settings_rejects_e2b_s3_without_required_s3_or_http_settings() -
         _ = ServerSettings(
             runtime_backend="e2b_s3",
             e2b_api_key="e2b-secret",
-            e2b_s3_bucket="snapshots",
+            e2b_s3_uri="s3://snapshots/dify-agent",
             agent_stub_api_base_url="grpc://agent.example:9091",
             server_secret_key=_base64url_secret(b"s" * 32),
         )

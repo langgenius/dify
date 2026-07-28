@@ -71,6 +71,13 @@ _BASELINE_EXCLUDES = (
     ".dify-agent-runtime",
     ".local/share/shellctl",
 )
+_REQUIRED_HOME_ARCHIVE_CAPABILITIES = (
+    "read",
+    "write",
+    "write_can_multi",
+    "write_with_if_not_exists",
+    "delete",
+)
 logger = logging.getLogger(__name__)
 
 
@@ -118,27 +125,17 @@ class OpenDALHomeArchiveStore:
     operator: opendal.AsyncOperator
 
     @classmethod
-    def create_s3(
-        cls,
-        *,
-        bucket: str,
-        root: str,
-        region: str | None = None,
-        endpoint: str | None = None,
-        access_key_id: str | None = None,
-        secret_access_key: str | None = None,
-        session_token: str | None = None,
-    ) -> "OpenDALHomeArchiveStore":
-        options = {"bucket": bucket, "root": root}
-        optional = {
-            "region": region,
-            "endpoint": endpoint,
-            "access_key_id": access_key_id,
-            "secret_access_key": secret_access_key,
-            "session_token": session_token,
-        }
-        options.update({key: value for key, value in optional.items() if value is not None and value.strip()})
-        return cls(operator=opendal.AsyncOperator("s3", **options))
+    def create_from_uri(cls, uri: str) -> "OpenDALHomeArchiveStore":
+        operator = opendal.AsyncOperator.from_uri(uri)
+        capability = operator.capability()
+        missing = [
+            name for name in _REQUIRED_HOME_ARCHIVE_CAPABILITIES if not getattr(capability, name, False)
+        ]
+        if missing:
+            raise ValueError(
+                "OpenDAL Home Snapshot storage is missing required capabilities: " + ", ".join(missing)
+            )
+        return cls(operator=operator)
 
     async def open_writer(self, snapshot_ref: str) -> OpenDALAsyncFile:
         path = validate_home_snapshot_ref(snapshot_ref)

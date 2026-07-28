@@ -209,7 +209,7 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
 @pytest.mark.anyio
 async def test_e2b_s3_shared_workspace_checkpoint_and_collection() -> None:
     api_key = _required_env("DIFY_AGENT_TEST_E2B_API_KEY", "real E2B + S3")
-    bucket = _required_env("DIFY_AGENT_TEST_E2B_S3_BUCKET", "real E2B + S3")
+    storage_uri = _required_env("DIFY_AGENT_TEST_E2B_S3_URI", "real E2B + OpenDAL storage")
     stub_url = _required_env("DIFY_AGENT_TEST_E2B_S3_STUB_API_BASE_URL", "public Home Snapshot gateway")
     server_secret = _required_env("DIFY_AGENT_TEST_SERVER_SECRET_KEY", "Home Snapshot transfer JWE")
     template = os.environ.get(
@@ -218,15 +218,7 @@ async def test_e2b_s3_shared_workspace_checkpoint_and_collection() -> None:
     )
     marker = uuid.uuid4().hex
     control = E2BSDKControlPlane(api_key=api_key)
-    store = OpenDALHomeArchiveStore.create_s3(
-        bucket=bucket,
-        root=os.environ.get("DIFY_AGENT_TEST_E2B_S3_ROOT", "dify-agent-integration"),
-        region=os.environ.get("DIFY_AGENT_TEST_E2B_S3_REGION") or None,
-        endpoint=os.environ.get("DIFY_AGENT_TEST_E2B_S3_ENDPOINT") or None,
-        access_key_id=os.environ.get("DIFY_AGENT_TEST_E2B_S3_ACCESS_KEY_ID") or None,
-        secret_access_key=os.environ.get("DIFY_AGENT_TEST_E2B_S3_SECRET_ACCESS_KEY") or None,
-        session_token=os.environ.get("DIFY_AGENT_TEST_E2B_S3_SESSION_TOKEN") or None,
-    )
+    store = OpenDALHomeArchiveStore.create_from_uri(storage_uri)
     lifecycle_cli = E2BHomeSnapshotCLI(
         token_codec=HomeSnapshotTransferTokenCodec.from_server_secret(server_secret),
         agent_stub_api_base_url=stub_url,

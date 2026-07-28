@@ -51,13 +51,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time, up to 3600 seconds. Binding resources pause on timeout. This is not a retention TTL. |
 | `DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token expected by shellctl inside the E2B template. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
-| `DIFY_AGENT_E2B_S3_BUCKET` | empty | S3-compatible bucket required by `e2b_s3`. |
-| `DIFY_AGENT_E2B_S3_ROOT` | `dify-agent` | OpenDAL root prefix containing immutable Home Snapshot objects. Snapshot refs are paths relative to this root; the physical object key combines the root and ref. |
-| `DIFY_AGENT_E2B_S3_REGION` | empty | Optional S3 region. When omitted, OpenDAL uses its standard S3 environment/config loading. |
-| `DIFY_AGENT_E2B_S3_ENDPOINT` | empty | Optional HTTP(S) endpoint for S3-compatible storage. |
-| `DIFY_AGENT_E2B_S3_ACCESS_KEY_ID` | empty | Optional explicit S3 access key; must be paired with the secret key. |
-| `DIFY_AGENT_E2B_S3_SECRET_ACCESS_KEY` | empty | Optional explicit S3 secret key; must be paired with the access key. |
-| `DIFY_AGENT_E2B_S3_SESSION_TOKEN` | empty | Optional session token, allowed only with the explicit credential pair. |
+| `DIFY_AGENT_E2B_S3_URI` | empty | OpenDAL scheme URI required by `e2b_s3`. The selected service must support `read`, `write`, `write_can_multi`, `write_with_if_not_exists`, and `delete`; startup fails and lists missing capabilities otherwise. |
 | `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | Public Agent Stub API base URL reachable from shellctl-managed remote machines. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
@@ -188,15 +182,15 @@ The physical resource behind a Binding pauses when that timeout fires, preservin
 the current Workspace. The setting is not a resource-age TTL and does not delete
 paused resources or immutable snapshots.
 
-For `e2b_s3`, export `DIFY_AGENT_RUNTIME_BACKEND=e2b_s3` plus the S3 bucket
-settings before starting the same overlay. `DIFY_AGENT_STUB_API_BASE_URL` must
-be an HTTP(S) URL reachable from the E2B Sandbox and
+For `e2b_s3`, export `DIFY_AGENT_RUNTIME_BACKEND=e2b_s3` plus
+`DIFY_AGENT_E2B_S3_URI` before starting the same overlay. The URI selects and
+configures an OpenDAL service; its scheme is not restricted to `s3`.
+`DIFY_AGENT_STUB_API_BASE_URL` must be an HTTP(S) URL reachable from the E2B Sandbox and
 `DIFY_AGENT_SERVER_SECRET_KEY` must be configured. The template must enable
 `SHELLCTL_ENABLE_PATH_ISOLATION=true`. Compose does not start MinIO or another
 object store. A Home Snapshot ref such as
 `home-snapshots/<tenant>/<agent>/<snapshot>.tar.zst` is an OpenDAL path relative
-to `DIFY_AGENT_E2B_S3_ROOT`; its physical object key is the configured root
-joined with that ref.
+to the operator root configured by the URI.
 
 ## Run runtime-backend integration contracts
 
@@ -239,16 +233,14 @@ test time; it is not a post-test retention TTL. Both contracts create unique
 resources and perform explicit cleanup in `finally` blocks.
 
 The `e2b_s3` integration path additionally requires a public HTTP Agent Stub
-server configured with the same bucket/root/credentials and server secret.
-`DIFY_AGENT_TEST_E2B_S3_ROOT` must exactly match the server's
-`DIFY_AGENT_E2B_S3_ROOT`; the example uses `dify-agent-integration` for both:
+server configured with the same OpenDAL storage URI and server secret.
+`DIFY_AGENT_TEST_E2B_S3_URI` must address the same storage and root as the
+server's `DIFY_AGENT_E2B_S3_URI`:
 
 ```bash
 cd dify-agent
 DIFY_AGENT_TEST_E2B_API_KEY="$E2B_API_TOKEN" \
-DIFY_AGENT_TEST_E2B_S3_BUCKET=integration-bucket \
-DIFY_AGENT_TEST_E2B_S3_ROOT=dify-agent-integration \
-DIFY_AGENT_TEST_E2B_S3_REGION=us-east-1 \
+DIFY_AGENT_TEST_E2B_S3_URI='s3://integration-bucket/dify-agent-integration?region=us-east-1' \
 DIFY_AGENT_TEST_E2B_S3_STUB_API_BASE_URL=https://agent.example.com/agent-stub \
 DIFY_AGENT_TEST_SERVER_SECRET_KEY="$DIFY_AGENT_SERVER_SECRET_KEY" \
   pdm run pytest --import-mode=importlib \

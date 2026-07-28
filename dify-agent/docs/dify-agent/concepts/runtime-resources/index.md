@@ -187,7 +187,7 @@ though sibling Home content cannot be read or written.
 | --- | --- | --- | --- |
 | Local | Supported | Supported, including default empty Homes and attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported with template-backed default Homes, without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; checkpoints use E2B snapshots. |
-| E2B + S3 (`e2b_s3`) | Supported as immutable OpenDAL/S3 tar.zst streams | Multiple private Binding Homes attach to one shared E2B Workspace Sandbox | Workspace ref is the Sandbox id, Binding ref is `sandbox-id:binding-id`, and Home Snapshot ref is an OpenDAL path relative to `DIFY_AGENT_E2B_S3_ROOT`; the physical S3 key combines the root and ref. |
+| E2B + S3 (`e2b_s3`) | Supported as immutable OpenDAL tar.zst streams | Multiple private Binding Homes attach to one shared E2B Workspace Sandbox | Workspace ref is the Sandbox id, Binding ref is `sandbox-id:binding-id`, and Home Snapshot ref is an OpenDAL path relative to the operator root configured by `DIFY_AGENT_E2B_S3_URI`. |
 | Enterprise | Not implemented | Default-Home Binding creation, acquire, and coupled destroy are supported | Binding and Workspace refs map to one Gateway sandbox. Explicit Home Snapshot materialization fails fast. |
 
 Local creates a new Home for every Binding id. Destroying one Binding without
