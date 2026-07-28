@@ -1,11 +1,13 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -652,9 +654,19 @@ class TestTenantService:
 
         pagination_parameters: list[tuple[int, int]] = []
 
-        def record_sql(_conn, _cursor, statement, parameters, _context, _executemany):
+        def record_sql(
+            _conn: Connection,
+            _cursor: DBAPICursor,
+            statement: str,
+            parameters: Sequence[object],
+            _context: ExecutionContext | None,
+            _executemany: bool,
+        ) -> None:
             if "FROM tenant_account_joins" in statement:
-                pagination_parameters.append((parameters[-2], parameters[-1]))
+                limit, offset = parameters[-2:]
+                assert isinstance(limit, int)
+                assert isinstance(offset, int)
+                pagination_parameters.append((limit, offset))
 
         bind = sqlite_session.get_bind()
         event.listen(bind, "before_cursor_execute", record_sql)
