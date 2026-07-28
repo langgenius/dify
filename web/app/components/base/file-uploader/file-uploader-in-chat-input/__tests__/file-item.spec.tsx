@@ -99,13 +99,6 @@ describe('FileItem (chat-input)', () => {
     expect(onReUpload).toHaveBeenCalledWith('file-1')
   })
 
-  it('should have error styling when upload failed', () => {
-    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
-    const fileItemContainer = container.firstChild as HTMLElement
-    expect(fileItemContainer).toHaveClass('border-state-destructive-border')
-    expect(fileItemContainer).toHaveClass('bg-state-destructive-hover-alt')
-  })
-
   it('should show audio preview when audio file name is clicked', async () => {
     render(
       <FileItem

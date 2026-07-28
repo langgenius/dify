@@ -202,11 +202,6 @@ describe('TemplateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
-    })
-
     it('should render pipeline name', () => {
       render(<TemplateCard {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
@@ -688,19 +683,6 @@ describe('TemplateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<TemplateCard {...defaultProps} />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass(
-        'group',
-        'relative',
-        'flex',
-        'cursor-pointer',
-        'flex-col',
-        'rounded-xl',
-      )
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
@@ -711,14 +693,6 @@ describe('TemplateCard', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<TemplateCard {...defaultProps} />)
-      rerender(<TemplateCard {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
   })
 })

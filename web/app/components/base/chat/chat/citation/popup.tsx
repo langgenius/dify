@@ -106,7 +106,6 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                         </div>
                         {showHitInfo && (
                           <Link
-                            data-testid="popup-dataset-link"
                             href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
                             className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
                           >

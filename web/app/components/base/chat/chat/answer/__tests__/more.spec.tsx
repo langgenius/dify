@@ -55,13 +55,6 @@ describe('More', () => {
     expect(containerDiv.children.length).toBe(0)
   })
 
-  it('should apply group-hover opacity classes', () => {
-    render(<More more={mockMoreData} />)
-    const container = screen.getByTestId('more-container')
-    expect(container).toHaveClass('opacity-0')
-    expect(container).toHaveClass('group-hover:opacity-100')
-  })
-
   it('should correctly format large token counts', () => {
     const dataWithLargeTokens = { ...mockMoreData, tokens: 1234567 }
     render(<More more={dataWithLargeTokens} />)

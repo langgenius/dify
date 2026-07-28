@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -37,22 +37,35 @@ vi.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-  useWorkflowReadOnly: () => ({
-    workflowReadOnly,
-    getWorkflowReadOnly: () => workflowReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
+
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useWorkflowReadOnly: () => ({
+      workflowReadOnly,
+      getWorkflowReadOnly: () => workflowReadOnly,
+    }),
+  }
+})
 
 vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
 

@@ -25,7 +25,7 @@ describe('AppNavItem', () => {
       render(<AppNavItem {...baseProps} />)
 
       expect(screen.getByText('My App')).toBeInTheDocument()
-      expect(screen.getByTestId('item-operation-trigger')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
   })
 
@@ -61,7 +61,7 @@ describe('AppNavItem', () => {
     it('should call onDelete with app id when delete action is clicked', async () => {
       render(<AppNavItem {...baseProps} />)
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(baseProps.onDelete).toHaveBeenCalledWith('app-123')
@@ -72,7 +72,7 @@ describe('AppNavItem', () => {
     it('should not render delete action when app is uninstallable', () => {
       render(<AppNavItem {...baseProps} uninstallable />)
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()
     })

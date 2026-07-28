@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
 // ==================== Mock Setup ====================
@@ -43,51 +44,29 @@ const mockUserProfile = {
   avatar_url: '',
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: mockUserProfile,
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockUserProfile,
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-oauth', () => ({
@@ -102,7 +81,7 @@ vi.mock('@/service/use-triggers', () => ({
 
 // ==================== Test Utilities ====================
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -110,7 +89,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
+  const testQueryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -289,10 +268,5 @@ describe('PluginAuthInAgent Component', () => {
     const popupItem = credentialItems[credentialItems.length - 1]
     fireEvent.click(popupItem!)
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('specific-cred-id')
-  })
-
-  it('should be memoized', async () => {
-    const PluginAuthInAgentModule = await import('../plugin-auth-in-agent')
-    expect(typeof PluginAuthInAgentModule.default).toBe('object')
   })
 })

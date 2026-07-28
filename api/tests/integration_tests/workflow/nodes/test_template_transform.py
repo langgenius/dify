@@ -17,10 +17,11 @@ class _SimpleJinja2Renderer:
     """Minimal Jinja2-based renderer for integration tests (no code executor)."""
 
     def render_template(self, template: str, variables: dict[str, object]) -> str:
-        from jinja2 import Template
+        from jinja2.sandbox import SandboxedEnvironment
 
         try:
-            return Template(template).render(**variables)
+            env = SandboxedEnvironment()
+            return env.from_string(template).render(**variables)
         except Exception as exc:
             raise TemplateRenderError(str(exc)) from exc
 

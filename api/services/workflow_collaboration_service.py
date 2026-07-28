@@ -8,6 +8,7 @@ import uuid
 from collections.abc import Mapping
 from typing import Any, override
 
+from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,6 +19,7 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 logger = logging.getLogger(__name__)
 
 SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
+SYNC_REQUEST_TIMEOUT_SECONDS = 15
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
 
@@ -38,7 +40,8 @@ class WorkflowCollaborationService:
 
     Socket.IO rooms are process-local unless backed by a message queue, while online users and leader election live in
     Redis. Each websocket worker writes a small heartbeat keyed by `server_id`; session rows store their owner so a
-    worker can distinguish a live remote sid from a stale sid left behind by a dead worker.
+    worker can distinguish a live remote sid from a stale sid left behind by a dead worker. Visibility events are
+    ordered per socket, and sync requests wait for the selected saver to acknowledge its draft write.
     """
 
     _heartbeat_started: bool
@@ -128,6 +131,9 @@ class WorkflowCollaborationService:
             "sid": sid,
             "connected_at": int(time.time()),
             "server_id": self.server_id,
+            # Joins are assumed visible; hidden tabs re-report via a graph_view_state
+            # event right after receiving the post-join "status" emit.
+            "graph_active": True,
         }
 
         self._repository.set_session_info(workflow_id, session_info)
@@ -158,7 +164,8 @@ class WorkflowCollaborationService:
         self.handle_leader_disconnect(workflow_id, sid)
         self.broadcast_online_users(workflow_id)
 
-    def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, str], int]:
+    def relay_collaboration_event(self, sid: str, data: Mapping[str, object]) -> tuple[dict[str, object], int]:
+        """Route collaboration control events, directing save and graph-resync requests to the active leader."""
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
@@ -174,11 +181,54 @@ class WorkflowCollaborationService:
         if not event_type:
             return {"msg": "invalid event type"}, 400
 
+        if event_type == "graph_view_state":
+            if not isinstance(event_data, Mapping):
+                return {"msg": "invalid graph_view_state"}, 400
+
+            graph_active = event_data.get("graphActive")
+            sequence = event_data.get("sequence")
+            if not isinstance(graph_active, bool):
+                return {"msg": "invalid graph_view_state"}, 400
+            if not isinstance(sequence, int) or isinstance(sequence, bool) or sequence < 0:
+                return {"msg": "invalid graph_view_state"}, 400
+
+            # Sequence the visibility write together with its leader side effect. Otherwise a newer
+            # visible event can land after the Lua write but before an older hidden handler demotes.
+            with self._repository.graph_view_state_lock(workflow_id):
+                applied = self._repository.update_session_graph_active(workflow_id, sid, graph_active, sequence)
+                if not applied:
+                    return {"msg": "graph_view_state_ignored"}, 200
+
+                # Write the flag before re-electing so tier-1 selection already excludes the
+                # session that just went hidden (including one _ensure_leader just promoted).
+                if not graph_active:
+                    self._demote_leader_if_hidden(workflow_id, sid)
+            return {"msg": "graph_view_state_updated"}, 200
+
         if event_type == "sync_request":
+            if not isinstance(event_data, Mapping):
+                return {"msg": "invalid sync_request"}, 400
+            request_id = event_data.get("requestId")
+            if not isinstance(request_id, str) or not request_id.strip():
+                return {"msg": "invalid sync_request"}, 400
+
             leader_sid = self._repository.get_current_leader(workflow_id)
             target_sid: str | None
             if leader_sid and self.is_session_active(workflow_id, leader_sid):
-                target_sid = leader_sid
+                if self._is_session_graph_active(workflow_id, leader_sid):
+                    target_sid = leader_sid
+                else:
+                    # The leader is connected but its tab is hidden: its canvas is frozen
+                    # (rAF paused), so saving through it would persist stale data. Hand
+                    # leadership to a visible session — or, if every tab is hidden, to the
+                    # requester, whose canvas at least contains its own edits.
+                    replacement = self._select_graph_leader(workflow_id, preferred_sid=sid)
+                    if replacement and replacement != leader_sid:
+                        self._repository.set_leader(workflow_id, replacement)
+                        self.broadcast_leader_change(workflow_id, replacement)
+                        target_sid = replacement
+                    else:
+                        target_sid = leader_sid
             else:
                 if leader_sid:
                     self._repository.delete_leader(workflow_id)
@@ -188,15 +238,73 @@ class WorkflowCollaborationService:
                     self.broadcast_leader_change(workflow_id, target_sid)
 
             if not target_sid:
-                return {"msg": "no_active_leader"}, 200
+                return {"msg": "no_active_leader", "requestId": request_id}, 503
+
+            target_data = dict(event_data)
+            target_data["requestId"] = request_id
+            try:
+                result = self._socketio.call(
+                    "collaboration_update",
+                    {"type": event_type, "userId": user_id, "data": target_data, "timestamp": timestamp},
+                    to=target_sid,
+                    timeout=SYNC_REQUEST_TIMEOUT_SECONDS,
+                )
+            except SocketIOTimeoutError:
+                logger.warning(
+                    "Workflow collaboration sync request timed out: workflow_id=%s requester_sid=%s target_sid=%s",
+                    workflow_id,
+                    sid,
+                    target_sid,
+                )
+                return {"msg": "sync_request_timeout", "requestId": request_id}, 504
+
+            if not isinstance(result, Mapping) or result.get("success") is not True:
+                response: dict[str, object] = {
+                    "msg": "workflow_sync_failed",
+                    "requestId": request_id,
+                    "success": False,
+                }
+                if isinstance(result, Mapping) and isinstance(result.get("error"), str):
+                    response["error"] = result["error"]
+                return response, 502
+
+            workflow_hash = result.get("hash")
+            updated_at = result.get("updatedAt")
+            if not isinstance(workflow_hash, str) or not workflow_hash:
+                return {"msg": "invalid_sync_response", "requestId": request_id}, 502
+            if not isinstance(updated_at, int) or isinstance(updated_at, bool):
+                return {"msg": "invalid_sync_response", "requestId": request_id}, 502
+
+            return {
+                "msg": "workflow_synced",
+                "requestId": request_id,
+                "success": True,
+                "hash": workflow_hash,
+                "updatedAt": updated_at,
+            }, 200
+
+        if event_type == "graph_resync_request":
+            leader_sid = self._repository.get_current_leader(workflow_id)
+            resync_target_sid: str | None
+            if leader_sid and self.is_session_active(workflow_id, leader_sid):
+                resync_target_sid = leader_sid
+            else:
+                if leader_sid:
+                    self._repository.delete_leader(workflow_id)
+                resync_target_sid = self._select_graph_leader(workflow_id, preferred_sid=sid)
+                if resync_target_sid:
+                    self._repository.set_leader(workflow_id, resync_target_sid)
+                    self.broadcast_leader_change(workflow_id, resync_target_sid)
+
+            if not resync_target_sid:
+                return {"msg": "no_active_leader"}, 503
 
             self._socketio.emit(
                 "collaboration_update",
                 {"type": event_type, "userId": user_id, "data": event_data, "timestamp": timestamp},
-                room=target_sid,
+                to=resync_target_sid,
             )
-
-            return {"msg": "sync_request_forwarded"}, 200
+            return {"msg": "graph_resync_request_forwarded"}, 200
 
         self._socketio.emit(
             "collaboration_update",
@@ -329,17 +437,56 @@ class WorkflowCollaborationService:
         self._repository.set_leader(workflow_id, sid)
         self.broadcast_leader_change(workflow_id, sid)
 
-    def _select_graph_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
-        session_sids = [
-            session["sid"]
+    def _select_graph_leader(
+        self,
+        workflow_id: str,
+        preferred_sid: str | None = None,
+        *,
+        require_graph_active: bool = False,
+    ) -> str | None:
+        """Pick a leader, preferring sessions whose canvas tab is visible.
+
+        Hidden tabs freeze rAF-driven CRDT->canvas application, so a visible session is
+        always the freshest saver. When every tab is hidden the room must still keep a
+        leader (followers drop sync_requests unless they believe they are the leader),
+        so tier 2 falls back to any active session unless require_graph_active is set.
+        """
+        active_sessions = [
+            session
             for session in self._repository.list_sessions(workflow_id)
-            if session.get("graph_active", True) and self.is_session_active(workflow_id, session["sid"])
+            if self.is_session_active(workflow_id, session["sid"])
         ]
-        if not session_sids:
+        visible_sids = [session["sid"] for session in active_sessions if session.get("graph_active", True)]
+
+        candidate_sids = visible_sids
+        if not candidate_sids and not require_graph_active:
+            candidate_sids = [session["sid"] for session in active_sessions]
+
+        if not candidate_sids:
             return None
-        if preferred_sid and preferred_sid in session_sids:
+        if preferred_sid and preferred_sid in candidate_sids:
             return preferred_sid
-        return session_sids[0]
+        return candidate_sids[0]
+
+    def _is_session_graph_active(self, workflow_id: str, sid: str) -> bool:
+        """Default to True on missing/unreadable session data so read failures never churn leadership."""
+        session_info = self._repository.get_session_info(workflow_id, sid)
+        if session_info is None:
+            return True
+        return bool(session_info.get("graph_active", True))
+
+    def _demote_leader_if_hidden(self, workflow_id: str, hidden_sid: str) -> None:
+        current_leader = self._repository.get_current_leader(workflow_id)
+        if current_leader != hidden_sid:
+            return
+
+        new_leader = self._select_graph_leader(workflow_id, require_graph_active=True)
+        # No visible session: keep the hidden leader rather than leaving the room leaderless.
+        if not new_leader or new_leader == hidden_sid:
+            return
+
+        self._repository.set_leader(workflow_id, new_leader)
+        self.broadcast_leader_change(workflow_id, new_leader)
 
     def is_session_active(self, workflow_id: str, sid: str) -> bool:
         if not sid:

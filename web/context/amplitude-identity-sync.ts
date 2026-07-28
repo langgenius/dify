@@ -30,7 +30,6 @@ function buildAmplitudeProperties({
     properties.workspace_id = currentWorkspace.id
     properties.workspace_name = currentWorkspace.name
     properties.workspace_plan = currentWorkspace.plan
-    properties.workspace_status = currentWorkspace.status
     properties.workspace_role = currentWorkspace.role
   }
 

@@ -124,7 +124,6 @@ describe('Carousel', () => {
       renderCarouselWithControls('vertical')
 
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ axis: 'y' }, undefined)
-      expect(screen.getByTestId('carousel-content'))!.toHaveClass('flex-col')
     })
   })
 

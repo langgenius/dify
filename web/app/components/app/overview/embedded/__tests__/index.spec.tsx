@@ -1,10 +1,11 @@
 import type { SiteInfo } from '@/models/share'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Embedded from '../index'
 
 vi.mock('../style.module.css', () => ({

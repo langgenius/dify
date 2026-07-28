@@ -146,13 +146,6 @@ describe('EditMetadataBatchModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      render(<EditMetadataBatchModal {...defaultProps} />)
-      await waitFor(() => {
-        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      })
-    })
-
     it('should render document count', async () => {
       render(<EditMetadataBatchModal {...defaultProps} />)
       await waitFor(() => {
