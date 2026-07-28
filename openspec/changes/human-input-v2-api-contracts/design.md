@@ -16,7 +16,7 @@
 
 1. Public web form definition 继续允许 token-based read，但 submit 需要从 token-only authorization 收口为符合 PRD 的 submit-time approval proof model。
 2. Draft `delivery-test` 需要替换为不再依赖旧 `delivery_method_id` 的 `message-template/test` contract。
-3. Contact Directory、Organization 级 IM integration、manual sync 与 workspace IM override 需要成型的 console / EE control-plane API。
+3. Contact Directory、Organization 级 IM integration、manual sync 与 workspace IM override 需要成型的 Dify workspace API，以及面向 EE Dashboard 的 Kratos HTTP façade。
 4. 前端 migration change 与后端 helper 的职责边界现已独立规格化：前端负责用户确认、迁移节点集合选择、batch request orchestration、使用返回的完整节点定义做原子替换以及 draft 更新；后端 helper 是整批 node-data 转换、recipient resolution 与 blocker 校验的唯一权威边界，不能接管 graph mutation 或 draft 持久化。
 
 另外，最新澄清已经固定了联系人概念边界：
@@ -36,31 +36,34 @@
 
 - 落地最小但完整的 CE / SaaS API surface，覆盖 PRD 已确认的 contact、IM、draft debug、runtime approval 逻辑，并移除纳入范围内的 501 stub。
 - 以显式 application service 与 composition boundary 连接 controller、domain port、repository 和 provider adapter，保持 controller 不承载业务编排。
-- 落地 Dify workspace console 对 EE Human Input control-plane 的 edition-aware adapter，同时保持 EE protobuf contract 只覆盖 PRD 需要的新 control-plane。
+- 落地 Dify-owned Human Input application service 与 trusted internal HTTP surface，使 workspace controller 直接调用本地 service，EE Dashboard Kratos facade通过typed Dify client调用同一service。
 - 复用现有 DSL / runtime enum，而不是为 transport 层重新发明同义枚举。
 - 定义一个无副作用的 v1 → v2 batch node-data migration helper，使用户确认、整批转换校验与 draft 持久化的职责边界可追溯。
 
 **Non-Goals:**
 
 - 不重写已经落地的 Human Input v2 数据库表、ORM、domain aggregate 或 transaction-oriented repository；本 change 只增加 application service、transport adapter 与必要的 projection query。
-- 不在本 change 中实现 provider-specific IM SDK、manual sync worker 或 EE Organization control-plane；这些分别由 `implement-im-contact-sync-api` 与 `implement-ee-human-input-admin-api` 所有。
+- 不在本 change 中重复实现 provider-specific IM SDK或manual sync worker；这些由Dify侧专门change所有。`implement-ee-human-input-admin-api`只实现Kratos HTTP facade与typed Dify client，不拥有Go侧control-plane业务逻辑。
 - 不为通知中心、CLI 待办、审计 UI、新的 task list 设计额外接口。
 - 不重新设计成员 / workspace 的 EE 基础 CRUD；这部分继续复用已有 enterprise proto。
-- 不把 PB contract 扩成“完整 Contact Directory 后台”，只做本期确实新增的 Human Input control-plane。
+- 不把 Protobuf contract 扩成“完整 Contact Directory 后台”；它只定义本期 EE Dashboard 所需的 Kratos HTTP façade，不承载 Human Input 业务实现。
 - 不由 migration helper 自动触发迁移、更新 workflow draft、修改已发布版本或绕过前端的显式用户确认。
 
 ## Decisions
 
-### 0. 以本 change 作为 Flask wiring umbrella，并让相邻 change 拥有 provider / EE control-plane
+### 0. 以本 change 作为 Dify transport contract 与 wiring 的唯一 owner
 
-本 change 直接拥有以下 Dify API wiring：Workspace Contact 与 Email provider、node-data migration、draft message template test、public Email form、authenticated Contact form、trusted Service API form，以及 EE deployment 下的 workspace-console client adapter。
+本 change 独占其 capability specs 所列的 Dify-side Human Input management/runtime transport artifacts：Pydantic request/response DTO、Workspace Contact 与 Email provider API、node-data migration、draft message template test、public Email form、authenticated Contact form、trusted Service API form、workspace IM Flask handler，以及供 EE Dashboard façade 调用的 trusted Human Input internal HTTP controller。caller authentication、Organization/workspace scope、operation/correlation metadata mapping、HTTP response/error mapping、route/controller tests和501 stub replacement也全部归本 change；相邻 implementation change 不得再次声明这些 artifacts。Provider webhook/stream transport 不在这些 management/runtime contracts 内，继续由 Foundation 所有。
 
-两组高耦合基础设施继续由专门 change 实现：
+三组高耦合基础设施继续由专门 change 实现：
 
-- `implement-im-contact-sync-api`：CE / SaaS IM integration、provider adapter、manual sync worker、identity / binding / override application service，以及对应 workspace IM handler。
-- `implement-ee-human-input-admin-api`：EE Organization Contact、IM integration / sync 与 Organization binding control-plane。
+- `implement-human-input-v2-im-provider-foundation`：只拥有 `IMIntegrationManagementService`、credential/client lifecycle、provider event transport 与相应 repository/composition boundary；workspace/internal Integration management handler 仍由本 change 独占。provider public webhook transport 不与本 change 的管理 API 重叠，继续由 Foundation 所有。
+- `implement-im-contact-sync-api`：只拥有 Dify-owned `IMDirectoryReader`、manual Sync application service/worker、reconciliation、identity / binding / override application service、repository 与 transport-neutral composition boundary；不拥有 Integration management，也不拥有 workspace/internal handler 或任何 HTTP concern。
+- `implement-ee-human-input-admin-api`：EE Dashboard Kratos HTTP contract、administrator authentication、typed Dify client与稳定error mapping。
 
-本 change 的 IM / EE tasks 只负责消费这些相邻 change 交付的稳定 service / transport boundary、完成 edition routing 和运行跨 change contract tests，不再复制 provider orchestration、Go business logic 或持久化实现。这样既保留本 change 三份 capability spec 作为 transport source of truth，也避免三个 change 同时修改同一业务层。
+本 change 的 IM / EE tasks 负责实现 workspace controller 和 trusted internal controller，将二者汇入同一个 Dify application service，并运行 controller/auth/error-mapping 与 cross-repository contract tests。EE change 只消费 internal transport boundary，不复制 provider orchestration、Go business logic或持久化实现。这样既保留本 change 三份 capability spec 作为 transport source of truth，也避免 Python/Go 各自维护一套 sync 语义。
+
+已接受的边界例外：由于 Human Input 的核心上下文当前仍在 Dify，本 Dify OpenSpec 暂时继续规范由 EE repository 实现的 public Kratos/Protobuf contract。该做法是已知且明确接受的过渡状态，不应在后续评审中重复作为 ownership 或 information-leakage 问题提出。未来建立 EE repository-owned artifact 后可能出现两个 normative owner；该迁移与去重将另行处理，不属于本 change，也不改变 EE source code 与 delivery artifact 仍由 EE repository 所有的事实。
 
 放弃方案：
 
@@ -135,7 +138,7 @@ workspace console endpoint 收敛为三组，其中 `Platform contact` candidate
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 读取当前 Organization 级 IM integration 摘要 |
 | IM | `PUT` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 保存或更新 IM integration |
 | IM | `DELETE` | `/console/api/workspaces/current/human-input/im-integration` | `WorkspaceHumanInputIMIntegrationApi` | 解除当前 IM integration，并回到 `Not configured` |
-| IM | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | `WorkspaceHumanInputIMIntegrationTestApi` | 校验当前 provider credentials / callback / permission |
+| IM | `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | `WorkspaceHumanInputIMIntegrationTestApi` | 校验当前 provider credentials / event transport / permission |
 | IM | `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | `WorkspaceHumanInputIMSyncRunsApi` | 手动触发一次 IM sync |
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | `WorkspaceHumanInputLatestIMSyncRunApi` | 读取最近一次 sync run 的 summary；若当前还没有任何 run，则返回 not-found |
 | IM | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | `WorkspaceHumanInputLatestIMSyncRunResultsApi` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
@@ -290,46 +293,50 @@ Service API 不需要 OTP challenge，但必须和 current initiator 规则一�
 
 没有新增 service API `access-request` / dedicated upload endpoint，因为 trusted app-token caller 继续复用当前 app-scoped end-user model 与现有 file upload 流程。
 
-### 9. EE 管理后台 PB 只承担 Organization 级 IM 与 Contact binding control-plane
+### 9. EE 管理后台只承担 Organization 级 IM 与 Contact binding Kratos HTTP façade
 
-EE 这次只新增 org-level IM integration、manual sync 与 Organization Contact IM binding protobuf / `google.api.http` contract，不扩展 member / workspace 基础 CRUD、workspace Contact lifecycle 或 workspace override：
+EE 这次只新增 org-level IM integration、manual sync 与 Organization Contact IM binding 的 Protobuf / `google.api.http` contract、Kratos HTTP handler、管理员鉴权、typed Dify client 和 DTO / error mapping。所有 endpoint 都通过 Dify trusted internal HTTP API 调用 Dify-owned Human Input application service；EE 不实现 provider adapter、sync worker、reconciler、Contact projector 或 Human Input persistence，也不扩展 member / workspace 基础 CRUD、workspace Contact lifecycle 或 workspace override：
 
-| Method | Path | RPC | Purpose |
+| Method | Path | Service Method | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/v1/dashboard/api/human-input/im-integration` | `GetHumanInputIMIntegration` | 读取当前部署唯一的 IM channel 配置摘要 |
-| `PUT` | `/v1/dashboard/api/human-input/im-integration` | `UpsertHumanInputIMIntegration` | 保存或更新 IM channel credentials |
-| `DELETE` | `/v1/dashboard/api/human-input/im-integration` | `DeleteHumanInputIMIntegration` | 清空当前 IM integration |
-| `POST` | `/v1/dashboard/api/human-input/im-integration/test` | `TestHumanInputIMIntegration` | 执行连接 / callback / permission test |
+| `GET` | `/v1/dashboard/api/human-input/im-integration` | `GetIMIntegration` | 读取当前部署唯一的 IM channel 配置摘要 |
+| `PUT` | `/v1/dashboard/api/human-input/im-integration` | `UpsertIMIntegration` | 保存或更新 IM channel credentials |
+| `DELETE` | `/v1/dashboard/api/human-input/im-integration` | `DeleteIMIntegration` | 清空当前 IM integration |
+| `POST` | `/v1/dashboard/api/human-input/im-integration/test` | `TestIMIntegration` | 执行连接 / event transport / permission test |
 | `POST` | `/v1/dashboard/api/human-input/im-sync-runs` | `CreateIMSyncRun` | 手动触发 sync |
 | `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest` | `GetLatestIMSyncRun` | 读取最近一次 sync run 的 summary |
 | `GET` | `/v1/dashboard/api/human-input/im-sync-runs/latest/results` | `ListLatestIMSyncRunResults` | 按 `result` 分页读取最近一次 sync run 的结果条目 |
-| `GET` | `/v1/dashboard/api/human-input/contacts` | `ListHumanInputContacts` | 按 member name / Email 分页读取 Organization Contact、`created_at` 与 channel summary；UI 将 `created_at` 展示为 `Joined` |
-| `GET` | `/v1/dashboard/api/human-input/im-identities` | `ListHumanInputIMIdentities` | 按 provider 与 IM user ID 搜索已同步 identity |
-| `POST` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings` | `CreateHumanInputIMBinding` | 为 Organization Contact 创建 IM binding |
-| `DELETE` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}` | `DeleteHumanInputIMBinding` | 删除指定 Organization Contact binding |
-| `POST` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}/test` | `TestHumanInputIMBinding` | 测试指定联系人 binding 的 identity reachability |
+| `GET` | `/v1/dashboard/api/human-input/contacts` | `ListContacts` | 按 member name / Email 分页读取 Organization Contact、从 `Account.created_at` 投影的 `joined_at` 与 channel summary |
+| `GET` | `/v1/dashboard/api/human-input/im-identities` | `ListIMIdentities` | 按 provider 与 IM user ID 搜索已同步 identity |
+| `POST` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings` | `CreateIMBinding` | 为 Organization Contact 创建 IM binding |
+| `DELETE` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}` | `DeleteIMBinding` | 删除指定 Organization Contact binding |
+| `POST` | `/v1/dashboard/api/human-input/contacts/{contact_id}/im-bindings/{binding_id}/test` | `TestIMBinding` | 测试指定联系人 binding 的 identity reachability |
 
 EE workspace console 搜索当前 workspace 之外的 `organization contact` 并把它们投影成 `Platform contact` 时，应继续复用 enterprise 侧已有 member / workspace API，而不是在 Human Input 侧复制一套新的成员 CRUD。
 
-`TestHumanInputIMBinding` 与 `TestHumanInputIMIntegration` 的语义必须分离：前者验证某个已绑定 Contact identity 的当前可达性，后者验证 Organization 级 credentials、callback 与 permission。
+`TestIMBinding` 与 `TestIMIntegration` 的语义必须分离：前者验证某个已绑定 Contact identity 的当前可达性，后者验证 Organization 级 credentials、所选 `DISABLED / WEBHOOK / STREAM` event transport 与 permission。
 
-EE `HumanInputContact` 生命周期绑定 Organization Account，不绑定任意单个 workspace membership。Account 仍属于当前 EE Organization 时，加入或离开单个 workspace 不得重建 Contact identity，列表中的 `Joined` 直接展示 Contact `created_at`。
+EE `HumanInputContact` 生命周期绑定 Organization Account，不绑定任意单个 workspace membership。Dify-owned `OrganizationContactProjectionService`使用Account作为source fact：首次部署执行幂等backfill；Organization Contact read与manual sync消费前执行bounded ensure；周期reconciliation修复Account create/update/disable/delete。Active Account创建或更新同一Contact，disabled/deleted Account从current-state projection省略但保留稳定Contact identity，同一Account重新active时复用原Contact。
+
+加入或离开单个workspace不得重建Contact identity。EE列表中的`joined_at`从Dify `Account.created_at`读取；`Contact.created_at`只表示projection自身创建时间，不复制或冒充Account加入时间。
+
+这不是第二套 Sync。EE Dashboard 与 Dify workspace console 是两套 transport/authentication 入口，但二者必须汇入同一个 Dify Python application service、provider adapter、single-active-run repository、Celery worker 与 reconciler。调用方向固定为 `EE Dashboard → EE Kratos HTTP → Dify internal HTTP → Dify application service`；workspace controller 则直接调用本地 application service，不得形成 `Dify → EE → Dify` 回环。
 
 ## Risks / Trade-offs
 
 - [v1 / v2 token 串用] -> 保留独立路径、DTO、controller 与 token owner lookup：v1 token 只从 legacy recipient 记录解析，v2 token 只从 delivery endpoint token hash 解析；任一 surface 都必须拒绝另一版本的 token
 - [Service API GET 新增 `user` 可能破坏旧调用] -> 先上线显式文档与 SDK 适配，再切换为强制校验
 - [upload-token 先于 OTP 校验会增加滥用面] -> 继续沿用现有 upload 限流与 task state 校验，并在 submit 时执行最终 OTP / approver 校验，避免把“上传成功”等价成“审批成功”
-- [EE 和 workspace console 边界模糊] -> PB 只负责 org-level IM integration / sync 与 Organization Contact binding control-plane；`Platform contact` candidate / add、External Contact、workspace override、migration 与 Email provider 仍归 workspace console 或独立配置 surface
+- [EE 和 workspace console 边界模糊] -> EE Protobuf/Kratos HTTP只负责Dashboard facade；Organization integration/sync/binding与workspace surface最终汇入Dify同一application service，`Platform contact`、External Contact、workspace override、migration与Email provider仍归workspace-owned surface
 - [`delivery-test` 到 `message-template/test` 的切换会影响前端联调] -> v1 继续保留原 contract，v2 只维护新 request/response contract，避免跨版本复用提交逻辑
 - [Backend conversion contract 与 frontend orchestration 漂移] -> 后端独占语义转换和稳定 blocker taxonomy；前端只校验 batch response 的完整性与 `node_id` 关联，并原样应用返回的节点定义
-- [多个 apply-ready change 重复实现同一路由] -> 本 change 只消费 IM / EE 相邻 change 的稳定边界；provider orchestration 与 EE control-plane 不在本 change 重复实现，并用跨 change contract tests 约束 DTO / proto 对齐
+- [多个 apply-ready change 重复实现同一路由] -> 本 change 独占 workspace/internal handler、DTO、auth、HTTP mapping 与 controller tests；IM change 只提供 transport-neutral services/composition boundary，EE change 只实现 Kratos HTTP façade，并用跨 change contract tests 约束 DTO / Protobuf 对齐
 
 ## Migration Plan
 
 1. 先完成共享 DTO、application service port、transport-neutral error taxonomy 和 composition boundary，使后续 handler 不直接依赖 repository 实现。
 2. 落地 Workspace Contact、Email provider、无副作用 node-data migration 和 v2 `message-template/test`，保留 v1 draft route 与 contract。
 3. 为 web / service / console form API 接入独立 `human-input` v2 lookup 与 submission service；现有 `human_input` v1 路由与完整 v1 node model 保持不变，并增加跨版本 token 拒绝测试。
-4. 完成 `implement-im-contact-sync-api` 后，让 CE / SaaS workspace IM handler 复用其 application service，并执行本 change 定义的 DTO contract tests。
-5. 完成 `implement-ee-human-input-admin-api` 后，为 EE workspace console 注入 enterprise client adapter，验证 Organization control-plane、workspace-local Contact lifecycle 与 override 的所有权边界。
+4. 完成 `implement-im-contact-sync-api` 的 transport-neutral services/composition boundary 后，由本 change 实现所有 edition 的 workspace IM handler 与 trusted internal handler，并执行 DTO、auth、HTTP mapping 与 controller contract tests。
+5. 完成Dify trusted Human Input internal API后，让`implement-ee-human-input-admin-api`通过typed Dify client接入；workspace console继续直接调用Dify本地application service，并验证两条入口无`Dify → EE → Dify`或`EE → Dify → EE`回环。
 6. 审计纳入范围的 controller 不再返回 501，运行分层测试、跨 change contract tests、typing 与 lint；回滚时通过 feature gate 恢复 v1 surface，而不删除已写入的 v2 core data。

@@ -1,24 +1,40 @@
 ## ADDED Requirements
 
-### Requirement: Workspace console MUST expose one provider-agnostic IM sync management API
+### Requirement: Dify MUST be the single IM Sync implementation owner across all editions
 
-系统 MUST 在现有 `/console/api/workspaces/current/human-input` surface 下提供统一的 IM integration 与 manual sync 管理 API。Feishu、Lark 或后续 provider 的差异 MUST 被封装在 provider adapter 后面，MUST NOT 体现在 route、request body 或 controller 类型上。
+Dify `IMSyncService` MUST exclusively own manual-sync run creation, directory reads through `IMDirectoryReader`, background execution, reconciliation, revision-guarded apply, sync-result persistence, and latest-result queries. Integration configuration、credential/client lifecycle 与 connection test MUST remain owned by `implement-human-input-v2-im-provider-foundation` and consumed through its current Integration boundary. The Sync service factory and composition boundary MUST be transport-neutral and MUST be shared by every workspace or trusted-internal API consumer. EE MUST NOT implement a parallel directory adapter, sync worker, reconciler, repository, distributed lock, or Human Input persistence path. Pydantic DTOs, Flask/internal HTTP adapters, caller authentication/scope mapping, HTTP error mapping, and controller tests MUST remain owned by `human-input-v2-api-contracts`.
 
-#### Scenario: 读取当前 IM integration
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-integration`
-- **THEN** the system MUST return the current integration summary through the unified IM integration contract rather than a provider-specific payload
+#### Scenario: Workspace 与 EE consumer 执行同类 command
+- **WHEN** workspace and trusted-internal consumers issue equivalent commands for the same Organization integration
+- **THEN** both MUST resolve the same Dify application service implementation and MUST NOT select edition-specific provider, worker, reconciler, or repository paths
 
-#### Scenario: 更新现有 IM integration
-- **WHEN** a workspace owner or admin updates IM integration credentials through `PUT /console/api/workspaces/current/human-input/im-integration`
-- **THEN** the system MUST use the same endpoint and compare-and-swap contract for every provider
+#### Scenario: 两个 consumer 并发触发 sync
+- **WHEN** commands originating from workspace and EE entry points concurrently target the same current integration
+- **THEN** both MUST reach the same Dify single-active-run repository contract, and at most one active run MUST exist
+
+#### Scenario: Dify implementation 不依赖 EE transport
+- **WHEN** the Dify application service executes a sync, identity, or binding operation
+- **THEN** it MUST NOT import or call an EE Human Input transport implementation and MUST NOT form a `Dify -> EE -> Dify` call chain
+
+### Requirement: The manual-sync application boundary MUST be provider-agnostic
+
+`IMSyncService` MUST provide provider-neutral manual-sync trigger、latest-run summary 和 latest-result pagination operations。Feishu、Lark、DingTalk 或后续 provider 的差异 MUST 被封装在 `IMDirectoryReader` adapter 后面，MUST NOT 进入 command/query type、service branch 或 repository contract。
 
 #### Scenario: 触发一次手动 sync
-- **WHEN** a workspace owner or admin calls `POST /console/api/workspaces/current/human-input/im-sync-runs`
-- **THEN** the system MUST start sync through the unified manual-sync endpoint rather than any provider-specific sync route
+- **WHEN** an application consumer issues a manual-sync command
+- **THEN** the service MUST capture the current Foundation-provided `integration_id + config_version` and use the unified Dify-owned orchestration path rather than a provider-specific or edition-specific sync implementation
+
+#### Scenario: 查询 latest run
+- **WHEN** an application consumer requests sync status
+- **THEN** the service MUST return one provider-neutral latest-run read model rather than a provider SDK object or provider-specific payload
+
+#### Scenario: 查询 latest results
+- **WHEN** an application consumer requests one canonical result bucket
+- **THEN** the service MUST paginate through the unified latest-result query boundary for every provider
 
 ### Requirement: Manual sync orchestration MUST normalize provider data before reconciliation
 
-系统 MUST 先把 provider SDK 或 provider API 返回的数据归一化为统一的 `ProviderDirectoryEntry` 集合，再交给现有 reconciliation 逻辑。controller 和 repository MUST NOT 直接消费厂商 SDK model。
+系统 MUST 先把 provider SDK 或 provider API 返回的数据归一化为统一的 `ProviderDirectoryEntry` 集合，再交给现有 reconciliation 逻辑。application service 和 repository MUST NOT 直接消费厂商 SDK model。
 
 #### Scenario: Provider directory data is fetched
 - **WHEN** a sync worker loads members from the configured provider
@@ -34,10 +50,10 @@
 
 ### Requirement: Manual sync MUST remain revision-guarded, single-active-run, and latest-only
 
-系统 MUST 保持现有 IM control plane 的并发与 revision 语义：同一 integration 同时最多一个 active run；每次 run MUST capture `integration_id + config_version`；latest run read surface MUST NOT 扩展为 run history API。
+系统 MUST 保持现有 IM control plane 的并发与 revision 语义：同一 integration 同时最多一个 active run；每次 run MUST capture `integration_id + config_version`；application query boundary MUST only expose the latest run and MUST NOT add run-history semantics。
 
 #### Scenario: Two sync triggers race
-- **WHEN** two requests trigger manual sync for the same integration concurrently
+- **WHEN** two commands trigger manual sync for the same integration concurrently
 - **THEN** the system MUST create at most one active run and MUST return the existing active run to the loser
 
 #### Scenario: Integration changes before apply
@@ -45,33 +61,33 @@
 - **THEN** the system MUST mark the run as stale or failed and MUST NOT mutate current identities or bindings
 
 #### Scenario: Reading latest sync summary
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest`
-- **THEN** the system MUST return only the latest run summary and MUST NOT expose run-by-ID or run-history endpoints
+- **WHEN** an application consumer queries sync status
+- **THEN** the service MUST return only the latest run summary and MUST NOT expose run-by-ID or run-history operations
 
-### Requirement: Sync result buckets MUST remain the canonical five-bucket contract
+### Requirement: Sync result persistence MUST retain the canonical five-bucket taxonomy
 
-manual sync 的持久化和 API contract MUST 继续使用 `added / not_matched / failed / removed / skipped` 五类 bucket。系统 MUST NOT 在本 change 中把 presentation-only taxonomy 变成新的后端 canonical result type。
+manual sync 的持久化与 application read model MUST 继续使用 `added / not_matched / failed / removed / skipped` 五类 bucket。系统 MUST NOT 在本 change 中把 presentation-only taxonomy 变成新的后端 canonical result type。
 
 #### Scenario: Listing latest sync results by bucket
-- **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results?result=added&page=1&limit=20`
-- **THEN** the system MUST paginate only the requested canonical bucket from the latest run
+- **WHEN** an application consumer queries one canonical bucket from the latest run
+- **THEN** the service MUST paginate only that bucket and return a transport-neutral result page
 
 #### Scenario: Requesting a non-canonical bucket
-- **WHEN** a client omits `result` or requests a bucket outside `added / not_matched / failed / removed / skipped`
-- **THEN** the system MUST reject the request
+- **WHEN** a result-page query omits the bucket or selects a value outside `added / not_matched / failed / removed / skipped`
+- **THEN** the application service MUST reject the query with a typed transport-neutral error
 
 #### Scenario: Mapping presentation-specific labels
 - **WHEN** a future presentation layer needs labels such as `created_binding` or `updated_binding`
-- **THEN** the system MUST treat those labels as presentation metadata and MUST NOT replace the canonical persisted bucket contract
+- **THEN** the system MUST treat those labels as presentation metadata and MUST NOT replace the canonical persisted bucket taxonomy
 
-### Requirement: Feishu and Lark directory adapters SHOULD prefer the official server-side SDK
+### Requirement: Directory adapters MUST use the Foundation client lifecycle
 
-Feishu 和 Lark 的 provider adapter SHOULD 优先使用官方服务端 Python SDK，并且只向上暴露安全诊断与统一 directory entry。provider raw payload、credential 明文和 SDK exception text MUST NOT 直接进入 controller response。
+Feishu、Lark 与 DingTalk directory adapters MUST use the provider-local client lifecycle supplied by `implement-human-input-v2-im-provider-foundation` and MUST expose only safe diagnostics and normalized directory entries to the application boundary. Provider raw payload、credential plaintext、SDK client objects and SDK exception text MUST NOT leave the provider package.
 
-#### Scenario: Feishu or Lark directory read
-- **WHEN** the system loads directory data from Feishu or Lark
-- **THEN** the adapter SHOULD use the official server-side Python SDK before considering a handwritten HTTP client
+#### Scenario: Supported provider directory is read
+- **WHEN** the system loads directory data from Feishu, Lark or DingTalk
+- **THEN** the adapter MUST use the current Foundation client lifecycle and MUST NOT construct a parallel client or handwritten credential-bearing HTTP path
 
-#### Scenario: Provider test fails with sensitive details
-- **WHEN** the provider SDK or upstream API returns an error containing sensitive request or credential context
-- **THEN** the system MUST expose only a safe diagnostic summary through the management API
+#### Scenario: Directory read fails with sensitive details
+- **WHEN** a directory read returns an error containing sensitive request or credential context
+- **THEN** the adapter MUST return only a safe transport-neutral diagnostic and MUST retain sensitive details inside the provider boundary

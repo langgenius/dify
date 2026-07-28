@@ -1,18 +1,33 @@
 ## ADDED Requirements
 
-### Requirement: EE dashboard MUST expose Organization-level IM integration APIs via protobuf and `google.api.http`
-EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 Organization 级 IM integration API，覆盖读取配置、保存配置、删除配置和连接测试。该 surface MUST 只允许一个 Organization 级 IM channel 生效。
+### Requirement: EE dashboard MUST be a Kratos HTTP façade over the Dify-owned Human Input service
+EE backend MUST 使用 Protobuf、`google.api.http` 与 Kratos HTTP code generation 定义 Human Input admin service methods，并 MUST NOT 为该 capability 注册 gRPC server 或引入 gRPC-Gateway。每个 endpoint MUST 在完成 enterprise administrator authentication 后，通过 typed Dify internal HTTP client 调用 Dify Human Input application service。Dify MUST 是 Organization Contact projection、IM integration、provider adapter、manual sync、reconciliation、worker、latest-result read model 与 binding persistence 的唯一业务 owner；EE MUST NOT 实现第二套 repository、provider adapter、sync worker、reconciler、projector 或 Human Input persistence。
+
+#### Scenario: EE 管理员调用 Human Input endpoint
+- **WHEN** an authenticated EE administrator invokes one Human Input admin endpoint
+- **THEN** the operation MUST follow `EE Dashboard -> EE Kratos HTTP -> Dify internal HTTP -> Dify application service`, and EE MUST only perform authentication, validation, typed DTO mapping, timeout handling, and stable error translation
+
+#### Scenario: Workspace 发起同类操作
+- **WHEN** a Dify workspace controller handles an equivalent Human Input operation
+- **THEN** it MUST invoke the local Dify application service directly and MUST NOT form a `Dify -> EE -> Dify` request chain
+
+#### Scenario: EE 实现者尝试增加本地 Sync
+- **WHEN** an EE implementation introduces a Human Input provider client, sync worker, reconciler, distributed lock, Ent repository, or direct Human Input table access
+- **THEN** the implementation MUST be rejected because it creates a second business owner
+
+### Requirement: EE dashboard MUST expose Organization-level IM integration APIs via Protobuf-defined Kratos HTTP
+EE 管理后台 MUST 通过 Protobuf / `google.api.http` 生成的 Kratos HTTP handler 暴露 Organization 级 IM integration API，覆盖读取配置、保存 `DISABLED / WEBHOOK / STREAM` event transport configuration、删除配置和连接测试。该 façade MUST 只允许一个 Organization 级 IM channel 生效，并 MUST 将所有业务 command/query 委托给 Dify。
 
 #### Scenario: 读取当前 IM integration
-- **WHEN** an EE admin calls `GetHumanInputIMIntegration`
-- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、连接状态、`integration_id` 与 `config_version`；如果未配置，MUST 返回 `Not configured`
+- **WHEN** an EE admin calls `GetIMIntegration`
+- **THEN** 系统 MUST 返回当前唯一 IM channel 的配置摘要、current event transport mode、provider 支持的 mode、适用时的 derived webhook URL、safe operational status、`integration_id` 与 `config_version`；如果未配置，MUST 返回 `Not configured`
 
 #### Scenario: 保存或更新 IM integration
-- **WHEN** an EE admin calls `UpsertHumanInputIMIntegration`
-- **THEN** 系统 MUST 保存新的 Organization-level IM channel config，并保持“同一时刻只允许一个 channel 生效”的约束
+- **WHEN** an EE admin calls `UpsertIMIntegration`
+- **THEN** EE MUST 将 credentials、`DISABLED / WEBHOOK / STREAM` mode 与 CAS command 转发给 Dify，由 Dify 校验 provider transport support、保存新的 Organization-level IM channel config，并保持“同一时刻只允许一个 channel 生效”的约束
 
 #### Scenario: 首次创建 IM integration
-- **WHEN** the deployment has no configured integration and an EE admin calls `UpsertHumanInputIMIntegration` without an expected integration ID or config version
+- **WHEN** the deployment has no configured integration and an EE admin calls `UpsertIMIntegration` without an expected integration ID or config version
 - **THEN** 系统 MUST 创建新的 integration，并 MUST 从 `config_version = 1` 开始
 
 #### Scenario: Existing integration update 缺少完整 CAS token
@@ -24,7 +39,7 @@ EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 Organization 级
 - **THEN** 系统 MUST 返回 `409 Conflict`，MUST NOT 修改 integration、清理 IM bindings / workspace overrides 或触发 manual / automatic sync
 
 #### Scenario: 替换当前 IM provider
-- **WHEN** an EE admin calls `UpsertHumanInputIMIntegration` with credentials for a provider different from the current provider
+- **WHEN** an EE admin calls `UpsertIMIntegration` with credentials for a provider different from the current provider
 - **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 provider 的 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync 后才能使用新 provider identity
 
 #### Scenario: 同一 platform tenant 内轮换 provider credentials
@@ -36,23 +51,23 @@ EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 Organization 级
 - **THEN** 系统 MUST 将该操作视为 provider replacement，MUST 使旧 IM bindings 和 workspace overrides 失效，并 MUST 要求管理员重新执行 manual sync
 
 #### Scenario: 测试 IM integration
-- **WHEN** an EE admin calls `TestHumanInputIMIntegration`
-- **THEN** 系统 MUST 返回连接、callback 或 permission 检查结果
+- **WHEN** an EE admin calls `TestIMIntegration`
+- **THEN** 系统 MUST 返回 credential、所选 event transport 或 permission 检查结果
 
 #### Scenario: 删除 IM integration
-- **WHEN** an EE admin calls `DeleteHumanInputIMIntegration` with the current `integration_id` and `config_version`
+- **WHEN** an EE admin calls `DeleteIMIntegration` with the current `integration_id` and `config_version`
 - **THEN** 系统 MUST 清空当前 IM integration，并使后续读取结果回到 `Not configured`
 
 #### Scenario: 使用 stale revision 删除 IM integration
-- **WHEN** an EE admin calls `DeleteHumanInputIMIntegration` with a stale or mismatched `integration_id` or `config_version`
+- **WHEN** an EE admin calls `DeleteIMIntegration` with a stale or mismatched `integration_id` or `config_version`
 - **THEN** 系统 MUST 返回 `409 Conflict`，并 MUST 保留当前 integration、IM identities、bindings 和 workspace overrides
 
 ### Requirement: EE dashboard MUST expose manual IM sync latest-run APIs
-EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 manual IM sync API，覆盖创建 sync run、读取最近一次 sync run summary，以及按 result 分页读取最近一次 sync 的结果条目。该 surface MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail RPC。sync result MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
+EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 manual IM sync API，覆盖触发 sync run、读取最近一次 sync run summary，以及按 result 分页读取最近一次 sync 的结果条目。该 façade MUST 是 latest-only，MUST NOT 新增 run-by-ID、run list 或历史 run detail endpoint。Sync run 的创建或复用、异步调度、provider fetch、reconciliation、persistence 与 result read MUST 全部由 Dify 完成；EE MUST 只转发 command/query 和映射 response。sync result MUST 能表达 `added / not_matched / failed / removed / skipped` 五类 bucket。
 
 #### Scenario: 手动触发 sync run
-- **WHEN** an EE admin calls `CreateHumanInputIMSyncRun`
-- **THEN** 系统 MUST 创建一条新的 sync run，保存当前 `integration_id` 与 `config_version`，并返回新的 run metadata
+- **WHEN** an EE admin calls `CreateIMSyncRun`
+- **THEN** EE MUST 调用 Dify manual-sync command；Dify MUST 创建新 run 或复用当前 single active run，确保 run 保存当前 `integration_id` 与 `config_version`，并返回 authoritative run metadata
 
 #### Scenario: Sync run 对应的 integration revision 已过期
 - **WHEN** an IM sync worker is ready to apply reconciliation results, but the current integration ID or config version no longer matches the revision captured by the run
@@ -74,39 +89,43 @@ EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 manual IM sync A
 - **WHEN** an EE admin reads one `removed` sync result
 - **THEN** 系统 MUST 返回 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
 
-### Requirement: EE dashboard MUST expose Organization Contact IM binding control-plane APIs
-EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 Organization Contact 查询、已同步 IM identity 搜索、binding 创建、删除与连通性测试 API。EE `HumanInputContact` 的生命周期 MUST 绑定 Organization Account，而不是任意单个 workspace membership。该 surface MUST 只管理 Organization Contact 与 Organization-scoped IM binding，MUST NOT 承担 workspace Contact lifecycle 或 workspace override。
+### Requirement: EE dashboard MUST expose Organization Contact IM binding façade APIs
+EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Contact 查询、已同步 IM identity 搜索、binding 创建、删除与连通性测试 API。Dify MUST 通过同一`OrganizationContactProjectionService`负责Account-to-Contact的幂等initial backfill、bounded ensure、periodic reconciliation与availability，并拥有Organization binding transaction boundary；EE MUST 只消费Dify current-state projection。`HumanInputContact`生命周期 MUST 绑定Organization Account，而不是任意单个workspace membership。该façade MUST只适配Organization Contact与Organization-scoped IM binding，MUST NOT承担workspace Contact lifecycle或workspace override。
 
 #### Scenario: 按姓名与 Email 查询 Organization Contact
-- **WHEN** an EE admin opens the Contacts control-plane or filters by member name or Email
-- **THEN** `ListHumanInputContacts` MUST 返回分页的 Organization Contact、`created_at` 与当前 channel binding summary，并 MUST 分别支持 member name 与 Email filter；控制面 MUST 将 `created_at` 展示为 `Joined`
+- **WHEN** an EE admin opens the Contacts admin view or filters by member name or Email
+- **THEN** `ListContacts` MUST 返回分页的 Organization Contact、从Dify `Account.created_at`投影的`joined_at`与当前channel binding summary，并 MUST 分别支持member name与Email filter；MUST NOT把`Contact.created_at`解释为加入时间
 
 #### Scenario: Workspace membership 变化不重建 EE Contact identity
 - **WHEN** an Organization Account joins or leaves one workspace while the Account remains in the EE Organization
-- **THEN** 系统 MUST 保留同一个 `HumanInputContact` ID 与 `created_at`，MUST NOT 因单个 workspace membership 变化创建或删除该 Organization Contact
+- **THEN** 系统 MUST 保留同一个`HumanInputContact` ID与Contact lifecycle timestamps，MUST NOT因单个workspace membership变化创建或删除该Organization Contact；`joined_at`继续来自同一Account
+
+#### Scenario: Account lifecycle驱动current projection
+- **WHEN** an Organization Account is created, updated, disabled, deleted, or reactivated
+- **THEN** Dify MUST 通过initial backfill、bounded ensure与periodic reconciliation创建或更新同一Account-backed Contact；unavailable Account MUST 从current-state response省略，同一Account重新active时MUST复用原Contact ID，EE MUST NOT通过Ent或shared-table write修复projection
 
 #### Scenario: 从同步结果搜索 IM identity
 - **WHEN** an EE admin adds an IM channel for one Contact
-- **THEN** `ListHumanInputIMIdentities` MUST 支持按 provider 与 IM user ID keyword 搜索已同步 identity，并 MUST NOT 接受自由文本 identity 作为 binding source
+- **THEN** `ListIMIdentities` MUST 支持按 provider 与 IM user ID keyword 搜索已同步 identity，并 MUST NOT 接受自由文本 identity 作为 binding source
 
 #### Scenario: 创建与删除 Organization binding
 - **WHEN** an EE admin adds or removes an IM channel for one Contact
-- **THEN** `CreateHumanInputIMBinding` or `DeleteHumanInputIMBinding` MUST mutate only the selected Organization-scoped binding and return enough identity summary data for the control-plane to render the current channel state
+- **THEN** `CreateIMBinding` or `DeleteIMBinding` MUST mutate only the selected Organization-scoped binding and return enough identity summary data for the admin view to render the current channel state
 
 #### Scenario: 测试联系人 binding
 - **WHEN** an EE admin tests one existing Contact IM channel
-- **THEN** `TestHumanInputIMBinding` MUST test the selected binding's current identity reachability and MUST NOT be implemented as an alias of the Organization-level credentials / callback / permission test
+- **THEN** `TestIMBinding` MUST test the selected binding's current identity reachability and MUST NOT be implemented as an alias of the Organization-level credentials / event transport / permission test
 
-### Requirement: EE human-input admin proto MUST stay narrow and avoid duplicating existing member or workspace CRUD
-本 change 的 EE human-input admin proto MUST 只承担 Organization 级 IM integration / sync 与 Organization Contact IM binding control-plane，不得复制已有 enterprise member / workspace 基础 CRUD、workspace Contact lifecycle、workspace IM override、node-data migration 或 Email provider configuration。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。
+### Requirement: EE Human Input admin Protobuf contract MUST stay narrow and avoid duplicating business ownership
+本 change 的 EE Human Input admin Protobuf contract MUST 只承担 Organization 级 IM integration / sync 与 Organization Contact IM binding 的 Kratos HTTP IDL，不得复制 Dify 业务逻辑，也不得增加已有 enterprise member / workspace 基础 CRUD、workspace Contact lifecycle、workspace IM override、node-data migration 或 Email provider configuration。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。
 
 #### Scenario: 不新增重复的 member CRUD
 - **WHEN** the EE human-input proto package is reviewed
-- **THEN** 它 MUST NOT 引入新的 workspace member CRUD RPC；member / workspace source data MUST continue to come from existing enterprise APIs
+- **THEN** 它 MUST NOT 引入新的 workspace member CRUD service method；member / workspace source data MUST continue to come from existing enterprise APIs
 
 #### Scenario: 不新增 workspace-owned management API
 - **WHEN** the EE human-input proto package is reviewed
-- **THEN** 它 MUST NOT 包含 Platform / External Contact CRUD、workspace IM override、node-data migration 或 Email provider RPC
+- **THEN** 它 MUST NOT 包含 Platform / External Contact CRUD、workspace IM override、node-data migration 或 Email provider endpoint
 
 #### Scenario: sync result item 可以引用现有 member / workspace identifier
 - **WHEN** one sync result item is returned from `ListLatestIMSyncRunResults`

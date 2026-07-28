@@ -7,14 +7,14 @@ Human Input V2 API 按四个 surface 拆分：
 1. workspace console：Contact Directory、IM integration、manual sync、contact IM binding / override、Email provider，以及无副作用的 node-data migration helper。
 2. workflow draft：form preview、form run、message-template test。
 3. runtime form：public web 与 Service API。
-4. EE dashboard admin：只提供 Organization 级 IM integration / sync 与 Organization Contact IM binding Protobuf control-plane；workspace console 在 EE 部署中作为 UI-facing adapter，不形成第二套业务语义。
+4. EE dashboard admin：只提供Organization级IM integration/sync与Organization Contact IM binding的Protobuf-defined Kratos HTTP facade；它通过typed internal client调用Dify-owned Human Input application service，不在EE维护第二套sync语义。Workspace console直接调用同一个Dify service，不通过EE回环。
 
 统一约束如下：
 
 - runtime noun 使用 `form`。
 - 新 URL path 统一使用 `human-input`；旧 `human_input` 路由只作为迁移期 alias。
 - CE / SaaS API 使用 Flask View 与 Pydantic contract。
-- EE admin API 使用 Protobuf 与 `google.api.http`。
+- EE admin API 使用Protobuf与`google.api.http`生成Kratos HTTP transport，不引入gRPC server或gRPC-Gateway。
 - 优先复用现有 DSL 枚举与 schema，不在 transport 层发明第二套业务枚举。
 - node-data migration helper 只负责 tenant-scoped 批量转换与 blocker 校验，不持久化 workflow。
 - 不新增 notification center、task list、CLI todo 或重复的 member / workspace CRUD。
@@ -62,8 +62,8 @@ Contact 上位概念保持如下：
 | `GET` | `/console/api/workspaces/current/human-input/im-integration` | 读取当前 Organization-level IM integration 摘要及 CAS revision。 |
 | `PUT` | `/console/api/workspaces/current/human-input/im-integration` | 创建 integration，或使用 `integration_id + config_version` CAS 更新当前配置。 |
 | `DELETE` | `/console/api/workspaces/current/human-input/im-integration` | 使用 `integration_id + config_version` CAS 解除当前 integration，并使后续读取回到 `Not configured`。 |
-| `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | 测试 IM provider credentials、callback 与 permission。 |
-| `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | 手动创建一次 IM directory sync run。 |
+| `POST` | `/console/api/workspaces/current/human-input/im-integration/test` | 测试 IM provider credentials、所选 event transport 与 permission。 |
+| `POST` | `/console/api/workspaces/current/human-input/im-sync-runs` | 手动触发 IM directory sync；Dify 创建新 run 或复用当前 single active run。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest` | 读取最近一次 IM sync run；UI 使用 `finished_at` 作为显式同步时间，不返回 `started_by`。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-sync-runs/latest/results` | 必须指定一个真实 result bucket，并使用 `page / limit` 分页读取最近一次 sync run 的 reconciliation result；不支持 All 或 cursor。 |
 | `GET` | `/console/api/workspaces/current/human-input/im-identities` | 搜索已同步的 IM identity。 |
@@ -104,9 +104,9 @@ Contact management 与 workflow recipient selection 使用不同读取模型：`
 | `GET` | `/v1/form/human-input/<string:form_token>?user=<string>` | 在显式 end-user context 下读取 Human Input form definition。 |
 | `POST` | `/v1/form/human-input/<string:form_token>` | 在 trusted app-token 与显式 user context 下提交 Human Input form。 |
 
-## 4. EE Protobuf API
+## 4. EE Protobuf-defined Kratos HTTP API
 
-以下 Protobuf block 是 EE Human Input admin API 的完整接口定义草案。它只覆盖 Organization 级 IM integration / sync 与账号生命周期绑定的 Organization Contact IM binding control-plane。
+以下Protobuf block是EE Human Input admin Kratos HTTP API的完整接口定义草案。它只覆盖Organization级IM integration/sync与账号生命周期绑定的Organization Contact IM binding admin facade；实际provider、sync、reconciliation与persistence仍由Dify application service执行。
 
 EE sync read model 与 workspace console 保持同一语义：只暴露 latest summary 和 latest results；`finished_at` 是 UI 同步时间，不返回 `started_by`；results 必须指定一个真实 bucket，使用 `page / limit / total`，不支持 All、cursor 或在分页响应中重复 run summary。
 
@@ -138,8 +138,15 @@ enum IMIntegrationStatus {
   IM_INTEGRATION_STATUS_CONFIGURED = 2;
   IM_INTEGRATION_STATUS_CONNECTED = 3;
   IM_INTEGRATION_STATUS_PERMISSION_ISSUE = 4;
-  IM_INTEGRATION_STATUS_CALLBACK_ERROR = 5;
+  IM_INTEGRATION_STATUS_WEBHOOK_ERROR = 5;
   IM_INTEGRATION_STATUS_CONNECTION_ERROR = 6;
+}
+
+enum IMEventTransportMode {
+  IM_EVENT_TRANSPORT_MODE_UNSPECIFIED = 0;
+  IM_EVENT_TRANSPORT_MODE_DISABLED = 1;
+  IM_EVENT_TRANSPORT_MODE_WEBHOOK = 2;
+  IM_EVENT_TRANSPORT_MODE_STREAM = 3;
 }
 
 enum IMIdentityBindingStatus {
@@ -204,7 +211,9 @@ message HumanInputContact {
   optional string email = 3;
   string avatar_url = 4 [json_name = "avatar_url"];
   repeated IMBinding im_bindings = 5 [json_name = "im_bindings"];
-  google.protobuf.Timestamp created_at = 6 [json_name = "created_at"];
+  // Current single-Organization membership time projected from Dify Account.created_at.
+  // This is intentionally distinct from the Contact aggregate's own created_at.
+  google.protobuf.Timestamp joined_at = 6 [json_name = "joined_at"];
 }
 
 message ListContactsReq {
@@ -272,12 +281,19 @@ message IMIntegrationCredentials {
 message IMIntegration {
   IMProvider provider = 1 [(validate.rules).enum = { defined_only: true }];
   IMIntegrationStatus status = 2 [(validate.rules).enum = { defined_only: true, not_in: [0] }];
-  optional string callback_url = 3 [json_name = "callback_url"];
+  optional string webhook_url = 3 [json_name = "webhook_url"];
   optional string permission_hint = 4 [json_name = "permission_hint"];
   google.protobuf.Timestamp configured_at = 5 [json_name = "configured_at"];
   google.protobuf.Timestamp updated_at = 6 [json_name = "updated_at"];
   string integration_id = 7 [json_name = "integration_id", (validate.rules).string = { min_len: 1 }];
   int64 config_version = 8 [json_name = "config_version", (validate.rules).int64 = { gte: 1 }];
+  IMEventTransportMode event_transport_mode = 9 [
+    json_name = "event_transport_mode",
+    (validate.rules).enum = { defined_only: true, not_in: [0] }
+  ];
+  repeated IMEventTransportMode supported_event_transport_modes = 10 [
+    json_name = "supported_event_transport_modes"
+  ];
 }
 
 message GetIMIntegrationReq {}
@@ -295,6 +311,10 @@ message UpsertIMIntegrationReq {
   optional int64 expected_config_version = 3 [
     json_name = "expected_config_version",
     (validate.rules).int64 = { gte: 1 }
+  ];
+  IMEventTransportMode event_transport_mode = 4 [
+    json_name = "event_transport_mode",
+    (validate.rules).enum = { defined_only: true, not_in: [0] }
   ];
 }
 
@@ -317,6 +337,10 @@ message DeleteIMIntegrationRes {}
 
 message TestIMIntegrationReq {
   IMIntegrationCredentials credentials = 1 [(validate.rules).message.required = true];
+  IMEventTransportMode event_transport_mode = 2 [
+    json_name = "event_transport_mode",
+    (validate.rules).enum = { defined_only: true, not_in: [0] }
+  ];
 }
 
 message TestIMIntegrationRes {
@@ -573,7 +597,7 @@ service EnterpriseHumanInputAdmin {
 - CLI todo / approval inbox API
 - 新的 `task` noun 路由
 - 重复的 EE member / workspace CRUD proto
-- EE Platform / External Contact lifecycle、workspace IM override、node-data migration 或 Email provider RPC
+- EE Platform / External Contact lifecycle、workspace IM override、node-data migration 或 Email provider endpoint
 - 与 DSL / enterprise style 脱节的 transport enum
 
 ## 6. 推荐落地顺序
@@ -582,4 +606,4 @@ service EnterpriseHumanInputAdmin {
 2. 落地 workspace console 的 Contact、IM 与 Email provider surface。
 3. 切换 public web runtime proof model，并让 Service API GET 强制要求 `user`。
 4. 将 draft debug 从 `delivery-test` 切换为 `message-template/test`。
-5. 以本节 Protobuf contract 为基础实现 EE backend，并让 EE workspace console 通过 adapter 接入。
+5. 在Dify落地trusted Human Input internal API；以本节Protobuf contract实现EE Kratos HTTP facade与typed Dify client。EE workspace console继续直接复用Dify本地application service，不通过EE转发。

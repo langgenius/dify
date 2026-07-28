@@ -1,159 +1,109 @@
 ## Context
 
-当前仓库已经具备实现 IM 联系人同步的大部分“下半身”能力：
+仓库已经具备 Sync 的核心状态与持久化语义：
 
-- `api/controllers/console/workspace/human_input.py` 已经定义了统一的 workspace-scoped Human Input 管理路由，但仍全部是 stub。
-- `api/controllers/common/human_input_v2_contracts.py` 已经定义了 integration、manual sync、latest-only result、IM identity search、binding 和 override 的 DTO。
-- `api/core/human_input_v2/im_integration/*` 已经提供了 `IMIntegration`、`SyncReconciler`、`ProviderDirectoryEntry`、`IMControlPlaneRepository` 等纯领域与持久化边界。
-- `api/repositories/human_input_v2/im_integration/repository.py` 已经实现了 CAS、single active run、revision-guarded apply 和 append-only sync result persistence。
-- `api/repositories/human_input_v2/contact_directory/repository.py` 已经实现了 Contact Directory 的 snapshot / lifecycle / owner-bound mutation。
+- `IMIntegration` 与 complete revision token；
+- `SyncReconciler`、`ProviderDirectoryEntry` 与 revision-guarded apply；
+- single-active-run、latest-only result persistence；
+- Contact Directory、IM identity/binding、workspace override 与 effective-binding resolution；
+- workspace-scoped Human Input routes 和共享 DTO 骨架。
 
-当前缺失的是“上半身”：
+`implement-human-input-v2-im-provider-foundation` 另行拥有 Integration management、credential encryption/rotation、provider tenant confirmation、provider-local SDK client construction、safe diagnostics 与 `WEBHOOK / STREAM` event transport。Sync 只消费 current Integration/client boundary，不能重新实现这些职责。
 
-- 没有一个统一的 application service 去编排 provider directory 拉取、provider-neutral 归一化、reconciliation plan 生成和 apply。
-- 没有一个真实的 provider adapter 边界，Feishu / Lark 的接入方式还未落地。
-- 没有把同步结果稳定地接回现有 `im-identities` / `im-bindings` / `im-override` / `binding_resolution` 入口。
+本 change 的真正缺口是：没有 Sync-owned directory port 与 provider normalization，没有一个 application service 把 manual run、directory fetch、reconciliation 和 apply 串起来，也没有把 synced identities 稳定接回 Contact binding 管理入口。
 
-另外，仓库里存在两套需要显式收敛的约束：
-
-- 当前后端 domain / DTO / 进行中的 `human-input-v2-api-contracts` change 使用 `added / not_matched / failed / removed / skipped` 作为 sync result bucket。
-- 现有前端 mock / UI spec 曾用过 `matched / created_binding / updated_binding / unmatched / skipped / failed` 的展示分类。
-
-本 change 需要先在设计上拍板哪一套是后端 canonical contract，再进入实现。
+```text
+Workspace / Trusted Internal API adapters
+        (`human-input-v2-api-contracts`)
+                  |
+                  v
+             IMSyncService
+                  |
+       +----------+-----------+
+       |                      |
+       v                      v
+IMDirectoryReader       SyncReconciler
+       |                      |
+       v                      v
+Provider Foundation     IMControlPlaneRepository
+client lifecycle        + ContactDirectoryRepository
+```
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 在现有 `/console/api/workspaces/current/human-input` 路由下落地统一的 IM integration / manual sync / latest-only result / identity search / binding / override API。
-- 为 Feishu / Lark 建立统一的 provider adapter 契约，让厂商差异只停留在 adapter 层，controller、service、domain 和 repository 完全不感知 provider 特例。
-- 复用现有 `SyncReconciler`、`IMControlPlaneRepository`、`ContactDirectoryRepository` 和 binding resolution 代码路径，避免新增平行领域模型或平行 API。
-- 优先通过厂商官方 SDK 完成 provider 接入，最小化手写 HTTP glue。
-- 将实现范围控制在后端真实化，不把前端 mock repository 切换到真实 API 强行并入同一 change。
+- 落地 provider-agnostic manual sync trigger、latest run 与 latest-result application boundary。
+- 由 `IMDirectoryReader` 抹平 Feishu、Lark 与 DingTalk directory response 差异，并只输出 `ProviderDirectoryEntry`。
+- 复用 Foundation 的 current Integration/client/credential lifecycle，不复制 provider initialization。
+- 复用现有 reconciliation、run/result repository 和 Contact binding resolution。
+- 保持 Dify single-owner，EE 只做 façade/client/DTO mapping。
 
 **Non-Goals:**
 
-- 不新增按厂商区分的控制器、DTO 或 `/feishu/*`、`/lark/*` 风格专属 API。
-- 不重写现有 `human_input_v2` core domain、sync repository 或 contact directory repository。
-- 不在本 change 中实现 unmatched 人工映射 UI、前端真实 repository adapter 或新的管理页面。
-- 不引入自动定时 sync；仍然只支持管理员手动触发。
-- 不为了适配 UI mock taxonomy 而改写现有持久化模型和历史 sync result schema。
+- 不读取、配置、删除或测试 Integration；这些 operations 的 application logic 属于 Foundation，workspace/internal HTTP API 属于 `human-input-v2-api-contracts`。
+- 不持久化或解密 provider credential，不确认 provider tenant，不创建 SDK client factory。
+- 不实现 webhook verification、stream runtime、directory event subscription 或自动/定时 sync。
+- 不实现 card render/send/update/fallback、card action normalization 或 HITL submission。
+- 不新增 provider-specific controller/DTO/route，不重写现有 sync result schema。
+- 不把前端 mock repository 切换到真实 API。
+- 不拥有 Pydantic DTO、workspace Flask handler、trusted internal HTTP controller、authentication/scope/operation-metadata mapping、HTTP response/error mapping、controller tests 或 IM 501 replacement；这些 transport concerns 全部由 `human-input-v2-api-contracts` 独占。
 
 ## Decisions
 
-### 1. 继续复用现有 workspace console surface，而不是再造一套 provider-specific API
+### 1. Sync 只拥有 run、result、identity 与 binding application boundary
 
-实现继续挂载在现有 stub 路由之下：
+本 change 只提供 manual sync trigger、latest summary/result query、identity search、binding 和 override 的 transport-neutral command/query、service factory 与 composition entry point。`human-input-v2-api-contracts` 独占 workspace 与 trusted internal HTTP contract、handler、DTO、auth/scope/metadata mapping、HTTP error mapping 和 controller tests。
 
-- `GET/PUT/DELETE /console/api/workspaces/current/human-input/im-integration`
-- `POST /console/api/workspaces/current/human-input/im-integration/test`
-- `POST /console/api/workspaces/current/human-input/im-sync-runs`
-- `GET /console/api/workspaces/current/human-input/im-sync-runs/latest`
-- `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results`
-- `GET /console/api/workspaces/current/human-input/im-identities`
-- `PUT/DELETE /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override`
-- `PUT/DELETE /console/api/workspaces/current/human-input/contacts/<contact_id>/im-bindings`
+Integration read/configure/delete/test 的 application logic 由 Foundation 的 `IMIntegrationManagementService` 实现，不进入 `IMSyncService`；其 workspace/internal HTTP adapters 同样由 `human-input-v2-api-contracts` 拥有。
 
-原因：
+两个 API consumers 必须注入同一个 `IMSyncService` 与 `ContactIMBindingService` implementation。Dify application services 不接收 EE-specific HTTP DTO，不执行 caller authentication/actor mapping，也不回调 EE Human Input API。
 
-- 这组 DTO 和路由已经与当前 repo 内的 PRD / OpenSpec 收敛方向一致。
-- 统一 API 更容易复用 `SyncReconciler` 和现有 repository；如果按厂商拆 route，最终只会把厂商差异泄漏到 transport 层。
-- 当前用户要求明确禁止为各家实现独立 API。
+原因：Integration lifecycle 与 sync run lifecycle 是不同 application boundary。拆开后，Card 与 Sync 可以共享 Integration management，而不互相依赖。
 
-放弃方案：
+### 2. `IMSyncService` 只编排 manual synchronization
 
-- 为 Feishu 和 Lark 分别暴露 `POST /.../feishu/sync`、`POST /.../lark/sync` 等 API。
-  原因：违反统一 API 要求，且会把 provider capability / credential shape / error model 泄漏进 controller contract。
+`IMSyncService` 负责：
 
-### 2. 新增薄 application service，统一编排 integration、sync 和 contact binding
+- 读取 Foundation 提供的 current `IntegrationRevisionToken`；
+- 创建或返回 single active run；
+- enqueue 只携带 `sync_run_id` 的后台任务；
+- 查询 latest run summary 与 canonical result page。
 
-实现引入两类应用服务，而不是把 orchestration 塞进 controller 或 repository：
+worker 负责：
 
-- `IMSyncManagementService`
-  - 读取 / 更新 / 删除 integration
-  - 测试 provider connectivity
-  - 创建 sync run
-  - 触发后台 sync worker
-  - 读取 latest run summary / result page
-- `ContactIMBindingService`
-  - 搜索 synced IM identities
-  - 为 Contact 创建 / 删除 organization binding
-  - 为 EE Contact 设置 / 清除 workspace override
-  - 组装 controller 返回所需的 `HumanInputContact` projection
+1. 加载 run 与 captured Integration revision；
+2. 通过 `IMDirectoryReader` 拉取并归一化 directory；
+3. 加载 reconciliation snapshot；
+4. 调用 `SyncReconciler.reconcile(...)`；
+5. 通过 revision-guarded repository apply plan；
+6. 在 provider failure、stale revision 与 apply failure 路径终结 run 并写入 safe result。
 
-原因：
+service/worker 不提供 Integration commands，也不测试 candidate credentials。
 
-- repo 目前已经是 transaction-oriented port；再让 controller 直接调用多个 repo / core object，会把 HTTP concern 和事务编排糊在一起。
-- 现有 `services/human_input_v2/submission.py` 已经建立了 Human Input v2 application service 的仓库边界模式，本 change 应复用同类结构。
+### 3. Sync 拥有 `IMDirectoryReader` 语义，Foundation 拥有 client lifecycle
 
-放弃方案：
+Provider-neutral port 只表达目录能力，例如：
 
-- 直接在 controller 中写 provider 调用、snapshot load、reconcile、apply。
-  原因：会破坏 controller → service → core/domain 的层次，也不利于测试和重试策略。
+- `read_directory(current_integration) -> tuple[ProviderDirectoryEntry, ...]`
 
-### 3. Provider 适配器统一输出 `ProviderDirectoryEntry`，Feishu / Lark 差异只停留在 adapter 内
+Feishu、Lark 与 DingTalk adapter 位于各自 provider package 的 Sync 组合边界中。adapter 使用 Foundation 提供的 provider-local current client lifecycle，负责 pagination、provider user ID/email normalization 与 SDK response/error mapping；它不得解密 credential、确认 tenant 或把 SDK objects 交给 service/core/application consumer。
 
-新增 provider-neutral 端口，例如：
+`test_connection(...)` 与 `resolve_provider_tenant(...)` 不属于 `IMDirectoryReader`：它们是 Foundation Integration management 的 baseline diagnostic 与 tenant confirmation。
 
-- `ProviderDirectoryClient`
-  - `test_connection(...) -> ProviderConnectionDiagnostic`
-  - `list_directory_entries(...) -> tuple[ProviderDirectoryEntry, ...]`
-  - `resolve_provider_tenant(...) -> ProviderTenantIdentity`
+原因：directory normalization 是 Sync domain concern，client construction 是跨 Sync/Card/transport 共享的 provider concern。两者分离能避免巨型 provider adapter，也不需要 capability registry。
 
-Feishu / Lark 采用同一 SDK 家族的 adapter 实现。根据 2026-07-26 核验的官方文档：
+### 4. Manual sync 保持异步、single-active-run 与 latest-only
 
-- Feishu 官方文档提供服务端 Python SDK 示例，并在 API 调试台展示 Python SDK 示例代码。
-- Lark 官方“服务端 SDK”文档明确提供 Python SDK，安装方式为 `pip install lark-oapi -U`。
-- Lark / Feishu 的 Contact API 页面都提供 Python SDK 示例，说明目录读取能力可通过统一 SDK 家族接入。
+manual-sync command 只校验 current Integration revision、创建或复用 active run 并 enqueue worker，不在同步 application call 内拉取完整目录。
 
-来源：
+每个 run 捕获完整 `integration_id + config_version`。apply 前必须重新检查 current revision；Integration replacement、credential rotation 或 event transport configuration change 使捕获 revision 过期时，run 必须终止且不得修改 current identities/bindings。
 
-- Feishu 开发工具概述与服务端 API 文档：https://open.feishu.cn/document/tools-and-sdks/developer-tools-portal
-- Feishu Contact API 示例页：https://open.feishu.cn/document/server-docs/contact-v3/user/get?lang=zh-CN
-- Lark 服务端 SDK 文档：https://open.larksuite.com/document/ukTMukTMukTM/uETO1YjLxkTN24SM5UjN?lang=en-US
+latest query boundary 不扩展成 run-by-ID 或 history semantics。
 
-设计决策：
+### 5. Canonical result taxonomy 保持五类
 
-- 优先接入官方 `lark-oapi` Python SDK。
-- Adapter 负责把 SDK response 规整为 `ProviderDirectoryEntry`，并裁掉 SDK/raw payload 中不应进入 API surface 的字段。
-- 如果某个能力在 SDK 中缺失，再在 adapter 内用最薄的 `httpx` 补洞，但不得把 hand-written HTTP client 暴露到 service / controller 层。
-
-放弃方案：
-
-- 不经 adapter，直接在 service 里写 Feishu / Lark HTTP 调用。
-  原因：厂商差异会渗透进应用层，后续再接 Slack / DingTalk 时代价会线性放大。
-
-### 4. Sync 继续采用“手动触发 + 后台异步执行 + latest-only 读取”模型
-
-`POST /im-sync-runs` 的职责是：
-
-1. 校验当前 integration 已配置且 revision 有效。
-2. 通过 `IMControlPlaneRepository.create_or_get_active_run(...)` 创建或拿到唯一 active run。
-3. 新建成功时，异步 enqueue 一个 worker 任务，仅携带 `sync_run_id`。
-4. 立即返回 queued/running 的 run summary，不在 HTTP 请求里同步拉完整目录。
-
-后台 worker 的职责是：
-
-1. 读取 run 和 captured integration revision。
-2. 使用 provider adapter 拉目录数据并规整为 `ProviderDirectoryEntry`。
-3. 调用 `load_reconciliation_snapshot` 读取当前快照。
-4. 调用 `SyncReconciler.reconcile(...)` 生成 plan。
-5. 调用 `apply_reconciliation(...)` 按 revision-guarded 方式落 current state。
-
-原因：
-
-- 现有模型已经有 `QUEUED/RUNNING/SUCCEEDED/FAILED` 状态和 single-active-run 语义，天然适合后台执行。
-- 通讯录同步在真实租户中可能很慢，不应该绑在 console request 生命周期里。
-- latest-only 读取模式已经在当前 API contract change 中固定，避免引入不必要的 run history API。
-
-放弃方案：
-
-- 在 `POST /im-sync-runs` 中同步执行 provider 拉取与 apply。
-  原因：阻塞长请求，且无法复用现有 active-run / retry / stale-revision 机制。
-
-### 5. 后端 canonical sync result taxonomy 维持 `added/not_matched/failed/removed/skipped`
-
-本 change 明确选择后端 canonical bucket 保持为：
+持久化与 application read model 继续使用：
 
 - `added`
 - `not_matched`
@@ -161,76 +111,45 @@ Feishu / Lark 采用同一 SDK 家族的 adapter 实现。根据 2026-07-26 核�
 - `removed`
 - `skipped`
 
-不在本次实现中引入 `matched / created_binding / updated_binding` 作为持久化或 API bucket。
+`matched / created_binding / updated_binding` 仍是可选 presentation metadata，不替代 persisted buckets；latest-results query 必须显式选择一个 canonical bucket。
 
-原因：
+原因：core enum、repository 与现有 API contract 已采用这五类，UI taxonomy 不应反向修改 sync persistence。
 
-- 当前 core enum `IMSyncResultType`、controller DTO、repository tests 和进行中的 `human-input-v2-api-contracts` change 已经统一使用这五类 bucket。
-- 如果现在把后端持久化 bucket 改成 UI mock taxonomy，会牵动 domain enum、result persistence、controller DTO、existing tests 和 pending spec，blast radius 过大。
-- `created_binding` / `updated_binding` 更接近 presentation concern，可以在未来真实前端 adapter 中由 `added` 结果配合额外字段衍生，而不是现在重写 core contract。
+### 6. Contact 接入只走 identity/binding/override 入口
 
-配套策略：
+`ContactIMBindingService` 负责：
 
-- latest results API 继续只接受真实 bucket，不支持 `all`。
-- 如果未来前端需要 finer-grained taxonomy，应新增可选 display metadata，而不是改写 persisted bucket。
+- 搜索 synced identities；
+- 为 current `WORKSPACE` 或 `PLATFORM` Contact 创建/删除 organization binding；
+- 为支持 workspace-local override 的 edition 设置/清除 override；
+- 复用 `workspace override > organization binding > Email fallback` resolver。
 
-### 6. Contact 接入只走现有 identity/binding/override 入口，不自动创建 Contact
+Unmatched directory entry 只保留为 read-only sync result，不自动创建 `External contact` 或 binding。`EXTERNAL`、`ABSENT`、hard-deleted 或 unavailable Contact 不能通过 binding 写路径被创建/恢复。
 
-同步结果接入 Contact 的方式明确为：
+### 7. Directory event transport 是未来依赖，不与 manual sync 绑定
 
-- `GET /im-identities`：搜索已同步 identity，支持 display name / email / provider user ID。
-- `PUT /contacts/<contact_id>/im-bindings`：为 current workspace 可解析的非-External contact 创建或替换 organization binding。
-- `DELETE /contacts/<contact_id>/im-bindings`：解除指定 binding。
-- `PUT /DELETE /contacts/<contact_id>/im-override`：仅在 EE 中设置 / 清除 workspace override。
-
-边界规则：
-
-- unmatched provider entry 只保留为 sync result，绝不自动创建 `External contact`。
-- `External contact` 不允许创建 IM binding；其 `im_bindings` 继续保持为空。
-- binding / override 写入前必须复用 Contact Directory resolution，`ABSENT` 或 hard-deleted contact 直接拒绝。
-- override 和 organization binding 是两条不同写路径；reset override 只能回退到 global binding，不能复制 binding 到 workspace scope。
-
-原因：
-
-- 这完全符合 PRD 对 unmatched list、external contact email-only 和 workspace override 语义的约束。
-- 现有 binding resolution 已经具备 `workspace override > organization binding > Email fallback` 的优先级语义，无需再建平行模型。
-
-### 7. 尽量避免 schema 变化，优先复用现有表与 DTO
-
-本 change 目标是不新增核心表，不重塑现有 current-state schema。优先复用：
-
-- `HumanInputIMIntegration`
-- `HumanInputIMIdentity`
-- `HumanInputIMBinding`
-- `HumanInputIMSyncRun`
-- `HumanInputIMSyncResult`
-- `HumanInputContact`
-
-只有在实现时发现当前 `HumanInputIMSyncResult` 无法承载必要的安全展示字段时，才允许补充最小 schema 变更；默认预期是现有模型已足够。
-
-原因：
-
-- contact directory / im control plane 的 schema 刚在 2026-07-24 到 2026-07-25 附近完成设计和落地，当前更重要的是把应用层打通，而不是再次动底层表结构。
+本 change 不注册 directory event sink，也不引入自动 sync policy。未来需要联系人自动同步时，Foundation 可以把 authenticated directory-change envelope 交给 Sync-owned sink；该 sink 决定 debounce、coalescing、scope 与是否创建 run，复用本 change 的 `IMSyncService`，Foundation 不直接触发 reconciliation。
 
 ## Risks / Trade-offs
 
-- [Provider SDK 与现有依赖未集成] -> 先在 `api/pyproject.toml` 中最小增量接入官方 SDK，并把 SDK 使用限制隔离在 adapter；如果 SDK 某个接口不可用，再在 adapter 内局部回退到 `httpx`。
-- [UI mock taxonomy 与后端 canonical bucket 不一致] -> 本 change 明确以后端五类 bucket 为准，并在 design/spec 记录该裁决；前端真实 adapter 未来做展示映射，不反向污染 core contract。
-- [后台 sync worker 失败导致 run 卡死] -> worker 必须在 provider fetch failure、stale revision 和 apply failure 路径都显式结束 run，并写入安全 error/result fact。
-- [Binding 写路径误接入 External/ABSENT Contact] -> `ContactIMBindingService` 必须在写前统一做 workspace resolution 和 contact type gate，拒绝不合规主体。
-- [实现范围膨胀到前端替换] -> tasks 明确把真实前端 repository adapter 排除在本 change 外，避免跨端大改影响收敛。
-- [高覆盖率目标导致回归成本升高] -> 以 service / controller / repository 分层测试为主，优先补高价值失败路径和并发路径，避免把覆盖率建立在低价值 snapshot test 上。
+- [Foundation 尚未就绪导致 Sync 重复 client glue] -> 把 Foundation 标为前置依赖；Sync adapter 只接受 provider-local client lifecycle，不临时解密 credential。
+- [Provider directory pagination/field差异泄漏] -> 每个 `IMDirectoryReader` adapter 负责完整 pagination 与 normalization，并运行共享 contract suite。
+- [后台 worker failure 使 run 卡死] -> 所有 provider fetch、stale revision、reconcile/apply failure 都必须显式终结 run并保留 safe diagnostics。
+- [Integration revision 因 transport config 变化而使 run stale] -> 保持 complete CAS 语义，宁可重新触发 manual sync，也不把旧 credential/config 结果应用到 current state。
+- [Binding 写路径误接入 unavailable Contact] -> 在单一 `ContactIMBindingService` 中做 resolution/type gate，并覆盖 repository-level tests。
+- [未来自动 sync 反向污染 Foundation] -> event transport 只交付 authenticated facts；schedule policy 和 reconciliation 始终留在 Sync。
 
 ## Migration Plan
 
-1. 先落地 OpenSpec planning artifacts，并提交 planning change。
-2. 为 provider adapter 引入 SDK 依赖和最小配置装配。
-3. 落地 application service 与 Celery/worker task，打通 manual sync。
-4. 落地 controller stub、identity search、binding / override 写路径。
-5. 补齐 unit / integration / controller tests，并以 targeted test commands 验证高风险路径。
-6. 代码收敛后归档 change，并提交 archive。
+1. 先部署 Foundation 的 current Integration/client boundary，并保持 event transport `DISABLED`。
+2. 落地 `IMDirectoryReader` contract 与 Feishu/Lark/DingTalk directory adapters。
+3. 落地 `IMSyncService`、worker 与 manual sync/latest-only transport-neutral composition boundary。
+4. 落地 identity search、binding 与 workspace override application operations，并提供 API-consumer fixtures。
+5. 切除 Sync 中旧的 Integration CRUD/test、credential/client construction wiring。
+6. 运行 provider contract、service、repository 与 concurrency tests 后，将稳定 boundary 交给 `human-input-v2-api-contracts` 进行 handler/controller 验证。
+
+Rollback 只停用 manual sync worker/composition entry point；Foundation Integration 与 Card outbound 能力不受影响。
 
 ## Open Questions
 
 - None blocking.
-- 如果实现阶段确认现有 `IMSyncResult` DTO 无法满足后续真实前端展示，需要在不改变 canonical bucket 的前提下补充 display metadata；这不阻塞本 change 启动。

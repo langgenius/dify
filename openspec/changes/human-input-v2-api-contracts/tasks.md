@@ -5,7 +5,7 @@
 - [x] 1.3 Add Pydantic batch request and response models plus a stable node-scoped blocker taxonomy for the side-effect-free Human Input v1 to v2 node-data migration helper; default a missing legacy `version` to the string `"1"` and reject every other explicit version.
 - [ ] 1.4 Document the migration ownership split so the backend remains an all-or-error converter and validator; explicitly retain `whole_workspace: true` as the only sanctioned lossy snapshot conversion.
 - [ ] 1.5 Write red-first service-boundary tests for transport-to-command mapping, owner-scoped references, transaction ownership, typed error translation, and the prohibition on Flask/controller imports from Human Input v2 application services.
-- [ ] 1.6 Add explicit Human Input v2 application service factories and composition roots that inject sessions, repositories, provider clients, clocks, hashers, and edition adapters without letting controllers coordinate repositories directly.
+- [ ] 1.6 Add API-layer composition roots that consume transport-neutral application service factories from their owner changes and inject those services into handlers without letting controllers construct or coordinate repositories directly; keep IM service factories in `implement-im-contact-sync-api`.
 
 ## 2. Wire Workspace Contact And Provider Configuration APIs
 
@@ -18,12 +18,12 @@
 - [ ] 2.7 Implement `EmailProviderManagementService` over the existing provider configuration persistence boundary and replace the Email provider 501 handlers without logging or returning secret material.
 - [ ] 2.8 Add controller tests for permissions, request validation, response DTOs, 204 empty-body behavior, not-found/conflict/error mapping, and proof that all Contact and Email provider routes in scope no longer return the generic stub response.
 
-## 3. Integrate IM Management Wiring Without Duplicating Its Owner Change
+## 3. Implement Workspace IM Management API Over The Shared Services
 
-- [ ] 3.1 Complete `implement-im-contact-sync-api` as the implementation owner for CE/SaaS provider adapters, `IMSyncManagementService`, `ContactIMBindingService`, the manual-sync worker, and the IM-related workspace handlers.
-- [ ] 3.2 Align the landed IM handlers with this change's canonical DTO contract: `integration_id + config_version` CAS, latest-only reads, `page / limit / total`, one real result bucket, `finished_at`, provider-user-ID search, and stable error mapping.
-- [ ] 3.3 Add cross-change contract tests proving the IM controllers contain no provider-specific branches, unmatched results never create Contacts, invalid Contact types cannot receive bindings, and effective resolution remains `workspace override > organization binding > Email fallback`.
-- [ ] 3.4 Audit the shared workspace controller after the IM change lands and remove only the IM 501 stubs owned by that change; do not recreate reconciliation, provider SDK, worker, or repository orchestration in this umbrella change.
+- [ ] 3.1 Consume the transport-neutral `IMSyncService`, `ContactIMBindingService`, service factories, and command/query results from `implement-im-contact-sync-api`; consume Integration read/configure/delete/test application logic from `implement-human-input-v2-im-provider-foundation`; do not recreate provider adapters, reconciliation, worker, repositories, or transaction orchestration in this change.
+- [ ] 3.2 Complete the canonical IM Pydantic DTOs and transport mapping for `integration_id + config_version` CAS, `DISABLED / WEBHOOK / STREAM` selection and supported-mode projection, latest-only reads, `page / limit / total`, one real result bucket, `finished_at`, provider-user-ID search, binding writes, and workspace override reset.
+- [ ] 3.3 Replace every IM-related 501 workspace handler with a thin service-backed implementation that owns workspace authentication/scope, request validation, operation metadata, response projection, and stable domain-error-to-HTTP mapping.
+- [ ] 3.4 Add workspace IM controller tests for permissions, DTO validation, CAS conflicts, latest-only paging, provider-neutral mapping, invalid Contact types, unmatched-result side-effect prohibition, binding/override behavior, and proof that no IM route still returns the generic 501 response.
 
 ## 4. Wire Draft Debug And Node-Data Migration APIs
 
@@ -43,13 +43,14 @@
 - [ ] 5.6 Add controller and service tests for public Email, authenticated Contact, and Service API success/error paths, stale OTP after identity changes, expired/submitted forms, cross-surface proof rejection, cross-version tokens, and rollback on audit/submission failure.
 - [ ] 5.7 Preserve all existing underscored v1 routes, request models, token lookup, delivery-test behavior, and regression coverage while landing the independent hyphenated v2 controllers.
 
-## 6. Wire The EE Workspace Adapter
+## 6. Expose The Dify Control-Plane To The EE Facade
 
-- [ ] 6.1 Complete `implement-ee-human-input-admin-api` as the implementation owner for the Enterprise Human Input admin Protobuf/HTTP service, Organization Contact projection, IM control-plane, and Organization binding persistence.
-- [ ] 6.2 Add a narrow Dify-side enterprise Human Input admin client interface and adapter for Organization Contact, IM integration, manual sync, identity search, and Organization binding operations; keep provider and Go business types behind the client boundary.
-- [ ] 6.3 Implement edition-aware application service routing so CE/SaaS uses local Python services while EE Organization-level operations call the enterprise control-plane; keep Platform/External Contact lifecycle, workspace override, migration, and Email provider local to Dify.
-- [ ] 6.4 Wire EE workspace console handlers through the edition router, including stable unavailable/timeout/error translation and no fallback to direct writes against deployment-wide rows.
-- [ ] 6.5 Add cross-repository contract tests for Protobuf field/enum/HTTP-path compatibility, CAS tokens, latest-only result pagination, Contact/binding ownership, workspace-local override behavior, and failure when the EE control-plane is unavailable.
+- [ ] 6.1 Implement a Dify-owned idempotent `OrganizationContactProjectionService` over Account source facts with initial backfill, bounded ensure before Organization Contact reads/manual sync, periodic reconciliation for Account create/update/disable/delete, stable Contact-ID reuse for the same Account, current-state omission for unavailable Accounts, and `joined_at` projected from `Account.created_at` without copying it into the Contact aggregate.
+- [ ] 6.2 Consume the Dify-owned Integration management boundary, including `DISABLED / WEBHOOK / STREAM` configuration and safe operational projection, from `implement-human-input-v2-im-provider-foundation`, and consume the Sync/Organization binding boundaries from `implement-im-contact-sync-api`; keep provider client lifecycle、directory adapters、reconciliation、worker、repositories 与 transaction ownership in their respective implementation changes.
+- [ ] 6.3 Add `/inner/api/enterprise/human-input/*` trusted HTTP controllers for Organization Contact, IM integration, manual sync, identity search, and Organization binding operations; keep them as thin adapters over the same Python services used by workspace controllers, authenticate an EE-specific caller identity, accept only operation/correlation metadata from EE, reject other generic internal callers, and leave Dify Account-specific actor fields empty for EE-originated commands.
+- [ ] 6.4 Keep Dify workspace console handlers on the local Python application service, including edition policy and workspace-owned Platform/External Contact, override, migration, and Email provider behavior; do not route workspace operations through EE.
+- [ ] 6.5 Coordinate `implement-ee-human-input-admin-api` with an EE repository-owned delivery artifact for the Kratos HTTP facade, EE-only human-actor audit, typed Dify internal client, stable timeout/error translation, and no Human Input Ent/provider/worker/reconciler implementation; do not apply EE source changes from the Dify repo-local plan.
+- [ ] 6.6 Add semantic cross-repository contract and call-graph tests for the EE-required Protobuf/internal-JSON mapping, CAS tokens, latest-only pagination, Contact/binding ownership, workspace-local override behavior, and the absence of `Dify → EE Human Input → Dify` or `EE → Dify → EE Human Input` request chains; do not require the public and internal contracts to be globally isomorphic.
 
 ## 7. Verify, Document, And Remove Stubs
 
@@ -58,4 +59,4 @@
 - [ ] 7.3 Add CI-only integration coverage for transaction/concurrency boundaries, provider/worker integration, and Dify-to-enterprise contract behavior that cannot run in the local environment.
 - [ ] 7.4 Run backend formatting, linting, and type checking for affected Python files and resolve all introduced issues without weakening types or adding `Any`-based transport glue.
 - [ ] 7.5 Audit all Human Input v2 routes in scope and prove none returns the generic HTTP 501 stub response; document any deliberately deferred route with its owning change instead of silently leaving a stub.
-- [ ] 7.6 Validate `human-input-v2-api-contracts`, `implement-im-contact-sync-api`, and `implement-ee-human-input-admin-api`; re-read their proposal/design/spec/task ownership boundaries before implementation review.
+- [ ] 7.6 Validate `human-input-v2-api-contracts`, `implement-human-input-v2-im-provider-foundation`, `implement-im-contact-sync-api`, `implement-human-input-v2-im-card-interaction`, and `implement-ee-human-input-admin-api`; re-read their proposal/design/spec/task ownership boundaries before implementation review.
