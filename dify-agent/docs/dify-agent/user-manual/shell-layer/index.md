@@ -41,10 +41,10 @@ the opaque Binding ref belongs to `DifyRuntimeLayerConfig`.
 ## Runtime requirements
 
 The server constructs one coherent runtime backend profile. Local and E2B
-implement Home Snapshot and Execution Binding operations. Enterprise settings
-can be selected, but resource operations currently fail fast with
-`NotImplementedError`; there is no compatibility fallback to the retired
-Sandbox protocol.
+implement Home Snapshot and Execution Binding operations. Enterprise implements
+default-Home Binding creation, acquisition, and coupled destruction, while
+immutable Home Snapshot operations fail fast; there is no compatibility
+fallback to the retired Sandbox protocol.
 
 ```python
 from dify_agent.runtime.compositor_factory import create_default_layer_providers

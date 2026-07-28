@@ -12,10 +12,9 @@ from dify_agent.runtime_backend import (
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
-    InitializeHomeSnapshotSpec,
 )
 from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend, E2BHomeSnapshotBackend, E2BSDKControlPlane
-from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
 pytestmark = pytest.mark.integration
 
@@ -32,19 +31,10 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
     endpoint = _required_env("DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT", "real Local shellctl")
     token = os.environ.get("DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN", "")
     marker = uuid.uuid4().hex
-    snapshots = LocalHomeSnapshotBackend(endpoint=endpoint, auth_token=token)
     bindings = LocalExecutionBindingBackend(endpoint=endpoint, auth_token=token)
-    snapshot_ref: str | None = None
     allocations = []
     active_leases = []
     try:
-        snapshot_ref = await snapshots.initialize(
-            InitializeHomeSnapshotSpec(
-                tenant_id="integration-tenant",
-                agent_id="integration-agent",
-                home_snapshot_id=marker,
-            )
-        )
         first = await bindings.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="integration-tenant",
@@ -52,7 +42,7 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
                 binding_id=f"binding-a-{marker}",
                 workspace_id=f"workspace-{marker}",
                 existing_workspace_ref=None,
-                home_snapshot_ref=snapshot_ref,
+                home_snapshot_ref=None,
             )
         )
         allocations.append(first)
@@ -71,7 +61,7 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
                 binding_id=f"binding-b-{marker}",
                 workspace_id=f"workspace-{marker}",
                 existing_workspace_ref=first.workspace_ref,
-                home_snapshot_ref=snapshot_ref,
+                home_snapshot_ref=None,
             )
         )
         allocations.append(second)
@@ -102,11 +92,6 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
                 )
             except BaseException as exc:
                 cleanup_errors.append(exc)
-        if snapshot_ref is not None:
-            try:
-                await snapshots.delete(snapshot_ref)
-            except BaseException as exc:
-                cleanup_errors.append(exc)
         if cleanup_errors and not primary_error:
             raise cleanup_errors[0]
 
@@ -120,22 +105,14 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
     )
     marker = uuid.uuid4().hex
     control = E2BSDKControlPlane(api_key=api_key)
-    snapshots = E2BHomeSnapshotBackend(control_plane=control, template=template, active_timeout_seconds=3600)
-    bindings = E2BExecutionBindingBackend(control_plane=control, active_timeout_seconds=3600)
-    snapshot_ref: str | None = None
+    snapshots = E2BHomeSnapshotBackend(control_plane=control)
+    bindings = E2BExecutionBindingBackend(control_plane=control, template=template, active_timeout_seconds=3600)
     checkpoint_ref: str | None = None
     allocation = None
     checkpoint_allocation = None
     lease = None
     checkpoint_lease = None
     try:
-        snapshot_ref = await snapshots.initialize(
-            InitializeHomeSnapshotSpec(
-                tenant_id="integration-tenant",
-                agent_id="integration-agent",
-                home_snapshot_id=marker,
-            )
-        )
         allocation = await bindings.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="integration-tenant",
@@ -143,7 +120,7 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
                 binding_id=marker,
                 workspace_id=marker,
                 existing_workspace_ref=None,
-                home_snapshot_ref=snapshot_ref,
+                home_snapshot_ref=None,
             )
         )
         lease = await bindings.acquire(allocation.binding_ref)
@@ -211,11 +188,10 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
                 )
             except BaseException as exc:
                 cleanup_errors.append(exc)
-        for ref in (checkpoint_ref, snapshot_ref):
-            if ref is not None:
-                try:
-                    await snapshots.delete(ref)
-                except BaseException as exc:
-                    cleanup_errors.append(exc)
+        if checkpoint_ref is not None:
+            try:
+                await snapshots.delete(checkpoint_ref)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
         if cleanup_errors and not primary_error:
             raise cleanup_errors[0]
