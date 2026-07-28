@@ -35,19 +35,14 @@ import { UserActionButtonType } from './types'
 const i18nPrefix = 'nodes.humanInput'
 
 const getOutputVarType = (input: FormInputItem): VarType => {
-  if (input.type === 'file')
-    return VarType.file
+  if (input.type === 'file') return VarType.file
 
-  if (input.type === 'file-list')
-    return VarType.arrayFile
+  if (input.type === 'file-list') return VarType.arrayFile
 
   return VarType.string
 }
 
-const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const {
     readOnly,
@@ -69,19 +64,16 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(
+        varPayload.type,
+      )
     },
   })
 
-  const [isExpandFormContent, {
-    toggle: toggleExpandFormContent,
-  }] = useBoolean(false)
-  const nodePanelWidth = useStore(state => state.nodePanelWidth)
+  const [isExpandFormContent, { toggle: toggleExpandFormContent }] = useBoolean(false)
+  const nodePanelWidth = useStore((state) => state.nodePanelWidth)
 
-  const [isPreview, {
-    toggle: togglePreview,
-    setFalse: hidePreview,
-  }] = useBoolean(false)
+  const [isPreview, { toggle: togglePreview, setFalse: hidePreview }] = useBoolean(false)
 
   const onAddUseAction = useCallback(() => {
     const index = inputs.user_actions.length + 1
@@ -110,16 +102,24 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* form content */}
       <div
-        className={cn('px-4 py-2', isExpandFormContent && 'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg')}
+        className={cn(
+          'px-4 py-2',
+          isExpandFormContent &&
+            'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
+        )}
         style={{
           width: isExpandFormContent ? nodePanelWidth : '100%',
         }}
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>
-            <Infotip aria-label={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}>
-              {t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
+            <div className="system-sm-semibold-uppercase text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.formContent.title`], { ns: 'workflow' })}
+            </div>
+            <Infotip
+              aria-label={t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
+            >
+              {t(($) => $[`${i18nPrefix}.formContent.tooltip`], { ns: 'workflow' })}
             </Infotip>
           </div>
           {!readOnly && (
@@ -134,28 +134,39 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                 onClick={togglePreview}
               >
                 <RiEyeLine className="size-3.5" />
-                <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</div>
+                <div className="system-xs-medium">
+                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
+                </div>
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               <div className="flex items-center space-x-1">
                 <button
                   type="button"
-                  aria-label={t('operation.copy', { ns: 'common' })}
+                  aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                   className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
-                    toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+                    toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                   }}
                 >
                   <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
                 </button>
                 <button
                   type="button"
-                  aria-label={t(isExpandFormContent ? 'chat.collapse' : 'chat.expand', { ns: 'share' })}
-                  className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
+                  aria-label={t(($) => $[isExpandFormContent ? 'chat.collapse' : 'chat.expand'], {
+                    ns: 'share',
+                  })}
+                  className={cn(
+                    'flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover',
+                    isExpandFormContent && 'bg-state-accent-active text-text-accent',
+                  )}
                   onClick={toggleExpandFormContent}
                 >
-                  {isExpandFormContent ? <RiCollapseDiagonalLine className="size-4" aria-hidden /> : <RiExpandDiagonalLine className="size-4" aria-hidden />}
+                  {isExpandFormContent ? (
+                    <RiCollapseDiagonalLine className="size-4" aria-hidden />
+                  ) : (
+                    <RiExpandDiagonalLine className="size-4" aria-hidden />
+                  )}
                 </button>
               </div>
             </div>
@@ -180,23 +191,27 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`, { ns: 'workflow' })}</div>
-            <Infotip aria-label={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}>
-              {t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
+            <div className="system-sm-semibold-uppercase text-text-secondary">
+              {t(($) => $[`${i18nPrefix}.userActions.title`], { ns: 'workflow' })}
+            </div>
+            <Infotip
+              aria-label={t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
+            >
+              {t(($) => $[`${i18nPrefix}.userActions.tooltip`], { ns: 'workflow' })}
             </Infotip>
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">
-              <ActionButton
-                onClick={onAddUseAction}
-              >
+              <ActionButton onClick={onAddUseAction}>
                 <RiAddLine className="size-4" />
               </ActionButton>
             </div>
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
+            {t(($) => $[`${i18nPrefix}.userActions.emptyTip`], { ns: 'workflow' })}
+          </div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">
@@ -204,7 +219,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               <UserActionItem
                 key={index}
                 data={action}
-                onChange={data => handleUserActionChange(index, data)}
+                onChange={(data) => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
                 readonly={readOnly}
               />
@@ -217,7 +232,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">
-        <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.timeout.title`, { ns: 'workflow' })}</div>
+        <div className="system-sm-semibold-uppercase text-text-secondary">
+          {t(($) => $[`${i18nPrefix}.timeout.title`], { ns: 'workflow' })}
+        </div>
         <TimeoutInput
           timeout={inputs.timeout}
           unit={inputs.timeout_unit}
@@ -227,35 +244,18 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* output vars */}
       <Split />
-      <OutputVars
-        collapsed={structuredOutputCollapsed}
-        onCollapse={setStructuredOutputCollapsed}
-      >
-        {
-          inputs.inputs.map(input => (
-            <VarItem
-              key={input.output_variable_name}
-              name={input.output_variable_name}
-              type={getOutputVarType(input)}
-              description="Form input value"
-            />
-          ))
-        }
-        <VarItem
-          name="__action_id"
-          type="string"
-          description="Action ID user triggered"
-        />
-        <VarItem
-          name="__action_value"
-          type="string"
-          description="Selected action value"
-        />
-        <VarItem
-          name="__rendered_content"
-          type="string"
-          description="Rendered content"
-        />
+      <OutputVars collapsed={structuredOutputCollapsed} onCollapse={setStructuredOutputCollapsed}>
+        {inputs.inputs.map((input) => (
+          <VarItem
+            key={input.output_variable_name}
+            name={input.output_variable_name}
+            type={getOutputVarType(input)}
+            description="Form input value"
+          />
+        ))}
+        <VarItem name="__action_id" type="string" description="Action ID user triggered" />
+        <VarItem name="__action_value" type="string" description="Selected action value" />
+        <VarItem name="__rendered_content" type="string" description="Rendered content" />
       </OutputVars>
 
       {isPreview && (

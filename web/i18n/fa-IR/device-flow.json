@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "تأیید کد ممکن نشد",
   "errorRateLimited.body": "کمی صبر کنید و دوباره امتحان کنید.",
   "errorRateLimited.title": "تعداد تلاش‌ها بیش از حد است",
+  "errorSso.backToLoginOptions": "← بازگشت به گزینه‌های ورود",
+  "errorSso.title": "ورود کامل نشد",
   "ssoError.default": "ورود یکپارچه (SSO) تکمیل نشد. دوباره امتحان کنید.",
   "ssoError.emailBelongsToDifyAccount": "این هویت به یک حساب Dify متصل است. در عوض از «ورود با حساب Dify» استفاده کنید.",
   "success.goToConsole": "رفتن به کنسول Dify →",

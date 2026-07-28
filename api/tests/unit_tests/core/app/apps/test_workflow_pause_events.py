@@ -10,17 +10,18 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.graph_events import GraphRunPausedEvent
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     ParagraphInputConfig,
     SelectInputConfig,
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HitlRequired
+from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import RecipientType
@@ -56,6 +57,8 @@ class _RecordingWorkflowAppRunner(WorkflowAppRunner):
 
 
 class _FakeRuntimeState:
+    variable_pool = object()
+
     def get_paused_nodes(self):
         return ["node-pause-1"]
 
@@ -92,9 +95,19 @@ def _build_runner():
     )
 
 
-def test_graph_run_paused_event_emits_queue_pause_event():
+def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.MonkeyPatch):
     runner = _build_runner()
-    reason = HumanInputRequired(
+    graph_reason = HitlRequired(
+        session_id="form-1",
+        node_id="node-human",
+        node_title="Human Step",
+    )
+    event = GraphRunPausedEvent(reasons=[graph_reason], outputs={"foo": "bar"})
+    workflow_entry = SimpleNamespace(
+        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
+    )
+
+    enriched_reason = HumanInputRequired(
         form_id="form-1",
         form_content="content",
         inputs=[],
@@ -102,9 +115,9 @@ def test_graph_run_paused_event_emits_queue_pause_event():
         node_id="node-human",
         node_title="Human Step",
     )
-    event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
-    workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
+    monkeypatch.setattr(
+        "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
+        lambda **_: [enriched_reason],
     )
 
     runner._handle_event(workflow_entry, event)
@@ -112,7 +125,7 @@ def test_graph_run_paused_event_emits_queue_pause_event():
     assert len(runner.published_events) == 1
     queue_event = runner.published_events[0]
     assert isinstance(queue_event, QueueWorkflowPausedEvent)
-    assert queue_event.reasons == [reason]
+    assert queue_event.reasons == [enriched_reason]
     assert queue_event.outputs == {"foo": "bar"}
     assert queue_event.paused_nodes == ["node-pause-1"]
 

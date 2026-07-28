@@ -53,6 +53,15 @@ class ShellProviderError(RuntimeError):
         self.code = code
 
 
+class SandboxExpiredError(ShellProviderError):
+    """Raised by a shell provider when ``attach()`` targets a sandbox that no longer exists."""
+
+    def __init__(self, sandbox_id: str, *, cause: ShellProviderError) -> None:
+        super().__init__(str(cause), code=cause.code)
+        self.sandbox_id = sandbox_id
+        self.__cause__ = cause
+
+
 class ShellCommandProtocol(Protocol):
     async def run(
         self,
@@ -118,8 +127,35 @@ class ShellResourceProtocol(Protocol):
     @property
     def files(self) -> ShellFileTransferProtocol: ...
 
-    async def close(self) -> None: ...
+    @property
+    def sandbox_id(self) -> str | None: ...
+
+    async def suspend(self) -> None:
+        """Detach from the sandbox without destroying it.
+
+        Called when the resource scope exits with suspend intent. The sandbox
+        remains alive and can be re-attached later via ``attach(sandbox_id)``.
+        """
+        ...
+
+    async def delete(self) -> None:
+        """Destroy the sandbox and release all resources.
+
+        Called when the resource scope exits with delete intent. The sandbox is
+        permanently removed and cannot be re-attached.
+        """
+        ...
 
 
 class ShellProviderProtocol(Protocol):
-    async def create(self) -> ShellResourceProtocol: ...
+    async def create(self) -> ShellResourceProtocol:
+        """Provision a new sandbox and return a live resource."""
+        ...
+
+    async def attach(self, sandbox_id: str) -> ShellResourceProtocol:
+        """Connect to an existing sandbox without provisioning a new one.
+
+        The returned resource carries the same ``sandbox_id`` so the caller can
+        persist it across runs and re-attach as needed.
+        """
+        ...

@@ -124,6 +124,41 @@ class AgentAppRuntimeSessionStore:
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
             )
 
+    def list_active_sessions_for_conversation(
+        self, *, tenant_id: str, app_id: str, conversation_id: str
+    ) -> list[StoredAgentAppSession]:
+        """List all ACTIVE conversation-owned sessions for lifecycle cleanup."""
+        stmt = (
+            select(AgentRuntimeSession)
+            .where(
+                AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
+                AgentRuntimeSession.tenant_id == tenant_id,
+                AgentRuntimeSession.app_id == app_id,
+                AgentRuntimeSession.conversation_id == conversation_id,
+                AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+            )
+            .order_by(AgentRuntimeSession.updated_at.desc())
+        )
+        with session_factory.create_session() as session:
+            rows = session.scalars(stmt).all()
+            return [
+                StoredAgentAppSession(
+                    scope=AgentAppSessionScope(
+                        tenant_id=row.tenant_id,
+                        app_id=row.app_id,
+                        conversation_id=row.conversation_id or "",
+                        agent_id=row.agent_id,
+                        agent_config_snapshot_id=row.agent_config_snapshot_id,
+                    ),
+                    session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+                    backend_run_id=row.backend_run_id,
+                    runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
+                    pending_form_id=row.pending_form_id,
+                    pending_tool_call_id=row.pending_tool_call_id,
+                )
+                for row in rows
+            ]
+
     def save_active_snapshot(
         self,
         *,
@@ -134,6 +169,14 @@ class AgentAppRuntimeSessionStore:
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
+        """Persist the current conversation snapshot and enforce one ACTIVE row.
+
+        Agent App chat treats one conversation as one resumable runtime shell.
+        Saving the latest snapshot therefore upserts the scoped row back to
+        ACTIVE and retires any other ACTIVE conversation-owned rows for the
+        same ``tenant_id + app_id + conversation_id`` so later lookups see a
+        single active session.
+        """
         if snapshot is None:
             return
         snapshot_json = snapshot.model_dump_json()

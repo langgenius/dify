@@ -1,17 +1,18 @@
+import type { AddOAuthButtonProps, Credential } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
@@ -20,30 +21,76 @@ import { AgentTools } from '../index'
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[],
 }))
-
-vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
-  ToolPickerContent: () => (
-    <div>
-      Mock tool picker
-    </div>
-  ),
+const pluginAuthState = vi.hoisted(() => ({
+  canOAuth: true as boolean | undefined,
+  canApiKey: false as boolean | undefined,
+  credentials: [] as Credential[],
+  notAllowCustomCredential: false,
+  invalidPluginCredentialInfo: vi.fn(),
 }))
 
+vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
+  ToolPickerContent: () => <div>Mock tool picker</div>,
+}))
+
+vi.mock('@/context/account-state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+  return {
+    userProfileIdAtom: atom('user-1'),
+  }
+})
+
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: ({ toolIcon }: { toolIcon?: string | { content: string, background: string } }) => (
+  default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
     <span aria-hidden data-testid="tool-icon">
       {typeof toolIcon === 'string' ? toolIcon : toolIcon?.content}
     </span>
   ),
 }))
 
+vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
+  default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+      })
+    }
+
+    return (
+      <button type="button" onClick={onUpdate}>
+        {buttonText}
+      </button>
+    )
+  },
+}))
+
+vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
+  usePluginAuth: () => ({
+    ...pluginAuthState,
+    isAuthorized: pluginAuthState.credentials.length > 0,
+  }),
+}))
+
+vi.mock('@/hooks/use-credential-permissions', () => ({
+  useCredentialPermissions: () => ({
+    canUseCredential: true,
+    canCreateCredential: true,
+    canManageCredential: true,
+  }),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ formSchemas }: { formSchemas: Array<{ label?: Record<string, string>, variable?: string }> }) => (
-    <div data-testid="tool-setting-form">
-      {formSchemas.map(schema => (
+  default: ({
+    formSchemas,
+  }: {
+    formSchemas: Array<{ label?: Record<string, string>; variable?: string }>
+  }) => (
+    <form aria-label="tool settings">
+      {formSchemas.map((schema) => (
         <div key={schema.variable}>{schema.label?.en_US}</div>
       ))}
-    </div>
+    </form>
   ),
 }))
 
@@ -52,6 +99,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
   useAllMCPTools: () => ({ data: [] }),
+  useInvalidToolsByType: () => vi.fn(),
 }))
 
 const agentToolsDraft = {
@@ -62,6 +110,7 @@ const agentToolsDraft = {
       kind: 'provider',
       name: 'DuckDuckGo',
       iconClassName: 'i-simple-icons-duckduckgo',
+      providerType: 'builtin',
       credentialKey: 'agentDetail.configure.tools.credential.authOne',
       credentialVariant: 'none',
       actions: [
@@ -95,6 +144,7 @@ const reflectedAgentToolsDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialVariant: 'none',
       actions: [
         {
@@ -116,11 +166,35 @@ const reflectedUnauthorizedNoCredentialDraft = {
       kind: 'provider',
       name: 'duckduckgo',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'unauthorized',
       actions: [
         {
           id: 'duckduckgo-search',
+          name: 'search',
+          toolName: 'search',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies AgentSoulConfigFormState
+
+const reflectedUnauthorizedOAuthCredentialTypeDraft = {
+  ...defaultAgentSoulConfigFormState,
+  tools: [
+    {
+      id: 'google',
+      kind: 'provider',
+      name: 'google',
+      iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
+      credentialType: 'unauthorized',
+      credentialVariant: 'none',
+      actions: [
+        {
+          id: 'google-search',
           name: 'search',
           toolName: 'search',
           description: '',
@@ -250,8 +324,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
   })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerOriginalDraftAtom, initialDraft)
-  store.set(agentComposerPublishedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, initialDraft)
 
   const view = render(
     <QueryClientProvider client={queryClient}>
@@ -292,6 +365,10 @@ describe('AgentTools', () => {
     cleanup()
     vi.clearAllMocks()
     toolProviderState.builtInTools = []
+    pluginAuthState.canOAuth = true
+    pluginAuthState.canApiKey = false
+    pluginAuthState.credentials = []
+    pluginAuthState.notAllowCustomCredential = false
   })
 
   describe('User Interactions', () => {
@@ -299,13 +376,17 @@ describe('AgentTools', () => {
       const user = userEvent.setup()
       renderAgentTools()
 
-      await user.click(screen.getByRole('button', {
-        name: 'DuckDuckGo',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      )
 
-      await user.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
+        }),
+      )
 
       expect(screen.queryByText('DuckDuckGo Image Search')).not.toBeInTheDocument()
       expect(screen.getByText('DuckDuckGo Search')).toBeInTheDocument()
@@ -316,94 +397,133 @@ describe('AgentTools', () => {
       const user = userEvent.setup()
       renderAgentTools()
 
-      await user.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
-      }))
-      await user.click(screen.getByRole('menuitem', {
-        name: /agentV2\.agentDetail\.configure\.tools\.removeProvider/,
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+        }),
+      )
+      await user.click(
+        screen.getByRole('menuitem', {
+          name: /agentV2\.agentDetail\.configure\.tools\.removeProvider/,
+        }),
+      )
 
       expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
       expect(screen.queryByText('DuckDuckGo Search')).not.toBeInTheDocument()
       expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
     })
 
-    it('should keep the add trigger mounted while the tool picker is open', async () => {
+    it('should open the tool picker directly from the add trigger', async () => {
       const user = userEvent.setup()
       renderAgentTools()
 
-      await user.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.add',
-      }))
-      expect(screen.queryByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
-      })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', {
-        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
+        }),
+      )
 
       expect(screen.getByText('Mock tool picker')).toBeInTheDocument()
-      expect(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.add',
-      })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should hide add, edit, and remove actions when readonly', async () => {
       const user = userEvent.setup()
       renderReadonlyAgentTools()
 
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.add',
-      })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.add',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+        }),
+      ).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', {
-        name: 'DuckDuckGo',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      )
 
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
-      })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
-      })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
-      })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it('should hide CLI tool rows while CLI tools are disabled', () => {
       renderAgentTools()
 
       expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
-      })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+        }),
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Display Metadata', () => {
     it('should enrich reflected provider tools with provider icon and localized names', async () => {
       const user = userEvent.setup()
-      toolProviderState.builtInTools = [googleProvider]
+      toolProviderState.builtInTools = [
+        {
+          ...googleProvider,
+          allow_delete: false,
+        },
+      ]
       renderAgentTools(reflectedAgentToolsDraft)
 
-      expect(screen.getByRole('button', {
-        name: 'Google Tools',
-      })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'Google Tools',
+        }),
+      ).toBeInTheDocument()
       expect(screen.getByText('https://example.com/google.svg')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', {
-        name: 'Google Tools',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'Google Tools',
+        }),
+      )
 
       expect(screen.getByText('Google Search')).toBeInTheDocument()
     })
@@ -412,9 +532,11 @@ describe('AgentTools', () => {
       toolProviderState.builtInTools = [duckDuckGoProvider]
       renderAgentTools(reflectedUnauthorizedNoCredentialDraft)
 
-      expect(screen.getByRole('button', {
-        name: 'DuckDuckGo',
-      })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
     })
 
@@ -422,9 +544,11 @@ describe('AgentTools', () => {
       toolProviderState.builtInTools = [duckDuckGoProvider]
       const { store } = renderAgentToolsWithStore(reflectedUnauthorizedNoCredentialDraft)
 
-      expect(screen.getByRole('button', {
-        name: 'DuckDuckGo',
-      })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      ).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
       expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
         credentialType: 'unauthorized',
@@ -433,21 +557,120 @@ describe('AgentTools', () => {
       expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
     })
 
+    it('should open authorization actions for reflected OAuth provider tools', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [
+        {
+          ...googleProvider,
+          allow_delete: true,
+          is_team_authorization: false,
+          team_credentials: {},
+        },
+      ]
+      renderAgentTools(reflectedUnauthorizedOAuthCredentialTypeDraft)
+
+      expect(
+        screen.getByRole('button', {
+          name: 'tools.notAuthorized',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.auth.useOAuthAuth' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'tools.notAuthorized' }))
+
+      expect(
+        screen.getByRole('button', {
+          name: 'plugin.auth.useOAuthAuth',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('should bind an existing credential selected from the unauthorized status', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [
+        {
+          ...googleProvider,
+          allow_delete: true,
+          is_team_authorization: false,
+          team_credentials: {},
+        },
+      ]
+      pluginAuthState.credentials = [
+        {
+          id: 'workspace-oauth',
+          name: 'Workspace OAuth',
+          provider: 'google',
+          credential_type: CredentialTypeEnum.OAUTH2,
+          is_default: true,
+        },
+      ]
+      const { store } = renderAgentToolsWithStore(reflectedUnauthorizedOAuthCredentialTypeDraft)
+
+      await user.click(screen.getByRole('button', { name: 'tools.notAuthorized' }))
+
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialType: 'unauthorized',
+        credentialVariant: 'none',
+      })
+
+      await user.click(screen.getByText('Workspace OAuth'))
+
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialId: 'workspace-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      })
+    })
+
     it('should open provider tool settings with catalog icon and parameters', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [duckDuckGoProvider]
       const { baseElement } = renderAgentTools()
 
-      await user.click(screen.getByRole('button', {
-        name: 'DuckDuckGo',
-      }))
-      await user.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
-      }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+        }),
+      )
 
       expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
+    })
+
+    it('should close provider tool settings when the configured action leaves the draft', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [duckDuckGoProvider]
+      const { store } = renderAgentToolsWithStore(agentToolsDraft)
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'DuckDuckGo',
+        }),
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+        }),
+      )
+
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
+
+      act(() => {
+        store.set(agentComposerDraftAtom, {
+          ...agentToolsDraft,
+          tools: [],
+        })
+      })
+
+      expect(screen.queryByRole('form', { name: 'tool settings' })).not.toBeInTheDocument()
     })
   })
 })

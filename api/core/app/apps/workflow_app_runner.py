@@ -26,6 +26,7 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
     QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
+    QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
@@ -34,12 +35,15 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -51,7 +55,6 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -422,14 +425,24 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
                 )
             case GraphRunAbortedEvent():
-                self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
+                self._publish_event(
+                    QueueStopEvent(
+                        stopped_by=QueueStopEvent.StopBy.USER_MANUAL,
+                        reason=event.reason or "Workflow execution aborted",
+                    )
+                )
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = runtime_state.get_paused_nodes()
-                self._enqueue_human_input_notifications(event.reasons)
+                enriched_reasons = enrich_graph_pause_reasons(
+                    reasons=event.reasons,
+                    form_repository=HumanInputFormSubmissionRepository(),
+                    variable_pool=runtime_state.variable_pool,
+                )
+                self._enqueue_human_input_notifications(enriched_reasons)
                 self._publish_event(
                     QueueWorkflowPausedEvent(
-                        reasons=event.reasons,
+                        reasons=enriched_reasons,
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
                     )

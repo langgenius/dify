@@ -5,3 +5,6 @@ test-results/
 cucumber-report/
 .logs/
 .generated-test-materials/
+seed-report/
+.env.local
+.env.*.local

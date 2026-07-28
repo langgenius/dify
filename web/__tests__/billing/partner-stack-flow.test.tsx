@@ -7,11 +7,15 @@
  * Covers URL param reading, cookie persistence, API bind on mount,
  * cookie cleanup after successful bind, and error handling for 400 status.
  */
-import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import * as React from 'react'
 import usePSInfo from '@/app/components/billing/partner-stack/use-ps-info'
 import { PARTNER_STACK_CONFIG } from '@/config'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockSearchParams = new URLSearchParams()
@@ -39,7 +43,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
     PARTNER_STACK_CONFIG: {
       cookieName: 'partner_stack_info',
       saveCookieDays: 90,
@@ -50,12 +53,10 @@ vi.mock('@/config', async (importOriginal) => {
 // ─── Cookie helpers ──────────────────────────────────────────────────────────
 const getCookieData = () => {
   const raw = Cookies.get(PARTNER_STACK_CONFIG.cookieName)
-  if (!raw)
-    return null
+  if (!raw) return null
   try {
     return JSON.parse(raw)
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -290,7 +291,7 @@ describe('Partner Stack Flow', () => {
 
   // ─── 4. PartnerStack Component Mount ────────────────────────────────────
   describe('PartnerStack component mount behavior', () => {
-    it('should call saveOrUpdate and bind on mount when IS_CLOUD_EDITION is true', async () => {
+    it('should call saveOrUpdate and bind on mount', async () => {
       mockSearchParams = new URLSearchParams({
         ps_partner_key: 'mount-partner',
         ps_xid: 'mount-click',
@@ -301,18 +302,13 @@ describe('Partner Stack Flow', () => {
 
       render(<PartnerStack />)
 
-      // The component calls saveOrUpdate and bind in useEffect
       await waitFor(() => {
-        // Bind should have been called
         expect(mockMutateAsync).toHaveBeenCalledWith({
           partnerKey: 'mount-partner',
           clickId: 'mount-click',
         })
+        expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
       })
-
-      // Cookie should have been saved (saveOrUpdate was called before bind)
-      // After bind succeeds, cookie is removed
-      expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
     })
 
     it('should render nothing (return null)', async () => {

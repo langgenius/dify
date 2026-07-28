@@ -1,6 +1,7 @@
 import logging
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -11,7 +12,6 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -24,14 +24,20 @@ logger = logging.getLogger(__name__)
 class VectorService:
     @classmethod
     def create_segments_vector(
-        cls, keywords_list: list[list[str]] | None, segments: list[DocumentSegment], dataset: Dataset, doc_form: str
+        cls,
+        keywords_list: list[list[str]] | None,
+        segments: list[DocumentSegment],
+        dataset: Dataset,
+        doc_form: str,
+        session: Session,
     ):
+        """Create vector records for document segments using the caller's active DB session."""
         documents: list[Document] = []
         multimodal_documents: list[AttachmentDocument] = []
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.get(DatasetDocument, segment.document_id)
+                dataset_document = session.get(DatasetDocument, segment.document_id)
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
@@ -40,7 +46,7 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = db.session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
+                processing_rule = session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance
@@ -63,7 +69,13 @@ class VectorService:
                 else:
                     raise ValueError("The knowledge base index technique is not high quality!")
                 cls.generate_child_chunks(
-                    segment, dataset_document, dataset, embedding_model_instance, processing_rule, False
+                    segment,
+                    dataset_document,
+                    dataset,
+                    embedding_model_instance,
+                    processing_rule,
+                    False,
+                    session=session,
                 )
             else:
                 rag_document = Document(
@@ -78,7 +90,7 @@ class VectorService:
                 )
                 documents.append(rag_document)
             if dataset.is_multimodal:
-                for attachment in segment.attachments:
+                for attachment in segment.get_attachments(session=session):
                     multimodal_document: AttachmentDocument = AttachmentDocument(
                         page_content=attachment["name"],
                         metadata={
@@ -93,12 +105,16 @@ class VectorService:
         index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
 
         if len(documents) > 0:
-            index_processor.load(dataset, documents, None, with_keywords=True, keywords_list=keywords_list)
+            index_processor.load(
+                dataset, documents, None, with_keywords=True, keywords_list=keywords_list, session=session
+            )
         if len(multimodal_documents) > 0:
-            index_processor.load(dataset, [], multimodal_documents, with_keywords=False)
+            index_processor.load(dataset, [], multimodal_documents, with_keywords=False, session=session)
 
     @classmethod
-    def update_segment_vector(cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset):
+    def update_segment_vector(
+        cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset, session: Session
+    ):
         # update segment index task
 
         # format new index
@@ -114,19 +130,19 @@ class VectorService:
         assert segment.index_node_id
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
-            vector = Vector(dataset=dataset)
+            vector = Vector(dataset=dataset, session=session)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
         else:
             # update keyword index
             keyword = Keyword(dataset)
-            keyword.delete_by_ids([segment.index_node_id])
+            keyword.delete_by_ids([segment.index_node_id], session)
 
             # save keyword index
             if keywords and len(keywords) > 0:
-                keyword.add_texts([document], keywords_list=[keywords])
+                keyword.add_texts([document], session, keywords_list=[keywords])
             else:
-                keyword.add_texts([document])
+                keyword.add_texts([document], session)
 
     @classmethod
     def generate_child_chunks(
@@ -137,12 +153,21 @@ class VectorService:
         embedding_model_instance: ModelInstance,
         processing_rule: DatasetProcessRule,
         regenerate: bool = False,
+        *,
+        session: Session,
     ):
-        index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
+        """Generate child chunks and persist them with the caller's active DB session."""
+        index_processor = IndexProcessorFactory(dataset.get_doc_form(session=session)).init_index_processor()
         assert segment.index_node_id
         if regenerate:
             # delete child chunks
-            index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
+            index_processor.clean(
+                dataset,
+                [segment.index_node_id],
+                with_keywords=True,
+                delete_child_chunks=True,
+                session=session,
+            )
 
         # generate child chunks
         document = Document(
@@ -165,10 +190,11 @@ class VectorService:
             process_rule=processing_rule_dict,
             tenant_id=dataset.tenant_id,
             doc_language=dataset_document.doc_language,
+            session=session,
         )
         # save child chunks
         if documents and documents[0].children:
-            index_processor.load(dataset, documents)
+            index_processor.load(dataset, documents, session=session)
 
             for position, child_chunk in enumerate(documents[0].children, start=1):
                 child_segment = ChildChunk(
@@ -184,11 +210,11 @@ class VectorService:
                     type=SegmentType.AUTOMATIC,
                     created_by=dataset_document.created_by,
                 )
-                db.session.add(child_segment)
-        db.session.commit()
+                session.add(child_segment)
+        session.flush()
 
     @classmethod
-    def create_child_chunk_vector(cls, child_segment: ChildChunk, dataset: Dataset):
+    def create_child_chunk_vector(cls, child_segment: ChildChunk, dataset: Dataset, *, session: Session):
         child_document = Document(
             page_content=child_segment.content,
             metadata={
@@ -200,7 +226,7 @@ class VectorService:
         )
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # save vector index
-            vector = Vector(dataset=dataset)
+            vector = Vector(dataset=dataset, session=session)
             vector.add_texts([child_document], duplicate_check=True)
 
     @classmethod
@@ -210,6 +236,8 @@ class VectorService:
         update_child_chunks: list[ChildChunk],
         delete_child_chunks: list[ChildChunk],
         dataset: Dataset,
+        *,
+        session: Session,
     ):
         documents = []
         delete_node_ids = []
@@ -242,24 +270,26 @@ class VectorService:
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
-            vector = Vector(dataset=dataset)
+            vector = Vector(dataset=dataset, session=session)
             if delete_node_ids:
                 vector.delete_by_ids(delete_node_ids)
             if documents:
                 vector.add_texts(documents, duplicate_check=True)
 
     @classmethod
-    def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
-        vector = Vector(dataset=dataset)
+    def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset, *, session: Session):
+        vector = Vector(dataset=dataset, session=session)
         assert child_chunk.index_node_id
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
-    def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
+    def update_multimodel_vector(
+        cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset, session: Session
+    ):
         if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
-        attachments = segment.attachments
+        attachments = segment.get_attachments(session=session)
         old_attachment_ids = [attachment["id"] for attachment in attachments] if attachments else []
 
         # Check if there's any actual change needed
@@ -267,26 +297,24 @@ class VectorService:
             return
 
         try:
-            vector = Vector(dataset=dataset)
+            vector = Vector(dataset=dataset, session=session)
             if dataset.is_multimodal:
                 # Delete old vectors if they exist
                 if old_attachment_ids:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.execute(
-                delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id)
-            )
+            session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id))
 
             if not attachment_ids:
-                db.session.commit()
+                session.flush()
                 return
 
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
+            upload_file_list = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
 
             if not upload_file_list:
-                db.session.commit()
+                session.flush()
                 return
 
             # Create a mapping for quick lookup
@@ -329,16 +357,15 @@ class VectorService:
 
             # Bulk insert all bindings at once
             if bindings:
-                db.session.add_all(bindings)
+                session.add_all(bindings)
 
             # Add documents to vector store if any
             if documents and dataset.is_multimodal:
                 vector.create_multimodal(documents)
 
-            # Single commit for all operations
-            db.session.commit()
+            session.flush()
 
         except Exception:
             logger.exception("Failed to update multimodal vector for segment %s", segment.id)
-            db.session.rollback()
+            session.rollback()
             raise

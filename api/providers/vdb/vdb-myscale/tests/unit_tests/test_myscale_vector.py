@@ -181,12 +181,39 @@ def test_text_exists_and_metadata_operations(myscale_module):
     vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
     vector._client.query.return_value = SimpleNamespace(row_count=1, result_rows=[("id-1",), ("id-2",)])
 
-    assert vector.text_exists("id-1") is True
-    assert vector.get_ids_by_metadata_field("document_id", "doc-1") == ["id-1", "id-2"]
+    assert vector.text_exists("id-1' OR '1'='1") is True
+    text_exists_call = vector._client.query.call_args
+    assert "id={id:String}" in text_exists_call.args[0]
+    assert "id-1' OR '1'='1" not in text_exists_call.args[0]
+    assert text_exists_call.kwargs["parameters"] == {"id": "id-1' OR '1'='1"}
+
+    assert vector.get_ids_by_metadata_field("document_id", "doc-1' OR '1'='1") == ["id-1", "id-2"]
+    metadata_query_call = vector._client.query.call_args
+    assert "metadata.document_id={value:String}" in metadata_query_call.args[0]
+    assert "doc-1' OR '1'='1" not in metadata_query_call.args[0]
+    assert metadata_query_call.kwargs["parameters"] == {"value": "doc-1' OR '1'='1"}
 
     vector.delete_by_ids(["id-1", "id-2"])
-    vector.delete_by_metadata_field("document_id", "doc-1")
+    delete_ids_call = vector._client.command.call_args
+    assert "id IN {ids:Array(String)}" in delete_ids_call.args[0]
+    assert delete_ids_call.kwargs["parameters"] == {"ids": ["id-1", "id-2"]}
+
+    vector.delete_by_metadata_field("document_id", "doc-1' OR '1'='1")
+    delete_metadata_call = vector._client.command.call_args
+    assert "metadata.document_id={value:String}" in delete_metadata_call.args[0]
+    assert "doc-1' OR '1'='1" not in delete_metadata_call.args[0]
+    assert delete_metadata_call.kwargs["parameters"] == {"value": "doc-1' OR '1'='1"}
     assert vector._client.command.call_count >= 2
+
+
+def test_metadata_operations_reject_invalid_key(myscale_module):
+    vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
+
+    with pytest.raises(ValueError, match="metadata key must be a valid identifier"):
+        vector.get_ids_by_metadata_field("document_id) OR 1=1 --", "doc-1")
+
+    with pytest.raises(ValueError, match="metadata key must be a valid identifier"):
+        vector.delete_by_metadata_field("document_id) OR 1=1 --", "doc-1")
 
 
 def test_search_delegation_methods(myscale_module):
@@ -237,7 +264,8 @@ def test_search_with_document_filter_and_exception(myscale_module):
     )
     assert len(docs) == 1
     sql = vector._client.query.call_args.args[0]
-    assert "metadata['document_id'] in ('doc-1', 'doc-2')" in sql
+    assert "WHERE metadata['document_id'] IN {document_ids_filter:Array(String)}" in sql
+    assert vector._client.query.call_args.kwargs["parameters"] == {"document_ids_filter": ["doc-1", "doc-2"]}
 
     vector._client.query.side_effect = RuntimeError("boom")
     assert vector._search("distance(vector, [0.1])", myscale_module.SortOrder.ASC, top_k=1) == []

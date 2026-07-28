@@ -22,10 +22,8 @@ vi.mock('@/context/i18n', () => ({
 
 vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (value: unknown) => {
-    if (typeof value === 'string')
-      return value
-    if (value && typeof value === 'object' && 'en_US' in value)
-      return value.en_US
+    if (typeof value === 'string') return value
+    if (value && typeof value === 'object' && 'en_US' in value) return value.en_US
     return 'label'
   },
 }))
@@ -69,12 +67,20 @@ type MockFormProps = {
 }
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ formSchemas, value, onChange, override, nodeId, nodeOutputVars, availableNodes }: MockFormProps) => {
+  default: ({
+    formSchemas,
+    value,
+    onChange,
+    override,
+    nodeId,
+    nodeOutputVars,
+    availableNodes,
+  }: MockFormProps) => {
     const renderOverride = override?.[1]
 
     return (
       <div data-testid="mock-form">
-        {formSchemas.map(schema => (
+        {formSchemas.map((schema) => (
           <div key={schema.variable}>
             {renderOverride?.(schema, {
               value,
@@ -111,18 +117,23 @@ describe('AgentStrategy', () => {
     vi.clearAllMocks()
   })
 
-  const createTextNumberSchema = (overrides: Partial<CredentialFormSchemaNumberInput> = {}): CredentialFormSchema => ({
-    name: 'count',
-    variable: 'count',
-    label: createI18nLabel('Count'),
-    type: FormTypeEnum.textNumber,
-    required: false,
-    show_on: [],
-    default: '1',
-    ...overrides,
-  } as unknown as CredentialFormSchema)
+  const createTextNumberSchema = (
+    overrides: Partial<CredentialFormSchemaNumberInput> = {},
+  ): CredentialFormSchema =>
+    ({
+      name: 'count',
+      variable: 'count',
+      label: createI18nLabel('Count'),
+      type: FormTypeEnum.textNumber,
+      required: false,
+      show_on: [],
+      default: '1',
+      ...overrides,
+    }) as unknown as CredentialFormSchema
 
-  const createTextInputSchema = (overrides: Partial<CredentialFormSchemaTextInput> = {}): CredentialFormSchema => ({
+  const createTextInputSchema = (
+    overrides: Partial<CredentialFormSchemaTextInput> = {},
+  ): CredentialFormSchema => ({
     name: 'prompt',
     variable: 'prompt',
     label: createI18nLabel('Prompt'),
@@ -137,11 +148,13 @@ describe('AgentStrategy', () => {
     render(
       <AgentStrategy
         {...defaultProps}
-        formSchema={[createTextNumberSchema({
-          min: 0,
-          max: 0,
-          default: '0',
-        })]}
+        formSchema={[
+          createTextNumberSchema({
+            min: 0,
+            max: 0,
+            default: '0',
+          }),
+        ]}
       />,
     )
 
@@ -152,9 +165,11 @@ describe('AgentStrategy', () => {
     render(
       <AgentStrategy
         {...defaultProps}
-        formSchema={[createTextNumberSchema({
-          max: 5,
-        })]}
+        formSchema={[
+          createTextNumberSchema({
+            max: 5,
+          }),
+        ]}
       />,
     )
 
@@ -165,9 +180,11 @@ describe('AgentStrategy', () => {
     render(
       <AgentStrategy
         {...defaultProps}
-        formSchema={[createTextNumberSchema({
-          min: 0,
-        })]}
+        formSchema={[
+          createTextNumberSchema({
+            min: 0,
+          }),
+        ]}
       />,
     )
 
@@ -175,12 +192,7 @@ describe('AgentStrategy', () => {
   })
 
   it('should render text-input schemas through the editor override', () => {
-    render(
-      <AgentStrategy
-        {...defaultProps}
-        formSchema={[createTextInputSchema()]}
-      />,
-    )
+    render(<AgentStrategy {...defaultProps} formSchema={[createTextInputSchema()]} />)
 
     expect(screen.getByTestId('agent-strategy-editor')).toHaveTextContent('hello')
   })

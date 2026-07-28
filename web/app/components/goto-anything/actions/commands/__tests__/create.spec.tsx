@@ -1,19 +1,5 @@
 import { executeCommand } from '../command-bus'
 import { createCommand } from '../create'
-
-// Stub the icon imports — these are React components we don't render here.
-vi.mock('@remixicon/react', () => ({
-  RiChat3Line: () => null,
-  RiNodeTree: () => null,
-  RiSparkling2Line: () => null,
-}))
-
-// search() localises its labels via getI18n(); echo the key back so the
-// filtering/payload assertions stay deterministic without a real i18n init.
-vi.mock('react-i18next', () => ({
-  getI18n: () => ({ t: (key: string) => key }),
-}))
-
 // We spy on the store at module scope so the `create.open` handler that
 // register() pushes into the command bus can be observed by the tests.
 const mockOpenGenerator = vi.fn()
@@ -26,7 +12,7 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
 // Controllable app-store state — the handler reads `appDetail` to decide
 // whether to thread the current Studio app through to the generator. Mutated
 // per-test; getState() reads it lazily so updates land after the mock factory.
-const mockAppStore: { appDetail: { id: string, mode: string } | undefined } = {
+const mockAppStore: { appDetail: { id: string; mode: string } | undefined } = {
   appDetail: undefined,
 }
 vi.mock('@/app/components/app/store', () => ({
@@ -55,14 +41,18 @@ describe('/create slash command', () => {
     // uses this to render its initial list when the user types just `/create`.
     it('should surface auto, workflow and chatflow when args is empty', async () => {
       const results = await createCommand.search('')
-      expect(results.map(r => r.id)).toEqual(['create-auto', 'create-workflow', 'create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual([
+        'create-auto',
+        'create-workflow',
+        'create-chatflow',
+      ])
     })
 
     // Typing a partial keyword should narrow the list and each result should
     // carry the right command-bus payload so the navigation hook can fire it.
     it('should filter by query and attach the right command payload', async () => {
       const results = await createCommand.search('chat')
-      expect(results.map(r => r.id)).toEqual(['create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual(['create-chatflow'])
       expect(results[0]!.data.command).toBe('create.open')
       expect(results[0]!.data.args).toEqual({ mode: 'advanced-chat', auto: false, instruction: '' })
     })
@@ -95,15 +85,19 @@ describe('/create slash command', () => {
     // appears only in the (mocked) title key still narrows the list.
     it('should filter by the localised label, not just the id', async () => {
       const results = await createCommand.search('createChatflow')
-      expect(results.map(r => r.id)).toEqual(['create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual(['create-chatflow'])
     })
 
     // Inline capture: a leading mode word selects that option and the rest of
     // the text becomes the pre-filled instruction surfaced as the description.
     it('should capture a trailing instruction when the first word names a mode', async () => {
       const results = await createCommand.search('workflow summarize a URL')
-      expect(results.map(r => r.id)).toEqual(['create-workflow'])
-      expect(results[0]!.data.args).toEqual({ mode: 'workflow', auto: false, instruction: 'summarize a URL' })
+      expect(results.map((r) => r.id)).toEqual(['create-workflow'])
+      expect(results[0]!.data.args).toEqual({
+        mode: 'workflow',
+        auto: false,
+        instruction: 'summarize a URL',
+      })
       expect(results[0]!.description).toBe('summarize a URL')
     })
 
@@ -111,7 +105,11 @@ describe('/create slash command', () => {
     // pre-filled with the full text so the user just picks the type.
     it('should keep all options with the full text when no leading mode word', async () => {
       const results = await createCommand.search('summarize a URL')
-      expect(results.map(r => r.id)).toEqual(['create-auto', 'create-workflow', 'create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual([
+        'create-auto',
+        'create-workflow',
+        'create-chatflow',
+      ])
       results.forEach((r) => {
         expect((r.data.args as { instruction: string }).instruction).toBe('summarize a URL')
       })
@@ -132,14 +130,22 @@ describe('/create slash command', () => {
     it('should open the generator with the requested mode when no Studio app is open', async () => {
       await executeCommand('create.open', { mode: 'workflow' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow', autoMode: false, initialInstruction: '' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        autoMode: false,
+        initialInstruction: '',
+      })
     })
 
     // Inline-captured instruction threads through to the modal.
     it('should thread the captured instruction through to the generator', async () => {
       await executeCommand('create.open', { mode: 'workflow', instruction: 'summarize a URL' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow', autoMode: false, initialInstruction: 'summarize a URL' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        autoMode: false,
+        initialInstruction: 'summarize a URL',
+      })
     })
 
     // Auto-mode always creates a new app, even with a matching Studio open,
@@ -149,7 +155,11 @@ describe('/create slash command', () => {
 
       await executeCommand('create.open', { mode: 'advanced-chat', auto: true })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'advanced-chat', autoMode: true, initialInstruction: '' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'advanced-chat',
+        autoMode: true,
+        initialInstruction: '',
+      })
     })
 
     // In-Studio create-and-apply: a matching graph-based app threads id + mode
@@ -174,7 +184,11 @@ describe('/create slash command', () => {
 
       await executeCommand('create.open', { mode: 'advanced-chat' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'advanced-chat', autoMode: false, initialInstruction: '' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'advanced-chat',
+        autoMode: false,
+        initialInstruction: '',
+      })
     })
 
     // Non-graph Studio apps (Chat / Agent / Completion) have no canvas to apply
@@ -184,14 +198,22 @@ describe('/create slash command', () => {
 
       await executeCommand('create.open', { mode: 'workflow' })
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow', autoMode: false, initialInstruction: '' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        autoMode: false,
+        initialInstruction: '',
+      })
     })
 
     // Defensive fallback: a missing mode still opens the generator safely.
     it('should default to workflow mode when no args are passed', async () => {
       await executeCommand('create.open')
 
-      expect(mockOpenGenerator).toHaveBeenCalledWith({ mode: 'workflow', autoMode: false, initialInstruction: '' })
+      expect(mockOpenGenerator).toHaveBeenCalledWith({
+        mode: 'workflow',
+        autoMode: false,
+        initialInstruction: '',
+      })
     })
   })
 

@@ -1,6 +1,7 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { render } from '@/test/console/render'
 import AddCustomModel from '../add-custom-model'
 
 // Mock hooks
@@ -8,7 +9,12 @@ const mockHandleOpenModalForAddNewCustomModel = vi.fn()
 const mockHandleOpenModalForAddCustomModelToModelList = vi.fn()
 
 vi.mock('../hooks/use-auth', () => ({
-  useAuth: (_provider: unknown, _configMethod: unknown, _fixedFields: unknown, options: { mode: string }) => {
+  useAuth: (
+    _provider: unknown,
+    _configMethod: unknown,
+    _fixedFields: unknown,
+    options: { mode: string },
+  ) => {
     if (options.mode === 'config-custom-model') {
       return { handleOpenModal: mockHandleOpenModalForAddNewCustomModel }
     }
@@ -19,7 +25,7 @@ vi.mock('../hooks/use-auth', () => ({
   },
 }))
 
-let mockCanAddedModels: { model: string, model_type: string }[] = []
+let mockCanAddedModels: { model: string; model_type: string }[] = []
 vi.mock('../hooks/use-custom-models', () => ({
   useCanAddedModels: () => mockCanAddedModels,
 }))
@@ -28,11 +34,12 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
 
 // Mock components
 vi.mock('../../model-icon', () => ({
@@ -46,9 +53,7 @@ vi.mock('@remixicon/react', () => ({
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-mock">
-      {children}
-    </div>
+    <div data-testid="tooltip-mock">{children}</div>
   ),
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

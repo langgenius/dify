@@ -44,13 +44,8 @@ export function DeploymentStatusBadge({
         )}
         {...props}
       >
-        <StatusDot
-          status={dotStatus}
-          className={cn('mr-2', isInProgress && 'animate-pulse')}
-        />
-        <span className={cn('truncate', deploymentStatusDotTextClassName(status))}>
-          {label}
-        </span>
+        <StatusDot status={dotStatus} className={cn('mr-2', isInProgress && 'animate-pulse')} />
+        <span className={cn('truncate', deploymentStatusDotTextClassName(status))}>{label}</span>
       </span>
     )
   }
@@ -68,10 +63,7 @@ export function DeploymentStatusBadge({
       )}
       {...props}
     >
-      <StatusDot
-        status={dotStatus}
-        className={cn('shrink-0', isInProgress && 'animate-pulse')}
-      />
+      <StatusDot status={dotStatus} className={cn('shrink-0', isInProgress && 'animate-pulse')} />
       <span className="truncate">{label}</span>
     </span>
   )
@@ -98,7 +90,7 @@ export function EnvironmentDeploymentBadge({
   const toneClassNames = deploymentStatusToneClassNames(status)
   const dotStatus = deploymentStatusDotStatus(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
-  const statusLabel = t(deploymentStatusLabelKey(status))
+  const statusLabel = t(($) => $[deploymentStatusLabelKey(status)])
   const label = summaryLabel ?? `${name} · ${statusLabel}`
   const visibleLabel = showStatus ? `${name} · ${statusLabel}` : name
 
@@ -113,10 +105,7 @@ export function EnvironmentDeploymentBadge({
       )}
       {...props}
     >
-      <StatusDot
-        status={dotStatus}
-        className={cn('shrink-0', isInProgress && 'animate-pulse')}
-      />
+      <StatusDot status={dotStatus} className={cn('shrink-0', isInProgress && 'animate-pulse')} />
       <span className="truncate">{visibleLabel}</span>
     </span>
   )

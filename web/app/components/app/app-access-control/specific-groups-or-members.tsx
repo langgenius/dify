@@ -12,13 +12,16 @@ import Loading from '../../base/loading'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export default function SpecificGroupsOrMembers() {
-  const currentMenu = useAccessControlStore(s => s.currentMenu)
-  const appId = useAccessControlStore(s => s.appId)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+  const currentMenu = useAccessControlStore((s) => s.currentMenu)
+  const appId = useAccessControlStore((s) => s.appId)
+  const setSpecificGroups = useAccessControlStore((s) => s.setSpecificGroups)
+  const setSpecificMembers = useAccessControlStore((s) => s.setSpecificMembers)
   const { t } = useTranslation()
 
-  const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const { isPending, data } = useAppWhiteListSubjects(
+    appId,
+    Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
   useEffect(() => {
     setSpecificGroups(data?.groups ?? [])
     setSpecificMembers(data?.members ?? [])
@@ -29,7 +32,9 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
           <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
       </div>
     )
@@ -40,7 +45,9 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
           <RiLockLine className="size-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
+          <p className="system-sm-medium text-text-primary">
+            {t(($) => $['accessControlDialog.accessItems.specific'], { ns: 'app' })}
+          </p>
         </div>
         <div className="flex items-center gap-x-1">
           <AddMemberOrGroupDialog />
@@ -57,19 +64,39 @@ export default function SpecificGroupsOrMembers() {
 
 function RenderGroupsAndMembers() {
   const { t } = useTranslation()
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
+  const specificGroups = useAccessControlStore((s) => s.specificGroups)
+  const specificMembers = useAccessControlStore((s) => s.specificMembers)
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pt-5 pb-1.5"><p className="text-center system-xs-regular text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
+    return (
+      <div className="px-2 pt-5 pb-1.5">
+        <p className="text-center system-xs-regular text-text-tertiary">
+          {t(($) => $['accessControlDialog.noGroupsOrMembers'], { ns: 'app' })}
+        </p>
+      </div>
+    )
   return (
     <>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
+        {t(($) => $['accessControlDialog.groups'], {
+          ns: 'app',
+          count: specificGroups.length ?? 0,
+        })}
+      </p>
       <div className="flex flex-row flex-wrap gap-1">
-        {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
+        {specificGroups.map((group, index) => (
+          <GroupItem key={index} group={group} />
+        ))}
       </div>
-      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
+      <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
+        {t(($) => $['accessControlDialog.members'], {
+          ns: 'app',
+          count: specificMembers.length ?? 0,
+        })}
+      </p>
       <div className="flex flex-row flex-wrap gap-1">
-        {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
+        {specificMembers.map((member, index) => (
+          <MemberItem key={index} member={member} />
+        ))}
       </div>
     </>
   )
@@ -79,14 +106,16 @@ type GroupItemProps = {
   group: AccessControlGroup
 }
 function GroupItem({ group }: GroupItemProps) {
-  const specificGroups = useAccessControlStore(s => s.specificGroups)
-  const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
+  const specificGroups = useAccessControlStore((s) => s.specificGroups)
+  const setSpecificGroups = useAccessControlStore((s) => s.setSpecificGroups)
   const handleRemoveGroup = useCallback(() => {
-    setSpecificGroups(specificGroups.filter(g => g.id !== group.id))
+    setSpecificGroups(specificGroups.filter((g) => g.id !== group.id))
   }, [group, setSpecificGroups, specificGroups])
   return (
     <BaseItem
-      icon={<RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />}
+      icon={
+        <RiOrganizationChart className="h-[14px] w-[14px] text-components-avatar-shape-fill-stop-0" />
+      }
       onRemove={handleRemoveGroup}
     >
       <p className="system-xs-regular text-text-primary">{group.name}</p>
@@ -99,10 +128,10 @@ type MemberItemProps = {
   member: AccessControlAccount
 }
 function MemberItem({ member }: MemberItemProps) {
-  const specificMembers = useAccessControlStore(s => s.specificMembers)
-  const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
+  const specificMembers = useAccessControlStore((s) => s.specificMembers)
+  const setSpecificMembers = useAccessControlStore((s) => s.setSpecificMembers)
   const handleRemoveMember = useCallback(() => {
-    setSpecificMembers(specificMembers.filter(m => m.id !== member.id))
+    setSpecificMembers(specificMembers.filter((m) => m.id !== member.id))
   }, [member, setSpecificMembers, specificMembers])
   return (
     <BaseItem
@@ -133,7 +162,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
       <button
         type="button"
         className="flex size-4 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        aria-label={t('operation.remove', { ns: 'common' })}
+        aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
         onClick={onRemove}
       >
         <RiCloseCircleFill className="h-[14px] w-[14px] text-text-quaternary" aria-hidden="true" />
@@ -144,12 +173,13 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
 
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
-  const tip = t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })
+  const tip = t(($) => $['accessControlDialog.webAppSSONotEnabledTip'], { ns: 'app' })
 
   return (
     <Infotip
       aria-label={tip}
-      iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+      className="text-text-warning-secondary hover:text-text-warning-secondary"
+      iconSize="large"
     >
       {tip}
     </Infotip>

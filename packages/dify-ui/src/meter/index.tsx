@@ -15,21 +15,16 @@ import { Meter as BaseMeter } from '@base-ui/react/meter'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
-export const MeterRoot = BaseMeter.Root
-export type MeterRootProps = BaseMeter.Root.Props
+export const Meter = BaseMeter.Root
+export type MeterProps = BaseMeter.Root.Props
 
-const meterTrackClassName
-  = 'relative block h-1 w-full overflow-hidden rounded-md bg-components-progress-bar-bg'
+const meterTrackClassName =
+  'relative block h-1 w-full overflow-hidden rounded-md bg-components-progress-bar-bg'
 
 export type MeterTrackProps = BaseMeter.Track.Props
 
 export function MeterTrack({ className, ...props }: MeterTrackProps) {
-  return (
-    <BaseMeter.Track
-      className={cn(meterTrackClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseMeter.Track className={cn(meterTrackClassName, className)} {...props} />
 }
 
 const meterIndicatorVariants = cva(
@@ -56,10 +51,7 @@ export type MeterIndicatorProps = BaseMeter.Indicator.Props & {
 
 export function MeterIndicator({ className, tone, ...props }: MeterIndicatorProps) {
   return (
-    <BaseMeter.Indicator
-      className={cn(meterIndicatorVariants({ tone }), className)}
-      {...props}
-    />
+    <BaseMeter.Indicator className={cn(meterIndicatorVariants({ tone }), className)} {...props} />
   )
 }
 
@@ -67,22 +59,12 @@ const meterValueClassName = 'system-xs-regular text-text-tertiary tabular-nums'
 export type MeterValueProps = BaseMeter.Value.Props
 
 export function MeterValue({ className, ...props }: MeterValueProps) {
-  return (
-    <BaseMeter.Value
-      className={cn(meterValueClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseMeter.Value className={cn(meterValueClassName, className)} {...props} />
 }
 
 const meterLabelClassName = 'system-xs-medium text-text-tertiary'
 export type MeterLabelProps = BaseMeter.Label.Props
 
 export function MeterLabel({ className, ...props }: MeterLabelProps) {
-  return (
-    <BaseMeter.Label
-      className={cn(meterLabelClassName, className)}
-      {...props}
-    />
-  )
+  return <BaseMeter.Label className={cn(meterLabelClassName, className)} {...props} />
 }

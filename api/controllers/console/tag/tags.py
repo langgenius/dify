@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -23,6 +23,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.enums import TagType
@@ -85,6 +86,10 @@ class TagResponse(ResponseModel):
         return str(value)
 
 
+class TagListResponse(RootModel[list[TagResponse]]):
+    pass
+
+
 register_schema_models(
     console_ns,
     TagBasePayload,
@@ -92,9 +97,8 @@ register_schema_models(
     TagBindingPayload,
     TagBindingRemovePayload,
     TagListQueryParam,
-    TagResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse, TagResponse, TagListResponse)
 
 
 def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None) -> None:
@@ -128,18 +132,14 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.doc(params=query_params_from_model(TagListQueryParam))
-    @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
+    @console_ns.response(200, "Success", console_ns.models[TagListResponse.__name__])
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
-        tags = TagService.get_tags(db.session(), param.type, current_tenant_id, param.keyword)
+        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword, session=db.session())
 
-        serialized_tags = [
-            TagResponse.model_validate(tag, from_attributes=True).model_dump(mode="json") for tag in tags
-        ]
-
-        return serialized_tags, 200
+        return dump_response(TagListResponse, tags), 200
 
     @console_ns.expect(console_ns.models[TagBasePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
@@ -154,13 +154,9 @@ class TagListApi(Resource):
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
         _enforce_snippet_tag_rbac_if_needed(payload.type)
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session)
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session())
 
-        response = TagResponse.model_validate(
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
-        ).model_dump(mode="json")
-
-        return response, 200
+        return dump_response(TagResponse, {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}), 200
 
 
 @console_ns.route("/tags/<uuid:tag_id>")
@@ -179,15 +175,17 @@ class TagUpdateDeleteApi(Resource):
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session())
 
-        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session)
+        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session())
 
-        response = TagResponse.model_validate(
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-        ).model_dump(mode="json")
-
-        return response, 200
+        return (
+            dump_response(
+                TagResponse,
+                {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count},
+            ),
+            200,
+        )
 
     @setup_required
     @login_required
@@ -198,7 +196,7 @@ class TagUpdateDeleteApi(Resource):
         tag_id_str = str(tag_id)
 
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
-        TagService.delete_tag(tag_id_str, db.session)
+        TagService.delete_tag(tag_id_str, db.session())
 
         return "", 204
 
@@ -225,7 +223,7 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             target_id=payload.target_id,
             type=payload.type,
         ),
-        db.session,
+        db.session(),
     )
     return {"result": "success"}, 200
 
@@ -241,7 +239,7 @@ def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             target_id=payload.target_id,
             type=payload.type,
         ),
-        db.session,
+        db.session(),
     )
     return {"result": "success"}, 200
 

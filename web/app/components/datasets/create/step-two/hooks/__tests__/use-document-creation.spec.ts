@@ -1,4 +1,9 @@
-import type { CreateDocumentReq, CustomFile, FullDocumentDetail, ProcessRule } from '@/models/datasets'
+import type {
+  CreateDocumentReq,
+  CustomFile,
+  FullDocumentDetail,
+  ProcessRule,
+} from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -88,14 +93,16 @@ describe('useDocumentCreation', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
       const invalid = { ...defaultValidationParams, overlap: 2000, maxChunkLength: 1000 }
       expect(result.current.validateParams(invalid)).toBe(false)
-      expect(mocks.toastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mocks.toastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should return false when maxChunkLength > limitMaxChunkLength', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
-      const invalid = { ...defaultValidationParams, maxChunkLength: 5000, limitMaxChunkLength: 4000 }
+      const invalid = {
+        ...defaultValidationParams,
+        maxChunkLength: 5000,
+        limitMaxChunkLength: 4000,
+      }
       expect(result.current.validateParams(invalid)).toBe(false)
     })
 
@@ -195,7 +202,11 @@ describe('useDocumentCreation', () => {
         }),
       )
 
-      await result.current.executeCreation({} as CreateDocumentReq, IndexingType.QUALIFIED, defaultValidationParams.retrievalConfig)
+      await result.current.executeCreation(
+        {} as CreateDocumentReq,
+        IndexingType.QUALIFIED,
+        defaultValidationParams.retrievalConfig,
+      )
 
       expect(mocks.mutateAsync).not.toHaveBeenCalled()
       expect(mocks.invalidDatasetList).not.toHaveBeenCalled()
@@ -214,7 +225,11 @@ describe('useDocumentCreation', () => {
         }),
       )
 
-      await result.current.executeCreation({} as CreateDocumentReq, IndexingType.QUALIFIED, defaultValidationParams.retrievalConfig)
+      await result.current.executeCreation(
+        {} as CreateDocumentReq,
+        IndexingType.QUALIFIED,
+        defaultValidationParams.retrievalConfig,
+      )
 
       expect(mocks.mutateAsync).toHaveBeenCalled()
       expect(onSave).toHaveBeenCalled()

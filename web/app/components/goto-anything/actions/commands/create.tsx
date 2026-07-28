@@ -1,7 +1,5 @@
 import type { SlashCommandHandler } from './types'
 import type { WorkflowGeneratorMode } from '@/app/components/workflow/workflow-generator/types'
-import { RiChat3Line, RiNodeTree, RiSparkling2Line } from '@remixicon/react'
-import * as React from 'react'
 import { getI18n } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useWorkflowGeneratorStore } from '@/app/components/workflow/workflow-generator/store'
@@ -18,7 +16,7 @@ type CreateOption = {
   mode: WorkflowGeneratorMode
   /** When set, the modal opens in auto-mode and the planner picks the app type. */
   auto?: boolean
-  icon: React.ComponentType<{ className?: string }>
+  iconClassName: string
 }
 
 // `as const` keeps titleKey/descKey as literal types so the typed `i18n.t`
@@ -30,7 +28,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createAutoDesc',
     mode: 'advanced-chat',
     auto: true,
-    icon: RiSparkling2Line,
+    iconClassName: 'i-ri-sparkling-2-line',
   },
   {
     id: 'workflow',
@@ -38,7 +36,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createWorkflowDesc',
     mode: 'workflow',
     auto: false,
-    icon: RiNodeTree,
+    iconClassName: 'i-ri-node-tree',
   },
   {
     id: 'chatflow',
@@ -46,7 +44,7 @@ const OPTIONS = [
     descKey: 'gotoAnything.actions.createChatflowDesc',
     mode: 'advanced-chat',
     auto: false,
-    icon: RiChat3Line,
+    iconClassName: 'i-ri-chat-3-line',
   },
 ] as const satisfies readonly CreateOption[]
 
@@ -71,19 +69,17 @@ const OPTIONS = [
 export const createCommand: SlashCommandHandler = {
   name: 'create',
   aliases: ['new', 'generate'],
-  // Fallback only — the palette localises the root row via the slashKeyMap in
-  // command-selector.tsx (gotoAnything.actions.createCategoryDesc).
-  description: 'Create an AI-generated workflow or chatflow',
+  description: getI18n().t(($) => $['gotoAnything.actions.createCategoryDesc'], { ns: 'app' }),
   mode: 'submenu',
 
-  async search(args: string, locale?: string) {
+  search(args: string, locale?: string) {
     const i18n = getI18n()
     const tr = (key: (typeof OPTIONS)[number]['titleKey' | 'descKey']) =>
-      i18n.t(key, { ns: 'app', lng: locale })
+      i18n.t(($) => $[key], { ns: 'app', lng: locale })
 
-    const renderIcon = (Icon: CreateOption['icon']) => (
+    const renderIcon = (iconClassName: string) => (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <Icon className="size-4 text-text-tertiary" />
+        <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
       </div>
     )
 
@@ -94,7 +90,7 @@ export const createCommand: SlashCommandHandler = {
       // back to the option's static description otherwise.
       description: instruction || tr(opt.descKey),
       type: 'command' as const,
-      icon: renderIcon(opt.icon),
+      icon: renderIcon(opt.iconClassName),
       data: { command: 'create.open', args: { mode: opt.mode, auto: !!opt.auto, instruction } },
     })
 
@@ -105,19 +101,20 @@ export const createCommand: SlashCommandHandler = {
     // submenu-filter behaviour, no instruction captured.
     if (tokens.length <= 1) {
       const query = trimmed.toLowerCase()
-      return OPTIONS
-        .filter(opt => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query))
-        .map(opt => toResult(opt, ''))
+      return OPTIONS.filter(
+        (opt) => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query),
+      ).map((opt) => toResult(opt, ''))
     }
 
     // Multi-token: inline capture. If the first word names a mode, use it and
     // treat the rest as the instruction; otherwise keep every option with the
     // full text as the instruction so the user just picks the type.
     const first = tokens[0]!.toLowerCase()
-    const matched = OPTIONS.find(opt => opt.id === first || tr(opt.titleKey).toLowerCase() === first)
-    if (matched)
-      return [toResult(matched, tokens.slice(1).join(' '))]
-    return OPTIONS.map(opt => toResult(opt, trimmed))
+    const matched = OPTIONS.find(
+      (opt) => opt.id === first || tr(opt.titleKey).toLowerCase() === first,
+    )
+    if (matched) return [toResult(matched, tokens.slice(1).join(' '))]
+    return OPTIONS.map((opt) => toResult(opt, trimmed))
   },
 
   register() {
@@ -135,8 +132,8 @@ export const createCommand: SlashCommandHandler = {
         // different from the open Studio, so applying to the current draft is
         // unsafe.
         const appDetail = useAppStore.getState().appDetail
-        const currentAppMode: WorkflowGeneratorMode | null
-          = appDetail?.mode === AppModeEnum.WORKFLOW
+        const currentAppMode: WorkflowGeneratorMode | null =
+          appDetail?.mode === AppModeEnum.WORKFLOW
             ? 'workflow'
             : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
               ? 'advanced-chat'

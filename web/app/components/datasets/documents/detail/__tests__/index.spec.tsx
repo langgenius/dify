@@ -1,11 +1,15 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
 const mocks = vi.hoisted(() => {
   const state = {
-    dataset: { embedding_available: true, permission_keys: ['dataset.acl.edit'] } as Record<string, unknown> | null,
+    dataset: { embedding_available: true, permission_keys: ['dataset.acl.edit'] } as Record<
+      string,
+      unknown
+    > | null,
     documentDetail: null as Record<string, unknown> | null,
     documentError: null as Error | null,
     documentMetadata: null as Record<string, unknown> | null,
@@ -26,6 +30,13 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
@@ -67,10 +78,8 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 vi.mock('@/service/use-base', () => ({
   useInvalid: (key: unknown) => {
     const keyStr = JSON.stringify(key)
-    if (keyStr === JSON.stringify(['segment-list']))
-      return mocks.invalidSegmentList
-    if (keyStr === JSON.stringify(['child-segment-list']))
-      return mocks.invalidChildSegmentList
+    if (keyStr === JSON.stringify(['segment-list'])) return mocks.invalidSegmentList
+    if (keyStr === JSON.stringify(['child-segment-list'])) return mocks.invalidChildSegmentList
     return vi.fn()
   },
 }))
@@ -81,7 +90,15 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 // --- Child component mocks ---
 vi.mock('../completed', () => ({
-  default: ({ embeddingAvailable, showNewSegmentModal, archived }: { embeddingAvailable?: boolean, showNewSegmentModal?: () => void, archived?: boolean }) => (
+  default: ({
+    embeddingAvailable,
+    showNewSegmentModal,
+    archived,
+  }: {
+    embeddingAvailable?: boolean
+    showNewSegmentModal?: () => void
+    archived?: boolean
+  }) => (
     <div
       data-testid="completed"
       data-embedding-available={embeddingAvailable}
@@ -96,22 +113,33 @@ vi.mock('../completed', () => ({
 vi.mock('../embedding', () => ({
   default: ({ detailUpdate }: { detailUpdate?: () => void }) => (
     <div data-testid="embedding">
-      <button data-testid="embedding-refresh" onClick={detailUpdate}>Refresh</button>
+      <button data-testid="embedding-refresh" onClick={detailUpdate}>
+        Refresh
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../batch-modal', () => ({
-  default: ({ isShow, onCancel, onConfirm }: { isShow?: boolean, onCancel?: () => void, onConfirm?: (val: Record<string, unknown>) => void }) => (
-    isShow
-      ? (
-          <div data-testid="batch-modal">
-            <button data-testid="batch-cancel" onClick={onCancel}>Cancel</button>
-            <button data-testid="batch-confirm" onClick={() => onConfirm?.({ file: { id: 'file-1' } })}>Confirm</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({
+    isShow,
+    onCancel,
+    onConfirm,
+  }: {
+    isShow?: boolean
+    onCancel?: () => void
+    onConfirm?: (val: Record<string, unknown>) => void
+  }) =>
+    isShow ? (
+      <div data-testid="batch-modal">
+        <button data-testid="batch-cancel" onClick={onCancel}>
+          Cancel
+        </button>
+        <button data-testid="batch-confirm" onClick={() => onConfirm?.({ file: { id: 'file-1' } })}>
+          Confirm
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../document-title', () => ({
@@ -124,54 +152,102 @@ vi.mock('../document-title', () => ({
       data_source_info?: { upload_file?: { extension?: string } }
     } | null
   }) => {
-    const extension = document?.data_source_detail_dict?.upload_file?.extension
-      ?? document?.data_source_info?.upload_file?.extension
+    const extension =
+      document?.data_source_detail_dict?.upload_file?.extension ??
+      document?.data_source_info?.upload_file?.extension
 
-    return <div data-testid="document-title" data-extension={extension}>{document?.name}</div>
+    return (
+      <div data-testid="document-title" data-extension={extension}>
+        {document?.name}
+      </div>
+    )
   },
 }))
 
 vi.mock('../segment-add', () => ({
-  SegmentAdd: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
+  SegmentAdd: ({
+    showNewSegmentModal,
+    showBatchModal,
+    embedding,
+  }: {
+    showNewSegmentModal?: () => void
+    showBatchModal?: () => void
+    embedding?: boolean
+  }) => (
     <div data-testid="segment-add" data-embedding={embedding}>
-      <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>New Segment</button>
-      <button data-testid="batch-btn" onClick={showBatchModal}>Batch Import</button>
+      <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>
+        New Segment
+      </button>
+      <button data-testid="batch-btn" onClick={showBatchModal}>
+        Batch Import
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../components/operations', () => ({
-  default: ({ onUpdate, scene }: { onUpdate?: (action?: string) => void, scene?: string }) => (
+  default: ({ onUpdate, scene }: { onUpdate?: (action?: string) => void; scene?: string }) => (
     <div data-testid="operations" data-scene={scene}>
-      <button data-testid="op-rename" onClick={() => onUpdate?.('rename')}>Rename</button>
-      <button data-testid="op-delete" onClick={() => onUpdate?.('delete')}>Delete</button>
-      <button data-testid="op-noop" onClick={() => onUpdate?.()}>NoOp</button>
+      <button data-testid="op-rename" onClick={() => onUpdate?.('rename')}>
+        Rename
+      </button>
+      <button data-testid="op-delete" onClick={() => onUpdate?.('delete')}>
+        Delete
+      </button>
+      <button data-testid="op-noop" onClick={() => onUpdate?.()}>
+        NoOp
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../status-item', () => ({
-  default: ({ status, scene }: { status?: string, scene?: string }) => (
-    <div data-testid="status-item" data-scene={scene}>{status}</div>
+  default: ({ status, scene }: { status?: string; scene?: string }) => (
+    <div data-testid="status-item" data-scene={scene}>
+      {status}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/datasets/metadata/metadata-document', () => ({
-  default: ({ datasetId, documentId, canEdit }: { datasetId?: string, documentId?: string, canEdit?: boolean }) => (
-    <div data-testid="metadata" data-dataset-id={datasetId} data-document-id={documentId} data-can-edit={String(canEdit)}>Metadata</div>
+  default: ({
+    datasetId,
+    documentId,
+    canEdit,
+  }: {
+    datasetId?: string
+    documentId?: string
+    canEdit?: boolean
+  }) => (
+    <div
+      data-testid="metadata"
+      data-dataset-id={datasetId}
+      data-document-id={documentId}
+      data-can-edit={String(canEdit)}
+    >
+      Metadata
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/base/float-right-container', () => ({
-  default: ({ children, isOpen, onClose }: { children?: React.ReactNode, isOpen?: boolean, onClose?: () => void }) =>
-    isOpen
-      ? (
-          <div data-testid="float-right-container">
-            <button data-testid="close-metadata" onClick={onClose}>Close</button>
-            {children}
-          </div>
-        )
-      : null,
+  default: ({
+    children,
+    isOpen,
+    onClose,
+  }: {
+    children?: React.ReactNode
+    isOpen?: boolean
+    onClose?: () => void
+  }) =>
+    isOpen ? (
+      <div data-testid="float-right-container">
+        <button data-testid="close-metadata" onClick={onClose}>
+          Close
+        </button>
+        {children}
+      </div>
+    ) : null,
 }))
 
 // --- Lazy import (after all vi.mock calls) ---
@@ -192,11 +268,22 @@ const createDocumentDetail = (overrides?: Record<string, unknown>) => ({
   ...overrides,
 })
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Edit] }
+    mocks.state.dataset = {
+      embedding_available: true,
+      permission_keys: [DatasetACLPermission.Edit],
+    }
     mocks.state.documentDetail = createDocumentDetail()
     mocks.state.documentError = null
     mocks.state.documentMetadata = null
@@ -232,12 +319,15 @@ describe('DocumentDetail', () => {
       expect(screen.queryByTestId('embedding')).not.toBeInTheDocument()
     })
 
-    it.each(['queuing', 'indexing', 'paused'])('should render Embedding when status is %s', (status) => {
-      mocks.state.documentDetail = createDocumentDetail({ display_status: status })
-      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('embedding')).toBeInTheDocument()
-      expect(screen.queryByTestId('completed')).not.toBeInTheDocument()
-    })
+    it.each(['queuing', 'indexing', 'paused'])(
+      'should render Embedding when status is %s',
+      (status) => {
+        mocks.state.documentDetail = createDocumentDetail({ display_status: status })
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        expect(screen.getByTestId('embedding')).toBeInTheDocument()
+        expect(screen.queryByTestId('completed')).not.toBeInTheDocument()
+      },
+    )
 
     it('should render DocumentTitle with name and extension', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
@@ -287,7 +377,10 @@ describe('DocumentDetail', () => {
     })
 
     it('should hide SegmentAdd when dataset only has readonly ACL permission', () => {
-      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      mocks.state.dataset = {
+        embedding_available: true,
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
     })
@@ -304,13 +397,13 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('metadata')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('document-detail-metadata-toggle'))
+      fireEvent.click(screen.getByRole('button', { name: /metadata\.title/ }))
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
     })
 
     it('should expose aria semantics for metadata toggle button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const toggle = screen.getByTestId('document-detail-metadata-toggle')
+      const toggle = screen.getByRole('button', { name: /metadata\.title/ })
       expect(toggle).toHaveAttribute('aria-label')
       expect(toggle).toHaveAttribute('aria-pressed', 'true')
 
@@ -327,7 +420,10 @@ describe('DocumentDetail', () => {
     })
 
     it('should pass readonly ACL state to Metadata', () => {
-      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      mocks.state.dataset = {
+        embedding_available: true,
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
 
       expect(screen.getByTestId('metadata')).toHaveAttribute('data-can-edit', 'false')
@@ -343,7 +439,9 @@ describe('DocumentDetail', () => {
 
     it('should expose aria label for back button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute('aria-label')
+      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute(
+        'aria-label',
+      )
     })
 
     it('should preserve query params when navigating back', () => {

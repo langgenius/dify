@@ -31,7 +31,7 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
     <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
       <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
         <span className="text-xs font-medium tracking-wide text-text-tertiary uppercase">
-          {t('develop.toc', { ns: 'appApi' })}
+          {t(($) => $['develop.toc'], { ns: 'appApi' })}
         </span>
         <button
           type="button"
@@ -47,45 +47,41 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
       <div className="pointer-events-none absolute top-[43px] right-0 left-0 z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
 
       <div className="relative flex-1 overflow-y-auto p-3 pt-1">
-        {toc.length === 0
-          ? (
-              <div className="px-2 py-8 text-center text-xs text-text-quaternary">
-                {t('develop.noContent', { ns: 'appApi' })}
-              </div>
-            )
-          : (
-              <ul className="space-y-0.5">
-                {toc.map((item) => {
-                  const isActive = activeSection === item.href.replace('#', '')
-                  return (
-                    <li key={item.href}>
-                      <a
-                        href={item.href}
-                        onClick={e => onItemClick(e, item)}
-                        className={cn(
-                          'group relative flex items-center rounded-md px-3 py-2 text-[13px] transition-all duration-200',
-                          isActive
-                            ? 'bg-state-base-hover font-medium text-text-primary'
-                            : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'mr-2 size-1.5 rounded-full transition-all duration-200',
-                            isActive
-                              ? 'scale-100 bg-text-accent'
-                              : 'scale-75 bg-components-panel-border',
-                          )}
-                        />
-                        <span className="flex-1 truncate">
-                          {item.text}
-                        </span>
-                      </a>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+        {toc.length === 0 ? (
+          <div className="px-2 py-8 text-center text-xs text-text-quaternary">
+            {t(($) => $['develop.noContent'], { ns: 'appApi' })}
+          </div>
+        ) : (
+          <ul className="space-y-0.5">
+            {toc.map((item) => {
+              const isActive = activeSection === item.href.replace('#', '')
+              return (
+                <li key={item.href}>
+                  <a
+                    href={item.href}
+                    onClick={(e) => onItemClick(e, item)}
+                    className={cn(
+                      'group relative flex items-center rounded-md px-3 py-2 text-[13px] transition-all duration-200',
+                      isActive
+                        ? 'bg-state-base-hover font-medium text-text-primary'
+                        : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'mr-2 size-1.5 rounded-full transition-all duration-200',
+                        isActive
+                          ? 'scale-100 bg-text-accent'
+                          : 'scale-75 bg-components-panel-border',
+                      )}
+                    />
+                    <span className="flex-1 truncate">{item.text}</span>
+                  </a>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 rounded-b-xl bg-linear-to-t from-background-default-hover to-transparent"></div>

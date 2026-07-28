@@ -37,7 +37,7 @@ def test_apps_describe_returns_merged_shape(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe",
+        f"/openapi/v1/apps/{app_in_workspace.id}",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -53,7 +53,7 @@ def test_apps_describe_full_includes_input_schema(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe",
+        f"/openapi/v1/apps/{app_in_workspace.id}",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -70,7 +70,7 @@ def test_apps_describe_fields_info_only(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=info",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=info",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -86,7 +86,7 @@ def test_apps_describe_fields_parameters_only(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=parameters",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=parameters",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -102,7 +102,7 @@ def test_apps_describe_fields_input_schema_only(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=input_schema",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=input_schema",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -118,7 +118,7 @@ def test_apps_describe_fields_combined(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=info,input_schema",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=info,input_schema",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 200
@@ -134,7 +134,7 @@ def test_apps_describe_fields_unknown_returns_422(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=garbage",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=garbage",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 422
@@ -146,7 +146,7 @@ def test_apps_describe_fields_extra_param_returns_422(
     account_token: str,
 ):
     res = test_client.get(
-        f"/openapi/v1/apps/{app_in_workspace.id}/describe?fields=info&page=1",
+        f"/openapi/v1/apps/{app_in_workspace.id}?fields=info&page=1",
         headers={"Authorization": f"Bearer {account_token}"},
     )
     assert res.status_code == 422

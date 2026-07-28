@@ -33,10 +33,52 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * FileResponse
+ */
+export const zFileResponse = z.object({
+  conversation_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  extension: z.string().nullish(),
+  file_key: z.string().nullish(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  original_url: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  reference: z.string().nullish(),
+  size: z.int(),
+  source_url: z.string().nullish(),
+  tenant_id: z.string().nullish(),
+  user_id: z.string().nullish(),
+})
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
+})
+
+/**
+ * RemoteFileUploadPayload
+ */
+export const zRemoteFileUploadPayload = z.object({
+  url: z.string(),
+})
+
+/**
+ * FileWithSignedUrl
+ */
+export const zFileWithSignedUrl = z.object({
+  created_at: z.int().nullable(),
+  created_by: z.string().nullable(),
+  extension: z.string().nullable(),
+  id: z.string(),
+  mime_type: z.string().nullable(),
+  name: z.string(),
+  size: z.int(),
+  url: z.string().nullable(),
 })
 
 /**
@@ -73,7 +115,9 @@ export const zTextToSpeechRequest = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * WorkflowRunRequest
@@ -160,22 +204,6 @@ export const zTrialWorkflowPartialResponse = z.object({
   updated_by: z.string().nullish(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
-
 /**
  * TrialDatasetResponse
  */
@@ -233,24 +261,35 @@ export const zParameters = z.object({
   user_input_form: z.array(zJsonObject),
 })
 
-export const zJsonObject2 = z.record(z.string(), z.unknown())
+/**
+ * WorkflowConversationVariableResponse
+ */
+export const zWorkflowConversationVariableResponse = z.object({
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+})
 
 /**
- * TrialWorkflowAccount
+ * TrialSimpleAccount
  */
-export const zTrialWorkflowAccount = z.object({
+export const zTrialSimpleAccount = z.object({
   email: z.string().nullish(),
   id: z.string(),
   name: z.string().nullish(),
 })
 
+export const zJsonObject2 = z.record(z.string(), z.unknown())
+
 /**
  * TrialWorkflowResponse
  */
 export const zTrialWorkflowResponse = z.object({
-  conversation_variables: z.array(zJsonObject2).optional(),
+  conversation_variables: z.array(zWorkflowConversationVariableResponse).optional(),
   created_at: z.int().nullish(),
-  created_by: zTrialWorkflowAccount.nullish(),
+  created_by: zTrialSimpleAccount.nullish(),
   environment_variables: z.array(zJsonObject2).optional(),
   features: zJsonObject2.optional(),
   graph: zJsonObject2,
@@ -261,7 +300,7 @@ export const zTrialWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zJsonObject2).optional(),
   tool_published: z.boolean().nullish(),
   updated_at: z.int().nullish(),
-  updated_by: zTrialWorkflowAccount.nullish(),
+  updated_by: zTrialSimpleAccount.nullish(),
   version: z.string().nullish(),
 })
 
@@ -345,11 +384,6 @@ export const zTrialAppDetailResponse = z.object({
 })
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
-
-/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -396,7 +430,7 @@ export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
@@ -407,7 +441,7 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
   app_id: z.uuid(),
@@ -424,6 +458,20 @@ export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
  */
 export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetListResponse
 
+export const zPostTrialAppsByAppIdFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+  source: z.enum(['datasets']).optional(),
+})
+
+export const zPostTrialAppsByAppIdFilesUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostTrialAppsByAppIdFilesUploadResponse = zFileResponse
+
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   app_id: z.uuid(),
   message_id: z.uuid(),
@@ -432,8 +480,8 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.uuid(),
@@ -443,6 +491,17 @@ export const zGetTrialAppsByAppIdParametersPath = z.object({
  * Success
  */
 export const zGetTrialAppsByAppIdParametersResponse = zParameters
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadBody = zRemoteFileUploadPayload
+
+export const zPostTrialAppsByAppIdRemoteFilesUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * File uploaded successfully
+ */
+export const zPostTrialAppsByAppIdRemoteFilesUploadResponse = zFileWithSignedUrl
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
   app_id: z.uuid(),
@@ -482,7 +541,7 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   app_id: z.uuid(),

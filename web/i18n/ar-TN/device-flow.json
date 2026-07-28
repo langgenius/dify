@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "تعذّر التحقق من الرمز",
   "errorRateLimited.body": "انتظر لحظة وحاول مرة أخرى.",
   "errorRateLimited.title": "عدد كبير جدًا من المحاولات",
+  "errorSso.backToLoginOptions": "← العودة إلى خيارات تسجيل الدخول",
+  "errorSso.title": "تعذّر إكمال تسجيل الدخول",
   "ssoError.default": "تعذّر إكمال تسجيل الدخول الموحّد (SSO). حاول مرة أخرى.",
   "ssoError.emailBelongsToDifyAccount": "هذه الهوية مرتبطة بحساب Dify. استخدم “تسجيل الدخول بحساب Dify” بدلاً من ذلك.",
   "success.goToConsole": "الانتقال إلى وحدة تحكم Dify →",

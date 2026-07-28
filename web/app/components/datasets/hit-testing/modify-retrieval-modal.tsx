@@ -29,8 +29,12 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
-  const embeddingModel = useDatasetDetailContextWithSelector(state => state.dataset?.embedding_model)
-  const embeddingModelProvider = useDatasetDetailContextWithSelector(state => state.dataset?.embedding_model_provider)
+  const embeddingModel = useDatasetDetailContextWithSelector(
+    (state) => state.dataset?.embedding_model,
+  )
+  const embeddingModelProvider = useDatasetDetailContextWithSelector(
+    (state) => state.dataset?.embedding_model_provider,
+  )
   // useClickAway(() => {
   //   if (ref)
   //     onHide()
@@ -38,12 +42,14 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const handleSave = () => {
-    if (!isReRankModelSelected({
-      rerankModelList,
-      retrievalConfig,
-      indexMethod,
-    })) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+    if (
+      !isReRankModelSelected({
+        rerankModelList,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      toast.error(t(($) => $['datasetConfig.rerankModelRequired'], { ns: 'appDebug' }))
       return
     }
     onSave(retrievalConfig)
@@ -63,9 +69,16 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
       embeddingModelList,
       rerankModelList,
     })
-  }, [embeddingModelProvider, embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexMethod, embeddingModelList, rerankModelList])
-  if (!isShow)
-    return null
+  }, [
+    embeddingModelProvider,
+    embeddingModel,
+    retrievalConfig.reranking_enable,
+    retrievalConfig.reranking_model,
+    indexMethod,
+    embeddingModelList,
+    rerankModelList,
+  ])
+  if (!isShow) return null
   return (
     <div
       className="flex w-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9"
@@ -76,19 +89,24 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
     >
       <div className="flex h-15 shrink-0 justify-between px-3 pt-3.5 pb-1">
         <div className="text-base font-semibold text-text-primary">
-          <div>{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
+          <div>{t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
           <div className="text-xs leading-[18px] font-normal text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">
-              {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
+              className="text-text-accent"
+            >
+              {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
             </a>
-            {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
+            {t(($) => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
           </div>
         </div>
         <div className="flex">
           <button
             type="button"
             className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t('operation.close', { ns: 'common' })}
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onHide}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -98,15 +116,25 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
 
       <div className="px-4 py-2">
         <div className="mb-1 text-[13px] leading-6 font-semibold text-text-secondary">
-          {t('form.retrievalSetting.method', { ns: 'datasetSettings' })}
+          {t(($) => $['form.retrievalSetting.method'], { ns: 'datasetSettings' })}
         </div>
-        {indexMethod === 'high_quality'
-          ? (<RetrievalMethodConfig value={retrievalConfig} onChange={setRetrievalConfig} showMultiModalTip={showMultiModalTip} />)
-          : (<EconomicalRetrievalMethodConfig value={retrievalConfig} onChange={setRetrievalConfig} />)}
+        {indexMethod === 'high_quality' ? (
+          <RetrievalMethodConfig
+            value={retrievalConfig}
+            onChange={setRetrievalConfig}
+            showMultiModalTip={showMultiModalTip}
+          />
+        ) : (
+          <EconomicalRetrievalMethodConfig value={retrievalConfig} onChange={setRetrievalConfig} />
+        )}
       </div>
       <div className="flex justify-end p-4 pt-2">
-        <Button className="mr-2 shrink-0" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+        <Button className="mr-2 shrink-0" onClick={onHide}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button variant="primary" className="shrink-0" onClick={handleSave}>
+          {t(($) => $['operation.save'], { ns: 'common' })}
+        </Button>
       </div>
     </div>
   )

@@ -1,6 +1,9 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentConfigSnapshotDetailResponse,
+  AgentConfigSnapshotSummaryResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -30,13 +33,10 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
-  draftSavedAt?: number
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
@@ -51,19 +51,17 @@ type AgentOrchestratePanelProps = {
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
-  activeConfigSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
-  draftSavedAt,
   isPublishing,
   className,
   readOnly = false,
@@ -78,53 +76,64 @@ export function AgentOrchestratePanel({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const orchestrateLabel = t('agentDetail.configure.title')
-  const orchestrateBottomAction = bottomAction ?? (showPublishBar
-    ? (
-        <AgentConfigurePublishBar
-          agentId={agentId}
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
-          agentName={agentName}
-          draftSavedAt={draftSavedAt}
-          isPublishing={isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={onOpenVersions}
-        />
-      )
-    : null)
+  const orchestrateLabel = t(($) => $['agentDetail.configure.title'])
+  const orchestrateBottomAction =
+    bottomAction ??
+    (showPublishBar ? (
+      <AgentConfigurePublishBar
+        agentId={agentId}
+        agentName={agentName}
+        isPublishing={isPublishing}
+        selectedVersionSnapshot={selectedVersionSnapshot}
+        onPublish={onPublish}
+        onExitVersions={onExitVersions}
+        onOpenVersions={onOpenVersions}
+        onVersionRestored={onVersionRestored}
+      />
+    ) : null)
   const hasBottomAction = !!orchestrateBottomAction
   const draftType = isBuildDraftActive ? ('debug_build' as const) : ('draft' as const)
-  const configApiContext = useMemo(() => appId && nodeId
-    ? {
-        agentId,
-        draftType,
-        versionId: selectedVersionSnapshot?.id ?? undefined,
-        workflow: {
-          appId,
-          nodeId,
-        },
-      }
-    : {
-        agentId,
-        draftType,
-        versionId: selectedVersionSnapshot?.id ?? undefined,
-      }, [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id])
+  const configApiContext = useMemo(
+    () =>
+      appId && nodeId
+        ? {
+            agentId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? undefined,
+            workflow: {
+              appId,
+              nodeId,
+            },
+          }
+        : {
+            agentId,
+            draftType,
+            versionId: selectedVersionSnapshot?.id ?? undefined,
+          },
+    [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id],
+  )
 
   return (
-    <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} trailingAction={headerAction} isBuildDraftActive={isBuildDraftActive} />}
+    <div
+      className={cn(
+        'relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg',
+        className,
+      )}
+    >
+      {showHeader && (
+        <AgentOrchestrateHeader
+          headingId={orchestrateHeadingId}
+          trailingAction={headerAction}
+          isBuildDraftActive={isBuildDraftActive}
+        />
+      )}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
-        <div
-          aria-readonly={readOnly}
-          className="flex min-h-0 flex-1 flex-col"
-        >
+        <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
           <ScrollArea
             className="min-h-0 flex-1 overflow-hidden"
             label={showHeader ? undefined : orchestrateLabel}
@@ -136,7 +145,11 @@ export function AgentOrchestratePanel({
           >
             <AgentConfigApiContextProvider value={configApiContext}>
               <AgentOrchestrateAddActionsProvider>
-                <AgentBuildDraftChangedKeysProvider changedKeys={isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS}>
+                <AgentBuildDraftChangedKeysProvider
+                  changedKeys={
+                    isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                  }
+                >
                   <AgentModelField
                     currentModel={currentModel}
                     textGenerationModelList={textGenerationModelList}
@@ -155,13 +168,11 @@ export function AgentOrchestratePanel({
         </div>
       </AgentOrchestrateReadOnlyContext>
 
-      {orchestrateBottomAction
-        ? (
-            <AgentOrchestrateBottomActions>
-              {orchestrateBottomAction}
-            </AgentOrchestrateBottomActions>
-          )
-        : null}
+      {orchestrateBottomAction ? (
+        <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
+          {orchestrateBottomAction}
+        </AgentOrchestrateBottomActions>
+      ) : null}
     </div>
   )
 }

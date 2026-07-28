@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { getHoveredParallelId } from '../get-hovered-parallel-id'
 import TracingPanel from '../tracing-panel'
 
@@ -23,9 +24,7 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../node', () => ({
   __esModule: true,
-  default: (props: {
-    nodeInfo: { id: string }
-  }) => {
+  default: (props: { nodeInfo: { id: string } }) => {
     mockNodePanel(props)
     return <div data-testid={`node-${props.nodeInfo.id}`}>{props.nodeInfo.id}</div>
   },
@@ -43,7 +42,7 @@ describe('TracingPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTranslation.mockReturnValue({
-      t: (key: string) => key,
+      t: withSelectorKey((key: string) => key),
     })
     mockUseLogs.mockReturnValue({
       showSpecialResultPanel: false,
@@ -75,13 +74,15 @@ describe('TracingPanel', () => {
         parallelDetail: {
           isParallelStartNode: true,
           parallelTitle: 'Parallel Group',
-          children: [{
-            id: 'child-1',
-            title: 'Child Node',
-            parallelDetail: {
-              branchTitle: 'Branch A',
+          children: [
+            {
+              id: 'child-1',
+              title: 'Child Node',
+              parallelDetail: {
+                branchTitle: 'Branch A',
+              },
             },
-          }],
+          ],
         },
       },
       {
@@ -114,7 +115,9 @@ describe('TracingPanel', () => {
     fireEvent.click(container.querySelector('.py-2') as HTMLElement)
     expect(parentClick).not.toHaveBeenCalled()
 
-    const hoverTarget = screen.getByText('Parallel Group').closest('[data-parallel-id="parallel-1"]') as HTMLElement
+    const hoverTarget = screen
+      .getByText('Parallel Group')
+      .closest('[data-parallel-id="parallel-1"]') as HTMLElement
     const nestedParallelTarget = document.createElement('div')
     nestedParallelTarget.setAttribute('data-parallel-id', 'parallel-1')
     const unrelatedTarget = document.createElement('div')
@@ -133,13 +136,19 @@ describe('TracingPanel', () => {
     fireEvent.mouseLeave(hoverTarget)
 
     fireEvent.click(screen.getAllByRole('button')[0]!)
-    expect(container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'))!.toHaveClass('hidden')
+    expect(
+      container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
+    )!.toHaveClass('hidden')
     fireEvent.click(screen.getAllByRole('button')[0]!)
-    expect(container.querySelector('[data-parallel-id="parallel-1"] > div:last-child')).not.toHaveClass('hidden')
-    expect(mockNodePanel).toHaveBeenCalledWith(expect.objectContaining({
-      hideInfo: true,
-      hideProcessDetail: true,
-    }))
+    expect(
+      container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
+    ).not.toHaveClass('hidden')
+    expect(mockNodePanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hideInfo: true,
+        hideProcessDetail: true,
+      }),
+    )
 
     nestedParallelTarget.remove()
     unrelatedTarget.remove()
@@ -171,13 +180,15 @@ describe('TracingPanel', () => {
     render(<TracingPanel list={[]} />)
 
     expect(screen.getByTestId('special-result-panel'))!.toBeInTheDocument()
-    expect(mockSpecialResultPanel).toHaveBeenCalledWith(expect.objectContaining({
-      showRetryDetail: true,
-      retryResultList: [{ id: 'retry-1' }],
-      showIteratingDetail: true,
-      showLoopingDetail: true,
-      agentOrToolLogItemStack: [{ id: 'agent-1' }],
-    }))
+    expect(mockSpecialResultPanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showRetryDetail: true,
+        retryResultList: [{ id: 'retry-1' }],
+        showIteratingDetail: true,
+        showLoopingDetail: true,
+        agentOrToolLogItemStack: [{ id: 'agent-1' }],
+      }),
+    )
   })
 
   it('should resolve hovered parallel ids from related targets', () => {

@@ -50,6 +50,13 @@ class AgentSource(StrEnum):
     SYSTEM = "system"
 
 
+# Source records provenance. Product capability is determined by scope and
+# backing ownership, so imported resources participate in both supported Agent
+# surfaces instead of being filtered out by their origin.
+APP_BACKED_AGENT_SOURCES = (AgentSource.AGENT_APP, AgentSource.IMPORTED)
+WORKFLOW_ONLY_AGENT_SOURCES = (AgentSource.WORKFLOW, AgentSource.IMPORTED)
+
+
 class AgentIconType(StrEnum):
     """Supported icon storage formats for Agent roster entries."""
 
@@ -87,6 +94,8 @@ class AgentConfigRevisionOperation(StrEnum):
     RESTORE_VERSION = "restore_version"
     # Publishes the editable Agent Soul draft as a new immutable version.
     PUBLISH_DRAFT = "publish_draft"
+    # Seeds a new Agent from a portable DSL package.
+    IMPORT_PACKAGE = "import_package"
 
 
 class AgentConfigDraftType(StrEnum):
@@ -213,11 +222,13 @@ class Agent(DefaultFieldsMixin, Base):
 
 
 class AgentDebugConversation(DefaultFieldsMixin, Base):
-    """Per-account console debug conversation for an Agent App.
+    """Per-account, per-draft console debug conversation for an Agent App.
 
     Agent App preview state must be isolated by editor account. The Agent row is
     shared by everyone in the workspace, so this table owns the user-specific
-    conversation pointer used by console debug chat.
+    conversation pointers used by console debug chat. ``draft`` is the Preview
+    conversation and ``debug_build`` is the Build conversation; they must never
+    share persisted messages or runtime sessions.
     """
 
     __tablename__ = "agent_debug_conversations"
@@ -227,7 +238,8 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
             "tenant_id",
             "agent_id",
             "account_id",
-            name="agent_debug_conversation_agent_account_unique",
+            "draft_type",
+            name="agent_debug_conversation_agent_account_draft_type_unique",
         ),
         Index("agent_debug_conversation_conversation_idx", "conversation_id"),
         Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
@@ -237,6 +249,12 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    draft_type: Mapped[AgentConfigDraftType] = mapped_column(
+        EnumText(AgentConfigDraftType, length=32),
+        nullable=False,
+        default=AgentConfigDraftType.DEBUG_BUILD,
+        server_default=sa.text("'debug_build'"),
+    )
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 

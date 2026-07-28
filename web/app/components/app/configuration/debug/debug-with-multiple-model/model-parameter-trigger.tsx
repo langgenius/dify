@@ -20,24 +20,19 @@ import { useDebugWithMultipleModelContext } from './context'
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter
 }
-const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
-  modelAndParameter,
-}) => {
+const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({ modelAndParameter }) => {
   const { t } = useTranslation()
-  const {
-    isAdvancedMode,
-  } = useDebugConfigurationContext()
-  const {
-    multipleModelConfigs,
-    onMultipleModelConfigsChange,
-    onDebugWithMultipleModelChange,
-  } = useDebugWithMultipleModelContext()
+  const { isAdvancedMode } = useDebugConfigurationContext()
+  const { multipleModelConfigs, onMultipleModelConfigsChange, onDebugWithMultipleModelChange } =
+    useDebugWithMultipleModelContext()
   const { modelProviders } = useProviderContext()
-  const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
-  const providerMeta = modelProviders.find(provider => provider.provider === modelAndParameter.provider)
+  const index = multipleModelConfigs.findIndex((v) => v.id === modelAndParameter.id)
+  const providerMeta = modelProviders.find(
+    (provider) => provider.provider === modelAndParameter.provider,
+  )
   const credentialState = useCredentialPanelState(providerMeta)
 
-  const handleSelectModel = ({ modelId, provider }: { modelId: string, provider: string }) => {
+  const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index]!,
@@ -65,11 +60,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
       setModel={handleSelectModel}
       debugWithMultipleModel
       onDebugWithMultipleModelChange={() => onDebugWithMultipleModelChange(modelAndParameter)}
-      renderTrigger={({
-        open,
-        currentProvider,
-        currentModel,
-      }) => {
+      renderTrigger={({ open, currentProvider, currentModel }) => {
         const status = deriveModelStatus(
           modelAndParameter.model,
           modelAndParameter.provider,
@@ -78,75 +69,62 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           credentialState,
         )
         const iconProvider = currentProvider || providerMeta
-        const statusLabelKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
-        const statusTooltipKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
+        const statusLabelKey =
+          DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
+        const statusTooltipKey =
+          DERIVED_MODEL_STATUS_TOOLTIP_I18N[
+            status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N
+          ]
         const isEmpty = status === 'empty'
         const isActive = status === 'active'
 
         return (
           <div
-            className={`
-              flex h-8 max-w-[200px] cursor-pointer items-center rounded-lg px-2
-              ${open && 'bg-state-base-hover'}
-              ${!isEmpty && !isActive && 'bg-[#FFFAEB]!'}
-            `}
+            className={`flex h-8 max-w-[200px] cursor-pointer items-center rounded-lg px-2 ${open && 'bg-state-base-hover'} ${!isEmpty && !isActive && 'bg-[#FFFAEB]!'} `}
           >
-            {
-              iconProvider && !isEmpty && (
-                <ModelIcon
-                  className="mr-1 size-4!"
-                  provider={iconProvider}
-                  modelName={currentModel?.model || modelAndParameter.model}
+            {iconProvider && !isEmpty && (
+              <ModelIcon
+                className="mr-1 size-4!"
+                provider={iconProvider}
+                modelName={currentModel?.model || modelAndParameter.model}
+              />
+            )}
+            {(!iconProvider || isEmpty) && (
+              <div className="mr-1 flex size-4 items-center justify-center rounded-sm">
+                <span className="i-custom-vender-line-shapes-cube-outline size-4 text-text-accent" />
+              </div>
+            )}
+            {currentModel && (
+              <ModelName className="mr-0.5 text-text-secondary" modelItem={currentModel} />
+            )}
+            {!currentModel && !isEmpty && (
+              <div className="mr-0.5 truncate text-[13px] font-medium text-text-secondary">
+                {modelAndParameter.model}
+              </div>
+            )}
+            {isEmpty && (
+              <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
+                {t(($) => $['modelProvider.selectModel'], { ns: 'common' })}
+              </div>
+            )}
+            <span
+              className={`i-ri-arrow-down-s-line size-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`}
+            />
+            {!isEmpty && !isActive && statusLabelKey && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span
+                      aria-label={t(($) => $[statusTooltipKey || statusLabelKey], { ns: 'common' })}
+                      className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
+                    />
+                  }
                 />
-              )
-            }
-            {
-              (!iconProvider || isEmpty) && (
-                <div className="mr-1 flex size-4 items-center justify-center rounded-sm">
-                  <span className="i-custom-vender-line-shapes-cube-outline size-4 text-text-accent" />
-                </div>
-              )
-            }
-            {
-              currentModel && (
-                <ModelName
-                  className="mr-0.5 text-text-secondary"
-                  modelItem={currentModel}
-                />
-              )
-            }
-            {
-              !currentModel && !isEmpty && (
-                <div className="mr-0.5 truncate text-[13px] font-medium text-text-secondary">
-                  {modelAndParameter.model}
-                </div>
-              )
-            }
-            {
-              isEmpty && (
-                <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
-                  {t('modelProvider.selectModel', { ns: 'common' })}
-                </div>
-              )
-            }
-            <span className={`i-ri-arrow-down-s-line size-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`} />
-            {
-              !isEmpty && !isActive && statusLabelKey && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={(
-                      <span
-                        aria-label={t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
-                        className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
-                      />
-                    )}
-                  />
-                  <TooltipContent>
-                    {t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
-                  </TooltipContent>
-                </Tooltip>
-              )
-            }
+                <TooltipContent>
+                  {t(($) => $[statusTooltipKey || statusLabelKey], { ns: 'common' })}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )
       }}

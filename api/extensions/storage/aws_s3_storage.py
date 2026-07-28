@@ -92,3 +92,21 @@ class AwsS3Storage(BaseStorage):
     @override
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    @override
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        params = {"Bucket": self.bucket_name, "Key": filename}
+        if content_type:
+            params["ResponseContentType"] = content_type
+
+        return self.client.generate_presigned_url(
+            "get_object",
+            Params=params,
+            ExpiresIn=expires_in,
+        )

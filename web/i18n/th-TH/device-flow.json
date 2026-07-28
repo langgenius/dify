@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "ไม่สามารถตรวจสอบรหัสได้",
   "errorRateLimited.body": "โปรดรอสักครู่แล้วลองอีกครั้ง",
   "errorRateLimited.title": "พยายามมากเกินไป",
+  "errorSso.backToLoginOptions": "← กลับไปยังตัวเลือกการลงชื่อเข้าใช้",
+  "errorSso.title": "ไม่สามารถลงชื่อเข้าใช้ให้เสร็จสมบูรณ์ได้",
   "ssoError.default": "ไม่สามารถทำการลงชื่อเข้าใช้แบบรวมศูนย์ (SSO) ให้เสร็จสมบูรณ์ได้ โปรดลองอีกครั้ง",
   "ssoError.emailBelongsToDifyAccount": "ข้อมูลประจำตัวนี้เชื่อมโยงกับบัญชี Dify โปรดใช้ “ลงชื่อเข้าใช้ด้วยบัญชี Dify” แทน",
   "success.goToConsole": "ไปที่คอนโซล Dify →",

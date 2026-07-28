@@ -48,7 +48,10 @@ describe('useIntegrationsSetting', () => {
       result.current({ payload: ACCOUNT_SETTING_TAB.PROVIDER, source: 'agent' })
     })
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider', source: 'agent' })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: 'provider',
+      source: 'agent',
+    })
   })
 
   it('should preserve the cancel callback for migrated integrations settings', () => {
@@ -59,6 +62,9 @@ describe('useIntegrationsSetting', () => {
       result.current({ payload: ACCOUNT_SETTING_TAB.PROVIDER, onCancelCallback })
     })
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider', onCancelCallback })
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: 'provider',
+      onCancelCallback,
+    })
   })
 })

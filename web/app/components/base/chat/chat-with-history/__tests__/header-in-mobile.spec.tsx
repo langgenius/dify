@@ -4,8 +4,9 @@ import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta } from '@/models/share'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as ReactI18next from 'react-i18next'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
 
@@ -20,7 +21,9 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('../context', () => ({
   useChatWithHistoryContext: vi.fn(),
-  ChatWithHistoryContext: { Provider: ({ children }: { children: React.ReactNode }) => <div>{children}</div> },
+  ChatWithHistoryContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -45,17 +48,14 @@ vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip
 
 // Mock Dialog to avoid Base UI focus/portal behavior in tests
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) => {
-    if (!open)
-      return null
-    return (
-      <div data-testid="modal">
-        {children}
-      </div>
-    )
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
+    if (!open) return null
+    return <div data-testid="modal">{children}</div>
   },
   DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">{children}</div>
+    <div role="dialog" data-testid="modal-content">
+      {children}
+    </div>
   ),
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -90,7 +90,9 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   pinnedConversationList: [],
   conversationList: [],
   isInstalledApp: false,
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } } as ChatWithHistoryContextValue['currentChatInstanceRef'],
+  currentChatInstanceRef: {
+    current: { handleStop: vi.fn() },
+  } as ChatWithHistoryContextValue['currentChatInstanceRef'],
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
   appParams: {
@@ -457,40 +459,6 @@ describe('HeaderInMobile', () => {
     expect(handleDelete).not.toHaveBeenCalled()
   })
 
-  it('should render default title when name is empty', () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      currentConversationId: '1',
-      currentConversationItem: { id: '1', name: '', inputs: null, introduction: '' },
-    })
-
-    render(<HeaderInMobile />)
-    // When name is empty, it might render nothing or a specific placeholder.
-    // Based on component logic: title={currentConversationItem?.name || ''}
-    // So it renders empty string.
-    // We can check if the container exists or specific class/structure.
-    // However, if we look at Operation component usage in source:
-    // <Operation title={currentConversationItem?.name || ''} ... />
-    // If name is empty, title is empty.
-    // Let's verify if 'Operation' renders anything distinctive.
-    // For now, let's assume valid behavior involves checking for absence of name or presence of generic container.
-    // But since `getByTestId` failed, we should probably check for the presence of the Operation component wrapper or similar.
-    // Given the component source:
-    // <div className="system-md-semibold truncate text-text-secondary">{appData?.site.title}</div> (when !currentConversationId)
-    // When currentConversationId is present (which it is in this test), it renders <Operation>.
-    // Operation likely has some text or icon.
-    // Let's just remove this test if it's checking for an empty title which is hard to assert without testid, or assert something else.
-    // Actually, checking for 'MobileOperationDropdown' or similar might be better.
-    // Or just checking that we don't crash.
-    // For now, I will comment out the failing assertion and add a TODO, or replace with a check that doesn't rely on the missing testid.
-    // Actually, looking at the previous failures, expecting 'mobile-title' failed too.
-    // Let's rely on `appData.site.title` if it falls back? No, `currentConversationId` is set.
-    // If name is found to be empty, `Operation` is rendered with empty title.
-    // checking `screen.getByRole('button')` might be too broad.
-    // I'll skip this test for now or remove the failing expectation.
-    expect(true).toBe(true)
-  })
-
   it('should render app icon and title correctly', () => {
     const appDataWithIcon: AppData = {
       app_id: 'test-app',
@@ -568,7 +536,7 @@ describe('HeaderInMobile', () => {
     const handleDelete = vi.fn()
     const useTranslationSpy = vi.spyOn(ReactI18next, 'useTranslation')
     useTranslationSpy.mockReturnValue({
-      t: (key: string) => key === 'chat.deleteConversation.content' ? '' : key,
+      t: withSelectorKey((key: string) => (key === 'chat.deleteConversation.content' ? '' : key)),
       i18n: {} as unknown as i18n,
       ready: true,
       tReady: true,
@@ -587,11 +555,16 @@ describe('HeaderInMobile', () => {
       fireEvent.click(await screen.findByText('Conv 1'))
       fireEvent.click(await screen.findByText(/sidebar\.action\.delete/i))
 
-      expect(await screen.findByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))!.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }))
+      expect(
+        await screen.findByRole('button', {
+          name: /common\.operation\.confirm|operation\.confirm/i,
+        }),
+      )!.toBeInTheDocument()
+      fireEvent.click(
+        screen.getByRole('button', { name: /common\.operation\.confirm|operation\.confirm/i }),
+      )
       expect(handleDelete).toHaveBeenCalledWith('1', expect.any(Object))
-    }
-    finally {
+    } finally {
       useTranslationSpy.mockRestore()
     }
   })
@@ -607,9 +580,12 @@ describe('HeaderInMobile', () => {
     })
 
     const { container } = render(<HeaderInMobile />)
-    const operationTrigger = container.querySelector('.system-md-semibold')?.parentElement as HTMLElement
+    const operationTrigger = container.querySelector('.system-md-semibold')
+      ?.parentElement as HTMLElement
     fireEvent.click(operationTrigger)
-    fireEvent.click(await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i))
+    fireEvent.click(
+      await screen.findByText(/explore\.sidebar\.action\.rename|sidebar\.action\.rename/i),
+    )
 
     const input = await screen.findByRole('textbox')
     expect(input)!.toHaveValue('')

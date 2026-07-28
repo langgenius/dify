@@ -4,29 +4,22 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
+import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
+from sqlalchemy.orm import Session
 
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
+from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
 
 MODULE = "core.plugin.plugin_service"
-
-
-class _FakeSession:
-    def __init__(self) -> None:
-        self.execute = Mock()
-        self.scalars = Mock(return_value=SimpleNamespace(all=Mock(return_value=[])))
-
-    def __enter__(self) -> "_FakeSession":
-        return self
-
-    def __exit__(self, exc_type, exc, traceback) -> None:
-        return None
-
-    def begin(self) -> "_FakeSession":
-        return self
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def _build_provider_entity(provider: str = "openai") -> ProviderEntity:
@@ -66,6 +59,16 @@ def _build_install_task(*, task_id: str = "task-1", status: PluginInstallTaskSta
         total_plugins=1,
         completed_plugins=1 if status != PluginInstallTaskStatus.Pending else 0,
         plugins=[],
+    )
+
+
+def _build_remote_model_plugin(
+    *, plugin_id: str = "langgenius/debug-model", plugin_unique_identifier: str = "langgenius/debug-model:1.0.0"
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        plugin_id=plugin_id,
+        plugin_unique_identifier=plugin_unique_identifier,
+        source=PluginInstallationSource.Remote,
     )
 
 
@@ -128,6 +131,61 @@ class TestFetchLatestPluginVersion:
 
 
 class TestPluginModelProviderCache:
+    def test_store_cached_plugin_model_providers_compresses_large_payload(self) -> None:
+        """Large provider metadata payloads are compressed before being stored in Redis."""
+        large_provider = _build_provider_entity()
+        large_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        raw_payload = TypeAdapter(list[ProviderEntity]).dump_json([large_provider])
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.dify_config") as mock_config,
+        ):
+            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
+
+            from core.plugin.plugin_service import PluginService
+
+            PluginService._store_cached_plugin_model_providers("tenant-1", 0, [large_provider])
+
+        redis_client.setex.assert_called_once()
+        stored_key, ttl, stored_payload = redis_client.setex.call_args.args
+        assert stored_key == cache_key
+        assert ttl == 86400
+        assert isinstance(stored_payload, bytes)
+        prefix = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
+        assert stored_payload.startswith(prefix)
+        assert len(stored_payload) < len(raw_payload)
+        assert zstandard.decompress(stored_payload[len(prefix) :]) == raw_payload
+
+    def test_fetch_plugin_model_providers_reads_compressed_cached_provider_without_calling_daemon(self) -> None:
+        """Compressed tenant cache entries are decoded before provider schema validation."""
+        cached_provider = _build_provider_entity()
+        cached_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider])
+        generation_key = _provider_generation_key("tenant-1")
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        from core.plugin.plugin_service import PluginService
+
+        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(
+            cached_payload, level=1
+        )
+
+        with patch(f"{MODULE}.redis_client") as redis_client:
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [compressed_payload]
+            client = Mock()
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+        assert result[0].label.en_us == "OpenAI " * 10000
+        client.fetch_model_providers.assert_not_called()
+        redis_client.setex.assert_not_called()
+        redis_client.get.assert_called_once_with(generation_key)
+        redis_client.mget.assert_called_once_with([cache_key])
+
     def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
         """A valid tenant cache entry is reused across runtime calls without plugin daemon access."""
         cached_provider = _build_provider_entity()
@@ -178,6 +236,26 @@ class TestPluginModelProviderCache:
             call([cache_key]),
             call([cache_key]),
         ]
+
+    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self) -> None:
+        """With the cache disabled the daemon is the only source, and Redis is never touched."""
+        with patch(f"{MODULE}.redis_client") as redis_client, patch(f"{MODULE}.dify_config") as config:
+            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
+            client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
+
+            from core.plugin.plugin_service import PluginService
+
+            first = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+            second = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert [provider.provider for provider in first] == ["langgenius/openai/openai"]
+        assert [provider.provider for provider in second] == ["langgenius/openai/openai"]
+        assert client.fetch_model_providers.call_count == 2
+        redis_client.get.assert_not_called()
+        redis_client.mget.assert_not_called()
+        redis_client.setex.assert_not_called()
+        redis_client.lock.assert_not_called()
 
     def test_fetch_plugin_model_providers_refetches_when_cache_read_fails(self) -> None:
         """Redis read failures do not block provider discovery for the tenant."""
@@ -740,6 +818,144 @@ class TestPluginListEndpointCounts:
 
 
 class TestPluginModelProviderCacheInvalidation:
+    def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
+        """Reading a debug key does not mean a debug runtime has registered a model provider."""
+        with (
+            patch(f"{MODULE}.PluginDebuggingClient") as debugging_client_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            debugging_client_cls.return_value.get_debugging_key.return_value = "debug-key"
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.get_debugging_key("tenant-1")
+
+        assert result == "debug-key"
+        debugging_client_cls.return_value.get_debugging_key.assert_called_once_with("tenant-1")
+        invalidate_cache.assert_not_called()
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_is_missing_from_provider_cache(self) -> None:
+        """Remote model plugins are daemon-registered, so category reads repair a stale provider cache."""
+        remote_plugin = _build_remote_model_plugin()
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value=remote_plugin_marker,
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/openai"},
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
+            "tenant-1", PluginCategory.Model, 1, 100
+        )
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_identity_changes(self) -> None:
+        """A debug model plugin can share plugin_id with an installed plugin, so identity changes bust cache too."""
+        remote_plugin = _build_remote_model_plugin(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:debug",
+        )
+        remote_plugin_marker = "langgenius/openai:langgenius/openai:debug"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/openai:langgenius/openai:1.0.0",
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/openai"},
+            ) as load_cached_provider_plugin_ids,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_called_once_with("tenant-1")
+        load_cached_provider_plugin_ids.assert_not_called()
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_keeps_provider_cache_when_remote_model_plugin_is_already_cached(self) -> None:
+        """A connected remote model plugin should not force provider cache churn once represented."""
+        remote_plugin = _build_remote_model_plugin()
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+        plugins = SimpleNamespace(list=[remote_plugin], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value=remote_plugin_marker,
+            ),
+            patch(
+                f"{MODULE}.PluginService._load_cached_plugin_model_provider_plugin_ids",
+                return_value={"langgenius/debug-model"},
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
+    def test_list_model_category_invalidates_when_remote_model_plugin_disconnects(self) -> None:
+        """The current model category result clears provider cache when the previous debug model disappears."""
+        installed_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0",
+            source=PluginInstallationSource.Marketplace,
+        )
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=True)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/debug-model:langgenius/debug-model:1.0.0",
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, 1, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", None)
+
     def test_fetch_install_task_invalidates_model_provider_cache_when_finished(self) -> None:
         """Finished plugin install tasks invalidate tenant provider cache."""
         task = _build_install_task(status=PluginInstallTaskStatus.Success)
@@ -832,9 +1048,27 @@ class TestPluginModelProviderCacheInvalidation:
 
             from core.plugin.plugin_service import PluginService
 
-            result = PluginService.install_from_local_pkg("tenant-1", ["langgenius/openai:1.0.0"])
+            result = PluginService.install_from_local_pkg(
+                "tenant-1",
+                [
+                    "langgenius/openai:1.0.0",
+                    "langgenius/tavily:1.0.0",
+                ],
+            )
 
         assert result == "task-id"
+        installer.install_from_identifiers.assert_called_once_with(
+            "tenant-1",
+            [
+                "langgenius/openai:1.0.0",
+                "langgenius/tavily:1.0.0",
+            ],
+            PluginInstallationSource.Package,
+            [
+                {"plugin_unique_identifier": "langgenius/openai:1.0.0"},
+                {"plugin_unique_identifier": "langgenius/tavily:1.0.0"},
+            ],
+        )
         invalidate_cache.assert_called_once_with("tenant-1")
 
     def test_upgrade_plugin_with_github_invalidates_model_provider_cache_for_tenant(self) -> None:
@@ -923,19 +1157,72 @@ class TestPluginModelProviderCacheInvalidation:
         assert result is True
         invalidate_cache.assert_called_once_with("tenant-1")
 
-    def test_uninstall_existing_plugin_invalidates_cache_after_credential_cleanup(self) -> None:
+    @pytest.mark.parametrize(
+        "sqlite_session", [(Provider, ProviderCredential, TenantPreferredModelProvider)], indirect=True
+    )
+    def test_uninstall_existing_plugin_invalidates_cache_after_credential_cleanup(
+        self, sqlite_session: Session
+    ) -> None:
         """Successful uninstall with plugin metadata also invalidates the mutated tenant provider cache."""
+        plugin_id = "langgenius/openai"
+        provider_name = f"{plugin_id}/openai"
         plugin = SimpleNamespace(
             installation_id="installation-1",
-            plugin_id="langgenius/openai",
+            plugin_id=plugin_id,
             plugin_unique_identifier="langgenius/openai:1.0.0",
         )
-        session = _FakeSession()
+        credential = ProviderCredential(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            credential_name="Target credential",
+            encrypted_config="{}",
+            user_id=USER_ID,
+        )
+        other_credential = ProviderCredential(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            credential_name="Other credential",
+            encrypted_config="{}",
+            user_id=USER_ID,
+        )
+        sqlite_session.add_all([credential, other_credential])
+        sqlite_session.flush()
+        provider = Provider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            provider_type=ProviderType.CUSTOM,
+            credential_id=credential.id,
+        )
+        other_provider = Provider(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            provider_type=ProviderType.CUSTOM,
+            credential_id=other_credential.id,
+        )
+        preferred_provider = TenantPreferredModelProvider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        other_preferred_provider = TenantPreferredModelProvider(
+            tenant_id=OTHER_TENANT_ID,
+            provider_name=provider_name,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        sqlite_session.add_all([provider, other_provider, preferred_provider, other_preferred_provider])
+        sqlite_session.commit()
+        credential_id = credential.id
+        other_credential_id = other_credential.id
+        provider_id = provider.id
+        other_provider_id = other_provider.id
+        preferred_provider_id = preferred_provider.id
+        other_preferred_provider_id = other_preferred_provider.id
+
         with (
-            patch(f"{MODULE}.db", SimpleNamespace(engine=object())),
+            patch(f"{MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind())),
             patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
-            patch(f"{MODULE}.Session", return_value=session),
+            patch(f"{MODULE}.ProviderCredentialsCache") as credentials_cache,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_config.ENTERPRISE_ENABLED = False
@@ -945,8 +1232,26 @@ class TestPluginModelProviderCacheInvalidation:
 
             from core.plugin.plugin_service import PluginService
 
-            result = PluginService.uninstall("tenant-1", "installation-1")
+            result = PluginService.uninstall(TENANT_ID, "installation-1")
 
         assert result is True
-        installer.uninstall.assert_called_once_with("tenant-1", "installation-1")
-        invalidate_cache.assert_called_once_with("tenant-1")
+        installer.uninstall.assert_called_once_with(TENANT_ID, "installation-1")
+        invalidate_cache.assert_called_once_with(TENANT_ID)
+        credentials_cache.assert_called_once_with(
+            tenant_id=TENANT_ID,
+            identity_id=provider_id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+        )
+        credentials_cache.return_value.delete.assert_called_once_with()
+
+        sqlite_session.expunge_all()
+        assert sqlite_session.get(ProviderCredential, credential_id) is None
+        persisted_provider = sqlite_session.get(Provider, provider_id)
+        assert persisted_provider is not None
+        assert persisted_provider.credential_id is None
+        assert sqlite_session.get(TenantPreferredModelProvider, preferred_provider_id) is None
+        assert sqlite_session.get(ProviderCredential, other_credential_id) is not None
+        persisted_other_provider = sqlite_session.get(Provider, other_provider_id)
+        assert persisted_other_provider is not None
+        assert persisted_other_provider.credential_id == other_credential_id
+        assert sqlite_session.get(TenantPreferredModelProvider, other_preferred_provider_id) is not None

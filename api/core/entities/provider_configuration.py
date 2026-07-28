@@ -1188,7 +1188,17 @@ class ProviderConfiguration(BaseModel):
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                fallback_stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                )
+                credential_record = session.execute(fallback_stmt).scalar_one_or_none()
+                if not credential_record:
+                    raise ValueError("Credential record not found.")
+
+                model = credential_record.model_name
+                model_type = ModelType(credential_record.model_type)
 
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
@@ -1223,16 +1233,24 @@ class ProviderConfiguration(BaseModel):
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
 
+                model_credentials_cache_identity_id: str | None = None
+                if provider_model_record and (
+                    available_credentials_count <= 1 or provider_model_record.credential_id == credential_id
+                ):
+                    model_credentials_cache_identity_id = provider_model_record.id
+
                 if provider_model_record and available_credentials_count <= 1:
                     # If all credentials are deleted, delete the custom model record
                     session.delete(provider_model_record)
                 elif provider_model_record and provider_model_record.credential_id == credential_id:
                     provider_model_record.credential_id = None
                     provider_model_record.updated_at = naive_utc_now()
+
+                if model_credentials_cache_identity_id:
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
-                        identity_id=provider_model_record.id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                        identity_id=model_credentials_cache_identity_id,
+                        cache_type=ProviderCredentialsCacheType.MODEL,
                     )
                     provider_model_credentials_cache.delete()
 

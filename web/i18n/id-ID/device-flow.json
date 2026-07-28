@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Tidak dapat memverifikasi kode",
   "errorRateLimited.body": "Tunggu sebentar lalu coba lagi.",
   "errorRateLimited.title": "Terlalu banyak percobaan",
+  "errorSso.backToLoginOptions": "← Kembali ke opsi masuk",
+  "errorSso.title": "Proses masuk tidak dapat diselesaikan",
   "ssoError.default": "Single sign-on tidak dapat diselesaikan. Coba lagi.",
   "ssoError.emailBelongsToDifyAccount": "Identitas ini terhubung dengan akun Dify. Gunakan “Masuk dengan akun Dify” sebagai gantinya.",
   "success.goToConsole": "Buka konsol Dify →",

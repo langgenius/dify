@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Codul nu a putut fi verificat",
   "errorRateLimited.body": "Așteaptă un moment și încearcă din nou.",
   "errorRateLimited.title": "Prea multe încercări",
+  "errorSso.backToLoginOptions": "← Înapoi la opțiunile de autentificare",
+  "errorSso.title": "Autentificarea nu a putut fi finalizată",
   "ssoError.default": "Autentificarea unică (SSO) nu a putut fi finalizată. Încearcă din nou.",
   "ssoError.emailBelongsToDifyAccount": "Această identitate este asociată cu un cont Dify. Folosește în schimb „Autentifică-te cu un cont Dify”.",
   "success.goToConsole": "Mergi la consola Dify →",

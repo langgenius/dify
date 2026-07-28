@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Не вдалося перевірити код",
   "errorRateLimited.body": "Зачекайте трохи й спробуйте ще раз.",
   "errorRateLimited.title": "Забагато спроб",
+  "errorSso.backToLoginOptions": "← Назад до варіантів входу",
+  "errorSso.title": "Не вдалося завершити вхід",
   "ssoError.default": "Не вдалося завершити єдиний вхід (SSO). Спробуйте ще раз.",
   "ssoError.emailBelongsToDifyAccount": "Цю особу пов'язано з обліковим записом Dify. Натомість скористайтеся «Увійти з обліковим записом Dify».",
   "success.goToConsole": "Перейти до консолі Dify →",

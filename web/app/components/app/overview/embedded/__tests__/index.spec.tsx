@@ -1,11 +1,11 @@
 import type { SiteInfo } from '@/models/share'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
-
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Embedded from '../index'
 
 vi.mock('../style.module.css', () => ({
@@ -24,26 +24,11 @@ const mockThemeBuilder = {
     primaryColor: '#123456',
   },
 }
-const mockUseAppContext = vi.fn(() => ({
-  langGeniusVersionInfo: {
-    current_env: 'PRODUCTION',
-    current_version: '',
-    latest_version: '',
-    release_date: '',
-    release_notes: '',
-    version: '',
-    can_auto_update: false,
-  },
-}))
-
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
   useThemeContext: () => mockThemeBuilder,
-}))
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
 }))
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
@@ -66,7 +51,7 @@ const baseProps = {
 
 const getCopyButton = () => {
   const buttons = screen.getAllByRole('button')
-  const actionButton = buttons.find(button => button.className.includes('action-btn'))
+  const actionButton = buttons.find((button) => button.className.includes('action-btn'))
   expect(actionButton).toBeDefined()
   return actionButton!
 }
@@ -104,7 +89,12 @@ describe('Embedded', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText((content, node) => node?.tagName.toLowerCase() === 'pre' && content.includes('/chatbot/token'))).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          (content, node) =>
+            node?.tagName.toLowerCase() === 'pre' && content.includes('/chatbot/token'),
+        ),
+      ).toBeInTheDocument()
     })
 
     const actionButton = getCopyButton()
@@ -113,7 +103,10 @@ describe('Embedded', () => {
       fireEvent.click(innerDiv ?? actionButton)
     })
 
-    expect(mockThemeBuilder.buildTheme).toHaveBeenCalledWith(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
+    expect(mockThemeBuilder.buildTheme).toHaveBeenCalledWith(
+      siteInfo.chat_color_theme,
+      siteInfo.chat_color_theme_inverted,
+    )
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
     })
@@ -160,21 +153,27 @@ describe('Embedded', () => {
     render(
       <Embedded
         {...baseProps}
-        hiddenInputs={[{
-          variable: 'secret',
-          label: 'Secret',
-          type: InputVarType.textInput,
-          hide: true,
-          required: true,
-          default: '',
-        }]}
+        hiddenInputs={[
+          {
+            variable: 'secret',
+            label: 'Secret',
+            type: InputVarType.textInput,
+            hide: true,
+            required: true,
+            default: '',
+          },
+        ]}
       />,
     )
 
     expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title').closest('button')!)
+      fireEvent.click(
+        screen
+          .getByText('appOverview.overview.appInfo.embedded.hiddenInputs.title')
+          .closest('button')!,
+      )
     })
 
     await waitFor(() => {
@@ -217,7 +216,7 @@ describe('Embedded', () => {
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
-      expect(codeBlock?.textContent ?? '').toContain('token: \'token\'')
+      expect(codeBlock?.textContent ?? '').toContain("token: 'token'")
     })
 
     const actionButton = getCopyButton()
@@ -227,7 +226,7 @@ describe('Embedded', () => {
     })
 
     await waitFor(() => {
-      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('token: \'token\''))
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining("token: 'token'"))
     })
   })
 

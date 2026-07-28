@@ -1,11 +1,7 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getButtonConfig } from './button-config'
@@ -34,7 +30,7 @@ function ModelAuthDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <Button
             className="flex w-full min-w-0 justify-center px-2"
             size="small"
@@ -42,11 +38,9 @@ function ModelAuthDropdown({
             title={buttonConfig.text}
           >
             <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
-            <span className="min-w-0 truncate">
-              {buttonConfig.text}
-            </span>
+            <span className="min-w-0 truncate">{buttonConfig.text}</span>
           </Button>
-        )}
+        }
       />
       <PopoverContent placement="bottom-end">
         <DropdownContent

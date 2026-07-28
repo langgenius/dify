@@ -4,20 +4,19 @@ import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { VersionTimelineDot } from './version-timeline-dot'
 
-function VersionMetadata({
-  version,
-}: {
-  version: AgentConfigSnapshotSummaryResponse
-}) {
+function VersionMetadata({ version }: { version: AgentConfigSnapshotSummaryResponse }) {
   const { t } = useTranslation('agentV2')
   const { formatTime } = useTimestamp()
 
-  if (version.created_at == null && !version.created_by)
-    return null
+  if (version.created_at == null && !version.created_by) return null
 
   return (
     <p className="truncate system-xs-regular text-text-tertiary">
-      {version.created_at != null && formatTime(version.created_at, t('roster.dateTimeFormat'))}
+      {version.created_at != null &&
+        formatTime(
+          version.created_at,
+          t(($) => $['roster.dateTimeFormat']),
+        )}
       {version.created_at != null && version.created_by && ' · '}
       {version.created_by}
     </p>
@@ -42,7 +41,9 @@ export function VersionItem({
   const { t } = useTranslation('agentV2')
   const { t: tWorkflow } = useTranslation('workflow')
   const isActive = version.id === activeVersionId
-  const label = version.version_note || t('agentDetail.versionHistory.versionName', { version: version.version })
+  const label =
+    version.version_note ||
+    t(($) => $['agentDetail.versionHistory.versionName'], { version: version.version })
 
   return (
     <button
@@ -57,12 +58,17 @@ export function VersionItem({
       <VersionTimelineDot isActive={isActive} isFirst={isFirst} isLast={isLast} />
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex min-w-0 items-center gap-1">
-          <p className={cn('truncate system-sm-semibold', isActive ? 'text-text-accent' : 'text-text-secondary')}>
+          <p
+            className={cn(
+              'truncate system-sm-semibold',
+              isActive ? 'text-text-accent' : 'text-text-secondary',
+            )}
+          >
             {label}
           </p>
           {isLatest && (
             <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-accent-secondary">
-              {tWorkflow('versionHistory.latest')}
+              {tWorkflow(($) => $['versionHistory.latest'])}
             </span>
           )}
         </div>

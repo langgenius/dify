@@ -1,10 +1,17 @@
 import type { ServerType } from '@hono/node-server'
+import type { Duplex } from 'node:stream'
 import type { DevProxyCliOptions, DevProxyConfig } from './types'
 import process from 'node:process'
 import { serve } from '@hono/node-server'
 import { watch } from 'chokidar'
-import { assertDevProxyConfig, loadDevProxyConfig, parseDevProxyCliArgs, resolveDevProxyServerOptions, watchDevProxyConfig } from './config'
-import { createDevProxyApp } from './server'
+import {
+  assertDevProxyConfig,
+  loadDevProxyConfig,
+  parseDevProxyCliArgs,
+  resolveDevProxyServerOptions,
+  watchDevProxyConfig,
+} from './config'
+import { createDevProxyApp, createWebSocketUpgradeHandler } from './server'
 
 function printUsage() {
   console.log(`Usage:
@@ -22,35 +29,47 @@ Options:
 
 async function flushStandardStreams() {
   await Promise.all([
-    new Promise<void>(resolve => process.stdout.write('', () => resolve())),
-    new Promise<void>(resolve => process.stderr.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stdout.write('', () => resolve())),
+    new Promise<void>((resolve) => process.stderr.write('', () => resolve())),
   ])
 }
 
-const closeServer = (server: ServerType) => new Promise<void>((resolve, reject) => {
-  server.close((error) => {
-    if (error)
-      reject(error)
-    else
-      resolve()
+const closeServer = (server: ServerType) =>
+  new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) reject(error)
+      else resolve()
+    })
   })
-})
 
 const startDevProxyServer = (config: DevProxyConfig, cliOptions: DevProxyCliOptions) => {
   let app = createDevProxyApp(config)
+  let handleWebSocketUpgrade = createWebSocketUpgradeHandler(config)
+  const upgradedSockets = new Set<Duplex>()
   const { host, port } = resolveDevProxyServerOptions(config.server, cliOptions)
   const server = serve({
     fetch: (request, env) => app.fetch(request, env),
     hostname: host,
     port,
   })
+  server.on('upgrade', (request, socket, head) => {
+    upgradedSockets.add(socket)
+    socket.once('close', () => upgradedSockets.delete(socket))
+    handleWebSocketUpgrade(request, socket, head)
+  })
 
   return {
     host,
     port,
     server,
+    close() {
+      upgradedSockets.forEach((socket) => socket.destroy())
+      upgradedSockets.clear()
+      return closeServer(server)
+    },
     updateConfig(nextConfig: DevProxyConfig) {
       app = createDevProxyApp(nextConfig)
+      handleWebSocketUpgrade = createWebSocketUpgradeHandler(nextConfig)
     },
   }
 }
@@ -71,7 +90,7 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
       return
     }
 
-    await closeServer(runtime.server)
+    await runtime.close()
     runtime = startDevProxyServer(nextConfig, cliOptions)
     console.log(`[dev-proxy] restarted on http://${runtime.host}:${runtime.port} after ${reason}`)
   }
@@ -80,8 +99,7 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
     reloadTask = reloadTask.then(async () => {
       try {
         await reload(await loadConfig(), reason)
-      }
-      catch (error) {
+      } catch (error) {
         console.error(`[dev-proxy] failed to reload ${reason}`)
         console.error(error instanceof Error ? error.message : error)
       }
@@ -94,7 +112,7 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
     enqueueReload,
     close: async () => {
       await reloadTask
-      await closeServer(runtime.server)
+      await runtime.close()
     },
   }
 }
@@ -112,8 +130,7 @@ async function main() {
   })
   const runtime = createDevProxyRuntime(config, cliOptions)
 
-  if (cliOptions.watch === false)
-    return
+  if (cliOptions.watch === false) return
 
   const configWatcher = await watchDevProxyConfig(cliOptions.config, process.cwd(), {
     envFile: cliOptions.envFile,
@@ -129,9 +146,10 @@ async function main() {
 
   envWatcher?.on('all', () => {
     void runtime.enqueueReload(
-      () => loadDevProxyConfig(cliOptions.config, process.cwd(), {
-        envFile: cliOptions.envFile,
-      }),
+      () =>
+        loadDevProxyConfig(cliOptions.config, process.cwd(), {
+          envFile: cliOptions.envFile,
+        }),
       'env file changes',
     )
   })
@@ -153,8 +171,7 @@ async function main() {
 try {
   await main()
   await flushStandardStreams()
-}
-catch (error) {
+} catch (error) {
   console.error(error instanceof Error ? error.message : error)
   await flushStandardStreams()
   process.exit(1)

@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Không thể xác minh mã",
   "errorRateLimited.body": "Vui lòng đợi một chút rồi thử lại.",
   "errorRateLimited.title": "Quá nhiều lần thử",
+  "errorSso.backToLoginOptions": "← Quay lại các tùy chọn đăng nhập",
+  "errorSso.title": "Không thể hoàn tất đăng nhập",
   "ssoError.default": "Không thể hoàn tất đăng nhập một lần (SSO). Vui lòng thử lại.",
   "ssoError.emailBelongsToDifyAccount": "Danh tính này đã được liên kết với một tài khoản Dify. Hãy dùng “Đăng nhập bằng tài khoản Dify” thay thế.",
   "success.goToConsole": "Đến bảng điều khiển Dify →",

@@ -17,16 +17,15 @@ function MobileDetailTabs() {
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const activeTab = useAtomValue(deploymentDetailActiveTabAtom)
 
-  if (!appInstanceId)
-    return null
+  if (!appInstanceId) return null
 
   return (
     <nav
-      aria-label={t('detail.mobileTabs')}
+      aria-label={t(($) => $['detail.mobileTabs'])}
       className="border-b border-divider-subtle bg-components-panel-bg px-4 pc:hidden"
     >
       <div className="flex min-w-0 scrollbar-none gap-1 overflow-x-auto py-2">
-        {INSTANCE_DETAIL_TAB_KEYS.map(tab => (
+        {INSTANCE_DETAIL_TAB_KEYS.map((tab) => (
           <Link
             key={tab}
             href={`/deployments/${appInstanceId}/${tab}`}
@@ -36,7 +35,7 @@ function MobileDetailTabs() {
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
             }`}
           >
-            {t(`tabs.${tab}.name`)}
+            {t(($) => $[`tabs.${tab}.name`])}
           </Link>
         ))}
       </div>
@@ -44,17 +43,14 @@ function MobileDetailTabs() {
   )
 }
 
-export function InstanceDetail({ children }: {
-  children: ReactNode
-}) {
+export function InstanceDetail({ children }: { children: ReactNode }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const activeTab = useAtomValue(deploymentDetailActiveTabAtom)
 
-  useDocumentTitle(t('documentTitle.detail'))
+  useDocumentTitle(t(($) => $['documentTitle.detail']))
 
-  if (!appInstanceId)
-    return null
+  if (!appInstanceId) return null
 
   return (
     <div className="relative m-1 ml-0 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg shadow-xs">
@@ -65,20 +61,26 @@ export function InstanceDetail({ children }: {
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                    <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
+                    <div className="system-xl-semibold text-text-primary">
+                      {t(($) => $[`tabs.${activeTab}.name`])}
+                    </div>
                     {activeTab === 'api-tokens' && (
                       <div className="shrink-0">
                         <DeveloperApiHeaderSwitch />
                       </div>
                     )}
                   </div>
-                  <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
+                  <div className="system-sm-regular text-text-tertiary">
+                    {t(($) => $[`tabs.${activeTab}.description`])}
+                  </div>
                 </div>
                 {(activeTab === 'instances' || activeTab === 'releases') && (
                   <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
-                    {activeTab === 'instances'
-                      ? <NewDeploymentHeaderAction />
-                      : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+                    {activeTab === 'instances' ? (
+                      <NewDeploymentHeaderAction />
+                    ) : (
+                      <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />
+                    )}
                   </div>
                 )}
               </div>

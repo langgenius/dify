@@ -4,6 +4,7 @@ import type { ReactElement } from 'react'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { ApiBasedExtensionModal } from '../modal'
 
 const { mockCreateApiBasedExtension, mockUpdateApiBasedExtension, mockToast } = vi.hoisted(() => {
@@ -44,7 +45,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
     isPending: false,
     mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
     },
   })),
 }))
@@ -57,7 +58,9 @@ describe('ApiBasedExtensionModal', () => {
   const mockOnOpenChange = vi.fn()
   const mockOnSaved = vi.fn()
   const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
-  const mockExtension = (overrides: Partial<ApiBasedExtensionResponse> = {}): ApiBasedExtensionResponse => ({
+  const mockExtension = (
+    overrides: Partial<ApiBasedExtensionResponse> = {},
+  ): ApiBasedExtensionResponse => ({
     id: '1',
     name: 'Existing',
     api_endpoint: 'url',
@@ -66,13 +69,17 @@ describe('ApiBasedExtensionModal', () => {
   })
 
   const render = (ui: ReactElement) => RTLRender(ui)
-  const renderModal = (props: {
-    open?: boolean
-  } | {
-    mode: 'edit'
-    apiBasedExtension: ApiBasedExtensionResponse
-    open?: boolean
-  } = {}) => {
+  const renderModal = (
+    props:
+      | {
+          open?: boolean
+        }
+      | {
+          mode: 'edit'
+          apiBasedExtension: ApiBasedExtensionResponse
+          open?: boolean
+        } = {},
+  ) => {
     if ('mode' in props) {
       return render(
         <ApiBasedExtensionModal
@@ -110,11 +117,19 @@ describe('ApiBasedExtensionModal', () => {
       renderModal()
 
       // Assert
-      expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.modal.title')).toBeInTheDocument()
-      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.name.title' })).toHaveAttribute('required')
-      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiEndpoint.title' })).toHaveAccessibleDescription('common.apiBasedExtension.link')
-      expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' })).toHaveAttribute('required')
+      expect(
+        screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.name.title' }),
+      ).toHaveAttribute('required')
+      expect(
+        screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiEndpoint.title' }),
+      ).toHaveAccessibleDescription('common.apiBasedExtension.link')
+      expect(
+        screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' }),
+      ).toHaveAttribute('required')
     })
 
     it('should render correctly for editing an existing extension', () => {
@@ -153,9 +168,18 @@ describe('ApiBasedExtensionModal', () => {
       renderModal()
 
       // Act
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        { target: { value: 'New Ext' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        { target: { value: 'https://api.test' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        { target: { value: 'secret-key' } },
+      )
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -230,15 +254,28 @@ describe('ApiBasedExtensionModal', () => {
       renderModal()
 
       // Act
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'url' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: '123' } })
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        { target: { value: 'Ext' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        { target: { value: 'url' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        { target: { value: '123' } },
+      )
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
       await waitFor(() => {
-        expect(screen.getByText('common.apiBasedExtension.modal.apiKey.lengthError')).toBeInTheDocument()
-        expect(screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' })).toHaveAttribute('aria-invalid', 'true')
+        expect(
+          screen.getByText('common.apiBasedExtension.modal.apiKey.lengthError'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByRole('textbox', { name: 'common.apiBasedExtension.modal.apiKey.title' }),
+        ).toHaveAttribute('aria-invalid', 'true')
       })
       expect(mockToast.error).not.toHaveBeenCalled()
       expect(mockCreateApiBasedExtension).not.toHaveBeenCalled()
@@ -307,19 +344,18 @@ describe('ApiBasedExtensionModal', () => {
         t: (key: string) => key,
         i18n: { language: 'en', changeLanguage: vi.fn() },
       }
+      const missingKeys = [
+        'apiBasedExtension.modal.name.placeholder',
+        'apiBasedExtension.modal.apiEndpoint.placeholder',
+        'apiBasedExtension.modal.apiKey.placeholder',
+      ]
 
       useTranslationSpy.mockReturnValue({
         ...originalValue,
-        t: vi.fn().mockImplementation((key: string) => {
-          const missingKeys = [
-            'apiBasedExtension.modal.name.placeholder',
-            'apiBasedExtension.modal.apiEndpoint.placeholder',
-            'apiBasedExtension.modal.apiKey.placeholder',
-          ]
-          if (missingKeys.some(k => key.includes(k)))
-            return ''
-          return key
-        }) as unknown as TFunction,
+        t: withSelectorKey((key: string) => {
+          if (missingKeys.includes(key)) return ''
+          return `common.${key}`
+        }, 'common') as unknown as TFunction,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

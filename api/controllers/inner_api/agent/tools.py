@@ -2,11 +2,12 @@
 
 from flask_restx import Resource
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import agent_inner_api_only
-from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
@@ -46,7 +47,8 @@ class AgentToolInvokeApi(Resource):
     @inner_api_ns.doc("inner_agent_tool_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentToolInvokeRequest.__name__])
     @inner_api_ns.response(200, "Tool invoked successfully", inner_api_ns.models[AgentToolInvokeResponse.__name__])
-    def post(self) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session) -> dict[str, object]:
         try:
             payload = AgentToolInvokeRequest.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -57,7 +59,7 @@ class AgentToolInvokeApi(Resource):
             ) from exc
 
         try:
-            response = AgentToolInnerService().invoke(payload, session=db.session())
+            response = AgentToolInnerService().invoke(session=session, request=payload)
         except AgentToolInnerServiceError as exc:
             raise AgentToolInvokeHttpError(
                 error_code=exc.error_code,

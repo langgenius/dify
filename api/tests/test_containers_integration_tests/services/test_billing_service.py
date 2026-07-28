@@ -417,7 +417,7 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
         account, _ = self._create_account_with_tenant_role(db_session_with_containers, TenantAccountRole.EDITOR)
 
         with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
-            BillingService.is_tenant_owner_or_admin(db_session_with_containers, account)
+            BillingService.is_tenant_owner_or_admin(account, session=db_session_with_containers)
 
     def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self, db_session_with_containers: Session) -> None:
         """is_tenant_owner_or_admin raises ValueError for DATASET_OPERATOR role."""
@@ -426,4 +426,4 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
         )
 
         with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
-            BillingService.is_tenant_owner_or_admin(db_session_with_containers, account)
+            BillingService.is_tenant_owner_or_admin(account, session=db_session_with_containers)

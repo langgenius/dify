@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "無法驗證此驗證碼",
   "errorRateLimited.body": "請稍候片刻後再試。",
   "errorRateLimited.title": "嘗試次數過多",
+  "errorSso.backToLoginOptions": "← 返回登入選項",
+  "errorSso.title": "登入未能完成",
   "ssoError.default": "單一登入未能完成，請再試一次。",
   "ssoError.emailBelongsToDifyAccount": "此身分已連結至 Dify 帳戶，請改用「使用 Dify 帳戶登入」。",
   "success.goToConsole": "前往 Dify 主控台 →",

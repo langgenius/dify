@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Nie udało się zweryfikować kodu",
   "errorRateLimited.body": "Poczekaj chwilę i spróbuj ponownie.",
   "errorRateLimited.title": "Zbyt wiele prób",
+  "errorSso.backToLoginOptions": "← Wróć do opcji logowania",
+  "errorSso.title": "Nie udało się ukończyć logowania",
   "ssoError.default": "Nie udało się ukończyć logowania jednokrotnego. Spróbuj ponownie.",
   "ssoError.emailBelongsToDifyAccount": "Ta tożsamość jest powiązana z kontem Dify. Zamiast tego użyj opcji „Zaloguj się przez konto Dify”.",
   "success.goToConsole": "Przejdź do konsoli Dify →",

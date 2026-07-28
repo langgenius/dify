@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "코드를 확인할 수 없습니다",
   "errorRateLimited.body": "잠시 기다린 후 다시 시도하세요.",
   "errorRateLimited.title": "시도 횟수가 너무 많습니다",
+  "errorSso.backToLoginOptions": "← 로그인 옵션으로 돌아가기",
+  "errorSso.title": "로그인을 완료할 수 없습니다",
   "ssoError.default": "싱글 사인온을 완료할 수 없습니다. 다시 시도하세요.",
   "ssoError.emailBelongsToDifyAccount": "이 계정은 Dify 계정에 연결되어 있습니다. 대신 「Dify 계정으로 로그인」을 사용하세요.",
   "success.goToConsole": "Dify 콘솔로 이동 →",

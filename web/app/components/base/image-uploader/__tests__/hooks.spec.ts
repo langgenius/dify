@@ -301,7 +301,7 @@ describe('useImageFiles', () => {
     })
 
     expect(result.current.files).toHaveLength(2)
-    expect(result.current.files.map(f => f._id)).toEqual(['file-1', 'file-3'])
+    expect(result.current.files.map((f) => f._id)).toEqual(['file-1', 'file-3'])
   })
 })
 
@@ -312,9 +312,7 @@ describe('useLocalFileUploader', () => {
 
   it('should return disabled status and handleLocalFileUpload function', () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload, limit: 10 }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload, limit: 10 }))
 
     expect(result.current.disabled).toBe(false)
     expect(result.current.handleLocalFileUpload).toBeInstanceOf(Function)
@@ -322,9 +320,7 @@ describe('useLocalFileUploader', () => {
 
   it('should not upload when disabled', () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload, disabled: true }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload, disabled: true }))
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -337,9 +333,7 @@ describe('useLocalFileUploader', () => {
 
   it('should reject files with disallowed extensions', () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
     const file = new File(['test'], 'test.svg', { type: 'image/svg+xml' })
 
@@ -352,8 +346,8 @@ describe('useLocalFileUploader', () => {
 
   it('should reject files exceeding size limit', () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload, limit: 1 }), // 1MB limit
+    const { result } = renderHook(
+      () => useLocalFileUploader({ onUpload, limit: 1 }), // 1MB limit
     )
 
     // Create a file larger than 1MB
@@ -365,16 +359,12 @@ describe('useLocalFileUploader', () => {
     })
 
     expect(onUpload).not.toHaveBeenCalled()
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    )
+    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
   })
 
   it('should read file and call onUpload on successful FileReader load', async () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -401,9 +391,7 @@ describe('useLocalFileUploader', () => {
 
   it('should call onUpload with progress during imageUpload', async () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -421,16 +409,12 @@ describe('useLocalFileUploader', () => {
       uploadCall.onProgressCallback(75)
     })
 
-    expect(onUpload).toHaveBeenCalledWith(
-      expect.objectContaining({ progress: 75 }),
-    )
+    expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: 75 }))
   })
 
   it('should call onUpload with fileId and progress 100 on upload success', async () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -455,9 +439,7 @@ describe('useLocalFileUploader', () => {
 
   it('should notify error and call onUpload with progress -1 on upload failure', async () => {
     const onUpload = vi.fn()
-    const { result } = renderHook(() =>
-      useLocalFileUploader({ onUpload }),
-    )
+    const { result } = renderHook(() => useLocalFileUploader({ onUpload }))
 
     const file = new File(['test'], 'test.png', { type: 'image/png' })
 
@@ -475,11 +457,7 @@ describe('useLocalFileUploader', () => {
       uploadCall.onErrorCallback(new Error('fail'))
     })
 
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
-    )
-    expect(onUpload).toHaveBeenCalledWith(
-      expect.objectContaining({ progress: -1 }),
-    )
+    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+    expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({ progress: -1 }))
   })
 })

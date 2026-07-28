@@ -1,11 +1,11 @@
 import type {
-  AccountWithRole,
+  AccountWithRoleResponse,
   WorkflowCommentDetail as GeneratedWorkflowCommentDetail,
   WorkflowCommentBasic,
   WorkflowCommentReply,
 } from '@dify/contracts/api/console/apps/types.gen'
 
-export type UserProfile = Pick<AccountWithRole, 'id' | 'name' | 'email' | 'avatar_url'> & {
+export type UserProfile = Pick<AccountWithRoleResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar_url?: string | null
 }
 

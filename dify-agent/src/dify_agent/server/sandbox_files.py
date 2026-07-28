@@ -9,7 +9,11 @@ minimal compositor from ``SandboxLocator``, enters the saved
 The scripts still frame their structured payloads with a PTY-safe
 base64-between-sentinels envelope. shellctl jobs are tmux-backed, so raw JSON can
 be wrapped or surrounded by prompt noise; the framing keeps list/read/upload
-responses parseable without falling back to direct shellctl file access.
+responses parseable without falling back to direct shellctl file access. Path
+arguments resolve from the saved shell workspace cwd, and ``~`` resolves through
+the shell layer's injected sandbox ``HOME``. The scripts do not re-impose a
+workspace-root boundary, so callers can use ``../`` or ``~/...`` when the sandbox
+filesystem layout expects it.
 """
 
 from __future__ import annotations
@@ -63,21 +67,9 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-def resolve_target(root: Path, raw_path: str) -> tuple[Path | None, str]:
-    target = (root / raw_path).resolve()
-    if target != root and root not in target.parents:
-        emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-        return None, raw_path
-    return target, raw_path
-
-
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
 limit = int(sys.argv[2])
-target_info = resolve_target(root, raw_path)
-if target_info[0] is None:
-    sys.exit(0)
-target, normalized_path = target_info
+target = Path(raw_path).expanduser().resolve()
 
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
@@ -109,7 +101,7 @@ for child in sorted(target.iterdir(), key=lambda item: item.name)[:limit]:
 
 emit(
     {
-        "path": normalized_path,
+        "path": raw_path,
         "entries": entries,
         "truncated": len(list(target.iterdir())) > limit,
     }
@@ -132,13 +124,9 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
 max_bytes = int(sys.argv[2])
-target = (root / raw_path).resolve()
-if target != root and root not in target.parents:
-    emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-    sys.exit(0)
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -194,12 +182,8 @@ def emit(payload):
     print(BEGIN + blob + END)
 
 
-root = Path.cwd().resolve()
 raw_path = sys.argv[1]
-target = (root / raw_path).resolve()
-if target != root and root not in target.parents:
-    emit({"error": "invalid_sandbox_path", "message": "path escapes the sandbox workspace"})
-    sys.exit(0)
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -310,15 +294,25 @@ class SandboxFileService:
 
 
 def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
+    """Reject only syntactically unsafe paths and preserve relative traversal.
+
+    The remote scripts run with the saved workspace cwd, so ``../`` remains a
+    valid sandbox-relative path when callers need to reach sibling directories.
+    ``~`` and ``~/...`` are also accepted and resolved by the embedded scripts
+    against the shell layer's sandbox ``HOME``.
+    """
+
     normalized = (path or "").strip()
     if normalized in {"", ".", "./"}:
         if allow_current_directory:
             return "."
         raise SandboxFileError("invalid_sandbox_path", "path must not be blank", status_code=400)
-    if normalized.startswith("/") or normalized.startswith("~"):
+    if normalized.startswith("/"):
         raise SandboxFileError(
             "invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400
         )
+    if normalized.startswith("~") and normalized != "~" and not normalized.startswith("~/"):
+        raise SandboxFileError("invalid_sandbox_path", "path must use ~ or ~/ for the sandbox home", status_code=400)
     if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
         raise SandboxFileError("invalid_sandbox_path", "path contains unsupported control characters", status_code=400)
     return normalized

@@ -19,21 +19,18 @@ type DetailsProps = {
   onClose: () => void
 }
 
-const Details = ({
-  id,
-  type,
-  onApplyTemplate,
-  onClose,
-}: DetailsProps) => {
+const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
   const { t } = useTranslation()
-  const { data: pipelineTemplateInfo } = usePipelineTemplateById({
-    template_id: id,
-    type,
-  }, true)
+  const { data: pipelineTemplateInfo } = usePipelineTemplateById(
+    {
+      template_id: id,
+      type,
+    },
+    true,
+  )
 
   const appIcon = useMemo(() => {
-    if (!pipelineTemplateInfo)
-      return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
+    if (!pipelineTemplateInfo) return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
     const iconInfo = pipelineTemplateInfo.icon_info
     return iconInfo.icon_type === 'image'
       ? { type: 'image', url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
@@ -43,18 +40,13 @@ const Details = ({
   const chunkStructureConfig = useChunkStructureConfig()
 
   if (!pipelineTemplateInfo) {
-    return (
-      <Loading type="app" />
-    )
+    return <Loading type="app" />
   }
 
   return (
     <div className="flex h-full">
       <div className="flex grow items-center justify-center p-3 pr-0">
-        <WorkflowPreview
-          {...pipelineTemplateInfo.graph}
-          className="overflow-hidden rounded-2xl"
-        />
+        <WorkflowPreview {...pipelineTemplateInfo.graph} className="overflow-hidden rounded-2xl" />
       </div>
       <div className="relative flex w-[360px] shrink-0 flex-col">
         <button
@@ -85,7 +77,7 @@ const Details = ({
                 className="truncate system-2xs-medium-uppercase text-text-tertiary"
                 title={pipelineTemplateInfo.created_by}
               >
-                {t('details.createdBy', {
+                {t(($) => $['details.createdBy'], {
                   ns: 'datasetPipeline',
                   author: pipelineTemplateInfo.created_by,
                 })}
@@ -97,25 +89,23 @@ const Details = ({
           {pipelineTemplateInfo.description}
         </p>
         <div className="p-3">
-          <Button
-            variant="primary"
-            onClick={onApplyTemplate}
-            className="w-full gap-x-0.5"
-          >
+          <Button variant="primary" onClick={onApplyTemplate} className="w-full gap-x-0.5">
             <RiAddLine className="size-4" />
-            <span className="px-0.5">{t('operations.useTemplate', { ns: 'datasetPipeline' })}</span>
+            <span className="px-0.5">
+              {t(($) => $['operations.useTemplate'], { ns: 'datasetPipeline' })}
+            </span>
           </Button>
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
           <div className="flex h-6 items-center gap-x-0.5">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('details.structure', { ns: 'datasetPipeline' })}
+              {t(($) => $['details.structure'], { ns: 'datasetPipeline' })}
             </span>
             <Infotip
-              aria-label={t('details.structureTooltip', { ns: 'datasetPipeline' })}
+              aria-label={t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
               popupClassName="max-w-[240px]"
             >
-              {t('details.structureTooltip', { ns: 'datasetPipeline' })}
+              {t(($) => $['details.structureTooltip'], { ns: 'datasetPipeline' })}
             </Infotip>
           </div>
           <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />

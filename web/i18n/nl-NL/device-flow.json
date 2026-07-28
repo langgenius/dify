@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Kon de code niet verifiëren",
   "errorRateLimited.body": "Wacht even en probeer het opnieuw.",
   "errorRateLimited.title": "Te veel pogingen",
+  "errorSso.backToLoginOptions": "← Terug naar aanmeldopties",
+  "errorSso.title": "Aanmelden kon niet worden voltooid",
   "ssoError.default": "Single sign-on kon niet worden voltooid. Probeer het opnieuw.",
   "ssoError.emailBelongsToDifyAccount": "Deze identiteit is gekoppeld aan een Dify-account. Gebruik in plaats daarvan „Aanmelden met Dify-account”.",
   "success.goToConsole": "Naar Dify-console →",

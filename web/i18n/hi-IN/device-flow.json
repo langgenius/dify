@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "कोड सत्यापित नहीं हो सका",
   "errorRateLimited.body": "कृपया कुछ समय रुकें और फिर से प्रयास करें।",
   "errorRateLimited.title": "बहुत अधिक प्रयास",
+  "errorSso.backToLoginOptions": "← साइन इन विकल्पों पर वापस जाएँ",
+  "errorSso.title": "साइन-इन पूरा नहीं हो सका",
   "ssoError.default": "सिंगल साइन-ऑन पूरा नहीं हो सका। फिर से प्रयास करें।",
   "ssoError.emailBelongsToDifyAccount": "यह पहचान एक Dify खाते से जुड़ी है। इसके बजाय “Dify खाते से साइन इन करें” का उपयोग करें।",
   "success.goToConsole": "Dify कंसोल पर जाएँ →",

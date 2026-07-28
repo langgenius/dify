@@ -22,7 +22,9 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
   return (
     <>
       <div
-        className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
+        className={cn(
+          'bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+        )}
         onClick={() => setShowDetail(true)}
       >
         <div className="pb-0.5 system-md-semibold text-text-secondary">{title}</div>
@@ -41,31 +43,34 @@ const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) =>
 
 export const TriggerEventsList = () => {
   const { t } = useTranslation()
-  const detail = usePluginStore(state => state.detail)
+  const detail = usePluginStore((state) => state.detail)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
   const triggerEvents = providerInfo?.events || []
 
-  if (!providerInfo || !triggerEvents.length)
-    return null
+  if (!providerInfo || !triggerEvents.length) return null
 
   return (
     <div className="px-4 pt-2 pb-4">
       <div className="mb-1 py-1">
         <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
-          {t('events.actionNum', { ns: 'pluginTrigger', num: triggerEvents.length, event: t(`events.${triggerEvents.length > 1 ? 'events' : 'event'}`, { ns: 'pluginTrigger' }) })}
+          {t(($) => $['events.actionNum'], {
+            ns: 'pluginTrigger',
+            num: triggerEvents.length,
+            event: t(($) => $[`events.${triggerEvents.length > 1 ? 'events' : 'event'}`], {
+              ns: 'pluginTrigger',
+            }),
+          })}
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        {
-          triggerEvents.map((triggerEvent: TriggerEvent) => (
-            <TriggerEventCard
-              key={`${detail?.plugin_id}${triggerEvent.identity?.name || ''}`}
-              eventInfo={triggerEvent}
-              providerInfo={providerInfo}
-            />
-          ))
-        }
+        {triggerEvents.map((triggerEvent: TriggerEvent) => (
+          <TriggerEventCard
+            key={`${detail?.plugin_id}${triggerEvent.identity?.name || ''}`}
+            eventInfo={triggerEvent}
+            providerInfo={providerInfo}
+          />
+        ))}
       </div>
     </div>
   )

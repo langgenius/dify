@@ -1,11 +1,11 @@
 """Client-safe protocol exports for the Dify Agent Stub package."""
 
+from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
+
 from .agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
-    AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_PROTOCOL_VERSION,
     AGENT_STUB_API_BASE_URL_ENV_VAR,
-    DEFAULT_AGENT_STUB_DRIVE_BASE,
     AgentStubConnectRequest,
     AgentStubConnectResponse,
     AgentStubConfigEnvUpdateRequest,

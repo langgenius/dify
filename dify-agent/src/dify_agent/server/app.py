@@ -22,11 +22,14 @@ import httpx
 from fastapi import FastAPI
 from redis.asyncio import Redis
 
+from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.protocol.agent_stub import parse_agent_stub_endpoint
 from dify_agent.agent_stub.server.grpc_runtime import start_agent_stub_grpc_server
 from dify_agent.agent_stub.server.router import create_agent_stub_router
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
@@ -39,22 +42,37 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    if agent_stub_token_codec is not None:
+        # Runtime receives only this callable boundary; router and gRPC wiring
+        # keep the concrete token codec on the server side.
+        def issue_agent_stub_token(
+            execution_context: DifyExecutionContextLayerConfig,
+            *,
+            session_id: str | None,
+        ) -> str:
+            return agent_stub_token_codec.encode_connection_token(
+                execution_context,
+                session_id=session_id,
+            )
+
+        agent_stub_token_factory = issue_agent_stub_token
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
+    shell_provider = resolved_settings.build_shell_provider()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         inner_api_url=resolved_settings.inner_api_url,
         inner_api_key=resolved_settings.inner_api_key or "",
-        shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
-        shellctl_auth_token=resolved_settings.shellctl_auth_token,
+        shell_provider=shell_provider,
+        shell_home_root=resolved_settings.shell_home_root,
+        shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
-        agent_stub_token_codec=agent_stub_token_codec,
+        agent_stub_token_factory=agent_stub_token_factory,
     )
-    sandbox_file_service = (
-        SandboxFileService(layer_providers=layer_providers) if resolved_settings.shellctl_entrypoint else None
-    )
+    sandbox_file_service = SandboxFileService(layer_providers=layer_providers) if shell_provider is not None else None
     state: dict[str, object] = {}
 
     @asynccontextmanager
@@ -106,7 +124,13 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
-    app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(
+        create_runs_router(
+            get_store,
+            get_scheduler,
+            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
+        )
+    )
     app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
     app.include_router(
         create_agent_stub_router(

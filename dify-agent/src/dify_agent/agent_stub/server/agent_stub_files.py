@@ -84,8 +84,8 @@ class DifyApiAgentStubFileRequestHandler:
     """Call Dify API inner file request endpoints on behalf of the sandbox.
 
     The upload path calls ``/inner/api/upload/file/request`` and injects the
-    authenticated execution context's ``tenant_id`` and ``user_id`` along with
-    the requested filename and mimetype. The download path calls
+    authenticated execution context's ``tenant_id``, ``user_id``, and optional
+    ``conversation_id`` along with the requested filename and mimetype. The download path calls
     ``/inner/api/download/file/request`` and injects ``tenant_id``,
     ``user_id``, ``user_from``, and ``invoke_from`` plus the validated public
     file mapping.
@@ -126,6 +126,7 @@ class DifyApiAgentStubFileRequestHandler:
             "user_id": execution_context.user_id,
             "filename": request.filename,
             "mimetype": request.mimetype,
+            "conversation_id": execution_context.conversation_id,
         }
         data = await self._post_inner_api("/inner/api/upload/file/request", payload)
         upload_url = data.get("url")
@@ -160,6 +161,8 @@ class DifyApiAgentStubFileRequestHandler:
             "invoke_from": execution_context.invoke_from,
             "file": request.file.model_dump(mode="json", exclude_none=True),
         }
+        if request.for_external is False:
+            payload["for_external"] = False
         data = await self._post_inner_api("/inner/api/download/file/request", payload)
         try:
             return AgentStubFileDownloadResponse.model_validate(data)

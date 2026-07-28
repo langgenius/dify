@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Kode ni bilo mogoče preveriti",
   "errorRateLimited.body": "Počakajte trenutek in poskusite znova.",
   "errorRateLimited.title": "Preveč poskusov",
+  "errorSso.backToLoginOptions": "← Nazaj na možnosti prijave",
+  "errorSso.title": "Prijave ni bilo mogoče dokončati",
   "ssoError.default": "Enotne prijave (SSO) ni bilo mogoče dokončati. Poskusite znova.",
   "ssoError.emailBelongsToDifyAccount": "Ta identiteta je povezana z računom Dify. Namesto tega uporabite »Prijava z računom Dify«.",
   "success.goToConsole": "Pojdi v konzolo Dify →",

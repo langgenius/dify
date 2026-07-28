@@ -10,19 +10,22 @@ manager is replaced with a no-op so the thread body can run inline.
 from __future__ import annotations
 
 import contextlib
+import inspect
 import json
-from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
 
+import core.app.apps.agent_app.app_generator as module
 from core.app.apps.agent_app.app_generator import (
     AgentAppGenerator,
     AgentAppGeneratorError,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from models import Account
+from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom, UserFrom
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+from core.workflow.file_reference import build_file_reference
+from models import Account, AppModelConfig
 from models.agent import AgentConfigDraftType
 
 MODULE = "core.app.apps.agent_app.app_generator"
@@ -50,6 +53,7 @@ class TestGenerateGuards:
                 user=DummyAccount("u"),
                 args={},
                 invoke_from=InvokeFrom.WEB_APP,
+                session=mocker.MagicMock(),
                 streaming=False,
             )
 
@@ -60,6 +64,7 @@ class TestGenerateGuards:
                 user=DummyAccount("u"),
                 args={"inputs": {}},
                 invoke_from=InvokeFrom.WEB_APP,
+                session=mocker.MagicMock(),
             )
 
     def test_rejects_blank_query(self, generator: AgentAppGenerator, mocker: MockerFixture):
@@ -69,6 +74,7 @@ class TestGenerateGuards:
                 user=DummyAccount("u"),
                 args={"query": "   ", "inputs": {}},
                 invoke_from=InvokeFrom.WEB_APP,
+                session=mocker.MagicMock(),
             )
 
 
@@ -85,7 +91,9 @@ class TestGenerateSuccess:
 
     def test_generate_orchestrates_and_starts_worker(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        app_model.app_model_config_id = "config-1"
         user = DummyAccount("user")
+        session = mocker.MagicMock()
 
         generator._resolve_agent = mocker.MagicMock(
             return_value=(mocker.MagicMock(id="agent1"), "snap1", "snapshot", mocker.MagicMock())
@@ -107,7 +115,7 @@ class TestGenerateSuccess:
         )
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         thread_obj = mocker.MagicMock()
-        mocker.patch(f"{MODULE}.threading.Thread", return_value=thread_obj)
+        thread_constructor = mocker.patch(f"{MODULE}.threading.Thread", return_value=thread_obj)
         mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
         file_mappings = [
             {
@@ -123,18 +131,98 @@ class TestGenerateSuccess:
             user=user,
             args={"query": "hello", "inputs": {"name": "world"}, "files": file_mappings},
             invoke_from=InvokeFrom.WEB_APP,
+            session=session,
             streaming=True,
         )
 
         assert result == {"result": "ok"}
         thread_obj.start.assert_called_once()
+        worker_call = thread_constructor.call_args
+        inspect.signature(worker_call.kwargs["target"]).bind(**worker_call.kwargs["kwargs"])
         generator._resolve_agent.assert_called_once_with(
             app_model,
             invoke_from=InvokeFrom.WEB_APP,
             draft_type=None,
             user=user,
+            session=session,
         )
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
         assert generate_entity.call_args.kwargs["prompt_file_mappings"] == file_mappings
+        assert generate_entity.call_args.kwargs["agent_runtime_exit_intent"] == "suspend"
+
+    def test_generate_uses_delete_exit_intent_from_internal_arg(self, generator, mocker: MockerFixture):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        user = DummyAccount("user")
+
+        generator._resolve_agent = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="agent1"), "snap1", "snapshot", mocker.MagicMock())
+        )
+        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
+        generator._init_generate_records = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="conv", mode="agent"), mocker.MagicMock(id="msg"))
+        )
+        generator._handle_response = mocker.MagicMock(return_value="raw-response")
+
+        mocker.patch(
+            f"{MODULE}.AgentAppConfigManager.get_app_config",
+            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+        )
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        generate_entity = mocker.patch(
+            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        )
+        mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+
+        generator.generate(
+            app_model=app_model,
+            user=user,
+            args={"query": "hello", "inputs": {}, AGENT_RUNTIME_EXIT_INTENT_ARG: "delete"},
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=mocker.MagicMock(),
+            streaming=True,
+        )
+
+        assert generate_entity.call_args.kwargs["agent_runtime_exit_intent"] == "delete"
+
+    def test_generate_falls_back_to_suspend_for_invalid_internal_exit_intent(self, generator, mocker: MockerFixture):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        user = DummyAccount("user")
+
+        generator._resolve_agent = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="agent1"), "snap1", "snapshot", mocker.MagicMock())
+        )
+        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
+        generator._init_generate_records = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="conv", mode="agent"), mocker.MagicMock(id="msg"))
+        )
+        generator._handle_response = mocker.MagicMock(return_value="raw-response")
+
+        mocker.patch(
+            f"{MODULE}.AgentAppConfigManager.get_app_config",
+            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+        )
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        generate_entity = mocker.patch(
+            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        )
+        mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+
+        generator.generate(
+            app_model=app_model,
+            user=user,
+            args={"query": "hello", "inputs": {}, AGENT_RUNTIME_EXIT_INTENT_ARG: "bogus"},
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=mocker.MagicMock(),
+            streaming=True,
+        )
+
+        assert generate_entity.call_args.kwargs["agent_runtime_exit_intent"] == "suspend"
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
@@ -150,22 +238,32 @@ class TestGenerateSuccess:
             f"{MODULE}.ConversationService.get_conversation", return_value=mocker.MagicMock(id="conv")
         )
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
+        mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+        session = mocker.MagicMock()
+        user = DummyAccount("user")
 
         generator.generate(
             app_model=app_model,
-            user=DummyAccount("user"),
+            user=user,
             args={"query": "hi", "inputs": {}, "conversation_id": "conv"},
             invoke_from=InvokeFrom.WEB_APP,
+            session=session,
             streaming=True,
         )
 
-        get_conv.assert_called_once()
+        get_conv.assert_called_once_with(
+            app_model=app_model,
+            conversation_id="conv",
+            user=user,
+            session=session,
+        )
+        assert generator._init_generate_records.call_args.kwargs["session"] is session
 
     def test_generate_does_not_include_trace_session_id_in_extras(
         self, generator: AgentAppGenerator, mocker: MockerFixture
@@ -200,85 +298,11 @@ class TestGenerateSuccess:
             user=user,
             args={"query": "hello", "inputs": {}, "trace_session_id": "session-1"},
             invoke_from=InvokeFrom.WEB_APP,
+            session=mocker.MagicMock(),
             streaming=True,
         )
 
         assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
-
-    def test_generate_stateless_skips_chat_records(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
-        user = DummyAccount("user")
-
-        generator._resolve_agent = mocker.MagicMock(
-            return_value=(mocker.MagicMock(id="agent1"), "build-draft-1", "build_draft", mocker.MagicMock())
-        )
-        generator._init_generate_records = mocker.MagicMock()
-        run_stateless = mocker.patch.object(generator, "_run_stateless", return_value={"result": "success"})
-        converter = mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert")
-
-        result = generator.generate_stateless(
-            app_model=app_model,
-            user=user,
-            args={
-                "query": "finalize",
-                "inputs": {},
-                "conversation_id": "debug-conversation-1",
-                "draft_type": "debug_build",
-            },
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-
-        assert result == {"result": "success"}
-        generator._init_generate_records.assert_not_called()
-        converter.assert_not_called()
-        run_call = run_stateless.call_args.kwargs
-        assert run_call["conversation_id"] == "debug-conversation-1"
-        assert run_call["runtime_session_snapshot_id"] == "build-draft-1"
-
-    def test_generate_stateless_requires_conversation_id(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        with pytest.raises(AgentAppGeneratorError, match="conversation_id is required"):
-            generator.generate_stateless(
-                app_model=mocker.MagicMock(),
-                user=DummyAccount("user"),
-                args={"query": "finalize", "inputs": {}, "draft_type": "debug_build"},
-                invoke_from=InvokeFrom.DEBUGGER,
-            )
-
-    def test_stateless_run_uses_agent_app_runner(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", app_model_config=mocker.MagicMock())
-        user = DummyAccount("user")
-        agent = mocker.MagicMock(id="agent1")
-        dify_context = SimpleNamespace(tenant_id="tenant", app_id="app1")
-        mocker.patch(f"{MODULE}.DifyRunContext", return_value=dify_context)
-        runner = mocker.MagicMock()
-        build_runner = mocker.patch.object(generator, "_build_runner", return_value=runner)
-
-        result = generator._run_stateless(
-            app_model=app_model,
-            user=user,
-            invoke_from=InvokeFrom.DEBUGGER,
-            query="finalize",
-            conversation_id="debug-conversation-1",
-            agent=agent,
-            agent_config_id="build-draft-1",
-            agent_config_version_kind="build_draft",
-            agent_soul=mocker.MagicMock(),
-            runtime_session_snapshot_id="build-draft-1",
-        )
-
-        assert result == {"result": "success"}
-        build_runner.assert_called_once_with(dify_context)
-        runner.run_stateless.assert_called_once_with(
-            dify_context=dify_context,
-            agent_id="agent1",
-            agent_config_snapshot_id="build-draft-1",
-            agent_config_version_kind="build_draft",
-            agent_soul=mocker.ANY,
-            conversation_id="debug-conversation-1",
-            query="finalize",
-            idempotency_key=mocker.ANY,
-            session_scope_snapshot_id="build-draft-1",
-        )
 
 
 class TestGenerateWorker:
@@ -301,11 +325,20 @@ class TestGenerateWorker:
     ):
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock(id="conv"))
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock(id="msg"))
-        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query))
+        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query, None))
         generator._resolve_agent_by_id = mocker.MagicMock(
             return_value=(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         )
-        mocker.patch(f"{MODULE}.db.session.get", return_value=mocker.MagicMock(id="app1"))
+        session = mocker.MagicMock()
+        session.get.return_value = mocker.MagicMock(id="app1")
+        session_context = mocker.MagicMock()
+        session_context.__enter__.return_value = session
+        session_maker = mocker.patch(f"{MODULE}.session_factory.get_session_maker").return_value
+        session_maker.begin.return_value = session_context
+        resolver_session = mocker.MagicMock()
+        resolver_context = mocker.MagicMock()
+        resolver_context.__enter__.return_value = resolver_session
+        mocker.patch(f"{MODULE}.session_factory.create_session", return_value=resolver_context)
         mocker.patch(f"{MODULE}.db.session.close")
         mocker.patch(f"{MODULE}.DifyRunContext", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.build_dify_model_access", return_value=(mocker.MagicMock(), None))
@@ -317,7 +350,7 @@ class TestGenerateWorker:
         if run_side_effect is not None:
             runner.run.side_effect = run_side_effect
         mocker.patch(f"{MODULE}.AgentAppRunner", return_value=runner)
-        return runner
+        return runner, resolver_session
 
     def _call(
         self,
@@ -329,6 +362,7 @@ class TestGenerateWorker:
         query="query",
         runtime_session_snapshot_id="s",
         prompt_file_mappings=(),
+        agent_runtime_exit_intent="suspend",
     ):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -337,6 +371,7 @@ class TestGenerateWorker:
                 agent_id="a",
                 agent_config_snapshot_id="s",
                 agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
+                agent_runtime_exit_intent=agent_runtime_exit_intent,
                 model_conf=mocker.MagicMock(model="m"),
                 query=query,
                 prompt_file_mappings=prompt_file_mappings,
@@ -349,14 +384,15 @@ class TestGenerateWorker:
         )
 
     def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        runner = self._wire(generator, mocker)
+        runner, resolver_session = self._wire(generator, mocker)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         runner.run.assert_called_once()
+        assert generator._resolve_agent_by_id.call_args.kwargs["session"] is resolver_session
         queue_manager.publish_error.assert_not_called()
 
     def test_worker_passes_runtime_session_scope_to_runner(self, generator, mocker: MockerFixture):
-        runner = self._wire(generator, mocker)
+        runner, _ = self._wire(generator, mocker)
         queue_manager = mocker.MagicMock()
 
         self._call(generator, mocker, queue_manager, runtime_session_snapshot_id=None)
@@ -364,8 +400,16 @@ class TestGenerateWorker:
         assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
         assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
 
+    def test_worker_forwards_runtime_exit_intent_to_runner(self, generator, mocker: MockerFixture):
+        runner, _ = self._wire(generator, mocker)
+        queue_manager = mocker.MagicMock()
+
+        self._call(generator, mocker, queue_manager, agent_runtime_exit_intent="delete")
+
+        assert runner.run.call_args.kwargs["agent_runtime_exit_intent"] == "delete"
+
     def test_worker_appends_prompt_files_to_backend_query(self, generator, mocker: MockerFixture):
-        runner = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
+        runner, _ = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
         queue_manager = mocker.MagicMock()
         file_mappings = [
             {
@@ -373,7 +417,23 @@ class TestGenerateWorker:
                 "transfer_method": "local_file",
                 "url": "",
                 "upload_file_id": "upload-file-1",
-            }
+            },
+            {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "url": "https://example.com/source.pdf",
+                "upload_file_id": "ignored",
+            },
+        ]
+        expected_file_mappings = [
+            {
+                "transfer_method": "local_file",
+                "reference": build_file_reference(record_id="upload-file-1"),
+            },
+            {
+                "transfer_method": "remote_url",
+                "url": "https://example.com/source.pdf",
+            },
         ]
 
         self._call(
@@ -385,20 +445,43 @@ class TestGenerateWorker:
         )
 
         assert runner.run.call_args.kwargs["query"] == (
-            f"你看得见这张图片吗\n{json.dumps(file_mappings, ensure_ascii=False)}"
+            "你看得见这张图片吗\nUser provided files: "
+            "use dify-agent file download with the listed transfer_method and reference/url "
+            "to get the files and investigate them\n"
+            f"{json.dumps(expected_file_mappings, ensure_ascii=False, separators=(',', ':'))}"
         )
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
-        runner = self._wire(generator, mocker, handled=True)
+        runner, _ = self._wire(generator, mocker, handled=True)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
+        runner.run.assert_not_called()
+
+    def test_annotation_reply_publishes_after_guard_transaction_commits(self, generator, mocker: MockerFixture):
+        runner, _ = self._wire(generator, mocker, handled=True)
+        annotation_reply = mocker.MagicMock(id="annotation-1", content="annotated answer")
+        generator._run_input_guards.return_value = (True, "query", annotation_reply)
+        events: list[str] = []
+        guard_context = module.session_factory.get_session_maker.return_value.begin.return_value
+        guard_context.__exit__.side_effect = lambda *args: events.append("commit") or False
+        queue_manager = mocker.MagicMock()
+
+        def publish(event, *_args):
+            if isinstance(event, QueueAnnotationReplyEvent):
+                events.append("publish")
+
+        queue_manager.publish.side_effect = publish
+
+        self._call(generator, mocker, queue_manager)
+
+        assert events == ["commit", "publish"]
         runner.run.assert_not_called()
 
     def test_resume_skips_input_guards_and_consumes_reply(self, generator, mocker: MockerFixture):
         # ENG-638 (review): on resume the replayed query is NOT new end-user input.
         # Input guards must be skipped, even if moderation/annotation would match,
         # so the run continues and the human reply (deferred_tool_results) is used.
-        runner = self._wire(generator, mocker, handled=True)  # guards WOULD short-circuit
+        runner, _ = self._wire(generator, mocker, handled=True)  # guards WOULD short-circuit
         queue_manager = mocker.MagicMock()
 
         self._call(generator, mocker, queue_manager, is_resume=True, query="the approved reply")
@@ -433,45 +516,65 @@ class TestResumeAfterFormSubmission:
             return_value=(mocker.MagicMock(id="conv", mode="agent"), mocker.MagicMock(id="msg"))
         )
         generator._handle_response = mocker.MagicMock(return_value=None)
-        mocker.patch(
+        get_conversation = mocker.patch(
             f"{MODULE}.ConversationService.get_conversation",
             return_value=mocker.MagicMock(id="conv", invoke_from=InvokeFrom.WEB_APP),
         )
         mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
+        mocker.patch(f"{MODULE}.load_annotation_reply_config", return_value={"enabled": False})
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppRuntimeSessionStore")
-        return mocker.patch(
-            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        return (
+            mocker.patch(
+                f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+            ),
+            get_conversation,
         )
 
     def test_resume_resends_paused_turn_query(self, generator, mocker: MockerFixture):
-        entity = self._wire(generator, mocker)
-        db_mock = mocker.patch(f"{MODULE}.db")
-        db_mock.session.scalar.return_value = mocker.MagicMock(query="original question")
+        entity, get_conversation = self._wire(generator, mocker)
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        app_model.app_model_config_id = "config-1"
+        user = DummyAccount("user")
+        session = mocker.MagicMock()
+        session.get.return_value = mocker.MagicMock()
+        session.scalar.return_value = mocker.MagicMock(query="original question")
 
         generator.resume_after_form_submission(
-            app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
-            user=DummyAccount("user"),
+            app_model=app_model,
+            user=user,
             conversation_id="conv",
             invoke_from=InvokeFrom.WEB_APP,
+            session=session,
         )
 
         # The paused turn's query is re-sent verbatim — never blank.
         assert entity.call_args.kwargs["query"] == "original question"
+        assert "agent_runtime_exit_intent" not in entity.call_args.kwargs
+        get_conversation.assert_called_once_with(
+            app_model=app_model,
+            conversation_id="conv",
+            user=user,
+            session=session,
+        )
+        assert generator._init_generate_records.call_args.kwargs["session"] is session
+        session.get.assert_called_once_with(AppModelConfig, "config-1")
+        assert generator._resolve_agent.call_args.kwargs["session"] is session
 
     def test_resume_falls_back_to_placeholder_when_no_paused_message(self, generator, mocker: MockerFixture):
-        entity = self._wire(generator, mocker)
-        db_mock = mocker.patch(f"{MODULE}.db")
-        db_mock.session.scalar.return_value = None
+        entity, _ = self._wire(generator, mocker)
+        session = mocker.MagicMock()
+        session.scalar.return_value = None
 
         generator.resume_after_form_submission(
             app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
             user=DummyAccount("user"),
             conversation_id="conv",
             invoke_from=InvokeFrom.WEB_APP,
+            session=session,
         )
 
         # No prior user message -> a non-blank placeholder, still never blank.
@@ -486,16 +589,20 @@ class TestResumeAfterFormSubmission:
             scope=mocker.MagicMock(agent_config_snapshot_id="draft-build-1")
         )
         draft_row = mocker.MagicMock(draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id="user")
-        db_mock = mocker.patch(f"{MODULE}.db")
-        db_mock.session.scalar.side_effect = [draft_row, mocker.MagicMock(query="original question")]
         account_user = mocker.MagicMock(spec=Account)
         account_user.id = "user"
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        app_model.app_model_config_id = "config-1"
+        session = mocker.MagicMock()
+        session.scalar.side_effect = [draft_row, mocker.MagicMock(query="original question")]
 
         generator.resume_after_form_submission(
-            app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
+            app_model=app_model,
             user=account_user,
             conversation_id="conv",
             invoke_from=InvokeFrom.DEBUGGER,
+            session=session,
         )
 
         assert generator._resolve_agent.call_args.kwargs["draft_type"] == "debug_build"
+        assert generator._resolve_agent.call_args.kwargs["session"] is session

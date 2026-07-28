@@ -12,7 +12,7 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 }))
 
 vi.mock('../tool-trigger', () => ({
-  default: ({ value, provider }: { open?: boolean, value?: unknown, provider?: unknown }) => (
+  ToolTrigger: ({ value, provider }: { open?: boolean; value?: unknown; provider?: unknown }) => (
     <div data-testid="tool-trigger" data-has-value={!!value} data-has-provider={!!provider} />
   ),
 }))
@@ -32,12 +32,12 @@ const defaultProps = {
 }
 
 describe('ToolBaseForm', () => {
-  let ToolBaseForm: (typeof import('../tool-base-form'))['default']
+  let ToolBaseForm: (typeof import('../tool-base-form'))['ToolBaseForm']
 
   beforeEach(async () => {
     vi.clearAllMocks()
     const mod = await import('../tool-base-form')
-    ToolBaseForm = mod.default
+    ToolBaseForm = mod.ToolBaseForm
   })
 
   it('should render tool trigger within tool picker', () => {
@@ -60,14 +60,22 @@ describe('ToolBaseForm', () => {
   })
 
   it('should enable textarea when value has provider_name', () => {
-    const value = { provider_name: 'test-provider', tool_name: 'test', extra: { description: 'Hello' } } as never
+    const value = {
+      provider_name: 'test-provider',
+      tool_name: 'test',
+      extra: { description: 'Hello' },
+    } as never
     render(<ToolBaseForm {...defaultProps} value={value} />)
 
     expect(screen.getByRole('textbox')).not.toBeDisabled()
   })
 
   it('should call onDescriptionChange when textarea content changes', () => {
-    const value = { provider_name: 'test-provider', tool_name: 'test', extra: { description: 'Hello' } } as never
+    const value = {
+      provider_name: 'test-provider',
+      tool_name: 'test',
+      extra: { description: 'Hello' },
+    } as never
     render(<ToolBaseForm {...defaultProps} value={value} />)
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })

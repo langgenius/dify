@@ -6,6 +6,8 @@ import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast, override
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -65,6 +67,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -104,6 +107,8 @@ class MCPTool(Tool):
         if self.entity.output_schema and result.structuredContent:
             for k, v in result.structuredContent.items():
                 yield self.create_variable_message(k, v)
+        elif result.structuredContent:
+            yield self.create_json_message(result.structuredContent)
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""

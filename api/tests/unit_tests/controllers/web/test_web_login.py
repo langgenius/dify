@@ -1,7 +1,7 @@
 import base64
 import logging
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -10,6 +10,7 @@ from werkzeug.exceptions import Unauthorized
 
 import services.errors.account
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
+from enums.deployment_edition import DeploymentEdition
 from services.entities.auth_entities import LoginFailureReason
 
 
@@ -34,7 +35,7 @@ def app():
 @pytest.fixture(autouse=True)
 def _patch_wraps():
     wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, EDITION="CLOUD")
+    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
     with (
         patch("controllers.console.wraps.db") as mock_db,
@@ -66,7 +67,7 @@ class TestEmailCodeLoginSendEmailApi:
             response = EmailCodeLoginSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_get_user.assert_called_once_with("User@Example.com")
+        mock_get_user.assert_called_once_with("User@Example.com", ANY)
         mock_send_email.assert_called_once_with(account=mock_account, language="en-US")
 
 
@@ -95,8 +96,8 @@ class TestEmailCodeLoginApi:
         ):
             response = EmailCodeLoginApi().post()
 
-        assert response.get_json() == {"result": "success", "data": {"access_token": "new-access-token"}}
-        mock_get_user.assert_called_once_with("User@Example.com")
+        assert response == {"result": "success", "data": {"access_token": "new-access-token"}}
+        mock_get_user.assert_called_once_with("User@Example.com", ANY)
         mock_revoke_token.assert_called_once_with("token-123")
         mock_login.assert_called_once()
         mock_reset_login_rate.assert_called_once_with("user@example.com")
@@ -115,7 +116,7 @@ class TestLoginApi:
         ):
             response = LoginApi().post()
 
-        assert response.get_json()["data"]["access_token"] == "access-tok"
+        assert response["data"]["access_token"] == "access-tok"
         mock_auth.assert_called_once()
 
     @patch(

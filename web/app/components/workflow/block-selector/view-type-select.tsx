@@ -1,55 +1,46 @@
 'use client'
-import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiNodeTree, RiSortAlphabetAsc } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback } from 'react'
-
-export enum ViewType {
-  flat = 'flat',
-  tree = 'tree',
-}
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ViewType } from './types'
 
 type Props = Readonly<{
   viewType: ViewType
   onChange: (viewType: ViewType) => void
 }>
 
-const ViewTypeSelect: FC<Props> = ({
-  viewType,
-  onChange,
-}) => {
-  const handleChange = useCallback((nextViewType: ViewType) => {
-    return () => {
-      if (nextViewType === viewType)
-        return
-      onChange(nextViewType)
-    }
-  }, [viewType, onChange])
+function ViewTypeSelect({ viewType, onChange }: Props) {
+  const { t } = useTranslation()
+
+  const handleValueChange = (value: ViewType[]) => {
+    const nextViewType = value[0]
+    if (!nextViewType || nextViewType === viewType) return
+
+    onChange(nextViewType)
+  }
 
   return (
-    <div className="flex items-center rounded-lg bg-components-segmented-control-bg-normal p-px">
-      <div
-        className={
-          cn('rounded-lg p-[3px]', viewType === ViewType.flat
-            ? 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs'
-            : 'cursor-pointer text-text-tertiary')
-        }
-        onClick={handleChange(ViewType.flat)}
+    <SegmentedControl<ViewType>
+      value={[viewType]}
+      aria-label={t(($) => $['operation.view'], { ns: 'common' })}
+      className="gap-0 rounded-lg p-px"
+      onValueChange={handleValueChange}
+    >
+      <SegmentedControlItem<ViewType>
+        value={ViewType.flat}
+        aria-label={t(($) => $['tabs.listView'], { ns: 'workflow' })}
+        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
       >
-        <RiSortAlphabetAsc className="size-4" />
-      </div>
-      <div
-        className={
-          cn('rounded-lg p-[3px]', viewType === ViewType.tree
-            ? 'bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs'
-            : 'cursor-pointer text-text-tertiary')
-        }
-        onClick={handleChange(ViewType.tree)}
+        <span aria-hidden className="i-ri-sort-alphabet-asc size-4" />
+      </SegmentedControlItem>
+      <SegmentedControlItem<ViewType>
+        value={ViewType.tree}
+        aria-label={t(($) => $['tabs.treeView'], { ns: 'workflow' })}
+        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
       >
-        <RiNodeTree className="size-4" />
-      </div>
-    </div>
+        <span aria-hidden className="i-ri-node-tree size-4" />
+      </SegmentedControlItem>
+    </SegmentedControl>
   )
 }
-export default React.memo(ViewTypeSelect)
+export default memo(ViewTypeSelect)

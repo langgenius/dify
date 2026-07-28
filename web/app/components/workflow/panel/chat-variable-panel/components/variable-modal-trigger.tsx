@@ -16,33 +16,27 @@ type Props = Readonly<{
   onSave: (env: ConversationVariable) => void
 }>
 
-const VariableModalTrigger = ({
-  open,
-  setOpen,
-  showTip,
-  chatVar,
-  onClose,
-  onSave,
-}: Props) => {
+const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave }: Props) => {
   const { t } = useTranslation()
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen)
-      onClose()
-  }, [onClose, setOpen])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen)
+      if (!nextOpen) onClose()
+    },
+    [onClose, setOpen],
+  )
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        render={(
+        render={
           <Button variant="primary">
             <RiAddLine className="mr-1 size-4" />
-            <span className="system-sm-medium">{t('chatVariable.button', { ns: 'workflow' })}</span>
+            <span className="system-sm-medium">
+              {t(($) => $['chatVariable.button'], { ns: 'workflow' })}
+            </span>
           </Button>
-        )}
+        }
       />
       <PopoverContent
         placement="left-start"

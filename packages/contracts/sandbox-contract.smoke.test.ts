@@ -1,26 +1,14 @@
-import assert from 'node:assert/strict'
-import { registerHooks } from 'node:module'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { sandbox as agentSandbox } from './generated/api/console/agent/orpc.gen'
+import { sandbox as appSandbox } from './generated/api/console/apps/orpc.gen'
 
-const thisDir = dirname(fileURLToPath(import.meta.url))
-const sourcePath = resolve(thisDir, './generated/api/console/apps/orpc.gen.ts')
-
-registerHooks({
-  resolve(specifier, context, nextResolve) {
-    if (specifier === './zod.gen' || specifier.endsWith('/zod.gen'))
-      return nextResolve(`${specifier}.ts`, context)
-
-    return nextResolve(specifier, context)
-  },
+describe('generated sandbox contracts', () => {
+  it.each([
+    ['Agent sandbox', agentSandbox],
+    ['App sandbox', appSandbox],
+  ])('exposes the %s file operations', (_, sandbox) => {
+    expect(sandbox.files.get).toBeDefined()
+    expect(sandbox.files.read.get).toBeDefined()
+    expect(sandbox.files.upload.post).toBeDefined()
+  })
 })
-
-const { agentSandbox, sandbox } = await import(pathToFileURL(sourcePath).href)
-
-assert.ok(agentSandbox.files.get)
-assert.ok(agentSandbox.files.read.get)
-assert.ok(agentSandbox.files.upload.post)
-
-assert.ok(sandbox.files.get)
-assert.ok(sandbox.files.read.get)
-assert.ok(sandbox.files.upload.post)

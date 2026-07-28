@@ -4,26 +4,21 @@ import { describe, expect, it, vi } from 'vitest'
 import { TitleTooltip } from '../title-tooltip'
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => (
-    <div data-testid="tooltip">
-      {children}
-    </div>
-  ),
+  Tooltip: ({ children }: { children: ReactNode }) => <div data-testid="tooltip">{children}</div>,
   TooltipTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: ReactNode }) => (
-    <div role="tooltip">
-      {children}
-    </div>
-  ),
+  TooltipContent: ({ children }: { children: ReactNode }) => <div role="tooltip">{children}</div>,
 }))
 
-function setElementSize(element: HTMLElement, {
-  clientWidth,
-  scrollWidth,
-}: {
-  clientWidth: number
-  scrollWidth: number
-}) {
+function setElementSize(
+  element: HTMLElement,
+  {
+    clientWidth,
+    scrollWidth,
+  }: {
+    clientWidth: number
+    scrollWidth: number
+  },
+) {
   Object.defineProperties(element, {
     clientWidth: { configurable: true, value: clientWidth },
     scrollWidth: { configurable: true, value: scrollWidth },
@@ -66,6 +61,8 @@ describe('TitleTooltip', () => {
 
     fireEvent.pointerOver(screen.getByRole('button', { name: 'Deploy' }))
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Disabled until an initial release exists')
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      'Disabled until an initial release exists',
+    )
   })
 })

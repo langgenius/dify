@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "コードを確認できませんでした",
   "errorRateLimited.body": "少し待ってからもう一度お試しください。",
   "errorRateLimited.title": "試行回数が多すぎます",
+  "errorSso.backToLoginOptions": "← サインイン方法に戻る",
+  "errorSso.title": "サインインを完了できませんでした",
   "ssoError.default": "シングルサインオンを完了できませんでした。もう一度お試しください。",
   "ssoError.emailBelongsToDifyAccount": "このIDはDifyアカウントに紐づいています。代わりに「Dify アカウントでサインイン」をご利用ください。",
   "success.goToConsole": "Dify コンソールへ移動 →",

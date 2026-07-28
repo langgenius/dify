@@ -28,9 +28,10 @@ type UseDocumentActionsOptions = {
  * We intentionally avoid leaking dataset info in the exported archive name.
  */
 const generateDocsZipFileName = (): string => {
-  const randomPart = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
   return `${randomPart}-docs.zip`
 }
 
@@ -51,42 +52,46 @@ export const useDocumentActions = ({
   const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
   const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
 
-  type SupportedActionType
-    = | typeof DocumentActionType.archive
-      | typeof DocumentActionType.summary
-      | typeof DocumentActionType.enable
-      | typeof DocumentActionType.disable
-      | typeof DocumentActionType.delete
+  type SupportedActionType =
+    | typeof DocumentActionType.archive
+    | typeof DocumentActionType.summary
+    | typeof DocumentActionType.enable
+    | typeof DocumentActionType.disable
+    | typeof DocumentActionType.delete
 
-  const actionMutationMap = useMemo(() => ({
-    [DocumentActionType.archive]: archiveDocument,
-    [DocumentActionType.summary]: generateSummary,
-    [DocumentActionType.enable]: enableDocument,
-    [DocumentActionType.disable]: disableDocument,
-    [DocumentActionType.delete]: deleteDocument,
-  } as const), [archiveDocument, generateSummary, enableDocument, disableDocument, deleteDocument])
+  const actionMutationMap = useMemo(
+    () =>
+      ({
+        [DocumentActionType.archive]: archiveDocument,
+        [DocumentActionType.summary]: generateSummary,
+        [DocumentActionType.enable]: enableDocument,
+        [DocumentActionType.disable]: disableDocument,
+        [DocumentActionType.delete]: deleteDocument,
+      }) as const,
+    [archiveDocument, generateSummary, enableDocument, disableDocument, deleteDocument],
+  )
 
-  const handleAction = useCallback((actionName: SupportedActionType) => {
-    return async () => {
-      const opApi = actionMutationMap[actionName]
-      if (!opApi)
-        return
+  const handleAction = useCallback(
+    (actionName: SupportedActionType) => {
+      return async () => {
+        const opApi = actionMutationMap[actionName]
+        if (!opApi) return
 
-      const [e] = await asyncRunSafe<CommonResponse>(
-        opApi({ datasetId, documentIds: selectedIds }),
-      )
+        const [e] = await asyncRunSafe<CommonResponse>(
+          opApi({ datasetId, documentIds: selectedIds }),
+        )
 
-      if (!e) {
-        if (actionName === DocumentActionType.delete)
-          onClearSelection()
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-        onUpdate()
+        if (!e) {
+          if (actionName === DocumentActionType.delete) onClearSelection()
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+          onUpdate()
+        } else {
+          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        }
       }
-      else {
-        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-      }
-    }
-  }, [actionMutationMap, datasetId, selectedIds, onClearSelection, onUpdate, t])
+    },
+    [actionMutationMap, datasetId, selectedIds, onClearSelection, onUpdate, t],
+  )
 
   const handleBatchReIndex = useCallback(async () => {
     const [e] = await asyncRunSafe<CommonResponse>(
@@ -94,23 +99,21 @@ export const useDocumentActions = ({
     )
     if (!e) {
       onClearSelection()
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onUpdate()
-    }
-    else {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    } else {
+      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
   }, [retryIndexDocument, datasetId, selectedIds, onClearSelection, onUpdate, t])
 
   const handleBatchDownload = useCallback(async () => {
-    if (isDownloadingZip)
-      return
+    if (isDownloadingZip) return
 
     const [e, blob] = await asyncRunSafe(
       requestDocumentsZip({ datasetId, documentIds: downloadableSelectedIds }),
     )
     if (e || !blob) {
-      toast.error(t('actionMsg.downloadUnsuccessfully', { ns: 'common' }))
+      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return
     }
 

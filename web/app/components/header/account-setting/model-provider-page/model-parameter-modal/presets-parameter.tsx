@@ -34,33 +34,36 @@ type PresetsParameterProps = {
 
 function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParameterProps) {
   const { t } = useTranslation()
-  const supportedParameterNameSet = supportedParameterNames ? new Set(supportedParameterNames) : undefined
+  const supportedParameterNameSet = supportedParameterNames
+    ? new Set(supportedParameterNames)
+    : undefined
   const visiblePresetTones = supportedParameterNameSet
-    ? PRESET_TONE_LIST.filter(tone => Object.keys(tone.config ?? {}).some(key => supportedParameterNameSet.has(key)))
+    ? PRESET_TONE_LIST.filter((tone) =>
+        Object.keys(tone.config ?? {}).some((key) => supportedParameterNameSet.has(key)),
+      )
     : PRESET_TONE_LIST
 
-  if (!visiblePresetTones.length)
-    return null
+  if (!visiblePresetTones.length) return null
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={(
+        render={
           <Button
             size="small"
             variant="secondary"
             className="data-popup-open:bg-state-base-hover"
           />
-        )}
+        }
       >
-        {t('modelProvider.loadPresets', { ns: 'common' })}
+        {t(($) => $['modelProvider.loadPresets'], { ns: 'common' })}
         <span className="ml-0.5 i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {visiblePresetTones.map(tone => (
+        {visiblePresetTones.map((tone) => (
           <DropdownMenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
             {TONE_ICONS[tone.id]}
-            {t(toneI18nKeyMap[tone.name], { ns: 'common' })}
+            {t(($) => $[toneI18nKeyMap[tone.name]], { ns: 'common' })}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

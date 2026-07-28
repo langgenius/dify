@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "No se pudo verificar el código",
   "errorRateLimited.body": "Espera un momento e inténtalo de nuevo.",
   "errorRateLimited.title": "Demasiados intentos",
+  "errorSso.backToLoginOptions": "← Volver a las opciones de inicio de sesión",
+  "errorSso.title": "No se pudo completar el inicio de sesión",
   "ssoError.default": "No se pudo completar el inicio de sesión único. Inténtalo de nuevo.",
   "ssoError.emailBelongsToDifyAccount": "Esta identidad está vinculada a una cuenta de Dify. Usa “Iniciar sesión con cuenta de Dify” en su lugar.",
   "success.goToConsole": "Ir a la consola de Dify →",

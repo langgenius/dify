@@ -5,17 +5,25 @@ from typing import Any, cast
 
 import click
 import sqlalchemy as sa
+from agenton.compositor import CompositorSessionSnapshot
 from celery import shared_task
+from dify_agent.protocol import RuntimeLayerSpec
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
+from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
 from configs import dify_config
 from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.datetime_utils import naive_utc_now
 from models import (
+    AgentRuntimeSession,
+    AgentRuntimeSessionOwnerType,
+    AgentRuntimeSessionStatus,
     ApiToken,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
@@ -50,8 +58,13 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
+from tasks.agent_backend_session_cleanup_task import (
+    cleanup_conversation_agent_runtime_session,
+    cleanup_workflow_agent_runtime_session,
+)
 
 logger = logging.getLogger(__name__)
+_RUNTIME_LAYER_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -59,6 +72,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
+        _cleanup_active_agent_runtime_sessions_for_app(tenant_id, app_id)
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
@@ -97,6 +111,143 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+
+
+def _cleanup_active_agent_runtime_sessions_for_app(tenant_id: str, app_id: str, *, batch_size: int = 100) -> None:
+    """Best-effort fan-out for ACTIVE Agent runtime sessions during app deletion.
+
+    App deletion must not block on synchronous Agent backend lifecycle work, so
+    this helper scans ACTIVE ``agent_runtime_sessions`` rows in batches,
+    dispatches owner-specific cleanup tasks only when enough persisted data
+    exists to replay a lifecycle-only run, and then marks each visited row
+    ``CLEANED`` locally regardless of enqueue outcome. The local retirement is
+    the contract that lets the rest of app deletion continue even when backend
+    cleanup dispatch is skipped or fails.
+    """
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+
+    while True:
+        with session_factory.create_session() as session:
+            row_ids = session.scalars(
+                select(AgentRuntimeSession.id)
+                .where(
+                    AgentRuntimeSession.tenant_id == tenant_id,
+                    AgentRuntimeSession.app_id == app_id,
+                    AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+                )
+                .order_by(AgentRuntimeSession.updated_at.asc())
+                .limit(batch_size)
+            ).all()
+
+        if not row_ids:
+            return
+
+        retired_count = 0
+        for row_id in row_ids:
+            with session_factory.create_session() as session:
+                row = session.get(AgentRuntimeSession, row_id)
+                if row is None or row.status != AgentRuntimeSessionStatus.ACTIVE:
+                    retired_count += 1
+                    continue
+
+                try:
+                    payload = _build_agent_runtime_session_cleanup_payload(row)
+                    if payload is not None:
+                        _enqueue_agent_runtime_session_cleanup(row=row, payload=payload)
+                except Exception:
+                    logger.warning(
+                        "Failed to enqueue Agent backend cleanup during app deletion: "
+                        "tenant_id=%s app_id=%s owner_type=%s conversation_id=%s workflow_run_id=%s "
+                        "node_id=%s agent_id=%s backend_run_id=%s",
+                        row.tenant_id,
+                        row.app_id,
+                        row.owner_type,
+                        row.conversation_id,
+                        row.workflow_run_id,
+                        row.node_id,
+                        row.agent_id,
+                        row.backend_run_id,
+                        exc_info=True,
+                    )
+                finally:
+                    try:
+                        row.status = AgentRuntimeSessionStatus.CLEANED
+                        row.cleaned_at = naive_utc_now()
+                        session.commit()
+                        retired_count += 1
+                    except Exception:
+                        session.rollback()
+                        logger.warning(
+                            "Failed to retire Agent runtime session during app deletion: "
+                            "tenant_id=%s app_id=%s owner_type=%s conversation_id=%s workflow_run_id=%s "
+                            "node_id=%s agent_id=%s backend_run_id=%s",
+                            row.tenant_id,
+                            row.app_id,
+                            row.owner_type,
+                            row.conversation_id,
+                            row.workflow_run_id,
+                            row.node_id,
+                            row.agent_id,
+                            row.backend_run_id,
+                            exc_info=True,
+                        )
+
+        if retired_count == 0:
+            logger.warning(
+                "Failed to retire any active Agent runtime sessions during app deletion: tenant_id=%s app_id=%s",
+                tenant_id,
+                app_id,
+            )
+            return
+
+
+def _build_agent_runtime_session_cleanup_payload(
+    row: AgentRuntimeSession,
+) -> AgentBackendSessionCleanupPayload | None:
+    runtime_layer_specs = _RUNTIME_LAYER_SPECS_ADAPTER.validate_json(row.composition_layer_specs or "[]")
+    if not runtime_layer_specs:
+        return None
+
+    metadata: dict[str, JsonValue] = {
+        "tenant_id": row.tenant_id,
+        "app_id": row.app_id,
+        "agent_id": row.agent_id,
+        "agent_config_snapshot_id": row.agent_config_snapshot_id,
+        "previous_agent_backend_run_id": row.backend_run_id,
+    }
+    if row.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION:
+        metadata["conversation_id"] = row.conversation_id
+        idempotency_key = (
+            f"{row.tenant_id}:{row.app_id}:{row.conversation_id}:"
+            f"{row.agent_id}:app-delete-cleanup:{row.id or row.backend_run_id or 'no-session-id'}"
+        )
+    else:
+        metadata["workflow_run_id"] = row.workflow_run_id
+        metadata["node_id"] = row.node_id
+        idempotency_key = (
+            f"{row.tenant_id}:{row.app_id}:{row.workflow_run_id}:{row.node_id}:"
+            f"{row.agent_id}:app-delete-cleanup:{row.id or row.backend_run_id or 'no-session-id'}"
+        )
+
+    return AgentBackendSessionCleanupPayload(
+        session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+        runtime_layer_specs=runtime_layer_specs,
+        idempotency_key=idempotency_key,
+        metadata=metadata,
+    )
+
+
+def _enqueue_agent_runtime_session_cleanup(
+    *,
+    row: AgentRuntimeSession,
+    payload: AgentBackendSessionCleanupPayload,
+) -> None:
+    payload_dict = payload.model_dump(mode="json")
+    if row.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION:
+        cleanup_conversation_agent_runtime_session.delay(payload_dict)
+        return
+    cleanup_workflow_agent_runtime_session.delay(payload_dict)
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):

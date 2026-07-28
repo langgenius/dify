@@ -21,7 +21,13 @@ type Props = Readonly<{
 }>
 
 type CategoryTarget = {
-  labelKey: 'menus.tools' | 'settings.agentStrategy' | 'settings.dataSource' | 'settings.extension' | 'settings.provider' | 'settings.trigger'
+  labelKey:
+    | 'menus.tools'
+    | 'settings.agentStrategy'
+    | 'settings.dataSource'
+    | 'settings.extension'
+    | 'settings.provider'
+    | 'settings.trigger'
   path: string
 }
 
@@ -62,10 +68,11 @@ const Installed: FC<Props> = ({
 }) => {
   const { t } = useTranslation('plugin')
   const installedCategory = payload?.category
-  const categoryTarget = !isFailed && installContextCategory && installedCategory !== installContextCategory
-    ? categoryTargetMap[installedCategory as PluginCategoryEnum]
-    : undefined
-  const categoryName = categoryTarget ? t(categoryTarget.labelKey, { ns: 'common' }) : ''
+  const categoryTarget =
+    !isFailed && installContextCategory && installedCategory !== installContextCategory
+      ? categoryTargetMap[installedCategory as PluginCategoryEnum]
+      : undefined
+  const categoryName = categoryTarget ? t(($) => $[categoryTarget.labelKey], { ns: 'common' }) : ''
 
   const handleClose = () => {
     onCancel()
@@ -74,30 +81,43 @@ const Installed: FC<Props> = ({
     <>
       <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
         <p className="system-md-regular text-text-secondary">
-          {(isFailed && errMsg)
-            ? errMsg
-            : categoryTarget
-              ? (
-                  <Trans
-                    t={t}
-                    i18nKey="installModal.installedSuccessfullyWithPageDesc"
-                    ns="plugin"
-                    components={{
-                      categoryName: <span className="system-sm-semibold text-text-secondary" />,
-                    }}
-                    values={{ categoryName }}
-                  />
-                )
-              : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}
+          {isFailed && errMsg ? (
+            errMsg
+          ) : categoryTarget ? (
+            <Trans
+              t={t}
+              i18nKey={($) => $['installModal.installedSuccessfullyWithPageDesc']}
+              ns="plugin"
+              components={{
+                categoryName: <span className="system-sm-semibold text-text-secondary" />,
+              }}
+              values={{ categoryName }}
+            />
+          ) : (
+            t(
+              ($) =>
+                $[`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`],
+              { ns: 'plugin' },
+            )
+          )}
         </p>
         {payload && (
           <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
             <Card
               className="w-full"
-              payload={isMarketPayload ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket) : pluginManifestToCardPluginProps(payload as PluginDeclaration)}
+              payload={
+                isMarketPayload
+                  ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)
+                  : pluginManifestToCardPluginProps(payload as PluginDeclaration)
+              }
               installed={!isFailed}
               installFailed={isFailed}
-              titleLeft={<Badge className="mx-1" size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
+              titleLeft={
+                <Badge className="mx-1" size="s" state={BadgeState.Default}>
+                  {(payload as PluginDeclaration).version ||
+                    (payload as PluginManifestInMarket).latest_version}
+                </Badge>
+              }
               compact
             />
           </div>
@@ -111,14 +131,14 @@ const Installed: FC<Props> = ({
           render={categoryTarget ? <Link href={categoryTarget.path} /> : undefined}
           onClick={handleClose}
         >
-          {categoryTarget
-            ? (
-                <>
-                  <span>{t('installModal.viewDetails', { ns: 'plugin' })}</span>
-                  <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
-                </>
-              )
-            : t('operation.close', { ns: 'common' })}
+          {categoryTarget ? (
+            <>
+              <span>{t(($) => $['installModal.viewDetails'], { ns: 'plugin' })}</span>
+              <span className="i-ri-arrow-right-up-line size-4 shrink-0" aria-hidden="true" />
+            </>
+          ) : (
+            t(($) => $['operation.close'], { ns: 'common' })
+          )}
         </Button>
       </div>
     </>
