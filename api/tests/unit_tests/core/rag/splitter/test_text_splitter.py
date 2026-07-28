@@ -952,6 +952,21 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert "word1" in combined
         assert "word2" in combined
 
+    def test_preserves_spaces_when_recursively_splitting_long_paragraph(self):
+        """Ensure recursive space splitting preserves word boundaries."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert " ".join(result) == text
+
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""
         text = "verylongwordwithoutspaces"

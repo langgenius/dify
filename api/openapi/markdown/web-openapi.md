@@ -965,6 +965,12 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object | Tool icon metadata keyed by tool name | No |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
 #### AppPermissionQuery
 
 | Name | Type | Description | Required |
@@ -1646,6 +1652,7 @@ in form definition, or a variable while the workflow is running.
 | custom_config | [WebAppCustomConfigResponse](#webappcustomconfigresponse) |  | No |
 | enable_site | boolean |  | Yes |
 | end_user_id | string |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [WebModelConfigResponse](#webmodelconfigresponse) |  | No |
 | plan | string |  | Yes |
 | site | [WebSiteResponse](#websiteresponse) |  | Yes |

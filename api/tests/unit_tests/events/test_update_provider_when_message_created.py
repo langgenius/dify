@@ -18,7 +18,6 @@ from models.provider import ProviderType
 @pytest.fixture
 def credit_pool_session_factory(sqlite_engine: Engine) -> Iterator[sessionmaker[Session]]:
     """Bind message-created accounting to fixture-owned SQLite sessions."""
-    TenantCreditPool.__table__.create(sqlite_engine)
     session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with patch("events.event_handlers.update_provider_when_message_created.db.session", session_factory):
         yield session_factory

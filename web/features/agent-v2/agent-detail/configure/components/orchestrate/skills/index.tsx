@@ -304,9 +304,11 @@ function WorkspaceSkillSelector({
 }
 
 function WorkspaceAgentSkillItem({
+  canRemove,
   skill,
   onRemove,
 }: {
+  canRemove: boolean
   skill: AgentSkillBindingItemResponse
   onRemove: (skillId: string) => void
 }) {
@@ -359,14 +361,16 @@ function WorkspaceAgentSkillItem({
             <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
             <span>{t(($) => $['agentDetail.configure.skills.openInLibrary'])}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            className="gap-2"
-            onClick={() => onRemove(skill.id)}
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
-          </DropdownMenuItem>
+          {canRemove && (
+            <DropdownMenuItem
+              variant="destructive"
+              className="gap-2"
+              onClick={() => onRemove(skill.id)}
+            >
+              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+              <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -426,6 +430,8 @@ export function AgentSkills() {
 
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
+      if (isViewingVersion) return
+
       replaceAgentSkillBindings(
         {
           params: {
@@ -446,7 +452,13 @@ export function AgentSkills() {
         },
       )
     },
-    [apiContext.agentId, invalidateAgentSkillBindings, replaceAgentSkillBindings, t],
+    [
+      apiContext.agentId,
+      invalidateAgentSkillBindings,
+      isViewingVersion,
+      replaceAgentSkillBindings,
+      t,
+    ],
   )
 
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
@@ -634,6 +646,7 @@ export function AgentSkills() {
             {workspaceSkills.map((skill) => (
               <WorkspaceAgentSkillItem
                 key={skill.id}
+                canRemove={!isViewingVersion}
                 skill={skill}
                 onRemove={handleRemoveWorkspaceSkill}
               />

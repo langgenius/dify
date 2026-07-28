@@ -464,6 +464,7 @@
   "operation.downloading": "กำลังดาวน์โหลด...",
   "operation.duplicate": "สำเนา",
   "operation.edit": "แก้ไข",
+  "operation.export": "ส่งออก",
   "operation.exporting": "กำลังส่งออก",
   "operation.fill": "กรอกอัตโนมัติ",
   "operation.format": "รูปแบบ",

@@ -464,6 +464,7 @@
   "operation.downloading": "Скачивание...",
   "operation.duplicate": "Дублировать",
   "operation.edit": "Редактировать",
+  "operation.export": "Экспорт",
   "operation.exporting": "Экспорт",
   "operation.fill": "Автозаполнение",
   "operation.format": "Формат",

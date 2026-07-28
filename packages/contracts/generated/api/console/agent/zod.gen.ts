@@ -374,7 +374,6 @@ export const zWorkflowPartial = z.object({
  */
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -998,11 +997,15 @@ export const zSandboxListResponse = z.object({
  * Validated metadata extracted from a Skill package.
  */
 export const zSkillManifest = z.object({
-  description: z.string(),
+  description: z.string().min(1).max(1024),
   entry_path: z.string(),
   files: z.array(z.string()),
   hash: z.string(),
-  name: z.string(),
+  name: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   size: z.int(),
 })
 
@@ -2494,6 +2497,7 @@ export const zComposerSavePayload = z.object({
  * AgentAppComposerResponse
  */
 export const zAgentAppComposerResponse = z.object({
+  active_config_is_published: z.boolean(),
   active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
   agent: zAgentComposerAgentResponse,
   agent_soul: zAgentSoulConfig,
@@ -2730,7 +2734,6 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),

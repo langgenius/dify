@@ -6,7 +6,7 @@ import type {
 import type { ReactNode } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillDetailPage from '../detail-page'
@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     | { provider: { provider: string }; model: string }
     | undefined,
   skillDetail: undefined as SkillDetailResponse | undefined,
+  skillDetailGetFn: vi.fn(),
   skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
   skillListKey: vi.fn((_options: unknown): unknown[] => ['skills']),
@@ -114,6 +115,17 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    workspaces: {
+      current: {
+        skills: {
+          bySkillId: {
+            get: mocks.skillDetailGetFn,
+          },
+        },
+      },
+    },
+  },
   consoleQuery: {
     workspaces: {
       current: {
@@ -220,6 +232,30 @@ function createSkillDetail(overrides: Partial<SkillDetailResponse> = {}): SkillD
   }
 }
 
+function createDefaultSkillDraftDetail(overrides: Partial<SkillDetailResponse> = {}) {
+  return createSkillDetail({
+    name: 'untitled-skill-74d8b044',
+    display_name: 'Untitled skill',
+    description: 'Describe what this Skill does and when an Agent should use it.',
+    latest_published_version_id: null,
+    files: [
+      {
+        id: 'file-1',
+        path: 'SKILL.md',
+        kind: 'file',
+        storage: 'text',
+        mime_type: 'text/markdown',
+        content:
+          '---\nname: untitled-skill-74d8b044\ndescription: Describe what this Skill does and when an Agent should use it.\nmetadata:\n  display-name: Untitled skill\n---\n# Untitled skill\n\nDescribe what this Skill does, when an Agent should use it, and any step-by-step instructions it must follow.\n',
+        tool_file_id: null,
+        size: 248,
+        hash: 'hash-1',
+      },
+    ],
+    ...overrides,
+  })
+}
+
 function createSkillVersion(overrides: Partial<SkillVersionResponse> = {}): SkillVersionResponse {
   return {
     id: 'version-1',
@@ -294,6 +330,13 @@ function getFileTreeItem(path: string) {
   return treeItem
 }
 
+function getFileTreeButton(path: string) {
+  const fileButton = document.querySelector(`[title="${path}"]`)
+  if (!(fileButton instanceof HTMLButtonElement)) throw new Error(`file button not found: ${path}`)
+
+  return fileButton
+}
+
 async function openFileTreeActions(user: ReturnType<typeof userEvent.setup>, path: string) {
   const treeItem = getFileTreeItem(path)
   await user.click(within(treeItem).getByRole('button', { name: 'common.operation.more' }))
@@ -345,6 +388,7 @@ describe('SkillDetailPage', () => {
       },
     ]
     mocks.skillDetail = createSkillDetail()
+    mocks.skillDetailGetFn.mockImplementation(async () => mocks.skillDetail)
     mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
     mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
     mocks.skillListKey.mockImplementation((options) => ['skills', options])
@@ -477,6 +521,155 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('refreshes the skill detail timestamp before retrying autosave after a conflict', async () => {
+    const user = userEvent.setup()
+    const latestDetail = createSkillDetail({
+      updated_at: 1784638499,
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content:
+            '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Changed from another tab\n',
+          tool_file_id: null,
+          size: 180,
+          hash: 'hash-2',
+        },
+      ],
+    })
+
+    mocks.saveDraftFileMutationFn
+      .mockImplementationOnce(async () => {
+        mocks.skillDetail = latestDetail
+        const error = new Error('skill has been modified by another user') as Error & {
+          code: string
+          details: {
+            current_file_hash: string
+            current_updated_at: number
+            expected_updated_at: number
+          }
+        }
+        error.code = 'skill_conflict'
+        error.details = {
+          current_file_hash: 'hash-2',
+          current_updated_at: 1784638499,
+          expected_updated_at: 1784638487,
+        }
+        throw error
+      })
+      .mockImplementationOnce(
+        async (input: { body: { content?: string; operation: string; path: string } }) => {
+          const nextDetail = createSkillDetail({
+            updated_at: 1784638500,
+          })
+          const nextFiles = nextDetail.files ?? []
+          nextFiles[0] = {
+            ...nextFiles[0]!,
+            content: input.body.content ?? '',
+            hash: 'hash-3',
+          }
+          nextDetail.files = nextFiles
+          mocks.skillDetail = nextDetail
+          return nextDetail
+        },
+      )
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nMy tab changes')
+
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      },
+      { timeout: 4000 },
+    )
+    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          content: expect.stringContaining('My tab changes'),
+          hash: 'hash-2',
+          expected_updated_at: 1784638499,
+          operation: 'upsert_text',
+          path: 'SKILL.md',
+        }),
+      }),
+    )
+    expect(mocks.skillDetailGetFn).toHaveBeenCalledTimes(1)
+    expect(toast.error).toHaveBeenCalledWith('agentV2.skillManagement.detail.saveConflict')
+  }, 10000)
+
+  it('uses conflict details from response errors when retrying autosave', async () => {
+    const user = userEvent.setup()
+    mocks.saveDraftFileMutationFn
+      .mockRejectedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: 'skill_conflict',
+            message: 'skill has been modified by another user',
+            details: {
+              current_file_hash: 'hash-2',
+              current_updated_at: 1784638499,
+              expected_updated_at: 1784638487,
+            },
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockImplementationOnce(
+        async (input: { body: { content?: string; operation: string; path: string } }) => {
+          const nextDetail = createSkillDetail({
+            updated_at: 1784638500,
+          })
+          const nextFiles = nextDetail.files ?? []
+          nextFiles[0] = {
+            ...nextFiles[0]!,
+            content: input.body.content ?? '',
+            hash: 'hash-3',
+          }
+          nextDetail.files = nextFiles
+          mocks.skillDetail = nextDetail
+          return nextDetail
+        },
+      )
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.type(getSourceEditor(), '\nMy response error changes')
+
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      },
+      { timeout: 4000 },
+    )
+    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          content: expect.stringContaining('My response error changes'),
+          hash: 'hash-2',
+          expected_updated_at: 1784638499,
+          operation: 'upsert_text',
+          path: 'SKILL.md',
+        }),
+      }),
+    )
+  }, 10000)
+
   it('saves the live display name into SKILL.md before publishing', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -538,6 +731,53 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('does not render Skill metadata controls for non-SKILL markdown files', async () => {
+    const user = userEvent.setup()
+    const defaultFiles = createSkillDetail().files!
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        {
+          id: 'file-2',
+          path: 'references/refund-policy.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content:
+            '---\nname: refund-policy\ndescription: Refund policy.\nmetadata:\n  display-name: Refund Policy\n---\n# 退款政策\n',
+          tool_file_id: null,
+          size: 109,
+          hash: 'hash-2',
+        },
+        ...defaultFiles,
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.click(await screen.findByText('references'))
+    fireEvent.click(getFileTreeButton('references/refund-policy.md'))
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole('textbox')
+          .map((textbox) => ('value' in textbox ? String(textbox.value) : textbox.textContent))
+          .join('\n'),
+      ).toContain('# 退款政策')
+    })
+    expect(screen.queryByDisplayValue('refund-policy')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Refund policy.')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Refund Policy')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.skillManagement.detail.addMetadata' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('keeps line breaks typed in the live markdown editor', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
@@ -587,6 +827,9 @@ describe('SkillDetailPage', () => {
     const { container } = renderSkillDetailPage()
 
     await screen.findByText('agentV2.skillManagement.detail.builder.title')
+    expect(
+      await screen.findByText('agentV2.skillManagement.detail.builder.editIntro'),
+    ).toBeInTheDocument()
     const attachmentInput = getBuilderAttachmentInput(container)
     expect(attachmentInput).not.toBeNull()
 
@@ -622,10 +865,72 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('does not send the Skill Builder prompt when Enter confirms IME composition', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    fireEvent.change(promptInput, { target: { value: 'ni' } })
+    fireEvent.compositionStart(promptInput)
+    fireEvent.keyDown(promptInput, { isComposing: true, key: 'Enter' })
+
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(promptInput).toHaveValue('ni')
+  })
+
+  it('keeps blocking Skill Builder Enter briefly after IME composition ends', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    vi.useFakeTimers()
+    try {
+      fireEvent.change(promptInput, { target: { value: '你好' } })
+      fireEvent.compositionStart(promptInput)
+      fireEvent.compositionEnd(promptInput)
+      fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+      expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+      expect(promptInput).toHaveValue('你好')
+
+      act(() => {
+        vi.advanceTimersByTime(50)
+      })
+      fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+      expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '你好',
+        }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sends the Skill Builder prompt with Enter when IME composition is inactive', async () => {
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.modifyPlaceholder',
+    )
+    fireEvent.change(promptInput, { target: { value: 'Create a support triage skill' } })
+    fireEvent.keyDown(promptInput, { isComposing: false, key: 'Enter' })
+
+    expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Create a support triage skill',
+      }),
+    )
+  })
+
   it('blocks Skill Builder sends when no model is selected or available', async () => {
     const user = userEvent.setup()
     mocks.defaultTextGenerationModel = undefined
     mocks.textGenerationModelList = []
+    mocks.skillDetail = createDefaultSkillDraftDetail()
 
     renderSkillDetailPage()
 
@@ -804,6 +1109,7 @@ describe('SkillDetailPage', () => {
   it('sends suggestion chips as Builder messages and blocks concurrent sends', async () => {
     const user = userEvent.setup()
     mocks.sendSkillAssistMessage.mockImplementation(() => new Promise<void>(() => undefined))
+    mocks.skillDetail = createDefaultSkillDraftDetail()
 
     renderSkillDetailPage()
 
@@ -833,6 +1139,140 @@ describe('SkillDetailPage', () => {
     )
 
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates the selected editor from the Skill Builder detail event', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    const nextSkillMd =
+      '---\nname: builder-updated-skill\ndescription: Updated by Skill Builder.\nmetadata:\n  display-name: Builder Updated Skill\n---\n# Builder Updated Skill\n'
+    const nextDetail = createDefaultSkillDraftDetail({
+      name: 'builder-updated-skill',
+      display_name: 'Builder Updated Skill',
+      description: 'Updated by Skill Builder.',
+      updated_at: 1784638490,
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: nextSkillMd,
+          tool_file_id: null,
+          size: nextSkillMd.length,
+          hash: 'updated-hash-1',
+        },
+      ],
+    })
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
+      onData?.('Updated SKILL.md.', true, {})
+      onUnhandledEvent?.({
+        event: 'skill_detail_updated',
+        detail: nextDetail,
+        operations: [{ operation: 'upsert_text', path: 'SKILL.md' }],
+      })
+      onCompleted?.()
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetPath: 'SKILL.md',
+        }),
+      )
+    })
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    await waitFor(() => {
+      const currentSourceEditor = screen
+        .getAllByRole('textbox')
+        .find(
+          (editor): editor is HTMLTextAreaElement =>
+            editor instanceof HTMLTextAreaElement && editor.value.includes('Builder Updated Skill'),
+        )
+      expect(currentSourceEditor?.value).toContain('# Builder Updated Skill')
+    })
+  })
+
+  it('keeps assistant prose in the chat without using it as file content', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+      onData?.('I can create that reference file.', true, {})
+      onCompleted?.()
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.markdownSourceMode',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    expect(await screen.findByText('I can create that reference file.')).toBeInTheDocument()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('updates non-SKILL files from the Skill Builder detail event', async () => {
+    const user = userEvent.setup()
+    const referenceFile = {
+      id: 'file-2',
+      path: 'references/refund-policy.md',
+      kind: 'file' as const,
+      storage: 'text' as const,
+      mime_type: 'text/markdown',
+      content: '# Refund Policy\n',
+      tool_file_id: null,
+      size: 16,
+      hash: 'reference-hash-1',
+    }
+    mocks.skillDetail = createDefaultSkillDraftDetail()
+    const nextDetail = createDefaultSkillDraftDetail({
+      updated_at: 1784638490,
+      files: [...createDefaultSkillDraftDetail().files!, referenceFile],
+    })
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData, onUnhandledEvent }) => {
+      onData?.('Created references/refund-policy.md.', true, {})
+      onUnhandledEvent?.({
+        event: 'skill_detail_updated',
+        detail: nextDetail,
+        operations: [{ operation: 'upsert_text', path: 'references/refund-policy.md' }],
+      })
+      onCompleted?.()
+      return Promise.resolve()
+    })
+
+    renderSkillDetailPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+      }),
+    )
+
+    expect(await screen.findByText('references')).toBeInTheDocument()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
   it('creates a folder from the root file menu', async () => {

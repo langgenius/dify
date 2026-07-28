@@ -5,15 +5,25 @@ import type {
 import type { ReactNode } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SkillsPage from '../page'
 
+type SkillsInfiniteOptions = {
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
+  initialPageParam: number
+  input: (pageParam: unknown) => {
+    query: Record<string, unknown>
+  }
+}
+
 const mocks = vi.hoisted(() => ({
   createSkillMutationFn: vi.fn(),
   deleteSkillMutationFn: vi.fn(),
+  downloadBlob: vi.fn(),
   duplicateSkillMutationFn: vi.fn(),
+  exportSkillArchiveBlob: vi.fn(),
   importSkillMutationFn: vi.fn(),
   push: vi.fn(),
   queryState: {
@@ -21,8 +31,9 @@ const mocks = vi.hoisted(() => ({
     tag: [] as string[],
   },
   skills: [] as SkillResponse[],
+  skillPages: [] as SkillResponse[][],
   skillsKey: vi.fn((_options: unknown): unknown[] => ['skills']),
-  skillsQueryOptions: vi.fn((_options: unknown) => ({})),
+  skillsQueryOptions: vi.fn((_options: SkillsInfiniteOptions) => ({})),
   tags: [] as SkillTagResponse[],
   tagsKey: vi.fn((_options: unknown): unknown[] => ['skill-tags']),
   tagsQueryOptions: vi.fn((_options: unknown) => ({})),
@@ -102,6 +113,15 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+}))
+
+vi.mock('../client', () => ({
+  fetchSkillArchiveBlob: mocks.exportSkillArchiveBlob,
+  uploadSkillFile: vi.fn(),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     workspaces: {
@@ -109,7 +129,7 @@ vi.mock('@/service/client', () => ({
         skills: {
           get: {
             key: mocks.skillsKey,
-            queryOptions: mocks.skillsQueryOptions,
+            infiniteOptions: mocks.skillsQueryOptions,
           },
           post: {
             mutationOptions: () => ({ mutationFn: mocks.createSkillMutationFn }),
@@ -179,6 +199,7 @@ describe('SkillsPage', () => {
     mocks.queryState.keyword = ''
     mocks.queryState.tag = []
     mocks.skills = [createSkill()]
+    mocks.skillPages = [mocks.skills]
     mocks.tags = [
       { count: 2, tag: 'support' },
       { count: 1, tag: 'sales' },
@@ -187,12 +208,17 @@ describe('SkillsPage', () => {
     mocks.tagsKey.mockImplementation((options) => ['skill-tags', options])
     mocks.skillsQueryOptions.mockImplementation((options) => ({
       queryKey: ['skills', options],
-      queryFn: async () => ({
-        data: mocks.skills,
-        has_more: false,
-        page: 1,
-        total: mocks.skills.length,
-      }),
+      queryFn: async ({ pageParam }: { pageParam: unknown }) => {
+        const page = Number(pageParam)
+        return {
+          data: mocks.skillPages[page - 1] ?? [],
+          has_more: page < mocks.skillPages.length,
+          page,
+          total: mocks.skillPages.flat().length,
+        }
+      },
+      getNextPageParam: options.getNextPageParam,
+      initialPageParam: options.initialPageParam,
     }))
     mocks.tagsQueryOptions.mockImplementation((options) => ({
       queryKey: ['skill-tags', options],
@@ -203,6 +229,7 @@ describe('SkillsPage', () => {
     mocks.createSkillMutationFn.mockResolvedValue(createSkill({ id: 'created-skill' }))
     mocks.importSkillMutationFn.mockResolvedValue(createSkill({ id: 'imported-skill' }))
     mocks.duplicateSkillMutationFn.mockResolvedValue(createSkill({ id: 'duplicated-skill' }))
+    mocks.exportSkillArchiveBlob.mockResolvedValue(new Blob(['skill archive']))
     mocks.deleteSkillMutationFn.mockResolvedValue({
       deleted: true,
       id: 'skill-1',
@@ -234,15 +261,14 @@ describe('SkillsPage', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.skillsQueryOptions).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          input: {
-            query: {
-              keyword: 'refund',
-            },
-          },
-        }),
-      )
+      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
+      expect(queryOptions?.input(1)).toEqual({
+        query: {
+          keyword: 'refund',
+          limit: 20,
+          page: 1,
+        },
+      })
     })
 
     await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.tags' }))
@@ -252,16 +278,58 @@ describe('SkillsPage', () => {
     await user.click(screen.getAllByText('support').at(-1)!)
 
     await waitFor(() => {
-      expect(mocks.skillsQueryOptions).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          input: {
-            query: {
-              keyword: 'refund',
-              tag: ['support'],
-            },
-          },
-        }),
-      )
+      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
+      expect(queryOptions?.input(1)).toEqual({
+        query: {
+          keyword: 'refund',
+          limit: 20,
+          page: 1,
+          tag: ['support'],
+        },
+      })
+    })
+  })
+
+  it('loads the next skill page when the list scrolls near the bottom', async () => {
+    const firstPageSkills = Array.from({ length: 20 }, (_, index) =>
+      createSkill({
+        id: `skill-${index + 1}`,
+        name: `skill-${index + 1}`,
+        display_name: `Skill ${index + 1}`,
+      }),
+    )
+    const nextPageSkill = createSkill({
+      id: 'skill-21',
+      name: 'skill-21',
+      display_name: 'Skill 21',
+    })
+    mocks.skills = firstPageSkills
+    mocks.skillPages = [firstPageSkills, [nextPageSkill]]
+
+    renderSkillsPage()
+
+    const skillList = await screen.findByRole('region', {
+      name: 'agentV2.skillManagement.listLabel',
+    })
+    await screen.findByRole('heading', { name: 'Skill 1' })
+    expect(within(skillList).getAllByRole('article')).toHaveLength(20)
+
+    const scrollViewport = skillList.parentElement?.parentElement
+    expect(scrollViewport).not.toBeNull()
+    Object.defineProperties(scrollViewport!, {
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 1200 },
+      scrollTop: { configurable: true, value: 560 },
+    })
+    fireEvent.scroll(scrollViewport!)
+
+    expect(await screen.findByRole('heading', { name: 'Skill 21' })).toBeInTheDocument()
+    expect(within(skillList).getAllByRole('article')).toHaveLength(21)
+    expect(mocks.skillsQueryOptions.mock.lastCall?.[0].input(2)).toEqual({
+      query: {
+        limit: 20,
+        page: 2,
+      },
     })
   })
 
@@ -331,6 +399,41 @@ describe('SkillsPage', () => {
     expect(toast.success).toHaveBeenCalledWith('agentV2.skillManagement.duplicateSuccess')
   })
 
+  it('exports a published skill from the card action menu', async () => {
+    const user = userEvent.setup()
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+    await user.click(await screen.findByText('common.operation.export'))
+
+    await waitFor(() => {
+      expect(mocks.exportSkillArchiveBlob).toHaveBeenCalledWith('skill-1')
+    })
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'refund-approval.zip',
+    })
+  })
+
+  it('does not show export for an unpublished skill', async () => {
+    const user = userEvent.setup()
+    mocks.skills = [createSkill({ latest_published_version_id: null })]
+    mocks.skillPages = [mocks.skills]
+    renderSkillsPage()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'agentV2.skillManagement.moreActions:{"name":"Refund approval"}',
+      }),
+    )
+
+    expect(screen.queryByText('common.operation.export')).not.toBeInTheDocument()
+  })
+
   it('confirms deletion with the skill name and refreshes list data', async () => {
     const user = userEvent.setup()
     renderSkillsPage()
@@ -370,6 +473,7 @@ describe('SkillsPage', () => {
   it('shows the empty-search state without create or import actions', async () => {
     mocks.queryState.keyword = 'missing'
     mocks.skills = []
+    mocks.skillPages = [[]]
 
     renderSkillsPage()
 

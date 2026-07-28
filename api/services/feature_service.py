@@ -1,6 +1,8 @@
+import logging
+from collections.abc import Mapping
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
@@ -9,6 +11,8 @@ from enums.deployment_edition import DeploymentEdition
 from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
+
+logger = logging.getLogger(__name__)
 
 
 class FeatureResponseModel(BaseModel):
@@ -129,6 +133,13 @@ class PluginInstallationPermissionModel(FeatureResponseModel):
     # If True, restrict plugin installation to the marketplace only
     # Equivalent to ForceEnablePluginVerification
     restrict_to_marketplace_only: bool = False
+
+
+class _EnterprisePluginInstallationPermission(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    plugin_installation_scope: PluginInstallationScope = Field(alias="pluginInstallationScope")
+    restrict_to_marketplace_only: bool = Field(alias="restrictToMarketplaceOnly", strict=True)
 
 
 class FeatureModel(FeatureResponseModel):
@@ -284,6 +295,14 @@ class FeatureService:
     def is_plugin_manager_enabled(cls) -> bool:
         """Return whether Enterprise plugin credential policies must be enforced."""
         return dify_config.ENTERPRISE_ENABLED
+
+    @classmethod
+    def get_plugin_installation_permission(cls) -> PluginInstallationPermissionModel:
+        """Resolve the validated deployment-wide plugin installation policy."""
+        if not dify_config.ENTERPRISE_ENABLED:
+            return PluginInstallationPermissionModel()
+
+        return cls._resolve_plugin_installation_permission(EnterpriseService.get_info())
 
     @classmethod
     def get_license(cls) -> LicenseModel:
@@ -453,6 +472,33 @@ class FeatureService:
         return license_model
 
     @classmethod
+    def _resolve_plugin_installation_permission(
+        cls, enterprise_info: Mapping[str, object]
+    ) -> PluginInstallationPermissionModel:
+        if "PluginInstallationPermission" not in enterprise_info:
+            return PluginInstallationPermissionModel()
+
+        try:
+            permission = _EnterprisePluginInstallationPermission.model_validate(
+                enterprise_info["PluginInstallationPermission"]
+            )
+        except ValidationError as exc:
+            # Do not attach the exception because it may contain raw Enterprise configuration values.
+            logger.error(  # noqa: TRY400
+                "Invalid Enterprise plugin installation permission; denying all plugin installations: %s",
+                exc.errors(include_input=False),
+            )
+            return PluginInstallationPermissionModel(
+                plugin_installation_scope=PluginInstallationScope.NONE,
+                restrict_to_marketplace_only=True,
+            )
+
+        return PluginInstallationPermissionModel(
+            plugin_installation_scope=permission.plugin_installation_scope,
+            restrict_to_marketplace_only=permission.restrict_to_marketplace_only,
+        )
+
+    @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
 
@@ -499,11 +545,4 @@ class FeatureService:
                 status=LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
             )
 
-        if "PluginInstallationPermission" in enterprise_info:
-            plugin_installation_info = enterprise_info["PluginInstallationPermission"]
-            features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[
-                "pluginInstallationScope"
-            ]
-            features.plugin_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
-                "restrictToMarketplaceOnly"
-            ]
+        features.plugin_installation_permission = cls._resolve_plugin_installation_permission(enterprise_info)
