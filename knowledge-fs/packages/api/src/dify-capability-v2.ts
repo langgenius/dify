@@ -822,6 +822,16 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "source",
   },
   {
+    action: "source_workflows.import.create",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "POST",
+    operationId: "createSourceImportWorkflow",
+    parentResource: { pathParameter: "id" },
+    pathTemplate: "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+    resource: { pathParameter: "sourceId" },
+    resourceType: "source",
+  },
+  {
     action: "source_sync_policies.read",
     allowedCallerKinds: STANDARD_CALLERS,
     method: "GET",

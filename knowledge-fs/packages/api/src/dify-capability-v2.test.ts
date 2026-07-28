@@ -272,6 +272,12 @@ describe("Dify Capability v2 request guard", () => {
         "source_workflows.sync.create",
         "source",
       ],
+      createSourceImportWorkflow: [
+        "POST",
+        "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+        "source_workflows.import.create",
+        "source",
+      ],
       getAnswerTrace: ["GET", "/queries/{traceId}", "queries.read", "query"],
       getBulkOperation: ["GET", "/bulk-jobs/{id}", "bulk_jobs.read", "job"],
       getDocument: [
@@ -416,6 +422,12 @@ describe("Dify Capability v2 request guard", () => {
         method: "POST",
         resource: { id: "source-1", parent_id: "space-a", type: "source" },
         url: "https://kfs.test/knowledge-spaces/space-a/sources/source-1/test",
+      },
+      {
+        action: "source_workflows.import.create",
+        method: "POST",
+        resource: { id: "source-1", parent_id: "space-a", type: "source" },
+        url: "https://kfs.test/knowledge-spaces/space-a/sources/source-1/workflow-imports",
       },
       {
         action: "document_jobs.read",

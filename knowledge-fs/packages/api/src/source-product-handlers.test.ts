@@ -5,6 +5,7 @@ import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import { KnowledgeSpaceAuthorizationError } from "./knowledge-space-authorization";
 import { SourceConnectionError } from "./source-connection";
 import { registerSourceProductHandlers } from "./source-product-handlers";
+import { createSourceImportWorkflowRoute } from "./source-product-routes";
 import { SourceWorkflowError, type SourceWorkflowRun } from "./source-product-workflow";
 import { SourceProviderUnavailableError } from "./source-provider-catalog";
 
@@ -14,6 +15,10 @@ const runId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const connectionId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 
 describe("source-product handlers", () => {
+  it("publishes durable provider imports under a stable OpenAPI operation id", () => {
+    expect(createSourceImportWorkflowRoute.operationId).toBe("createSourceImportWorkflow");
+  });
+
   it("exposes crawl preview as a separate durable endpoint without changing legacy crawl", async () => {
     const createPreview = vi.fn(async () => run("crawl-preview"));
     const app = sourceProductApp({ createPreview });
@@ -71,6 +76,71 @@ describe("source-product handlers", () => {
         sourceId,
       }),
     );
+  });
+
+  it("rejects provider imports that exceed workflow bounds or use a short idempotency key", async () => {
+    const createImport = vi.fn(async () => run("online-document-import"));
+    const app = sourceProductApp({ createImport });
+    const invalidRequests = [
+      {
+        body: {
+          items: [
+            {
+              pageId: "page-a",
+              providerItemId: "provider-page-a",
+              type: "page",
+              workspaceId: "workspace-a",
+            },
+          ],
+          kind: "online-document-import",
+        },
+        key: "short-1",
+      },
+      {
+        body: {
+          items: [
+            {
+              lastEditedTime: "x".repeat(129),
+              pageId: "page-a",
+              providerItemId: "provider-page-a",
+              type: "page",
+              workspaceId: "workspace-a",
+            },
+          ],
+          kind: "online-document-import",
+        },
+        key: "import-bounds-1",
+      },
+      {
+        body: {
+          items: [
+            {
+              id: "x".repeat(1025),
+              name: "A.txt",
+              providerItemId: "provider-file-a",
+            },
+          ],
+          kind: "online-drive-import",
+        },
+        key: "import-bounds-2",
+      },
+    ] as const;
+
+    for (const invalid of invalidRequests) {
+      const response = await app.request(
+        `/knowledge-spaces/${spaceId}/sources/${sourceId}/workflow-imports`,
+        {
+          body: JSON.stringify(invalid.body),
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": invalid.key,
+          },
+          method: "POST",
+        },
+      );
+      expect(response.status).toBe(400);
+    }
+    expect(createImport).not.toHaveBeenCalled();
   });
 
   it("maps workflow errors and connection authorization denial without leaking internals", async () => {
@@ -155,6 +225,48 @@ describe("source-product handlers", () => {
     expect(JSON.stringify(body)).not.toMatch(
       /credentialRef|lastErrorCode|tenantId|must-never-leak|provider-secret-detail/u,
     );
+  });
+
+  it("uses an exact Capability v2 grant instead of a removed integrated-space local ACL", async () => {
+    const authorization = {
+      authorize: vi.fn(async () => {
+        throw new KnowledgeSpaceAuthorizationError(
+          "KNOWLEDGE_SPACE_ACCESS_DENIED",
+          "Knowledge space access denied",
+        );
+      }),
+    };
+    const list = vi.fn(async () => ({ items: [] }));
+    const app = sourceProductApp({
+      authorization,
+      callerKind: "interactive",
+      capability: capabilityGrant("source_connections.list"),
+      connections: { list },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/source-connections`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ items: [] });
+    expect(authorization.authorize).not.toHaveBeenCalled();
+    expect(list).toHaveBeenCalledWith({
+      knowledgeSpaceId: spaceId,
+      limit: 50,
+      tenantId: "tenant-a",
+    });
+  });
+
+  it("rejects a source-connection Capability v2 grant that is not exact for the route", async () => {
+    const list = vi.fn(async () => ({ items: [] }));
+    const app = sourceProductApp({
+      capability: capabilityGrant("source_connections.create"),
+      connections: { list },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/source-connections`);
+
+    expect(response.status).toBe(403);
+    expect(list).not.toHaveBeenCalled();
   });
 
   it("forwards bounded bulk requests and redacts durable authorization provenance", async () => {
@@ -951,6 +1063,34 @@ function publicConnection() {
     updatedAt: "2026-07-14T12:00:00.000Z",
     version: 2,
   };
+}
+
+function capabilityGrant(action: string) {
+  return {
+    action,
+    actor: "editor-a",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "dify-console",
+    callerKind: "interactive",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: [],
+    controlSpaceId: "control-space-a",
+    expiresAt: 2,
+    grantId: "grant-a",
+    issuedAt: 1,
+    jtiHash: `sha256:${"a".repeat(64)}`,
+    namespaceId: "tenant-a",
+    notBefore: 1,
+    resource: { id: spaceId, parent_id: null, type: "knowledge_space" },
+    subject: "editor-a",
+    traceId: "trace-a",
+  } as const;
 }
 
 function syncPolicy(patch: Record<string, unknown> = {}) {

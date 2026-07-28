@@ -172,6 +172,7 @@ describe("database schema catalog", () => {
         "id",
         "tenant_id",
         "knowledge_space_id",
+        "capability_grant_id",
         "provider_id",
         "name",
         "auth_kind",
@@ -230,6 +231,7 @@ describe("database schema catalog", () => {
         "tenant_id",
         "knowledge_space_id",
         "source_id",
+        "capability_grant_id",
         "requested_by_subject_id",
         "access_channel",
         "permission_snapshot_id",
@@ -336,6 +338,12 @@ describe("database schema catalog", () => {
     expect(findTable(schema, "sources").columns.map((column) => column.name)).toContain(
       "connection_id",
     );
+    expect(findTable(schema, "source_connections").foreignKeys).toContainEqual({
+      columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+      onDelete: "RESTRICT",
+      referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+      referencedTable: "capability_grants",
+    });
     expect(findTable(schema, "sources").foreignKeys).toContainEqual(
       expect.objectContaining({
         columns: ["knowledge_space_id", "connection_id"],
@@ -373,6 +381,7 @@ describe("database schema catalog", () => {
       "source_connections_space_id_uq",
       "source_connections_credential_ref_uq",
       "source_connections_scope_status_idx",
+      "source_connections_capability_grant_idx",
       "source_oauth_transactions_state_hash_uq",
       "source_oauth_transactions_verifier_ref_uq",
       "source_oauth_transactions_expiry_idx",

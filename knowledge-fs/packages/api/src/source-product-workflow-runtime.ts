@@ -25,7 +25,10 @@ import type {
   SourceDocumentInput,
   SourceDocumentMaterializer,
 } from "./source-document-materializer";
-import type { SourceLogicalRevisionPublisher } from "./source-logical-revision-publisher";
+import type {
+  SourceLogicalRevisionPublisher,
+  SourceProviderCoordinate,
+} from "./source-logical-revision-publisher";
 import { safeSourceOperationError } from "./source-operation-error";
 import {
   type SourceBulkAction,
@@ -41,6 +44,7 @@ import type { SourceRepository } from "./source-repository";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
 
 const encoder = new TextEncoder();
+const PROVIDER_SELECTION_METADATA_KEY = "__knowledgeFsProviderSelection";
 
 export interface SourceWorkflowContentStore {
   deleteRun(input: {
@@ -794,10 +798,17 @@ async function processOnlineDocumentImport(
     );
   }
   const initial = execution.run();
-  const connectorSource = await execution.external(() =>
-    resolveSource(input, source, initial.tenantId),
-  );
   const records = payloadItems(initial);
+  const frozenSource = await freezeProviderSelection(
+    input,
+    execution,
+    source,
+    "online-document",
+    records,
+  );
+  const connectorSource = await execution.external(() =>
+    resolveSource(input, frozenSource, initial.tenantId),
+  );
   const completedBefore = Math.min(initial.progressCompleted, records.length);
   for (const [index, record] of records.entries()) {
     if (index < completedBefore) continue;
@@ -843,12 +854,13 @@ async function processOnlineDocumentImport(
       ...(identity.etag ? { etag: identity.etag } : {}),
       filename,
       mimeType: "text/markdown",
+      providerCoordinate: { kind: "online-document", pageId, type, workspaceId },
       providerItemId,
       providerKind: "online-document",
       sizeBytes: body.byteLength,
       title: typeof record.name === "string" ? record.name : pageId,
     };
-    await materializeCandidates(input, execution, source, [document], [candidate]);
+    await materializeCandidates(input, execution, frozenSource, [document], [candidate]);
     await execution.mutate((latest) =>
       input.repository.checkpoint({
         checkpoint: "materialized",
@@ -871,10 +883,17 @@ async function processOnlineDriveImport(
     throw runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable");
   }
   const initial = execution.run();
-  const connectorSource = await execution.external(() =>
-    resolveSource(input, source, initial.tenantId),
-  );
   const records = payloadItems(initial);
+  const frozenSource = await freezeProviderSelection(
+    input,
+    execution,
+    source,
+    "online-drive",
+    records,
+  );
+  const connectorSource = await execution.external(() =>
+    resolveSource(input, frozenSource, initial.tenantId),
+  );
   const completedBefore = Math.min(initial.progressCompleted, records.length);
   for (const [index, record] of records.entries()) {
     if (index < completedBefore) continue;
@@ -916,12 +935,19 @@ async function processOnlineDriveImport(
       ...(identity.etag ? { etag: identity.etag } : {}),
       filename: name,
       mimeType,
+      providerCoordinate: {
+        ...(typeof record.bucket === "string" ? { bucket: record.bucket } : {}),
+        id: fileId,
+        kind: "online-drive",
+        mimeType,
+        name,
+      },
       providerItemId,
       providerKind: "online-drive",
       sizeBytes: download.body.byteLength,
       title: name,
     };
-    await materializeCandidates(input, execution, source, [document], [candidate]);
+    await materializeCandidates(input, execution, frozenSource, [document], [candidate]);
     await execution.mutate((latest) =>
       input.repository.checkpoint({
         checkpoint: "materialized",
@@ -933,6 +959,153 @@ async function processOnlineDriveImport(
       }),
     );
   }
+}
+
+interface FrozenProviderSelection {
+  readonly coordinateHashes: readonly string[];
+  readonly identityHashes: readonly string[];
+  readonly kind: "online-document" | "online-drive";
+  readonly version: 1;
+}
+
+async function freezeProviderSelection(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  kind: FrozenProviderSelection["kind"],
+  records: readonly Record<string, unknown>[],
+): Promise<Source> {
+  const selections = records.map((record) => {
+    const providerItemId = requiredPayloadString(record, "providerItemId");
+    const coordinateKey = providerSelectionCoordinateKey(kind, record);
+    return {
+      coordinateHash: providerSelectionCoordinateHash(kind, providerItemId, coordinateKey),
+      coordinateKey,
+      identityHash: providerSelectionIdentityHash(kind, providerItemId),
+    };
+  });
+  const identityHashes = [...new Set(selections.map(({ identityHash }) => identityHash))].sort();
+  if (identityHashes.length !== records.length) {
+    throw runtimeError(
+      "SOURCE_PROVIDER_SELECTION_DUPLICATE",
+      "Connected-source import contains a duplicate provider identity",
+    );
+  }
+  if (new Set(selections.map(({ coordinateKey }) => coordinateKey)).size !== records.length) {
+    throw runtimeError(
+      "SOURCE_PROVIDER_SELECTION_DUPLICATE",
+      "Connected-source import maps multiple identities to one provider coordinate",
+    );
+  }
+  const coordinateHashes = selections.map(({ coordinateHash }) => coordinateHash).sort();
+
+  const existing = readFrozenProviderSelection(source.metadata);
+  if (existing) {
+    if (
+      existing.kind !== kind ||
+      identityHashes.some((identityHash) => !existing.identityHashes.includes(identityHash)) ||
+      coordinateHashes.some((coordinateHash) => !existing.coordinateHashes.includes(coordinateHash))
+    ) {
+      throw runtimeError(
+        "SOURCE_PROVIDER_SELECTION_FROZEN",
+        "Connected-source selection is frozen and cannot be expanded",
+      );
+    }
+    return source;
+  }
+
+  await execution.assertActive();
+  const updated = await input.sources.update({
+    expectedVersion: source.version,
+    id: source.id,
+    knowledgeSpaceId: source.knowledgeSpaceId,
+    metadata: {
+      ...source.metadata,
+      [PROVIDER_SELECTION_METADATA_KEY]: {
+        coordinateHashes,
+        identityHashes,
+        kind,
+        version: 1,
+      } satisfies FrozenProviderSelection,
+    },
+  });
+  if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source no longer exists");
+  await execution.assertActive();
+  return updated;
+}
+
+function readFrozenProviderSelection(
+  metadata: Readonly<Record<string, unknown>>,
+): FrozenProviderSelection | undefined {
+  const raw = metadata[PROVIDER_SELECTION_METADATA_KEY];
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw runtimeError(
+      "SOURCE_PROVIDER_SELECTION_INVALID",
+      "Connected-source selection marker is invalid",
+    );
+  }
+  const record = raw as Record<string, unknown>;
+  if (
+    record.version !== 1 ||
+    (record.kind !== "online-document" && record.kind !== "online-drive") ||
+    !Array.isArray(record.identityHashes) ||
+    !Array.isArray(record.coordinateHashes) ||
+    record.identityHashes.length < 1 ||
+    record.identityHashes.length > 200 ||
+    record.coordinateHashes.length !== record.identityHashes.length ||
+    record.identityHashes.some(
+      (identityHash) => typeof identityHash !== "string" || !/^[a-f0-9]{64}$/u.test(identityHash),
+    ) ||
+    record.coordinateHashes.some(
+      (coordinateHash) =>
+        typeof coordinateHash !== "string" || !/^[a-f0-9]{64}$/u.test(coordinateHash),
+    ) ||
+    new Set(record.identityHashes).size !== record.identityHashes.length ||
+    new Set(record.coordinateHashes).size !== record.coordinateHashes.length
+  ) {
+    throw runtimeError(
+      "SOURCE_PROVIDER_SELECTION_INVALID",
+      "Connected-source selection marker is invalid",
+    );
+  }
+  return {
+    coordinateHashes: [...record.coordinateHashes].sort() as string[],
+    identityHashes: [...record.identityHashes].sort() as string[],
+    kind: record.kind,
+    version: 1,
+  };
+}
+
+function providerSelectionIdentityHash(
+  kind: FrozenProviderSelection["kind"],
+  providerItemId: string,
+): string {
+  return createHash("sha256").update(`${kind}\0${providerItemId}`, "utf8").digest("hex");
+}
+
+function providerSelectionCoordinateHash(
+  kind: FrozenProviderSelection["kind"],
+  providerItemId: string,
+  coordinateKey: string,
+): string {
+  return createHash("sha256")
+    .update(`${kind}\0${providerItemId}\0${coordinateKey}`, "utf8")
+    .digest("hex");
+}
+
+function providerSelectionCoordinateKey(
+  kind: FrozenProviderSelection["kind"],
+  record: Readonly<Record<string, unknown>>,
+): string {
+  if (kind === "online-document") {
+    return JSON.stringify([
+      requiredPayloadString(record, "workspaceId"),
+      requiredPayloadString(record, "pageId"),
+    ]);
+  }
+  const bucket = typeof record.bucket === "string" ? record.bucket : "";
+  return JSON.stringify([bucket, requiredPayloadString(record, "id")]);
 }
 
 async function materializeCandidates(
@@ -995,6 +1168,7 @@ interface PendingLogicalRevision {
   readonly etag?: string | undefined;
   readonly filename: string;
   readonly mimeType: string;
+  readonly providerCoordinate?: SourceProviderCoordinate | undefined;
   readonly providerItemId: string;
   readonly providerKind: "website" | "online-document" | "online-drive";
   readonly sizeBytes: number;
@@ -1056,6 +1230,9 @@ async function publishLogicalRevisions(
             knowledgeSpaceId: run.knowledgeSpaceId,
             materializationOwnership: document.workflowOwnership,
             mimeType: document.mimeType,
+            ...(candidate.providerCoordinate
+              ? { providerCoordinate: candidate.providerCoordinate }
+              : {}),
             providerItemId: candidate.providerItemId,
             providerKind: candidate.providerKind,
             remoteDeletionPolicy: remoteDeletionPolicy(source),
@@ -1115,12 +1292,50 @@ async function processSourceSync(
       "Configured provider capability conflicts with logical source provenance",
     );
   }
+  const frozenSelection = readFrozenProviderSelection(source.metadata);
+  if (frozenSelection && frozenSelection.kind !== providerKind) {
+    throw runtimeError(
+      "SOURCE_SYNC_PROVIDER_KIND_CONFLICT",
+      "Frozen connected-source selection conflicts with the configured provider capability",
+    );
+  }
+  if (frozenSelection) {
+    const allowed = new Set(frozenSelection.identityHashes);
+    const allowedCoordinates = new Set(frozenSelection.coordinateHashes);
+    for (const providerItemId of inventory.keys()) {
+      if (!allowed.has(providerSelectionIdentityHash(providerKind, providerItemId))) {
+        throw runtimeError(
+          "SOURCE_SYNC_SELECTION_MISMATCH",
+          "Logical source inventory is outside the frozen provider selection",
+        );
+      }
+      const item = inventory.get(providerItemId);
+      const coordinateKey = item ? frozenInventoryCoordinateKey(item, providerKind) : undefined;
+      if (
+        !coordinateKey ||
+        !allowedCoordinates.has(
+          providerSelectionCoordinateHash(providerKind, providerItemId, coordinateKey),
+        )
+      ) {
+        throw runtimeError(
+          "SOURCE_SYNC_SELECTION_MISMATCH",
+          "Logical source provider coordinate is outside the frozen selection",
+        );
+      }
+    }
+  }
+  // A connected Source is populated only by an explicit durable import. An empty logical
+  // inventory must never be interpreted as permission to discover/import the whole provider,
+  // including after every selected document has been remotely deleted.
+  if (inventory.size === 0) return;
+  const selectionAware =
+    frozenSelection !== undefined || inventoryHasProviderCoordinates(inventory, providerKind);
   if (providerKind === "online-document") {
-    await processOnlineDocumentSync(input, execution, source, inventory, maxItems);
+    await processOnlineDocumentSync(input, execution, source, inventory, maxItems, selectionAware);
     return;
   }
   if (providerKind === "online-drive") {
-    await processOnlineDriveSync(input, execution, source, inventory, maxItems);
+    await processOnlineDriveSync(input, execution, source, inventory, maxItems, selectionAware);
   }
 }
 
@@ -1233,6 +1448,28 @@ function inventoryProviderKind(
     kind = candidate;
   }
   return kind;
+}
+
+function inventoryHasProviderCoordinates(
+  inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
+  providerKind: "online-document" | "online-drive",
+): boolean {
+  for (const item of inventory.values()) {
+    const provenance = item.systemMetadata.provenance;
+    const coordinate =
+      provenance && typeof provenance === "object" && !Array.isArray(provenance)
+        ? (provenance as Record<string, unknown>).providerCoordinate
+        : undefined;
+    if (
+      coordinate &&
+      typeof coordinate === "object" &&
+      !Array.isArray(coordinate) &&
+      (coordinate as Record<string, unknown>).kind === providerKind
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 interface OnlineDocumentInventoryEntry {
@@ -1400,6 +1637,372 @@ async function listOnlineDriveInventory(
   );
 }
 
+interface SelectedOnlineDocumentInventoryEntry extends OnlineDocumentInventoryEntry {
+  readonly providerItemId: string;
+}
+
+async function listSelectedOnlineDocumentInventory(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
+  maxItems: number,
+): Promise<readonly SelectedOnlineDocumentInventoryEntry[]> {
+  const selections = [...inventory.values()].map((item) => ({
+    coordinate: onlineDocumentCoordinate(item),
+    item,
+  }));
+  const found = new Map<string, SelectedOnlineDocumentInventoryEntry>();
+  const consumedCursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    if (cursor && consumedCursors.has(cursor)) {
+      throw runtimeError(
+        "SOURCE_SYNC_CURSOR_LOOP",
+        "Online-document provider repeated a continuation cursor",
+      );
+    }
+    if (cursor) consumedCursors.add(cursor);
+    const run = execution.run();
+    const listing = await execution.external(
+      (signal) =>
+        input.onlineDocuments?.listPages({
+          ...(cursor ? { cursor } : {}),
+          limit: Math.max(1, Math.min(200, maxItems)),
+          signal,
+          source,
+          tenantId: run.tenantId,
+          userId: workflowSubjectId(run),
+        }) ??
+        Promise.reject(
+          runtimeError(
+            "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE",
+            "Online-document provider is unavailable",
+          ),
+        ),
+    );
+    for (const workspace of listing.workspaces) {
+      const listedWorkspaceId = workspace.workspaceId?.trim() || undefined;
+      for (const page of workspace.pages) {
+        const matching = selections.filter(({ coordinate, item }) =>
+          onlineDocumentSelectionMatches(item.providerItemId, coordinate, listedWorkspaceId, page),
+        );
+        if (matching.length === 0) continue;
+        if (matching.length !== 1) {
+          throw runtimeError(
+            "SOURCE_SYNC_PROVIDER_IDENTITY_DUPLICATE",
+            "Frozen online-document selection maps multiple identities to one provider page",
+          );
+        }
+        const selection = matching[0];
+        if (!selection) continue;
+        if (found.has(selection.item.providerItemId)) {
+          throw runtimeError(
+            "SOURCE_SYNC_PROVIDER_IDENTITY_DUPLICATE",
+            "Online-document provider returned a duplicate selected page identity",
+          );
+        }
+        const workspaceId = listedWorkspaceId ?? selection.coordinate?.workspaceId;
+        if (!workspaceId) {
+          throw runtimeError(
+            "SOURCE_SYNC_PROVIDER_IDENTITY_INVALID",
+            "Selected online-document workspace identity is missing",
+          );
+        }
+        found.set(selection.item.providerItemId, {
+          page,
+          providerItemId: selection.item.providerItemId,
+          workspaceId,
+        });
+      }
+    }
+    cursor = listing.nextCursor;
+    if (cursor && consumedCursors.size >= maxItems) {
+      throw runtimeError(
+        "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
+        "Online-document listing exceeds its durable scan budget",
+      );
+    }
+  } while (cursor && found.size < selections.length);
+  return [...found.values()].sort((left, right) =>
+    left.providerItemId.localeCompare(right.providerItemId),
+  );
+}
+
+function onlineDocumentSelectionMatches(
+  providerItemId: string,
+  coordinate: Extract<SourceProviderCoordinate, { readonly kind: "online-document" }> | undefined,
+  listedWorkspaceId: string | undefined,
+  page: OnlineDocumentPage,
+): boolean {
+  if (coordinate) {
+    return (
+      coordinate.pageId === page.pageId &&
+      (listedWorkspaceId === undefined || coordinate.workspaceId === listedWorkspaceId)
+    );
+  }
+  const tuple = compositeProviderItemId(providerItemId);
+  if (tuple) {
+    return (
+      tuple[1] === page.pageId &&
+      (listedWorkspaceId === undefined || tuple[0] === listedWorkspaceId)
+    );
+  }
+  return providerItemId === page.pageId;
+}
+
+interface SelectedOnlineDriveInventoryFile extends OnlineDriveInventoryFile {
+  readonly mimeType: string;
+  readonly providerItemId: string;
+}
+
+async function listSelectedOnlineDriveInventory(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
+  maxItems: number,
+): Promise<readonly SelectedOnlineDriveInventoryFile[]> {
+  const files: SelectedOnlineDriveInventoryFile[] = [];
+  const scanBudget = { remaining: maxItems };
+  for (const item of inventory.values()) {
+    const coordinate = onlineDriveCoordinate(item);
+    const listed = await findSelectedOnlineDriveFile(
+      input,
+      execution,
+      source,
+      coordinate,
+      scanBudget,
+    );
+    if (listed === null) continue;
+    files.push({
+      ...(coordinate.bucket ? { bucket: coordinate.bucket } : {}),
+      id: coordinate.id,
+      mimeType: coordinate.mimeType ?? "application/octet-stream",
+      name: listed?.name ?? coordinate.name,
+      providerItemId: item.providerItemId,
+      ...(listed?.size === undefined ? {} : { size: listed.size }),
+      type: "file",
+    });
+  }
+  return files.sort((left, right) => left.providerItemId.localeCompare(right.providerItemId));
+}
+
+async function findSelectedOnlineDriveFile(
+  input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
+  execution: RuntimeExecution,
+  source: Source,
+  coordinate: Extract<SourceProviderCoordinate, { readonly kind: "online-drive" }>,
+  scanBudget: { remaining: number },
+): Promise<OnlineDriveFile | null | undefined> {
+  if (!coordinate.bucket) return undefined;
+  const pending: Array<string | undefined> = [undefined];
+  const consumed = new Set<string>();
+  let authoritative = false;
+  while (pending.length > 0) {
+    const continuationToken = pending.shift();
+    const cursorKey = continuationToken ?? "__first__";
+    if (consumed.has(cursorKey)) {
+      throw runtimeError(
+        "SOURCE_SYNC_CURSOR_LOOP",
+        "Online-drive provider repeated a continuation cursor",
+      );
+    }
+    consumed.add(cursorKey);
+    if (scanBudget.remaining < 1) {
+      throw runtimeError(
+        "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
+        "Online-drive selected-file lookups exceed their shared durable scan budget",
+      );
+    }
+    scanBudget.remaining -= 1;
+    const run = execution.run();
+    const listing = await execution.external(
+      (signal) =>
+        input.onlineDrive?.browse({
+          bucket: coordinate.bucket,
+          ...(continuationToken ? { continuationToken } : {}),
+          maxKeys: 200,
+          prefix: coordinate.id,
+          signal,
+          source,
+          tenantId: run.tenantId,
+          userId: workflowSubjectId(run),
+        }) ??
+        Promise.reject(
+          runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable"),
+        ),
+    );
+    for (const bucket of listing.buckets) {
+      if (bucket.bucket !== undefined && bucket.bucket !== coordinate.bucket) continue;
+      if (
+        bucket.files.length > 0 ||
+        bucket.isTruncated !== undefined ||
+        bucket.continuationToken !== undefined
+      ) {
+        authoritative = true;
+      }
+      const file = bucket.files.find(
+        (candidate) => candidate.type !== "folder" && candidate.id === coordinate.id,
+      );
+      if (file) return file;
+      if (bucket.isTruncated) {
+        if (!bucket.continuationToken) {
+          throw runtimeError(
+            "SOURCE_SYNC_CURSOR_INVALID",
+            "Online-drive provider omitted a required continuation cursor",
+          );
+        }
+        pending.push(bucket.continuationToken);
+      }
+    }
+  }
+  // An empty/root-shaped response does not prove that a selected bucket object disappeared.
+  // The subsequent direct download is fail-safe: transient/not-found errors fail the run instead
+  // of tombstoning a valid selected document.
+  return authoritative ? null : undefined;
+}
+
+function onlineDocumentCoordinate(
+  item: SourceActiveDocumentInventoryItem,
+): Extract<SourceProviderCoordinate, { readonly kind: "online-document" }> | undefined {
+  const raw = providerCoordinate(item);
+  if (raw === undefined) return undefined;
+  if (
+    raw.kind !== "online-document" ||
+    !coordinateString(raw.pageId) ||
+    !coordinateString(raw.type) ||
+    !coordinateString(raw.workspaceId)
+  ) {
+    throw runtimeError(
+      "SOURCE_SYNC_PROVIDER_COORDINATE_INVALID",
+      "Selected online-document coordinate is invalid",
+    );
+  }
+  const coordinate = {
+    kind: "online-document",
+    pageId: raw.pageId,
+    type: raw.type,
+    workspaceId: raw.workspaceId,
+  } as const;
+  const tuple = compositeProviderItemId(item.providerItemId);
+  if (tuple && (tuple[0] !== coordinate.workspaceId || tuple[1] !== coordinate.pageId)) {
+    throw runtimeError(
+      "SOURCE_SYNC_SELECTION_MISMATCH",
+      "Selected online-document identity does not match its provider coordinate",
+    );
+  }
+  return coordinate;
+}
+
+function onlineDriveCoordinate(
+  item: SourceActiveDocumentInventoryItem,
+): Extract<SourceProviderCoordinate, { readonly kind: "online-drive" }> {
+  const raw = providerCoordinate(item);
+  if (raw !== undefined) {
+    if (
+      raw.kind !== "online-drive" ||
+      !coordinateString(raw.id) ||
+      !coordinateString(raw.name) ||
+      (raw.bucket !== undefined && !coordinateString(raw.bucket)) ||
+      (raw.mimeType !== undefined && !coordinateString(raw.mimeType))
+    ) {
+      throw runtimeError(
+        "SOURCE_SYNC_PROVIDER_COORDINATE_INVALID",
+        "Selected online-drive coordinate is invalid",
+      );
+    }
+    const coordinate = {
+      ...(raw.bucket ? { bucket: raw.bucket } : {}),
+      id: raw.id,
+      kind: "online-drive",
+      ...(raw.mimeType ? { mimeType: raw.mimeType } : {}),
+      name: raw.name,
+    } as const;
+    const tuple = compositeProviderItemId(item.providerItemId);
+    if (tuple && ((tuple[0] || undefined) !== coordinate.bucket || tuple[1] !== coordinate.id)) {
+      throw runtimeError(
+        "SOURCE_SYNC_SELECTION_MISMATCH",
+        "Selected online-drive identity does not match its provider coordinate",
+      );
+    }
+    return coordinate;
+  }
+  const tuple = compositeProviderItemId(item.providerItemId);
+  const id = tuple?.[1] ?? item.providerItemId;
+  return {
+    ...(tuple?.[0] ? { bucket: tuple[0] } : {}),
+    id,
+    kind: "online-drive",
+    name: providerFilename(id),
+  };
+}
+
+function providerCoordinate(
+  item: SourceActiveDocumentInventoryItem,
+): Record<string, unknown> | undefined {
+  const provenance = item.systemMetadata.provenance;
+  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return undefined;
+  const raw = (provenance as Record<string, unknown>).providerCoordinate;
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw runtimeError(
+      "SOURCE_SYNC_PROVIDER_COORDINATE_INVALID",
+      "Selected provider coordinate is invalid",
+    );
+  }
+  return raw as Record<string, unknown>;
+}
+
+function frozenInventoryCoordinateKey(
+  item: SourceActiveDocumentInventoryItem,
+  kind: FrozenProviderSelection["kind"],
+): string | undefined {
+  const raw = providerCoordinate(item);
+  if (raw) {
+    if (raw.kind !== kind) return undefined;
+    if (kind === "online-document") {
+      return coordinateString(raw.workspaceId) && coordinateString(raw.pageId)
+        ? JSON.stringify([raw.workspaceId, raw.pageId])
+        : undefined;
+    }
+    return coordinateString(raw.id) && (raw.bucket === undefined || coordinateString(raw.bucket))
+      ? JSON.stringify([raw.bucket ?? "", raw.id])
+      : undefined;
+  }
+  const tuple = compositeProviderItemId(item.providerItemId);
+  if (!tuple || (kind === "online-document" && !tuple[0].trim())) return undefined;
+  return JSON.stringify(tuple);
+}
+
+function compositeProviderItemId(providerItemId: string): readonly [string, string] | undefined {
+  if (!providerItemId.startsWith("[")) return undefined;
+  try {
+    const tuple = JSON.parse(providerItemId) as unknown;
+    if (
+      !Array.isArray(tuple) ||
+      tuple.length !== 2 ||
+      typeof tuple[0] !== "string" ||
+      typeof tuple[1] !== "string" ||
+      !tuple[1].trim()
+    ) {
+      return undefined;
+    }
+    return [tuple[0], tuple[1]];
+  } catch {
+    return undefined;
+  }
+}
+
+function coordinateString(value: unknown): value is string {
+  return typeof value === "string" && Boolean(value.trim()) && value.length <= 8_192;
+}
+
+function providerFilename(id: string): string {
+  const name = id.split("/").filter(Boolean).at(-1);
+  return name?.slice(0, 8_192) || "provider-file";
+}
+
 async function processWebsiteSync(
   input: Parameters<typeof createSourceProductWorkflowRuntime>[0],
   execution: RuntimeExecution,
@@ -1517,6 +2120,7 @@ async function processOnlineDocumentSync(
   source: Source,
   inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
   maxItems: number,
+  selectionAware: boolean,
 ): Promise<void> {
   if (!input.onlineDocuments) {
     throw runtimeError(
@@ -1528,26 +2132,39 @@ async function processOnlineDocumentSync(
   const connectorSource = await execution.external(() =>
     resolveSource(input, source, initial.tenantId),
   );
-  const entries = await listOnlineDocumentInventory(input, execution, connectorSource, maxItems);
+  if (selectionAware && inventory.size === 0) return;
+  const entries: readonly SelectedOnlineDocumentInventoryEntry[] = selectionAware
+    ? await listSelectedOnlineDocumentInventory(
+        input,
+        execution,
+        connectorSource,
+        inventory,
+        maxItems,
+      )
+    : (await listOnlineDocumentInventory(input, execution, connectorSource, maxItems)).map(
+        (entry) => ({ ...entry, providerItemId: entry.page.pageId }),
+      );
   const fingerprint = providerListingFingerprint(
     "online-document",
-    entries.map(({ page, workspaceId }) => [
-      page.pageId,
-      workspaceId,
-      page.lastEditedTime ?? "",
-      page.type,
-    ]),
+    entries.map(({ page, providerItemId, workspaceId }) =>
+      selectionAware
+        ? [providerItemId, page.pageId, workspaceId, page.lastEditedTime ?? "", page.type]
+        : [page.pageId, workspaceId, page.lastEditedTime ?? "", page.type],
+    ),
   );
   const cursor = requireMatchingSyncCursor(initial.cursor, "online-document", fingerprint);
   if (cursor.phase === "eof") return;
-  const missing = missingInventory(inventory, new Set(entries.map(({ page }) => page.pageId)));
+  const missing = missingInventory(
+    inventory,
+    new Set(entries.map(({ providerItemId }) => providerItemId)),
+  );
   if (cursor.phase === "missing") {
     await processRemoteMissing(input, execution, source, fingerprint, missing, cursor.offset);
     return;
   }
-  for (const [index, { page, workspaceId }] of entries.entries()) {
+  for (const [index, { page, providerItemId, workspaceId }] of entries.entries()) {
     if (index < cursor.offset) continue;
-    const prior = inventory.get(page.pageId);
+    const prior = inventory.get(providerItemId);
     if (!prior || !page.lastEditedTime || prior.etag !== page.lastEditedTime) {
       const run = execution.run();
       const content = await execution.external(
@@ -1579,7 +2196,12 @@ async function processOnlineDocumentSync(
               body,
               filename,
               metadata: {
-                dataSourceInfo: { contentHash, pageId: page.pageId, workspaceId },
+                dataSourceInfo: {
+                  contentHash,
+                  pageId: page.pageId,
+                  providerItemId,
+                  workspaceId,
+                },
                 dataSourceType: "online_document",
               },
               mimeType: "text/markdown",
@@ -1591,7 +2213,13 @@ async function processOnlineDocumentSync(
               ...(page.lastEditedTime ? { etag: page.lastEditedTime } : {}),
               filename,
               mimeType: "text/markdown",
-              providerItemId: page.pageId,
+              providerCoordinate: {
+                kind: "online-document",
+                pageId: page.pageId,
+                type: page.type,
+                workspaceId,
+              },
+              providerItemId,
               providerKind: "online-document",
               sizeBytes: body.byteLength,
               title: page.pageName,
@@ -1626,6 +2254,7 @@ async function processOnlineDriveSync(
   source: Source,
   inventory: ReadonlyMap<string, SourceActiveDocumentInventoryItem>,
   maxItems: number,
+  selectionAware: boolean,
 ): Promise<void> {
   if (!input.onlineDrive) {
     throw runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable");
@@ -1634,28 +2263,39 @@ async function processOnlineDriveSync(
   const connectorSource = await execution.external(() =>
     resolveSource(input, source, initial.tenantId),
   );
-  const files = await listOnlineDriveInventory(input, execution, connectorSource, maxItems);
+  if (selectionAware && inventory.size === 0) return;
+  const files: readonly SelectedOnlineDriveInventoryFile[] = selectionAware
+    ? await listSelectedOnlineDriveInventory(input, execution, connectorSource, inventory, maxItems)
+    : (await listOnlineDriveInventory(input, execution, connectorSource, maxItems)).map((file) => ({
+        ...file,
+        mimeType: "application/octet-stream",
+        providerItemId: file.id,
+      }));
   const fingerprint = providerListingFingerprint(
     "online-drive",
-    files.map((file) => [file.id, file.bucket ?? "", file.name, file.size ?? ""]),
+    files.map((file) =>
+      selectionAware
+        ? [file.providerItemId, file.id, file.bucket ?? "", file.name, file.size ?? ""]
+        : [file.id, file.bucket ?? "", file.name, file.size ?? ""],
+    ),
   );
   const cursor = requireMatchingSyncCursor(initial.cursor, "online-drive", fingerprint);
   if (cursor.phase === "eof") return;
-  const missing = missingInventory(inventory, new Set(files.map((file) => file.id)));
+  const missing = missingInventory(inventory, new Set(files.map((file) => file.providerItemId)));
   if (cursor.phase === "missing") {
     await processRemoteMissing(input, execution, source, fingerprint, missing, cursor.offset);
     return;
   }
   for (const [index, file] of files.entries()) {
     if (index < cursor.offset) continue;
-    const providerItemId = file.id;
+    const providerItemId = file.providerItemId;
     const prior = inventory.get(providerItemId);
     {
       const run = execution.run();
       const download = await execution.external(
         (signal) =>
           input.onlineDrive?.download({
-            file: { id: providerItemId, ...(file.bucket ? { bucket: file.bucket } : {}) },
+            file: { id: file.id, ...(file.bucket ? { bucket: file.bucket } : {}) },
             signal,
             source: connectorSource,
             tenantId: run.tenantId,
@@ -1667,7 +2307,7 @@ async function processOnlineDriveSync(
       );
       const contentHash = createHash("sha256").update(download.body).digest("hex");
       if (!prior || prior.contentHash !== contentHash) {
-        const mimeType = "application/octet-stream";
+        const mimeType = file.mimeType;
         await materializeCandidates(
           input,
           execution,
@@ -1677,7 +2317,12 @@ async function processOnlineDriveSync(
               body: download.body,
               filename: file.name,
               metadata: {
-                dataSourceInfo: { contentHash, fileId: providerItemId },
+                dataSourceInfo: {
+                  ...(file.bucket ? { bucket: file.bucket } : {}),
+                  contentHash,
+                  fileId: file.id,
+                  providerItemId,
+                },
                 dataSourceType: "online_drive",
               },
               mimeType,
@@ -1688,6 +2333,13 @@ async function processOnlineDriveSync(
               contentHash,
               filename: file.name,
               mimeType,
+              providerCoordinate: {
+                ...(file.bucket ? { bucket: file.bucket } : {}),
+                id: file.id,
+                kind: "online-drive",
+                mimeType,
+                name: file.name,
+              },
               providerItemId,
               providerKind: "online-drive",
               sizeBytes: download.body.byteLength,

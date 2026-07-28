@@ -30,6 +30,7 @@ import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deleti
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
 import {
+  type CapabilitySourceSyncPolicyRecord,
   type SourceBulkWorkflowItem,
   type SourceCrawlPreviewPage,
   type SourceProductWorkflowRepository,
@@ -1038,6 +1039,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           tx,
           policy,
           policy.updatedAt,
+          sourceSyncPolicyCapabilityBinding(policy),
         );
         await lockSourceWorkflowAdmissions(
           database,
@@ -1067,6 +1069,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
               "tenant_id",
               "knowledge_space_id",
               "source_id",
+              "capability_grant_id",
               "requested_by_subject_id",
               "access_channel",
               "permission_snapshot_id",
@@ -1084,7 +1087,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
               .map((column) => q(database, column))
               .join(
                 ", ",
-              )}) VALUES (${params.map((_, index) => (index === 8 ? jsonValue(database, index + 1) : p(database, index + 1))).join(", ")});`,
+              )}) VALUES (${params.map((_, index) => (index === 9 ? jsonValue(database, index + 1) : p(database, index + 1))).join(", ")});`,
             tableName: policyTable,
           });
           return policy;
@@ -1093,11 +1096,12 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           maxRows: 0,
           operation: "update",
           params: [
-            policy.requestedBySubjectId,
-            policy.accessChannel,
-            policy.permissionSnapshotId,
-            policy.permissionSnapshotRevision,
-            JSON.stringify(policy.requiredPermissionScope),
+            policy.capabilityGrantId ?? null,
+            policy.requestedBySubjectId ?? null,
+            policy.accessChannel ?? null,
+            policy.permissionSnapshotId ?? null,
+            policy.permissionSnapshotRevision ?? null,
+            policy.requiredPermissionScope ? JSON.stringify(policy.requiredPermissionScope) : null,
             policy.mode,
             policy.enabled,
             policy.customIntervalSeconds ?? null,
@@ -1110,7 +1114,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             policy.sourceId,
             prior.revision,
           ],
-          sql: `UPDATE ${q(database, policyTable)} SET ${q(database, "requested_by_subject_id")} = ${p(database, 1)}, ${q(database, "access_channel")} = ${p(database, 2)}, ${q(database, "permission_snapshot_id")} = ${p(database, 3)}, ${q(database, "permission_snapshot_revision")} = ${p(database, 4)}, ${q(database, "required_permission_scope")} = ${jsonValue(database, 5)}, ${q(database, "mode")} = ${p(database, 6)}, ${q(database, "enabled")} = ${p(database, 7)}, ${q(database, "custom_interval_seconds")} = ${p(database, 8)}, ${q(database, "next_run_at")} = ${p(database, 9)}, ${q(database, "expected_source_version")} = ${p(database, 10)}, ${q(database, "revision")} = ${p(database, 11)}, ${q(database, "updated_at")} = ${p(database, 12)} WHERE ${q(database, "tenant_id")} = ${p(database, 13)} AND ${q(database, "knowledge_space_id")} = ${p(database, 14)} AND ${q(database, "source_id")} = ${p(database, 15)} AND ${q(database, "revision")} = ${p(database, 16)};`,
+          sql: `UPDATE ${q(database, policyTable)} SET ${q(database, "capability_grant_id")} = ${p(database, 1)}, ${q(database, "requested_by_subject_id")} = ${p(database, 2)}, ${q(database, "access_channel")} = ${p(database, 3)}, ${q(database, "permission_snapshot_id")} = ${p(database, 4)}, ${q(database, "permission_snapshot_revision")} = ${p(database, 5)}, ${q(database, "required_permission_scope")} = ${jsonValue(database, 6)}, ${q(database, "mode")} = ${p(database, 7)}, ${q(database, "enabled")} = ${p(database, 8)}, ${q(database, "custom_interval_seconds")} = ${p(database, 9)}, ${q(database, "next_run_at")} = ${p(database, 10)}, ${q(database, "expected_source_version")} = ${p(database, 11)}, ${q(database, "revision")} = ${p(database, 12)}, ${q(database, "updated_at")} = ${p(database, 13)} WHERE ${q(database, "tenant_id")} = ${p(database, 14)} AND ${q(database, "knowledge_space_id")} = ${p(database, 15)} AND ${q(database, "source_id")} = ${p(database, 16)} AND ${q(database, "revision")} = ${p(database, 17)};`,
           tableName: policyTable,
         });
         if (result.rowsAffected !== 1) policyConflict();
@@ -1157,6 +1161,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
               tx,
               candidate,
               now,
+              sourceSyncPolicyCapabilityBinding(candidate),
             );
             await lockSourceWorkflowAdmissions(
               database,
@@ -1212,7 +1217,15 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           }
           const scheduledFor = policy.nextRunAt;
           const run: SourceWorkflowRun = {
-            accessChannel: policy.accessChannel,
+            ...(isCapabilitySyncPolicy(policy)
+              ? { capabilityGrantId: policy.capabilityGrantId }
+              : {
+                  accessChannel: policy.accessChannel,
+                  permissionSnapshotId: policy.permissionSnapshotId,
+                  permissionSnapshotRevision: policy.permissionSnapshotRevision,
+                  requestedBySubjectId: policy.requestedBySubjectId,
+                  requiredPermissionScope: jsonStringArrayColumn(sourceRow, "permission_scope"),
+                }),
             activeSlot: 1,
             checkpoint: "queued",
             createdAt: now,
@@ -1223,13 +1236,9 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             kind: "sync",
             maxExecutionAttempts,
             payload: { scheduledFor, syncPolicyId: policy.id },
-            permissionSnapshotId: policy.permissionSnapshotId,
-            permissionSnapshotRevision: policy.permissionSnapshotRevision,
             progressCompleted: 0,
             progressFailed: 0,
             progressSkipped: 0,
-            requestedBySubjectId: policy.requestedBySubjectId,
-            requiredPermissionScope: jsonStringArrayColumn(sourceRow, "permission_scope"),
             rowVersion: 1,
             sourceId: policy.sourceId,
             state: "queued",
@@ -1764,11 +1773,20 @@ async function assertSourceWorkflowPermissionFence(
     | "tenantId"
   >,
   now: string,
+  expectedCapabilityBinding?: {
+    readonly action: string;
+    readonly resource: {
+      readonly id: string;
+      readonly parentId: string | null;
+      readonly type: string;
+    };
+  },
 ): Promise<SourceWorkflowAuthorization> {
   if (binding.capabilityGrantId) {
     try {
       const grant = await resolveCapabilityJobPublicationGrant(database, tx, {
         capabilityGrantId: binding.capabilityGrantId,
+        ...(expectedCapabilityBinding ? { expectedBinding: expectedCapabilityBinding } : {}),
         knowledgeSpaceId: binding.knowledgeSpaceId,
         tenantId: binding.tenantId,
       });
@@ -2102,11 +2120,12 @@ function policyParams(policy: SourceSyncPolicyRecord): DatabaseQueryValue[] {
     policy.tenantId,
     policy.knowledgeSpaceId,
     policy.sourceId,
-    policy.requestedBySubjectId,
-    policy.accessChannel,
-    policy.permissionSnapshotId,
-    policy.permissionSnapshotRevision,
-    JSON.stringify(policy.requiredPermissionScope),
+    policy.capabilityGrantId ?? null,
+    policy.requestedBySubjectId ?? null,
+    policy.accessChannel ?? null,
+    policy.permissionSnapshotId ?? null,
+    policy.permissionSnapshotRevision ?? null,
+    policy.requiredPermissionScope ? JSON.stringify(policy.requiredPermissionScope) : null,
     policy.mode,
     policy.enabled,
     policy.customIntervalSeconds ?? null,
@@ -2224,8 +2243,7 @@ function mapBulkItem(row: DatabaseRow): SourceBulkWorkflowItem {
 }
 
 function mapPolicy(row: DatabaseRow): SourceSyncPolicyRecord {
-  return {
-    accessChannel: stringColumn(row, "access_channel") as SourceSyncPolicyRecord["accessChannel"],
+  const common: SourceSyncPolicyBase = {
     createdAt: stringColumn(row, "created_at"),
     ...(optionalNumberColumn(row, "custom_interval_seconds") === undefined
       ? {}
@@ -2238,15 +2256,75 @@ function mapPolicy(row: DatabaseRow): SourceSyncPolicyRecord {
     ...(optionalStringColumn(row, "next_run_at")
       ? { nextRunAt: stringColumn(row, "next_run_at") }
       : {}),
-    permissionSnapshotId: stringColumn(row, "permission_snapshot_id"),
-    permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision"),
-    requestedBySubjectId: stringColumn(row, "requested_by_subject_id"),
-    requiredPermissionScope: jsonStringArrayColumn(row, "required_permission_scope"),
     revision: numberColumn(row, "revision"),
     sourceId: stringColumn(row, "source_id"),
     tenantId: stringColumn(row, "tenant_id"),
     updatedAt: stringColumn(row, "updated_at"),
   };
+  const capabilityGrantId = optionalStringColumn(row, "capability_grant_id");
+  if (capabilityGrantId !== undefined) {
+    if (
+      [
+        "access_channel",
+        "permission_snapshot_id",
+        "permission_snapshot_revision",
+        "requested_by_subject_id",
+        "required_permission_scope",
+      ].some((column) => row[column] !== null && row[column] !== undefined)
+    ) {
+      throw new SourceWorkflowError(
+        "SOURCE_WORKFLOW_PERMISSION_INVALID",
+        "Source sync policy authorization provenance is invalid",
+      );
+    }
+    return { ...common, capabilityGrantId };
+  }
+  return {
+    ...common,
+    accessChannel: stringColumn(row, "access_channel") as
+      | "agent"
+      | "interactive"
+      | "mcp"
+      | "service_api",
+    permissionSnapshotId: stringColumn(row, "permission_snapshot_id"),
+    permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision"),
+    requestedBySubjectId: stringColumn(row, "requested_by_subject_id"),
+    requiredPermissionScope: jsonStringArrayColumn(row, "required_permission_scope"),
+  };
+}
+
+interface SourceSyncPolicyBase {
+  readonly createdAt: string;
+  readonly customIntervalSeconds?: number | undefined;
+  readonly enabled: boolean;
+  readonly expectedSourceVersion: number;
+  readonly id: string;
+  readonly knowledgeSpaceId: string;
+  readonly mode: SourceSyncPolicyRecord["mode"];
+  readonly nextRunAt?: string | undefined;
+  readonly revision: number;
+  readonly sourceId: string;
+  readonly tenantId: string;
+  readonly updatedAt: string;
+}
+
+function sourceSyncPolicyCapabilityBinding(
+  policy: Pick<SourceSyncPolicyRecord, "knowledgeSpaceId" | "sourceId">,
+) {
+  return {
+    action: "source_sync_policies.update",
+    resource: {
+      id: policy.sourceId,
+      parentId: policy.knowledgeSpaceId,
+      type: "source",
+    },
+  } as const;
+}
+
+function isCapabilitySyncPolicy(
+  policy: SourceSyncPolicyRecord,
+): policy is CapabilitySourceSyncPolicyRecord {
+  return typeof policy.capabilityGrantId === "string";
 }
 
 function resultPage<T>(rows: readonly T[], limit: number, cursor: (item: T) => string) {

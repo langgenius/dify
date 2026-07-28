@@ -702,6 +702,7 @@ function executeConnection(
       "id",
       "tenant_id",
       "knowledge_space_id",
+      "capability_grant_id",
       "provider_id",
       "name",
       "auth_kind",

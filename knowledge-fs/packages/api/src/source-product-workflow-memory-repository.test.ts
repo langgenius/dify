@@ -1038,5 +1038,5 @@ function policyRecord(
     tenantId,
     updatedAt: createdAt,
     ...patch,
-  };
+  } as SourceSyncPolicyRecord;
 }

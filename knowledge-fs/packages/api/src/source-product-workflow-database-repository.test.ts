@@ -1752,6 +1752,56 @@ describe("database source-product workflow repository edge coverage", () => {
     ).toBe(true);
   });
 
+  it("persists an exact Capability source-policy binding without legacy ACL provenance", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("postgres", async (input) => {
+      calls.push(input);
+      if (input.tableName === "knowledge_spaces") return activeSpace();
+      if (input.tableName === "deletion_jobs") return empty();
+      if (input.tableName === "capability_grants") return activeCapabilityGrant();
+      if (input.tableName === "sources") return { rows: [sourceRow([])], rowsAffected: 1 };
+      return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+    });
+    const policy = capabilitySyncPolicy();
+
+    await expect(
+      createDatabaseSourceProductWorkflowRepository({ database }).upsertSyncPolicy(policy),
+    ).resolves.toEqual(policy);
+
+    const grantFence = calls.find((call) => call.tableName === "capability_grants");
+    expect(grantFence?.sql).toContain("action");
+    expect(grantFence?.sql).toContain("resource_type");
+    expect(grantFence?.sql).toContain("resource_id");
+    expect(grantFence?.sql).toContain("resource_parent_id");
+    const insert = calls.find(
+      (call) => call.tableName === "source_sync_policies" && call.operation === "insert",
+    );
+    expect(insert?.sql).toContain("capability_grant_id");
+    expect(insert?.params).toContain(capabilityGrantId);
+    expect(insert?.params).not.toContain(permissionSnapshotId);
+  });
+
+  it("fails closed when a stored sync policy mixes Capability and legacy provenance", async () => {
+    const repository = createDatabaseSourceProductWorkflowRepository({
+      database: testDatabase("postgres", async (input) =>
+        input.tableName === "source_sync_policies"
+          ? {
+              rows: [
+                syncPolicyRow({
+                  capability_grant_id: capabilityGrantId,
+                }),
+              ],
+              rowsAffected: 1,
+            }
+          : empty(),
+      ),
+    });
+
+    await expect(
+      repository.getSyncPolicy({ knowledgeSpaceId, sourceId, tenantId }),
+    ).rejects.toMatchObject({ code: "SOURCE_WORKFLOW_PERMISSION_INVALID" });
+  });
+
   it("queues a due sync policy and advances its schedule atomically", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase("postgres", async (input) => {
@@ -1797,6 +1847,58 @@ describe("database source-product workflow repository edge coverage", () => {
     );
     expect(sourceRead?.sql).not.toContain('"tenant_id"');
     expect(sourceRead?.params).toEqual([knowledgeSpaceId, sourceId]);
+  });
+
+  it("queues Capability-backed policies and disables revoked or differently-bound grants", async () => {
+    const runWith = async (grant: DatabaseExecuteResult) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase("postgres", async (input) => {
+        calls.push(input);
+        if (input.tableName === "source_sync_policies") {
+          if (input.operation === "update") return { rows: [], rowsAffected: 1 };
+          return { rows: [capabilitySyncPolicyRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "knowledge_spaces") return activeSpace();
+        if (input.tableName === "deletion_jobs") return empty();
+        if (input.tableName === "capability_grants") return grant;
+        if (input.tableName === "sources") {
+          return { rows: [sourceRow([])], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+      });
+      const queued = await createDatabaseSourceProductWorkflowRepository({
+        database,
+        generateOutboxId: () => "outbox-capability-policy",
+        generateRunId: () => childRunId,
+      }).enqueueDueSyncRuns({ limit: 1, maxExecutionAttempts: 4, now });
+      return { calls, queued };
+    };
+
+    const accepted = await runWith(activeCapabilityGrant());
+    expect(accepted.queued).toEqual([
+      expect.objectContaining({
+        capabilityGrantId,
+        id: childRunId,
+        sourceId,
+      }),
+    ]);
+    expect(accepted.queued[0]).not.toHaveProperty("permissionSnapshotId");
+
+    for (const grant of [
+      activeCapabilityGrant({ action: "source_workflows.sync.create" }),
+      empty(),
+    ]) {
+      const rejected = await runWith(grant);
+      expect(rejected.queued).toEqual([]);
+      expect(
+        rejected.calls.some(
+          (call) =>
+            call.tableName === "source_sync_policies" &&
+            call.operation === "update" &&
+            call.sql.includes("enabled"),
+        ),
+      ).toBe(true);
+    }
   });
 
   it("rejects stale policy writes and accepts nullable schedule fields", async () => {
@@ -1851,8 +1953,8 @@ describe("database source-product workflow repository edge coverage", () => {
     const insert = nullableCalls.find(
       (call) => call.tableName === "source_sync_policies" && call.operation === "insert",
     );
-    expect(insert?.params[11]).toBeNull();
     expect(insert?.params[12]).toBeNull();
+    expect(insert?.params[13]).toBeNull();
   });
 
   it("disables invalid due policies and handles scheduler races", async () => {
@@ -2165,7 +2267,19 @@ function syncPolicy(overrides: Partial<SourceSyncPolicyRecord> = {}): SourceSync
     tenantId,
     updatedAt: now,
     ...overrides,
-  };
+  } as SourceSyncPolicyRecord;
+}
+
+function capabilitySyncPolicy(): SourceSyncPolicyRecord {
+  const {
+    accessChannel: _accessChannel,
+    permissionSnapshotId: _permissionSnapshotId,
+    permissionSnapshotRevision: _permissionSnapshotRevision,
+    requestedBySubjectId: _requestedBySubjectId,
+    requiredPermissionScope: _requiredPermissionScope,
+    ...policy
+  } = syncPolicy();
+  return { ...policy, capabilityGrantId } as unknown as SourceSyncPolicyRecord;
 }
 
 function syncPolicyRow(overrides: DatabaseRow = {}): DatabaseRow {
@@ -2189,6 +2303,18 @@ function syncPolicyRow(overrides: DatabaseRow = {}): DatabaseRow {
     updated_at: now,
     ...overrides,
   };
+}
+
+function capabilitySyncPolicyRow(overrides: DatabaseRow = {}): DatabaseRow {
+  return syncPolicyRow({
+    access_channel: null,
+    capability_grant_id: capabilityGrantId,
+    permission_snapshot_id: null,
+    permission_snapshot_revision: null,
+    requested_by_subject_id: null,
+    required_permission_scope: null,
+    ...overrides,
+  });
 }
 
 function sourceRunRow(state: "failed" | "preview_ready" | "running"): DatabaseRow {
@@ -2365,12 +2491,17 @@ function permissionRow(permissionScopes: readonly string[] = []): DatabaseRow {
   };
 }
 
-function activeCapabilityGrant(): DatabaseExecuteResult {
+function activeCapabilityGrant(overrides: DatabaseRow = {}): DatabaseExecuteResult {
   return {
     rows: [
       {
+        action: "source_sync_policies.update",
         content_scope_ids: JSON.stringify(["team:camera"]),
+        resource_id: sourceId,
+        resource_parent_id: knowledgeSpaceId,
+        resource_type: "source",
         subject_id: "editor-a",
+        ...overrides,
       },
     ],
     rowsAffected: 1,

@@ -837,6 +837,17 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
             "source-1",
         ),
         (
+            "import_source_workflow",
+            "KnowledgeFSSourceWorkflowResponse",
+            "importSourceWorkflow",
+            {
+                "source_id": "source-1",
+                "payload": MagicMock(),
+                "idempotency_key": "import-source-once",
+            },
+            "source-1",
+        ),
+        (
             "get_source_sync_policy",
             "KnowledgeFSSourceSyncPolicyResponse",
             "getSourceSyncPolicy",
@@ -996,3 +1007,6 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
             ("taskKind", "document_bulk"),
             ("taskId", "task-1"),
         )
+    if operation_id == "importSourceWorkflow":
+        assert delegated.call_args.kwargs["path_parameters"] == (("sourceId", "source-1"),)
+        assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "import-source-once"),)

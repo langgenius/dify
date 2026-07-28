@@ -13,6 +13,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
@@ -76,6 +77,7 @@ const MAX_CURSOR_PAGES = 100
 const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 200
+const MAX_PREVIEW_SELECTION = 200
 const SUCCESS_STATES = new Set([
   'complete',
   'completed',
@@ -276,17 +278,36 @@ async function findProvisionalSource(knowledgeSpaceId: string, clientRequestId: 
 }
 
 const CrawlPageList = memo(
-  ({ loading = false, pages }: { loading?: boolean; pages: PreviewPage[] }) => {
+  ({
+    loading = false,
+    onTogglePage,
+    pages,
+    selectedPageIds,
+  }: {
+    loading?: boolean
+    onTogglePage?: (pageId: string) => void
+    pages: PreviewPage[]
+    selectedPageIds?: ReadonlySet<string>
+  }) => {
     if (!pages.length && !loading) return null
 
     return (
-      <ul className="max-h-64 divide-y divide-divider-subtle overflow-y-auto" aria-live="polite">
+      <ul
+        className={cn('max-h-64 overflow-y-auto', !loading && 'divide-y divide-divider-subtle')}
+        aria-live="polite"
+      >
         {pages.map((page) => (
           <li
             key={page.pageId}
             className="flex items-start gap-2.5 px-4 py-2.5 [contain-intrinsic-size:auto_40px] [content-visibility:auto]"
           >
-            <Checkbox disabled aria-label={page.title || page.sourceUrl} className="mt-0.5" />
+            <Checkbox
+              aria-label={page.title || page.sourceUrl}
+              checked={selectedPageIds?.has(page.pageId) ?? false}
+              disabled={!onTogglePage}
+              className="mt-0.5"
+              onCheckedChange={() => onTogglePage?.(page.pageId)}
+            />
             <span className="min-w-0">
               <span className="block truncate system-xs-medium text-text-primary">
                 {page.title || page.sourceUrl}
@@ -320,14 +341,14 @@ const CrawlPageList = memo(
 function EmptyPreview() {
   const { t } = useTranslation('dataset')
   return (
-    <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-6 text-center">
-      <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
+    <div className="flex min-h-[155px] flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular bg-background-default-subtle px-6 text-center">
+      <span className="flex size-10 items-center justify-center rounded-[10px] bg-background-section-burn">
         <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
       </span>
-      <p className="mt-2 system-xs-semibold text-text-primary">
+      <p className="mt-2.5 system-xs-semibold text-text-primary">
         {t(($) => $['newKnowledge.pagesAppearTitle'])}
       </p>
-      <p className="mt-2 system-xs-regular text-text-tertiary">
+      <p className="mt-2.5 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.pagesAppearDescription'])}
       </p>
     </div>
@@ -365,6 +386,7 @@ export function WebsiteCrawlPreview({
     includeSubpages && (pageLimit === '' || pageLimit === DEFAULT_PAGE_LIMIT)
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
+  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [pagesLoaded, setPagesLoaded] = useState(false)
   const [starting, setStarting] = useState(false)
   const [stopping, setStopping] = useState(false)
@@ -404,6 +426,7 @@ export function WebsiteCrawlPreview({
     pageMapRef.current.clear()
     pageCursorRef.current = undefined
     setPages([])
+    setSelectedPageIds(new Set())
     setPagesLoaded(false)
   }, [])
 
@@ -470,6 +493,14 @@ export function WebsiteCrawlPreview({
     count: completedCount,
     host,
   })
+  const togglePreviewPage = useCallback((pageId: string) => {
+    setSelectedPageIds((current) => {
+      const next = new Set(current)
+      if (next.has(pageId)) next.delete(pageId)
+      else if (next.size < MAX_PREVIEW_SELECTION) next.add(pageId)
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (!dirty) return
@@ -1083,7 +1114,7 @@ export function WebsiteCrawlPreview({
         {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <Form onFormSubmit={handleSubmit}>
-        <Fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
+        <Fieldset disabled={locked} className="space-y-4 disabled:opacity-70">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="rootUrl" invalid={urlTouched && !normalizedURL} className="gap-1.5">
               <FieldLabel>
@@ -1102,7 +1133,6 @@ export function WebsiteCrawlPreview({
                 aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
                 onBlur={() => setUrlTouched(true)}
                 onValueChange={setRootUrl}
-                size="large"
               />
               {urlTouched && !normalizedURL && (
                 <FieldError id={rootUrlErrorId} match>
@@ -1124,7 +1154,6 @@ export function WebsiteCrawlPreview({
                 value={sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
                 onValueChange={setSourceName}
-                size="large"
               />
             </Field>
           </div>
@@ -1215,7 +1244,7 @@ export function WebsiteCrawlPreview({
       <div className="mt-4">
         {!run && !requestError && <EmptyPreview />}
         {run && active && !pollPaused && (
-          <div className="overflow-hidden rounded-xl border border-divider-regular">
+          <div className="overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle">
             <div className="flex flex-wrap items-center gap-2 px-4 py-3">
               <span
                 aria-hidden
@@ -1255,7 +1284,12 @@ export function WebsiteCrawlPreview({
                 className="block h-1 w-full accent-state-accent-solid"
               />
             )}
-            <CrawlPageList pages={pages} loading />
+            <CrawlPageList
+              pages={pages}
+              loading
+              selectedPageIds={selectedPageIds}
+              onTogglePage={stopping ? undefined : togglePreviewPage}
+            />
           </div>
         )}
         {showSuccess && run && draftRef.current?.source && configuration && (
@@ -1265,6 +1299,7 @@ export function WebsiteCrawlPreview({
             initialSyncMode={
               initialDraft?.syncPolicy === 'daily' ? 'interval' : initialDraft?.syncPolicy
             }
+            initialSelectedPageIds={[...selectedPageIds]}
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
@@ -1297,19 +1332,23 @@ export function WebsiteCrawlPreview({
             >
               {t(($) => $['newKnowledge.crawlStopped'])}
             </p>
-            <CrawlPageList pages={pages} />
+            <CrawlPageList
+              pages={pages}
+              selectedPageIds={selectedPageIds}
+              onTogglePage={togglePreviewPage}
+            />
           </div>
         )}
         {showFailure && (
           <div
             role="alert"
-            className="flex min-h-36 flex-col items-center justify-center rounded-xl border border-divider-regular px-6 text-center"
+            className="flex min-h-[155px] flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
           >
             <span aria-hidden className="i-ri-error-warning-fill size-6 text-text-destructive" />
-            <p className="mt-2 system-sm-semibold text-text-primary">
+            <p className="system-sm-semibold text-text-primary">
               {t(($) => $['newKnowledge.crawlFailed'], { host })}
             </p>
-            <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
+            <p className="max-w-lg system-xs-regular text-text-tertiary">
               {is403
                 ? t(($) => $['newKnowledge.crawlFailed403'])
                 : isTimeout
@@ -1328,22 +1367,22 @@ export function WebsiteCrawlPreview({
           <div
             role="status"
             aria-live="polite"
-            className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-divider-regular px-6 text-center"
+            className="flex min-h-[155px] flex-col items-center justify-center gap-2.5 rounded-xl border border-divider-deep bg-background-default-subtle px-6 py-7 text-center"
           >
-            <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
-              <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
+            <span className="flex size-11 items-center justify-center rounded-[10px] bg-background-section-burn">
+              <span aria-hidden className="i-ri-global-line size-[22px] text-text-tertiary" />
             </span>
-            <p className="mt-2 system-xs-semibold text-text-primary">
+            <p className="system-sm-semibold text-text-primary">
               {t(($) => $['newKnowledge.noPagesFound'], { host })}
             </p>
-            <p className="mt-2 max-w-lg system-xs-regular text-text-tertiary">
+            <p className="max-w-lg system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.noPagesFoundDescription'])}
             </p>
           </div>
         )}
       </div>
       {!showSuccess && (
-        <div className="mt-4 flex justify-end gap-2 border-t border-divider-subtle pt-5">
+        <div className="mt-5 flex justify-end gap-2 border-t border-divider-subtle pt-5">
           <Button type="button" onClick={cancel}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Button>

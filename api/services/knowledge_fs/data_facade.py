@@ -70,6 +70,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowCancelPayload,
+    KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSTraceEntryListResponse,
@@ -819,6 +820,28 @@ class KnowledgeFSDataFacade:
             operation_id="previewSourceCrawl",
             resource_id=source_id,
             path_parameters=(("sourceId", source_id),),
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSSourceWorkflowResponse.model_validate(raw)
+
+    def import_source_workflow(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        source_id: str,
+        payload: KnowledgeFSSourceWorkflowImportPayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSSourceWorkflowResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="importSourceWorkflow",
+            resource_id=source_id,
+            path_parameters=(("sourceId", source_id),),
+            payload=payload,
             headers=(("Idempotency-Key", idempotency_key),),
         )
         return KnowledgeFSSourceWorkflowResponse.model_validate(raw)

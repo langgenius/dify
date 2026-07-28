@@ -57,6 +57,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "getSourceWorkflow",
         "getSpace",
         "getTrace",
+        "importSourceWorkflow",
         "importSourceFiles",
         "importSourcePages",
         "listDocumentChunks",
@@ -118,7 +119,26 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createResearchTask"].rate_limit_bucket == "query"
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["getCompilationJob"].rate_limit_bucket == "job"
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["createDocument"].max_request_bytes == 15 * 1024 * 1024
+    assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["importSourceWorkflow"].max_request_bytes == 4 * 1024 * 1024
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS["uploadSmallFile"].max_request_bytes == 8 * 1024 * 1024
+
+
+def test_source_workflow_import_byte_limit_accepts_the_full_schema_bounded_batch() -> None:
+    operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS["importSourceWorkflow"]
+    max_width = "😀"
+    item = {
+        "etag": max_width * 1_024,
+        "lastEditedTime": max_width * 128,
+        "name": max_width * 500,
+        "pageId": max_width * 1_024,
+        "providerItemId": max_width * 1_024,
+        "type": max_width * 128,
+        "workspaceId": max_width * 1_024,
+    }
+    payload = {"kind": "online-document-import", "items": [item] * 200}
+    serialized = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode()
+
+    assert len(serialized) <= operation.max_request_bytes
 
 
 def test_manifest_gaps_remain_explicit_and_stable() -> None:

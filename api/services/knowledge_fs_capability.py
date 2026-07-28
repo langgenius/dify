@@ -589,6 +589,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
             "source",
         ),
+        "createSourceImportWorkflow": KnowledgeFSCapabilityOperation(
+            "source_workflows.import.create",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+            "source",
+        ),
         "getSourceSyncPolicy": KnowledgeFSCapabilityOperation(
             "source_sync_policies.read",
             _STANDARD_CALLERS,

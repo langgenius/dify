@@ -70,8 +70,10 @@ describe("runApiDatabaseMigrations", () => {
         "0028_dify_integration_states",
         "0029_dify_integration_freezes",
         "0030_bulk_operations",
+        "0031_source_connection_capability_provenance",
+        "0032_capability_source_sync_policies",
       ],
-      pendingBeforeRun: 30,
+      pendingBeforeRun: 32,
     });
     expect(operations).toEqual([
       "schema",
@@ -137,8 +139,12 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(30);
+    expect(migrationSql).toHaveLength(32);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -178,6 +184,10 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[28]).toContain("-- Migration id: 0029_dify_integration_freezes\n");
     expect(migrationSql[29]).toContain("-- Migration id: 0030_bulk_operations\n");
     expect(migrationSql[29]).toContain('CREATE TABLE IF NOT EXISTS "bulk_operations"');
+    expect(migrationSql[30]).toContain(
+      "-- Migration id: 0031_source_connection_capability_provenance\n",
+    );
+    expect(migrationSql[31]).toContain("-- Migration id: 0032_capability_source_sync_policies\n");
     expect(closed).toBe(true);
   });
 

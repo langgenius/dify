@@ -75,7 +75,13 @@ export function registerSourceProductHandlers(input: {
   register(createSourceConnectionRoute, async (context) => {
     const params = context.req.valid("param");
     const body = context.req.valid("json");
-    const denied = await authorize(input.authorization, context, params.id, "write");
+    const denied = await authorize(
+      input.authorization,
+      context,
+      params.id,
+      "write",
+      "source_connections.create",
+    );
     if (denied) return context.json(denied, 403);
     try {
       return context.json(
@@ -135,7 +141,13 @@ export function registerSourceProductHandlers(input: {
   register(listSourceConnectionsRoute, async (context) => {
     const params = context.req.valid("param");
     const query = context.req.valid("query");
-    const denied = await authorize(input.authorization, context, params.id, "read");
+    const denied = await authorize(
+      input.authorization,
+      context,
+      params.id,
+      "read",
+      "source_connections.list",
+    );
     if (denied) return context.json(denied, 403);
     try {
       const page = await input.connections.list({
@@ -173,7 +185,13 @@ export function registerSourceProductHandlers(input: {
   register(refreshSourceConnectionRoute, async (context) => {
     const params = context.req.valid("param");
     const body = context.req.valid("json");
-    const denied = await authorize(input.authorization, context, params.id, "write");
+    const denied = await authorize(
+      input.authorization,
+      context,
+      params.id,
+      "write",
+      "source_connections.refresh",
+    );
     if (denied) return context.json(denied, 403);
     try {
       return context.json(
@@ -561,7 +579,24 @@ async function authorize(
   context: Pick<LooseOpenApiContext, "get">,
   knowledgeSpaceId: string,
   requiredAccess: "read" | "write",
+  capabilityAction?:
+    | "source_connections.create"
+    | "source_connections.list"
+    | "source_connections.refresh",
 ): Promise<{ code: string; error: string } | null> {
+  const capabilityGrant = context.get("capabilityV2Grant");
+  if (capabilityGrant) {
+    const subject = context.get("subject");
+    return capabilityAction &&
+      capabilityGrant.action === capabilityAction &&
+      capabilityGrant.namespaceId === subject.tenantId &&
+      capabilityGrant.subject === subject.subjectId &&
+      capabilityGrant.resource.type === "knowledge_space" &&
+      capabilityGrant.resource.id === knowledgeSpaceId &&
+      capabilityGrant.resource.parent_id === null
+      ? null
+      : { code: "KNOWLEDGE_SPACE_ACCESS_DENIED", error: "Knowledge space access denied" };
+  }
   try {
     await authorization.authorize({
       callerKind: context.get("callerKind") ?? "interactive",

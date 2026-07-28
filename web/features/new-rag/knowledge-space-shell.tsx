@@ -37,7 +37,6 @@ export function KnowledgeSpaceShell({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const { t: tHit } = useTranslation('datasetHitTesting')
   const { t: tApp } = useTranslation('app')
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const pathname = usePathname()
@@ -118,7 +117,7 @@ export function KnowledgeSpaceShell({
         } as CSSProperties
       }
     >
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden sm:flex-row">
         <aside
           className={cn(
             'flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs transition-[width] motion-reduce:transition-none',
@@ -243,7 +242,7 @@ export function KnowledgeSpaceShell({
               {sidebarExpanded && t(($) => $['newKnowledge.documentColumn'])}
             </Link>
             <Button
-              aria-label={tHit(($) => $.title)}
+              aria-label={t(($) => $['newKnowledge.evidence'])}
               variant="ghost"
               className={cn(
                 navItemClassName,
@@ -253,7 +252,7 @@ export function KnowledgeSpaceShell({
               onClick={showDeferredPage}
             >
               {navIcon('i-ri-search-eye-line')}
-              {sidebarExpanded && tHit(($) => $.title)}
+              {sidebarExpanded && t(($) => $['newKnowledge.evidence'])}
             </Button>
             <Button
               aria-label={t(($) => $['newKnowledge.quality'])}
@@ -293,7 +292,7 @@ export function KnowledgeSpaceShell({
               )}
               onClick={showDeferredPage}
             >
-              {navIcon('i-custom-vender-workflow-agent')}
+              {navIcon('i-custom-vender-knowledge-api-aggregate')}
               {sidebarExpanded && t(($) => $['newKnowledge.apiAgentAccess'])}
             </Button>
           </div>

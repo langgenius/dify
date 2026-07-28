@@ -330,13 +330,38 @@ describe("source-product workflow provider imports", () => {
     expect(resolve).toHaveBeenCalledOnce();
     expect(getPageContent).toHaveBeenCalledTimes(2);
     expect(fixture.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ etag: "etag-a", providerItemId: "provider-page-a" }),
+      expect.objectContaining({
+        etag: "etag-a",
+        providerCoordinate: {
+          kind: "online-document",
+          pageId: "page-a",
+          type: "page",
+          workspaceId: "workspace-a",
+        },
+        providerItemId: "provider-page-a",
+      }),
       expect.any(Object),
     );
     expect(fixture.publish).toHaveBeenCalledWith(
       expect.not.objectContaining({ etag: expect.anything() }),
       expect.any(Object),
     );
+    expect(fixture.sourceUpdates).toHaveBeenCalledOnce();
+    const frozenMetadata = fixture.sourceUpdates.mock.calls[0]?.[0].metadata;
+    const frozenSelection = frozenMetadata?.__knowledgeFsProviderSelection;
+    expect(frozenSelection).toMatchObject({
+      coordinateHashes: [
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      ],
+      identityHashes: [
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+        expect.stringMatching(/^[a-f0-9]{64}$/),
+      ],
+      kind: "online-document",
+      version: 1,
+    });
+    expect(JSON.stringify(frozenSelection)).not.toContain("provider-page");
     await expect(fixture.getRun()).resolves.toMatchObject({
       progressCompleted: 2,
       state: "completed",
@@ -390,13 +415,89 @@ describe("source-product workflow provider imports", () => {
       expect.objectContaining({ file: { id: "file-b" } }),
     );
     expect(fixture.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ etag: "etag-file-a", mimeType: "text/plain" }),
+      expect.objectContaining({
+        etag: "etag-file-a",
+        mimeType: "text/plain",
+        providerCoordinate: {
+          bucket: "bucket-a",
+          id: "file-a",
+          kind: "online-drive",
+          mimeType: "text/plain",
+          name: "A.txt",
+        },
+      }),
       expect.any(Object),
     );
     expect(fixture.publish).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: "application/octet-stream" }),
       expect.any(Object),
     );
+  });
+
+  it("rejects a later durable import that expands the first frozen provider selection", async () => {
+    const allowedProviderItemId = JSON.stringify(["workspace-a", "page-a"]);
+    const expandedProviderItemId = JSON.stringify(["workspace-a", "page-b"]);
+    const getPageContent = vi.fn();
+    const source = sourceRecord("frozen-online-document-import-source", {
+      metadata: frozenSelectionMetadata("online-document", [allowedProviderItemId]),
+    });
+    const fixture = await createFixture({
+      inventory: [],
+      onlineDocuments: { getPageContent },
+      run: providerRun(source.id, "online-document-import", {
+        items: [
+          {
+            pageId: "page-b",
+            providerItemId: expandedProviderItemId,
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+        ],
+      }),
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_PROVIDER_SELECTION_FROZEN",
+      state: "failed",
+    });
+    expect(getPageContent).not.toHaveBeenCalled();
+    expect(fixture.sourceUpdates).not.toHaveBeenCalled();
+  });
+
+  it("rejects distinct providerItemIds that alias the same provider coordinate", async () => {
+    const getPageContent = vi.fn();
+    const source = sourceRecord("duplicate-online-document-coordinate", {});
+    const fixture = await createFixture({
+      inventory: [],
+      onlineDocuments: { getPageContent },
+      run: providerRun(source.id, "online-document-import", {
+        items: [
+          {
+            pageId: "page-a",
+            providerItemId: "opaque-provider-a",
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+          {
+            pageId: "page-a",
+            providerItemId: "opaque-provider-b",
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+        ],
+      }),
+      source,
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_PROVIDER_SELECTION_DUPLICATE",
+      state: "failed",
+    });
+    expect(getPageContent).not.toHaveBeenCalled();
+    expect(fixture.sourceUpdates).not.toHaveBeenCalled();
   });
 
   it("records zero-result previews without staging provider content", async () => {
@@ -918,7 +1019,7 @@ describe("source-product workflow runtime sync", () => {
     expect(publication).not.toHaveProperty("requestedBySubjectId");
   });
 
-  it("uses the persisted connection/provider capability for an empty online-document inventory", async () => {
+  it("does not expand an empty connected-source inventory into a provider-wide import", async () => {
     const source = sourceRecord("online-document", {
       connectionId: "connection-document",
       metadata: {},
@@ -966,13 +1067,8 @@ describe("source-product workflow runtime sync", () => {
     });
 
     await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
-    expect(listPages).toHaveBeenCalledTimes(2);
-    expect(listPages.mock.calls[0]?.[0]).not.toHaveProperty("cursor");
-    expect(listPages.mock.calls[1]?.[0]).toMatchObject({ cursor: "page-2" });
-    expect(fixture.publish.mock.calls.map((call) => call[0].providerItemId).sort()).toEqual([
-      "page-a",
-      "page-b",
-    ]);
+    expect(listPages).not.toHaveBeenCalled();
+    expect(fixture.publish).not.toHaveBeenCalled();
   });
 
   it("consumes every online-drive continuation page before completing", async () => {
@@ -1001,7 +1097,7 @@ describe("source-product workflow runtime sync", () => {
         ],
       });
     const fixture = await createFixture({
-      inventory: [],
+      inventory: [inventoryItem("file-a", "online-drive"), inventoryItem("file-b", "online-drive")],
       onlineDrive: {
         browse,
         download: vi.fn(async ({ file }) => ({ body: new TextEncoder().encode(file.id) })),
@@ -1019,6 +1115,279 @@ describe("source-product workflow runtime sync", () => {
       "file-a",
       "file-b",
     ]);
+  });
+
+  it("keeps a deleted frozen selection empty without browsing or downloading provider roots", async () => {
+    const deletedProviderItemId = JSON.stringify(["bucket-a", "deleted/file.txt"]);
+    const browse = vi.fn(async () => ({
+      buckets: [
+        {
+          bucket: "bucket-a",
+          files: [{ id: "unselected.txt", name: "Unselected", type: "file" }],
+          isTruncated: false,
+        },
+      ],
+    }));
+    const download = vi.fn(async () => ({ body: new TextEncoder().encode("unselected") }));
+    const fixture = await createFixture({
+      inventory: [],
+      onlineDrive: { browse, download },
+      source: sourceRecord("deleted-frozen-drive-selection", {
+        metadata: frozenSelectionMetadata("online-drive", [deletedProviderItemId]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(browse).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
+    expect(fixture.publish).not.toHaveBeenCalled();
+    expect(fixture.markRemoteMissing).not.toHaveBeenCalled();
+  });
+
+  it("fails before provider work when logical inventory escapes the frozen identity allowlist", async () => {
+    const allowedProviderItemId = JSON.stringify(["workspace-a", "page-a"]);
+    const mismatchedProviderItemId = JSON.stringify(["workspace-a", "page-b"]);
+    const listPages = vi.fn(async () => ({ workspaces: [] }));
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(mismatchedProviderItemId, "online-document", {
+          kind: "online-document",
+          pageId: "page-b",
+          type: "page",
+          workspaceId: "workspace-a",
+        }),
+      ],
+      onlineDocuments: { listPages },
+      source: sourceRecord("mismatched-frozen-document-selection", {
+        metadata: frozenSelectionMetadata("online-document", [allowedProviderItemId]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_SYNC_SELECTION_MISMATCH",
+      state: "failed",
+    });
+    expect(listPages).not.toHaveBeenCalled();
+  });
+
+  it("syncs only selected online-document composite identities", async () => {
+    const providerItemId = JSON.stringify(["workspace-a", "page-selected"]);
+    const listPages = vi.fn(async () => ({
+      workspaces: [
+        {
+          pages: [
+            {
+              lastEditedTime: "v2",
+              pageId: "page-selected",
+              pageName: "Selected",
+              type: "page",
+            },
+            {
+              lastEditedTime: "v1",
+              pageId: "page-unselected",
+              pageName: "Unselected",
+              type: "page",
+            },
+          ],
+          workspaceId: "workspace-a",
+        },
+      ],
+    }));
+    const getPageContent = vi.fn(async ({ page }) => ({
+      content: `updated:${page.pageId}`,
+      pageId: page.pageId,
+      workspaceId: page.workspaceId,
+    }));
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(providerItemId, "online-document", {
+          kind: "online-document",
+          pageId: "page-selected",
+          type: "page",
+          workspaceId: "workspace-a",
+        }),
+      ],
+      onlineDocuments: { getPageContent, listPages },
+      source: sourceRecord("selected-online-document", {
+        metadata: frozenSelectionMetadata("online-document", [providerItemId]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(getPageContent).toHaveBeenCalledOnce();
+    expect(getPageContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: { pageId: "page-selected", type: "page", workspaceId: "workspace-a" },
+      }),
+    );
+    expect(fixture.publish).toHaveBeenCalledOnce();
+    expect(fixture.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerCoordinate: {
+          kind: "online-document",
+          pageId: "page-selected",
+          type: "page",
+          workspaceId: "workspace-a",
+        },
+        providerItemId,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("looks up and downloads only the selected S3 bucket/key composite identity", async () => {
+    const providerItemId = JSON.stringify(["bucket-a", "folder/selected.txt"]);
+    const browse = vi.fn(async () => ({
+      buckets: [
+        {
+          bucket: "bucket-a",
+          files: [
+            { id: "folder/selected.txt", name: "selected.txt", type: "file" },
+            { id: "folder/unselected.txt", name: "unselected.txt", type: "file" },
+          ],
+          isTruncated: false,
+        },
+      ],
+    }));
+    const download = vi.fn(async ({ file }) => ({
+      body: new TextEncoder().encode(`${file.bucket}:${file.id}:updated`),
+    }));
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(providerItemId, "online-drive", {
+          bucket: "bucket-a",
+          id: "folder/selected.txt",
+          kind: "online-drive",
+          mimeType: "text/plain",
+          name: "selected.txt",
+        }),
+      ],
+      onlineDrive: { browse, download },
+      source: sourceRecord("selected-s3-drive", {
+        metadata: frozenSelectionMetadata("online-drive", [providerItemId]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(browse).toHaveBeenCalledOnce();
+    expect(browse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bucket: "bucket-a",
+        prefix: "folder/selected.txt",
+      }),
+    );
+    expect(download).toHaveBeenCalledOnce();
+    expect(download).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: { bucket: "bucket-a", id: "folder/selected.txt" },
+      }),
+    );
+    expect(fixture.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerItemId,
+        providerKind: "online-drive",
+      }),
+      expect.any(Object),
+    );
+    expect(fixture.markRemoteMissing).not.toHaveBeenCalled();
+  });
+
+  it("tombstones only a selected S3 identity proven missing in its exact bucket", async () => {
+    const providerItemId = JSON.stringify(["bucket-a", "folder/missing.txt"]);
+    const download = vi.fn();
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(providerItemId, "online-drive", {
+          bucket: "bucket-a",
+          id: "folder/missing.txt",
+          kind: "online-drive",
+          mimeType: "text/plain",
+          name: "missing.txt",
+        }),
+      ],
+      onlineDrive: {
+        browse: vi.fn(async () => ({
+          buckets: [{ bucket: "bucket-a", files: [], isTruncated: false }],
+        })),
+        download,
+      },
+      source: sourceRecord("missing-selected-s3-drive", {
+        metadata: frozenSelectionMetadata("online-drive", [providerItemId]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 1, failed: 0 });
+    expect(download).not.toHaveBeenCalled();
+    expect(fixture.publish).not.toHaveBeenCalled();
+    expect(fixture.markRemoteMissing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: `document-${providerItemId}`,
+        providerItemId,
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("shares one bounded browse-page budget across every selected drive coordinate", async () => {
+    const firstProviderItemId = JSON.stringify(["bucket-a", "first.txt"]);
+    const secondProviderItemId = JSON.stringify(["bucket-a", "second.txt"]);
+    const browse = vi.fn(async ({ continuationToken, prefix }) => {
+      if (prefix === "first.txt") {
+        return {
+          buckets: [
+            {
+              bucket: "bucket-a",
+              files: [{ id: "first.txt", name: "first.txt", type: "file" }],
+              isTruncated: false,
+            },
+          ],
+        };
+      }
+      return {
+        buckets: [
+          {
+            bucket: "bucket-a",
+            continuationToken: continuationToken ? undefined : "second-page",
+            files: continuationToken
+              ? [{ id: "second.txt", name: "second.txt", type: "file" }]
+              : [],
+            isTruncated: continuationToken === undefined,
+          },
+        ],
+      };
+    });
+    const fixture = await createFixture({
+      inventory: [
+        inventoryItem(firstProviderItemId, "online-drive", {
+          bucket: "bucket-a",
+          id: "first.txt",
+          kind: "online-drive",
+          name: "first.txt",
+        }),
+        inventoryItem(secondProviderItemId, "online-drive", {
+          bucket: "bucket-a",
+          id: "second.txt",
+          kind: "online-drive",
+          name: "second.txt",
+        }),
+      ],
+      maxSyncItems: 2,
+      onlineDrive: { browse, download: vi.fn() },
+      source: sourceRecord("bounded-selected-drive-lookups", {
+        metadata: frozenSelectionMetadata("online-drive", [
+          firstProviderItemId,
+          secondProviderItemId,
+        ]),
+      }),
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
+      state: "failed",
+    });
+    expect(browse).toHaveBeenCalledTimes(2);
   });
 
   it("skips unchanged online-document revisions and retains remote-missing inventory", async () => {
@@ -1157,7 +1526,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("page-a", "online-document")],
           source: sourceRecord("document-unavailable", {
             metadata: { providerKind: "online-document" },
           }),
@@ -1166,7 +1535,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DRIVE_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("file-a", "online-drive")],
           source: sourceRecord("drive-unavailable", {
             metadata: { providerKind: "online-drive" },
           }),
@@ -1183,7 +1552,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("document-a", "online-document")],
           onlineDocuments: { listPages: vi.fn(() => undefined as never) },
           source: sourceRecord("document-list-empty-response", {
             metadata: { providerKind: "online-document" },
@@ -1193,7 +1562,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DRIVE_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("drive-a", "online-drive")],
           onlineDrive: { browse: vi.fn(() => undefined as never) },
           source: sourceRecord("drive-list-empty-response", {
             metadata: { providerKind: "online-drive" },
@@ -1203,7 +1572,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("page-a", "online-document")],
           onlineDocuments: {
             getPageContent: vi.fn(() => undefined as never),
             listPages: vi.fn(async () => ({
@@ -1223,7 +1592,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_ONLINE_DRIVE_UNAVAILABLE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("file-a", "online-drive")],
           onlineDrive: {
             browse: vi.fn(async () => ({
               buckets: [
@@ -1332,7 +1701,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_PROVIDER_IDENTITY_INVALID",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("page-a", "online-document")],
           onlineDocuments: {
             listPages: vi.fn(async () => ({
               workspaces: [
@@ -1378,7 +1747,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_PROVIDER_IDENTITY_DUPLICATE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("duplicate-page", "online-document")],
           onlineDocuments: {
             listPages: vi.fn(async () => ({
               workspaces: [
@@ -1398,7 +1767,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("page-a", "online-document")],
           maxSyncItems: 1,
           onlineDocuments: {
             listPages: vi.fn(async () => ({
@@ -1419,7 +1788,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("page-a", "online-document")],
           maxSyncItems: 1,
           onlineDocuments: {
             listPages: vi.fn(async () => ({
@@ -1438,7 +1807,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_CURSOR_LOOP",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("selected-page", "online-document")],
           onlineDocuments: {
             listPages: vi.fn(async () => ({ nextCursor: "same-cursor", workspaces: [] })),
           },
@@ -1448,7 +1817,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_CURSOR_LOOP",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("selected-file", "online-drive")],
           onlineDrive: {
             browse: vi.fn(async () => ({
               buckets: [
@@ -1467,7 +1836,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_PROVIDER_IDENTITY_DUPLICATE",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("duplicate-file", "online-drive")],
           onlineDrive: {
             browse: vi.fn(async () => ({
               buckets: [
@@ -1488,7 +1857,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("file-a", "online-drive")],
           maxSyncItems: 1,
           onlineDrive: {
             browse: vi.fn(async () => ({
@@ -1509,7 +1878,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_RESULT_LIMIT_EXCEEDED",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("file-a", "online-drive")],
           maxSyncItems: 1,
           onlineDrive: {
             browse: vi.fn(async () => ({
@@ -1528,7 +1897,7 @@ describe("source-product workflow runtime sync", () => {
       {
         expectedCode: "SOURCE_SYNC_CURSOR_INVALID",
         fixture: {
-          inventory: [],
+          inventory: [inventoryItem("selected-file", "online-drive")],
           onlineDrive: {
             browse: vi.fn(async () => ({
               buckets: [{ bucket: "bucket-a", files: [], isTruncated: true }],
@@ -1580,7 +1949,7 @@ describe("source-product workflow runtime sync", () => {
     ];
     const fixture = await createFixture({
       clock: () => clock,
-      inventory: [],
+      inventory: [inventoryItem("page-b", "online-document")],
       onlineDocuments: {
         getPageContent: vi.fn(async ({ page }) => ({ content: "B", pageId: page.pageId })),
         listPages: vi.fn(async () => ({
@@ -2302,6 +2671,31 @@ async function createFixture(input: {
       }),
     ),
   };
+  let currentSource = input.source;
+  const defaultSources = {
+    get: vi.fn(async () => currentSource),
+    update: vi.fn(
+      async (update: {
+        readonly expectedVersion?: number;
+        readonly metadata?: Source["metadata"];
+        readonly status?: Source["status"];
+      }) => {
+        if (
+          update.expectedVersion !== undefined &&
+          update.expectedVersion !== currentSource.version
+        ) {
+          throw new Error("source version conflict");
+        }
+        currentSource = {
+          ...currentSource,
+          ...(update.metadata ? { metadata: update.metadata } : {}),
+          ...(update.status ? { status: update.status } : {}),
+          version: currentSource.version + 1,
+        };
+        return currentSource;
+      },
+    ),
+  };
   const runtime = createSourceProductWorkflowRuntime({
     access: {
       revalidatePermissionSnapshot,
@@ -2343,7 +2737,7 @@ async function createFixture(input: {
     ...(input.sourceConnections ? { sourceConnections: input.sourceConnections as never } : {}),
     ...(input.sourceCredentials ? { sourceCredentials: input.sourceCredentials as never } : {}),
     ...(input.sourceProviders ? { sourceProviders: input.sourceProviders as never } : {}),
-    sources: input.sources ?? ({ get: vi.fn(async () => input.source) } as never),
+    sources: input.sources ?? (defaultSources as never),
     ...(input.websiteCrawl ? { websiteCrawl: input.websiteCrawl as never } : {}),
     workerId: "source-runtime-worker",
   });
@@ -2358,6 +2752,8 @@ async function createFixture(input: {
     repository,
     run,
     runtime,
+    sourceUpdates: defaultSources.update,
+    sources: input.sources ?? defaultSources,
   };
 }
 
@@ -2582,6 +2978,20 @@ function capabilityRunRecord(sourceId: string): NewSourceWorkflowRun {
 function inventoryItem(
   providerItemId: string,
   providerKind: "website" | "online-document" | "online-drive",
+  providerCoordinate?:
+    | {
+        readonly kind: "online-document";
+        readonly pageId: string;
+        readonly type: string;
+        readonly workspaceId: string;
+      }
+    | {
+        readonly bucket?: string;
+        readonly id: string;
+        readonly kind: "online-drive";
+        readonly mimeType?: string;
+        readonly name: string;
+      },
 ): SourceActiveDocumentInventoryItem {
   return {
     contentHash: "a".repeat(64),
@@ -2589,7 +2999,45 @@ function inventoryItem(
     providerItemId,
     revision: 1,
     rowVersion: 1,
-    systemMetadata: { provenance: { providerKind } },
+    systemMetadata: {
+      provenance: {
+        ...(providerCoordinate ? { providerCoordinate } : {}),
+        providerKind,
+      },
+    },
+  };
+}
+
+function frozenSelectionMetadata(
+  kind: "online-document" | "online-drive",
+  providerItemIds: readonly string[],
+): Readonly<Record<string, unknown>> {
+  const selections = providerItemIds.map((providerItemId) => {
+    const coordinate = JSON.parse(providerItemId) as unknown;
+    if (
+      !Array.isArray(coordinate) ||
+      coordinate.length !== 2 ||
+      typeof coordinate[0] !== "string" ||
+      typeof coordinate[1] !== "string"
+    ) {
+      throw new Error("Frozen selection test identity must be a composite coordinate");
+    }
+    const coordinateKey = JSON.stringify(coordinate);
+    return {
+      coordinateHash: createHash("sha256")
+        .update(`${kind}\0${providerItemId}\0${coordinateKey}`, "utf8")
+        .digest("hex"),
+      identityHash: createHash("sha256").update(`${kind}\0${providerItemId}`, "utf8").digest("hex"),
+    };
+  });
+  return {
+    __knowledgeFsProviderSelection: {
+      coordinateHashes: selections.map(({ coordinateHash }) => coordinateHash).sort(),
+      identityHashes: selections.map(({ identityHash }) => identityHash).sort(),
+      kind,
+      version: 1,
+    },
+    providerKind: kind,
   };
 }
 

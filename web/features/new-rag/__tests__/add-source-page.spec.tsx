@@ -1,4 +1,5 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { NewKnowledgeSourceDraft } from '../routes'
 import type { SourceConnection, SourceProvider } from '../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,6 +22,73 @@ const routerMock = vi.hoisted(() => ({
 const connectFirecrawlButtonName = 'dataset.newKnowledge.connectProvider:{"provider":"Firecrawl"}'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+
+vi.mock('../connected-source-setup', () => ({
+  ConnectedSourceSetup: ({
+    draft,
+    onDraftChange,
+    onExit,
+  }: {
+    draft: Exclude<NewKnowledgeSourceDraft, { sourceType: 'websiteCrawl' }>
+    onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+    onExit: () => void
+  }) => {
+    const providers =
+      draft.sourceType === 'onlineDocuments'
+        ? ['Notion', 'Google Docs', 'Confluence']
+        : ['Google Drive', 'OneDrive', 'Amazon S3']
+    return (
+      <section data-testid="connected-source-setup">
+        <fieldset>
+          <legend>dataset.newKnowledge.providerLabel</legend>
+          {providers.map((provider) => (
+            <label key={provider}>
+              <input
+                type="radio"
+                name="connected-source-provider"
+                checked={draft.provider === provider}
+                onChange={() => onDraftChange({ ...draft, provider } as NewKnowledgeSourceDraft)}
+              />
+              {provider}
+            </label>
+          ))}
+        </fieldset>
+        <label>
+          dataset.newKnowledge.sourceName
+          <input
+            aria-label="dataset.newKnowledge.sourceName"
+            value={draft.sourceName}
+            onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
+          />
+        </label>
+        <label>
+          dataset.newKnowledge.syncPolicy
+          <select
+            aria-label="dataset.newKnowledge.syncPolicy"
+            value={draft.syncPolicy}
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                syncPolicy: event.target.value as NewKnowledgeSourceDraft['syncPolicy'],
+              })
+            }
+          >
+            <option value="provider">dataset.newKnowledge.syncPolicyProvider</option>
+            <option value="daily">dataset.newKnowledge.syncPolicyDaily</option>
+            <option value="manual">dataset.newKnowledge.syncPolicyManual</option>
+          </select>
+        </label>
+        <p role="status">dataset.newKnowledge.notionNotConnected</p>
+        <button type="button" onClick={onExit}>
+          dataset.newKnowledge.cancelAddSource
+        </button>
+        <button type="button" disabled>
+          dataset.newKnowledge.addSource
+        </button>
+      </section>
+    )
+  },
+}))
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const providerApiResponse = vi.hoisted(() => (provider: SourceProvider) => ({
@@ -440,7 +508,7 @@ describe('AddSourcePage', () => {
       expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
       expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
-      expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+      expect(screen.getByTestId('connected-source-setup')).toBeInTheDocument()
     },
   )
 
@@ -538,7 +606,7 @@ describe('AddSourcePage', () => {
     expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
   })
 
-  it('clears a website dependency alert when the provider changes', async () => {
+  it('keeps crawl fields hidden until the selected website provider is configured', async () => {
     const user = userEvent.setup()
     render(
       <AddSourcePage
@@ -554,15 +622,24 @@ describe('AddSourcePage', () => {
         knowledgeSpaceId="space-1"
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Firecrawl"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('restores online document configuration and reaches an honest backend boundary', async () => {
-    const user = userEvent.setup()
+  it('restores online document configuration and keeps Add disabled until a resource is selected', () => {
     render(
       <AddSourcePage
         initialSourceDraft={{
@@ -583,11 +660,7 @@ describe('AddSourcePage', () => {
       screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
     ).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
-    expect(addSource).toBeEnabled()
-    await user.click(addSource)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourceSetupBackendDependency',
-    )
+    expect(addSource).toBeDisabled()
   })
 
   it('restores a website draft from session storage', async () => {
@@ -792,7 +865,9 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.openDataSourceSettings' }),
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.configureProvider:{"provider":"Firecrawl"}',
+      }),
     )
 
     expect(routerMock.replace).toHaveBeenCalledWith('/integrations/data-source')
@@ -822,43 +897,19 @@ describe('AddSourcePage', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
-  it('keeps the website setup interactive until it reaches the backend boundary', async () => {
+  it('renders every designed website provider and the provider-management action', async () => {
     const user = userEvent.setup()
-    render(
-      <AddSourcePage
-        initialSourceDraft={{
-          includeSubpages: true,
-          maxPages: 100,
-          provider: 'Firecrawl',
-          rootUrl: 'https://docs.dify.ai',
-          sourceName: 'Dify docs',
-          sourceType: 'websiteCrawl',
-          syncPolicy: 'provider',
-        }}
-        knowledgeSpaceId="space-1"
-      />,
-    )
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toHaveValue(
-      'https://docs.dify.ai',
-    )
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
-      'Dify docs',
-    )
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toBeEnabled()
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
-    const crawlAndPreview = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.crawlAndPreview',
-    })
-    expect(crawlAndPreview).toBeEnabled()
-    await user.click(crawlAndPreview)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourceSetupBackendDependency',
-    )
+    expect(
+      screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'FakeCrawler' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }))
+    expect(routerMock.replace).toHaveBeenCalledWith('/integrations/data-source')
   })
 
-  it('keeps pending website edits when the provider connection becomes active', async () => {
-    const user = userEvent.setup()
+  it('keeps the handed-off website draft when the provider connection becomes active', async () => {
     const initialSourceDraft = {
       includeSubpages: true,
       maxPages: 100,
@@ -871,12 +922,9 @@ describe('AddSourcePage', () => {
     const view = render(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
-    const rootUrl = screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })
-    const sourceName = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
-    await user.clear(rootUrl)
-    await user.type(rootUrl, 'https://docs.dify.ai/edited')
-    await user.clear(sourceName)
-    await user.type(sourceName, 'Edited docs')
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
+    ).not.toBeInTheDocument()
 
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }
     view.rerender(
@@ -886,10 +934,10 @@ describe('AddSourcePage', () => {
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
-      'https://docs.dify.ai/edited',
+      'https://docs.dify.ai',
     )
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
-      'Edited docs',
+      'Dify docs',
     )
   })
 
@@ -1179,7 +1227,7 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps source types selectable and shows an honest dependency state', async () => {
+  it('keeps source types selectable and preserves each connected-source draft', async () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -1191,18 +1239,16 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
     expect(
-      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+      screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
 
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
-    expect(
-      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
-    ).toBeVisible()
+    expect(screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' })).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.notionNotConnected')
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
       'Product docs',
@@ -1220,11 +1266,9 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeChecked()
-    expect(
-      screen.getByRole('region', { name: 'dataset.newKnowledge.selectFilesAndFolders' }),
-    ).toBeVisible()
+    expect(screen.getByTestId('connected-source-setup')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
-    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.notionNotConnected')
   })
 
   it('disables the final Add source action while its backend dependency is missing', async () => {

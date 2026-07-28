@@ -92,7 +92,9 @@ describe('KnowledgeSpaceShell', () => {
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.documentColumn' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/documents')
-    expect(screen.getByRole('button', { name: 'datasetHitTesting.title' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.evidence' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 

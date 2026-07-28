@@ -36,6 +36,9 @@ const uploadSessionsMigrationId = "0027_upload_sessions";
 const difyIntegrationStatesMigrationId = "0028_dify_integration_states";
 const difyIntegrationFreezesMigrationId = "0029_dify_integration_freezes";
 const bulkOperationsMigrationId = "0030_bulk_operations";
+const sourceConnectionCapabilityProvenanceMigrationId =
+  "0031_source_connection_capability_provenance";
+const capabilitySourceSyncPoliciesMigrationId = "0032_capability_source_sync_policies";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -50,6 +53,8 @@ const migrationsAfterDurableDeletion = [
   difyIntegrationStatesMigrationId,
   difyIntegrationFreezesMigrationId,
   bulkOperationsMigrationId,
+  sourceConnectionCapabilityProvenanceMigrationId,
+  capabilitySourceSyncPoliciesMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

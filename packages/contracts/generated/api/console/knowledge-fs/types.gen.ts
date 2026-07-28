@@ -660,6 +660,14 @@ export type KnowledgeFsSourceCredentialTestResponse = {
   valid: boolean
 }
 
+export type KnowledgeFsSourceWorkflowImportPayload =
+  | ({
+      kind: 'online-document-import'
+    } & KnowledgeFsOnlineDocumentWorkflowImportPayload)
+  | ({
+      kind: 'online-drive-import'
+    } & KnowledgeFsOnlineDriveWorkflowImportPayload)
+
 export type KnowledgeFsTraceListResponse = {
   data: Array<KnowledgeFsTraceResponse>
   next_cursor?: string | null
@@ -1106,6 +1114,16 @@ export type KnowledgeFsSourceWorkspacePagesResponse = {
   workspace_name?: string | null
 }
 
+export type KnowledgeFsOnlineDocumentWorkflowImportPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online-document-import'
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online-drive-import'
+}
+
 export type KnowledgeFsTraceResponse = {
   completed: boolean
   created_at: string
@@ -1226,6 +1244,25 @@ export type KnowledgeFsSourcePageResponse = {
   page_name: string
   parent_id?: string | null
   type: string
+}
+
+export type KnowledgeFsOnlineDocumentWorkflowImportItemPayload = {
+  etag?: string | null
+  lastEditedTime?: string | null
+  name?: string | null
+  pageId: string
+  providerItemId: string
+  type: string
+  workspaceId: string
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportItemPayload = {
+  bucket?: string | null
+  etag?: string | null
+  id: string
+  mimeType?: string | null
+  name: string
+  providerItemId: string
 }
 
 export type KnowledgeFsTraceProfileResponse = {
@@ -2288,6 +2325,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesData = {
   }
   query?: {
     cursor?: string
+    limit?: number
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources'
 }
@@ -2537,6 +2575,26 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses 
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse =
   PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsData = {
+  body: KnowledgeFsSourceWorkflowImportPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   body?: never

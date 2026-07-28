@@ -1604,6 +1604,57 @@ export const zKnowledgeFsSourcePagesResponse = z.object({
 })
 
 /**
+ * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
+  etag: z.string().max(1024).nullish(),
+  lastEditedTime: z.string().max(128).nullish(),
+  name: z.string().max(500).nullish(),
+  pageId: z.string().min(1).max(1024),
+  providerItemId: z.string().min(1).max(1024),
+  type: z.string().min(1).max(128),
+  workspaceId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSOnlineDocumentWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-document-import'),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
+  bucket: z.string().max(1024).nullish(),
+  etag: z.string().max(1024).nullish(),
+  id: z.string().min(1).max(1024),
+  mimeType: z.string().max(255).nullish(),
+  name: z.string().min(1).max(500),
+  providerItemId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-drive-import'),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowImportPayload
+ */
+export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
+  zKnowledgeFsOnlineDocumentWorkflowImportPayload.extend({
+    kind: z.literal('online-document-import'),
+  }),
+  zKnowledgeFsOnlineDriveWorkflowImportPayload.extend({ kind: z.literal('online-drive-import') }),
+])
+
+/**
  * KnowledgeFSTraceProfileResponse
  */
 export const zKnowledgeFsTraceProfileResponse = z.object({
@@ -1861,7 +1912,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders = z.object({
-  'Idempotency-Key': z.string(),
+  'Idempotency-Key': z.string().min(8).max(255),
 })
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath = z.object({
@@ -1891,7 +1942,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody =
   zKnowledgeFsDocumentDeletePayload
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders = z.object({
-  'Idempotency-Key': z.string(),
+  'Idempotency-Key': z.string().min(8).max(255),
 })
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
@@ -2382,7 +2433,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelecti
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionHeaders =
   z.object({
-    'Idempotency-Key': z.string(),
+    'Idempotency-Key': z.string().min(8).max(255),
   })
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionPath = z.object({
@@ -2402,6 +2453,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesPath = z.object({
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesQuery = z.object({
   cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
 })
 
 /**
@@ -2424,7 +2476,7 @@ export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody =
   zKnowledgeFsSourceDeletePayload
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders = z.object({
-  'Idempotency-Key': z.string(),
+  'Idempotency-Key': z.string().min(8).max(255),
 })
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
@@ -2468,7 +2520,7 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
-  'Idempotency-Key': z.string(),
+  'Idempotency-Key': z.string().min(8).max(255),
 })
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewPath = z.object({
@@ -2545,7 +2597,7 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse
   zKnowledgeFsSourcePagesResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncHeaders = z.object({
-  'Idempotency-Key': z.string(),
+  'Idempotency-Key': z.string().min(8).max(255),
 })
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPath = z.object({
@@ -2594,6 +2646,25 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestPath = z
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse =
   zKnowledgeFsSourceCredentialTestResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsBody =
+  zKnowledgeFsSourceWorkflowImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsHeaders =
+  z.object({
+    'Idempotency-Key': z.string().min(8).max(255),
+  })
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS durable provider import accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
+  zKnowledgeFsSourceWorkflowResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
   control_space_id: z.string(),

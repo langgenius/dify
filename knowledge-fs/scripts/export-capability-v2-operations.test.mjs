@@ -20,7 +20,22 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 78);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 79);
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "createSourceImportWorkflow",
+      ),
+      {
+        action: "source_workflows.import.create",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "POST",
+        operationId: "createSourceImportWorkflow",
+        parentResourceBinding: { pathParameter: "id" },
+        path: "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+        resourceBinding: { pathParameter: "sourceId" },
+        resourceType: "source",
+      },
+    );
     assert.deepEqual(
       document.operations.find((operation) => operation.operationId === "createSourceSyncWorkflow"),
       {

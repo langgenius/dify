@@ -78,11 +78,13 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 vi.mock('../crawl-selection-form', () => ({
   CrawlSelectionForm: ({
     busy,
+    initialSelectedPageIds,
     onCancel,
     onRecrawl,
     pages,
   }: {
     busy?: boolean
+    initialSelectedPageIds?: readonly string[]
     onCancel: () => void
     onRecrawl: () => void
     pages: Array<{ pageId: string; title?: string }>
@@ -91,7 +93,12 @@ vi.mock('../crawl-selection-form', () => ({
       <p role="status">dataset.newKnowledge.pagesCrawled</p>
       {pages.map((page) => (
         <label key={page.pageId}>
-          <input type="checkbox" aria-label={page.title} />
+          <input
+            type="checkbox"
+            aria-label={page.title}
+            checked={initialSelectedPageIds?.includes(page.pageId) ?? false}
+            readOnly
+          />
           {page.title}
         </label>
       ))}
@@ -770,6 +777,9 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     expect(await screen.findByText('Two')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Two' })).toBeEnabled()
+    await user.click(screen.getByRole('checkbox', { name: 'Two' }))
+    expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked()
     expect(clientMock.getRun).toHaveBeenNthCalledWith(1, {
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
@@ -809,6 +819,7 @@ describe('WebsiteCrawlPreview', () => {
     expect(
       screen.getAllByRole('checkbox').map((checkbox) => checkbox.getAttribute('aria-label')),
     ).toEqual(['New first', 'Two', 'Updated one', 'Three'])
+    expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }),
     ).not.toBeInTheDocument()

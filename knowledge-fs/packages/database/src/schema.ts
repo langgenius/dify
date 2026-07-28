@@ -1114,11 +1114,18 @@ const tables = [
         referencedColumns: ["tenant_id", "id"],
         referencedTable: "knowledge_spaces",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
       varcharColumn("tenant_id", 255),
       idColumn("knowledge_space_id"),
+      idColumn("capability_grant_id", true),
       varcharColumn("provider_id", 128),
       varcharColumn("name", 160),
       varcharColumn("auth_kind", 16),
@@ -1343,8 +1350,9 @@ const tables = [
       },
       {
         expression: {
-          postgres: "\"access_channel\" IN ('interactive', 'service_api', 'mcp', 'agent')",
-          tidb: "`access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')",
+          postgres:
+            "\"access_channel\" IS NULL OR \"access_channel\" IN ('interactive', 'service_api', 'mcp', 'agent')",
+          tidb: "`access_channel` IS NULL OR `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')",
         },
         name: "source_sync_policies_channel_ck",
       },
@@ -1359,10 +1367,18 @@ const tables = [
       {
         expression: {
           postgres:
-            '"revision" >= 1 AND "expected_source_version" >= 1 AND "permission_snapshot_revision" >= 1',
-          tidb: "`revision` >= 1 AND `expected_source_version` >= 1 AND `permission_snapshot_revision` >= 1",
+            '"revision" >= 1 AND "expected_source_version" >= 1 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1)',
+          tidb: "`revision` >= 1 AND `expected_source_version` >= 1 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1)",
         },
         name: "source_sync_policies_revision_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NULL) OR ("capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\') AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = \'array\'))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NULL) OR (`capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent') AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY'))",
+        },
+        name: "source_sync_policies_authorization_binding_ck",
       },
     ],
     foreignKeys: [
@@ -1377,6 +1393,12 @@ const tables = [
         onDelete: "CASCADE",
         referencedColumns: ["knowledge_space_id", "id"],
         referencedTable: "sources",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
       },
       {
         columns: [
@@ -1401,11 +1423,12 @@ const tables = [
       varcharColumn("tenant_id", 255),
       idColumn("knowledge_space_id"),
       idColumn("source_id"),
-      varcharColumn("requested_by_subject_id", 255),
-      varcharColumn("access_channel", 16),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      jsonColumn("required_permission_scope"),
+      idColumn("capability_grant_id", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      varcharColumn("access_channel", 16, true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      jsonColumn("required_permission_scope", true),
       varcharColumn("mode", 16),
       boolColumn("enabled"),
       integerColumn("custom_interval_seconds", true),
@@ -5807,6 +5830,12 @@ const indexes = [
     tableName: "source_connections",
   },
   {
+    columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+    name: "source_connections_capability_grant_idx",
+    purpose: "Trace integrated source connections to their durable Capability authorization",
+    tableName: "source_connections",
+  },
+  {
     columns: ["state_hash"],
     name: "source_oauth_transactions_state_hash_uq",
     purpose: "Atomically claim one OAuth state token",
@@ -5862,6 +5891,12 @@ const indexes = [
     columns: ["enabled", "next_run_at", "id"],
     name: "source_sync_policies_due_idx",
     purpose: "Claim due source synchronization policies",
+    tableName: "source_sync_policies",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+    name: "source_sync_policies_capability_grant_idx",
+    purpose: "Audit and fence scheduled source sync policies by durable Capability grant",
     tableName: "source_sync_policies",
   },
   {

@@ -120,6 +120,10 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0029_dify_integration_freezes.tidb.sql",
       "packages/database/migrations/0030_bulk_operations.postgres.sql",
       "packages/database/migrations/0030_bulk_operations.tidb.sql",
+      "packages/database/migrations/0031_source_connection_capability_provenance.postgres.sql",
+      "packages/database/migrations/0031_source_connection_capability_provenance.tidb.sql",
+      "packages/database/migrations/0032_capability_source_sync_policies.postgres.sql",
+      "packages/database/migrations/0032_capability_source_sync_policies.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -799,6 +803,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0028_dify_integration_states.postgres.sql",
       "packages/database/migrations/0029_dify_integration_freezes.postgres.sql",
       "packages/database/migrations/0030_bulk_operations.postgres.sql",
+      "packages/database/migrations/0031_source_connection_capability_provenance.postgres.sql",
+      "packages/database/migrations/0032_capability_source_sync_policies.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -833,6 +839,8 @@ describe("migration file rendering", () => {
           "0028_dify_integration_states",
           "0029_dify_integration_freezes",
           "0030_bulk_operations",
+          "0031_source_connection_capability_provenance",
+          "0032_capability_source_sync_policies",
         ],
         dialect: "postgres",
       }),

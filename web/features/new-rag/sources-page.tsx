@@ -134,9 +134,12 @@ function SourceActions({
             )}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[200px]">
           {canSync && (
-            <DropdownMenuItem onClick={() => void onSync()} className="gap-2 px-3">
+            <DropdownMenuItem
+              onClick={() => void onSync()}
+              className="mb-px h-7 gap-2 px-2 system-sm-medium"
+            >
               <span aria-hidden className="i-ri-refresh-line size-4" />
               {t(($) => $['newKnowledge.syncNow'])}
             </DropdownMenuItem>
@@ -145,21 +148,24 @@ function SourceActions({
             <DropdownMenuLinkItem
               render={
                 <a
-                  aria-label={tCommon(($) => $['operation.openInNewTab'])}
+                  aria-label={t(($) => $['newKnowledge.editSource'])}
                   href={sourceUri}
                   target="_blank"
                   rel="noopener noreferrer"
                 />
               }
-              className="gap-2 px-3"
+              className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
-              <span aria-hidden className="i-ri-external-link-line size-4" />
-              {tCommon(($) => $['operation.openInNewTab'])}
+              <span aria-hidden className="i-ri-edit-line size-4" />
+              {t(($) => $['newKnowledge.editSource'])}
             </DropdownMenuLinkItem>
           )}
           {canEdit && (
             <>
-              <DropdownMenuItem onClick={() => void onToggle()} className="gap-2 px-3">
+              <DropdownMenuItem
+                onClick={() => void onToggle()}
+                className="h-7 gap-2 px-2 system-sm-medium"
+              >
                 <span
                   aria-hidden
                   className={cn(
@@ -173,11 +179,11 @@ function SourceActions({
                   ? t(($) => $.enable)
                   : t(($) => $['newKnowledge.disableSource'])}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="my-px" />
               <DropdownMenuItem
                 onClick={() => setRemoveDialogOpen(true)}
                 variant="destructive"
-                className="gap-2 px-3"
+                className="h-7 gap-2 px-2 system-sm-medium"
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 {t(($) => $['newKnowledge.removeSource'])}
@@ -248,6 +254,16 @@ function SourceRow({
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
   const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
+  const sourceIcon =
+    source.type === 'web'
+      ? 'i-ri-global-line'
+      : providerName === 'Notion'
+        ? 'i-custom-public-common-notion'
+        : providerName === 'Amazon S3'
+          ? 'i-ri-folder-line'
+          : providerName === 'Google Docs'
+            ? 'i-ri-file-text-fill text-[#4d8bf5]'
+            : 'i-ri-links-line'
 
   const runAction = async <Result,>(
     action: SourceAction,
@@ -333,31 +349,28 @@ function SourceRow({
 
   return (
     <tr
-      className={cn('border-t border-divider-subtle', source.status === 'disabled' && 'opacity-60')}
+      className={cn(
+        'border-t border-divider-subtle',
+        source.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
+      )}
     >
       <td className="w-7 py-2 pr-3">
         <Checkbox aria-label={source.name} checked={checked} onCheckedChange={onCheckedChange} />
       </td>
       <td className="min-w-0 py-2 pr-3 sm:min-w-64">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            aria-hidden
-            className={cn(
-              'size-[18px] shrink-0 text-text-tertiary',
-              source.type === 'web' ? 'i-ri-global-line' : 'i-ri-links-line',
-            )}
-          />
+          <span aria-hidden className={cn('size-[18px] shrink-0 text-text-tertiary', sourceIcon)} />
           <div className="min-w-0">
             <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
           </div>
         </div>
       </td>
-      <td className="hidden w-44 py-2 pr-3 sm:table-cell">
+      <td className="hidden w-[180px] py-2 pr-3 sm:table-cell">
         <p className="system-xs-regular text-text-secondary">{providerName ?? typeLabel}</p>
         {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
       </td>
-      <td className="w-24 py-2 pr-3 sm:w-32">
-        <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-secondary">
+      <td className="w-24 py-2 pr-3 sm:w-[140px]">
+        <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-primary">
           <StatusDot
             status={statusDotStatus[source.status]}
             className={cn(
@@ -368,7 +381,7 @@ function SourceRow({
           {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
         </span>
       </td>
-      <td className="hidden w-32 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
+      <td className="hidden w-30 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
         {syncPolicy ?? '—'}
       </td>
       <td
@@ -425,16 +438,16 @@ function SourcesEmpty({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-      <div aria-hidden className="flex items-center gap-3">
-        <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-5" />
-        <span data-brand="jina" className="i-custom-public-llm-jina size-5" />
+      <div aria-hidden className="flex items-center gap-3 opacity-85">
+        <span data-brand="firecrawl" className="i-custom-public-common-firecrawl size-8" />
+        <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
         <span
           data-brand="notion"
-          className="i-custom-public-common-notion size-5 text-text-primary"
+          className="i-custom-public-common-notion size-8 text-text-primary"
         />
-        <span data-brand="google-drive" className="i-custom-public-common-google-drive size-5" />
-        <span data-brand="confluence" className="i-custom-public-common-confluence size-5" />
-        <span data-brand="dropbox" className="i-custom-public-common-dropbox size-5" />
+        <span data-brand="google-drive" className="i-custom-public-common-google-drive size-8" />
+        <span data-brand="confluence" className="i-custom-public-common-confluence size-8" />
+        <span data-brand="more" className="i-ri-more-fill size-8 text-text-quaternary" />
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
@@ -564,7 +577,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
+    <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-8">
       <header>
         <div>
           <h2 className="title-xl-semi-bold text-text-primary">
@@ -606,7 +619,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               <SelectLabel className="sr-only">
                 {t(($) => $['newKnowledge.sourceFilterLabel'])}
               </SelectLabel>
-              <SelectTrigger className="sm:w-36">
+              <SelectTrigger className="sm:w-[140px]">
                 {filter === 'all'
                   ? t(($) => $['newKnowledge.allSources'])
                   : t(($) => $[`newKnowledge.sourceStatus.${filter}`])}
@@ -628,7 +641,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             </Select>
             <SearchInput
               aria-label={t(($) => $['newKnowledge.searchSources'])}
-              className="sm:w-64"
+              className="sm:w-60"
               value={search}
               onValueChange={setSearch}
               placeholder={t(($) => $['newKnowledge.searchSources'])}

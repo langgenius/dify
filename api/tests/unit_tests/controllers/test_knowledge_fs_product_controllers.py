@@ -60,6 +60,7 @@ def test_console_and_service_api_routes_are_registered() -> None:
         ("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh"),
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync",
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/crawl-preview",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/workflow-imports",
         "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/sync-policy",
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/cancel",
@@ -143,6 +144,7 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSSourceProviderListResponse",
         "KnowledgeFSSourceSyncPolicyPayload",
         "KnowledgeFSSourceSyncPolicyResponse",
+        "KnowledgeFSSourceWorkflowImportPayload",
         "KnowledgeFSSourceWorkflowCancelPayload",
         "KnowledgeFSSourceWorkflowResponse",
     }.issubset(console_ns.models)
@@ -176,6 +178,27 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
     query_capability_schema = console_ns.models["KnowledgeFSQueryStreamCapabilityResponse"].__schema__
     assert set(query_capability_schema["required"]) == {"expires_at", "operation_id", "token", "url"}
     assert query_capability_schema["properties"]["operation_id"]["const"] == "createQuery"
+
+
+def test_source_workflow_import_contract_is_discriminated_idempotent_and_accepted() -> None:
+    import_schema = console_ns.models["KnowledgeFSSourceWorkflowImportPayload"].__schema__
+    assert import_schema["discriminator"] == {
+        "propertyName": "kind",
+        "mapping": {
+            "online-document-import": "#/components/schemas/KnowledgeFSOnlineDocumentWorkflowImportPayload",
+            "online-drive-import": "#/components/schemas/KnowledgeFSOnlineDriveWorkflowImportPayload",
+        },
+    }
+    assert import_schema["oneOf"] == [
+        {"$ref": "#/components/schemas/KnowledgeFSOnlineDocumentWorkflowImportPayload"},
+        {"$ref": "#/components/schemas/KnowledgeFSOnlineDriveWorkflowImportPayload"},
+    ]
+
+    api_doc = console_resources.KnowledgeFSSpaceSourceWorkflowImportApi.post.__apidoc__
+    assert api_doc["params"]["Idempotency-Key"]["required"] is True
+    assert api_doc["params"]["Idempotency-Key"]["minLength"] == 8
+    assert api_doc["params"]["Idempotency-Key"]["maxLength"] == 255
+    assert set(api_doc["responses"]) == {"202"}
 
 
 def test_small_file_console_bff_reads_only_through_facade_and_returns_no_capability_material(

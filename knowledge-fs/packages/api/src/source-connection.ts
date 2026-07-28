@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import type { Source } from "@knowledge/core";
 import type { AuthSubject } from "@knowledge/core";
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import { issueKnowledgeSpaceDurablePermission } from "./derived-result-authorization";
 import type {
   KnowledgeSpaceAccessChannel,
@@ -27,6 +28,8 @@ export type SourceConnectionStatus = "provisioning" | "active" | "expired" | "er
 
 export interface SourceConnection {
   readonly authKind: SourceProviderAuthKind;
+  /** Durable Capability-v2 provenance. Never exposed through the public connection response. */
+  readonly capabilityGrantId?: string | undefined;
   readonly configuration: Readonly<Record<string, boolean | number | string>>;
   readonly createdAt: string;
   readonly credentialRef?: string | undefined;
@@ -44,7 +47,10 @@ export interface SourceConnection {
 }
 
 export interface PublicSourceConnection
-  extends Omit<SourceConnection, "credentialRef" | "lastErrorCode" | "tenantId"> {
+  extends Omit<
+    SourceConnection,
+    "capabilityGrantId" | "credentialRef" | "lastErrorCode" | "tenantId"
+  > {
   readonly errorCode?: string | undefined;
 }
 
@@ -87,15 +93,27 @@ export interface SourceConnectionSecretRef {
   readonly workerId?: string | undefined;
 }
 
-/** Durable caller provenance revalidated inside the final database mutation transaction. */
-export interface SourceConnectionPermissionFence {
+export interface SourceConnectionLegacyPermissionFence {
   readonly accessChannel: KnowledgeSpaceAccessChannel;
+  readonly capabilityGrantId?: never;
   readonly knowledgeSpaceId: string;
   readonly permissionSnapshotId: string;
   readonly permissionSnapshotRevision: number;
   readonly requestedBySubjectId: string;
   readonly tenantId: string;
 }
+
+export interface SourceConnectionCapabilityPermissionFence {
+  readonly capabilityAction: "source_connections.create" | "source_connections.refresh";
+  readonly capabilityGrantId: string;
+  readonly knowledgeSpaceId: string;
+  readonly tenantId: string;
+}
+
+/** Durable caller provenance revalidated inside the final database mutation transaction. */
+export type SourceConnectionPermissionFence =
+  | SourceConnectionCapabilityPermissionFence
+  | SourceConnectionLegacyPermissionFence;
 
 export interface SourceConnectionRepository {
   activate(input: {
@@ -107,7 +125,10 @@ export interface SourceConnectionRepository {
     readonly scopes: readonly string[];
   }): Promise<SourceConnection>;
   begin(
-    input: Omit<SourceConnection, "createdAt" | "status" | "updatedAt" | "version"> & {
+    input: Omit<
+      SourceConnection,
+      "capabilityGrantId" | "createdAt" | "status" | "updatedAt" | "version"
+    > & {
       readonly createdAt: string;
       readonly permissionFence: SourceConnectionPermissionFence;
     },
@@ -242,6 +263,11 @@ export class SourceConnectionError extends Error {
   }
 }
 
+export interface SourceConnectionCapabilityPrincipal {
+  readonly contentScopeIds: readonly string[];
+  readonly grantId: string;
+}
+
 export interface SourceConnectionService {
   callback(input: {
     readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
@@ -254,6 +280,7 @@ export interface SourceConnectionService {
     readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
     readonly authKind: Exclude<SourceProviderAuthKind, "oauth2">;
     readonly callerKind: KnowledgeSpaceCallerKind;
+    readonly capability?: SourceConnectionCapabilityPrincipal | undefined;
     readonly configuration?: Readonly<Record<string, boolean | number | string>> | undefined;
     readonly credentials: Readonly<Record<string, unknown>>;
     readonly knowledgeSpaceId: string;
@@ -276,6 +303,7 @@ export interface SourceConnectionService {
   refresh(input: {
     readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
     readonly callerKind: KnowledgeSpaceCallerKind;
+    readonly capability?: SourceConnectionCapabilityPrincipal | undefined;
     readonly connectionId: string;
     readonly expectedVersion: number;
     readonly knowledgeSpaceId: string;
@@ -380,21 +408,39 @@ export function createSourceConnectionService(input: {
     return connection;
   };
 
-  const issueMutationPermission = async (request: {
-    readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
-    readonly callerKind: KnowledgeSpaceCallerKind;
-    readonly knowledgeSpaceId: string;
-    readonly subject: AuthSubject;
-    readonly tenantId: string;
-  }) => {
+  const issueMutationPermissionFence = async (
+    request: {
+      readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
+      readonly callerKind: KnowledgeSpaceCallerKind;
+      readonly capability?: SourceConnectionCapabilityPrincipal | undefined;
+      readonly knowledgeSpaceId: string;
+      readonly subject: AuthSubject;
+      readonly tenantId: string;
+    },
+    capabilityAction?: "source_connections.create" | "source_connections.refresh" | undefined,
+  ): Promise<SourceConnectionPermissionFence> => {
     if (request.subject.tenantId !== request.tenantId) {
       throw new SourceConnectionError(
         "SOURCE_CONNECTION_SCOPE_MISMATCH",
         "Source connection tenant scope is invalid",
       );
     }
+    if (request.capability) {
+      if (!capabilityAction) {
+        throw new KnowledgeSpaceAuthorizationError(
+          "KNOWLEDGE_SPACE_ACCESS_DENIED",
+          "Knowledge space access denied",
+        );
+      }
+      return {
+        capabilityAction,
+        capabilityGrantId: bounded(request.capability.grantId, "capability grant id", 255),
+        knowledgeSpaceId: request.knowledgeSpaceId,
+        tenantId: request.tenantId,
+      };
+    }
     const issuedAt = now();
-    return issueKnowledgeSpaceDurablePermission({
+    const permission = await issueKnowledgeSpaceDurablePermission({
       access: input.access,
       ...(request.apiKey ? { apiKey: request.apiKey } : {}),
       authorization: input.authorization,
@@ -404,6 +450,14 @@ export function createSourceConnectionService(input: {
       requiredAccess: "write",
       subject: request.subject,
     });
+    return {
+      accessChannel: permission.accessChannel,
+      knowledgeSpaceId: permission.knowledgeSpaceId,
+      permissionSnapshotId: permission.id,
+      permissionSnapshotRevision: permission.revision,
+      requestedBySubjectId: permission.subjectId,
+      tenantId: permission.tenantId,
+    };
   };
 
   const revalidateMutationPermission = async (
@@ -413,17 +467,18 @@ export function createSourceConnectionService(input: {
       readonly knowledgeSpaceId: string;
       readonly subject: AuthSubject;
     },
-    permission: KnowledgeSpacePermissionSnapshot,
+    permissionFence: SourceConnectionPermissionFence,
   ) => {
+    if ("capabilityGrantId" in permissionFence) return;
     await revalidateKnowledgeSpaceDurablePermission({
       access: input.access,
       callerKind: request.callerKind,
       currentApiKeyId: request.apiKey?.id,
       knowledgeSpaceId: request.knowledgeSpaceId,
       permissionSnapshot: {
-        accessChannel: permission.accessChannel,
-        id: permission.id,
-        revision: permission.revision,
+        accessChannel: permissionFence.accessChannel,
+        id: permissionFence.permissionSnapshotId,
+        revision: permissionFence.permissionSnapshotRevision,
       },
       subject: request.subject,
     });
@@ -435,9 +490,9 @@ export function createSourceConnectionService(input: {
     });
   };
 
-  const permissionFence = (
+  const legacyPermissionFence = (
     permission: KnowledgeSpacePermissionSnapshot,
-  ): SourceConnectionPermissionFence => ({
+  ): SourceConnectionLegacyPermissionFence => ({
     accessChannel: permission.accessChannel,
     knowledgeSpaceId: permission.knowledgeSpaceId,
     permissionSnapshotId: permission.id,
@@ -457,21 +512,29 @@ export function createSourceConnectionService(input: {
       }
       validatePublicConfiguration(provider.configuration, request.configuration ?? {});
       validateCredentials(provider.configuration, request.credentials);
-      const permission = await issueMutationPermission(request);
+      const permissionFence = await issueMutationPermissionFence(
+        request,
+        "source_connections.create",
+      );
       const createdAt = now();
-      const connection = await input.repository.begin({
-        authKind: request.authKind,
-        configuration: { ...(request.configuration ?? {}) },
-        createdAt,
-        ...(credentialMode === "local" ? { credentialRef: generateCredentialRef() } : {}),
-        id: generateConnectionId(),
-        knowledgeSpaceId: request.knowledgeSpaceId,
-        name: bounded(request.name, "connection name", 160),
-        permissionFence: permissionFence(permission),
-        providerId: provider.id,
-        scopes: [],
-        tenantId: request.tenantId,
-      });
+      let connection: SourceConnection;
+      try {
+        connection = await input.repository.begin({
+          authKind: request.authKind,
+          configuration: { ...(request.configuration ?? {}) },
+          createdAt,
+          ...(credentialMode === "local" ? { credentialRef: generateCredentialRef() } : {}),
+          id: generateConnectionId(),
+          knowledgeSpaceId: request.knowledgeSpaceId,
+          name: bounded(request.name, "connection name", 160),
+          permissionFence,
+          providerId: provider.id,
+          scopes: [],
+          tenantId: request.tenantId,
+        });
+      } catch (error) {
+        throw normalizeMutationPermissionError(error);
+      }
       try {
         if (credentialMode === "local") {
           await secrets().put({
@@ -480,13 +543,13 @@ export function createSourceConnectionService(input: {
             ref: requiredCredentialRef(connection),
           });
         }
-        await revalidateMutationPermission(request, permission);
+        await revalidateMutationPermission(request, permissionFence);
         return toPublicSourceConnection(
           await input.repository.activate({
             connectionId: connection.id,
             expectedVersion: connection.version,
             now: now(),
-            permissionFence: permissionFence(permission),
+            permissionFence,
             scopes: [],
           }),
         );
@@ -499,7 +562,12 @@ export function createSourceConnectionService(input: {
             now: now(),
           })
           .catch(() => undefined);
-        if (error instanceof KnowledgeSpaceAuthorizationError) throw error;
+        if (
+          error instanceof KnowledgeSpaceAuthorizationError ||
+          error instanceof CapabilityPublicationFencedError
+        ) {
+          throw normalizeMutationPermissionError(error);
+        }
         throw new SourceConnectionError(
           credentialMode === "local"
             ? "SOURCE_CONNECTION_SECRET_PERSIST_FAILED"
@@ -549,7 +617,7 @@ export function createSourceConnectionService(input: {
         id: generateConnectionId(),
         knowledgeSpaceId: request.knowledgeSpaceId,
         name: bounded(request.name, "connection name", 160),
-        permissionFence: permissionFence(permission),
+        permissionFence: legacyPermissionFence(permission),
         providerId: provider.id,
         scopes: normalizeScopes(request.scopes),
         tenantId: request.tenantId,
@@ -751,7 +819,10 @@ export function createSourceConnectionService(input: {
           "Datasource credential refresh is managed by Dify",
         );
       }
-      const permission = await issueMutationPermission(request);
+      const permissionFence = await issueMutationPermissionFence(
+        request,
+        "source_connections.refresh",
+      );
       const connection = await getRequired(request);
       const newRef = deterministicRefreshCredentialRef(connection.id, request.expectedVersion);
       if (
@@ -788,7 +859,7 @@ export function createSourceConnectionService(input: {
         credentialRef: newRef,
         expectedVersion: connection.version,
         now: refreshNow,
-        permissionFence: permissionFence(permission),
+        permissionFence,
         // The staged ref is the durable refresh operation. Keep it well beyond an HTTP retry
         // window so a restarted instance can promote an already-written rotated token.
         recoverAfter: new Date(Date.parse(refreshNow) + 7 * 24 * 60 * 60_000).toISOString(),
@@ -812,7 +883,7 @@ export function createSourceConnectionService(input: {
       }
       const recoveredExpiresAt = optionalCredentialString(credentials, "expiresAt");
       const recoveredScopes = credentialScopes(credentials, connection.scopes);
-      await revalidateMutationPermission(request, permission);
+      await revalidateMutationPermission(request, permissionFence);
       const rotated = await input.repository.rotateCredential({
         connectionId: connection.id,
         expectedCredentialRef: oldRef,
@@ -820,7 +891,7 @@ export function createSourceConnectionService(input: {
         ...(recoveredExpiresAt ? { expiresAt: recoveredExpiresAt } : {}),
         newCredentialRef: newRef,
         now: refreshNow,
-        permissionFence: permissionFence(permission),
+        permissionFence,
         scopes: recoveredScopes,
       });
       return toPublicSourceConnection(rotated);
@@ -875,7 +946,7 @@ export function createSourceConnectionService(input: {
       };
     },
     revoke: async (request) => {
-      const permission = await issueMutationPermission(request);
+      const permissionFence = await issueMutationPermissionFence(request);
       const connection = await getRequired(request);
       if (connection.status === "revoked") return toPublicSourceConnection(connection);
       if (connection.version !== request.expectedVersion) {
@@ -884,12 +955,12 @@ export function createSourceConnectionService(input: {
           "Source connection changed concurrently",
         );
       }
-      await revalidateMutationPermission(request, permission);
+      await revalidateMutationPermission(request, permissionFence);
       const revoked = await input.repository.revoke({
         connectionId: connection.id,
         expectedVersion: connection.version,
         now: now(),
-        permissionFence: permissionFence(permission),
+        permissionFence,
       });
       return toPublicSourceConnection(revoked);
     },
@@ -930,7 +1001,7 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
   };
 
   return {
-    begin: async ({ permissionFence: _permissionFence, ...raw }) => {
+    begin: async ({ permissionFence, ...raw }) => {
       if (connections.has(raw.id))
         throw new SourceConnectionError(
           "SOURCE_CONNECTION_ID_CONFLICT",
@@ -938,6 +1009,7 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
         );
       const connection: SourceConnection = cloneConnection({
         ...raw,
+        ...capabilityProvenance(permissionFence),
         status: "provisioning",
         updatedAt: raw.createdAt,
         version: 1,
@@ -960,8 +1032,16 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
       }
       return cloneConnection(connection);
     },
-    activate: async ({ connectionId, expectedVersion, expiresAt, now, scopes }) => {
+    activate: async ({
+      connectionId,
+      expectedVersion,
+      expiresAt,
+      now,
+      permissionFence,
+      scopes,
+    }) => {
       const current = requiredConnection(connectionId);
+      assertConnectionPermissionProvenance(current, permissionFence, true);
       assertVersion(current, expectedVersion);
       if (current.credentialRef) {
         const lifecycle = secretRefs.get(current.credentialRef);
@@ -1153,9 +1233,10 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
         ...(next ? { nextCursor: encodeConnectionCursor(next) } : {}),
       };
     },
-    revoke: async ({ connectionId, expectedVersion, now }) => {
+    revoke: async ({ connectionId, expectedVersion, now, permissionFence }) => {
       const current = requiredConnection(connectionId);
       if (current.status === "revoked") return cloneConnection(current);
+      assertConnectionPermissionProvenance(current, permissionFence);
       assertVersion(current, expectedVersion);
       if (current.credentialRef) {
         const lifecycle = secretRefs.get(current.credentialRef);
@@ -1181,9 +1262,11 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
       credentialRef,
       expectedVersion,
       now,
+      permissionFence,
       recoverAfter,
     }) => {
       const connection = requiredConnection(connectionId);
+      assertConnectionPermissionProvenance(connection, permissionFence);
       assertVersion(connection, expectedVersion);
       const prior = secretRefs.get(credentialRef);
       if (prior) {
@@ -1217,9 +1300,11 @@ export function createInMemorySourceConnectionRepository(): SourceConnectionRepo
       expiresAt,
       newCredentialRef,
       now,
+      permissionFence,
       scopes,
     }) => {
       const current = requiredConnection(connectionId);
+      assertConnectionPermissionProvenance(current, permissionFence);
       assertVersion(current, expectedVersion);
       if (current.credentialRef !== expectedCredentialRef || current.status === "revoked") {
         throw new SourceConnectionError(
@@ -1336,6 +1421,43 @@ export function toPublicSourceConnection(connection: SourceConnection): PublicSo
     updatedAt: connection.updatedAt,
     version: connection.version,
   };
+}
+
+function capabilityProvenance(
+  permissionFence: SourceConnectionPermissionFence,
+): Pick<SourceConnection, "capabilityGrantId"> {
+  return "capabilityGrantId" in permissionFence
+    ? { capabilityGrantId: permissionFence.capabilityGrantId }
+    : {};
+}
+
+function assertConnectionPermissionProvenance(
+  connection: SourceConnection,
+  permissionFence: SourceConnectionPermissionFence,
+  requireExactGrant = false,
+): void {
+  const capabilityGrantId =
+    "capabilityGrantId" in permissionFence ? permissionFence.capabilityGrantId : undefined;
+  if (
+    connection.tenantId !== permissionFence.tenantId ||
+    connection.knowledgeSpaceId !== permissionFence.knowledgeSpaceId ||
+    Boolean(connection.capabilityGrantId) !== Boolean(capabilityGrantId) ||
+    (requireExactGrant && connection.capabilityGrantId !== capabilityGrantId)
+  ) {
+    throw new SourceConnectionError(
+      "SOURCE_CONNECTION_PERMISSION_PROVENANCE_CONFLICT",
+      "Source connection authorization provenance changed",
+    );
+  }
+}
+
+function normalizeMutationPermissionError(error: unknown): unknown {
+  return error instanceof CapabilityPublicationFencedError
+    ? new KnowledgeSpaceAuthorizationError(
+        "KNOWLEDGE_SPACE_ACCESS_DENIED",
+        "Knowledge space access denied",
+      )
+    : error;
 }
 
 function cloneConnection(connection: SourceConnection): SourceConnection {

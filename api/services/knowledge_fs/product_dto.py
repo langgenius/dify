@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, model_validator
 
 from fields.base import ResponseModel
 from models.knowledge_fs import (
@@ -1025,6 +1025,54 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
+class KnowledgeFSOnlineDocumentWorkflowImportItemPayload(BaseModel):
+    etag: str | None = Field(default=None, max_length=1_024)
+    last_edited_time: str | None = Field(default=None, max_length=128, alias="lastEditedTime")
+    name: str | None = Field(default=None, max_length=500)
+    page_id: str = Field(min_length=1, max_length=1_024, alias="pageId")
+    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
+    type: str = Field(min_length=1, max_length=128)
+    workspace_id: str = Field(min_length=1, max_length=1_024, alias="workspaceId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
+    bucket: str | None = Field(default=None, max_length=1_024)
+    etag: str | None = Field(default=None, max_length=1_024)
+    id: str = Field(min_length=1, max_length=1_024)
+    mime_type: str | None = Field(default=None, max_length=255, alias="mimeType")
+    name: str = Field(min_length=1, max_length=500)
+    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSOnlineDocumentWorkflowImportPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online-document-import"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSOnlineDriveWorkflowImportPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online-drive-import"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSSourceWorkflowImportPayload(
+    RootModel[
+        Annotated[
+            KnowledgeFSOnlineDocumentWorkflowImportPayload | KnowledgeFSOnlineDriveWorkflowImportPayload,
+            Field(discriminator="kind"),
+        ]
+    ]
+):
+    pass
+
+
 class KnowledgeFSSourceProviderFieldResponse(ResponseModel):
     description: str | None = None
     format: Literal["password", "uri"] | None = None
@@ -1758,6 +1806,7 @@ __all__ = [
     "KnowledgeFSSourceSyncPolicyResponse",
     "KnowledgeFSSourceUpdatePayload",
     "KnowledgeFSSourceWorkflowCancelPayload",
+    "KnowledgeFSSourceWorkflowImportPayload",
     "KnowledgeFSSourceWorkflowResponse",
     "KnowledgeFSSpaceCreatePayload",
     "KnowledgeFSSpaceCreateResponse",

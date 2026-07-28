@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
 
 import {
+  type CapabilitySourceSyncPolicyRecord,
   type NewSourceWorkflowRun,
   type SourceBulkWorkflowItem,
   type SourceCrawlPreviewPage,
@@ -640,7 +641,15 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       for (const policy of due) {
         const scheduledFor = policy.nextRunAt as string;
         const record: NewSourceWorkflowRun = {
-          accessChannel: policy.accessChannel,
+          ...(isCapabilitySyncPolicy(policy)
+            ? { capabilityGrantId: policy.capabilityGrantId }
+            : {
+                accessChannel: policy.accessChannel,
+                permissionSnapshotId: policy.permissionSnapshotId,
+                permissionSnapshotRevision: policy.permissionSnapshotRevision,
+                requestedBySubjectId: policy.requestedBySubjectId,
+                requiredPermissionScope: [...policy.requiredPermissionScope],
+              }),
           createdAt: now,
           id: randomUUID(),
           idempotencyKey: `sync-policy:${policy.id}:${scheduledFor}`,
@@ -648,10 +657,6 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
           kind: "sync",
           maxExecutionAttempts,
           payload: { scheduledFor, syncPolicyId: policy.id },
-          permissionSnapshotId: policy.permissionSnapshotId,
-          permissionSnapshotRevision: policy.permissionSnapshotRevision,
-          requestedBySubjectId: policy.requestedBySubjectId,
-          requiredPermissionScope: [...policy.requiredPermissionScope],
           sourceId: policy.sourceId,
           tenantId: policy.tenantId,
         };
@@ -710,6 +715,12 @@ function cloneBulkItem(value: SourceBulkWorkflowItem): SourceBulkWorkflowItem {
 
 function clonePolicy(value: SourceSyncPolicyRecord): SourceSyncPolicyRecord {
   return { ...value };
+}
+
+function isCapabilitySyncPolicy(
+  policy: SourceSyncPolicyRecord,
+): policy is CapabilitySourceSyncPolicyRecord {
+  return typeof policy.capabilityGrantId === "string";
 }
 
 function stableJson(value: unknown): string {

@@ -7,6 +7,7 @@ import type {
   DatabaseRow,
 } from "@knowledge/core";
 
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
@@ -38,6 +39,7 @@ export function createDatabaseSourceConnectionRepository(input: {
     begin: async ({ permissionFence, ...record }) => {
       const connection: SourceConnection = {
         ...record,
+        ...capabilityProvenance(permissionFence),
         status: "provisioning",
         updatedAt: record.createdAt,
         version: 1,
@@ -46,6 +48,7 @@ export function createDatabaseSourceConnectionRepository(input: {
         "id",
         "tenant_id",
         "knowledge_space_id",
+        "capability_grant_id",
         "provider_id",
         "name",
         "auth_kind",
@@ -61,6 +64,7 @@ export function createDatabaseSourceConnectionRepository(input: {
         connection.id,
         connection.tenantId,
         connection.knowledgeSpaceId,
+        connection.capabilityGrantId ?? null,
         connection.providerId,
         connection.name,
         connection.authKind,
@@ -74,13 +78,12 @@ export function createDatabaseSourceConnectionRepository(input: {
       ];
       await database.transaction(async (tx) => {
         await requireSpaceAdmission(database, tx, connection);
-        await assertDatabaseKnowledgeSpacePermissionFence({
+        await assertSourceConnectionPermissionFence(
           database,
-          executor: tx,
-          fence: permissionFence,
-          now: connection.createdAt,
-          requiredAccess: "write",
-        });
+          tx,
+          permissionFence,
+          connection.createdAt,
+        );
         await tx.execute({
           maxRows: 0,
           operation: "insert",
@@ -123,6 +126,7 @@ export function createDatabaseSourceConnectionRepository(input: {
         lastErrorCode: null,
         now: request.now,
         permissionFence: request.permissionFence,
+        requireExactPermissionProvenance: true,
         scopes: request.scopes,
         status: "active",
       }),
@@ -437,13 +441,7 @@ export function createDatabaseSourceConnectionRepository(input: {
       if (!candidate) notFound();
       await database.transaction(async (tx) => {
         await requireSpaceAdmission(database, tx, candidate);
-        await assertDatabaseKnowledgeSpacePermissionFence({
-          database,
-          executor: tx,
-          fence: permissionFence,
-          now,
-          requiredAccess: "write",
-        });
+        await assertSourceConnectionPermissionFence(database, tx, permissionFence, now);
         const connection = await getConnectionById(database, tx, connectionId, true);
         if (
           !connection ||
@@ -452,6 +450,7 @@ export function createDatabaseSourceConnectionRepository(input: {
         ) {
           conflict();
         }
+        assertConnectionPermissionProvenance(connection, permissionFence);
         const existing = await getSecretRefByCredential(database, tx, credentialRef, true);
         if (existing) {
           if (
@@ -597,6 +596,7 @@ interface ConnectionPatch {
   readonly newCredentialRef?: string;
   readonly now: string;
   readonly permissionFence?: SourceConnectionPermissionFence;
+  readonly requireExactPermissionProvenance?: boolean;
   readonly scopes?: readonly string[];
   readonly status: SourceConnection["status"];
 }
@@ -612,16 +612,17 @@ async function updateConnection(
   return database.transaction(async (tx) => {
     await requireSpaceAdmission(database, tx, candidate);
     if (patch.permissionFence) {
-      await assertDatabaseKnowledgeSpacePermissionFence({
-        database,
-        executor: tx,
-        fence: patch.permissionFence,
-        now: patch.now,
-        requiredAccess: "write",
-      });
+      await assertSourceConnectionPermissionFence(database, tx, patch.permissionFence, patch.now);
     }
     const current = await getConnectionById(database, tx, connectionId, true);
     if (!current) notFound();
+    if (patch.permissionFence) {
+      assertConnectionPermissionProvenance(
+        current,
+        patch.permissionFence,
+        patch.requireExactPermissionProvenance,
+      );
+    }
     if (
       current.version !== expectedVersion ||
       (patch.expectedCredentialRef !== undefined &&
@@ -787,6 +788,65 @@ async function requireSpaceAdmission(
   }
 }
 
+async function assertSourceConnectionPermissionFence(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  fence: SourceConnectionPermissionFence,
+  now: string,
+): Promise<void> {
+  if ("capabilityAction" in fence) {
+    await assertCapabilityJobPublicationAllowed(database, executor, {
+      capabilityGrantId: fence.capabilityGrantId,
+      expectedBinding: {
+        action: fence.capabilityAction,
+        resource: {
+          id: fence.knowledgeSpaceId,
+          parentId: null,
+          type: "knowledge_space",
+        },
+      },
+      knowledgeSpaceId: fence.knowledgeSpaceId,
+      tenantId: fence.tenantId,
+    });
+    return;
+  }
+  await assertDatabaseKnowledgeSpacePermissionFence({
+    database,
+    executor,
+    fence,
+    now,
+    requiredAccess: "write",
+  });
+}
+
+function capabilityProvenance(
+  permissionFence: SourceConnectionPermissionFence,
+): Pick<SourceConnection, "capabilityGrantId"> {
+  return "capabilityGrantId" in permissionFence
+    ? { capabilityGrantId: permissionFence.capabilityGrantId }
+    : {};
+}
+
+function assertConnectionPermissionProvenance(
+  connection: SourceConnection,
+  permissionFence: SourceConnectionPermissionFence,
+  requireExactGrant = false,
+): void {
+  const capabilityGrantId =
+    "capabilityGrantId" in permissionFence ? permissionFence.capabilityGrantId : undefined;
+  if (
+    connection.tenantId !== permissionFence.tenantId ||
+    connection.knowledgeSpaceId !== permissionFence.knowledgeSpaceId ||
+    Boolean(connection.capabilityGrantId) !== Boolean(capabilityGrantId) ||
+    (requireExactGrant && connection.capabilityGrantId !== capabilityGrantId)
+  ) {
+    throw new SourceConnectionError(
+      "SOURCE_CONNECTION_PERMISSION_PROVENANCE_CONFLICT",
+      "Source connection authorization provenance changed",
+    );
+  }
+}
+
 async function insertSecretRef(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
@@ -885,6 +945,7 @@ async function retireSecretRef(
 }
 
 function mapConnection(row: DatabaseRow): SourceConnection {
+  const capabilityGrantId = optionalStringColumn(row, "capability_grant_id");
   const credentialRef = optionalStringColumn(row, "credential_ref");
   const expiresAt = optionalStringColumn(row, "expires_at");
   const lastErrorCode = optionalStringColumn(row, "last_error_code");
@@ -900,6 +961,7 @@ function mapConnection(row: DatabaseRow): SourceConnection {
   }
   return {
     authKind: authKind as SourceConnection["authKind"],
+    ...(capabilityGrantId ? { capabilityGrantId } : {}),
     configuration: jsonObjectColumn(row, "configuration") as Record<
       string,
       boolean | number | string

@@ -2,6 +2,21 @@ import type { KnowledgeSpaceDurablePermissionReference } from "./knowledge-space
 import type { SourceDocumentWorkflowOwnership } from "./source-document-workflow-ownership";
 import type { SourceRemoteDeletionPolicy } from "./source-product-workflow";
 
+export type SourceProviderCoordinate =
+  | {
+      readonly kind: "online-document";
+      readonly pageId: string;
+      readonly type: string;
+      readonly workspaceId: string;
+    }
+  | {
+      readonly bucket?: string | undefined;
+      readonly id: string;
+      readonly kind: "online-drive";
+      readonly mimeType?: string | undefined;
+      readonly name: string;
+    };
+
 export interface PublishSourceLogicalRevisionInput {
   readonly capabilityGrantId?: string | undefined;
   readonly contentHash: string;
@@ -11,6 +26,12 @@ export interface PublishSourceLogicalRevisionInput {
   readonly knowledgeSpaceId: string;
   readonly materializationOwnership?: SourceDocumentWorkflowOwnership | undefined;
   readonly mimeType: string;
+  /**
+   * Non-secret provider coordinates frozen by the first durable connected-source import.
+   * Credentials remain connection-owned; sync uses this coordinate instead of rediscovering
+   * unrelated provider resources.
+   */
+  readonly providerCoordinate?: SourceProviderCoordinate | undefined;
   readonly providerItemId: string;
   readonly permissionSnapshot?: KnowledgeSpaceDurablePermissionReference | undefined;
   readonly providerKind: "website" | "online-document" | "online-drive";

@@ -140,6 +140,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowCancelPayload,
+    KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceCreateResponse,
@@ -201,6 +202,7 @@ register_schema_models(
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceWorkflowCancelPayload,
+    KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListQuery,
     KnowledgeFSSpaceUpdatePayload,
@@ -335,6 +337,8 @@ _IDEMPOTENCY_HEADER_PARAMS = {
     "Idempotency-Key": {
         "description": "Stable key used to make the mutation safe to retry",
         "in": "header",
+        "maxLength": 255,
+        "minLength": 8,
         "required": True,
         "type": "string",
     }
@@ -1603,6 +1607,32 @@ class KnowledgeFSSpaceSourceCrawlPreviewApi(Resource):
             account_id=actor_id,
             control_space_id=control_space_id,
             source_id=source_id,
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/workflow-imports")
+class KnowledgeFSSpaceSourceWorkflowImportApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSSourceWorkflowImportPayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS durable provider import accepted",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.import_source_workflow(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=_payload(KnowledgeFSSourceWorkflowImportPayload),
             idempotency_key=_idempotency_key(),
         )
         return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED

@@ -220,6 +220,7 @@ function renderSelectionForm(
   discardRequested = () => false,
   previewPages = pages,
   initialSyncMode?: 'custom' | 'interval' | 'manual' | 'provider',
+  initialSelectedPageIds?: readonly string[],
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
@@ -232,6 +233,7 @@ function renderSelectionForm(
     <QueryClientProvider client={queryClient}>
       <CrawlSelectionForm
         discardRequested={discardRequested}
+        initialSelectedPageIds={initialSelectedPageIds}
         initialSyncMode={initialSyncMode}
         knowledgeSpaceId="space-1"
         onCancel={onCancel}
@@ -330,6 +332,15 @@ describe('CrawlSelectionForm', () => {
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Guides' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Edit this page' })).not.toBeChecked()
+  })
+
+  it('keeps valid pages selected while moving from crawl progress to review', async () => {
+    renderSelectionForm(vi.fn(), false, () => false, pages, undefined, ['page-1', 'off-domain'])
+
+    expect(await screen.findByRole('checkbox', { name: 'Getting started' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Edit this page' })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeEnabled()
+    expect(screen.getByText('dataset.newKnowledge.pagesSelected:{"count":1}')).toBeInTheDocument()
   })
 
   it('toggles selection from the visible checkbox labels', async () => {

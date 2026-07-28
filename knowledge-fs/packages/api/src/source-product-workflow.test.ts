@@ -1012,6 +1012,64 @@ describe("source product workflow service boundaries", () => {
     ).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
   });
 
+  it("persists Capability provenance for integrated sync policies without consulting local ACL", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const access = accessFixture();
+    const authorization = {
+      authorize: vi.fn(async () => Promise.reject(new Error("local ACL is unavailable"))),
+    };
+    const source = sourceRecord("source-capability-policy", ["grant:capability"]);
+    const service = createSourceProductWorkflowService({
+      access,
+      authorization,
+      now: () => "2026-02-03T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => (id === source.id ? source : null) },
+    });
+
+    const policy = await service.putSyncPolicy({
+      callerKind: "interactive",
+      capability: { contentScopeIds: ["grant:capability"], grantId: "capability-policy-a" },
+      enabled: true,
+      expectedRevision: 0,
+      expectedSourceVersion: 1,
+      knowledgeSpaceId,
+      mode: "provider",
+      sourceId: source.id,
+      subject: editor,
+    });
+
+    expect(policy).toMatchObject({
+      capabilityGrantId: "capability-policy-a",
+      enabled: true,
+      revision: 1,
+    });
+    expect(policy).not.toHaveProperty("permissionSnapshotId");
+    expect(policy).not.toHaveProperty("requestedBySubjectId");
+    expect(authorization.authorize).not.toHaveBeenCalled();
+    expect(access.createPermissionSnapshot).not.toHaveBeenCalled();
+
+    const hiddenCapability = {
+      callerKind: "interactive" as const,
+      capability: { contentScopeIds: ["grant:other"], grantId: "capability-hidden" },
+      knowledgeSpaceId,
+      sourceId: source.id,
+      subject: editor,
+    };
+    await expect(service.getSyncPolicy(hiddenCapability)).rejects.toMatchObject({
+      code: "SOURCE_NOT_FOUND",
+    });
+    await expect(
+      service.putSyncPolicy({
+        ...hiddenCapability,
+        enabled: true,
+        expectedRevision: 1,
+        expectedSourceVersion: 1,
+        mode: "provider",
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
+  });
+
   it("validates and revises sync policies with deterministic schedules", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     const source = sourceRecord("source-policy", []);

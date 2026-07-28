@@ -9,6 +9,16 @@ import { jsonStringArrayColumn } from "./json-utils";
 
 export interface CapabilityJobScope {
   readonly capabilityGrantId: string;
+  readonly expectedBinding?:
+    | {
+        readonly action: string;
+        readonly resource: {
+          readonly id: string;
+          readonly parentId: string | null;
+          readonly type: string;
+        };
+      }
+    | undefined;
   readonly knowledgeSpaceId: string;
   readonly tenantId: string;
 }
@@ -64,11 +74,16 @@ async function lockActiveCapabilityGrant(
 ) {
   const q = (identifier: string) => quoteDatabaseIdentifier(database, identifier);
   const p = (index: number) => databasePlaceholder(database, index);
+  const bindingColumns = scope.expectedBinding
+    ? ["action", "resource_type", "resource_id", "resource_parent_id"]
+    : [];
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
     params: [scope.tenantId, scope.knowledgeSpaceId, scope.capabilityGrantId],
-    sql: `SELECT ${columns.map((column) => `grant_row.${q(column)}`).join(", ")}, (SELECT space_fence.${q(
+    sql: `SELECT ${[...columns, ...bindingColumns]
+      .map((column) => `grant_row.${q(column)}`)
+      .join(", ")}, (SELECT space_fence.${q(
       "tombstoned",
     )} FROM ${q("capability_space_fences")} space_fence WHERE space_fence.${q(
       "tenant_id",
@@ -90,6 +105,15 @@ async function lockActiveCapabilityGrant(
     row.space_tombstoned !== null &&
     row.space_tombstoned !== false &&
     row.space_tombstoned !== 0
+  ) {
+    throw new CapabilityPublicationFencedError();
+  }
+  if (
+    scope.expectedBinding &&
+    (row.action !== scope.expectedBinding.action ||
+      row.resource_type !== scope.expectedBinding.resource.type ||
+      row.resource_id !== scope.expectedBinding.resource.id ||
+      (row.resource_parent_id ?? null) !== scope.expectedBinding.resource.parentId)
   ) {
     throw new CapabilityPublicationFencedError();
   }

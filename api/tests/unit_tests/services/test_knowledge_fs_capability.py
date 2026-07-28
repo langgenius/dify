@@ -483,6 +483,13 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
         "job",
     )
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["createSourceImportWorkflow"] == (
+        "source_workflows.import.create",
+        ("interactive", "service", "agent", "workflow"),
+        "POST",
+        "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+        "source",
+    )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["retryBackgroundTask"] == (
         "background_tasks.retry",
         ("interactive", "service", "agent", "workflow"),

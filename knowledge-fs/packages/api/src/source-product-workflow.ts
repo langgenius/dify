@@ -174,8 +174,7 @@ export interface SourceOnlineDriveImportItem {
 
 export type SourceImportSelection = SourceOnlineDocumentImportItem | SourceOnlineDriveImportItem;
 
-export interface SourceSyncPolicyRecord {
-  readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
+interface SourceSyncPolicyBase {
   readonly createdAt: string;
   readonly customIntervalSeconds?: number | undefined;
   readonly enabled: boolean;
@@ -184,15 +183,33 @@ export interface SourceSyncPolicyRecord {
   readonly knowledgeSpaceId: string;
   readonly mode: "provider" | "manual" | "interval" | "custom";
   readonly nextRunAt?: string | undefined;
-  readonly permissionSnapshotId: string;
-  readonly permissionSnapshotRevision: number;
   readonly revision: number;
-  readonly requestedBySubjectId: string;
-  readonly requiredPermissionScope: readonly string[];
   readonly sourceId: string;
   readonly tenantId: string;
   readonly updatedAt: string;
 }
+
+export type CapabilitySourceSyncPolicyRecord = SourceSyncPolicyBase & {
+  readonly accessChannel?: undefined;
+  readonly capabilityGrantId: string;
+  readonly permissionSnapshotId?: undefined;
+  readonly permissionSnapshotRevision?: undefined;
+  readonly requestedBySubjectId?: undefined;
+  readonly requiredPermissionScope?: undefined;
+};
+
+export type LegacySourceSyncPolicyRecord = SourceSyncPolicyBase & {
+  readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
+  readonly capabilityGrantId?: undefined;
+  readonly permissionSnapshotId: string;
+  readonly permissionSnapshotRevision: number;
+  readonly requestedBySubjectId: string;
+  readonly requiredPermissionScope: readonly string[];
+};
+
+export type SourceSyncPolicyRecord =
+  | CapabilitySourceSyncPolicyRecord
+  | LegacySourceSyncPolicyRecord;
 
 export interface SourceProductWorkflowRepository {
   /** Atomically binds an accepted durable deletion job and leaves the remove item running. */
@@ -728,18 +745,19 @@ export function createSourceProductWorkflowService(input: {
         );
       }
       const updatedAt = now();
-      const permission = await issueKnowledgeSpaceDurablePermission({
-        access: input.access,
-        ...(request.apiKey ? { apiKey: request.apiKey } : {}),
-        authorization: input.authorization,
-        callerKind: request.callerKind,
-        expiresAt: new Date(Date.parse(updatedAt) + 365 * 24 * 60 * 60_000).toISOString(),
-        knowledgeSpaceId: request.knowledgeSpaceId,
-        requiredAccess: "write",
-        subject: request.subject,
-      });
-      return input.repository.upsertSyncPolicy({
-        accessChannel: permission.accessChannel,
+      const permission = request.capability
+        ? undefined
+        : await issueKnowledgeSpaceDurablePermission({
+            access: input.access,
+            ...(request.apiKey ? { apiKey: request.apiKey } : {}),
+            authorization: input.authorization,
+            callerKind: request.callerKind,
+            expiresAt: new Date(Date.parse(updatedAt) + 365 * 24 * 60 * 60_000).toISOString(),
+            knowledgeSpaceId: request.knowledgeSpaceId,
+            requiredAccess: "write",
+            subject: request.subject,
+          });
+      const policyBase: SourceSyncPolicyBase = {
         ...(request.customIntervalSeconds === undefined
           ? {}
           : { customIntervalSeconds: request.customIntervalSeconds }),
@@ -758,14 +776,30 @@ export function createSourceProductWorkflowService(input: {
               ),
             }
           : {}),
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
-        requestedBySubjectId: request.subject.subjectId,
-        requiredPermissionScope: requiredSourceScope(source),
         revision: (prior?.revision ?? 0) + 1,
         sourceId: request.sourceId,
         tenantId: request.subject.tenantId,
         updatedAt,
+      };
+      if (request.capability) {
+        return input.repository.upsertSyncPolicy({
+          ...policyBase,
+          capabilityGrantId: request.capability.grantId,
+        });
+      }
+      if (!permission) {
+        throw new SourceWorkflowError(
+          "SOURCE_WORKFLOW_PERMISSION_INVALID",
+          "Durable source sync policy authorization is unavailable",
+        );
+      }
+      return input.repository.upsertSyncPolicy({
+        ...policyBase,
+        accessChannel: permission.accessChannel,
+        permissionSnapshotId: permission.id,
+        permissionSnapshotRevision: permission.revision,
+        requestedBySubjectId: request.subject.subjectId,
+        requiredPermissionScope: requiredSourceScope(source),
       });
     },
     createBulk: async (request) => {

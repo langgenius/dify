@@ -208,7 +208,7 @@ describe('SourcesPage', () => {
       ['notion', 'i-custom-public-common-notion'],
       ['google-drive', 'i-custom-public-common-google-drive'],
       ['confluence', 'i-custom-public-common-confluence'],
-      ['dropbox', 'i-custom-public-common-dropbox'],
+      ['more', 'i-ri-more-fill'],
     ] as const) {
       const icon = container.querySelector(`[data-brand="${brand}"]`)
       expect(icon).toBeInTheDocument()
@@ -392,7 +392,9 @@ describe('SourcesPage', () => {
       }),
     )
 
-    const openSource = screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' })
+    const openSource = screen.getByRole('menuitem', {
+      name: 'dataset.newKnowledge.editSource',
+    })
     expect(openSource).toHaveAttribute('href', 'https://docs.example.com')
     expect(openSource).toHaveAttribute('target', '_blank')
     expect(openSource).toHaveAttribute('rel', 'noopener noreferrer')
@@ -458,7 +460,7 @@ describe('SourcesPage', () => {
     )
 
     expect(
-      screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
@@ -817,7 +819,7 @@ describe('SourcesPage', () => {
       }),
     )
     expect(
-      screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' }),
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.editSource' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),

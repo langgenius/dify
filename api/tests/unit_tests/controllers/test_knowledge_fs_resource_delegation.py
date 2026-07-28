@@ -392,6 +392,14 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1", "source_id": "source-1"},
     ),
     (
+        "KnowledgeFSSpaceSourceWorkflowImportApi",
+        "post",
+        ("space-1", "source-1"),
+        "facade",
+        "import_source_workflow",
+        {"control_space_id": "space-1", "source_id": "source-1"},
+    ),
+    (
         "KnowledgeFSSpaceSourcePagesApi",
         "get",
         ("space-1", "source-1"),

@@ -9,6 +9,9 @@ const ConnectionParams = z.object({ id: z.string().uuid(), connectionId: z.strin
 const WorkflowParams = z.object({ id: z.string().uuid(), runId: z.string().uuid() });
 const SourceParams = z.object({ id: z.string().uuid(), sourceId: z.string().uuid() });
 const IdempotencyHeader = z.object({ "Idempotency-Key": z.string().min(1).max(255) });
+const SourceImportIdempotencyHeader = z.object({
+  "Idempotency-Key": z.string().min(8).max(255),
+});
 const ErrorResponse = {
   content: { "application/json": { schema: ErrorResponseSchema } },
   description: "Request failed",
@@ -317,32 +320,33 @@ export const createSourceCrawlPreviewWorkflowRoute = createRoute({
 
 const OnlineDocumentImportItem = z
   .object({
-    etag: z.string().max(2048).optional(),
-    lastEditedTime: z.string().max(2048).optional(),
+    etag: z.string().max(1024).optional(),
+    lastEditedTime: z.string().max(128).optional(),
     name: z.string().max(500).optional(),
-    pageId: z.string().min(1).max(2048),
-    providerItemId: z.string().min(1).max(2048),
+    pageId: z.string().min(1).max(1024),
+    providerItemId: z.string().min(1).max(1024),
     type: z.string().min(1).max(128),
-    workspaceId: z.string().min(1).max(2048),
+    workspaceId: z.string().min(1).max(1024),
   })
   .strict();
 const OnlineDriveImportItem = z
   .object({
-    bucket: z.string().max(2048).optional(),
-    etag: z.string().max(2048).optional(),
-    id: z.string().min(1).max(2048),
+    bucket: z.string().max(1024).optional(),
+    etag: z.string().max(1024).optional(),
+    id: z.string().min(1).max(1024),
     mimeType: z.string().max(255).optional(),
     name: z.string().min(1).max(500),
-    providerItemId: z.string().min(1).max(2048),
+    providerItemId: z.string().min(1).max(1024),
   })
   .strict();
 
 export const createSourceImportWorkflowRoute = createRoute({
   method: "post",
+  operationId: "createSourceImportWorkflow",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
   request: {
     params: SourceParams,
-    headers: IdempotencyHeader,
+    headers: SourceImportIdempotencyHeader,
     body: {
       required: true,
       content: {

@@ -216,6 +216,9 @@ export function createJointCasSourceLogicalRevisionPublisher({
               }
             : {}),
           provenance: {
+            ...(input.providerCoordinate
+              ? { providerCoordinate: structuredClone(input.providerCoordinate) }
+              : {}),
             providerKind: input.providerKind,
             providerItemId: input.providerItemId,
             remoteDeletionPolicy: input.remoteDeletionPolicy,

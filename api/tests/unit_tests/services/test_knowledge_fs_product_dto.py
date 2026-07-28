@@ -13,6 +13,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourceWorkflowImportPayload,
 )
 
 
@@ -69,6 +70,119 @@ def test_source_list_query_matches_the_knowledge_fs_pagination_contract(
 
     with pytest.raises(ValidationError):
         KnowledgeFSSourceListQuery.model_validate(payload)
+
+
+def test_source_workflow_import_payload_preserves_each_provider_item_contract() -> None:
+    document = KnowledgeFSSourceWorkflowImportPayload.model_validate(
+        {
+            "kind": "online-document-import",
+            "items": [
+                {
+                    "lastEditedTime": "2026-07-28T00:00:00Z",
+                    "name": "Runbook",
+                    "pageId": "page-1",
+                    "providerItemId": "notion-page-1",
+                    "type": "page",
+                    "workspaceId": "workspace-1",
+                }
+            ],
+        }
+    )
+    drive = KnowledgeFSSourceWorkflowImportPayload.model_validate(
+        {
+            "kind": "online-drive-import",
+            "items": [
+                {
+                    "bucket": "knowledge",
+                    "id": "files/runbook.pdf",
+                    "mimeType": "application/pdf",
+                    "name": "runbook.pdf",
+                    "providerItemId": "s3-files-runbook",
+                }
+            ],
+        }
+    )
+
+    assert document.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "kind": "online-document-import",
+        "items": [
+            {
+                "lastEditedTime": "2026-07-28T00:00:00Z",
+                "name": "Runbook",
+                "pageId": "page-1",
+                "providerItemId": "notion-page-1",
+                "type": "page",
+                "workspaceId": "workspace-1",
+            }
+        ],
+    }
+    assert drive.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "kind": "online-drive-import",
+        "items": [
+            {
+                "bucket": "knowledge",
+                "id": "files/runbook.pdf",
+                "mimeType": "application/pdf",
+                "name": "runbook.pdf",
+                "providerItemId": "s3-files-runbook",
+            }
+        ],
+    }
+
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceWorkflowImportPayload.model_validate(
+            {
+                "kind": "online-drive-import",
+                "items": [
+                    {
+                        "pageId": "page-1",
+                        "providerItemId": "notion-page-1",
+                        "type": "page",
+                        "workspaceId": "workspace-1",
+                    }
+                ],
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("kind", "item"),
+    [
+        (
+            "online-document-import",
+            {
+                "lastEditedTime": "x" * 129,
+                "pageId": "page-1",
+                "providerItemId": "notion-page-1",
+                "type": "page",
+                "workspaceId": "workspace-1",
+            },
+        ),
+        (
+            "online-document-import",
+            {
+                "pageId": "x" * 1_025,
+                "providerItemId": "notion-page-1",
+                "type": "page",
+                "workspaceId": "workspace-1",
+            },
+        ),
+        (
+            "online-drive-import",
+            {
+                "id": "x" * 1_025,
+                "name": "runbook.pdf",
+                "providerItemId": "s3-files-runbook",
+            },
+        ),
+    ],
+)
+def test_source_workflow_import_payload_rejects_values_beyond_runtime_bounds(
+    kind: str,
+    item: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSSourceWorkflowImportPayload.model_validate({"kind": kind, "items": [item]})
 
 
 def test_bulk_job_dto_accepts_canceled_items_and_terminal_status() -> None:

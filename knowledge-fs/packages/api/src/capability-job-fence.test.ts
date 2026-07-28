@@ -7,7 +7,10 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
-import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
+import {
+  assertCapabilityJobPublicationAllowed,
+  resolveCapabilityJobPublicationGrant,
+} from "./capability-job-fence";
 
 const scope = {
   capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10",
@@ -68,6 +71,51 @@ describe.each(["postgres", "tidb"] as const)("capability job fence (%s)", (diale
         assertCapabilityJobPublicationAllowed(database, transaction, scope),
       ),
     ).rejects.toBeInstanceOf(CapabilityPublicationFencedError);
+  });
+
+  it("enforces an exact durable action and resource binding when requested", async () => {
+    const expectedBinding = {
+      action: "source_sync_policies.update",
+      resource: {
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e12",
+        parentId: scope.knowledgeSpaceId,
+        type: "source",
+      },
+    } as const;
+    const row = {
+      action: expectedBinding.action,
+      content_scope_ids: JSON.stringify(["team:camera"]),
+      resource_id: expectedBinding.resource.id,
+      resource_parent_id: expectedBinding.resource.parentId,
+      resource_type: expectedBinding.resource.type,
+      space_tombstoned: false,
+      subject_id: "editor-a",
+    };
+    const resolve = (patch: Record<string, unknown> = {}) => {
+      const database = adapter(dialect, async () => ({
+        rows: [{ ...row, ...patch }],
+        rowsAffected: 0,
+      }));
+      return database.transaction((transaction) =>
+        resolveCapabilityJobPublicationGrant(database, transaction, {
+          ...scope,
+          expectedBinding,
+        }),
+      );
+    };
+
+    await expect(resolve()).resolves.toEqual({
+      contentScopeIds: ["team:camera"],
+      subjectId: "editor-a",
+    });
+    for (const patch of [
+      { action: "source_workflows.sync.create" },
+      { resource_type: "document" },
+      { resource_id: "another-source" },
+      { resource_parent_id: "another-space" },
+    ]) {
+      await expect(resolve(patch)).rejects.toBeInstanceOf(CapabilityPublicationFencedError);
+    }
   });
 });
 

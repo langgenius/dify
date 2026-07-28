@@ -178,6 +178,7 @@ function PolicyLoading() {
 function ReadyCrawlSelectionForm({
   busy,
   discardRequested,
+  initialSelectedPageIds,
   initialSyncMode,
   knowledgeSpaceId,
   onCancel,
@@ -195,6 +196,7 @@ function ReadyCrawlSelectionForm({
 }: {
   busy: boolean
   discardRequested: () => boolean
+  initialSelectedPageIds: readonly string[]
   initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
@@ -228,7 +230,14 @@ function ReadyCrawlSelectionForm({
     [selectablePages],
   )
   const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
-  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
+  const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(
+    () =>
+      new Set(
+        initialSelectedPageIds
+          .filter((pageId) => selectablePageIds.has(pageId))
+          .slice(0, MAX_SELECTED_PAGES),
+      ),
+  )
   const [syncMode, setSyncMode] = useState<SyncMode>(
     initialSyncMode ?? (policy.enabled ? policy.mode : 'manual'),
   )
@@ -439,7 +448,7 @@ function ReadyCrawlSelectionForm({
   }
 
   return (
-    <Form className="space-y-4" onFormSubmit={() => void submit()}>
+    <Form className="flex flex-col gap-4" onFormSubmit={() => void submit()}>
       <section aria-labelledby="crawl-selection-summary">
         <div className="flex flex-wrap items-center gap-2">
           <h3
@@ -544,7 +553,7 @@ function ReadyCrawlSelectionForm({
           }}
         >
           <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-          <SelectTrigger className="sm:w-72" size="large">
+          <SelectTrigger className="sm:w-[301px]">
             {t(($) =>
               syncMode === 'provider'
                 ? $['newKnowledge.syncPolicyProvider']
@@ -614,7 +623,7 @@ function ReadyCrawlSelectionForm({
           {t(($) => $['newKnowledge.addSourceFailed'])}
         </p>
       )}
-      <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+      <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-5">
         <Button type="button" onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
@@ -640,6 +649,7 @@ function ReadyCrawlSelectionForm({
 export function CrawlSelectionForm({
   busy = false,
   discardRequested,
+  initialSelectedPageIds = [],
   initialSyncMode,
   knowledgeSpaceId,
   onCancel,
@@ -656,6 +666,7 @@ export function CrawlSelectionForm({
 }: {
   busy?: boolean
   discardRequested: () => boolean
+  initialSelectedPageIds?: readonly string[]
   initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
@@ -733,6 +744,7 @@ export function CrawlSelectionForm({
       key={`${run.id}:${policy.revision}`}
       busy={busy}
       discardRequested={discardRequested}
+      initialSelectedPageIds={initialSelectedPageIds}
       initialSyncMode={initialSyncMode}
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}

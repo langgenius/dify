@@ -29,8 +29,8 @@ import Loading from '@/app/components/base/loading'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
+import { ConnectedSourceSetup } from './connected-source-setup'
 import {
   createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
@@ -61,9 +61,10 @@ const WEBSITE_PROVIDER_OPTIONS: Array<{
   icon: string
   value: NewKnowledgeWebsiteProvider
 }> = [
-  { icon: 'i-ri-fire-fill text-orange-500', value: 'Firecrawl' },
+  { icon: 'i-custom-public-common-firecrawl', value: 'Firecrawl' },
   { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
-  { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
+  { icon: 'i-custom-public-knowledge-watercrawl', value: 'WaterCrawl' },
+  { icon: 'i-ri-global-line text-text-accent', value: 'FakeCrawler' },
 ]
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set([
   ...Object.keys(FIRECRAWL_CONFIGURATION),
@@ -166,14 +167,14 @@ function SourceTypeSelector({
 }) {
   const { t } = useTranslation('dataset')
   const options = [
-    { icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
-    { icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
-    { icon: 'i-ri-hard-drive-3-line', key: 'onlineDrive' as const },
+    { icon: 'i-ri-global-line', iconSize: 'size-4', key: 'websiteCrawl' as const },
+    { icon: 'i-ri-file-text-line', iconSize: 'size-3.5', key: 'onlineDocuments' as const },
+    { icon: 'i-ri-hard-drive-3-line', iconSize: 'size-3.5', key: 'onlineDrive' as const },
   ]
 
   return (
     <Fieldset>
-      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
+      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium leading-[15px]">
         {t(($) => $['newKnowledge.sourceTypeLabel'])}
       </FieldsetLegend>
       <RadioGroup<SourceType>
@@ -186,12 +187,12 @@ function SourceTypeSelector({
             key={option.key}
             value={option.key}
             className={cn(
-              'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
+              'relative flex h-7 items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
               'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               'data-checked:bg-background-default data-checked:text-text-primary data-checked:shadow-xs',
             )}
           >
-            <span aria-hidden className={`${option.icon} size-4`} />
+            <span aria-hidden className={`${option.icon} ${option.iconSize}`} />
             {t(($) => $[`newKnowledge.${option.key}`])}
           </RadioItem>
         ))}
@@ -201,19 +202,33 @@ function SourceTypeSelector({
 }
 
 function ProviderSelector({
+  onMoreProviders,
   provider,
   onChange,
 }: {
+  onMoreProviders: () => void
   provider: NewKnowledgeWebsiteProvider
   onChange: (provider: NewKnowledgeWebsiteProvider) => void
 }) {
-  const { t } = useTranslation('datasetCreation')
+  const { t } = useTranslation('dataset')
 
   return (
     <Fieldset>
-      <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
-        {t(($) => $['stepOne.website.chooseProvider'])}
-      </FieldsetLegend>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <FieldsetLegend className="py-0 system-xs-medium">
+          {t(($) => $['newKnowledge.providerLabel'])}
+        </FieldsetLegend>
+        <Button
+          type="button"
+          variant="ghost-accent"
+          size="small"
+          className="h-auto gap-0.5 px-0"
+          onClick={onMoreProviders}
+        >
+          {t(($) => $['newKnowledge.moreProviders'])}
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        </Button>
+      </div>
       <RadioGroup<NewKnowledgeWebsiteProvider>
         value={provider}
         className="grid grid-cols-2 gap-2 sm:grid-cols-4"
@@ -224,9 +239,9 @@ function ProviderSelector({
             key={option.value}
             value={option.value}
             className={cn(
-              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
+              'relative flex h-[34px] items-center justify-center gap-1.5 rounded-lg border border-divider-subtle px-2.5 system-xs-medium text-text-secondary outline-hidden',
               'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
+              'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
             )}
           >
             <span aria-hidden className={`${option.icon} size-4`} />
@@ -516,34 +531,27 @@ function UnconfiguredProvider({
     )
 
   return (
-    <div className="rounded-xl bg-background-section p-4">
+    <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span aria-hidden className="i-ri-fire-line size-[18px] text-text-tertiary" />
+        <span aria-hidden className="i-custom-public-common-firecrawl size-[18px]" />
       </span>
-      <h3 className="mt-3 system-sm-semibold text-text-primary">
+      <h3 className="system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
           provider: FIRECRAWL_CONNECTION_NAME,
         })}
       </h3>
-      <p className="mt-1 system-xs-regular text-text-tertiary">
-        {difyManaged
-          ? t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
-              provider: FIRECRAWL_CONNECTION_NAME,
-            })
-          : t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
-              provider: FIRECRAWL_CONNECTION_NAME,
-            })}
+      <p className="system-xs-regular text-text-tertiary">
+        {t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </p>
       <Button
         variant="primary"
-        className="mt-4"
         onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
       >
-        {difyManaged
-          ? t(($) => $['newKnowledge.openDataSourceSettings'])
-          : t(($) => $['newKnowledge.configureProvider'], {
-              provider: FIRECRAWL_CONNECTION_NAME,
-            })}
+        {t(($) => $['newKnowledge.configureProvider'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </Button>
     </div>
   )
@@ -680,7 +688,6 @@ export function AddSourcePage({
     JSON.stringify(createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType)),
   )
   const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
-  const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
   const [connectionDraftDirty, setConnectionDraftDirty] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
@@ -1043,16 +1050,16 @@ export function AddSourcePage({
 
   return (
     <>
-      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
+      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-8">
         <header>
-          <h2 className="title-xl-semi-bold text-text-primary">
+          <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
           </h2>
           <p className="mt-1 system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.addSourceDescription'])}
           </p>
         </header>
-        <div className="mt-5 w-full max-w-2xl space-y-4">
+        <div className="mt-[18px] flex w-full max-w-[608px] flex-col gap-4">
           <SourceTypeSelector
             value={sourceType}
             onChange={(value) => {
@@ -1060,16 +1067,15 @@ export function AddSourcePage({
               updateSourceDraft(
                 sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
               )
-              setConnectedSourceBoundaryVisible(false)
             }}
           />
           {sourceDraft.sourceType === 'websiteCrawl' ? (
             <>
               <ProviderSelector
                 provider={sourceDraft.provider}
+                onMoreProviders={() => requestNavigation(buildIntegrationPath('data-source'))}
                 onChange={(provider) => {
                   updateSourceDraft({ ...sourceDraft, provider })
-                  setConnectedSourceBoundaryVisible(false)
                 }}
               />
               {!websiteSourceSelected ? (
@@ -1145,21 +1151,22 @@ export function AddSourcePage({
                   provider={provider}
                 />
               )}
-              {!websiteReady && (
-                <PendingWebsiteSetup
-                  key={sourceDraft.provider}
-                  draft={sourceDraft}
-                  onDraftChange={updateSourceDraft}
-                />
-              )}
             </>
           ) : (
-            <UnavailableConnectedSourceSetup
+            <ConnectedSourceSetup
               draft={sourceDraft}
+              knowledgeSpaceId={knowledgeSpaceId}
+              onCompleted={() => {
+                clearStoredSourceDraft()
+                sourceDraftBaselineRef.current = JSON.stringify(sourceDraft)
+                setConnectionDraftDirty(false)
+                replaceAfterHistoryGuard(detailPath)
+              }}
               onDraftChange={(draft) => {
                 updateSourceDraft(draft)
-                setConnectedSourceBoundaryVisible(false)
               }}
+              onDirtyChange={setConnectionDraftDirty}
+              onExit={requestExit}
             />
           )}
           {sourceType === 'websiteCrawl' && !websiteReady && (
@@ -1178,28 +1185,6 @@ export function AddSourcePage({
                 {t(($) => $['newKnowledge.addSource'])}
               </Button>
             </div>
-          )}
-          {sourceType !== 'websiteCrawl' && (
-            <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-              <Button type="button" onClick={requestExit}>
-                {t(($) => $['newKnowledge.cancelAddSource'])}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!sourceDraft.sourceName.trim()}
-                onClick={() => setConnectedSourceBoundaryVisible(true)}
-              >
-                {t(($) => $['newKnowledge.addSource'])}
-              </Button>
-            </div>
-          )}
-          {connectedSourceBoundaryVisible && (
-            <p
-              role="alert"
-              className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
-            >
-              {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
-            </p>
           )}
         </div>
       </main>
