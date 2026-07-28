@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from http import HTTPStatus
 from typing import Literal
+from uuid import uuid4
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError
@@ -401,11 +402,12 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                 "KnowledgeFS reconciliation requires an auditable control-space",
             )
         namespace_id = namespace_id.strip()
+        operation_identity = str(uuid4())
         token = self._issue_capability(
             namespace_id=namespace_id,
             control_space_id=control_space_id.strip(),
             operation_id="listKnowledgeSpaces",
-            operation_identity=f"reconcile:{namespace_id}",
+            operation_identity=operation_identity,
             resource=CapabilityResource(type="namespace", id=namespace_id),
         )
         spaces: list[KnowledgeFSRemoteSpace] = []
@@ -419,7 +421,7 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                 method="GET",
                 path="/knowledge-spaces",
                 token=token,
-                trace_id=f"reconcile:{namespace_id}",
+                trace_id=operation_identity,
                 query=query,
                 payload=None,
                 expected_statuses=(HTTPStatus.OK,),

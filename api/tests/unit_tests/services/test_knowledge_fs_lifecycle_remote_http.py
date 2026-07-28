@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import httpx
 import pytest
@@ -541,6 +542,14 @@ def test_list_paginates_with_one_namespace_capability_and_reconstructs_provision
         )
         == spaces[1]
     )
+    assert issuer.issue.call_count == 2
+    first_list_grant = issuer.issue.call_args_list[0].args[0]
+    second_list_grant = issuer.issue.call_args_list[1].args[0]
+    assert UUID(first_list_grant.grant_id)
+    assert UUID(second_list_grant.grant_id)
+    assert first_list_grant.grant_id == first_list_grant.trace_id
+    assert second_list_grant.grant_id == second_list_grant.trace_id
+    assert first_list_grant.grant_id != second_list_grant.grant_id
 
 
 def test_delete_recovers_lost_ack_space_with_real_control_identity_and_remote_revision(

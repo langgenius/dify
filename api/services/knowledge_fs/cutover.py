@@ -2400,7 +2400,7 @@ def _greenfield_activation_provisioning_key(tenant_id: str) -> str:
 
 
 def _is_zero_space_cutover_ledger(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:
-    return bool(
+    return (
         ledger.source_revision_watermark == _ZERO_REVISION_WATERMARK
         and ledger.applied_revision_watermark == _ZERO_REVISION_WATERMARK
         and ledger.source_task_watermark == 0
