@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "年初から今日まで",
   "filter.sortBy": "並べ替え",
   "monitoring.description": "モニタリングは、パフォーマンス、ユーザー活動、コストを含むアプリケーションの実行状況を記録します。",
+  "retention.upgradeTip.description": "アップグレード後に生成されたログを無期限に保存できます。すでに期限切れとなったログは復元できません。",
   "runDetail.fileListDetail": "詳細",
   "runDetail.fileListLabel": "ファイルの詳細",
   "runDetail.testWithParams": "パラメータ付きテスト",

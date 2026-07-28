@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Ano até hoje",
   "filter.sortBy": "Ordenar por:",
   "monitoring.description": "O monitoramento registra o status de execução do aplicativo, incluindo desempenho, atividade dos usuários e custos.",
+  "retention.upgradeTip.description": "Faça upgrade do seu plano para armazenar por tempo indeterminado todos os logs gerados após o upgrade. Logs cujo período de retenção expirou antes do upgrade não podem ser recuperados.",
   "runDetail.fileListDetail": "Detalhe",
   "runDetail.fileListLabel": "Detalhes do arquivo",
   "runDetail.testWithParams": "Teste com parâmetros",

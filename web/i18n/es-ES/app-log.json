@@ -66,6 +66,7 @@
   "filter.period.yearToDate": "Año hasta la fecha",
   "filter.sortBy": "Ordenar por:",
   "monitoring.description": "La monitorización registra el estado de ejecución de la aplicación, incluyendo rendimiento, actividad de los usuarios y costes.",
+  "retention.upgradeTip.description": "Mejora tu plan para conservar indefinidamente todos los registros que se generen después de la mejora. Los registros que hayan caducado antes de la mejora no se pueden recuperar.",
   "runDetail.fileListDetail": "Detalle",
   "runDetail.fileListLabel": "Detalles del archivo",
   "runDetail.testWithParams": "Prueba con parámetros",
