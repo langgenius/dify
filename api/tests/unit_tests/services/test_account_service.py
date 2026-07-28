@@ -165,32 +165,39 @@ class TestAccountService:
             AccountService.authenticate("test@example.com", "wrongpassword", session=sqlite_session)
 
     def test_authenticate_pending_account_activates(
-        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_password_dependencies: _MockDependencies,
     ) -> None:
         """Test authentication for a pending account, which should activate on login."""
-        account = Account(
-            name="Pending User",
-            email="pending@example.com",
-            password="hashed_password",
-            password_salt="salt",
-            status=AccountStatus.PENDING,
-        )
-        sqlite_session.add(account)
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(
+                name="Pending User",
+                email="pending@example.com",
+                password="hashed_password",
+                password_salt="salt",
+                status=AccountStatus.PENDING,
+            )
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
 
-        mock_password_dependencies["compare_password"].return_value = True
+            mock_password_dependencies["compare_password"].return_value = True
 
-        result = AccountService.authenticate("pending@example.com", "password", session=sqlite_session)
+            result = AccountService.authenticate("pending@example.com", "password", session=service_session)
+            assert result.id == account_id
 
-        assert result is account
-        assert account.status == AccountStatus.ACTIVE
-        assert account.initialized_at is not None
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.status == AccountStatus.ACTIVE
+            assert persisted_account.initialized_at is not None
 
     # ==================== Account Creation Tests ====================
 
     def test_create_account_success(
         self,
-        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
         mock_password_dependencies: _MockDependencies,
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
@@ -201,30 +208,39 @@ class TestAccountService:
         mock_password_dependencies["hash_password"].return_value = b"hashed_password"
 
         # Execute test
-        result = AccountService.create_account(
-            email="test@example.com",
-            name="Test User",
-            interface_language="en-US",
-            password="password123",
-            interface_theme="light",
-            session=sqlite_session,
-        )
+        with sqlite_session_factory() as service_session:
+            result = AccountService.create_account(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password="password123",
+                interface_theme="light",
+                session=service_session,
+            )
+            account_id = result.id
 
-        # Verify results
-        assert result.email == "test@example.com"
-        assert result.name == "Test User"
-        assert result.interface_language == "en-US"
-        assert result.interface_theme == "light"
-        assert result.password is not None
-        assert result.password_salt is not None
-        assert result.timezone == "America/New_York"
+            assert result.email == "test@example.com"
+            assert result.name == "Test User"
+            assert result.interface_language == "en-US"
+            assert result.interface_theme == "light"
+            assert result.password is not None
+            assert result.password_salt is not None
+            assert result.timezone == "America/New_York"
 
-        persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
-        assert persisted_account is result
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.email == "test@example.com"
+            assert persisted_account.name == "Test User"
+            assert persisted_account.interface_language == "en-US"
+            assert persisted_account.interface_theme == "light"
+            assert persisted_account.password is not None
+            assert persisted_account.password_salt is not None
+            assert persisted_account.timezone == "America/New_York"
 
     def test_create_account_uses_explicit_timezone(
         self,
-        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
         mock_password_dependencies: _MockDependencies,
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
@@ -233,19 +249,22 @@ class TestAccountService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         mock_password_dependencies["hash_password"].return_value = b"hashed_password"
 
-        result = AccountService.create_account(
-            email="test@example.com",
-            name="Test User",
-            interface_language="en-US",
-            password="password123",
-            timezone="Asia/Shanghai",
-            session=sqlite_session,
-        )
+        with sqlite_session_factory() as service_session:
+            result = AccountService.create_account(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password="password123",
+                timezone="Asia/Shanghai",
+                session=service_session,
+            )
+            account_id = result.id
+            assert result.timezone == "Asia/Shanghai"
 
-        assert result.timezone == "Asia/Shanghai"
-        persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
-        assert persisted_account is result
-        assert persisted_account.timezone == "Asia/Shanghai"
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.timezone == "Asia/Shanghai"
 
     def test_create_account_registration_disabled(
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -282,7 +301,9 @@ class TestAccountService:
                 )
 
     def test_create_account_without_password(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Test account creation without password (for invite-based registration)."""
         # Setup mocks
@@ -290,60 +311,79 @@ class TestAccountService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute test
-        result = AccountService.create_account(
-            email="test@example.com",
-            name="Test User",
-            interface_language="zh-CN",
-            password=None,
-            interface_theme="dark",
-            session=sqlite_session,
-        )
+        with sqlite_session_factory() as service_session:
+            result = AccountService.create_account(
+                email="test@example.com",
+                name="Test User",
+                interface_language="zh-CN",
+                password=None,
+                interface_theme="dark",
+                session=service_session,
+            )
+            account_id = result.id
 
-        # Verify results
-        assert result.email == "test@example.com"
-        assert result.name == "Test User"
-        assert result.interface_language == "zh-CN"
-        assert result.interface_theme == "dark"
-        assert result.password is None
-        assert result.password_salt is None
-        assert result.timezone is not None
+            assert result.email == "test@example.com"
+            assert result.name == "Test User"
+            assert result.interface_language == "zh-CN"
+            assert result.interface_theme == "dark"
+            assert result.password is None
+            assert result.password_salt is None
+            assert result.timezone is not None
 
-        persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
-        assert persisted_account is result
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.email == "test@example.com"
+            assert persisted_account.name == "Test User"
+            assert persisted_account.interface_language == "zh-CN"
+            assert persisted_account.interface_theme == "dark"
+            assert persisted_account.password is None
+            assert persisted_account.password_salt is None
+            assert persisted_account.timezone is not None
 
     # ==================== Password Management Tests ====================
 
     def test_update_account_password_success(
-        self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_password_dependencies: _MockDependencies,
     ) -> None:
         """Test successful password update with correct current password and valid new password."""
-        account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        sqlite_session.add(account)
-        sqlite_session.commit()
-        mock_password_dependencies["compare_password"].return_value = True
-        mock_password_dependencies["valid_password"].return_value = None
-        mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
+        with sqlite_session_factory() as service_session:
+            account = Account(
+                name="Test User",
+                email="test@example.com",
+                password="hashed_password",
+                password_salt="salt",
+            )
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
 
-        result = AccountService.update_account_password(
-            account, "old_password", "new_password123", session=sqlite_session
-        )
+            mock_password_dependencies["compare_password"].return_value = True
+            mock_password_dependencies["valid_password"].return_value = None
+            mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
 
-        assert result is account
-        assert account.password is not None
-        assert account.password_salt is not None
+            result = AccountService.update_account_password(
+                account,
+                "old_password",
+                "new_password123",
+                session=service_session,
+            )
+            assert result is account
 
-        # Verify password validation was called
         mock_password_dependencies["compare_password"].assert_called_once_with(
             "old_password", "hashed_password", "salt"
         )
         mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
 
-        # Verify database operations
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.password is not None
+            assert persisted_account.password != "hashed_password"
+            assert persisted_account.password_salt is not None
+            assert persisted_account.password_salt != "salt"
 
     def test_update_account_password_current_password_incorrect(
         self, unbound_session: Session, mock_password_dependencies: _MockDependencies
@@ -442,37 +482,41 @@ class TestAccountService:
         with pytest.raises(Unauthorized):
             AccountService.load_user(account.id, sqlite_session)
 
-    def test_load_user_no_current_tenant(self, sqlite_session: Session) -> None:
+    def test_load_user_no_current_tenant(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test user loading when user has no current tenant but has available tenants."""
-        account = Account(name="Test User", email="test@example.com")
-        tenant = Tenant(name="Test Workspace")
-        sqlite_session.add_all([account, tenant])
-        sqlite_session.flush()
-        available_tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.NORMAL,
-            current=False,
-        )
-        sqlite_session.add(available_tenant_join)
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            tenant = Tenant(name="Test Workspace")
+            service_session.add_all([account, tenant])
+            service_session.flush()
+            available_tenant_join = TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+                current=False,
+            )
+            service_session.add(available_tenant_join)
+            service_session.commit()
+            account_id = account.id
+            tenant_id = tenant.id
+            tenant_join_id = available_tenant_join.id
 
-        with (
-            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
-            patch("services.account_service.naive_utc_now") as mock_naive_utc_now,
-            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
-        ):
-            mock_now = datetime.now()
-            mock_naive_utc_now.return_value = mock_now
+            mock_now = datetime(2026, 6, 5, 11, 0, 0)
+            with (
+                patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
+                patch("services.account_service.naive_utc_now", return_value=mock_now),
+                patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
+            ):
+                result = AccountService.load_user(account_id, service_session)
+                assert result is not None
+                mock_set_tenant_id.assert_called_once_with(tenant_id, session=service_session)
+                mock_refresh_last_active.assert_called_once_with(result, service_session)
 
-            result = AccountService.load_user(account.id, sqlite_session)
-
-            assert result is account
-            assert available_tenant_join.current is True
-            assert available_tenant_join.last_opened_at == mock_now
-            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
-
-            mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
+        with sqlite_session_factory() as assertion_session:
+            persisted_tenant_join = assertion_session.get(TenantAccountJoin, tenant_join_id)
+            assert persisted_tenant_join is not None
+            assert persisted_tenant_join.current is True
+            assert persisted_tenant_join.last_opened_at == mock_now
 
     def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
@@ -508,78 +552,93 @@ class TestAccountService:
 
         assert result is None
 
-    def test_refresh_account_last_active_uses_redis_gate_and_conditional_update(self, sqlite_session: Session) -> None:
+    def test_refresh_account_last_active_uses_redis_gate_and_conditional_update(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test last-active refresh is gated in Redis and conditionally written to DB."""
         now = datetime(2026, 6, 2, 2, 45, 49)
-        account = Account(name="Test User", email="test@example.com")
-        sqlite_session.add(account)
-        sqlite_session.commit()
-        account.last_active_at = now - timedelta(minutes=15)
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            account.last_active_at = now - timedelta(minutes=15)
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
 
-        with (
-            patch("services.account_service.naive_utc_now", return_value=now),
-            patch("services.account_service.redis_client") as mock_redis_client,
-        ):
-            mock_redis_client.set.return_value = True
+            with (
+                patch("services.account_service.naive_utc_now", return_value=now),
+                patch("services.account_service.redis_client") as mock_redis_client,
+            ):
+                mock_redis_client.set.return_value = True
 
-            AccountService._refresh_account_last_active(account, sqlite_session)
+                AccountService._refresh_account_last_active(account, service_session)
 
         mock_redis_client.set.assert_called_once_with(
-            f"account_last_active_refresh:{account.id}",
+            f"account_last_active_refresh:{account_id}",
             1,
             ex=600,
             nx=True,
         )
-        sqlite_session.refresh(account)
-        assert account.last_active_at == now
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.last_active_at == now
 
-    def test_refresh_account_last_active_skips_db_when_redis_gate_exists(self, sqlite_session: Session) -> None:
+    def test_refresh_account_last_active_skips_db_when_redis_gate_exists(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test concurrent refresh attempts do not enqueue duplicate DB updates."""
         now = datetime(2026, 6, 2, 2, 45, 49)
         original_last_active_at = now - timedelta(minutes=15)
-        account = Account(name="Test User", email="test@example.com")
-        sqlite_session.add(account)
-        sqlite_session.commit()
-        account.last_active_at = original_last_active_at
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            account.last_active_at = original_last_active_at
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
 
-        with (
-            patch("services.account_service.naive_utc_now", return_value=now),
-            patch("services.account_service.redis_client") as mock_redis_client,
-        ):
-            mock_redis_client.set.return_value = None
+            with (
+                patch("services.account_service.naive_utc_now", return_value=now),
+                patch("services.account_service.redis_client") as mock_redis_client,
+            ):
+                mock_redis_client.set.return_value = None
 
-            AccountService._refresh_account_last_active(account, sqlite_session)
+                AccountService._refresh_account_last_active(account, service_session)
 
         mock_redis_client.set.assert_called_once_with(
-            f"account_last_active_refresh:{account.id}",
+            f"account_last_active_refresh:{account_id}",
             1,
             ex=600,
             nx=True,
         )
-        sqlite_session.refresh(account)
-        assert account.last_active_at == original_last_active_at
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.last_active_at == original_last_active_at
 
-    def test_refresh_account_last_active_skips_recent_account(self, sqlite_session: Session) -> None:
+    def test_refresh_account_last_active_skips_recent_account(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
         """Test recent activity does not touch Redis or DB."""
         now = datetime(2026, 6, 2, 2, 45, 49)
         original_last_active_at = now - timedelta(minutes=5)
-        account = Account(name="Test User", email="test@example.com")
-        sqlite_session.add(account)
-        sqlite_session.commit()
-        account.last_active_at = original_last_active_at
-        sqlite_session.commit()
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Test User", email="test@example.com")
+            account.last_active_at = original_last_active_at
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
 
-        with (
-            patch("services.account_service.naive_utc_now", return_value=now),
-            patch("services.account_service.redis_client") as mock_redis_client,
-        ):
-            AccountService._refresh_account_last_active(account, sqlite_session)
+            with (
+                patch("services.account_service.naive_utc_now", return_value=now),
+                patch("services.account_service.redis_client") as mock_redis_client,
+            ):
+                AccountService._refresh_account_last_active(account, service_session)
 
         mock_redis_client.set.assert_not_called()
-        sqlite_session.refresh(account)
-        assert account.last_active_at == original_last_active_at
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.last_active_at == original_last_active_at
 
 
 class TestTenantService:
