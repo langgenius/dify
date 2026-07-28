@@ -153,6 +153,18 @@ def _sqlite_session_factory(
 
 
 @pytest.fixture
+def _unbound_session_factory(
+    _sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> sessionmaker[Session]:
+    """Create one unbound factory and install it as the global test factory."""
+
+    factory = sessionmaker()
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    return factory
+
+
+@pytest.fixture
 def sqlite_engine(_sqlite_engine: Engine) -> Engine:
     """Expose the pristine full-schema SQLite engine to tests."""
 
@@ -175,6 +187,25 @@ def sqlite_session(_sqlite_session_factory: sessionmaker[Session]) -> Iterator[S
     """
 
     with _sqlite_session_factory() as session:
+        yield session
+
+
+@pytest.fixture
+def unbound_session_factory(_unbound_session_factory: sessionmaker[Session]) -> sessionmaker[Session]:
+    """Expose an unbound factory for paths that must not require persistence."""
+
+    return _unbound_session_factory
+
+
+@pytest.fixture
+def unbound_session(_unbound_session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """Yield an unbound Session for paths that must not require persistence.
+
+    Bind-requiring database access fails, while bind-free Session operations can
+    still succeed.
+    """
+
+    with _unbound_session_factory() as session:
         yield session
 
 
